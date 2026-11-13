@@ -5,17 +5,20 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { getCompatibility } from '~/lib/interfaceCompatibility';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
+import fr from '~/messages/fr.json';
 
 import { InterfaceMeta } from '../InterfaceSummary';
 
+const messagesByLocale = { en, es, fr };
+
 const renderMeta = (
-  locale: 'en' | 'es',
+  locale: keyof typeof messagesByLocale,
   props: { creates: string; requires: string },
 ) =>
   render(
     <NextIntlClientProvider
       locale={locale}
-      messages={locale === 'en' ? en : es}
+      messages={messagesByLocale[locale]}
       timeZone="UTC"
     >
       <InterfaceMeta
@@ -57,6 +60,8 @@ describe('InterfaceMeta', () => {
       'Datos de una lista predefinida',
       ['Datos de una lista predefinida'],
     ],
+    ['fr', 'Internet, compte Mapbox', ['Internet', 'compte Mapbox']],
+    ['fr', 'Données de liste', ['Données de liste']],
   ] as const)(
     'gives every %s requirement in "%s" an icon',
     (locale, requires, requirements) => {

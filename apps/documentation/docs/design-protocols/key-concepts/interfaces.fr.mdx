@@ -1,0 +1,82 @@
+---
+title: Interfaces
+navOrder: 2
+date: 5th October 2026
+translatedFrom: 1868d477bd3728469bb995e5c1e72b797770a763
+---
+
+<Definition>
+  Des instruments de collecte de données conçus pour une tâche précise. Vous
+  configurez les interfaces dans Architect et les ajoutez au protocole
+  d’entretien, où elles deviennent des étapes.
+</Definition>
+
+## Détails {#details}
+
+Les entretiens Network Canvas se composent d’une ou de plusieurs étapes, que l’on peut voir comme les écrans successifs que voit une personne participante. Chaque étape est une _instance_ d’une interface configurée pour recueillir des [variables](/fr/design-protocols/key-concepts/variables) précises ou pour créer des nœuds et des liens. Les interfaces sont donc les éléments les plus fondamentaux d’un entretien Network Canvas.
+
+Chaque interface est conçue pour accomplir une seule tâche précise de l’entretien de réseau. Certaines tâches, comme la génération de liens, peuvent être accomplies avec différentes interfaces. Lorsque vous concevez votre entretien dans Architect, vous choisissez l’interface à utiliser en fonction des besoins de votre recherche.
+
+## Types d’interfaces {#types-of-interfaces}
+
+Les interfaces peuvent être classées, dans les grandes lignes, en générateurs de noms, sociogrammes, interpréteurs de noms (des questions posées sur chaque alter, c’est-à-dire chaque personne déjà citée par la personne participante) et utilitaires.
+
+### Interfaces de type générateur de noms {#name-generator-interfaces}
+
+Les générateurs de noms permettent aux personnes participantes de créer des alters au cours d’un entretien, et décrivent ainsi l’une des deux entités principales des réseaux de votre étude. Les interfaces de type générateur de noms suivantes sont disponibles, chacune conçue pour des situations précises :
+
+- [Générateur de noms (avec formulaires)](/fr/design-protocols/interface-documentation/name-generator-using-forms) : recueillir des informations détaillées sur chaque alter au moment où il est cité
+- [Générateur de noms (ajout rapide)](/fr/design-protocols/interface-documentation/name-generator-using-quick-add) : citer rapidement plusieurs alters avant de recueillir leurs attributs
+- [Générateur de noms à partir d’une liste](/fr/design-protocols/interface-documentation/name-generator-roster) : sélectionner des alters dans une liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit), avec une présentation adaptée à la taille de la liste
+- [Arbre généalogique](/fr/design-protocols/interface-documentation/family-pedigree) : construire un arbre généalogique en créant les membres de la famille et les relations entre eux, puis recueillir des attributs pour chacun. (Cette interface génère aussi des liens et sert d’interpréteur de noms.)
+- [Compositeur de réseau](/fr/design-protocols/interface-documentation/network-composer) : construire rapidement des nœuds et des liens sur un canevas unique et libre. Cette interface est conçue pour être utilisée par un membre de l’équipe de recherche ou par la personne qui mène l’entretien. (Elle génère aussi des liens et sert d’interpréteur de noms.)
+
+![Interfaces de type générateur de noms disponibles dans Architect](/assets/img/key-concepts/interfaces/name-generators.png)
+
+### Interfaces de type sociogramme {#sociogram-interfaces}
+
+Les sociogrammes sont la composante de représentation visuelle d’un entretien de réseau. Sur le sociogramme, les personnes participantes tracent des liens entre les alters pour représenter les relations entre les personnes de leur réseau personnel, et décrivent ainsi l’autre entité principale des réseaux de votre étude.
+
+Les interfaces de type sociogramme suivantes sont disponibles dans Network Canvas :
+
+- [Sociogramme](/fr/design-protocols/interface-documentation/sociogram) : interface interactive qui recueille des données de liens en demandant aux personnes participantes de tracer des connexions entre les alters
+- [Narration](/fr/design-protocols/interface-documentation/narrative) : interface d’affichage seul, qui montre le réseau de la personne participante sans recueillir de données
+- [Arbre généalogique narratif](/fr/design-protocols/interface-documentation/narrative-pedigree) : interface d’affichage seul, qui dessine un arbre généalogique construit précédemment selon la notation généalogique standard et y superpose des informations sur la transmission héréditaire d’une ou de plusieurs affections
+
+![Interfaces de type sociogramme disponibles dans Architect](/assets/img/key-concepts/interfaces/sociograms.png)
+
+### Interfaces de type interpréteur de noms {#name-interpreter-interfaces}
+
+Une fois qu’un protocole contient des entités, les interfaces de type interpréteur de noms permettent de recueillir des informations supplémentaires et d’enrichir les alters ou les liens existants. Ces interfaces sont les suivantes :
+
+- [Classement ordinal](/fr/design-protocols/interface-documentation/ordinal-bin) : classer les alters dans des catégories ordonnées à l’aide de cases visuelles (chacune des zones où l’on dépose les nœuds pour les classer)
+- [Classement par catégories](/fr/design-protocols/interface-documentation/categorical-bin) : classer les alters dans des catégories non ordonnées à l’aide de cases visuelles
+- [Formulaire par alter](/fr/design-protocols/interface-documentation/per-alter-form) : recueillir des données d’attributs détaillées sur chaque alter à l’aide de [formulaires](/fr/design-protocols/key-concepts/forms), avec un formulaire pour chaque alter
+- [Formulaire par lien entre alters](/fr/design-protocols/interface-documentation/per-alter-edge-form) : recueillir des données d’attributs sur les liens à l’aide de formulaires, avec un formulaire pour chaque lien entre deux alters
+- [Formulaire ego](/fr/design-protocols/interface-documentation/ego-form) : recueillir des données sur la personne participante elle-même, c’est-à-dire l’ego, au centre de son réseau
+- [Recensement des dyades](/fr/design-protocols/interface-documentation/dyad-census) : poser systématiquement des questions sur les relations entre toutes les paires d’alters
+- [Recensement de la force des liens](/fr/design-protocols/interface-documentation/tie-strength-census) : une variante de l’interface « Recensement des dyades » qui enregistre aussi la force de chaque lien dans un attribut ordinal
+- [Recensement des dyades (un à plusieurs)](/fr/design-protocols/interface-documentation/one-to-many-dyad-census) : une variante de l’interface « Recensement des dyades » qui relie un alter à plusieurs autres à la fois
+- [Interface géospatiale](/fr/design-protocols/interface-documentation/geospatial) : recueillir des données géospatiales en demandant aux personnes participantes de sélectionner des zones sur une carte (nécessite une connexion Internet et un compte Mapbox)
+
+![Interfaces de type interpréteur de noms disponibles dans Architect](/assets/img/key-concepts/interfaces/name-interpreters.png)
+
+### Interfaces utilitaires {#utility-interfaces}
+
+L’[interface « Information »](/fr/design-protocols/interface-documentation/information) est une étape polyvalente qui permet de présenter des informations aux personnes participantes à l’aide de diverses [ressources](/fr/design-protocols/key-concepts/resources) textuelles et multimédias. Elle est utile pour expliquer le fonctionnement des étapes et améliorer la compréhension des personnes participantes.
+
+L’[interface d’anonymisation](/fr/design-protocols/interface-documentation/anonymisation) est une étape qui permet aux personnes participantes de chiffrer, sur leur appareil, des attributs sensibles ou identifiants (qui permettraient de reconnaître une personne), de sorte que l’équipe de recherche ne puisse pas les lire.
+
+L’[interface « Choix de la langue »](/fr/design-protocols/interface-documentation/language-chooser) permet aux personnes participantes de choisir laquelle des langues de votre protocole sera utilisée pour la suite de l’entretien. Elle est utile lorsque votre protocole est rédigé dans plusieurs langues (consultez [Traduire votre protocole](/fr/design-protocols/translating-your-protocol)).
+
+L’[interface « Écran de fin »](/fr/design-protocols/interface-documentation/finish-screen) est le dernier écran de chaque entretien. Soit les personnes participantes lisent votre « Texte de clôture » et appuient sur **Terminer**, soit l’entretien se termine dès qu’elles atteignent cet écran. Elles voient ensuite le « Texte après la fin de l’entretien » que vous avez rédigé, et l’écran enregistre la façon dont l’entretien s’est terminé. Chaque protocole se termine par un tel écran, et Architect l’ajoute pour vous. Vous pouvez en ajouter d’autres, par exemple pour proposer une fin distincte aux personnes participantes qui ne remplissent pas les critères d’éligibilité.
+
+![Interfaces utilitaires disponibles dans Architect](/assets/img/key-concepts/interfaces/utilities.png)
+
+## Concepts associés {#related-concepts}
+
+- [Consignes](/fr/design-protocols/key-concepts/prompts) : configurer les questions présentées aux personnes participantes dans les étapes
+- [Formulaires](/fr/design-protocols/key-concepts/forms) : construire les formulaires utilisés dans les interfaces à base de formulaires
+- [Variables](/fr/design-protocols/key-concepts/variables) : définir les champs de données à recueillir dans les interfaces
+- [Logique de saut](/fr/design-protocols/key-concepts/skip-logic) : afficher ou sauter des étapes de façon conditionnelle selon les données
+- [Filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering) : contrôler les nœuds ou les liens qui apparaissent dans une étape

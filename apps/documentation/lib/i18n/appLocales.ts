@@ -13,6 +13,7 @@ import type { Locale } from './locales';
 export const documentationAppLocales = defineAppLocales([
   { locale: 'en', label: 'English', direction: 'ltr' },
   { locale: 'es', label: 'Español', direction: 'ltr' },
+  { locale: 'fr', label: 'Français', direction: 'ltr' },
 ] as const satisfies readonly (AppLocale & { locale: Locale })[]);
 
 /**
@@ -35,6 +36,7 @@ export function getLocaleDirection(locale: Locale): 'ltr' | 'rtl' {
 export const siteLocaleByDocumentationLocale = {
   en: 'en-US',
   es: 'es',
+  fr: 'fr',
 } as const satisfies Record<Locale, SiteLocale>;
 
 /**

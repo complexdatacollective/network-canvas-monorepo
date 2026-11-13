@@ -1,0 +1,125 @@
+---
+title: Configurer les appareils avant de commencer la collecte de données
+navOrder: 4
+wip: false
+toc: true
+translatedFrom: e578146eab20b5ee9368ff6f45c127fd3a608aaa
+---
+
+Prenez le temps d’optimiser l’expérience d’entretien avant de commencer la collecte de données. Configurer vos appareils — et Interviewer lui-même — en fonction de votre matériel, de la population de votre recherche et des besoins de chaque personne participante vous aide à créer l’environnement d’entretien idéal.
+
+Au-delà de ces adaptations, vous devez aussi accomplir quelques opérations fondamentales pour garantir une collecte de données sûre et stable. Cet article les décrit dans l’ordre.
+
+## Prérequis {#prerequisites}
+
+Avant de configurer vos appareils, assurez-vous :
+
+- d’avoir ouvert [Interviewer](/fr/collect-data/interviewer) dans votre navigateur web, ou d’avoir [téléchargé et installé Interviewer Classic](https://networkcanvas.com/fr/get-started), sur les appareils que vous utiliserez (tablettes, ordinateurs, ou les deux) ;
+- d’avoir accès aux réglages de vos appareils Android, iOS, macOS, Windows ou Linux ;
+- d’avoir un protocole prêt à être importé, ou de prévoir d’en créer un pour tester votre configuration.
+
+Les opérations ci-dessous qui concernent l’appareil s’appliquent quelle que soit la version d’Interviewer que vous utilisez. Pour la configuration de l’application elle-même, choisissez votre version ci-dessous : les indications propres à chaque version s’adaptent en conséquence.
+
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
+</AppSwitch>
+
+## Désactiver les mises à jour automatiques {#disable-automatic-updates}
+
+Par défaut, les tablettes Google et Apple mettent à jour leurs logiciels automatiquement. Une nouvelle version d’Interviewer pourrait alors empêcher votre protocole de fonctionner, ou une mise à jour pourrait modifier le comportement de l’application en pleine collecte de données, ce qui créerait des incohérences. C’est pourquoi **nous vous recommandons de désactiver entièrement les mises à jour des applications sur ces appareils et de vous en charger manuellement**.
+
+<details>
+
+<summary>
+
+#### Instructions pour désactiver les mises à jour automatiques des applications sur les appareils Android {#instructions-for-disabling-app-auto-updates-on-android-devices}
+
+</summary>
+
+1. Ouvrez l’application Google Play Store.
+2. En haut à gauche de l’écran, appuyez sur l’icône du menu.
+3. Appuyez sur **Paramètres**.
+4. Appuyez sur **Mise à jour automatique des applications**.
+5. Appuyez sur **Ne pas mettre à jour automatiquement les applications**.
+6. Appuyez sur **OK**.
+
+</details>
+
+<details>
+
+<summary>
+
+#### Instructions pour désactiver les mises à jour automatiques sur les appareils iOS {#instructions-for-disabling-auto-updates-on-ios-devices}
+
+</summary>
+
+1. Touchez l’application **Réglages** sur votre écran d’accueil.
+2. Touchez **Général** > **Mise à jour logicielle** > **Mises à jour automatiques**.
+3. Désactivez les mises à jour automatiques à l’aide de l’interrupteur.
+
+</details>
+
+<TipBox>
+
+Si vous utilisez Interviewer sous macOS, Windows ou Linux, vous n’avez pas besoin d’effectuer cette opération.
+
+</TipBox>
+
+## Activer les fonctions de chiffrement de l’appareil {#turn-on-device-level-encryption-features}
+
+Toute protection qu’offre Interviewer lui-même est une couche à utiliser _en complément_ des protections de l’appareil, et non à leur place. Prenez le temps de vous assurer que vous suivez les bonnes pratiques générales de sécurité : activez le chiffrement du disque de votre appareil, et utilisez une authentification robuste des comptes utilisateur, un verrouillage automatique de l’écran et d’autres mesures de sécurité physique pour protéger votre appareil. Pour une liste plus complète de mesures, consultez nos [bonnes pratiques de sécurité](/fr/get-started/planning-a-study/irb-best-practices#security-best-practices).
+
+## Configurer Interviewer {#configuring-interviewer}
+
+<AppOnly axis="interviewer" app="current">
+
+Interviewer se configure à deux endroits : un court **assistant de configuration**, qui se lance la première fois que vous ouvrez l’application sur un appareil, et l’espace **Paramètres** du tableau de bord (l’icône en forme d’engrenage).
+
+L’assistant de configuration vous guide pour sécuriser vos données. Vous choisissez comment vous déverrouillerez l’application : par biométrie, par code PIN ou par phrase secrète, ou sans aucune sécurité au niveau de l’application. Lorsque vous définissez un moyen d’authentification, les données stockées sur l’appareil sont chiffrées au repos à l’aide d’une clé qui en est dérivée. Effectuez cette configuration sur chaque appareil d’entretien **avant** le début de la collecte de données. Une fois un verrouillage en place, hormis le changement de code PIN, votre méthode de sécurité ne peut plus être modifiée sans révoquer le verrouillage de l’appareil, ce qui efface tous les protocoles et toutes les sessions d’entretien de l’appareil. Passer d’_aucune_ sécurité à un verrouillage fait exception et se fait toujours sans risque : **Paramètres → Sécurité → Activer la sécurité de l’application** chiffre à nouveau ce qui est déjà stocké au lieu de l’effacer, si bien qu’un appareil qui contient déjà des entretiens peut tout de même être sécurisé. L’assistant vous demande aussi si vous souhaitez partager des données d’utilisation anonymes, un choix que vous pouvez modifier à tout moment.
+
+Tout le reste se gère depuis **Paramètres**, qui s’organise en sept rubriques : **À propos**, **Langue**, **Entretien**, **Exportation des données**, **Confidentialité**, **Sécurité** et **Données synthétiques**. Avant de commencer la collecte de données, nous vous recommandons :
+
+- de définir la **Langue de l’application** dans **Langue** sur chaque appareil d’entretien, ou de la laisser sur **Automatique** pour qu’elle suive la langue du navigateur de l’appareil. Ce choix est enregistré sur chaque appareil et ne modifie que l’interface d’Interviewer lui-même : le texte de votre protocole s’affiche exactement tel que vous l’avez rédigé ;
+- de décider dans **Entretien** s’il faut **Autoriser la navigation entre les étapes**. Cette option est activée par défaut, ce qui permet à n’importe qui d’appuyer sur la barre de progression pour accéder directement à n’importe quelle étape ; elle est utile lors d’une étude pilote, mais elle est généralement désactivée pour les entretiens réels ;
+- de configurer les formats de fichier et les options d’exportation dans **Exportation des données**. Ils sont définis une seule fois ici et s’appliquent à chaque exportation, au lieu d’être choisis à chaque fois que vous exportez ;
+- de vérifier le délai de verrouillage automatique et les options de nouvelle authentification dans **Sécurité**. Si des personnes participantes doivent manipuler l’appareil pendant les entretiens, activez **Exiger le déverrouillage à la sortie d’un entretien**, afin qu’une personne participante qui quitte un entretien ne puisse pas accéder au tableau de bord ;
+- d’utiliser **Données synthétiques** pour générer des sessions d’entretien fictives et répéter l’ensemble de votre processus d’exportation avant de collecter des données réelles. Pour savoir comment cela s’inscrit dans une répétition plus large de votre étude, consultez [Mener une étude pilote](/fr/get-started/planning-a-study/piloting-your-study).
+
+La section [Sécurité et verrouillage](/fr/collect-data/interviewer/using-interviewer#security-and-locking) du tutoriel « Utiliser Interviewer » présente en détail l’assistant de configuration et chaque rubrique des paramètres. Pour savoir où se trouvent vos données, ce qui les protège et ce qui peut les détruire, consultez [Stockage et sécurité des données](/fr/collect-data/interviewer/data-storage).
+
+<TipBox danger={true}>
+
+Si votre protocole utilise des interfaces qui dépendent d’Internet (comme l’[interface géospatiale](/fr/design-protocols/interface-documentation/geospatial)), assurez-vous que l’appareil d’entretien disposera d’une connexion Internet fiable sur le terrain : ces interfaces ne peuvent pas fonctionner hors ligne. Les protocoles qui ont besoin d’une connexion affichent l’indicateur **Connexion Internet requise** sur leur carte de protocole.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Le menu des paramètres d’Interviewer Classic propose plusieurs options importantes qui vous aident à adapter l’expérience d’entretien à votre appareil et aux besoins de chaque personne participante.
+
+### Taille du texte {#text-size}
+
+Le réglage que vous aurez le plus souvent à modifier est la **taille du texte** globale de l’interface d’Interviewer. Dans l’onglet **visual properties** (propriétés visuelles) du menu des paramètres, deux options contrôlent ce réglage.
+
+![Menu des paramètres](/assets/uploads/screen-shot-2022-06-30-at-11.58.52-am.png 'L’onglet « visual properties » du menu des paramètres d’Interviewer Classic')
+
+Pour mettre à l’échelle tout le texte _et les éléments de l’interface_, augmentez ou diminuez la valeur de la liste déroulante **interface scale** (échelle de l’interface). Par défaut, Interviewer Classic augmente automatiquement la taille du texte et l’espacement à mesure que la taille de sa fenêtre augmente. Pour désactiver ce comportement et définir une taille de fenêtre fixe, désactivez **use dynamic scaling** (utiliser la mise à l’échelle dynamique).
+
+<TipBox>
+
+N’oubliez pas que vous pouvez ajuster ces réglages pendant l’entretien, et qu’il est même conseillé de le faire si nécessaire.
+
+</TipBox>
+
+### Formulaires en plein écran {#fullscreen-forms}
+
+Si vous utilisez un appareil dépourvu de clavier physique, nous vous recommandons d’activer l’option **use fullscreen forms** (utiliser les formulaires en plein écran). Elle active une interface plein écran spécialement adaptée pour les formulaires des générateurs de noms, qui permet à la personne participante de voir ce qu’elle saisit pendant que le clavier virtuel est affiché. Consultez les images ci-dessous pour voir ce que cela donne en pratique.
+
+![Un formulaire avec « use fullscreen forms » désactivé](/assets/uploads/screen-shot-2022-06-30-at-11.43.40-am.png 'Un formulaire avec « use fullscreen forms » désactivé')
+
+![Un formulaire avec « use fullscreen forms » activé](/assets/uploads/screen-shot-2022-06-30-at-11.43.58-am.png 'Un formulaire avec « use fullscreen forms » activé')
+
+</AppOnly>

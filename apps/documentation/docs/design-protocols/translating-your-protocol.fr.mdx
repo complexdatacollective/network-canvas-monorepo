@@ -1,0 +1,417 @@
+---
+title: Traduire votre protocole
+navOrder: 5
+date: 22nd October 2026
+translatedFrom: 4ec60870e208cc56f08854c646ecbba416b201e7
+---
+
+<Definition>
+  La localisation prépare un protocole afin que les personnes participantes
+  puissent passer l’entretien dans plusieurs langues. Un protocole Network
+  Canvas localisé contient chaque texte destiné aux personnes participantes
+  dans chacune de ses langues, et l’entretien présente à chaque personne
+  participante la version qui correspond le mieux à la langue qu’elle utilise.
+</Definition>
+
+<TipBox>
+
+La localisation nécessite le [schéma 9](/fr/get-started/protocol-schema-information#schema-version-9). Les protocoles sont localisés dans Architect et peuvent être utilisés pour la collecte de données dans Fresco 5.0 ou version ultérieure, ou dans Interviewer 9.0 ou version ultérieure. Architect Classic et Interviewer Classic ne peuvent pas ouvrir un protocole en schéma 9.
+
+</TipBox>
+
+## Vue d’ensemble {#overview}
+
+De nombreuses études de réseaux recrutent des personnes participantes qui ne partagent pas la même langue. Les études sur les migrations et les liens transnationaux, les études comparatives entre pays et les études portant sur des populations locales linguistiquement diverses ont souvent besoin d’un instrument que chaque personne participante peut remplir dans la langue qu’elle lit le plus aisément. Avant le schéma 9, un protocole Network Canvas était rédigé dans une seule langue, et une étude multilingue devait maintenir un protocole distinct pour chaque langue. Chaque modification structurelle devait alors être répétée dans chaque copie, et toute divergence entre les copies devenait une différence de mesure.
+
+Le schéma 9 remplace ce fonctionnement par un protocole unique qui contient plusieurs langues. Le protocole comporte une seule séquence d’étapes, un seul livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) et un seul ensemble de règles de logique de saut et de filtrage. Seul le texte que lisent les personnes participantes varie d’une langue à l’autre. Comme les noms des variables, les types de nœuds et de liens et les valeurs des options de réponse sont partagés, les entretiens menés dans des langues différentes produisent des données de structure identique, et ces données peuvent être regroupées sans recodage. Une structure commune ne suffit pas, à elle seule, à établir que les mesures sont équivalentes d’une langue à l’autre ; c’est l’objet de la section suivante.
+
+Le modèle **Transnational Networks** d’Architect illustre cette approche. Il est rédigé en anglais, en hongrois et en espagnol, et peut être ouvert depuis l’onglet **Modèles** de l’écran d’accueil.
+
+## La traduction, partie intégrante de la conception de l’instrument {#translation-as-part-of-instrument-design}
+
+Traduire un protocole est une tâche méthodologique autant que linguistique. L’objectif est l’équivalence de sens : une personne participante qui lit la version espagnole d’une consigne doit comprendre la même tâche, et déclarer le même type de relation, qu’une personne participante qui lit la version anglaise. Une correspondance littérale entre les deux textes ne le garantit pas et, dans certains cas, va même à l’encontre de cet objectif ([Beaton et al., 2000](https://doi.org/10.1097/00007632-200012150-00014) ; [Wild et al., 2005](https://doi.org/10.1111/j.1524-4733.2005.04054.x)).
+
+Les générateurs de noms méritent une attention particulière, car leur formulation définit les limites du réseau recueilli. Des entretiens cognitifs menés auprès de personnes anglophones ont montré que même la question de la General Social Survey sur les personnes avec qui l’on discute de « questions importantes » (_important matters_), un générateur de noms très utilisé, est comprise de plusieurs façons différentes, et que son interprétation dépend des questions qui la précèdent ([Bailey and Marsden, 1999](<https://doi.org/10.1016/S0378-8733(99)00013-1>)). La traduction ajoute une source supplémentaire de variation. Les termes relationnels dont dépendent les générateurs de noms, comme « ami », « proche » ou « famille », peuvent ne pas se correspondre exactement d’une langue et d’une culture à l’autre, et le fonctionnement de cette même question de la General Social Survey dans un contexte chinois a fait l’objet d’un examen distinct ([Ruan, 1998](<https://doi.org/10.1016/S0378-8733(98)00004-5>)). Un générateur de noms traduit doit donc être évalué sur les relations qu’il fait émerger dans la population cible autant que sur l’exactitude de sa formulation.
+
+Les Cross-Cultural Survey Guidelines privilégient une traduction en équipe plutôt qu’une traduction par une seule personne suivie d’une rétrotraduction, même si les recommandations pour l’adaptation des mesures en santé conservent la rétrotraduction comme étape obligatoire ([Beaton et al., 2000](https://doi.org/10.1097/00007632-200012150-00014) ; [Wild et al., 2005](https://doi.org/10.1111/j.1524-4733.2005.04054.x)). Dans le modèle TRAPD (Translation, Review, Adjudication, Pretesting and Documentation : traduction, révision, arbitrage, prétest et documentation), deux personnes ou plus préparent des traductions indépendantes, qui sont ensuite examinées ensemble avec une personne experte du domaine. Une personne chargée de l’arbitrage fixe la formulation finale, le résultat est prétesté auprès de membres de la population cible, et les décisions sont documentées pour les personnes qui utiliseront ensuite les données ([Survey Research Center, 2016](https://ccsg.isr.umich.edu/chapters/translation/overview/) ; [Walde and Völlm, 2023](https://doi.org/10.3389/fpsyt.2023.1199989)). La rétrotraduction, dont l’usage comme moyen de vérifier l’équivalence a été exposé de manière systématique par [Brislin (1970)](https://doi.org/10.1177/135910457000100301), reste utile comme une source d’éléments probants parmi d’autres au sein d’une telle procédure.
+
+Le [tableau des traductions](#the-translation-table), qui présente chaque texte à côté de ses traductions, peut servir à la révision et à l’arbitrage, et l’onglet [« Résumé »](#printing-your-translations) imprime l’ensemble du protocole dans toutes les langues pour les personnes chargées de la relecture qui n’utilisent pas Architect. Le [mode aperçu](#previewing-a-language) permet à l’équipe de recherche de vérifier chaque étape dans chaque langue avant que la traduction soit prétestée auprès de personnes participantes.
+
+Une partie de l’adaptation se situe en dehors du texte du protocole. Les images, les vidéos, les fichiers audio, les listes (des listes prédéfinies, importées comme fichiers de données, dans lesquelles la personne participante choisit) et les cartes sont identiques dans toutes les langues (voir [Ce qui reste identique dans toutes les langues](#what-stays-the-same-in-every-language)) : une ressource qui contient des mots doit donc être choisie de façon à convenir à chaque personne participante, ou être expliquée dans un texte qui peut être traduit. Les options de réponse peuvent aussi devoir être adaptées. Les termes de parenté, les diplômes et les institutions n’ont souvent pas d’équivalent direct dans une autre langue, et les catégories elles-mêmes peuvent devoir changer.
+
+## Organisation d’un protocole localisé {#how-a-localized-protocol-is-organized}
+
+Un protocole localisé possède un ensemble de **langues du protocole**, dont l’une est sa **langue par défaut**. Chaque texte que voient les personnes participantes, comme une consigne ou le libellé d’une option de réponse, est enregistré une seule fois, avec une traduction pour chaque langue dans laquelle il a été traduit. Chaque langue est identifiée par un code de langue, comme `es` pour l’espagnol ou `pt-BR` pour le portugais brésilien, et un protocole peut inclure des variantes régionales d’une même langue, comme l’espagnol (`es`) et l’espagnol du Mexique (`es-MX`).
+
+Un texte n’a pas besoin d’une traduction dans toutes les langues. Il doit avoir une traduction dans au moins une des langues du protocole, et cette langue n’est pas nécessairement la langue par défaut. La seule exception est la [formulation fournie par Network Canvas](#adding-languages) : un protocole ne la contient que là où elle a été modifiée, et lorsque Network Canvas ne dispose d’aucune formulation dans la langue par défaut d’un protocole, ce protocole en est dépourvu dans cette langue tant que cette formulation n’y a pas été rédigée. Lorsqu’une traduction manque, les personnes participantes voient le texte dans une autre langue, choisie selon les règles décrites dans [La langue par défaut et la traduction que voient les personnes participantes](#the-default-language-and-which-translation-participants-see). Architect signale donc une traduction manquante comme un avertissement, et un protocole qui comporte des traductions manquantes peut tout de même être enregistré, prévisualisé et utilisé pour la collecte de données.
+
+### Ce qui peut être traduit {#what-can-be-translated}
+
+Tout texte que lisent les personnes participantes peut être traduit. Cela comprend :
+
+- les noms des étapes, que les personnes participantes voient dans la liste des étapes de l’entretien
+- les consignes, les introductions des étapes « Formulaire ego » et les titres des panneaux
+- les titres des formulaires, ainsi que les questions et les indications des champs de formulaire, y compris les libellés et les indications des champs d’une étape [« Compositeur de réseau »](/fr/design-protocols/interface-documentation/network-composer)
+- les libellés des options de réponse, et les libellés situés à chaque extrémité d’un curseur
+- les titres, le texte et les descriptions des ressources des étapes « Information »
+- le texte d’autres interfaces, comme l’explication d’une étape d’[anonymisation](/fr/design-protocols/interface-documentation/anonymisation)
+- les libellés des attributs et des types de liens que met en évidence et que trace un préréglage (une configuration d’affichage du réseau) d’une étape [« Narration »](/fr/design-protocols/interface-documentation/narrative) (voir [Libellés dans la légende d’une étape « Narration »](#labels-in-a-narrative-stages-legend))
+- les libellés des types de liens qu’une étape [« Compositeur de réseau »](/fr/design-protocols/interface-documentation/network-composer) permet aux personnes participantes de tracer (voir [Libellés des types de liens d’une étape « Compositeur de réseau »](#labels-for-network-composer-edge-types))
+- la formulation qu’une étape affiche autour de son contenu, comme le bouton de l’étape « Écran de fin », les avis « Minimum non atteint » et « Maximum atteint » d’une étape « Générateur de noms » ou les info-bulles des outils d’une étape « Compositeur de réseau » (voir [Formulation des étapes](#stage-wording))
+- les boutons et les messages communs à toutes les étapes, comme « Retour », « Continuer » et les messages affichés lorsqu’une réponse n’est pas valide, ainsi que les mots qu’affichent à l’identique toutes les étapes d’un même type, comme les boutons de zoom d’une étape « Arbre généalogique » (voir [Textes de l’entretien](#interview-text))
+
+### Ce qui reste identique dans toutes les langues {#what-stays-the-same-in-every-language}
+
+- **Noms et valeurs.** Les noms des attributs, les noms des types de nœuds et de liens et les valeurs des options de réponse figurent dans les données exportées ; ils sont donc identiques dans toutes les langues. Les personnes participantes ne voient jamais un nom du livre de codes. Lorsqu’une étape présente un type de nœud, un type de lien ou un attribut aux personnes participantes, elle le fait au moyen d’un libellé qui lui est propre, et ce libellé peut être traduit.
+- **Ressources.** Les images, les vidéos, les fichiers audio, les listes et les cartes sont identiques dans toutes les langues.
+- **Les mots que seuls lisent les lecteurs d’écran**, comme les noms des boutons qui n’affichent qu’une icône et les annonces faites à mesure que la personne participante progresse. Ils sont en anglais, quelle que soit la langue dans laquelle l’entretien est affiché.
+
+## Gérer les langues de votre protocole {#managing-your-protocols-languages}
+
+### Choisir les langues lors de la création d’un protocole {#choosing-languages-when-creating-a-protocol}
+
+La boîte de dialogue **Créer un nouveau protocole** demande les **Langues du protocole**, c’est-à-dire les langues dans lesquelles les personnes participantes peuvent passer l’entretien. Architect propose la langue dans laquelle l’application elle-même est affichée, et d’autres langues peuvent être trouvées en effectuant une recherche dans la liste. Lorsque plusieurs langues sont choisies, la boîte de dialogue demande aussi la **Langue par défaut**.
+
+![La boîte de dialogue « Créer un nouveau protocole », avec l’anglais et l’espagnol choisis comme langues du protocole et l’anglais comme langue par défaut.](/assets/img/architect/new-protocol-dialog.png)
+
+Un protocole créé à partir d’un modèle est déjà rédigé dans une langue : Architect ne pose donc pas la question. Les modèles fournis avec Architect sont rédigés en anglais (`en`), et le modèle Transnational Networks l’est aussi en hongrois et en espagnol.
+
+### La page « Langues » {#the-languages-page}
+
+La page **Langues**, accessible depuis la barre de navigation du protocole entre **Livre de codes** et **Résumé**, liste les langues du protocole. Un symbole d’avertissement apparaît sur le lien **Langues** tant qu’une traduction manque. Chaque langue est présentée avec :
+
+- son nom, son nom dans sa propre langue et son code de langue
+- un badge **Par défaut**, sur la langue par défaut
+- une barre de progression et le nombre de textes traduits dans cette langue, par exemple « 46 sur 209 éléments traduits »
+- un badge **Traductions manquantes**, tant que certains textes n’y ont pas de traduction
+- trois boutons : **Modifier les traductions** (un crayon), qui ouvre [le tableau des traductions](#the-translation-table) en affichant cette langue à côté de la langue par défaut ; **Changer la langue « … » en une autre langue** (deux flèches), décrit dans [Changer la langue dans laquelle votre texte est enregistré](#changing-the-language-your-text-is-recorded-as) ; et **Supprimer** (une corbeille), décrit dans [Supprimer une langue](#removing-a-language)
+
+Dès qu’un protocole comporte plusieurs langues, la page explique aussi l’ordre dans lequel les traductions sont présentées aux personnes participantes, propose la liste **Langue par défaut** et fournit un bouton **Ouvrir le tableau des traductions**. Tant que la langue par défaut est une langue pour laquelle Network Canvas ne fournit aucune formulation, la page propose aussi la liste **Langue de repli** (voir [La langue de repli](#the-fallback-language)). Les langues n’ont pas d’ordre propre. Architect les liste par ordre alphabétique de leur nom, et l’ordre dans lequel elles sont enregistrées ne change rien pour les personnes participantes.
+
+![La page « Langues » d’un protocole rédigé en anglais américain et en espagnol. L’espagnol porte le badge « Traductions manquantes », avec 46 textes traduits sur 209.](/assets/img/architect/localization/languages-page.png)
+
+La même liste, avec les mêmes règles, figure dans l’éditeur d’une étape [« Choix de la langue »](/fr/design-protocols/interface-documentation/language-chooser), afin que les langues puissent être gérées sans quitter l’étape. Une modification apportée à cet endroit s’applique aussi aux modifications non enregistrées de l’étape. Comme le tableau des traductions s’ouvre par-dessus la page **Langues**, l’ouvrir depuis une étape « Choix de la langue » fait quitter l’étape, et Architect demande d’abord s’il faut abandonner les modifications non enregistrées.
+
+### Ajouter des langues {#adding-languages}
+
+**Ajouter des langues** ouvre une boîte de dialogue dans laquelle il est possible de choisir une ou plusieurs langues. Une nouvelle langue ne contient au départ aucune traduction des textes propres à l’équipe de recherche. Tant que ces textes ne sont pas traduits, les personnes participantes qui utilisent la nouvelle langue les voient dans une autre langue.
+
+![La boîte de dialogue « Ajouter des langues », avec l’espagnol choisi.](/assets/img/architect/localization/add-languages-dialog.png)
+
+Il existe deux exceptions, qui concernent toutes deux des textes pour lesquels Network Canvas dispose d’une formulation en anglais, en allemand, en espagnol, en français, en italien, en néerlandais, en portugais brésilien, ainsi qu’en chinois simplifié et en chinois traditionnel.
+
+La première est la formulation affichée par un entretien que l’équipe de recherche n’a pas modifiée (voir [Formulations fournies par Network Canvas](#words-network-canvas-supplies)) :
+
+- la [formulation des étapes](#stage-wording) de chaque étape qui en comporte, y compris la formulation de la [question sur le nom](/fr/design-protocols/interface-documentation/family-pedigree#name) et la [formulation destinée aux personnes participantes](/fr/design-protocols/interface-documentation/family-pedigree#customize-built-in-wording) d’une étape [« Arbre généalogique »](/fr/design-protocols/interface-documentation/family-pedigree), avec la liste de contrôle de complétude, et le [titre du panneau d’une étape « Générateur de noms à partir d’une liste »](/fr/design-protocols/interface-documentation/name-generator-roster#alter-nomination), « Éléments disponibles »
+- les [textes de l’entretien](#interview-text)
+
+Un protocole ne contient pas cette formulation. L’entretien affiche la formulation de Network Canvas dans chacune de ces langues : lorsque l’une d’elles est ajoutée, cette formulation est donc déjà présente, et rien n’est écrit dans le protocole. Architect l’affiche dans l’éditeur d’étape et dans le tableau des traductions, où elle peut être modifiée, et un protocole ne contient que la formulation qui a été modifiée. Une formulation modifiée dans une langue reste, dans les autres, celle de Network Canvas : ainsi, un protocole dont le bouton anglais « Continue » indique « Next » affiche le français « Continuer » lorsque le français est ajouté ; ce texte peut ensuite être modifié dans le même sens (par exemple en « Suivant »). Si Network Canvas corrige ultérieurement sa propre formulation, la correction s’applique à tous les protocoles qui n’ont pas modifié ce texte.
+
+La seconde concerne les textes que Network Canvas écrit dans un protocole comme point de départ, et qui deviennent ensuite des textes propres à l’équipe de recherche :
+
+- le texte de clôture et le texte après la fin de l’entretien de chaque étape « Écran de fin », ainsi que son nom d’étape
+- les réponses sur le sexe assigné à la naissance et les types de parent d’une étape [« Arbre généalogique »](/fr/design-protocols/interface-documentation/family-pedigree#sex-assigned-at-birth)
+
+Lorsque l’une de ces langues est ajoutée, Architect remplit ces textes dans cette langue partout où ils n’ont pas encore de traduction. Il le fait même lorsque le texte a été reformulé dans les autres langues du protocole. L’ajout d’une langue ne remplace jamais une traduction existante.
+
+Dans chacune de ces langues, la formulation de Network Canvas est rédigée pour une région : celle que l’on suppose lorsque la langue est nommée sans région. L’anglais de Network Canvas est l’anglais américain, son espagnol est l’espagnol d’Espagne, son français est le français de France, son chinois traditionnel est le chinois de Taïwan, et ainsi de suite. Une langue compte comme l’une de ces langues lorsqu’il s’agit de la langue elle-même ou de la langue dans cette région : l’anglais américain (`en-US`) dispose ainsi de la formulation anglaise, et l’espagnol tel qu’il est parlé en Espagne (`es-ES`) de la formulation espagnole.
+
+Network Canvas ne dispose de formulation que pour une langue qui compte comme l’une de ces langues. Une variante régionale rédigée pour une autre région, comme l’espagnol du Mexique (`es-MX`) ou l’anglais britannique (`en-GB`), et une langue pour laquelle Network Canvas ne fournit aucune formulation, comme le japonais (`ja`), n’en ont pas, et les personnes participantes qui les utilisent voient cette formulation dans une autre des langues du protocole tant qu’elle n’a pas été traduite.
+
+Lorsqu’une variante régionale de l’une de ces langues est ajoutée, ou qu’un protocole est créé dans une telle variante, Architect demande s’il faut aussi ajouter la langue dont elle est une variante : pour l’espagnol du Mexique, il demande « Ajouter aussi une version en espagnol ? ». Network Canvas dispose d’une formulation pour la langue ajoutée, et les personnes participantes qui utilisent la variante voient cette formulation partout où la variante n’a pas de texte propre (voir [La langue par défaut et la traduction que voient les personnes participantes](#the-default-language-and-which-translation-participants-see)). La langue ajoutée ne devient jamais la langue par défaut. Pour une langue qui est simplement proche de l’une de ces langues, comme le galicien, proche de l’espagnol, Architect ne propose aucune langue à ajouter, car les personnes participantes qui l’utilisent liraient alors une autre langue.
+
+#### Lorsque la langue par défaut n’a pas de formulation fournie {#when-the-default-language-has-no-supplied-wording}
+
+Chaque texte affiché par un entretien doit avoir une formulation dans la langue par défaut pour que le protocole puisse être téléchargé, la formulation de Network Canvas pour cette langue étant prise en compte. Lorsque la langue par défaut est une langue pour laquelle Network Canvas ne fournit aucune formulation, comme l’espagnol du Mexique ou le japonais, le protocole peut toujours être modifié et enregistré, mais un avis dans la liste des étapes explique qu’il ne peut pas encore être téléchargé, et Architect refuse de le télécharger, tant que l’une des opérations suivantes n’a pas été effectuée :
+
+- La formulation fournie est traduite dans la langue par défaut. Le lien **Afficher la formulation à traduire** de l’avis ouvre le tableau des traductions en affichant les textes qui n’ont pas de traduction dans cette langue.
+- Une langue pour laquelle Network Canvas fournit une formulation, comme l’espagnol, devient la langue par défaut.
+
+D’ici là, la section **Personnaliser la formulation intégrée** de chaque étape est toujours affichée, sans interrupteur pour la désactiver, afin que la formulation puisse être rédigée dans l’éditeur d’étape aussi bien que dans le tableau des traductions.
+
+Cela vaut aussi pour les variétés régionales de l’anglais. Un protocole dont la langue par défaut est l’anglais ou l’anglais américain dispose de la formulation fournie ; un protocole dont la langue par défaut est l’anglais britannique ou australien n’en dispose pas, et Architect propose d’ajouter aussi l’anglais.
+
+Par exemple, un protocole créé en espagnol du Mexique, auquel l’espagnol a aussi été ajouté lorsque Architect l’a proposé, a au départ l’espagnol du Mexique pour langue par défaut et la formulation de Network Canvas en espagnol uniquement. Soit l’espagnol devient la langue par défaut, de sorte que les personnes participantes qui utilisent l’espagnol du Mexique voient la formulation espagnole partout où aucun texte n’a été rédigé en espagnol du Mexique, soit l’ensemble de la formulation fournie est traduit en espagnol du Mexique. Dans le second cas, le protocole a aussi besoin d’une [langue de repli](#the-fallback-language), pour laquelle l’espagnol est le choix naturel.
+
+Une traduction fournie est un texte ordinaire, et elle peut être modifiée comme n’importe quel autre.
+
+#### La langue de repli {#the-fallback-language}
+
+Un protocole dont la langue par défaut n’a pas de formulation fournie a besoin d’une **langue de repli**. Une mise à jour de Network Canvas peut ajouter du texte à l’entretien, comme un nouveau message. Un protocole rédigé avant la mise à jour n’a pas de traduction de ce texte : les personnes participantes voient donc ce texte dans la formulation fournie par Network Canvas. Pour choisir la langue, les langues sont essayées dans l’ordre décrit dans [La langue par défaut et la traduction que voient les personnes participantes](#the-default-language-and-which-translation-participants-see), jusqu’à la langue par défaut incluse : la langue de la personne participante, une langue étroitement apparentée, une autre langue indiquée par son navigateur, puis la langue par défaut. Le texte est affiché dans la première de ces langues pour laquelle Network Canvas fournit une formulation. S’il n’y en a aucune, les personnes participantes voient le texte dans la langue de repli, et non dans une autre langue du protocole.
+
+La langue de repli se choisit dans la liste **Langue de repli** de la page **Langues**. Cette liste n’apparaît que tant que la langue par défaut n’a pas de formulation fournie. Elle propose toutes les langues pour lesquelles Network Canvas fournit une formulation, qu’elles fassent partie ou non des langues du protocole. Le protocole ne peut pas être téléchargé tant qu’aucune langue de repli n’a été choisie. Tant que la formulation fournie reste à traduire dans la langue par défaut, l’avis de la liste des étapes demande cette traduction ; ensuite, il demande la langue de repli. Faire d’une langue pour laquelle Network Canvas fournit une formulation la langue par défaut supprime la langue de repli, car les personnes participantes voient alors ce texte dans la langue par défaut.
+
+### La langue par défaut et la traduction que voient les personnes participantes {#the-default-language-and-which-translation-participants-see}
+
+La langue par défaut est la langue dans laquelle les personnes participantes commencent l’entretien lorsque leur navigateur n’indique aucune des langues du protocole. Elle se choisit dans la liste **Langue par défaut** de la page **Langues**.
+
+Pour chaque texte, une personne participante voit le premier des éléments suivants qui dispose d’une traduction, dans l’ordre qu’explique la page **Langues** :
+
+1. **Sa propre langue.** Il s’agit de la langue dans laquelle l’entretien est affiché : celle qu’elle a choisie dans une étape [« Choix de la langue »](/fr/design-protocols/interface-documentation/language-chooser), ou à défaut la meilleure correspondance parmi les langues qu’indique son navigateur, ou à défaut la langue par défaut (voir [Comment la langue des personnes participantes est déterminée](#how-participants-get-their-language)).
+2. **Une langue étroitement apparentée.** Par exemple, la langue la plus proche du portugais européen (`pt-PT`) est le portugais brésilien (`pt-BR`), celle de l’espagnol du Mexique (`es-MX`) est l’espagnol (`es`), et celle du chinois utilisé à Taïwan (`zh-TW`) est le chinois traditionnel (`zh-Hant`).
+3. **Une autre langue indiquée par son navigateur**, dans l’ordre où le navigateur les indique, chacune étant retenue si elle correspond exactement à une langue du protocole ou si sa langue apparentée la plus proche y correspond.
+4. **La langue par défaut.**
+5. **Toute autre langue du protocole** qui contient le texte.
+
+Les langues considérées comme étroitement apparentées sont déterminées par les données de correspondance des langues du projet Unicode CLDR, qui considère aussi certaines langues comme des substituts acceptables les unes des autres, comme le suisse allemand (`gsw`) pour l’allemand (`de`). Lorsqu’un protocole comprend deux variantes d’une langue, comme l’espagnol (`es`) et l’espagnol du Mexique (`es-MX`), une personne participante dont la langue est l’une d’elles voit le texte dans cette variante si celle-ci en a une traduction, et sinon dans l’autre variante, avant toute autre langue.
+
+À titre d’illustration, prenons un protocole rédigé en anglais (la langue par défaut), en français et en portugais brésilien, dans lequel la question « How often do you see them? » a été traduite en portugais brésilien, mais pas en français.
+
+| La personne participante                                                          | Voit                | Raison                                                                                                                                                                 |
+| --------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Utilise un navigateur réglé sur le portugais européen (`pt-PT`)                   | Portugais brésilien | Le portugais européen n’est pas une langue du protocole, et sa langue apparentée la plus proche est le portugais brésilien.                                            |
+| Utilise le français, et son navigateur n’indique aucune autre langue du protocole | Anglais             | Le français n’a pas de traduction, et aucune autre langue du navigateur n’en a : c’est donc la langue par défaut qui est utilisée.                                     |
+| Utilise le français, et son navigateur indique aussi le portugais                 | Portugais brésilien | Le français n’a pas de traduction : les autres langues du navigateur sont donc essayées avant la langue par défaut, et le portugais correspond au portugais brésilien. |
+
+Si la question n’avait été rédigée qu’en portugais brésilien, une personne participante utilisant l’anglais la verrait quand même, car aucune autre langue ne la contient.
+
+### Supprimer une langue {#removing-a-language}
+
+Le bouton **Supprimer**, au bout de la ligne d’une langue, retire cette langue du protocole, qui cesse de la proposer. Architect demande une confirmation, car toutes les traductions dans cette langue sont supprimées et les personnes participantes ne peuvent plus la choisir.
+
+Une langue ne peut pas être supprimée dans deux cas :
+
+- la langue par défaut, tant qu’une autre langue n’est pas devenue la langue par défaut
+- une langue qui contient la seule traduction d’un texte, tant que ce texte n’a pas été traduit dans une autre langue, afin que chaque texte reste accessible aux personnes participantes
+
+Pour ces langues, le bouton est indisponible, et le survoler avec le pointeur, ou l’atteindre au clavier, en affiche la raison.
+
+### Changer la langue dans laquelle votre texte est enregistré {#changing-the-language-your-text-is-recorded-as}
+
+Chaque texte est enregistré comme rédigé dans une langue donnée. Lorsque Architect met à niveau un protocole créé avant que Network Canvas n’enregistre les langues, il enregistre l’ensemble du texte comme de l’anglais, car il ne peut pas déterminer dans quelle langue le texte est réellement rédigé. Le texte lui-même n’est pas modifié.
+
+Si le texte est en réalité rédigé dans une autre langue, ou si une mauvaise langue a été choisie lors de la création du protocole, il convient de corriger l’enregistrement avant d’ajouter des traductions :
+
+1. Ouvrez la page **Langues**.
+2. Dans la ligne de la langue à corriger, sélectionnez le bouton aux deux flèches, **Changer la langue « … » en une autre langue**, dont le nom est par exemple « Changer la langue “anglais” en une autre langue ».
+3. Choisissez la bonne langue dans la liste **Langue**.
+4. Sélectionnez **Changer la langue**.
+
+Tout texte enregistré comme rédigé dans l’ancienne langue est alors attribué à la langue choisie et, si l’ancienne langue était la langue par défaut, la nouvelle langue devient la langue par défaut. Rien de ce qu’a rédigé l’équipe de recherche n’est traduit ni supprimé, et la modification peut être annulée. Une traduction qui est encore la formulation fournie par Network Canvas dans l’ancienne langue, comme le texte de clôture et le texte après la fin de l’entretien d’une étape [« Écran de fin »](/fr/design-protocols/interface-documentation/finish-screen), devient la formulation fournie dans la langue choisie. Lorsque Network Canvas n’en fournit aucune dans la langue choisie, cette formulation est supprimée et doit être rédigée dans la langue choisie (s’il s’agit de la langue par défaut, le protocole ne peut pas être téléchargé tant qu’elle ne l’a pas été). Un texte de ce type qui n’a pas de traduction dans l’ancienne langue reçoit la formulation de la langue choisie, comme lors de l’ajout d’une langue. La formulation que l’équipe de recherche a modifiée dans l’ancienne langue conserve le texte rédigé par l’équipe. La formulation des étapes et les textes de l’entretien qui n’ont pas été modifiés ne sont pas contenus dans le protocole : ils s’affichent donc dans la langue choisie partout où Network Canvas dispose d’une formulation pour celle-ci. Choisir une autre langue par défaut ne modifie aucun texte.
+
+Une langue ne peut être changée qu’en une langue que le protocole ne possède pas encore, car la modification fusionnerait sinon deux ensembles de traductions.
+
+## Repérer les traductions manquantes {#finding-missing-translations}
+
+Même si les traductions manquantes n’empêchent pas d’utiliser un protocole, elles devraient être complétées avant le début de la collecte des données. Architect les signale à trois endroits :
+
+- Le lien **Langues** de la barre de navigation porte un symbole d’avertissement.
+- La liste des étapes affiche une note qui nomme les langues dans lesquelles des traductions manquent. Son lien **Afficher les traductions manquantes** ouvre le tableau des traductions sur tous les textes auxquels il manque une traduction.
+- Sur la page **Langues**, chaque langue dans laquelle des traductions manquent porte un badge **Traductions manquantes**. Pour lister les textes qui manquent dans une langue, ouvrez le tableau des traductions et choisissez, par exemple, **Manquant en espagnol** sous **Traductions à afficher**.
+
+Lorsqu’un protocole comporte plusieurs langues mais aucune étape « Choix de la langue », la liste des étapes affiche une seconde note, **Les personnes participantes ne peuvent pas choisir de langue**. Se passer d’une étape « Choix de la langue » est un choix de conception légitime : cette note peut donc être fermée pour le protocole.
+
+![Les deux notes en haut de la liste des étapes : l’une signale qu’une partie de la formulation n’est pas encore traduite en espagnol, l’autre que les personnes participantes ne peuvent pas choisir de langue.](/assets/img/architect/localization/stage-list-notes.png)
+
+## Le tableau des traductions {#the-translation-table}
+
+Le tableau des traductions présente chaque texte destiné aux personnes participantes à côté de sa traduction dans chacune des langues du protocole. Il s’ouvre par-dessus la page **Langues** depuis **Ouvrir le tableau des traductions**, depuis le bouton **Modifier les traductions** d’une langue ou depuis l’un des liens décrits dans [Repérer les traductions manquantes](#finding-missing-translations). Lorsque le tableau contient plus de textes ou de langues que la fenêtre ne peut en afficher, il défile, et les noms des langues et des textes restent visibles.
+
+![Le tableau des traductions, affichant les premières étapes du protocole d’exemple en anglais américain et en espagnol. Les cellules espagnoles non traduites affichent le texte en anglais américain en caractères plus clairs, avec la mention « Affiché en anglais américain ».](/assets/img/architect/localization/translation-table.png)
+
+Chaque ligne correspond à un texte et chaque colonne à une langue, par ordre alphabétique. L’en-tête de chaque colonne affiche le nom de la langue, un badge **Par défaut** pour la langue par défaut et le nombre de textes traduits dans cette langue. Les lignes sont regroupées par emplacement : les étapes dans l’ordre, puis le livre de codes, puis le protocole lui-même, et enfin les [textes de l’entretien](#interview-text). Le groupe d’une étape indique sa position, son nom dans la langue par défaut et son interface, et le nom de l’étape est un lien qui l’ouvre. Chaque ligne est nommée comme l’éditeur d’étape nomme le texte, par exemple « Contenu de la page › Titre de la page ».
+
+Une cellule sans traduction affiche, en caractères plus clairs, le texte que verront à la place les personnes participantes qui utilisent cette langue, avec une mention qui nomme la langue, comme **Affiché en anglais américain**. Un astérisque après la mention indique que les personnes participantes peuvent voir le texte dans une autre langue, car les autres langues du navigateur d’une personne participante sont essayées avant la langue par défaut. Aucun astérisque n’apparaît lorsque le texte est affiché dans une langue étroitement apparentée, ou lorsqu’une seule langue contient le texte.
+
+### Choisir les textes et les langues à afficher {#choosing-which-texts-and-languages-to-show}
+
+Les commandes situées au-dessus du tableau déterminent ce qu’il affiche :
+
+- **Traductions à afficher** permet de sélectionner **Toutes les traductions**, **Manquant dans une des langues affichées** ou les textes manquants dans une langue, comme **Manquant en espagnol**. Un texte traduit pendant que ce filtre est actif reste visible jusqu’à ce que le filtre change, afin qu’il ne disparaisse pas pendant la modification.
+- **Rechercher dans les traductions** trouve des textes par leur emplacement ou par leur formulation dans n’importe quelle langue affichée.
+- Le menu **Langues**, par exemple **Langues (2 sur 2)**, affiche et masque des colonnes. Au moins une langue est toujours affichée. Les personnes qui traduisent vers une seule langue peuvent trouver utile de n’afficher que cette langue et la langue à partir de laquelle elles traduisent, ce qui correspond à la vue qu’ouvre **Modifier les traductions**.
+
+Un décompte sous le tableau, comme « Affichage de 8 sur 209 éléments », indique combien de textes sont affichés.
+
+### Modifier les traductions {#editing-translations}
+
+Sélectionner une cellule l’ouvre pour la modifier. Les modifications restent dans le tableau jusqu’à ce que vous sélectionniez **Enregistrer**, et un point dans le coin d’une cellule signale une modification non enregistrée. Appuyer sur Échap dans une cellule rétablit son texte enregistré, et effacer tout le texte d’une cellule supprime la traduction.
+
+Lorsque vous quittez une cellule, Architect vérifie que son texte peut être enregistré et, si ce n’est pas le cas, la cellule en explique la raison. Par exemple, la seule traduction d’un texte ne peut pas être effacée sans qu’une autre traduction ait d’abord été rédigée dans la même ligne. La formulation fournie par Network Canvas fait exception (voir [Formulations fournies par Network Canvas](#words-network-canvas-supplies)) : une cellule de cette formulation laissée vide revient à la formulation de Network Canvas dans cette langue. **Enregistrer** n’enregistre rien tant qu’une cellule présente un problème ; il amène plutôt à la première de ces cellules et l’affiche, même si une recherche, un filtre ou une colonne masquée l’avait cachée.
+
+Certains textes varient selon le nombre ou la personne auxquels ils se rapportent, comme les éléments de la [liste de contrôle de complétude](/fr/design-protocols/interface-documentation/family-pedigree#customize-built-in-wording) d’une étape « Arbre généalogique », ou le message d’une règle de validation qui prend un nombre. Une telle cellule liste chaque version, et les espaces réservés, comme le nom d’une personne, y apparaissent sous forme de pastilles avec un libellé. Lorsque la cellule est ouverte, chaque version dispose de sa propre zone avec un libellé. Le nombre de versions suit la grammaire de la langue : une langue qui distingue un, deux et cinq éléments a une version pour chacun de ces cas. Chaque texte définit les espaces réservés qu’une version doit inclure, et la règle est la même dans toutes les langues. Le bouton qui insère un espace réservé est mis en évidence tant qu’une version l’exige encore, et quitter la cellule nomme tout espace réservé manquant. Une version qui ne sert que pour un seul nombre, comme « one item » en anglais, peut omettre le nombre.
+
+Les textes propres à l’équipe de recherche peuvent aussi afficher des valeurs, comme le nom de la personne participante. Afficher une valeur est facultatif dans toutes les langues : une traduction peut donc omettre une valeur qu’affiche le texte de la langue par défaut (voir [Traduire un texte qui affiche des valeurs](/fr/design-protocols/piped-text#translating-text-that-shows-values)).
+
+Le texte mis en forme, comme le contenu d’une étape « Information », est affiché tel que le verront les personnes participantes jusqu’à ce que la cellule soit ouverte. La cellule affiche alors les mêmes commandes de mise en forme que l’éditeur d’étape, qui restent visibles pendant le défilement d’un long texte.
+
+Le tableau peut être parcouru au clavier :
+
+| Touche                           | Effet                                                                                                                                               |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entrée                           | Passe à la ligne suivante du tableau dans un texte d’une seule ligne ; commence une nouvelle ligne dans un texte comportant des sauts de ligne.     |
+| Ctrl+Entrée, ou ⌘+Entrée sur Mac | Passe à la ligne suivante du tableau.                                                                                                               |
+| Flèches haut et bas              | Passent à la ligne du tableau située au-dessus ou au-dessous, depuis la première ou la dernière ligne de texte d’une cellule.                       |
+| Tab                              | Passe à la cellule suivante. Dans un texte mis en forme, passe d’abord aux commandes de mise en forme et, dans une liste, met l’élément en retrait. |
+| Échap                            | Rétablit le texte enregistré de la cellule.                                                                                                         |
+
+Le bouton d’aide (un point d’interrogation) situé au-dessus du tableau résume ces touches. **Enregistrer** applique toutes les modifications en une fois et ferme le tableau, et une seule commande « Annuler » (qui annule la dernière action) revient ensuite sur l’ensemble de l’enregistrement. Le bouton **Annuler** du tableau, lui, ferme le tableau sans enregistrer, après avoir demandé une confirmation s’il y a des modifications non enregistrées. Appuyer sur Échap en dehors d’une cellule, ou cliquer en dehors du tableau, ne le ferme pas, et Architect demande aussi une confirmation avant d’abandonner les modifications non enregistrées lorsque le bouton Retour du navigateur est utilisé ou que la page est rechargée.
+
+## Traduire dans l’éditeur d’étape {#translating-within-the-stage-editor}
+
+Un texte peut aussi être traduit là où il est rédigé, dans l’éditeur d’étape. Lorsqu’un protocole comporte plusieurs langues, chaque champ de texte possède un menu de langue qui affiche la langue en cours de modification, suivie d’un badge **Par défaut** et d’un badge indiquant le nombre de traductions manquantes. Tous les champs d’un éditeur changent de langue ensemble, afin qu’une étape puisse être traitée une langue à la fois. L’éditeur s’ouvre toujours dans la langue par défaut, et ses aperçus affichent le texte dans la langue en cours de modification.
+
+![Le menu de langue d’un éditeur d’étape, qui liste l’anglais américain, marqué « Par défaut », et l’espagnol, marqué « Manquante ».](/assets/img/architect/localization/editor-language-menu.png)
+
+Sous un texte qui n’a pas de traduction dans la langue en cours de modification, une note nomme la langue dans laquelle les personnes participantes le verront à la place. Par exemple, elle indique que le texte n’est pas encore traduit en espagnol et que les personnes participantes qui utilisent l’espagnol verront le texte en anglais américain. Lorsqu’une autre langue du protocole contient aussi le texte et n’est pas étroitement apparentée, la note ajoute que les personnes participantes peuvent voir cette langue si leur navigateur l’indique.
+
+![Le champ « Titre de la page » avec l’espagnol choisi pour la modification. Le champ est vide, et une note indique que les personnes participantes qui utilisent l’espagnol verront le texte en anglais américain.](/assets/img/architect/localization/editor-missing-translation.png)
+
+Un protocole qui ne comporte qu’une seule langue n’affiche aucun menu de langue.
+
+### Libellés dans la légende d’une étape « Narration » {#labels-in-a-narrative-stages-legend}
+
+Un préréglage d’une étape [« Narration »](/fr/design-protocols/interface-documentation/narrative) peut mettre en évidence les nœuds qui possèdent un ou plusieurs attributs vrai/faux, et tracer un ou plusieurs types de liens. Pendant l’entretien, le sélecteur de préréglages liste ces attributs et ces types de liens par leur libellé. Dans l’éditeur de l’étape « Narration », chaque attribut et chaque type de lien cochés sous **Mise en évidence des nœuds** et **Liens affichés** disposent d’un champ **Libellé pour « … »**, qui contient au départ le nom de l’attribut ou du type de lien et possède un menu de langue comme n’importe quel autre texte. Chaque attribut mis en évidence et chaque type de lien tracé exigent un libellé.
+
+### Libellés des types de liens d’une étape « Compositeur de réseau » {#labels-for-network-composer-edge-types}
+
+Chaque type de lien qu’une étape [« Compositeur de réseau »](/fr/design-protocols/interface-documentation/network-composer) permet aux personnes participantes de tracer possède un libellé, grâce auquel les personnes participantes choisissent le type de lien dans la barre d’outils de l’étape et qui sert de titre au formulaire de ce type de lien. Le libellé se rédige dans l’éditeur d’étape, sous le type de lien. S’il est laissé vide, il prend au départ le nom du type de lien, et il possède un menu de langue comme n’importe quel autre texte.
+
+## Formulations fournies par Network Canvas {#words-network-canvas-supplies}
+
+En plus des textes propres à l’équipe de recherche, un entretien affiche une formulation fournie par Network Canvas. Un protocole ne contient pas cette formulation, sauf si elle a été modifiée : l’entretien affiche la formulation de Network Canvas pour chaque élément, dans chaque langue pour laquelle Network Canvas en dispose. Chaque élément peut être reformulé et traduit comme n’importe quel autre texte, et le protocole contient alors la formulation modifiée. Une traduction identique à la formulation de Network Canvas n’est pas conservée. Pour revenir à la formulation de Network Canvas pour un élément dans une langue, videz sa cellule dans le tableau des traductions : la cellule affiche de nouveau la formulation de Network Canvas lorsque vous la quittez, et le protocole ne contient plus de formulation propre à cet endroit. La formulation se répartit en deux groupes, selon l’endroit où les personnes participantes la rencontrent.
+
+### Formulation des étapes {#stage-wording}
+
+Une partie de la formulation appartient à un type d’étape particulier, comme le bouton qui termine l’entretien, ou l’avis indiquant que le minimum d’une étape « Générateur de noms » n’est pas atteint. Cette formulation est un réglage de l’étape : un protocole n’affiche donc que la formulation des étapes qu’il utilise, et seule cette formulation doit être traduite dans une langue pour laquelle Network Canvas ne dispose d’aucune formulation. Chaque réglage se trouve dans la section **Personnaliser la formulation intégrée** de l’éditeur d’étape et, dans le tableau des traductions, sous son étape :
+
+| Étape                                                                                                                                                                                                                                                                                                                                                                                                                         | Contenu                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [« Écran de fin »](/fr/design-protocols/interface-documentation/finish-screen#finishing-the-interview)                                                                                                                                                                                                                                                                                                                        | Le bouton de fin, la question de confirmation et le message affiché lorsque la fin de l’entretien échoue                                                                                                                                              |
+| [« Générateur de noms »](/fr/design-protocols/interface-documentation/name-generator-using-forms#customize-built-in-wording), [« Générateur de noms (ajout rapide) »](/fr/design-protocols/interface-documentation/name-generator-using-quick-add#customize-built-in-wording) et [« Générateur de noms à partir d’une liste »](/fr/design-protocols/interface-documentation/name-generator-roster#customize-built-in-wording) | Les avis « Minimum non atteint » et « Maximum atteint », le texte indicatif de l’ajout rapide et, pour une étape « Générateur de noms à partir d’une liste », l’avis indiquant qu’il ne reste plus rien à ajouter et le libellé d’une entrée sans nom |
+| [Interface géospatiale](/fr/design-protocols/interface-documentation/geospatial#customize-built-in-wording)                                                                                                                                                                                                                                                                                                                   | Le libellé des lieux situés en dehors des zones sélectionnables                                                                                                                                                                                       |
+| [« Narration »](/fr/design-protocols/interface-documentation/narrative#customize-built-in-wording)                                                                                                                                                                                                                                                                                                                            | Les titres des panneaux                                                                                                                                                                                                                               |
+| [« Arbre généalogique narratif »](/fr/design-protocols/interface-documentation/narrative-pedigree#customize-built-in-wording)                                                                                                                                                                                                                                                                                                 | Le premier choix du menu des affections, le bouton d’instantané et les titres des instantanés                                                                                                                                                         |
+| [« Arbre généalogique »](/fr/design-protocols/interface-documentation/family-pedigree#customize-built-in-wording)                                                                                                                                                                                                                                                                                                             | Le nom de la personne participante elle-même, et la formulation permettant de relier des personnes et d’ajouter un membre de la famille                                                                                                               |
+| [« Classement par catégories »](/fr/design-protocols/interface-documentation/categorical-bin#customize-built-in-wording) et [« Classement ordinal »](/fr/design-protocols/interface-documentation/ordinal-bin#customize-built-in-wording)                                                                                                                                                                                     | L’avis affiché lorsqu’une personne participante essaie de continuer avant d’avoir placé chaque nœud                                                                                                                                                   |
+| [« Choix de la langue »](/fr/design-protocols/interface-documentation/language-chooser#configuring-the-language-chooser)                                                                                                                                                                                                                                                                                                      | Le titre au-dessus de la liste des langues                                                                                                                                                                                                            |
+
+Une partie de cette formulation peut afficher des valeurs que l’entretien remplit. Chacune de ces valeurs est une pastille avec un libellé dans le champ, insérée à l’aide du bouton de texte dynamique du champ (le texte dynamique, ou piped text, désigne des réponses ou des informations de l’entretien insérées automatiquement dans un texte) : le nombre de nœuds dans l’avis « Minimum non atteint » ou « Maximum atteint », le nom du type de nœud de l’étape (tel que le livre de codes le nomme) dans les avis des générateurs de noms et des étapes de classement, et le nom de l’affection dans la légende d’une étape « Arbre généalogique narratif ». Le nom qu’une étape « Arbre généalogique » donne à la personne participante peut aussi afficher un attribut de la personne participante, comme un nom indiqué dans une étape « Formulaire ego » précédente (voir [Texte dynamique](/fr/design-protocols/piped-text)).
+
+La section **Personnaliser la formulation intégrée** peut être désactivée. Tant qu’elle est désactivée, l’étape utilise la formulation de Network Canvas dans toutes les langues, et la désactiver rétablit cette formulation, après confirmation, si une partie en a été modifiée. La section est activée au départ lorsque le protocole comporte plusieurs langues, afin que la formulation restant à traduire soit visible, ainsi que lorsque la formulation de l’étape a déjà été modifiée. Une étape sans formulation à personnaliser, comme une étape « Générateur de noms » sans minimum ni maximum, n’a pas cette section.
+
+Certains types d’étapes affichent aussi une formulation identique sur toutes les étapes de ce type (voir [Textes de l’entretien](#interview-text)). Leur section comporte alors deux parties, que l’on ouvre et ferme en cliquant sur leur titre : **Propre à cette étape** et **Commun à toutes les étapes de ce type**. La formulation commune peut aussi être modifiée à cet endroit. Une modification de cette formulation s’applique à toutes les étapes qui l’affichent, et elle est enregistrée dès que vous quittez le champ, et non lorsque vous enregistrez l’étape. Désactiver la section rétablit aussi la formulation commune de Network Canvas.
+
+Une étape ne propose que la formulation qu’elle peut afficher. La formulation qui ne s’applique que lorsqu’une partie d’une étape est activée, comme l’avis « Minimum non atteint » d’un générateur de noms, ou l’avis d’une étape de classement lorsque **Exiger le placement de chaque nœud** est activé, n’est proposée que lorsque cette partie est activée. Architect l’affiche, avec la formulation de Network Canvas dans chacune des langues du protocole, lorsque la partie est activée, et supprime toute formulation modifiée lorsque la partie est désactivée.
+
+### Textes de l’entretien {#interview-text}
+
+Une autre partie de la formulation est commune à plusieurs étapes et appartient donc à l’entretien dans son ensemble. Il s’agit des **textes de l’entretien** du protocole, et un protocole n’en affiche que les parties qu’utilisent ses étapes et son livre de codes :
+
+- **Navigation dans l’entretien.** Les boutons « Retour » et « Continuer », ainsi que le bouton « Quitter l’entretien » et son explication.
+- **Boutons.** « Annuler » (le bouton qui abandonne une action, à distinguer de l’annulation de la dernière action), et les boutons qui copient les détails d’une erreur. Un protocole comportant une étape « Générateur de noms » affiche « Terminé », qui ferme son formulaire, et un protocole comportant une étape « Arbre généalogique » ou « Compositeur de réseau » affiche « Supprimer ». Un protocole affiche les réponses « Oui » et « Non » lorsqu’une question se répond par oui ou par non : dans une étape « Recensement des dyades », dans une étape « Arbre généalogique », pour un attribut oui/non ou sur une carte de la liste qui en affiche un. La réponse « Oui » confirme aussi l’abandon des modifications : un protocole qui peut poser cette question affiche donc aussi « Oui ». Un protocole comportant une étape [« Arbre généalogique »](/fr/design-protocols/interface-documentation/family-pedigree) affiche aussi « Enregistrer », « Annuler » (la dernière action), « Rétablir », « Passer » et la réponse « Je ne sais pas », un protocole comportant une étape « Arbre généalogique » ou « Arbre généalogique narratif » affiche « Zoom avant » et « Zoom arrière », et un protocole comportant une étape « Sociogramme » ou « Narration » qui utilise la disposition automatique affiche les info-bulles des boutons qui mettent en pause et reprennent la disposition.
+- **Messages.** Le message affiché lorsqu’une étape n’a pas pu être affichée, le nom donné à une personne laissée sans nom, et un message d’erreur général affiché chaque fois qu’un problème survient sans message plus précis, y compris lorsqu’un formulaire n’a pas pu être envoyé. Un protocole comportant une étape « Information » qui affiche un fichier affiche aussi le message indiquant que le fichier n’a pas pu être affiché. Un protocole dont un générateur de noms lit un fichier de données de réseau, dans un panneau latéral ou dans une liste, affiche aussi le message de chargement et le message indiquant que ce fichier n’a pas pu être chargé.
+- **Recherche.** Le texte indicatif d’un champ de recherche et le message affiché lorsqu’une recherche ne donne aucun résultat. Tous les protocoles les affichent, car la liste des écrans de l’entretien peut faire l’objet d’une recherche.
+- **Formulation de la phrase secrète.** La formulation qui demande, confirme et explique une phrase secrète. Un protocole ne l’affiche que lorsqu’il chiffre un attribut ou comporte une étape d’[anonymisation](/fr/design-protocols/interface-documentation/anonymisation). Les messages affichés lorsque les réponses protégées par la phrase secrète sont verrouillées ou indisponibles ne s’affichent que si le protocole chiffre un attribut, et le message indiquant que la phrase secrète a été acceptée ne s’affiche que s’il comporte une étape d’anonymisation, où la phrase secrète est choisie.
+- **Formulaires.** La question et l’explication de la confirmation qui demande s’il faut abandonner les modifications. Un protocole ne les affiche que lorsqu’il comporte une étape « Formulaire ego », « Formulaire par alter » (un formulaire pour chaque alter, c’est-à-dire chaque personne que la personne participante cite pendant l’entretien) ou « Formulaire par lien entre alters » (un formulaire pour chaque lien entre deux alters), ou une étape « Compositeur de réseau » avec un formulaire.
+- **Messages de validation.** Le message que voit une personne participante lorsqu’une réponse enfreint une règle, comme une valeur trop grande ou une réponse obligatoire manquante. Chaque règle a une seule formulation, commune à toutes les questions qui l’utilisent, et un protocole n’affiche que les messages des règles qu’il utilise.
+- **Commandes de la personne qui mène l’entretien.** La formulation que seule voit la personne qui mène l’entretien, par exemple pour quitter la consultation d’un entretien terminé ou pour afficher un écran que des réponses antérieures ont masqué.
+- **Formulation commune à toutes les étapes d’un même type.** Un protocole comportant une étape « Arbre généalogique » ou « Arbre généalogique narratif » affiche les descriptions des boutons de zoom ainsi que le nom et la description du bouton qui affiche toute la famille. Un protocole comportant une étape « Arbre généalogique » affiche aussi les noms, les descriptions et les indications de ses outils, les descriptions de ses boutons « Annuler » et « Rétablir », l’élément de la liste de contrôle qui demande les informations obligatoires de chaque membre de la famille, lorsqu’une étape « Arbre généalogique » vérifie la complétude et, lorsqu’une étape « Arbre généalogique » permet aux personnes participantes de choisir les termes désignant leur famille, la question qui le leur demande et le bouton de la barre d’outils qui modifie ces termes. Un protocole comportant une étape « Arbre généalogique narratif » affiche le titre et les entrées de sa légende, qui peuvent afficher le nom de l’affection, et l’info-bulle du bouton qui annule le centrage. Les boutons qu’une étape quelconque peut afficher, comme « Annuler » (la dernière action) ou « Zoom avant », ne sont nommés qu’une fois parmi les boutons ci-dessus : toutes les étapes qui les affichent utilisent donc les mêmes mots. Un protocole comportant une étape « Classement par catégories » qui place les nœuds d’un simple toucher affiche « Placer ici », un protocole comportant une étape « Générateur de noms (ajout rapide) » affiche l’indication qui explique aux personnes participantes comment terminer l’ajout d’un nœud, un protocole comportant une étape « Narration » dont le dessin est activé affiche les info-bulles de ses outils de dessin, un protocole comportant une étape géospatiale affiche l’avis hors connexion, le message affiché lorsque la carte n’est pas disponible et, lorsqu’une carte permet la recherche, le message affiché lorsqu’une recherche n’a pas pu être effectuée, et un protocole comportant une étape « Compositeur de réseau » affiche sa formulation, dont une partie ne s’affiche que lorsqu’une étape « Compositeur de réseau » est configurée pour l’afficher. Cette formulation peut être modifiée dans le tableau des traductions, ou sous **Commun à toutes les étapes de ce type** dans la section **Personnaliser la formulation intégrée** de toute étape qui l’affiche. Dans les deux cas, la modification s’applique à toutes les étapes qui l’affichent.
+
+Architect liste la formulation qu’affiche un protocole au fur et à mesure de sa construction : activer une règle de validation ajoute son message à la liste, et supprimer la dernière utilisation d’une règle l’en retire. La formulation modifiée est conservée tant que le protocole l’affiche, et supprimée lorsqu’il ne l’affiche plus.
+
+Dans le tableau des traductions, les textes de l’entretien forment le dernier groupe, **Textes de l’entretien**, et chaque ligne est nommée d’après la formulation qu’elle contient. À l’exception de la formulation commune à toutes les étapes d’un même type, le tableau des traductions est le seul endroit où cette formulation peut être modifiée : un protocole qui ne comporte qu’une seule langue conserve donc la formulation de Network Canvas pour le reste.
+
+## Prévisualiser une langue {#previewing-a-language}
+
+Le [mode aperçu](/fr/design-protocols/preview-mode) affiche une étape telle que la verront les personnes participantes, dans une langue choisie dans le menu **Langue de l’aperçu** situé au-dessus de l’aperçu (voir [Choisir la langue de l’aperçu](/fr/design-protocols/preview-mode#choosing-the-preview-language)). Un texte sans traduction dans la langue de l’aperçu apparaît tel qu’il apparaîtrait à une personne participante utilisant cette langue. Prévisualiser chaque étape dans chaque langue permet à l’équipe de vérifier une traduction, y compris la longueur du texte traduit, avant qu’elle soit prétestée auprès de personnes participantes.
+
+![Un aperçu d’une étape « Choix de la langue » en espagnol. Le menu « Langue de l’aperçu », au-dessus, est réglé sur « español », et le titre de l’étape indique « Elige un idioma ».](/assets/img/architect/localization/preview-language.png)
+
+## Imprimer vos traductions {#printing-your-translations}
+
+L’onglet **Résumé** présente l’ensemble du protocole sur une seule page, qui peut être imprimée avec le bouton **Imprimer**. Lorsqu’un protocole comporte plusieurs langues, le résumé affiche chaque texte dans chacune des langues du protocole, par ordre alphabétique, avec la langue par défaut marquée **Par défaut**, et sa page de couverture liste les langues du protocole. Lorsqu’un texte n’a pas encore été traduit dans une langue, le résumé l’indique et nomme la langue que les personnes participantes verront à la place. Lorsque le résumé renvoie à un texte qui figure ailleurs dans le résumé, comme un nom d’étape dans sa table des matières, il utilise la langue par défaut.
+
+Le résumé imprimé peut être soumis à un comité d’éthique pour examen.
+
+## Comment la langue des personnes participantes est déterminée {#how-participants-get-their-language}
+
+Au début d’un entretien, celui-ci retient, parmi les langues définies dans les réglages de la personne participante, la première dans laquelle le protocole est rédigé, en tenant compte des correspondances régionales proches. Une personne participante dont le navigateur est réglé sur l’espagnol du Mexique (`es-MX`) voit donc le texte en espagnol (`es`), et une personne dont le navigateur est réglé sur le portugais européen (`pt-PT`) voit le texte en portugais brésilien (`pt-BR`). Si aucune des langues de la personne participante ne correspond, l’entretien utilise la langue par défaut. Partout où le protocole n’a pas de traduction dans cette langue, la personne participante voit la traduction d’une autre langue (voir [La langue par défaut et la traduction que voient les personnes participantes](#the-default-language-and-which-translation-participants-see)).
+
+L’origine de ces réglages dépend de l’application :
+
+- **Fresco** utilise les langues définies dans le navigateur web de la personne participante. La langue du tableau de bord de Fresco n’a aucune incidence sur les entretiens.
+- **Interviewer** utilise les réglages de langue de l’appareil ou du navigateur sur lequel il s’exécute. Le réglage **Langue de l’application** d’Interviewer n’a aucune incidence sur les entretiens.
+
+Une étape [« Choix de la langue »](/fr/design-protocols/interface-documentation/language-chooser) permet aux personnes participantes de choisir elles-mêmes, et c’est le seul moyen de changer de langue pendant un entretien. Elle liste les langues du protocole par ordre alphabétique, chacune dans sa propre langue. Une fois que la personne participante a fait son choix, l’entretien le conserve jusqu’à la fermeture de l’onglet du navigateur, même après un rechargement de la page. Le choix n’est pas enregistré avec l’entretien : un entretien ouvert dans un nouvel onglet, ou repris sur un autre appareil, détermine donc de nouveau sa langue à partir des réglages de langue, jusqu’à ce que la personne participante la choisisse à nouveau dans l’étape « Choix de la langue ».
+
+Tout ce qu’affiche l’entretien provient du protocole, y compris sa [formulation des étapes](#stage-wording) et ses [textes de l’entretien](#interview-text) : une personne participante lit donc l’ensemble de l’entretien dans une seule langue. Seuls les mots destinés uniquement aux lecteurs d’écran sont toujours en anglais.
+
+Lorsque l’entretien est affiché dans une langue qui s’écrit de droite à gauche, comme l’arabe ou l’hébreu, ses étapes sont disposées de droite à gauche. Une famille dessinée dans une étape [« Arbre généalogique »](/fr/design-protocols/interface-documentation/family-pedigree#adding-relatives) ou [« Arbre généalogique narratif »](/fr/design-protocols/interface-documentation/narrative-pedigree) n’est pas inversée, car un arbre généalogique se dessine dans le même sens dans toutes les langues.
+
+## Les langues dans vos données {#languages-in-your-data}
+
+La langue dans laquelle un entretien a été affiché n’est ni enregistrée avec l’entretien ni incluse dans les données exportées. Les réponses, les valeurs des options catégorielles et ordinales et les noms des types de nœuds, des types de liens et des attributs sont les mêmes, quelle que soit la langue lue par la personne participante.
+
+Lorsque la langue de passation est pertinente pour l’analyse, par exemple pour tester si une mesure se comporte de manière équivalente d’un groupe linguistique à l’autre, elle doit être enregistrée explicitement. Une possibilité consiste à prévoir, dans une étape « Formulaire ego », une question remplie par la personne participante ou par la personne qui mène l’entretien, qui enregistre la langue dans laquelle l’entretien a été mené.
+
+## Pratiques recommandées {#recommended-practice}
+
+<GoodPractice>
+
+Planifiez les langues du protocole avant de le rédiger. Rédigez le texte source en pensant à sa traduction, en évitant les expressions idiomatiques et les exemples propres à une culture qui n’ont pas d’équivalent dans les autres langues.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Suivez une procédure de traduction en équipe et documentée, et consignez les décisions prises lors de la révision et de l’arbitrage. Les générateurs de noms et les catégories de réponse méritent un examen particulièrement attentif, car ils déterminent quelles relations sont déclarées et comment elles sont classées.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Prétestez le protocole dans chaque langue auprès de membres de la population qui le passeront, à l’aide du mode aperçu ou d’un déploiement de test, avant le début de la collecte des données.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Terminez toutes les traductions avant d’utiliser le protocole sur le terrain. La vue **Manquant dans une des langues affichées** du tableau des traductions liste celles qui restent.
+
+</GoodPractice>
+
+<BadPractice>
+
+Évitez de vous fier à la traduction automatique sans relecture par des personnes qui maîtrisent la langue et comprennent les concepts de l’étude. Un tel résultat peut se lire de façon fluide tout en modifiant le sens d’une consigne.
+
+</BadPractice>
+
+<BadPractice>
+
+Évitez de modifier la structure d’un protocole pour résoudre un problème constaté dans une langue sans tenir compte de son effet sur les autres. Toutes les langues partagent les mêmes étapes et le même livre de codes : une modification structurelle s’applique donc à toutes.
+
+</BadPractice>
+
+## Références {#references}
+
+- Bailey S, Marsden PV.
+  [Interpretation and interview context: examining the General Social Survey
+  name generator using cognitive methods.](<https://doi.org/10.1016/S0378-8733(99)00013-1>)
+  _Social Networks_. 1999;21(3):287–309.
+- Beaton DE, Bombardier C, Guillemin F, Ferraz MB.
+  [Guidelines for the process of cross-cultural adaptation of self-report
+  measures.](https://doi.org/10.1097/00007632-200012150-00014) _Spine_.
+  2000;25(24):3186–3191.
+- Brislin RW.
+  [Back-translation for cross-cultural research.](https://doi.org/10.1177/135910457000100301)
+  _Journal of Cross-Cultural Psychology_. 1970;1(3):185–216.
+- Ruan D.
+  [The content of the General Social Survey discussion networks: an
+  exploration of General Social Survey discussion name generator in a Chinese
+  context.](<https://doi.org/10.1016/S0378-8733(98)00004-5>) _Social Networks_.
+  1998;20(3):247–264.
+- Survey Research Center.
+  [Translation: overview.](https://ccsg.isr.umich.edu/chapters/translation/overview/)
+  In: _Guidelines for Best Practice in Cross-Cultural Surveys_. Ann Arbor:
+  Survey Research Center, Institute for Social Research, University of
+  Michigan; 2016.
+- Walde P, Völlm BA.
+  [The TRAPD approach as a method for questionnaire
+  translation.](https://doi.org/10.3389/fpsyt.2023.1199989) _Frontiers in
+  Psychiatry_. 2023;14:1199989.
+- Wild D, Grove A, Martin M, et al.
+  [Principles of good practice for the translation and cultural adaptation
+  process for patient-reported outcomes (PRO) measures: report of the ISPOR
+  Task Force for Translation and Cultural Adaptation.](https://doi.org/10.1111/j.1524-4733.2005.04054.x)
+  _Value in Health_. 2005;8(2):94–104.

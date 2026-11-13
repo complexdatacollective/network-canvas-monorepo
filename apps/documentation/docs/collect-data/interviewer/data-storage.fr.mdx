@@ -1,0 +1,66 @@
+---
+title: Stockage et sécurité des données
+navOrder: 5
+toc: true
+translatedFrom: 03ca2b1f3b5c87d0baade192c8ada6a6edd48e20
+---
+
+<Paragraph variant="lead">
+  Interviewer conserve toutes les données de votre recherche sur l’appareil sur
+  lequel il s’exécute. Cette page répond aux questions pratiques que se pose
+  une équipe de terrain : où se trouvent les données d’entretien, ce qui les
+  protège, ce qui peut les détruire et comment les garder en sécurité.
+</Paragraph>
+
+## Où se trouvent vos données {#where-your-data-lives}
+
+Tout ce qu’Interviewer stocke — protocoles, entretiens et paramètres — reste sur l’appareil, sans synchronisation dans le cloud ni composant serveur. L’équipe Network Canvas ne reçoit, ne transmet ni ne stocke jamais aucune donnée des personnes participantes, et aucune donnée des personnes participantes ne quitte l’appareil à moins que vous ne l’exportiez. Les statistiques d’utilisation anonymes ne contiennent aucune donnée des personnes participantes — les données de réseau, les réponses, les identifiants de cas, le contenu des protocoles et les fichiers de ressources ne sont jamais collectés — et peuvent être désactivées à tout moment dans **Paramètres → Confidentialité**.
+
+Ce fonctionnement entièrement local connaît une exception documentée : dans les étapes qui utilisent l’[interface géospatiale](/fr/design-protocols/interface-documentation/geospatial), les tuiles de la carte sont récupérées auprès du service tiers Mapbox pendant l’entretien, et tout ce qu’une personne participante saisit dans le champ de recherche de cette interface est envoyé à l’API de recherche de Mapbox. Tenez-en compte lorsque vous planifiez des études dans lesquelles les lieux sont sensibles.
+
+Interviewer stocke ses données dans le **stockage de votre navigateur web**, sur l’appareil que vous utilisez. Toutes ces données doivent être traitées comme potentiellement sensibles :
+
+- **Protocoles** — en plus de la structure de votre entretien, un protocole peut intégrer tous les jeux de données nécessaires pour le mener, comme une liste de personnes (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit).
+- **Données des sessions d’entretien** — les données des réponses des personnes participantes, ainsi que des métadonnées comme la date à laquelle une session d’entretien a été menée.
+- **Configuration et métadonnées de l’application** — les paramètres de l’application et les métadonnées des protocoles.
+
+<TipBox>
+
+**Interviewer Classic**, lui, stocke ses données dans l’application, sur l’appareil, et ne chiffre pas son espace de stockage : le chiffrement de l’appareil est sa seule protection au repos. Consultez [Comités d’éthique (IRB) et bonnes pratiques de sécurité](/fr/get-started/planning-a-study/irb-best-practices) pour des recommandations qui couvrent les deux versions.
+
+</TipBox>
+
+## Ce qui protège vos données {#what-protects-your-data}
+
+Lorsque vous définissez un verrouillage de l’application lors de la configuration initiale — un code PIN, une phrase secrète ou la biométrie —, les données présentes sur l’appareil sont **chiffrées au repos** à l’aide d’une clé dérivée de votre moyen d’authentification, et l’authentification qui déverrouille l’application libère aussi la clé qui sert à les déchiffrer. Tant que l’application est verrouillée, l’écran de verrouillage ne révèle rien de ce qui est stocké : ni noms de protocoles, ni nombre de sessions d’entretien, ni aucun autre détail. Interviewer se verrouille automatiquement après une période d’inactivité et lorsque l’application est fermée, et vous pouvez en outre exiger une nouvelle authentification lorsque vous ouvrez un entretien, lorsque vous en sortez pour revenir au tableau de bord ou lorsque vous exportez des données. Consultez [Sécurité et verrouillage](/fr/collect-data/interviewer/using-interviewer#security-and-locking) pour savoir comment configurer tout cela.
+
+Si vous avez choisi **Aucune sécurité** lors de la configuration, l’application n’offre aucune protection, et vos données ne reposent que sur les protections de l’appareil lui-même.
+
+Dans tous les cas, la sécurité de l’application est une couche à utiliser _en complément_ des protections de l’appareil, et non à leur place. Activez le chiffrement complet du disque de l’appareil, utilisez une authentification robuste des comptes utilisateur et un verrouillage automatique de l’écran, et limitez l’accès physique : consultez les [bonnes pratiques de sécurité](/fr/get-started/planning-a-study/irb-best-practices#security-best-practices) pour la liste complète.
+
+## Ce qui peut détruire vos données {#what-can-destroy-your-data}
+
+Comme vos données ne se trouvent que sur l’appareil, plusieurs événements peuvent les supprimer définitivement :
+
+- **La perte de votre moyen d’authentification.** Un **code PIN ou une phrase secrète** oubliés ne peuvent pas être récupérés : les données qu’ils protègent deviennent définitivement inaccessibles sur cet appareil. Si vous choisissez la **biométrie**, vous devez aussi définir une **phrase secrète de récupération** obligatoire : si vous ne perdez que l’authentificateur biométrique (par exemple lorsque le matériel de l’appareil est remplacé), le déverrouillage se fait au moyen de cette phrase secrète, et seule la perte des deux entraîne une perte définitive.
+- **La révocation du verrouillage de l’appareil** (le verrouillage qu’Interviewer applique sur cet appareil, et non celui du système d’exploitation). Remplacer votre **code PIN ou votre phrase secrète** par une nouvelle valeur (après avoir confirmé la valeur actuelle) conserve l’accès à vos données, mais passer à une autre méthode de déverrouillage (par exemple d’un code PIN à une phrase secrète, ou vers la **biométrie** ou depuis celle-ci) oblige à révoquer le verrouillage de l’appareil, ce qui efface de l’appareil tous les protocoles, toutes les sessions d’entretien et toutes les données d’authentification enregistrées. L’option **Révoquer le verrouillage de l’appareil** (intitulée **Réinitialiser l’appareil** si aucun verrouillage n’est configuré) de **Paramètres → Sécurité** fait de même et vous ramène à la configuration initiale.
+- **L’effacement des données du navigateur ou la suppression de l’application.** Les données d’Interviewer se trouvent dans le stockage de votre navigateur : effacer les données de sites enregistrées par le navigateur — ou désinstaller, d’une manière qui supprime ses données, le navigateur ou l’application web progressive (PWA) installée — emporte avec lui vos protocoles et vos entretiens. Considérez l’effacement des données du navigateur sur un appareil d’entretien comme la suppression de vos données de recherche.
+- **La suppression d’un protocole.** Supprimer un protocole de l’appareil supprime aussi tous les entretiens enregistrés avec ce protocole. Interviewer vous demande d’abord de confirmer, car cette action est irréversible.
+- **La perte de l’appareil lui-même.** Un appareil perdu, volé, effacé ou cassé emporte ses données avec lui.
+
+<TipBox danger={true}>
+
+La précaution commune à tous ces cas : **exportez régulièrement vos entretiens**, afin que la perte d’un appareil — ou la révocation de son verrouillage — ne signifie jamais la perte de vos données.
+
+</TipBox>
+
+## Garder les données en sécurité sur le terrain {#keeping-data-safe-in-the-field}
+
+Comme les données d’entretien n’existent que sur l’appareil tant que vous ne les avez pas exportées, l’exportation est à la fois votre mécanisme de sauvegarde et l’étape la plus vulnérable du processus. Nous vous recommandons de :
+
+- **Exporter régulièrement.** Exportez les sessions d’entretien depuis la vue **Données** au fur et à mesure que vous les collectez, plutôt que de laisser les données s’accumuler sur les appareils de terrain. La [procédure d’exportation](/fr/collect-data/interviewer/using-interviewer#the-export-process) regroupe les sessions d’entretien sélectionnées dans une seule archive `.zip`.
+- **Réduire au minimum la durée pendant laquelle les données restent sur les appareils de terrain.** Envoyez les exportations le plus régulièrement possible vers un emplacement de stockage sécurisé désigné, puis supprimez les sessions d’entretien de l’appareil. Cela limite le risque lié à la perte ou au vol d’un appareil.
+- **Organiser et sauvegarder vos exportations.** Suivez les [bonnes pratiques d’organisation et de sauvegarde des données](/fr/collect-data/protocol-and-data-workflows#data-organization-and-backup-best-practices) : une copie à un seul emplacement dans le cloud ne constitue pas une sauvegarde.
+- **Tester votre chaîne d’exportation avant de collecter des données réelles.** Utilisez la fonction **Données synthétiques** des paramètres pour générer des sessions d’entretien fictives et les faire passer par l’ensemble de votre processus d’exportation et de sauvegarde, afin de ne pas mettre ce processus à l’épreuve pour la première fois avec les données de vraies personnes participantes.
+
+Pour une vue d’ensemble de la sécurité — y compris vos responsabilités à l’égard des données que vous détenez —, consultez [Comités d’éthique (IRB) et bonnes pratiques de sécurité](/fr/get-started/planning-a-study/irb-best-practices).

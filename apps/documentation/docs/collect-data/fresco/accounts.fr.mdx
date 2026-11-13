@@ -1,0 +1,177 @@
+---
+title: Comptes et sécurité
+date: 8th September 2026
+navOrder: 3
+translatedFrom: de35ff5b788110adfda13988b3d1b430a130bea3
+---
+
+Fresco protège le tableau de bord de l’équipe de recherche par un ou plusieurs comptes. Ce guide explique comment se connecter, comment ajouter des membres de l’équipe et
+comment sécuriser les comptes avec des clés d’accès (passkeys) et l’authentification à deux facteurs.
+
+<TipBox>
+
+Les comptes multiples, les clés d’accès et l’authentification à deux facteurs nécessitent **Fresco v4 ou une version ultérieure**.
+Les versions antérieures ne prenaient en charge qu’un seul compte protégé par mot de passe.
+
+</TipBox>
+
+## Comment un compte est sécurisé {#how-an-account-is-secured}
+
+Chaque compte utilise l’une de deux méthodes de connexion principales, **mutuellement exclusives** :
+
+- **Mode mot de passe** — vous vous connectez avec un nom d’utilisateur et un mot de passe. Vous pouvez, si vous le souhaitez, y ajouter
+  l’**authentification à deux facteurs (2FA)**, à l’aide d’un mot de passe à usage unique basé sur le temps (TOTP)
+  fourni par une application d’authentification. C’est le _seul_ second facteur que Fresco prend en charge.
+- **Mode clé d’accès** — vous vous connectez avec une ou plusieurs clés d’accès enregistrées (la biométrie de l’appareil,
+  comme Touch ID ou Windows Hello, ou une clé de sécurité physique) et vous n’avez **aucun mot de passe**.
+  Le mode clé d’accès n’utilise pas l’authentification à deux facteurs : la clé d’accès remplace le mot de passe
+  au lieu de s’y ajouter, et Fresco exige que l’authentificateur vérifie votre identité par la
+  biométrie ou un code PIN à chaque fois ; une connexion par clé d’accès prouve donc toujours à la fois la possession de
+  l’appareil et votre identité.
+
+Un compte est toujours dans un et un seul de ces modes. Une clé d’accès n’est donc jamais un _second_
+facteur qui accompagne un mot de passe : c’est une méthode de connexion complète et sans mot de passe à part
+entière. Vous gérez tout cela depuis une seule carte, **Gestion des comptes**, dans **Paramètres**.
+
+## Se connecter {#signing-in}
+
+Connectez-vous depuis l’écran de connexion du tableau de bord. Si votre compte est en mode mot de passe, saisissez votre
+nom d’utilisateur et votre mot de passe ; si la 2FA est activée, le code à 6 chiffres de
+votre application d’authentification vous est ensuite demandé (avec la possibilité d’utiliser plutôt un code de récupération). Si votre compte est
+en mode clé d’accès, choisissez **Se connecter avec une clé d’accès** et authentifiez-vous avec votre appareil.
+Après plusieurs tentatives infructueuses, les nouvelles tentatives sont temporairement limitées.
+
+## Changer votre mot de passe {#changing-your-password}
+
+Si votre compte est en mode mot de passe, ouvrez **Paramètres → Gestion des comptes**, cliquez sur **Changer le mot
+de passe**, saisissez votre mot de passe actuel, puis définissez-en un nouveau et confirmez-le. Les nouveaux mots de passe doivent
+comporter au moins 8 caractères et contenir une lettre minuscule, une lettre majuscule, un chiffre et
+un symbole.
+
+Si votre compte est en mode clé d’accès, il n’y a aucun mot de passe à changer. Pour définir un mot de passe, vous
+devez [passer en mode mot de passe](#choosing-between-passwords-and-passkeys).
+
+## Ajouter des membres de l’équipe {#adding-team-members}
+
+<TipBox danger>
+
+**Tous les comptes Fresco sont égaux.** Il n’existe ni rôles ni niveaux d’autorisation : chaque compte
+est un compte administrateur complet, avec un accès total à toutes les données, et peut créer ou supprimer d’autres
+comptes. Ne créez de comptes que pour des personnes à qui vous confieriez l’ensemble de l’étude.
+
+</TipBox>
+
+Donnez à chaque personne son propre compte plutôt que de partager des identifiants de connexion. Ouvrez **Paramètres → Gestion
+des comptes**, cliquez sur **Ajouter un compte**, puis définissez un nom d’utilisateur et un mot de passe initial (la personne pourra
+passer ensuite à une clé d’accès). Pour retirer l’accès à quelqu’un, sélectionnez son compte et supprimez-le.
+
+Vous ne pouvez pas supprimer votre propre compte pendant une session ouverte avec ce compte, et au moins un compte doit
+toujours subsister.
+
+![L’écran « Gestion des comptes », avec les clés d’accès du compte connecté et le tableau « Tous les comptes ».](/assets/img/fresco-images/user-management.png)
+
+## Authentification à deux facteurs {#two-factor-authentication}
+
+Lorsque votre compte est en mode mot de passe, vous pouvez ajouter l’authentification à deux facteurs pour renforcer
+la sécurité. Fresco utilise le standard TOTP, compatible avec des applications comme Google Authenticator,
+1Password et Authy. (Les commandes de la 2FA n’apparaissent que pour les comptes en mode mot de passe ; le mode clé
+d’accès ne les utilise pas.)
+
+Dans la carte **Gestion des comptes** de **Paramètres**, activez **Authentification à deux facteurs**,
+scannez le code QR avec votre application d’authentification, puis saisissez le code actuel pour confirmer. Un code vous
+sera ensuite demandé à chaque connexion. Lors de l’activation, Fresco fournit **10
+codes de récupération à usage unique** pour vous connecter si vous perdez l’appareil sur lequel est installée votre application d’authentification.
+
+<TipBox danger>
+
+Conservez vos codes de récupération en lieu sûr, séparément de l’appareil sur lequel est installée votre application d’authentification, par exemple
+dans un gestionnaire de mots de passe de votre établissement. Vous pouvez à tout moment en générer une nouvelle série, ce qui
+invalide les codes précédents.
+
+</TipBox>
+
+### Exiger l’authentification à deux facteurs pour tous les comptes {#requiring-two-factor-authentication-for-everyone}
+
+Si votre établissement exige l’authentification multifacteur pour chaque compte administrateur, définissez la
+variable d’environnement `REQUIRE_TWO_FACTOR` sur `true` dans le fichier `.env` de votre déploiement (consultez la
+référence des [variables d’environnement](/fr/collect-data/fresco/advanced#environment-variables)).
+C’est délibérément une variable d’environnement et non un paramètre du tableau de bord : chaque compte Fresco
+est un compte administrateur doté des mêmes droits que les autres, si bien qu’une exigence désactivable depuis le
+tableau de bord pourrait être désactivée par n’importe quelle personne administratrice. La ligne **Exiger l’authentification à deux facteurs**
+de la carte **Gestion des comptes** indique si cette exigence est en vigueur. Tant qu’elle l’est :
+
+- Un compte qui se connecte avec un mot de passe mais n’a pas d’authentification à deux facteurs doit la
+  configurer immédiatement après sa connexion, avant de pouvoir accéder au tableau de bord. La configuration se déroule
+  exactement comme décrit ci-dessus, codes de récupération compris. Sur un nouveau déploiement, la première
+  personne administratrice doit le faire dès qu’elle a terminé l’assistant de configuration.
+- L’authentification à deux facteurs ne peut pas être désactivée sur un compte en mode mot de passe. Une autre
+  personne administratrice peut néanmoins utiliser **Réinitialiser l’authentification** pour un membre de l’équipe qui n’a plus accès à son compte (consultez
+  [Récupérer l’accès](#recovering-access)) ; ce compte configure à nouveau l’authentification à deux facteurs
+  lors de sa connexion suivante.
+
+Les comptes en mode clé d’accès ne sont pas concernés : une clé d’accès remplace entièrement le mot de passe, et Fresco
+considère qu’elle satisfait l’exigence. Fresco exige que chaque clé d’accès vérifie votre identité par un
+code PIN ou la biométrie (consultez [Clés d’accès](#passkeys) ci-dessous) : elle combine donc déjà deux
+facteurs distincts — la possession de l’authentificateur et cette vérification — sans étape TOTP distincte.
+
+## Clés d’accès {#passkeys}
+
+Une clé d’accès vous permet de vous connecter à l’aide de la biométrie de votre appareil (Touch ID, Windows Hello) ou d’une
+clé de sécurité physique, sans aucun mot de passe. Les clés d’accès sont la méthode de connexion _principale_ d’un compte,
+et non un second facteur qui s’ajoute à un mot de passe.
+
+Fresco exige que chaque clé d’accès vérifie votre identité par la biométrie ou un code PIN (la _vérification de
+l’utilisateur_ de WebAuthn), à la fois lors de son enregistrement et à chaque connexion, et rejette une
+réponse dans laquelle l’authentificateur a omis cette vérification. Une clé de sécurité physique
+a donc besoin d’un code PIN — votre navigateur vous demandera d’en définir un si la clé le permet — et une clé de sécurité qui
+ne peut pas vérifier votre identité ne peut pas être enregistrée. Une clé d’accès qu’une version antérieure de Fresco a
+enregistrée sur une telle clé de sécurité ne permet plus de se connecter ; Fresco vous indique alors ce qu’il faut vérifier au lieu
+d’afficher une erreur générique. Dans ce cas, connectez-vous avec une autre de vos clés d’accès, ou
+demandez à une autre personne administratrice d’utiliser **Réinitialiser l’authentification** pour votre compte (consultez
+[Récupérer l’accès](#recovering-access)). Si votre session est encore ouverte, avant de vous déconnecter, utilisez **Ajouter une clé d’accès**
+pour en enregistrer une qui vérifie votre identité.
+
+Dans la carte **Gestion des comptes** de **Paramètres**, un compte en mode clé d’accès peut utiliser **Ajouter une
+clé d’accès** pour enregistrer d’autres clés d’accès (vous pouvez en enregistrer plusieurs, et chacune reçoit
+un nom) ou **Supprimer** pour en supprimer une. Vous ne pouvez pas supprimer votre seule clé d’accès sans avoir d’abord
+défini un mot de passe (sinon, vous ne pourriez plus accéder à votre compte) ; pour quitter entièrement le mode clé d’accès,
+utilisez donc plutôt **Passer à l’authentification par mot de passe**.
+
+## Choisir entre mots de passe et clés d’accès {#choosing-between-passwords-and-passkeys}
+
+Un compte peut passer d’un mode à l’autre à tout moment depuis la carte **Gestion des comptes**, mais
+**le changement est destructif** — Fresco ne conserve jamais les deux types d’identifiants de connexion côte à côte :
+
+- **Passer à l’authentification par clé d’accès** demande votre mot de passe actuel, enregistre une clé d’accès,
+  puis supprime votre mot de passe ainsi que l’authentification à deux facteurs et les codes de récupération éventuels.
+- **Passer à l’authentification par mot de passe** vérifie votre identité avec une clé d’accès existante, puis supprime
+  **toutes** vos clés d’accès enregistrées et les remplace par un mot de passe.
+
+<TipBox danger>
+
+Comme le changement supprime vos identifiants de connexion précédents, assurez-vous de pouvoir utiliser la nouvelle
+méthode (une application d’authentification ou un appareil à clé d’accès qui fonctionne) avant de commencer, et veillez à ce qu’une deuxième
+personne administratrice dispose d’un compte, pour ne jamais être la seule personne à pouvoir se connecter.
+
+</TipBox>
+
+## Récupérer l’accès {#recovering-access}
+
+Fresco ne propose **aucune procédure « mot de passe oublié » par e-mail**. Vous ne pouvez [changer votre
+mot de passe](#changing-your-password) que pendant une session ouverte. Si vous n’avez plus accès à votre compte, vos options, par
+ordre de préférence, sont les suivantes :
+
+1. **Utiliser un code de récupération** pour vous connecter (si l’authentification à deux facteurs était activée).
+2. **Demander à une autre personne administratrice** d’utiliser **Réinitialiser l’authentification** pour votre compte depuis « Gestion des comptes ».
+   Cette action efface les identifiants de connexion du compte visé — clés d’accès, authentification à deux facteurs
+   et codes de récupération — et génère un mot de passe temporaire. La personne administratrice vous communique ce
+   mot de passe temporaire, et vous l’utilisez pour vous reconnecter et configurer de nouveaux identifiants de connexion.
+3. En dernier recours, si aucun compte n’est accessible et qu’il ne reste aucun code de récupération,
+   [réinitialiser votre base de données](/fr/collect-data/fresco/deployment-troubleshooting#reset-your-database).
+   **Cela détruit toutes les données ainsi que les entretiens non exportés.**
+
+C’est pourquoi vous devez conserver vos identifiants de connexion et vos codes de récupération en lieu sûr et veiller à ce qu’au moins deux
+personnes administratrices disposent chacune de leur propre compte, afin qu’une deuxième personne puisse toujours rétablir l’accès.
+
+Pour savoir comment l’authentification fonctionne au niveau de l’infrastructure (cookies de session, chiffrement, limitation
+de fréquence), consultez la [FAQ pour les services informatiques](/fr/collect-data/fresco/it-faq).

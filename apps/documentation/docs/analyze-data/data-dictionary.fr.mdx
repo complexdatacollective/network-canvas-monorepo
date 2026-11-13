@@ -1,0 +1,323 @@
+---
+title: Dictionnaire des données exportées
+navOrder: 2
+toc: true
+date: 5th October 2026
+translatedFrom: 8a26fdf2401457d85ab7c1fa5efeba7234107ed6
+---
+
+<Definition>
+  Le dictionnaire des données exportées décrit précisément comment chaque type
+  de variable de Network Canvas est écrit dans les fichiers CSV et GraphML
+  exportés, pour que vous puissiez interpréter avec certitude chaque colonne et
+  chaque attribut de vos données.
+</Definition>
+
+## Comment lire cette page {#how-to-read-this-page}
+
+Chaque variable que vous définissez dans votre protocole est exportée sous son
+**nom de variable** issu du livre de codes (la définition des types de nœuds,
+de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête).
+Dans les fichiers CSV, la plupart des types de variable deviennent une seule
+colonne portant le nom de la variable ; les variables catégorielles et de
+disposition se répartissent sur plusieurs colonnes, comme décrit plus bas. Dans
+les fichiers GraphML, chaque variable est déclarée par un élément `<key>` dont
+l’`attr.name` est le nom de la variable et dont l’`attr.type` indique aux
+logiciels d’analyse comment interpréter les valeurs.
+
+Les noms de colonnes des fichiers CSV sont écrits exactement comme les noms
+figurent dans votre livre de codes, espaces, ponctuation et lettres de toute
+langue compris. Les noms d’attributs GraphML ne peuvent contenir ni espaces ni
+la plupart des signes de ponctuation : dans les fichiers GraphML, ces caractères
+sont donc remplacés par `_`, et le nom tel qu’il est écrit est conservé dans
+l’élément `<desc>` de la clé. Voir [Noms de colonnes](#column-names) plus bas.
+
+Pour la structure d’ensemble des fichiers (quels fichiers une exportation
+produit et comment ils sont reliés entre eux), voir
+[Exportation des données](/fr/analyze-data/data-export). Cette page porte sur
+la manière dont chaque valeur est encodée.
+
+## Les types de variable en un coup d’œil {#variable-types-at-a-glance}
+
+| Type de variable | Colonne(s) CSV                          | Valeur CSV                                         | `attr.type` GraphML                   | Exemple de valeur          |
+| ---------------- | --------------------------------------- | -------------------------------------------------- | ------------------------------------- | -------------------------- |
+| Texte            | `variable_name`                         | Le texte, entre guillemets seulement si nécessaire | `string`                              | `Jane`                     |
+| Nombre           | `variable_name`                         | Le nombre                                          | `int` ou `double` (détecté)           | `34`                       |
+| Booléen          | `variable_name`                         | `true` / `false`                                   | `boolean`                             | `true`                     |
+| Ordinal          | `variable_name`                         | La valeur de l’option sélectionnée                 | `int`, `double` ou `string` (détecté) | `3`                        |
+| Catégoriel       | `variable_name_option` (une par option) | `true` / `false` pour chaque option                | `boolean` (une clé par option)        | `true`                     |
+| Scalaire         | `variable_name`                         | Nombre compris entre 0 et 1                        | `float`                               | `0.735`                    |
+| Date             | `variable_name`                         | Chaîne de date ISO                                 | `string`                              | `1989-07-21`               |
+| Disposition      | `variable_name_x`, `variable_name_y`    | Coordonnées normalisées (0–1)                      | `double` (clés `_X` et `_Y`)          | `0.62`, `0.24`             |
+| Lieu             | `variable_name`                         | Identifiant de la zone de la carte sélectionnée    | `string`                              | `outside-selectable-areas` |
+
+Les sections suivantes détaillent chaque type, y compris la façon dont les
+valeurs manquantes apparaissent.
+
+## Détails par type {#per-type-details}
+
+### Texte {#text}
+
+Une variable de texte devient une colonne CSV portant le nom de la variable,
+qui contient la réponse de la personne participante telle qu’elle a été saisie.
+Les valeurs qui contiennent une virgule, un guillemet ou un saut de ligne sont
+placées entre guillemets droits doubles (les guillemets internes étant
+doublés), selon les règles standard du format CSV. Pour se prémunir contre
+l’injection de formules dans les tableurs, toute valeur de texte qui commence
+par `=`, `+`, `-`, `@`, une tabulation ou un retour chariot est précédée d’une
+apostrophe droite (`'`), afin que les tableurs la traitent comme du texte
+littéral. Les en-têtes de colonnes reçoivent le même préfixe (voir
+[Noms de colonnes](#column-names)) ; les nombres, en revanche, ne le reçoivent
+jamais. Voir
+[Pourquoi certaines valeurs commencent par une apostrophe](/fr/analyze-data/data-export#why-some-values-start-with-an-apostrophe)
+pour supprimer ce préfixe dans R ou Python. Dans les fichiers GraphML, les
+valeurs de texte sont exportées avec `attr.type="string"` et ne reçoivent jamais
+de préfixe, mais les caractères que le XML ne peut pas stocker sont supprimés
+(voir
+[Caractères supprimés des fichiers GraphML](/fr/analyze-data/data-export#characters-removed-from-graphml-files)).
+
+### Nombre {#number}
+
+Une variable numérique devient une colonne CSV qui contient la valeur numérique
+telle qu’elle a été saisie, sans arrondi ni reformatage. Dans les fichiers
+GraphML, l’`attr.type` est détecté à partir des valeurs de vos données : `int`
+quand toutes les valeurs sont des nombres entiers, `double` quand une valeur au
+moins a une partie décimale, et `string` quand les valeurs sont de types mixtes
+ou absentes.
+
+### Booléen {#boolean}
+
+Une variable booléenne devient une colonne CSV qui contient `true` ou `false`
+(en minuscules). Dans les fichiers GraphML, elle est déclarée avec
+`attr.type="boolean"` et chaque valeur est écrite `true` ou `false`. Une
+question à laquelle la personne participante n’a jamais répondu produit une
+cellule vide dans le fichier CSV, et aucune valeur dans le fichier GraphML.
+
+### Ordinal {#ordinal}
+
+Une variable ordinale enregistre la **valeur** de l’option sélectionnée (et non
+son libellé), qui peut être une chaîne ou un nombre selon la façon dont vous
+avez défini les options de réponse dans Architect. La colonne CSV contient
+directement cette valeur. Dans les fichiers GraphML, l’`attr.type` est détecté
+à partir des données de la même manière que pour les variables numériques : des
+valeurs d’options qui sont toutes des nombres entiers donnent `int`, des valeurs décimales donnent
+`double`, et des valeurs d’options sous forme de chaînes donnent `string`.
+
+### Catégoriel {#categorical}
+
+Comme la personne participante peut sélectionner plusieurs options, une
+variable catégorielle est répartie sur **une colonne par option**, nommée
+`variable_name_optionValue` : par exemple, une variable `support_type` dont les
+options sont `emotional` et `financial` produit `support_type_emotional` et
+`support_type_financial`. Chaque colonne contient `true` si l’option a été
+sélectionnée et `false` sinon. Si la personne participante n’a jamais répondu
+à la question, toutes les colonnes d’options contiennent `false` dans le
+fichier CSV.
+
+Dans les fichiers GraphML, la même répartition a lieu : une `<key>` par option,
+avec `attr.type="boolean"` et un `attr.name` égal à `variable_name_optionValue`,
+les espaces ou signes de ponctuation que les noms d’attributs GraphML ne
+peuvent pas contenir étant remplacés par `_` (voir
+[Noms de colonnes](#column-names)). L’`id` lisible par la machine de chaque clé
+est l’identifiant interne de la variable suivi d’une empreinte (hash) de la
+valeur de l’option (les identifiants de clés doivent être des NMTOKEN XML, ce
+que des valeurs d’options quelconques ne sont pas). Si la personne
+participante n’a jamais répondu, aucune valeur n’est écrite pour aucune des
+clés d’options.
+
+### Scalaire {#scalar}
+
+Une variable scalaire (recueillie avec la commande de saisie « Échelle visuelle analogique »)
+enregistre un nombre sur une échelle normalisée de 0 à 1. La colonne CSV
+contient ce nombre, et le fichier GraphML le déclare avec `attr.type="float"`.
+
+### Date {#date}
+
+Une variable de date enregistre une chaîne de date au format ISO dont la
+précision correspond au réglage « Précision de la date » de la variable :
+`1989-07-21` (complète), `1989-07` (mois) ou `1989` (année). La colonne CSV
+contient cette chaîne telle quelle, et le fichier GraphML la déclare avec
+`attr.type="string"`.
+
+### Disposition {#layout}
+
+Une variable de disposition enregistre la position d’un nœud sur le canevas
+d’une étape « Sociogramme » sous forme de coordonnées normalisées comprises
+entre 0 et 1, l’origine étant en haut à gauche. Dans le fichier CSV, elle est
+répartie sur deux colonnes, nommées avec des suffixes en minuscules :
+
+- `variable_name_x` — position horizontale (0 = bord gauche, 1 = bord droit)
+- `variable_name_y` — position verticale (0 = bord supérieur, 1 = bord inférieur)
+
+Si l’option d’exportation **Utiliser les coordonnées de la disposition
+d’écran** est activée, l’exportation conserve ces colonnes normalisées et en
+ajoute deux autres, nommées avec des suffixes en camelCase :
+`variable_name_screenSpaceX` et `variable_name_screenSpaceY`. Elles contiennent
+des valeurs en pixels arrondies à deux décimales. La coordonnée X d’écran est
+la valeur x normalisée multipliée par la largeur de l’écran ; la coordonnée Y
+d’écran est inversée (calculée comme (1 − y) × hauteur de l’écran), de sorte
+qu’elle se mesure depuis le **bas** de l’écran, conformément à la convention de
+la plupart des logiciels de visualisation de graphes.
+
+Dans les fichiers GraphML, la même répartition a lieu, mais les noms lisibles par un humain prennent des suffixes en majuscules :
+deux clés dont l’`attr.name` vaut respectivement `variable_name_X` et
+`variable_name_Y`, toutes deux
+déclarées avec `attr.type="double"` (plus `variable_name_screenSpaceX` et
+`variable_name_screenSpaceY` lorsque les coordonnées de la disposition d’écran
+sont activées).
+
+Un nœud qui n’a jamais été positionné produit des cellules vides dans le
+fichier CSV et aucune valeur dans le fichier GraphML.
+
+### Lieu {#location}
+
+Une variable de lieu (recueillie avec l’interface géospatiale) enregistre un
+identifiant textuel de la zone de la carte que la personne participante a
+sélectionnée. Cet identifiant est la valeur, pour cette zone, de la propriété du
+fichier GeoJSON que l’étape est configurée pour enregistrer (ou la valeur
+spéciale `outside-selectable-areas` lorsque la sélection se trouvait en dehors
+des zones sélectionnables). La variable
+devient une colonne CSV contenant cette chaîne, et le fichier GraphML la
+déclare avec `attr.type="string"`.
+
+## Colonnes d’identifiants et de métadonnées {#identifier-and-metadata-columns}
+
+En plus de vos variables, chaque fichier CSV contient des colonnes
+d’identifiants qui relient les fichiers entre eux :
+
+- Le **fichier d’ego** (l’ego est la personne participante, au centre de son
+  réseau) commence par `networkCanvasEgoUUID`, `networkCanvasCaseID`,
+  `networkCanvasSessionID`, `networkCanvasProtocolName`, `sessionStart`,
+  `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH` et
+  `networkCanvasFinishOutcome`, suivis de vos variables d’ego. Les horodatages
+  de la session d’entretien sont des chaînes ISO 8601.
+- Les **fichiers d’alters** (un alter est l’une des personnes que la personne
+  participante cite pendant l’entretien) commencent par `nodeID` (un nombre
+  unique au sein de l’entretien, compté à partir de 1 sur l’ensemble de ses
+  types de nœuds), `networkCanvasEgoUUID` (la clé de jointure avec le fichier
+  d’ego) et `networkCanvasUUID` (l’identifiant permanent de l’alter).
+- Les **fichiers de liens** commencent par `edgeID`, `from`, `to` (qui font
+  référence à des valeurs de `nodeID` des fichiers d’alters),
+  `networkCanvasEgoUUID`, `networkCanvasUUID` et les identifiants permanents
+  des extrémités du lien, `networkCanvasSourceUUID` et
+  `networkCanvasTargetUUID`.
+
+### Comment l’entretien s’est terminé {#how-the-interview-ended}
+
+`networkCanvasFinishOutcome` indique comment l’entretien s’est terminé : le résultat
+choisi dans l’étape « Écran de fin » à laquelle l’entretien s’est terminé. Les
+fichiers GraphML enregistrent la même valeur dans l’attribut `nc:finishOutcome`
+de l’élément `<graph>`.
+
+| Valeur       | Signification                                                                                                                                                                                                                                |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `completed`  | La personne participante a atteint la fin normale de l’entretien.                                                                                                                                                                            |
+| `ineligible` | La personne participante ne remplissait pas les critères de l’étude.                                                                                                                                                                         |
+| `terminated` | L’entretien a pris fin prématurément pour une autre raison, par exemple un arrêt en cas de détresse ou pour des raisons de sécurité.                                                                                                         |
+| Vide (CSV)   | Aucun résultat n’a été enregistré, par exemple pour un entretien terminé avec une version antérieure de l’application, qui n’enregistrait pas encore le résultat, ou pour un entretien qui n’est pas terminé. GraphML omet alors l’attribut. |
+
+La colonne figure dans chaque fichier d’ego, même lorsque toutes ses cellules
+sont vides. Voir
+[Comment l’entretien s’est terminé](/fr/analyze-data/data-export#how-the-interview-ended)
+pour en savoir plus.
+
+## Noms de colonnes {#column-names}
+
+Les en-têtes de colonnes des fichiers CSV reprennent chaque nom exactement tel
+qu’il figure dans votre livre de codes, sauf qu’un nom commençant par `=`, `+`,
+`-` ou `@` est précédé d’une apostrophe, comme les valeurs de texte. Dans les
+fichiers GraphML, `attr.name` doit être un jeton de nom XML valide (NMTOKEN) :
+les lettres de toute langue, les chiffres et les symboles `.`, `-`, `_` et `:`
+sont autorisés, mais pas les espaces ni la plupart des autres signes de
+ponctuation. L’exportation GraphML remplace chaque caractère non autorisé par
+`_` et conserve le nom tel qu’il est écrit dans un élément `<desc>` à
+l’intérieur de la clé :
+
+```xml
+<key id="…" attr.name="contact_frequency__per_week_" attr.type="string" for="node">
+  <desc>contact frequency (per week)</desc>
+</key>
+```
+
+Un élément `<desc>` n’est écrit que lorsque `attr.name` diffère du nom figurant
+dans votre livre de codes. Ce remplacement de caractères ne donne lieu à aucun
+avertissement.
+
+Architect refuse les noms qui donneraient la même colonne à deux variables, y
+compris les noms qui ne deviennent identiques qu’une fois écrits par une
+exportation, comme `close friend` et `close_friend` dans les fichiers GraphML.
+Dans un protocole créé avant cette vérification, deux variables peuvent encore
+produire le même nom de colonne dans un même fichier, par exemple une variable
+nommée `support_emotional` et une variable catégorielle `support` ayant
+l’option `emotional`. Une colonne d’un fichier de liste (la liste prédéfinie, importée
+comme fichier de données, dans laquelle la personne participante choisit) qui
+ne correspond à aucune variable de votre livre de codes peut aussi porter le même nom
+que la colonne d’une variable. L’exportation ne fusionne jamais ces colonnes.
+Lorsque deux colonnes d’un même fichier porteraient le même nom, les colonnes
+intégrées, comme `nodeID`, gardent toujours leur nom ; parmi les autres
+colonnes, celle de la variable qui vient en premier dans votre livre de codes
+garde le nom commun, et chaque
+colonne suivante est renommée avec le premier suffixe libre parmi `_2`, `_3`, etc. Les
+noms qui ne diffèrent que par la casse, comme `Age` et `age`, ne sont pas
+renommés. Les mêmes suffixes sont utilisés lorsque, dans un tel protocole, deux
+noms deviennent identiques dans les fichiers GraphML une fois les espaces et la
+ponctuation remplacés, comme `close friend` et `close_friend` : le nom qui était
+déjà valide reste inchangé, et l’autre est renommé.
+
+Chaque fois qu’une colonne est renommée, l’exportation affiche un avertissement
+intitulé « Certaines colonnes ont été renommées ». Voir
+[Avertissements d’exportation](/fr/analyze-data/data-export#export-warnings)
+pour savoir où il apparaît, et
+[Noms qui entreraient en conflit dans les données exportées](/fr/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data)
+pour les conflits qu’Architect empêche.
+
+## Valeurs manquantes {#missing-values}
+
+Une question restée sans réponse apparaît sous forme de **cellule vide** dans
+le fichier CSV et de **valeur omise** dans le fichier GraphML (la déclaration
+`<key>` peut être présente, mais aucun élément `<data>` n’est écrit pour cette
+entité). La seule exception concerne les variables catégorielles dans le
+fichier CSV : une question sans réponse y produit un `false` explicite dans
+chaque colonne d’option. Interprétez donc avec prudence une ligne où
+toutes les colonnes d’options d’une variable catégorielle valent `false` si la
+question était facultative.
+
+## Variables chiffrées {#encrypted-variables}
+
+Si votre protocole utilise
+[l’interface d’anonymisation](/fr/design-protocols/interface-documentation/anonymisation),
+les réponses chiffrées ne sont jamais exportées sous une forme lisible. Chaque
+réponse enregistrée sous forme chiffrée est exportée sous la chaîne littérale
+`ENCRYPTED`, dans les fichiers CSV comme dans les fichiers GraphML. Dans ces
+derniers, un nœud dont le libellé serait une réponse chiffrée reçoit en outre le
+libellé `Encrypted`. Une valeur qui n’était pas chiffrée au moment de son
+enregistrement est exportée telle qu’elle a été enregistrée, même dans une
+variable marquée comme chiffrée.
+
+## Les types de variable dans l’analyse {#variable-types-in-analysis}
+
+Une fois vos données chargées, chaque type de variable appelle une approche
+analytique différente :
+
+- Les variables **catégorielles et ordinales** se prêtent aux tableaux de
+  fréquences et aux tableaux croisés, et permettent les tests du khi-deux et la
+  régression logistique. N’oubliez pas que les exportations contiennent les
+  _valeurs_ des options : recodez-les en facteurs ou en catégories étiquetés
+  dans votre logiciel d’analyse si vous voulez des résultats lisibles.
+- Les variables **booléennes** (y compris les colonnes d’options issues des
+  variables catégorielles) peuvent être traitées comme des variables
+  catégorielles à deux modalités, ou converties en 0/1 pour être utilisées dans
+  des modèles de régression.
+- Les variables **numériques et scalaires** se prêtent aux statistiques
+  descriptives (moyenne, médiane, écart type) ainsi qu’aux corrélations, aux
+  régressions et aux tests t. Les valeurs scalaires sont déjà normalisées entre
+  0 et 1, ce qui facilite la comparaison entre échelles.
+- Les variables de **texte** conviennent surtout aux approches qualitatives,
+  comme l’analyse de contenu et le codage.
+
+## Pages associées {#related-pages}
+
+- [Exportation des données](/fr/analyze-data/data-export) — formats de
+  fichiers, options d’exportation et chargement des données dans R et Python
+- [Variables](/fr/design-protocols/key-concepts/variables) — définir les
+  variables lors de la conception de votre protocole

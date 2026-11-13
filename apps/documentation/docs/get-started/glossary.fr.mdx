@@ -1,0 +1,188 @@
+---
+title: Glossaire
+navOrder: 4
+toc: true
+translatedFrom: 65c29cc3f9f5a8dcedf7206600ebe969efc7b0b9
+---
+
+Cette page donne des définitions courtes et en langage simple des termes que
+vous rencontrerez tout au long de cette documentation. Elle vous sera utile si
+vous menez des entretiens ou analysez des données et que vous tombez sur un
+terme de conception de protocole que vous ne connaissez pas. Chaque entrée
+renvoie à la page qui traite le concept en détail : vous pouvez donc commencer
+ici et approfondir quand vous en avez besoin.
+
+## Alter {#alter}
+
+Une personne (ou une autre entité) que la personne participante cite comme
+membre de son réseau pendant un entretien. Les
+personnes participantes créent les alters dans les étapes de type [générateur
+de noms](#name-generator), et chaque alter est enregistré comme un
+[nœud](#node) du réseau. Dans les données exportées, chaque alter est associé à
+l’[ego](#ego) (la personne participante, au centre de son réseau) qui l’a
+cité : voir [Travailler avec les
+données](/fr/analyze-data/working-with-data).
+
+## Attribut {#attribute}
+
+La valeur d’une [variable](#variable) enregistrée pour une entité donnée (ego, nœud ou lien), par exemple l’âge enregistré pour un alter. Dans la version anglaise d’Architect, le champ défini dans le [livre de codes](#codebook) (qui définit l’ego, les types de nœuds et de liens, et les champs de chacun) s’appelle « variable », et la valeur stockée pour un nœud donné, « attribut ». La version française d’Architect appelle « attribut » le champ lui-même : sur ses écrans, « attribut » désigne donc le champ que vous définissez, et ce qui est enregistré pour chaque entité est la valeur de cet attribut. Voir
+[Livre de codes](/fr/design-protocols/key-concepts/codebook).
+
+## Consigne {#prompt}
+
+Une question ou une instruction adressée à la personne participante, qui
+explique quelles données fournir, ou comment accomplir la tâche, dans une
+étape donnée. Une étape peut contenir une seule consigne ou plusieurs. Voir
+[Consignes](/fr/design-protocols/key-concepts/prompts).
+
+## Ego {#ego}
+
+La personne participante : la personne sur qui porte un entretien Network
+Canvas, et dont l’entretien recueille le réseau personnel. Les données sur
+l’ego peuvent être recueillies avec l’interface [« Formulaire
+ego »](/fr/design-protocols/interface-documentation/ego-form), et apparaissent
+dans les [données exportées](/fr/analyze-data/data-export) à raison d’une
+ligne par ego.
+
+## Entité {#entity}
+
+Le terme générique qui désigne ce sur quoi un entretien enregistre des
+données : l’ego, les nœuds et les liens. Le [livre de codes](#codebook)
+organise les variables de votre protocole par type d’entité. Voir
+[Livre de codes](/fr/design-protocols/key-concepts/codebook#entity-types).
+
+## Étape {#stage}
+
+Chacun des écrans que voit la personne participante pendant un entretien. Un
+entretien se compose d’une ou de plusieurs étapes, et chaque étape est une
+instance d’une [interface](#interface) configurée pour recueillir des données
+précises. Voir [Interfaces](/fr/design-protocols/key-concepts/interfaces).
+
+## Générateur de noms {#name-generator}
+
+Une interface qui demande à la personne participante de citer les membres de
+son réseau, ce qui crée des [alters](#alter). Plusieurs interfaces de type
+générateur de noms sont disponibles, dont des variantes avec ajout rapide,
+avec formulaires et à partir d’une [liste](#roster). Voir [Interfaces de type
+générateur de
+noms](/fr/design-protocols/key-concepts/interfaces#name-generator-interfaces).
+
+## Identifiant de cas {#case-id}
+
+Un libellé court (lettres et chiffres, 30 caractères au maximum) saisi au
+début de chaque entretien pour vous aider à suivre et à identifier les
+sessions d’entretien d’une manière qui a du sens pour votre étude. Les
+identifiants de cas sont visibles partout où Interviewer affiche des sessions
+d’entretien, et figurent dans toutes les données exportées. Voir [Utiliser
+Interviewer](/fr/collect-data/interviewer/using-interviewer#entering-a-case-id).
+
+## Interface {#interface}
+
+Un instrument de collecte de données conçu pour une tâche précise : citer des
+alters, tracer des liens ou remplir un formulaire, par exemple. Vous
+configurez les interfaces dans Architect et les ajoutez à votre protocole, où
+elles deviennent des [étapes](#stage). Voir
+[Interfaces](/fr/design-protocols/key-concepts/interfaces) pour la liste
+complète des interfaces disponibles.
+
+## Interpréteur de noms {#name-interpreter}
+
+Une interface qui recueille des informations supplémentaires sur des alters
+ou des liens qui existent déjà dans l’entretien, par exemple en classant les
+alters par catégories ou en remplissant un formulaire sur chacun d’eux. Voir
+[Interfaces de type interpréteur de
+noms](/fr/design-protocols/key-concepts/interfaces#name-interpreter-interfaces).
+
+## Lien {#edge}
+
+Une connexion entre deux [nœuds](#node), qui enregistre une relation : par exemple, une
+amitié que la personne participante trace entre deux alters dans un
+[sociogramme](#sociogram). Un protocole peut définir plusieurs types de liens,
+et les liens peuvent porter leurs propres variables. Voir [Livre de
+codes](/fr/design-protocols/key-concepts/codebook) pour la façon dont les
+types de liens sont définis.
+
+## Liste {#roster}
+
+Une liste prédéfinie, préparée avant l’entretien, dont chaque ligne peut
+devenir un nœud du réseau : par exemple, les élèves d’une classe ou le
+personnel d’un bureau. La personne participante choisit des alters dans une
+liste avec l’interface [« Générateur de noms à partir d’une
+liste »](/fr/design-protocols/interface-documentation/name-generator-roster).
+Voir [Utiliser des données de
+liste](/fr/design-protocols/tutorials/working-with-rosters) pour les
+stratégies et les formats de fichier.
+
+## Livre de codes {#codebook}
+
+Le registre central de chaque type d’entité (ego, nœud et lien) et de chaque
+variable définie dans votre protocole. Architect construit le livre de codes
+automatiquement au fil de votre travail ; il vous aide à garder un protocole
+cohérent et à planifier l’analyse de vos données. Voir [Livre de
+codes](/fr/design-protocols/key-concepts/codebook).
+
+## Nœud {#node}
+
+Une entité unique d’un réseau. Les nœuds représentent souvent les personnes
+que la personne participante a citées ([alters](#alter)), mais vous êtes
+libre de définir des types de nœuds qui représentent tout ce dont votre étude
+a besoin, des lieux par exemple. Voir [Livre de
+codes](/fr/design-protocols/key-concepts/codebook) pour la façon dont les
+types de nœuds sont définis.
+
+## Protocole {#protocol}
+
+La description complète de votre entretien : les étapes, les consignes et la
+logique qu’il contient, ainsi que les ressources qu’il utilise. Vous créez les
+protocoles dans Architect, et vous les faites passer d’une application à
+l’autre sous forme de fichiers `.netcanvas`. Voir [Le fichier de
+protocole](/fr/design-protocols/key-concepts/the-protocol-file).
+
+## Ressource {#resource}
+
+Un fichier externe ou une information d’authentification utilisés dans votre protocole : images,
+audio, vidéo, données de liste ou clé d’API, par exemple. Les ressources sont
+intégrées au protocole lui-même. Voir
+[Ressources](/fr/design-protocols/key-concepts/resources).
+
+## Schéma {#schema}
+
+L’ensemble des règles qui définissent ce qu’est un fichier de protocole
+valide. Les schémas sont numérotés (c’est la **version du schéma** d’un
+protocole), et la version du schéma d’un protocole détermine quelles
+applications peuvent l’ouvrir. Les versions actuelles d’Architect, de Fresco
+et d’Interviewer ouvrent les protocoles créés pour des versions antérieures du
+schéma sans les mettre à niveau. Architect propose de mettre à niveau un
+ancien protocole vers la version la plus récente du schéma ou de continuer à
+le modifier en schéma 8, et Fresco et Interviewer exécutent les protocoles en
+schéma 8 tels quels et migrent automatiquement les protocoles en schéma 7
+vers le schéma 8. Voir [Informations sur le schéma de
+protocole](/fr/get-started/protocol-schema-information).
+
+## Sociogramme {#sociogram}
+
+La composante de représentation visuelle d’un entretien de réseau : la
+personne participante place ses alters et trace des liens entre eux pour
+montrer les relations au sein de son réseau personnel. Voir
+[Sociogramme](/fr/design-protocols/interface-documentation/sociogram).
+
+## Texte dynamique {#piped-text}
+
+Un texte dont la valeur change dynamiquement en fonction des données ou du
+contexte de l’entretien (en anglais, _piped text_). Vous insérez un espace
+réservé lorsque vous concevez votre entretien, et il est remplacé par la
+valeur réelle lorsque la personne participante voit le texte : une réponse
+précédente, le libellé du [nœud](#node) sur lequel porte une question, ou la
+date du jour. Le texte dynamique permet à une [consigne](#prompt) ou à une
+question de formulaire de nommer l’alter qu’elle concerne. Voir [Texte
+dynamique](/fr/design-protocols/piped-text).
+
+## Variable {#variable}
+
+Un champ de données que vous définissez dans votre protocole pour recueillir
+des informations sur l’ego, les alters ou les liens, par exemple l’âge d’un
+alter. Dans sa version française, Architect appelle les variables « attributs » sur ses écrans. Chaque
+variable a un type (texte, nombre, booléen ou catégoriel, par exemple) qui
+détermine comment elle est recueillie et comment elle apparaît dans les
+données exportées. Voir
+[Variables](/fr/design-protocols/key-concepts/variables).

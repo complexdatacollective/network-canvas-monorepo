@@ -1,0 +1,98 @@
+---
+title: Présentation du projet
+navOrder: 2
+wip: false
+toc: true
+translatedFrom: 9cb83971d55066121d5788ddc8cc414ad21d350a
+---
+
+## Justification {#rationale}
+
+Dans des disciplines très diverses, on reconnaît de plus en plus le rôle important que jouent les facteurs structurels dans des phénomènes très variés, ainsi que la capacité des explications structurelles à éclairer les causes des inégalités persistantes. Pourtant, le recueil des données de réseau complexes qu’exigent ces analyses reste très contraignant, tant pour les équipes de recherche que pour les personnes participantes.
+
+Alors que les outils de recueil et d’analyse des traces numériques se sont multipliés, les méthodologies comme l’entretien et l’enquête par questionnaire n’ont manifestement pas connu d’essor comparable. Même lorsqu’il _existe_ des outils numériques d’enquête de grande qualité, ils sont souvent optimisés pour recueillir des données individuelles plutôt que des données de réseau.
+
+Le projet Network Canvas vise à résoudre ces problèmes, entre autres, en proposant un ensemble d’outils numériques de grande qualité qui facilitent le recueil de données de réseau complexes. Il offre des interfaces intuitives pour les personnes participantes et des outils puissants et rapides à prendre en main pour les équipes de recherche, afin de rendre possible un recueil de données jusque-là irréalisable.
+
+Regardez la vidéo suivante pour en savoir plus sur notre équipe, nos objectifs et les origines de la suite d’outils Network Canvas.
+
+<VideoIFrame title="Présentation de la suite Network Canvas" src="https://www.youtube.com/embed/XzfE6j-LnII"></VideoIFrame>
+
+## Les composants de Network Canvas {#the-components-of-network-canvas}
+
+Network Canvas s’organise autour des étapes du processus de recherche : la conception, la passation et l’analyse. La suite se compose de trois applications :
+
+- **Architect** : un outil pour créer des protocoles d’entretien Network Canvas ; consultez [Concevoir des protocoles](/fr/design-protocols).
+- **Interviewer** : un outil pour mener des entretiens en présentiel, sur un appareil que vous contrôlez ; consultez [Collecter des données](/fr/collect-data).
+- **Fresco** : un outil pour déployer sur le web les protocoles créés dans Architect, afin que les personnes participantes puissent passer l’entretien à distance ; consultez [Fresco](/fr/collect-data/fresco).
+
+Des versions **Classic** téléchargeables des deux premières applications, **Architect Classic** et **Interviewer Classic**, restent disponibles pour les études existantes en schéma 7 et pour les flux de travail entièrement hors ligne sur ordinateur de bureau ; consultez [Migrer depuis les applications Classic](/fr/get-started/migrating-from-classic).
+
+Ces applications fonctionnent ensemble pour offrir un [flux de travail de bout en bout](/fr/collect-data/protocol-and-data-workflows) et fluide, jusqu’à l’étape de l’analyse.
+
+<ImageFullWidth src="/assets/img/offline-data/online.png" alt="Diagramme du flux de travail en ligne"></ImageFullWidth>
+
+<TipBox>
+
+Les outils Network Canvas peuvent aussi être utilisés dans un flux de travail hors ligne. Pour en savoir plus, consultez le tutoriel [Flux de travail en ligne et hors ligne d’Interviewer](/fr/collect-data/interviewer-online-and-offline-workflows#the-offline-workflow).
+
+</TipBox>
+
+## Cinq principes de conception essentiels {#five-key-design-principles}
+
+Cinq principes de conception sous-tendent chacun des trois logiciels. Nous les avons tirés de nos observations et de notre expérience des problèmes que rencontrent les équipes de recherche qui souhaitent concevoir et mener des recherches sur les réseaux personnels.
+
+### Flexibilité ontologique {#ontological-flexibility}
+
+L’analyse des réseaux sociaux n’est pas une méthodologie unique, mais une approche large de la recherche, à cheval sur plusieurs disciplines et ontologies de recherche. Nous savons que ces perspectives divergent souvent sur des éléments fondamentaux du processus de recherche, ce qui nous a amenés à doter le logiciel, dès sa conception, d’une flexibilité ontologique fondamentale. Nous imposons ainsi le moins de contraintes possible au type d’étude qu’il est possible de concevoir.
+
+Cette flexibilité commence par l’abstraction centrale du modèle de données : vous êtes libre de définir les nœuds et les liens de vos entretiens, ainsi que leurs attributs, dans les termes qui conviennent à votre cadre d’analyse. Le nombre et le type de ces « entités » ne sont pas limités, et rien n’est présupposé sur la manière dont elles sont reliées.
+
+Ensuite, vous définissez l’intégralité du contenu de votre entretien. Vous maîtrisez donc à la fois l’enchaînement des tâches de recueil de données et la manière dont ces tâches sont présentées à la personne participante. Cela offre une grande flexibilité pour affiner l’objet réseau.
+
+### En présentiel, avec une personne qui mène l’entretien {#in-person-and-interviewer-assisted}
+
+Nous pensons que ce qui constitue des « données de grande qualité » dépend fondamentalement de la situation et du contexte. Dans le cas du projet Network Canvas, notre équipe de recherche s’était déjà heurtée aux difficultés propres au recueil, dans un cadre de recherche, de données très sensibles et profondément intimes. Cela nous a conduits à accorder de la valeur aux avantages spécifiques qu’offrent les approches en présentiel et avec l’assistance d’une personne qui mène l’entretien pour façonner la « mise en scène » de l’entretien.
+
+Nous avons donc conçu les outils Network Canvas en partant du principe que les entretiens se déroulent en présence d’une personne qui mène l’entretien, sur un appareil qu’elle contrôle, et que cette personne a été spécifiquement formée pour guider le déroulement de l’entretien.
+
+![Un entretien mené en présence d’une personne formée pour le conduire](/assets/img/introduction-images/interviewer-assisted.png)
+
+Nous savons bien sûr qu’il n’est pas toujours possible de mener les entretiens de cette manière. Certaines équipes ont mené avec succès des entretiens à distance, assistés par la personne qui mène l’entretien, à l’aide d’outils de partage d’écran.
+
+Nous savons aussi que les flux de travail fondés sur un recueil de données non supervisé et sur des entretiens autoadministrés sont importants pour les équipes de recherche sur les réseaux. Le recueil en présentiel, avec cette assistance, reste la méthode centrale autour de laquelle la suite est conçue, et [Fresco](/fr/collect-data/fresco) étend la suite au recueil de données à distance, en permettant aux personnes participantes de passer elles-mêmes l’entretien dans leur propre navigateur web.
+
+### La « visualité » et l’accent mis sur l’expérience utilisateur {#visuality-and-an-emphasis-on-user-experience}
+
+Nous avons consacré des efforts importants à la conception visuelle de notre logiciel, qu’il s’agisse des interfaces destinées aux personnes participantes ou de celles destinées aux équipes de recherche. Il ne s’agit pas d’un simple vernis esthétique, mais d’une « caractéristique » fondamentalement fonctionnelle qui distingue notre approche.
+
+Les problèmes liés à une mauvaise conception visuelle dans la méthodologie des enquêtes sont abondamment documentés dans la littérature. Les interfaces qui déroutent les personnes participantes ou qui biaisent la tâche produisent, c’est démontré, des données de moindre qualité. Nous pensons que c’est particulièrement vrai pour la recherche sur les réseaux, qui impose en outre de poser des questions « inhabituelles » et d’introduire des concepts et des métaphores souvent étrangers. Notre approche a consisté à nous appuyer sur la littérature en interaction humain-machine (IHM), ainsi que sur des articles de la communauté de l’analyse des réseaux qui ont fait progresser de manière novatrice la conception et la mise en œuvre des entretiens de réseau. Nous y avons ajouté nos propres idées et améliorations, pour créer une expérience d’entretien engageante et simple à comprendre pour les personnes participantes, avec des interactions claires, cohérentes et tactiles.
+
+![Un entretien sur un iPad Pro](/assets/img/introduction-images/visual.png)
+
+Les problèmes de conception ne se limitent toutefois pas aux personnes participantes. Les logiciels destinés aux équipes de recherche exigent souvent qu’elles deviennent expertes du logiciel lui-même avant de pouvoir être productives. Notre approche vise à permettre aux équipes de recherche de se concentrer sur leur expertise disciplinaire, et d’acquérir au fur et à mesure les notions dont elles ont besoin pour mettre en œuvre leurs idées. Architect et Fresco proposent des interfaces utiles et claires, qui trouvent un équilibre entre sophistication et simplicité.
+
+### Flux de travail de bout en bout {#end-to-end-workflow}
+
+Un élément clé de notre approche consiste à considérer de manière globale le processus de « faire de la recherche ». Notre expérience nous a appris que les obstacles à la recherche sur les réseaux ne se cantonnent pas à une seule partie du processus : ils se trouvent à la fois au sein de chacune des étapes et tout au long du processus.
+
+La première incarnation du concept Network Canvas n’offrait qu’un outil d’entretien, dont le protocole était codé en dur dans un format texte qui exigeait un niveau élevé de connaissances techniques de la part des personnes souhaitant concevoir une recherche. Les données que nous recueillions avec cet outil devaient ensuite être nettoyées et gérées laborieusement, à l’aide d’une série de scripts et de procédures.
+
+Nous avons donc décidé que, pour simplifier le recueil de données structurelles complexes, il fallait non seulement un outil d’entretien, mais aussi un outil de conception de ces entretiens, ainsi qu’un outil de gestion et d’exportation des données. Ce flux de travail complet, de bout en bout, réduit les coûts (à la fois matériels et techniques) pour les équipes de recherche sur les réseaux.
+
+### Développement open source {#open-source-development}
+
+Nous savions que la clé de la pérennité de cet effort serait la participation et la collaboration de la communauté. Nous avions constaté qu’une grande partie des logiciels de recherche sont développés en « boîte noire » (c’est-à-dire que leur mise en œuvre ne peut être ni améliorée ni examinée) et selon des processus descendants. Nous avions aussi constaté que le développement de logiciels et d’outils entraîne des coûts financiers et techniques importants, ce qui le met souvent hors de portée de la plupart des équipes de recherche et incite à la commercialisation pour rendre le développement viable.
+
+Nous pensons que, pour sortir de ces pratiques, il nous fallait construire une base solide sur laquelle d’autres pourraient bâtir, tout en partageant les améliorations avec l’ensemble des personnes qui utilisent le logiciel. Pour orienter Network Canvas dans cette direction, nous avons rendu le code lui-même entièrement open source, mis en place un programme de développement mené par la communauté et rendu le logiciel gratuit.
+
+Nous avons créé une organisation à but non lucratif (le Complex Data Collective, ou CODACO), qui détient toute la propriété intellectuelle et les droits d’auteur associés au projet. CODACO distribue Network Canvas sous la licence « GPLv3 », une licence open source répandue qui garantit certaines libertés à toutes les personnes qui utilisent le logiciel :
+
+- Liberté d’utiliser le logiciel à des fins commerciales, sans restriction
+- Liberté de modifier le logiciel comme elles l’entendent
+- Liberté de distribuer le logiciel
+
+Ces libertés sont protégées par certaines exigences intégrées à la licence GPL :
+
+- Toute modification doit être mise à disposition sous la licence GPL
+- Vous devez joindre une copie du code source original à toute version que vous distribuez, afin que d’autres puissent la modifier

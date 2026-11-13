@@ -1,0 +1,31 @@
+---
+title: Attributs supplémentaires
+navOrder: 9
+wip: false
+translatedFrom: 7f352354d35502e3c9491dea0c4837cd9a8c6879
+---
+
+<Definition>
+  Les attributs supplémentaires vous permettent d’affecter automatiquement un attribut
+  lorsqu’un nœud est ajouté à l’entretien.
+</Definition>
+
+## Détails {#details}
+
+Les attributs supplémentaires sont des attributs facultatifs (voir [Variables](/fr/design-protocols/key-concepts/variables)) que vous pouvez définir sur une [consigne](/fr/design-protocols/key-concepts/prompts) dans l’éditeur d’étape [« Générateur de noms »](/fr/design-protocols/interface-documentation/name-generator-using-forms). Ces attributs sont automatiquement affectés à toute entité créée avec la consigne indiquée ou, pour les données de liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit), à toute entité choisie avec cette consigne. Cette fonction vous permet de garder une trace de l’endroit de l’entretien où un nœud a été ajouté, ou de fournir des métadonnées supplémentaires que vous pourrez utiliser plus loin dans l’entretien pour la [logique de saut](/fr/design-protocols/key-concepts/skip-logic) ou le [filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering).
+
+Les attributs supplémentaires sont toujours booléens, et vous pouvez définir leur valeur par défaut sur **Vrai** ou **Faux**.
+
+Pour créer un ou plusieurs attributs supplémentaires, ouvrez une étape « Générateur de noms » dans Architect et cliquez sur une consigne pour ouvrir la fenêtre **Modifier la consigne**. En bas de la fenêtre, dans la section **Attributs supplémentaires**, cliquez sur **Ajouter un attribut à affecter**. Chaque ligne associe un attribut à la valeur, vrai ou faux, qui lui est donnée.
+
+![Gestion des attributs supplémentaires d’une consigne « Générateur de noms » dans Architect](/assets/img/key-concepts/additional-variables/additional-variables.png)
+
+Pendant un entretien, le logiciel gère automatiquement la valeur de cet attribut. Par exemple, ajouter un nœud avec une consigne dont un attribut supplémentaire est défini sur vrai ajoute cette valeur d’attribut au nœud. Supprimer ensuite le nœud, ou le retirer de la consigne, supprime cette valeur.
+
+## Concepts associés {#related-concepts}
+
+- [Consignes](/fr/design-protocols/key-concepts/prompts) : configurer les consignes sur lesquelles les attributs supplémentaires sont définis
+- [Variables](/fr/design-protocols/key-concepts/variables) : comprendre les types de variables et leur configuration
+- [Logique de saut](/fr/design-protocols/key-concepts/skip-logic) : utiliser les attributs supplémentaires dans les règles de logique de saut
+- [Filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering) : filtrer les nœuds selon les attributs supplémentaires
+- [Interfaces](/fr/design-protocols/key-concepts/interfaces) : découvrir les interfaces de type générateur de noms qui prennent en charge les attributs supplémentaires

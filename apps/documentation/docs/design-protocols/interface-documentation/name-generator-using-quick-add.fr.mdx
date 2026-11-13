@@ -1,0 +1,104 @@
+---
+title: Générateur de noms (ajout rapide)
+navOrder: 3
+translatedFrom: dbf27adfb4e0a8cf617154a5263031639070d7af
+---
+
+<InterfaceSummary type="NameGeneratorQuickAdd">
+
+<InterfaceMeta type="Générateur de noms" creates="Des nœuds d’un seul type" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+Les générateurs de noms sont l’un des éléments fondamentaux d’un entretien de réseau. Ils permettent à la personne participante de créer des alters (chaque personne qu’elle cite pendant l’entretien), et donc de décrire l’une des deux entités principales des réseaux de votre étude.
+
+Network Canvas propose plusieurs [interfaces](../key-concepts/interfaces) de type générateur de noms que vous pouvez ajouter à votre étude, et qui se configurent toutes dans Architect.
+
+![Interfaces de type générateur de noms disponibles dans Architect](/assets/img/interface-documentation/name-generators/add-screen.png)
+
+Chacune de ces interfaces est conçue pour une manière particulière de faire citer des alters, avec ses avantages et ses inconvénients. Bien qu’elles aient certaines options de configuration [communes à toutes les autres interfaces de Network Canvas](./shared), cet article porte sur les options propres à l’interface principale de générateur de noms, ainsi qu’à une variante de celle-ci qui utilise un mode d’« ajout rapide ».
+
+<TipBox>
+
+Vous utilisez des données de liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit) dans votre étude ? Consultez notre documentation sur l’interface [« Générateur
+de noms à partir d’une liste »](./name-generator-roster).
+
+</TipBox>
+
+## Éléments communs des interfaces {#shared-interface-elements}
+
+Les interfaces « Générateur de noms (avec formulaires) » et « Générateur de noms (ajout rapide) » partagent certains éléments visuels.
+
+![](/assets/img/interface-documentation/name-generators/preview.png)
+
+Il s’agit de la zone de **consigne**, où la tâche est expliquée à la personne participante (consultez la page [Consignes](/fr/design-protocols/key-concepts/prompts)), d’une zone de **liste des nœuds** où s’affichent les alters déjà cités, d’un **bouton d’action principal** qui lance la création d’un nœud et, éventuellement, d’un ou de plusieurs [panneaux latéraux](#side-panels).
+
+Au-delà de ces éléments, vous pouvez choisir la manière précise dont les alters sont créés : soit avec un formulaire complet, soit avec une méthode simple d’« ajout rapide ».
+
+### Panneaux latéraux {#side-panels}
+
+Ces deux générateurs de noms peuvent utiliser des panneaux latéraux. Les panneaux latéraux sont une fonction puissante qui vous permet d’utiliser des données de réseau, issues soit de l’entretien en cours, soit d’un fichier de données de réseau importé dans la bibliothèque de ressources d’Architect, pour faciliter la génération de noms.
+
+Par exemple, lorsque plusieurs consignes d’un générateur de noms peuvent se recouper dans le réseau social d’une personne participante, il peut être utile de reprendre sur un écran suivant les nœuds déjà cités, pour que la personne participante puisse facilement les citer à nouveau.
+
+![Configuration d’un panneau latéral](/assets/img/interface-documentation/name-generators/side-panel.png)
+
+Un panneau latéral peut aussi être créé à partir d’un fichier de données de réseau (une liste, par exemple) pour permettre à la personne participante de sélectionner et de désigner des alters dans une liste établie à l’avance. Notez que la même liste apparaîtra à l’identique dans les panneaux latéraux suivants du générateur de noms, sauf si une ou plusieurs règles sont créées pour filtrer les données à afficher dans le panneau (consultez la page [Filtrage du réseau](../key-concepts/network-filtering)).
+
+Pendant l’entretien, les panneaux latéraux peuvent être déployés ou réduits en cliquant sur leur titre.
+
+## Utiliser l’« ajout rapide » {#using-quick-add}
+
+Avec l’interface « Générateur de noms (ajout rapide) », le bouton d’action principal ouvre un formulaire à champ unique que la personne participante doit remplir pour créer un alter. Cette interface utilise un seul « attribut d’ajout rapide » pour enregistrer la valeur du formulaire, ce qui permet à la personne participante de créer rapidement des alters.
+
+<AppOnly app="current">
+
+L’obligation pour la personne participante de saisir quelque chose dans le champ d’ajout rapide dépend des règles de validation de l’attribut d’ajout rapide. Un attribut que vous créez depuis le sélecteur d’attribut d’ajout rapide est obligatoire par défaut, car ce que saisit la personne participante est la seule information qu’elle fournit pour chaque alter. Pour autoriser une réponse vide, désactivez **Réponse obligatoire** dans la section **Validation** située sous le sélecteur d’attribut. La même section permet d’ajouter d’autres règles auxquelles les réponses de l’attribut doivent satisfaire. Ces règles appartiennent à l’attribut dans le livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) : leurs modifications sont donc enregistrées immédiatement et s’appliquent partout où une personne participante saisit la valeur de l’attribut, qu’il s’agisse de ce champ, d’un champ de formulaire ou des autres champs de saisie de texte énumérés dans le [guide de validation des champs](/fr/design-protocols/key-concepts/field-validation). Les interfaces qui écrivent l’attribut d’après ce que fait la personne participante plutôt que d’après ce qu’elle saisit — une case (chacune des zones où l’on dépose les nœuds pour les classer), les valeurs d’attribut fixes qu’attribue une consigne, la mise en évidence des nœuds d’un sociogramme, une évaluation de la force du lien — enregistrent leur valeur sans appliquer ces règles.
+
+</AppOnly>
+
+![Un générateur de noms avec ajout rapide](/assets/img/interface-documentation/name-generators/ng-quick.png)
+
+Un ou plusieurs [attributs supplémentaires](../key-concepts/additional-variables) peuvent être ajoutés aux alters désignés dans cette interface. Recueillir des attributs supplémentaires peut être utile soit pour savoir où un nœud a été cité, soit pour refléter la dimension d’interpréteur de noms (une question posée sur chaque alter déjà cité) que contient la consigne : par exemple, ajouter un attribut appelé « close_friend » à une consigne qui porte sur la proximité.
+
+<AppOnly app="current">
+
+### Personnaliser la formulation intégrée {#customize-built-in-wording}
+
+La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les textes que les personnes participantes lisent dans cette étape. Chacun d’eux reprend au départ la formulation de Network Canvas, dans chaque langue pour laquelle Network Canvas en propose une, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un message ne figure dans la section que tant que la partie de l’étape à laquelle il se rapporte est configurée.
+
+Chaque message peut afficher le nom du type de nœud de l’étape, tel que le nomme le livre de codes, et les messages de limite peuvent aussi afficher la valeur de la limite (le nombre minimum ou maximum). Insérez l’un ou l’autre sous forme de pastille à l’aide du bouton de texte dynamique du champ (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte).
+
+- **Minimum non atteint** s’affiche lorsque les personnes participantes essaient de continuer avant d’avoir ajouté le nombre minimum de nœuds demandé par l’étape. Il n’apparaît que lorsque l’étape a un minimum.
+- **Maximum atteint** s’affiche dès que les personnes participantes ont ajouté le nombre maximum de nœuds autorisé par l’étape. Il n’apparaît que lorsque l’étape a un maximum.
+- **Texte indicatif d’ajout rapide** s’affiche dans le champ du nom jusqu’à ce que la personne participante commence à saisir du texte. Comme c’est le type de nœud de l’étape qui détermine ce qu’il y a à saisir, et que les types de nœuds n’ont pas tous un attribut de nom, ce texte est propre à chaque étape.
+
+L’indication affichée à côté du champ du nom, qui explique aux personnes participantes comment terminer l’ajout d’un nœud, est la même dans toutes les étapes « Générateur de noms (ajout rapide) ». Elle se trouve sous **Commun à toutes les étapes de ce type**, dans la même section, à côté des messages ci-dessus, qui se trouvent sous **Propre à cette étape**. Toute modification de cette indication s’applique à toutes les étapes de ce type et est enregistrée dès que vous quittez le champ.
+
+Le message affiché lorsque le fichier de données de réseau d’un panneau latéral n’a pas pu être chargé fait partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text), sous **Messages**.
+
+</AppOnly>
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Utilisez cette interface lorsque vous voulez faire citer des nœuds rapidement, sans la charge que représente le recueil simultané d’autres données d’attributs.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Utilisez un attribut appelé `name` comme « attribut d’ajout rapide », sauf si vous avez une bonne raison d’en utiliser un autre. N’oubliez pas que Network Canvas utilisera cet attribut comme libellé des nœuds tout au long de l’entretien.
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Évitez d’ajouter à cette interface des attributs supplémentaires qui pourraient être recueillis plus précisément ailleurs.
+
+</BadPractice>

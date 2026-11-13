@@ -2,7 +2,8 @@
   "type": "folder",
   "localeLabels": {
     "en": "Key concepts",
-    "es": "Conceptos clave"
+    "es": "Conceptos clave",
+    "fr": "Concepts clés"
   },
   "isExpanded": false,
   "navOrder": 11,

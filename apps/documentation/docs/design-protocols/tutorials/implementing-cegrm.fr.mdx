@@ -1,0 +1,303 @@
+---
+title: Mettre en œuvre le CEGRM
+navOrder: 3
+translatedFrom: c115b857cc6d2a541092206b52ac0845d6070eb7
+---
+
+<SummaryCard duration="60 minutes">
+<SummarySection>
+
+Ce tutoriel montre comment mettre en œuvre la méthode **Colored Eco-Genetic Relationship Map (CEGRM)** (carte écogénétique des relations en couleurs) dans Network Canvas. Le modèle CEGRM fourni avec Architect réunit dans un seul protocole un arbre généalogique génétique, un réseau personnel de soutien, les rôles de communication sur la santé familiale et un entretien qualitatif autour de la carte. Chacun reste un construit distinct dans les données obtenues.
+
+</SummarySection>
+<PrerequisitesSection>
+
+Avant d’adapter le modèle, vous devez :
+
+- Connaître la recherche sur les réseaux personnels et la distinction entre les données de nœud, les données de lien et les données relatives à la personne participante.
+- Comprendre le contexte clinique ou de santé publique de l’affection héréditaire que vous étudiez.
+- Avoir accès à [Architect](https://architect.networkcanvas.com).
+- Lire les articles fondateurs sur le CEGRM, en particulier [Kenen and Peters (2001)](https://doi.org/10.1023/A:1016627426430) et [Peters et al. (2006)](https://pubmed.ncbi.nlm.nih.gov/17111216/).
+- Disposer d’un plan approuvé pour le consentement, les informations sur d’autres membres de la famille (des tiers), la détresse, l’orientation vers un accompagnement et toute communication d’un risque génétique.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+## Ce à quoi sert le CEGRM {#what-cegrm-is-designed-to-do}
+
+Le CEGRM a été conçu pour représenter une affection héréditaire au sein du monde social à travers lequel les personnes la comprennent, y réagissent et en parlent. Sa présentation fondatrice le décrit comme un hybride de l’**arbre généalogique génétique**, du **génogramme des systèmes familiaux**, de l’**écocarte** et de l’**analyse des réseaux sociaux**. La méthode place les apparentés biologiques, les proches par alliance ou par relation sociale et les personnes non apparentées sur un même champ visuel, puis marque les personnes impliquées dans différentes formes d’échange social ([Kenen and Peters, 2001](https://doi.org/10.1023/A:1016627426430)).
+
+Les deux traditions d’origine répondent à des questions différentes. Un arbre généalogique montre les voies plausibles de la transmission biologique. Il ne montre pas qui partage des informations, qui apporte une aide pratique ni qui offre un soutien émotionnel. Les méthodes des réseaux personnels peuvent enregistrer ces relations, mais omettent généralement la structure reproductive et multigénérationnelle nécessaire à l’étude d’une affection héréditaire. Le CEGRM conserve les deux structures sur la même carte.
+
+Les CEGRM publiés étaient **co-construits par une personne de l’équipe de recherche et la personne participante** au cours d’un entretien semi-directif. Des travaux ultérieurs traitent la carte et l’entretien comme des sources de données liées entre elles. Une étude sur le syndrome de Li-Fraumeni indique des durées moyennes d’entretien de 30 à 45 minutes ([Peters et al., 2016](https://doi.org/10.1007/s10897-015-9905-x)). Ce que dit la personne participante d’un vide apparent, d’un regroupement ou d’une relation difficile peut être aussi instructif que le diagramme lui-même.
+
+<TipBox>
+
+Utilisez Network Canvas comme un **protocole de recueil visuel assisté par la personne qui mène l’entretien**. L’application structure la tâche et conserve les données de réseau ; la personne qui mène l’entretien reste responsable du rythme, des relances et du jugement éthique.
+
+</TipBox>
+
+## Partir du modèle CEGRM {#start-from-the-cegrm-template}
+
+Ouvrez Architect et sélectionnez l’onglet **Modèles**. Choisissez **Colored Eco-Genetic Relationship Map (CEGRM)** et donnez à votre copie un nom propre à votre étude. Architect crée une copie modifiable ; le modèle fourni lui-même reste inchangé.
+
+![Le modèle CEGRM dans la bibliothèque de modèles d’Architect.](/assets/img/cegrm-tutorial/template-library.jpg 'Le modèle Colored Eco-Genetic Relationship Map dans Architect')
+
+La première étape est une note destinée à l’équipe de recherche qui résume l’instrument, énumère les décisions à prendre avant le travail de terrain et renvoie à la littérature essentielle. Supprimez cette étape avant le déploiement, mais seulement après avoir reporté ses instructions dans la documentation de votre étude et dans les supports de formation des personnes qui mènent les entretiens.
+
+Le modèle est un **point de départ méthodologique**. Ce n’est pas un instrument clinique utilisable sur le terrain sans modification. Son texte de consentement est donné à titre d’illustration, et chaque mention de « this condition » (« cette affection ») doit être remplacée. L’équipe de recherche reste responsable de la validité propre à l’affection étudiée ainsi que de l’examen éthique et clinique requis.
+
+## Le protocole comme traduction méthodologique {#the-protocol-as-a-methodological-translation}
+
+Network Canvas représente un CEGRM sous la forme d’un entretien en 16 étapes. L’ordre suit les dépendances entre les données du protocole. Chaque étape écrit une partie délimitée des données de l’entretien ; les étapes suivantes interprètent ou complètent ce qui existe déjà.
+
+| Étape                                                                                                   | Interface                         | Objectif méthodologique                                                                                                         |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Template notes (notes sur le modèle)                                                                 | Information                       | Instructions et sources destinées à l’équipe de recherche ; à supprimer avant le travail de terrain.                            |
+| 2. Welcome and consent (accueil et consentement)                                                        | Formulaire ego                    | Expliquer la tâche de construction de la carte, son contenu sensible et le choix de participer.                                 |
+| 3. About you (à propos de vous)                                                                         | Formulaire ego                    | Recueillir les attributs de la personne participante dont l’étude a besoin.                                                     |
+| 4. Family pedigree (arbre généalogique familial)                                                        | Arbre généalogique                | Co-construire la famille sur plusieurs générations et enregistrer qui a eu l’affection et qui a fait un test génétique.         |
+| 5. Beyond the family (au-delà de la famille)                                                            | Information                       | Marquer le passage de la construction de l’arbre généalogique à l’environnement social plus large.                              |
+| 6. People in your life (les personnes de votre vie)                                                     | Générateur de noms (ajout rapide) | Ajouter des amis, des collègues, des membres de groupes et des professionnels de santé au même type de nœud de personne.        |
+| 7. How you know each person (comment vous connaissez chaque personne)                                   | Classement par catégories         | Classer les contacts extérieurs à la famille sans écraser la parenté issue de l’arbre généalogique.                             |
+| 8. How close you feel (à quel point vous vous sentez proche)                                            | Classement ordinal                | Ajouter la proximité perçue pour toutes les personnes, sauf la personne participante.                                           |
+| 9. How often you are in contact (à quelle fréquence vous êtes en contact)                               | Classement ordinal                | Ajouter la fréquence actuelle des contacts, en excluant les personnes enregistrées comme décédées.                              |
+| 10. Exchanges of support (échanges de soutien)                                                          | Sociogramme                       | Enregistrer qui connaît qui et les quatre domaines de soutien du CEGRM.                                                         |
+| 11. Talking about the condition (parler de l’affection)                                                 | Sociogramme                       | Identifier, dans la famille, les personnes qui recherchent l’information, celles qui la diffusent et celles qui la bloquent.    |
+| 12. The completed map (la carte terminée)                                                               | Narration                         | Comparer les superpositions du soutien et de la communication sur une même disposition stable et recueillir une interprétation. |
+| 13. How the condition runs in the family (comment l’affection touche la famille au fil des générations) | Arbre généalogique narratif       | Revenir sur les personnes qui ont eu l’affection, dans la structure familiale sur plusieurs générations.                        |
+| 14. Closing (clôture)                                                                                   | Information                       | Faire le débriefing et orienter la personne participante vers le dispositif de soutien approuvé.                                |
+| 15. Finish Interview (fin de l’entretien)                                                               | Écran de fin                      | Terminer l’entretien des personnes participantes qui ont pris part à l’étude.                                                   |
+| 16. Not Taking Part (ne pas participer)                                                                 | Écran de fin                      | Terminer l’entretien des personnes qui refusent de participer ; la logique de saut de l’étape « About you » les envoie ici.     |
+
+![La séquence du CEGRM, qui passe de l’arbre généalogique familial aux personnes extérieures à la famille.](/assets/img/cegrm-tutorial/interview-sequence.jpg 'Les étapes « Family pedigree », « Beyond the family » et « People in your life » dans la chronologie du protocole')
+
+Modifier l’ordre peut modifier le sens des données. L’étape consacrée aux relations avec les personnes non apparentées suppose que l’arbre généalogique familial a déjà été dessiné. L’étape « Narration » suppose qu’une étape « Sociogramme » a établi une disposition stable. Après avoir réordonné le protocole, vérifiez chaque filtre d’étape, chaque attribut de disposition et chaque instruction destinée aux personnes qui mènent les entretiens. La chronologie enregistre ces dépendances en plus de l’ordre de présentation.
+
+## Utiliser un seul type de nœud de personne pour tout le monde social {#use-one-person-node-type-for-the-whole-social-world}
+
+Le modèle définit un seul type de nœud, `person`, pour la personne participante, les membres de sa famille et les contacts extérieurs à la famille. Un type commun permet à tout le monde d’apparaître dans les mêmes étapes « Sociogramme » et « Narration ».
+
+Des types de nœud distincts pour « famille » et « membre du réseau » fragmenteraient le CEGRM terminé. Un conjoint, un parent adoptif, une cousine qui est aussi une amie proche, ou un membre du personnel soignant qui fait partie du monde social d’une famille : il faudrait soit les affecter à une seule catégorie, soit les dupliquer. Le type commun `person` conserve ces rôles qui se recoupent au moyen d’attributs et de relations.
+
+La distinction entre la famille et les personnes extérieures à la famille est enregistrée au moyen d’attributs et de relations :
+
+- `non_kin` est un booléen que le générateur de noms « People in your life » définit sur vrai pour chaque personne qu’il crée. Les personnes issues de l’étape « Arbre généalogique » ne l’ont jamais : les filtres des étapes suivantes l’utilisent donc pour distinguer la famille de la personne participante des membres non apparentés de son réseau social. Les proches que la personne participante n’a pas décrits, comme un parent (au sens de la filiation) sans nom que l’interface a ajouté, comptent tout de même comme membres de la famille, et la distinction ne dépend pas des questions éventuellement posées dans l’étape « Arbre généalogique ».
+- `tie_type` et `tie_type_other` classent les personnes ajoutées en dehors de l’arbre généalogique.
+- `is_ego` désigne un seul et unique nœud comme étant la personne participante.
+- `sexAssignedAtBirth` sert à l’étape « Arbre généalogique » pour nommer les parents biologiques et les donneurs, déterminer qui a pu porter une grossesse et vérifier que la combinaison des parents biologiques d’un enfant est biologiquement possible. `genderIdentity` enregistre la façon dont chaque personne se décrit, et détermine les termes de parenté et le symbole dessiné pour elle. Aucun des deux n’est une mesure de l’autre.
+
+Le même attribut `name` sert de libellé aux personnes dans l’étape « Arbre généalogique » et dans l’étape « Générateur de noms (ajout rapide) ». Il est configuré comme **obligatoire** et **unique**. Les noms saisis dans l’étape « Arbre généalogique » obéissent, comme les noms saisis ailleurs, aux règles de validation du livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) : deux noms saisis ne peuvent donc pas être identiques. Une personne participante peut toutefois laisser vide le nom d’un proche, car elle ne le connaît pas forcément. Lorsqu’elle quitte l’étape, l’interface enregistre un libellé comme nom de chaque proche sans nom, y compris de tout parent (au sens de la filiation) sans nom que l’interface a ajouté : son terme de parenté, comme « Maternal grandmother » (« Grand-mère maternelle »), complété au besoin par la mention d’un proche auquel il est lié, comme « Sister (partner of Tom) » (« Sœur (partenaire de Tom) »). Chaque proche a donc un nom distinct que les étapes suivantes peuvent afficher. Ne créez un attribut distinct pour les noms de l’arbre généalogique que si l’analyse exige deux concepts différents.
+
+## Construire l’arbre généalogique familial de manière inclusive {#construct-the-family-pedigree-inclusively}
+
+L’étape « Arbre généalogique » enregistre les membres de la famille comme des nœuds de personne et les relations familiales comme des liens `family_relationship`. Des attributs de lien distinguent les relations de couple, la filiation biologique, la filiation adoptive et sociale, les donneurs de gamètes et la personne ayant porté la grossesse. Cela permet à la voie reproductive nécessaire à l’analyse de la transmission de coexister avec les relations familiales qui comptent socialement.
+
+Le modèle conserve les réglages par défaut de l’étape pour la formulation et la complétude. Les membres de la famille que la personne participante n’a pas nommés sont désignés par des termes de parenté courants (mère, tante, cousin), qui suivent l’identité de genre de chaque personne, et la personne participante peut continuer avec la partie de sa famille qu’elle a dessinée, quelle qu’elle soit. Ce sont deux réglages de l’étape. La section **Formulation** permet de passer aux termes parent de l’ovule et parent du sperme, ou de laisser la personne participante choisir entre les deux, ce qui évite de supposer que le rôle parental, l’identité de genre, le sexe assigné à la naissance, la gestation et la contribution génétique sont interchangeables. La section **Complétude** permet d’exiger ou de recommander que les personnes participantes enregistrent une partie minimale de leur famille, comme leurs parents, leurs frères et sœurs et leurs enfants, ou leurs grands-parents. Ne fixez des exigences de complétude plus strictes que si la base de sondage, l’affection et l’analyse l’exigent et que la charge supplémentaire imposée par l’entretien est acceptable. Consultez la page de l’interface « [Arbre généalogique](/fr/design-protocols/interface-documentation/family-pedigree) » pour le détail de chaque réglage.
+
+Quelle que soit la formulation, les personnes participantes peuvent enregistrer des parents biologiques, adoptifs, des beaux-parents ou des parents sociaux, des donneurs d’ovules ou de sperme et des mères porteuses, ainsi que la personne qui a porté chaque grossesse. Cela prend en charge la conception avec tiers donneur, la gestation pour autrui, l’adoption, les parents de même sexe et d’autres structures familiales, tout en conservant les informations dont a besoin le modèle de données de l’arbre généalogique.
+
+Le modèle interroge sur l’affection et sur les tests sous forme de consignes de désignation, une fois la famille dessinée : « Who in your family has had this condition? » (« Qui, dans votre famille, a eu cette affection ? ») et « Who has had genetic testing for it? » (« Qui a fait un test génétique pour cette affection ? ») permettent à la personne participante de sélectionner toutes les personnes auxquelles chaque question s’applique, et renseignent `has_condition` et `had_testing`. Le formulaire de chaque personne ne demande que si elle est en vie et quelle est son année de naissance. L’étape « Arbre généalogique narratif », plus loin dans l’entretien, lit `has_condition`.
+
+Les deux questions de ce formulaire (en vie, année de naissance) nomment le proche qu’elles concernent au moyen du [texte dynamique](/fr/design-protocols/piped-text) (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte). Le libellé inséré est celui que montre l’arbre généalogique : le nom que la personne participante a saisi ou, pour un proche sans nom, le terme de parenté de l’étape, de sorte que la personne participante lit « What year was Mother born? » (« En quelle année Mère est-elle née ? »). Lorsque le formulaire concerne la personne participante, la question devient « What year were you born? » (« Quelle est votre année de naissance ? »), car le modèle donne à la question une version distincte pour chaque réponse à `is_ego`. Conservez cette structure lorsque vous reformulez les questions, afin que la personne participante ne soit jamais interrogée sur elle-même à la troisième personne.
+
+Ces réponses enregistrent ce que déclare la personne participante ; elles n’établissent ni un diagnostic, ni un génotype, ni un statut clinique vérifié. Si des données vérifiées sont disponibles par une autre source, conservez la provenance des deux déclarations plutôt que de remplacer l’une par l’autre sans le signaler.
+
+### Décider s’il faut préremplir l’arbre généalogique {#decide-whether-to-pre-populate-the-pedigree}
+
+Dans certaines études cliniques, un arbre généalogique peut déjà exister avant l’entretien CEGRM. Le préremplir peut alléger la charge et permettre à la session d’entretien de se concentrer sur la vérification, la correction, les relations sociales et l’interprétation. Cela modifie aussi l’interaction : la personne participante réagit à une représentation préparée par l’étude au lieu de construire la représentation à partir d’un canevas vide.
+
+Si vous préremplissez l’arbre généalogique, documentez la source et la date de l’arbre, distinguez les faits importés des corrections apportées par la personne participante, et donnez explicitement à la personne participante l’occasion d’ajouter des relations sociales, adoptives, avec des donneurs, de gestation et d’autres relations qui peuvent être absentes d’un arbre généalogique clinique.
+
+## Passer des apparentés au réseau personnel plus large {#expand-from-kin-to-the-wider-personal-network}
+
+L’écran de transition indique à la personne participante que les amis, les collègues, les voisins, les membres de groupes et les professionnels de santé figureront aux côtés de la famille sur la même carte. L’étape « Générateur de noms (ajout rapide) » qui suit utilise quatre consignes :
+
+- Les amis qui comptent le plus.
+- Les personnes connues par le travail ou les études.
+- Les personnes connues par des groupes, y compris des communautés religieuses et en ligne.
+- Les personnes impliquées dans les soins de santé de la personne participante.
+
+Les consignes définissent de larges contextes de remémoration plutôt que des classes mutuellement exclusives. Une même personne peut être à la fois une amie, une collègue et un membre d’une communauté religieuse. Le panneau « People you added earlier » (personnes ajoutées précédemment) permet à la personne qui mène l’entretien de sélectionner de nouveau cette personne sans créer de nœud en double.
+
+L’étape « Classement par catégories » suivante ne demande comment la personne participante connaît les personnes que pour celles ajoutées en dehors de l’arbre généalogique. Chaque consigne du générateur de noms précédent définit `non_kin` sur vrai pour les personnes qu’elle crée (au moyen des attributs supplémentaires de la consigne), et le filtre de cette étape sélectionne les personnes, autres que la personne participante, pour lesquelles `non_kin` est défini sur vrai. Cela évite que le classement des personnes extérieures à la famille s’applique aux personnes de l’arbre généalogique et rend explicite la distinction analytique : utilisez `non_kin` pour séparer les deux groupes et `tie_type` pour classer les contacts extérieurs à l’arbre généalogique.
+
+Lorsqu’un contact est placé dans la case (chacune des zones où l’on dépose les nœuds pour les classer) « Something else » (« Autre chose »), une question à réponse libre suit : « How would you describe how you know …? » (« Comment décririez-vous la façon dont vous connaissez … ? »). Elle se termine par le libellé de ce contact grâce au [texte dynamique](/fr/design-protocols/piped-text), afin que la question identifie le contact décrit.
+
+Examinez cette limite pour votre étude. La « famille » ne se réduit pas à la parenté biologique, et l’étape « Arbre généalogique » peut contenir des relations sociales et adoptives. Le modèle considère comme membres de la famille, pour les questions ultérieures sur les rôles de communication, les personnes incluses dans le récit familial de la personne participante, indépendamment de tout lien génétique.
+
+## Ajouter la proximité et la fréquence des contacts comme mesures Network Canvas {#add-closeness-and-contact-frequency-as-network-canvas-measures}
+
+La proximité et la fréquence des contacts ne sont pas des symboles colorés du CEGRM issus de l’instrument d’origine. Ce sont des ajouts délibérés de Network Canvas qui situent les échanges de soutien dans la structure plus large des relations de la personne participante.
+
+L’étape sur la proximité porte sur toutes les personnes sauf la personne participante et utilise quatre catégories ordonnées, de « Not close » (« Pas proche ») à « Very close » (« Très proche »). L’étape sur les contacts utilise une période de référence de 12 mois et six catégories, de « No contact » (« Aucun contact ») à « Daily or almost daily » (« Tous les jours ou presque »). Elle exclut les personnes enregistrées comme décédées, car la fréquence actuelle des contacts ne s’appliquerait pas, mais conserve les personnes dont on ne sait pas si elles sont en vie.
+
+Ces mesures permettent à une analyse de distinguer, par exemple, une relation très proche qui apporte plusieurs formes de soutien d’une relation professionnelle moins proche qui apporte des informations importantes. Elles ne doivent pas être traitées comme des indicateurs indirects des variables de soutien elles-mêmes. Adaptez la formulation, la période et les options de réponse à votre question de recherche, et tenez compte du niveau de mesure ordinal lors de l’analyse.
+
+## Séparer la structure du réseau des domaines de soutien {#separate-network-structure-from-support-domains}
+
+La première étape « Sociogramme » commence par demander quelles personnes se connaissent entre elles. Elle crée des liens `knows` entre les membres du réseau et n’affiche que ce type de lien. Les liens de l’arbre généalogique restent dans les données, mais ne sont pas dessinés sur cet écran ; sinon, la dense structure familiale serait confondue avec le lien social recueilli.
+
+Les quatre consignes suivantes mettent en œuvre les domaines d’échange colorés utilisés dans la littérature ultérieure sur le CEGRM :
+
+1. Informations sur la santé ou informations génétiques.
+2. Aide pratique ou matérielle.
+3. Soutien émotionnel ou partage de sentiments.
+4. Lien spirituel ou religieux.
+
+![Les cinq consignes de l’étape « Exchanges of support » (échanges de soutien), de type « Sociogramme ».](/assets/img/cegrm-tutorial/support-prompts.jpg 'La consigne sur le lien structurel et les quatre consignes sur les domaines de soutien dans le modèle CEGRM')
+
+Chaque consigne de soutien met des personnes en évidence et écrit un attribut de nœud booléen : `exch_information`, `exch_tangible`, `exch_emotional` ou `exch_spiritual`. Cela reproduit le geste d’origine qui consistait à placer un symbole coloré à côté d’une personne. En termes analytiques, cela enregistre une relation de soutien entre l’ego (la personne participante, au centre de son réseau) et une autre personne, telle que la personne participante la déclare, et non un échange orienté entre chaque paire de personnes de la carte.
+
+Cette mise en œuvre reprend les désignations de l’ego vers une personne prévues par le modèle fourni. Les questions de recherche portant sur le fait de **donner ou de recevoir**, la réciprocité ou le soutien entre deux membres du réseau nécessitent des types de lien orientés ou des attributs de lien. Un attribut de nœud booléen ne code pas de direction, quel que soit l’emploi du mot « exchange » (« échange ») dans la consigne.
+
+L’étape « Sociogramme » dispose les personnes automatiquement pendant la consigne sur `knows` et enregistre leurs positions dans l’attribut `layout`. Les quatre consignes de soutien réutilisent ces positions. Cette stabilité rend la comparaison visuelle possible : un changement de couleur ou de mise en évidence a un sens parce que la carte elle-même n’a pas été réorganisée.
+
+## Conserver les rôles de communication familiale {#preserve-the-family-communication-roles}
+
+La seconde étape « Sociogramme » demande quels membres de la famille jouent le rôle de :
+
+- **Personnes qui recherchent l’information**, qui cherchent des informations ou en gardent la trace.
+- **Personnes qui diffusent l’information**, qui aident les autres à en parler et transmettent les informations.
+- **Personnes qui bloquent l’information**, qui trouvent le sujet difficile à aborder ou préféreraient ne pas savoir.
+
+Ces rôles suivent la version évoluée du CEGRM et les analyses de la communication familiale de [Koehly et al. (2009)](https://doi.org/10.2105/AJPH.2008.154096). La catégorie du blocage demande une attention particulière. Des travaux qualitatifs ultérieurs ont montré que le blocage perçu pouvait refléter le respect de la vie privée, la protection, la peur, des traditions culturelles, des souvenirs difficiles et des dynamiques familiales réciproques plutôt qu’un déficit stable chez une personne ([Peters et al., 2011](https://doi.org/10.1007/s10897-011-9370-0)). Le modèle demande donc qui trouve le sujet difficile à aborder, plutôt que de présenter quelqu’un comme un obstacle dans le texte que voit la personne participante.
+
+L’étape est filtrée sur les personnes, autres que la personne participante, qui ne sont pas marquées `non_kin` : les rôles portent donc sur le système familial de la personne participante, y compris les proches qu’elle n’a pas décrits. N’élargissez ce filtre que si l’intermédiation hors de la famille fait partie de la question de recherche. L’étape désactive aussi la disposition automatique et réutilise les coordonnées établies par l’étape « Sociogramme » précédente, qui portait sur toutes les personnes. Recalculer une disposition pour le sous-ensemble familial rendrait ses coordonnées incompatibles avec celles des contacts extérieurs à la famille lorsque la carte terminée est de nouveau assemblée.
+
+## Utiliser la carte terminée comme outil de recueil {#use-the-completed-map-as-an-elicitation-device}
+
+L’étape « Narration » est le centre interprétatif du protocole. Elle présente trois préréglages (des configurations d’affichage du réseau définies dans une étape « Narration ») sur une disposition fixe :
+
+- **Everyone on your map** (toutes les personnes de votre carte) montre les personnes et les liens `knows`.
+- **Forms of support** (formes de soutien) superpose les quatre domaines d’échange.
+- **Family health communication** (communication sur la santé familiale) superpose les rôles de recherche, de diffusion et de blocage de l’information.
+
+Passez d’une vue à l’autre au rythme de la personne participante. Demandez-lui ce qu’elle remarque avant de proposer une interprétation. Voici quelques relances utiles :
+
+- Où se concentrent les différentes formes de soutien ?
+- Qui apporte plusieurs formes de soutien, et qui en apporte une seule, spécialisée ?
+- Quel soutien vient principalement de l’extérieur de la famille ?
+- Qui fait le lien entre des parties du réseau qui seraient sinon séparées ?
+- Où le soutien ou la communication sont-ils absents ?
+- La carte paraît-elle exacte à la personne participante, et que ne montre-t-elle pas ?
+
+Le dessin libre est activé pour que la personne qui mène l’entretien puisse annoter l’affichage pendant la conversation. Ces annotations **ne sont pas exportées**. L’interprétation de la personne qui mène l’entretien et le récit oral ne font pas non plus automatiquement partie des données de réseau. S’il s’agit de données de recherche, ajoutez une procédure de recueil approuvée, comme un enregistrement audio suivi d’une transcription, des notes de terrain structurées ou un formulaire distinct. Précisez comment ce matériau sera relié à l’entretien sans compromettre la confidentialité.
+
+L’étape « Arbre généalogique narratif » qui suit revient à la vue de la famille sur plusieurs générations et colore les personnes désignées comme ayant l’affection. Son mode de transmission est « Inconnu » par défaut, et les statuts à risque déduits sont désactivés par précaution. Ne sélectionnez un mode de transmission que si l’affection s’y prête. N’activez les statuts déduits que si l’affichage doit être interprété par un personnel qualifié dans le cadre d’une procédure approuvée de communication des résultats. La visualisation n’est pas un diagnostic, et son modèle de déduction ne peut pas représenter la pénétrance incomplète, les phénocopies, les variants de signification incertaine, le mosaïcisme ni toutes les complexités cliniquement pertinentes. Consultez la page de l’interface « [Arbre généalogique narratif](/fr/design-protocols/interface-documentation/narrative-pedigree) ».
+
+## Planifier l’analyse quantitative avant le travail de terrain {#plan-the-quantitative-analysis-before-fieldwork}
+
+Le modèle permet plusieurs représentations analytiques complémentaires :
+
+| Construit                       | Données du modèle                                          | Usage courant                                                                                                          |
+| ------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Structure familiale             | Liens `family_relationship` et leurs variables de relation | Reconstituer l’arbre généalogique et les relations sociales, adoptives, avec des donneurs, de gestation et de couple.  |
+| Affection et tests              | `has_condition`, `had_testing`                             | Décrire l’incidence déclarée par la personne participante et les tests sur plusieurs générations.                      |
+| Composition du réseau personnel | `non_kin`, `tie_type`, `tie_type_other`                    | Comparer les sources de soutien apparentées, non apparentées, professionnelles, de groupe et autres.                   |
+| Contexte de la relation         | `closeness`, `contact_frequency`                           | Mettre en relation les rôles de soutien avec la proximité subjective et la fréquence des interactions.                 |
+| Structure du réseau             | Liens `knows`                                              | Calculer la taille, la densité, les composantes, l’intermédiation ou d’autres mesures que justifie le plan d’étude.    |
+| Domaines de soutien             | Quatre booléens `exch_*`                                   | Compter les personnes qui apportent un soutien dans chaque domaine et identifier les relations de soutien multiplexes. |
+| Rôles de communication          | `role_gatherer`, `role_disseminator`, `role_blocker`       | Décrire les rôles perçus au sein du système de communication familiale.                                                |
+
+[Peters et al. (2016)](https://doi.org/10.1007/s10897-015-9905-x) ont organisé le soutien du CEGRM en **étendue**, **types** et **profondeur**. Dans cette étude, l’étendue comptait les amis, les confidents et les groupes sociaux ; les types renvoyaient aux quatre domaines de soutien ; et la profondeur additionnait le nombre de types de soutien associés à une relation, de zéro à quatre. Le modèle recueille des personnes nommées plutôt qu’une entité de groupe distincte : ne reproduisez donc la mesure d’étendue publiée que si votre recueil et votre codage distinguent aussi les confidents et les groupes sociaux. Une analyse fondée directement sur le modèle peut en déduire sans risque :
+
+- Le nombre de personnes nommées qui apportent un soutien, quel qu’il soit.
+- Le nombre de personnes qui apportent chaque type de soutien.
+- Le nombre de types de soutien associés à chaque personne (`0`–`4`).
+- Parmi les personnes qui apportent un soutien, la proportion de membres de la famille et de personnes extérieures à la famille.
+
+Nommez précisément ces mesures dérivées plutôt que de traiter chaque décompte comme l’échelle publiée. La littérature sur le CEGRM est exploratoire sur le plan méthodologique, et la note de la première étape du modèle avertit explicitement que ces décomptes sont des outils de discussion et de description, et non un instrument psychométrique validé de mesure du soutien.
+
+## Traiter les données comme le récit d’une personne participante {#treat-the-data-as-one-participants-account}
+
+Un CEGRM enregistre la perception qu’a la personne participante des autres personnes et des relations. Une personne désignée comme bloquant l’information ne se décrirait pas forcément ainsi ; un membre de la famille déclaré comme n’ayant pas fait de test peut en avoir fait un en privé ; et deux personnes participantes d’une même famille peuvent produire des cartes différentes. Ces différences ne sont pas de simples erreurs de mesure. Elles peuvent témoigner d’une asymétrie d’information, de la confidentialité, des attentes liées aux rôles ou du caractère relationnel de la communication sur la santé.
+
+Ne fusionnez pas les déclarations de plusieurs membres d’une famille en un seul réseau supposément vrai sans règle explicite pour traiter les désaccords et la provenance. Si vous recueillez des données auprès de plusieurs membres d’une famille, conservez les identifiants des personnes répondantes sur chaque désignation et chaque déclaration de relation. Les travaux longitudinaux sur le CEGRM, qui recueillent les points de vue de plusieurs membres d’une même famille, montrent l’intérêt analytique de comparer ces points de vue plutôt que de les effacer ([Peters et al., 2011](https://doi.org/10.1007/s10897-011-9370-0)).
+
+## Adapter le modèle avant le déploiement {#adapt-the-template-before-deployment}
+
+Avant le déploiement, tranchez les décisions de conception suivantes.
+
+### Nommer l’affection et définir chaque construit {#name-the-condition-and-define-each-construct}
+
+Remplacez chaque occurrence de « this condition » (« cette affection ») par des termes que comprend la population étudiée. Décidez si `has_condition` désigne une déclaration de la personne participante, un diagnostic clinique, un phénotype précis ou autre chose, et reportez cette définition dans la formation des personnes qui mènent les entretiens et dans la documentation de l’analyse.
+
+### Revoir tous les domaines de soutien {#review-all-support-domains}
+
+Le CEGRM d’origine mettait l’accent sur l’information, les services et les émotions ; des travaux ultérieurs ont ajouté l’échange spirituel ou religieux ([Peters et al., 2006](https://doi.org/10.1007/s10897-006-9042-7)). Conservez le domaine spirituel lorsqu’il est pertinent sur le plan théorique, mais adaptez sa formulation pour qu’elle ne présuppose pas de croyance religieuse. N’ajoutez ou ne supprimez des domaines qu’en expliquant clairement le rapport entre l’instrument révisé et les études CEGRM antérieures.
+
+### Fixer la limite du réseau {#set-the-network-boundary}
+
+Le modèle recueille les amis importants, les contacts du travail ou des études, les membres de groupes et les professionnels de santé. Décidez si cette limite correspond au phénomène que vous voulez expliquer. Précisez la période de référence, si les personnes décédées ont leur place sur la carte sociale, comment les groupes seront représentés, et si un nombre maximal de contacts est justifiable sur le plan méthodologique.
+
+### Décider de ce que signifie un lien `knows` {#decide-what-a-knows-edge-means}
+
+« Know one another » (« se connaître ») est volontairement large. Si votre analyse a besoin du contact, de la communication, du soutien ou de la connaissance de l’affection entre membres du réseau, interrogez directement sur ce construit et nommez le lien en conséquence. La densité des liens est déterminée par la question, et non par l’aspect visuel de la carte terminée.
+
+### Remplacer les textes de consentement, de débriefing et d’orientation {#replace-consent-debriefing-and-referral-text}
+
+Le modèle évoque la maladie, les tests, le deuil et une communication familiale difficile. Vos documents approuvés doivent traiter du recueil d’informations sur des tiers, de ce qui est ou n’est pas communiqué aux personnes nommées, de la manière dont une personne participante peut faire une pause ou arrêter, de la prise en charge de la détresse, et de ce qui se passe si l’entretien soulève une préoccupation clinique. Les données génétiques et de réseau familial peuvent être très identifiantes même lorsque les prénoms sont remplacés par des surnoms ; configurez le stockage, l’accès, l’exportation et la conservation en conséquence.
+
+### Traduire et adapter l’instrument pour chaque langue {#translate-and-adapt-the-instrument-for-each-language}
+
+Lorsque la population étudiée comprend des personnes qui préfèrent des langues différentes, ajoutez ces langues au protocole dans la page **Langues** d’Architect ; il n’est pas nécessaire de faire une copie distincte du protocole pour chaque langue. Toutes les langues partagent alors les mêmes étapes, la même structure d’arbre généalogique, les mêmes domaines de soutien et le même livre de codes, et les entretiens menés dans différentes langues produisent des données de même structure, même s’il reste à établir l’équivalence des mesures d’une langue à l’autre. [Traduire votre protocole](/fr/design-protocols/translating-your-protocol) décrit la procédure.
+
+Plusieurs des construits centraux de l’instrument sont propres à une culture, et une traduction littérale peut ne pas les préserver. La terminologie de la parenté peut distinguer les proches du côté maternel et du côté paternel, les proches par alliance et les générations selon des distinctions que l’anglais ne fait pas, et la limite de la « famille » peut être différente. Les domaines de soutien et les rôles de communication (recherche, diffusion et blocage de l’information) peuvent eux aussi ne pas avoir d’équivalent établi. Traduisez-les avec des membres bilingues de l’équipe qui comprennent le contexte clinique, selon une procédure comportant une relecture indépendante et un arbitrage, et documentez la façon dont chaque construit a été rendu. Dans l’étape « Arbre généalogique », les options de réponse sur le sexe assigné à la naissance, les types de parent et la formulation présentée à la personne participante sont fournis dans plusieurs langues ([Ajouter des langues](/fr/design-protocols/translating-your-protocol#adding-languages)). Vérifiez ces traductions fournies au regard des définitions de l’étude, de la même manière que le reste du texte.
+
+Les textes de consentement, de débriefing et d’orientation doivent généralement être approuvés dans chaque langue. L’onglet **Résumé** du protocole imprime tous les textes dans toutes les langues du protocole ; ce document peut être soumis à cet examen. La langue dans laquelle chaque entretien a été mené n’est pas enregistrée dans les données exportées : une étude qui comparera des groupes linguistiques doit donc l’enregistrer explicitement, par exemple au moyen d’une question dans l’étape « About you ».
+
+## Mener une étude pilote de l’entretien en tant que méthode visuelle {#pilot-the-interview-as-a-visual-method}
+
+La validation du protocole établit que le fichier respecte le modèle de données de Network Canvas. Elle n’établit pas que les personnes participantes interprètent une consigne comme prévu, que la limite fixée par l’entretien produit le bon réseau, ni que la conversation qui en résulte est réalisable sur les plans éthique et méthodologique.
+
+Menez une étude pilote de la séquence complète avec des membres de la population visée et avec des personnes occupant chacun des rôles qui interviendront dans la passation. Observez :
+
+- Si les personnes participantes comprennent pourquoi on recueille à la fois les relations génétiques et les relations sociales.
+- Si la présentation de l’arbre généalogique convient à des structures familiales variées.
+- Si les générateurs de noms atteignent les personnes non apparentées importantes sans charge excessive.
+- Si les questions sur le soutien et sur les rôles de communication se distinguent les unes des autres.
+- Si la disposition stable facilite la comparaison ou devient visuellement encombrée.
+- Quelles consignes provoquent de la détresse, des hésitations ou un besoin d’éclaircissement.
+- Combien de temps prennent respectivement la construction de l’arbre généalogique, l’élargissement du réseau et l’interprétation narrative.
+- Si chaque version linguistique transmet les mêmes construits, ce que l’on vérifie avec des personnes qui parlent la langue concernée.
+- Si les données exportées permettent de reproduire chaque mesure prévue sans dépendre d’informations qui n’existent que dans la mémoire de la personne qui a mené l’entretien.
+
+L’étude pilote doit examiner l’interaction autour de la carte avec autant d’attention que le réseau exporté. La recherche sur le CEGRM considère que cette interaction a des conséquences importantes. Network Canvas recourt de même à un recueil visuel auquel la personne participante prend une part active (participant-aided), avec des choix logiciels qui permettent et limitent ce qui peut être déclaré ([Birkett et al., 2021](https://doi.org/10.1016/j.socnet.2021.02.003)).
+
+## Références {#references}
+
+- Birkett M, Melville J, Janulis P, Phillips G II, Contractor N, Hogan B.
+  [Network Canvas: Key decisions in the design of an interviewer-assisted
+  network data collection software suite.](https://doi.org/10.1016/j.socnet.2021.02.003)
+  _Social Networks_. 2021;66:114–124.
+- Janulis P, Phillips G, Melville J, et al.
+  [Network Canvas: an open-source tool for capturing social and contact network
+  data.](https://doi.org/10.1093/ije/dyad036) _International Journal of
+  Epidemiology_. 2023;52(4):1286–1291.
+- Kenen R, Peters J.
+  [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and
+  tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430)
+  _Journal of Genetic Counseling_. 2001;10(4):289–309.
+- Peters JA, Kenen R, Giusti R, Loud J, Weissman N, Greene MH.
+  [Exploratory study of the feasibility and utility of the Colored Eco-Genetic
+  Relationship Map (CEGRM) in women at high genetic risk of developing breast
+  cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) _American Journal of
+  Medical Genetics Part A_. 2004;130A(3):258–264.
+- Peters JA, Hoskins L, Prindiville S, Kenen R, Greene MH.
+  [Evolution of the Colored Eco-Genetic Relationship Map (CEGRM) for assessing
+  social functioning in women in hereditary breast-ovarian families.](https://doi.org/10.1007/s10897-006-9042-7)
+  _Journal of Genetic Counseling_. 2006;15(6):477–489.
+- Koehly LM, Peters JA, Kenen R, et al.
+  [Characteristics of health information gatherers, disseminators, and blockers
+  within families at risk of hereditary cancer.](https://doi.org/10.2105/AJPH.2008.154096)
+  _American Journal of Public Health_. 2009;99(12):2203–2209.
+- Peters JA, Kenen R, Hoskins LM, et al.
+  [Unpacking the blockers: understanding perceptions and social constraints of
+  health communication in hereditary breast ovarian cancer susceptibility
+  families.](https://doi.org/10.1007/s10897-011-9370-0) _Journal of Genetic
+  Counseling_. 2011;20(5):450–464.
+- Peters JA, Kenen R, Bremer R, Givens S, Savage SA, Mai PL.
+  [Easing the burden: describing the role of social, emotional and spiritual
+  support in research families with Li-Fraumeni syndrome.](https://doi.org/10.1007/s10897-015-9905-x)
+  _Journal of Genetic Counseling_. 2016;25(3):529–542.

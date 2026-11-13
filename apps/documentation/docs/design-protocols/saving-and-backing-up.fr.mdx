@@ -1,0 +1,109 @@
+---
+title: Enregistrement et sauvegarde
+toc: false
+navOrder: 4
+translatedFrom: e5d458e8c73516ea5a9e7bbf80ef250ffba4dd38
+---
+
+Architect et Architect Classic stockent vos protocoles de manières différentes. Comprendre comment ils le font, et ce que cela implique pour la sauvegarde et le déplacement de votre travail, vous aidera à ne pas perdre un protocole dont la création vous a demandé du temps.
+
+<AppSwitch>
+<AppOption label="Architect" icon="globe">
+
+## Comment Architect enregistre votre travail {#how-architect-saves-your-work}
+
+Architect enregistre automatiquement. Pendant que vous modifiez un protocole, vos changements sont écrits en continu dans une **bibliothèque** de protocoles stockée dans votre navigateur web. Il n’y a pas de bouton **Enregistrer**, ni de fichier à suivre pendant que vous travaillez : le protocole que vous voyez sur l’écran d’accueil est toujours à jour de vos dernières modifications.
+
+C’est différent d’Architect Classic, dans lequel votre protocole est un fichier `.netcanvas` sur votre ordinateur, que vous enregistrez explicitement.
+
+## Votre bibliothèque est propre à chaque navigateur et à chaque appareil {#your-library-is-per-browser-and-per-device}
+
+Comme la bibliothèque de protocoles réside dans le stockage local de votre navigateur, elle est liée à **ce navigateur, sur cet appareil**. Vos protocoles ne sont jamais envoyés vers un serveur.
+
+Un protocole que vous créez dans un navigateur n’apparaîtra donc pas si vous :
+
+- ouvrez Architect dans un **autre navigateur** (par exemple en passant de Chrome à Firefox),
+- l’ouvrez sur un **autre ordinateur ou un autre appareil**, ou
+- l’ouvrez dans une fenêtre de **navigation privée** (ou **incognito**).
+
+Pour travailler sur un protocole ailleurs, ou simplement pour en garder une copie en lieu sûr, téléchargez-le sous forme de fichier `.netcanvas`, comme décrit ci-dessous.
+
+## Ouvrir un protocole dans plusieurs onglets {#opening-a-protocol-in-more-than-one-tab}
+
+Un seul onglet du navigateur peut modifier un protocole à la fois, afin que deux onglets n’écrasent jamais les modifications l’un de l’autre.
+
+Si vous ouvrez un protocole déjà ouvert dans un autre onglet, il s’ouvre en **lecture seule**, et un bandeau en haut de l’écran vous l’indique. Vous pouvez tout de même parcourir l’ensemble du protocole : passer d’une page à l’autre entre **Étapes**, **Livre de codes**, **Ressources** et **Résumé**, ouvrir chaque étape, faire une recherche dans le livre de codes, prévisualiser les ressources et imprimer le résumé. Tout ce qui modifierait le protocole est désactivé. **Télécharger** fonctionne toujours et vous donne tout ce que l’autre onglet a enregistré jusque-là.
+
+Pour modifier le protocole dans cet onglet, fermez l’autre onglet, ou revenez à l’écran d’accueil dans cet autre onglet. Cet onglet devient immédiatement modifiable, sur la page que vous consultiez. Si vous étiez en train de modifier quelque chose lorsque l’autre onglet a ouvert le protocole, le bandeau vous explique les options qui s’offrent à vous.
+
+## Sauvegarder et déplacer des protocoles {#backing-up-and-moving-protocols}
+
+À tout moment, utilisez **Télécharger** sur l’écran de vue d’ensemble du protocole pour exporter votre protocole sous forme de fichier `.netcanvas`. Ce fichier est une copie complète et autonome de votre protocole, qui comprend les données de liste (des listes prédéfinies, importées comme fichiers de données, dans lesquelles la personne participante choisit), les images et les médias qu’il utilise.
+
+Comme le fichier doit être complet, Architect ne télécharge pas un protocole dont des ressources sont manquantes ou illisibles. Il affiche à la place un message qui nomme les fichiers concernés ; ajoutez-les de nouveau sur la page **Ressources**, puis téléchargez le protocole. Voir [Ressources manquantes](/fr/design-protocols/key-concepts/resources#missing-resources).
+
+Un fichier `.netcanvas` téléchargé vous permet de :
+
+- **Conserver une sauvegarde** en dehors du navigateur, au cas où les données de votre navigateur seraient effacées.
+- **Déplacer votre travail** vers un autre navigateur, un autre ordinateur ou une personne avec qui vous collaborez : rouvrez-le depuis l’écran d’accueil. Télécharger un protocole en schéma 8 vous donne un fichier en schéma 8.
+- **Déployer votre protocole** dans [Fresco](/fr/collect-data/fresco/using-fresco#uploading-protocols) ou [Interviewer](/fr/collect-data/interviewer/about) pour mener des entretiens
+
+<KeyConcept title="Téléchargez régulièrement vos protocoles">
+
+Comme Architect stocke vos protocoles dans le navigateur et non sous forme de fichiers que vous maîtrisez, télécharger un fichier `.netcanvas` est le seul moyen de vous assurer de disposer d’une copie que vous ne perdrez pas. Prenez l’habitude de télécharger votre protocole après tout travail important, et toujours avant d’effacer les données de votre navigateur ou de changer d’appareil.
+
+</KeyConcept>
+
+## Ce qui supprime vos protocoles {#what-removes-your-protocols}
+
+Vous pouvez supprimer manuellement des protocoles de la bibliothèque « Récents » de deux façons :
+
+- **Supprimer un seul protocole** à l’aide du menu à trois points de sa ligne.
+- **Effacer tous les protocoles** pour supprimer définitivement, en une seule fois, tous les protocoles de la bibliothèque de ce navigateur. Les protocoles en schéma 8 que vous continuez à modifier dans la version précédente d’Architect sont conservés dans une bibliothèque distincte : ils ne sont donc pas supprimés, et leur menu ne propose pas d’option de suppression.
+
+Tout ce qui efface le stockage de votre navigateur supprime aussi les protocoles enregistrés dans Architect. Cela comprend :
+
+- **L’effacement de vos données de navigation** pour le site (historique, cookies et données de site).
+- La fermeture d’une fenêtre de **navigation privée** (ou **incognito**), qui supprime tout ce qui a été créé pendant cette session.
+
+Ces actions sont irréversibles, et un protocole supprimé ne peut être récupéré qu’à partir d’un fichier `.netcanvas` que vous avez téléchargé auparavant.
+
+## Limites de stockage {#storage-limits}
+
+Les navigateurs limitent la quantité de données qu’un site peut stocker, et Architect partage ce quota avec le reste des données du site. Les protocoles très volumineux, en particulier ceux qui contiennent des médias nombreux ou volumineux, consomment une plus grande part de ce quota.
+
+Les navigateurs traitent en outre ce type de données locales comme **non garanties** : en cas de forte saturation du stockage, ou après une longue période sans visite du site, un navigateur peut les supprimer pour libérer de l’espace. C’est rare en utilisation normale, mais c’est une raison de plus pour télécharger une copie `.netcanvas` de tout protocole que vous ne pouvez pas vous permettre de perdre.
+
+## Annuler et rétablir {#undo-and-redo}
+
+Pendant que vous modifiez un protocole, Architect conserve un historique de vos modifications. Utilisez **Annuler** et **Rétablir** dans la barre d’outils de l’éditeur pour revenir en arrière ou avancer parmi les modifications récentes, ce qui est utile pour revenir sur une modification que vous ne vouliez pas faire.
+
+Annuler et rétablir s’appliquent aux modifications enregistrées dans le protocole : l’enregistrement d’une étape, la modification du livre de codes ou des ressources, et la suppression d’une étape, d’un type, d’un attribut ou d’une ressource. Ils ne parcourent pas la saisie faite dans un éditeur encore ouvert : pour abandonner les modifications non enregistrées d’une étape, fermez plutôt l’éditeur d’étape sans enregistrer (bouton **Annuler** de l’éditeur). Lorsque vous annulez ou rétablissez une modification, Architect vous amène à l’écran qui la montre (comme **Étapes**, **Livre de codes** ou **Ressources**) pour que vous puissiez voir le résultat.
+
+L’historique dure tant que le protocole reste ouvert, et il est distinct des sauvegardes que vous créez en téléchargeant un fichier `.netcanvas`.
+
+</AppOption>
+<AppOption label="Architect Classic" icon="desktop">
+
+## Comment Architect Classic enregistre votre travail {#how-architect-classic-saves-your-work}
+
+Dans Architect Classic, votre protocole est un [fichier `.netcanvas`](/fr/design-protocols/key-concepts/the-protocol-file) sur votre ordinateur, que vous enregistrez et gérez vous-même. Contrairement à Architect, il n’y a pas de bibliothèque dans le navigateur : vous choisissez l’emplacement du fichier, et Architect vous invite à enregistrer vos modifications au fil de votre travail.
+
+Comme il s’agit d’un fichier ordinaire, vous pouvez le déplacer, le renommer et le copier comme n’importe quel autre fichier. Le fichier `.netcanvas` est autonome. Toutes les [ressources](/fr/design-protocols/key-concepts/resources) que vous ajoutez, comme des données de liste, des images ou des vidéos, y sont intégrées.
+
+## Retrouver vos protocoles {#finding-your-protocols}
+
+Lorsque vous ouvrez Architect Classic, la section **Resume Editing** (reprendre la modification) de l’écran de démarrage présente les protocoles sur lesquels vous avez travaillé récemment. Chaque entrée indique le nom du protocole, son emplacement complet sur votre ordinateur, sa date de dernière modification et la [version du schéma](/fr/get-started/protocol-schema-information) avec laquelle il a été créé, ce qui permet de le rouvrir facilement.
+
+![La section Resume Editing de l’écran de démarrage d’Architect Classic, qui présente les protocoles récents avec leurs chemins d’accès, leurs dates de dernière modification et leurs versions du schéma.](/assets/img/architect-classic-guide/resume-editing.png)
+
+## Protéger votre travail {#keeping-your-work-safe}
+
+Quelques pratiques permettent de protéger votre travail :
+
+- **Sauvegardez régulièrement.** Conservez des copies de votre fichier `.netcanvas` ailleurs que sur votre ordinateur de travail, par exemple sur un espace de stockage dans le cloud ou sur un support externe.
+- **Créez une nouvelle version après chaque déploiement.** Une fois un protocole déployé, enregistrez-en une copie renommée avant d’y apporter d’autres modifications, afin que chaque version déployée reste intacte. Voir [Le fichier de protocole](/fr/design-protocols/key-concepts/the-protocol-file) pour comprendre pourquoi c’est important.
+- **Suivez un flux de travail.** Le tutoriel [Flux de travail en ligne et hors ligne d’Interviewer](/fr/collect-data/interviewer-online-and-offline-workflows) explique pas à pas comment déployer des protocoles, et comment organiser et sauvegarder vos fichiers, pour les études en ligne comme hors ligne.
+
+</AppOption>
+</AppSwitch>

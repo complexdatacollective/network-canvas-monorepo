@@ -1,0 +1,143 @@
+---
+title: Interface géospatiale
+navOrder: 20
+translatedFrom: 40516bb531b1c3e7cc0810b8c6a6418a7b991ac2
+---
+
+<InterfaceSummary type="Geospatial">
+
+<InterfaceMeta type="Interpréteur de noms" creates="Des données d’attributs géospatiaux, à partir des zones que la personne participante sélectionne sur une carte" usesprompts="true" requires="Internet, compte Mapbox">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+L’interface géospatiale est une interface de type interpréteur de noms (une question posée sur chaque alter déjà cité) qui recueille des données géospatiales sur les alters (les personnes citées pendant l’entretien) qui composent le réseau d’une personne participante.
+Dans une étape géospatiale, les personnes participantes peuvent sélectionner sur une carte l’une des zones délimitées définies par un fichier GeoJSON.
+
+<TipBox danger>
+
+Comme cette interface charge des cartes depuis Mapbox, elle **nécessite une connexion Internet pendant l’entretien**. Si votre étude doit fonctionner entièrement hors ligne, évitez cette interface.
+
+</TipBox>
+
+## Configuration de Mapbox {#mapbox-configuration}
+
+Cette interface utilise un service tiers appelé [Mapbox](https://www.mapbox.com/) (en anglais) pour fournir les fonctions de carte.
+Pour utiliser ce service, vous devez créer un compte Mapbox et obtenir une clé d’API, qu’Architect, Interviewer et Fresco utilisent pour communiquer avec Mapbox.
+
+<TipBox>
+
+Mapbox propose une offre gratuite, dont les fonctions et les limites d’utilisation suffisent pour des projets de petite envergure. Vous trouverez plus d’informations sur les tarifs sur la [page des tarifs de Mapbox](https://www.mapbox.com/pricing) (en anglais).
+
+</TipBox>
+
+Pour créer un compte Mapbox et obtenir une clé d’API :
+
+1. [Créez un compte](https://account.mapbox.com/auth/signup/) (en anglais) sur Mapbox.
+
+2. Accédez à la [vue d’ensemble du compte](https://console.mapbox.com/) (en anglais).
+
+3. Dans la section des jetons (« Tokens »), cliquez sur le bouton de copie pour copier le jeton.
+
+![Jeton Mapbox](/assets/img/interface-documentation/geospatial/mapbox-token.png)
+
+Une fois votre jeton d’API Mapbox copié, vous pouvez l’ajouter à votre protocole dans le champ **Clé d’API Mapbox**, dans la section **Accès à la carte** de l’éditeur d’étape.
+Les jetons peuvent être réutilisés d’une interface à l’autre. Ils sont accessibles depuis la « Bibliothèque de ressources », où ils peuvent être copiés, supprimés ou remplacés si nécessaire.
+
+![Saisissez votre clé d’API et sélectionnez-la](/assets/img/interface-documentation/geospatial/upload-api-key.png)
+
+<TipBox danger>
+
+Un modèle de départ, Transnational Networks, qui utilise l’interface géospatiale, est fourni avec un **jeton de test Mapbox partagé de Network Canvas**, pour que la carte s’affiche immédiatement pendant que vous découvrez le modèle. Ce jeton est soumis à une limite d’utilisation et n’est destiné qu’à l’évaluation. Avant de mener une étude sur le terrain, vous **devez** le remplacer par votre propre jeton dans la « Bibliothèque de ressources ». Tant qu’un protocole contient encore le jeton de test partagé, Architect affiche un avertissement bien visible sur la chronologie du protocole pour vous rappeler de le remplacer.
+
+</TipBox>
+
+## Définir une source de données {#defining-a-data-source}
+
+Cette interface nécessite une source [GeoJSON](https://geojson.org/) (en anglais) pour configurer les couches de la carte, qui fournissent les zones sélectionnables pour les consignes. GeoJSON est un format de fichier standard pour représenter des entités géographiques, notamment des zones ou des limites, avec leurs propriétés associées (comme des noms ou des catégories).
+
+Par exemple, un fichier GeoJSON peut contenir des zones représentant des secteurs de recensement, chaque zone comportant des propriétés supplémentaires comme `zipcode` ou `neighborhood`.
+
+![Importer un fichier GeoJSON](/assets/img/interface-documentation/geospatial/geojson.png)
+
+Après avoir choisi un fichier GeoJSON dans le champ **Source de données de la couche** de la section **Couches de la carte**, sélectionnez une propriété (par exemple le secteur de recensement ou le code postal) dans **Propriété de sélection sur la carte** pour définir les zones sélectionnables de la carte. Les valeurs de cette propriété serviront à attribuer une valeur aux attributs des consignes.
+
+Par exemple, si votre fichier GeoJSON contient une propriété `TRACTID`, la sélection d’une zone sur la carte attribuera la valeur de `TRACTID` à l’attribut de la consigne.
+
+![Sélectionner une propriété pour la sélection sur la carte](/assets/img/interface-documentation/geospatial/selection-property.png)
+
+## Style de la carte {#map-style}
+
+Vous pouvez personnaliser l’apparence de la carte en choisissant parmi divers [styles Mapbox](https://docs.mapbox.com/api/maps/styles/) (en anglais), standard ou classiques, et en sélectionnant la couleur des contours et des sélections de la carte.
+
+Vous pouvez également activer les options suivantes :
+
+- **Afficher les transports en commun** : affiche les lignes et les stations de transports en commun sur la carte, ce qui peut aider les personnes participantes à s’orienter lorsqu’elles sélectionnent des zones.
+- **Autoriser la recherche de lieux** : active un champ de recherche qui permet aux personnes participantes de rechercher des adresses, des quartiers et des points d’intérêt. Cela peut les aider à se rendre rapidement à des lieux familiers sur la carte. Notez que l’activation de cette fonction utilise l’API Mapbox Search, ce qui peut entraîner des coûts supplémentaires selon votre utilisation. Consultez la [page des tarifs de Mapbox](https://www.mapbox.com/pricing#search) (en anglais) pour plus de détails.
+
+## Configurer la vue initiale de la carte {#configuring-initial-map-view}
+
+Configurez la vue initiale de la carte en déplaçant la carte et en zoomant dans Architect. La carte sera centrée selon les coordonnées initiales et le niveau de zoom définis ici. Réinitialiser la carte la ramène à cette vue.
+
+![Configurer la vue initiale de la carte](/assets/img/interface-documentation/geospatial/initial-map-view.png)
+
+<TipBox danger>
+
+Assurez-vous que les zones sélectionnables de votre fichier GeoJSON sont visibles dans la vue initiale de la carte.
+
+</TipBox>
+
+<AppOnly app="current">
+
+## Personnaliser la formulation intégrée {#customize-built-in-wording}
+
+La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les textes que les personnes participantes lisent sur la carte. Chacun d’eux reprend au départ la formulation de Network Canvas, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+Le libellé **En dehors des zones sélectionnables**, celui du bouton qui indique un lieu situé en dehors des zones proposées par la carte, se trouve sous **Propre à cette étape**.
+
+Les messages affichés lorsque la carte ne peut pas être utilisée normalement sont les mêmes dans toutes les étapes géospatiales. Ils se trouvent sous **Commun à toutes les étapes de ce type**, dans la même section. Toute modification de ces messages s’applique à toutes les étapes de ce type et est enregistrée dès que vous quittez le champ.
+
+- **Message hors ligne** s’affiche tant que l’appareil de la personne participante est hors ligne, car la carte ne peut pas se charger sans connexion.
+- **Message de carte indisponible** s’affiche à la place de la carte lorsque l’appareil de la personne participante ne peut pas l’afficher, et indique ce qu’il faut essayer.
+- **Message d’échec de la recherche** s’affiche lorsqu’une recherche n’a pas pu être effectuée. Le protocole ne contient ce message que tant qu’au moins une étape géospatiale a l’option **Autoriser la recherche de lieux** activée. Le texte indicatif du champ de recherche et le message affiché lorsqu’une recherche ne trouve aucun résultat font partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text), sous **Recherche**.
+
+</AppOnly>
+
+## Consignes {#prompts}
+
+L’interface géospatiale peut comporter plusieurs [consignes](/fr/design-protocols/key-concepts/prompts), chacune correspondant à un seul attribut de localisation.
+La valeur de chaque attribut est déterminée par la propriété, issue du fichier GeoJSON, de la zone sélectionnée sur la carte.
+
+Si une réponse est donnée en dehors des zones sélectionnables de la carte, l’attribut reçoit la valeur `outside-selectable-areas`.
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Envisagez d’utiliser le [filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering) pour ne retenir que les nœuds qui se trouvent dans les
+zones sélectionnables de la carte. Des interpréteurs de noms placés plus tôt, comme les interfaces [« Classement par catégories »](/fr/design-protocols/interface-documentation/categorical-bin) ou [« Formulaire par alter »](/fr/design-protocols/interface-documentation/per-alter-form) (un formulaire pour chaque alter), peuvent servir à
+recueillir des attributs supplémentaires permettant d’exclure par filtrage les nœuds situés en dehors de la zone de la carte. Ainsi, les personnes participantes ne sont invitées à sélectionner une zone sur la carte que pour les nœuds pertinents,
+ce qui réduit les risques d’attribuer `outside-selectable-areas` et allège la charge de réponse.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Pour la sélection sur la carte, choisissez une propriété dont la valeur est propre à chaque zone (par exemple `zipcode` ou `census_tract`), afin que chaque zone se distingue clairement.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Vous pouvez, si vous le souhaitez, fusionner toutes les propriétés GeoJSON avec les données de vos alters lors du nettoyage et de l’analyse des données. Par exemple, vous pouvez faire correspondre le `zipcode` à d’autres attributs comme `population`, ou à d’autres données contenues dans le fichier GeoJSON.
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Évitez d’utiliser des fichiers GeoJSON excessivement volumineux, contenant des couches ou des zones très éloignées des zones de sélection prévues. Cela peut ralentir le chargement de la carte.
+
+</BadPractice>

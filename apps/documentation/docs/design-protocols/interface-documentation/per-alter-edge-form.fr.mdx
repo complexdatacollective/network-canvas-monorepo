@@ -1,0 +1,60 @@
+---
+title: Formulaire par lien entre alters
+navOrder: 15
+translatedFrom: 3b7225715e05985d941b457f83b4f82c6e8c149e
+---
+
+<InterfaceSummary type="AlterEdgeForm">
+
+<InterfaceMeta type="Interpréteur de liens" creates="Données d’attributs sur un seul type de lien" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+L’interface « Formulaire par lien entre alters » (un formulaire pour chaque lien entre deux alters) est une interface de type _interpréteur de liens_ (une question posée sur chaque lien déjà créé entre deux alters) qui recueille des données d’attributs sur les liens, ou relations, entre les nœuds du réseau d’une personne participante. Dans une étape « Formulaire par lien entre alters », les personnes participantes remplissent un [formulaire](../key-concepts/forms) pour chaque lien qu’elles ont défini auparavant entre des paires d’alters (chaque personne que la personne participante cite pendant l’entretien) de leur réseau. Ces formulaires sont personnalisables et peuvent comporter un ou plusieurs champs pour recueillir des données précises sur les attributs des liens.
+
+## Configurer une étape « Formulaire par lien entre alters » {#configuring-per-alter-edge-form}
+
+Un seul type de lien peut être sélectionné par écran. Cet écran permet le [filtrage](../key-concepts/network-filtering) des liens qui correspondent au
+type indiqué.
+
+![](/assets/img/interface-documentation/per-edge-form/architect-edge-type.png)
+
+Chaque lien reçoit des valeurs d’attributs au moyen d’un [formulaire](../key-concepts/forms) configurable.
+
+![Les champs du formulaire peuvent être réordonnés par glisser-déposer, et supprimés avec le bouton de suppression placé à côté de chaque champ](/assets/img/interface-documentation/per-edge-form/architect-form.png)
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Utilisez cette interface comme un moyen simple de recueillir systématiquement des données sur les liens.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Placez une étape [« Information »](../interface-documentation/information) avant cette interface pour expliquer aux personnes participantes ce qu’elles auront à faire dans le formulaire qu’elles rempliront pour chaque lien.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Pensez à inclure des champs de formulaire qui recueillent des données temporelles à l’aide de [commandes de saisie](../key-concepts/input-controls) (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…) comme le [« Sélecteur de date »](../key-concepts/input-controls/#date-picker).
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Évitez de surcharger cette interface avec trop de champs ou des consignes trop chargées en texte.
+
+</BadPractice>
+
+<BadPractice>
+
+N’utilisez pas cette interface à la place d’un recensement des dyades : les personnes participantes ne seront invitées à fournir des données que sur les liens existants entre alters, et non sur toutes les combinaisons possibles d’alters. Si votre étude nécessite un recensement des dyades, vous pouvez ajouter et configurer une étape [« Recensement des dyades »](../interface-documentation/dyad-census) dans Architect.
+
+</BadPractice>
