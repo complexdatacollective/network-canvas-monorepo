@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import { useFitText } from './hooks/useFitText';
-import Node, { labelVariants, NodeColors } from './Node';
+import Node, { labelVariants, NodeColors, type NodeShapeProp } from './Node';
 import {
   canvasSupportsColorSpace,
   contrastRatio,
@@ -81,9 +81,10 @@ that would follow it is withdrawn.
     shape: {
       control: 'select',
       options: ['circle', 'square', 'diamond'],
-      description: 'Shape of the node.',
+      description:
+        'Shape of the node: a built-in shape, or `{ svg }` for a custom shape drawn from validated SVG artwork (see the Custom shape stories).',
       table: {
-        type: { summary: "'circle' | 'square' | 'diamond'" },
+        type: { summary: "'circle' | 'square' | 'diamond' | { svg: string }" },
         defaultValue: { summary: 'circle' },
       },
     },
@@ -1476,4 +1477,284 @@ handlers.
       },
     },
   },
+};
+
+// Artwork tinted by the node's own colour: a house whose label sits inside it.
+const themedHouseSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--node-color)"/><stop offset="1" stop-color="var(--node-color-dark)"/></linearGradient></defs><path d="M50 4 L95 42 L95 90 Q95 96 89 96 L11 96 Q5 96 5 90 L5 42 Z" fill="url(#shade)"/><rect id="label-area" x="16" y="46" width="68" height="40" fill="#ffffff"/></svg>`;
+
+// Artwork with fixed colours of its own and its label below the picture.
+const illustratedTreeSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="44" y="40" width="12" height="30" rx="2" fill="#8b5a2b"/><circle cx="50" cy="32" r="26" fill="#3f9b4f"/><circle cx="41" cy="25" r="8" fill="#5cbf6b"/><rect id="label-area" x="4" y="73" width="92" height="25" fill="var(--text)"/></svg>`;
+
+// A wider-than-tall picture, fitted into the square box.
+const speechBubbleSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100"><path d="M40 70 L34 96 L66 70 Z" fill="var(--node-color-dark)"/><rect x="4" y="6" width="152" height="68" rx="22" fill="var(--node-color)" stroke="var(--node-color-dark)" stroke-width="4"/><rect id="label-area" x="18" y="14" width="124" height="52" fill="#ffffff"/></svg>`;
+
+// No label area, so the label takes the central region in the theme's text
+// colour; `currentColor` is the node colour.
+const starSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1.5l3.2 6.6 7.3 1-5.3 5.1 1.3 7.2L12 18 5.5 21.4l1.3-7.2L1.5 9.1l7.3-1z" fill="currentColor" stroke="var(--node-color-dark)" stroke-width="0.6" stroke-linejoin="round"/></svg>`;
+
+const customShapeSamples: ReadonlyArray<{
+  caption: string;
+  shape: NodeShapeProp;
+}> = [
+  { caption: 'Themed, label inside', shape: { svg: themedHouseSvg } },
+  { caption: 'Fixed colours, label below', shape: { svg: illustratedTreeSvg } },
+  { caption: 'Wide viewBox', shape: { svg: speechBubbleSvg } },
+  { caption: 'No label area', shape: { svg: starSvg } },
+];
+
+// The eight theme colours, in order; `custom` is last and never reached.
+const sequenceColor = (index: number) => NodeColors[index % 8];
+
+const nodeSizes = ['xxs', 'xs', 'sm', 'md', 'lg'] as const;
+
+const customShapeDocs = `
+A node type can draw its nodes with researcher-supplied SVG artwork. Pass
+\`shape={{ svg }}\` with the stored, validated SVG text. The artwork is parsed
+once per distinct SVG and rendered as React elements (never as markup), fitted
+inside the node's square box. Ids inside the artwork are namespaced per node,
+so two nodes sharing a gradient id never collide.
+
+Artwork reads the node's colour through \`var(--node-color)\` (and
+\`--node-color-dark\`, \`--node-color-seq-1…8\`, plus the theme's \`--text\`,
+\`--background\`, \`--surface\`, \`--primary\`, \`--accent\` and
+\`--selected\`); artwork that uses no tokens keeps its own colours. A rect with
+\`id="label-area"\` places the label, and its fill is the label colour.
+
+Selected, linking, highlighted, hold and focus states are drawn on a rounded
+rectangle around the artwork, with the corner radius a square node uses.
+`;
+
+/**
+ * Custom SVG artwork, themed by the node colour, at every size.
+ */
+export const CustomShapes: Story = {
+  render: () => (
+    <div className="flex flex-col gap-10">
+      <div className="grid grid-cols-4 gap-6">
+        {NodeColors.filter((c) => c !== 'custom').map((color, i) => (
+          <div key={color} className="flex flex-col items-center gap-2">
+            <Node
+              color={color}
+              shape={{ svg: themedHouseSvg }}
+              label={`Home ${i + 1}`}
+            />
+            <span className="text-xs text-current/70">{i + 1}</span>
+          </div>
+        ))}
+      </div>
+      {customShapeSamples.map(({ caption, shape }, index) => (
+        <section key={caption} className="flex flex-col gap-3">
+          <Heading level="h3" margin="none" className="text-base">
+            {caption}
+          </Heading>
+          <div className="flex items-end gap-6">
+            {nodeSizes.map((size) => (
+              <div key={size} className="flex flex-col items-center gap-2">
+                <Node
+                  size={size}
+                  shape={shape}
+                  label={size === 'xxs' ? '' : 'Robin'}
+                  color={sequenceColor(index + 1)}
+                />
+                <span className="text-xs text-current/70">{size}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    for (const node of within(canvasElement).getAllByRole('button')) {
+      const artwork = node.querySelector('svg[data-node-shape-artwork]');
+      await expect(artwork).not.toBeNull();
+      const labelArea = node.querySelector<HTMLElement>(
+        '[data-node-label-area]',
+      )!;
+      const box = node.getBoundingClientRect();
+      const area = labelArea.getBoundingClientRect();
+      // The label box stays inside the node box at every size.
+      await expect(area.left).toBeGreaterThanOrEqual(box.left - 0.5);
+      await expect(area.right).toBeLessThanOrEqual(box.right + 0.5);
+      await expect(area.top).toBeGreaterThanOrEqual(box.top - 0.5);
+      await expect(area.bottom).toBeLessThanOrEqual(box.bottom + 0.5);
+    }
+  },
+  parameters: {
+    layout: 'padded',
+    docs: { description: { story: customShapeDocs } },
+  },
+};
+
+function CustomShapeStateGrid() {
+  const states = [
+    { caption: 'Default', props: {} },
+    { caption: 'Selected', props: { selected: true } },
+    { caption: 'Linking', props: { linking: true } },
+    { caption: 'Highlighted', props: { highlighted: true } },
+    { caption: 'Selected + linking', props: { selected: true, linking: true } },
+    { caption: 'Loading', props: { loading: true } },
+    { caption: 'Disabled', props: { disabled: true } },
+  ] as const;
+  return (
+    <div className="flex flex-col gap-10 p-8">
+      {customShapeSamples.slice(0, 3).map(({ caption, shape }, index) => (
+        <section key={caption} className="flex flex-col gap-3">
+          <Heading level="h3" margin="none" className="text-base">
+            {caption}
+          </Heading>
+          <div className="flex flex-wrap items-center gap-10">
+            {states.map((state) => (
+              <div
+                key={state.caption}
+                className="flex flex-col items-center gap-3"
+              >
+                <Node
+                  label={state.caption}
+                  shape={shape}
+                  color={sequenceColor(index)}
+                  {...state.props}
+                />
+                <span className="text-xs text-current/70">{state.caption}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Every visual state on custom artwork: the rings follow a rounded rectangle.
+ */
+export const CustomShapeStates: Story = {
+  render: () => <CustomShapeStateGrid />,
+  parameters: {
+    layout: 'padded',
+    chromatic: { pauseAnimationAtEnd: true },
+    docs: {
+      description: {
+        story:
+          'Selected, linking and highlighted rings, the loading spinner and disabled desaturation on custom artwork. The rings are drawn on the rounded rectangle around the artwork, not on its outline.',
+      },
+    },
+  },
+};
+
+/**
+ * Custom artwork on the dark interview theme, in every state and size.
+ */
+export const CustomShapesInterview: Story = {
+  globals: { theme: 'interview' },
+  render: () => (
+    <div className="flex flex-col gap-6">
+      <CustomShapeStateGrid />
+      <div className="flex flex-wrap items-end gap-6 p-8">
+        {customShapeSamples.map(({ caption, shape }) =>
+          nodeSizes.map((size) => (
+            <Node
+              key={`${caption}-${size}`}
+              size={size}
+              shape={shape}
+              label={size === 'xxs' ? '' : 'Robin'}
+            />
+          )),
+        )}
+      </div>
+    </div>
+  ),
+  parameters: {
+    layout: 'padded',
+    chromatic: { pauseAnimationAtEnd: true },
+  },
+};
+
+const customLongLabels = [
+  'Alexandra Müller-Lüdenscheidt',
+  'Alexandria Montgomery-Fitzgerald von Habsburg III of Great Britain and Ireland',
+] as const;
+
+/**
+ * Long names step down the type scale inside the label area, and a name that
+ * still does not fit can be read by pressing and holding.
+ */
+export const CustomShapeLongLabels: Story = {
+  render: () => (
+    <div className="flex flex-col gap-10">
+      {(['sm', 'md', 'lg'] as const).map((size) => (
+        <section key={size} className="flex flex-col gap-3">
+          <Heading level="h3" margin="none" className="text-base">
+            {size}
+          </Heading>
+          <div className="flex flex-wrap items-end gap-8">
+            {customShapeSamples.map(({ caption, shape }) =>
+              customLongLabels.map((label) => (
+                <Node
+                  key={`${caption}-${label}`}
+                  label={label}
+                  lang="de"
+                  size={size}
+                  shape={shape}
+                  color="node-color-seq-5"
+                />
+              )),
+            )}
+          </div>
+        </section>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    for (const node of within(canvasElement).getAllByRole('button')) {
+      const labelArea = node.querySelector<HTMLElement>(
+        '[data-node-label-area]',
+      )!;
+      const label = labelArea.querySelector<HTMLElement>(
+        'span[class*="line-clamp"]',
+      )!;
+      await waitFor(async () => {
+        const area = labelArea.getBoundingClientRect();
+        const text = label.getBoundingClientRect();
+        // The label never spills out of the artwork's label area.
+        await expect(text.height).toBeLessThanOrEqual(area.height + 0.5);
+        await expect(text.width).toBeLessThanOrEqual(area.width + 0.5);
+      });
+    }
+  },
+  parameters: { layout: 'padded' },
+};
+
+/**
+ * A custom-shaped node as inert content inside another control.
+ */
+export const CustomShapePresentational: Story = {
+  render: () => (
+    <div className="flex flex-col items-start gap-6 p-16">
+      <button
+        type="button"
+        className="focusable bg-surface-1 text-surface-1-contrast flex items-center gap-4 rounded px-5 py-2.5"
+        onClick={fn()}
+      >
+        <Node
+          label="home"
+          size="xs"
+          shape={{ svg: themedHouseSvg }}
+          presentational
+        />
+        <span>where home is exactly equal to Rented</span>
+      </button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const card = within(canvasElement).getByRole('button');
+    await expect(
+      card.querySelectorAll('button, [role="button"], [tabindex], div'),
+    ).toHaveLength(0);
+    await expect(card.querySelector('svg')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+  },
+  parameters: { layout: 'padded' },
 };

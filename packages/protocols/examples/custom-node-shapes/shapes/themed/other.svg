@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M50 10 A11 11 0 0 1 70 15.4 A11 11 0 0 1 84.6 30 A11 11 0 0 1 90 50 A11 11 0 0 1 84.6 70 A11 11 0 0 1 70 84.6 A11 11 0 0 1 50 90 A11 11 0 0 1 30 84.6 A11 11 0 0 1 15.4 70 A11 11 0 0 1 10 50 A11 11 0 0 1 15.4 30 A11 11 0 0 1 30 15.4 A11 11 0 0 1 50 10 Z" fill="var(--node-color, #e0457b)"/>
+  <path d="M50 18 C51.5 26 53 27.5 60 29 C53 30.5 51.5 32 50 40 C48.5 32 47 30.5 40 29 C47 27.5 48.5 26 50 18 Z" fill="var(--surface, #3a3566)" stroke="var(--surface, #3a3566)" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M27 26 C27.6 29 28 29.4 31 30 C28 30.6 27.6 31 27 34 C26.4 31 26 30.6 23 30 C26 29.4 26.4 29 27 26 Z" fill="var(--node-color-dark, #c22f63)"/>
+  <path d="M73 26 C73.6 29 74 29.4 77 30 C74 30.6 73.6 31 73 34 C72.4 31 72 30.6 69 30 C72 29.4 72.4 29 73 26 Z" fill="var(--node-color-dark, #c22f63)"/>
+  <rect id="label-area" x="22" y="44" width="56" height="30" fill="#ffffff"/>
+</svg>

@@ -17,8 +17,8 @@ beforeAll(() => architectCatalogSource.load('es'));
 
 afterEach(() => localStorage.removeItem(ARCHITECT_LOCALE_KEY));
 
-vi.mock('../ShapePicker', () => ({
-  ShapePickerControl: ({
+vi.mock('@codaco/protocol-builder/fields/ShapePickerField', () => ({
+  default: ({
     'aria-label': ariaLabel,
     value,
     onChange,
@@ -44,11 +44,6 @@ vi.mock('../ShapePicker', () => ({
       })}
     </div>
   ),
-  SHAPES: [
-    { value: 'circle', label: 'Circle' },
-    { value: 'square', label: 'Square' },
-    { value: 'diamond', label: 'Diamond' },
-  ],
 }));
 
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({

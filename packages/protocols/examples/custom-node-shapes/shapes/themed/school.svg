@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect x="48.5" y="4" width="3" height="12" rx="1" fill="var(--node-color-dark, #c22f63)"/>
+  <path d="M51.5 4 H67 L62.5 8.5 L67 13 H51.5 Z" fill="var(--node-color-dark, #c22f63)" stroke="var(--node-color-dark, #c22f63)" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="31" y="24" width="38" height="26" fill="var(--node-color, #e0457b)"/>
+  <path d="M28 27 L50 13 L72 27 Z" fill="var(--node-color-dark, #c22f63)" stroke="var(--node-color-dark, #c22f63)" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="6" y="46" width="88" height="48" rx="4" fill="var(--node-color, #e0457b)"/>
+  <rect x="4" y="43" width="92" height="9" rx="3" fill="var(--node-color-dark, #c22f63)"/>
+  <circle cx="50" cy="35" r="8" fill="var(--surface, #3a3566)"/>
+  <path d="M50 30.5 V35 H54" fill="none" stroke="var(--node-color, #e0457b)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect id="label-area" x="14" y="57" width="72" height="30" fill="#ffffff"/>
+</svg>

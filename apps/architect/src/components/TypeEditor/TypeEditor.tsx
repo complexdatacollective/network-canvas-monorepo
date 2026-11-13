@@ -6,9 +6,21 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
-import type { LocalizedString } from '@codaco/protocol-validation';
+import CustomShapesField, {
+  customShapesGuidance,
+} from '@codaco/protocol-builder/codebook/components/CustomShapesField';
+import {
+  type CustomShapes,
+  customShapeUsage,
+  isNodeShapeReference,
+  readCustomShapes,
+} from '@codaco/protocol-builder/codebook/customShapes';
+import ShapePickerField from '@codaco/protocol-builder/fields/ShapePickerField';
+import type {
+  LocalizedString,
+  NodeShapeReference,
+} from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
@@ -16,12 +28,12 @@ import { getCodebook } from '~/selectors/protocol';
 
 import ColorPicker from '../Form/Fields/ColorPicker';
 import getPalette from './getPalette';
-import { isNodeColorSequence, isNodeShape } from './nodeAppearance';
+import { isNodeColorSequence } from './nodeAppearance';
 import type { ShapeMappingDraft } from './shapeMappingTypes';
-import { ShapePickerControl } from './ShapePicker';
 import ShapeVariableMapping, {
   type ShapeMappingVariable,
 } from './ShapeVariableMapping';
+import { CUSTOM_SHAPES_FIELD, SHAPE_MAPPING_FIELD } from './validateEntityType';
 const messages = defineMessages({
   typeIdentity: {
     id: 'architect.typeEditor.typeEditor.typeIdentity',
@@ -93,6 +105,12 @@ const messages = defineMessages({
     description:
       'Label of the default node shape picker in the node type editor.',
   },
+  customShapes: {
+    id: 'architect.typeEditor.typeEditor.customShapes',
+    defaultMessage: 'Custom shapes',
+    description:
+      'Label of the part of the node type editor where the researcher adds their own shapes for the node type from SVG image files.',
+  },
   chooseADefaultShapeForThis: {
     id: 'architect.typeEditor.typeEditor.chooseADefaultShapeForThis',
     defaultMessage: 'Choose a default shape for this node type.',
@@ -118,7 +136,7 @@ const messages = defineMessages({
   },
 });
 const DEFAULT_NODE_ICON = 'add-a-person';
-const DEFAULT_NODE_SHAPE: NodeShape = 'circle';
+const DEFAULT_NODE_SHAPE: NodeShapeReference = 'circle';
 
 /** The entity-type definition as the dialog holds it before it is committed. */
 export type EntityTypeValues = {
@@ -126,7 +144,8 @@ export type EntityTypeValues = {
   label?: LocalizedString;
   color?: string;
   icon?: string;
-  shape?: { default?: NodeShape; dynamic?: ShapeMappingDraft };
+  customShapes?: CustomShapes;
+  shape?: { default?: NodeShapeReference; dynamic?: ShapeMappingDraft };
   variables?: Record<string, ShapeMappingVariable>;
 };
 
@@ -175,6 +194,14 @@ const TypeEditor = ({
   );
   const defaultShape = useFormStore(
     (state) => state.getFieldState('shape.default')?.value,
+  );
+  // Pickers and the remove buttons follow the shapes as they are added,
+  // renamed and removed, and where they are used.
+  const customShapes = readCustomShapes(
+    useFormStore((state) => state.getFieldState(CUSTOM_SHAPES_FIELD)?.value),
+  );
+  const shapeMapping = useFormStore(
+    (state) => state.getFieldState(SHAPE_MAPPING_FIELD)?.value,
   );
 
   const { name: paletteName, size: paletteSize } = getPalette(entity);
@@ -234,21 +261,33 @@ const TypeEditor = ({
             )}
           >
             <ArchitectField
-              component={ShapePickerControl}
+              component={CustomShapesField}
+              label={intl.formatMessage(messages.customShapes)}
+              hint={customShapesGuidance(intl)}
+              name={CUSTOM_SHAPES_FIELD}
+              initialValue={initialValues.customShapes}
+              nodeColor={isNodeColorSequence(nodeColor) ? nodeColor : undefined}
+              usage={customShapeUsage(defaultShape, shapeMapping)}
+              validation={{}}
+            />
+            <ArchitectField
+              component={ShapePickerField}
               label={intl.formatMessage(messages.shape)}
               hint={intl.formatMessage(messages.chooseADefaultShapeForThis)}
               name="shape.default"
               initialValue={initialValues.shape?.default ?? DEFAULT_NODE_SHAPE}
               validation={{ required: true }}
               nodeColor={isNodeColorSequence(nodeColor) ? nodeColor : undefined}
+              customShapes={customShapes}
             />
             <ShapeVariableMapping
               variables={initialValues.variables}
               initialMapping={initialValues.shape?.dynamic}
               nodeColor={isNodeColorSequence(nodeColor) ? nodeColor : undefined}
               defaultShape={
-                isNodeShape(defaultShape) ? defaultShape : undefined
+                isNodeShapeReference(defaultShape) ? defaultShape : undefined
               }
+              customShapes={customShapes}
             />
           </Section>
           <Section title={intl.formatMessage(messages.interfaceIcon)}>

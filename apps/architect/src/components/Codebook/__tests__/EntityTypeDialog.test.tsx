@@ -27,8 +27,8 @@ vi.mock('~/components/Form/Fields/ColorPicker', () => ({
 vi.mock('@codaco/fresco-ui/form/fields/IconPicker', () => ({
   default: () => null,
 }));
-vi.mock('~/components/TypeEditor/ShapePicker', () => ({
-  ShapePickerControl: () => null,
+vi.mock('@codaco/protocol-builder/fields/ShapePickerField', () => ({
+  default: () => null,
 }));
 vi.mock('~/components/TypeEditor/ShapeVariableMapping', () => ({
   default: () => null,

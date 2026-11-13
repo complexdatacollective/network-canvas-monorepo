@@ -20,8 +20,6 @@ import {
   type ColorReference,
   EdgeColorSequence,
   NodeColorSequence as NodeColorReferences,
-  type NodeShape,
-  NodeShapes,
   type StageSubject,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -126,9 +124,6 @@ export type EntityTypePickerFieldProps = CreateFormFieldProps<
 const asNodeColor = (color: ColorReference): NodeColorSequence =>
   NodeColors.find((candidate) => candidate === color) ?? 'node-color-seq-1';
 
-const asNodeShape = (shape: string | undefined): NodeShape | undefined =>
-  NodeShapes.find((candidate) => candidate === shape);
-
 /**
  * The colour a chip is drawn in, from what the type is stored with.
  *
@@ -162,9 +157,7 @@ const typeOption = (
   value: summary.id,
   label: codebookLabel(summary.name, summary.id),
   color: asEntityColor(summary.color, entityType),
-  ...(entityType === 'edge'
-    ? {}
-    : { shape: asNodeShape(summary.shape) ?? 'circle' }),
+  ...(entityType === 'edge' ? {} : { shape: summary.shape ?? 'circle' }),
 });
 
 /**

@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
 import UINode, {
   type NodeColorSequence,
-  type NodeShape,
+  type NodeShapeProp,
 } from '@codaco/fresco-ui/Node';
 
 const variants = {
@@ -35,7 +35,7 @@ const iconVariants = {
 type DropOverlayProps = {
   dropTargetId: string;
   nodeColor: NodeColorSequence;
-  nodeShape?: NodeShape;
+  nodeShape?: NodeShapeProp;
   message: string;
 };
 

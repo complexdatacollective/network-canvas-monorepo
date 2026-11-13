@@ -32,10 +32,7 @@ export default function ExternalNodeItem({
   const shape = useMemo(
     () =>
       nodeTypeDefinition
-        ? resolveNodeShape(
-            nodeTypeDefinition.shape,
-            node[entityAttributesProperty],
-          )
+        ? resolveNodeShape(nodeTypeDefinition, node[entityAttributesProperty])
         : undefined,
     [nodeTypeDefinition, node],
   );

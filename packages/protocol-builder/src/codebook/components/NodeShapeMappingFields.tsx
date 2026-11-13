@@ -16,15 +16,15 @@ import {
 } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { NodeShape } from '@codaco/protocol-validation';
+import type { NodeShapeReference } from '@codaco/protocol-validation';
 
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import type { ResolvedTranslation } from '../../localization/localizedText.ts';
 import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
+import type { CustomShapes } from '../customShapes.ts';
 import {
   eligibleShapeVariables,
-  isNodeShape,
   MAX_SHAPE_THRESHOLDS,
   mappingForVariable,
   nextThresholdValue,
@@ -200,6 +200,7 @@ type ThresholdRowProps = Readonly<{
   index: number;
   config: ReturnType<typeof thresholdInputConfig>;
   nodeColor: string | undefined;
+  customShapes: CustomShapes | undefined;
   disabled: boolean;
   onUpdate(next: ShapeThreshold): void;
   onRemove(): void;
@@ -218,6 +219,7 @@ function ThresholdRow({
   index,
   config,
   nodeColor,
+  customShapes,
   disabled,
   onUpdate,
   onRemove,
@@ -289,12 +291,13 @@ function ThresholdRow({
           component={ShapePickerField}
           small
           nodeColor={nodeColor}
+          customShapes={customShapes}
           value={threshold.shape}
           disabled={disabled}
           onChange={(value) =>
             onUpdate({
               value: parseThresholdValue(draft) ?? threshold.value,
-              shape: isNodeShape(value) ? value : threshold.shape,
+              shape: value ?? threshold.shape,
             })
           }
         />
@@ -344,9 +347,11 @@ export type NodeShapeMappingFieldsProps = Readonly<{
   /** The type's own attributes, from the document the editor opened on. */
   variables: Readonly<Record<string, ShapeMappingVariable>>;
   /** The shape used wherever the mapping says nothing. */
-  defaultShape?: NodeShape;
+  defaultShape?: NodeShapeReference;
   /** The type's own colour, so a swatch is drawn as the node will be. */
   nodeColor?: string;
+  /** The type's own shapes, offered after the built-in ones. */
+  customShapes?: CustomShapes;
   /** The mapping as it stands; absent means the feature is switched off. */
   value?: ShapeMappingDraft;
   /** Absent clears `shape.dynamic` — see the toggle below. */
@@ -369,6 +374,7 @@ export default function NodeShapeMappingFields({
   variables,
   defaultShape,
   nodeColor,
+  customShapes,
   value,
   onChange,
   error,
@@ -445,18 +451,21 @@ export default function NodeShapeMappingFields({
             <div className="flex flex-col gap-3">
               {groupHeading(intl.formatMessage(messages.shapeForEachValue))}
               {answers.map((answer, index) => (
-                <div key={JSON.stringify(answer.value)} className={ROW_CLASSES}>
+                <div
+                  key={JSON.stringify(answer.value)}
+                  className={`${ROW_CLASSES} flex-wrap`}
+                >
                   <OptionLabel
                     label={answer.label.text}
                     render={
                       <span
-                        className="min-w-0 flex-1 text-sm"
+                        className="min-w-32 flex-1 text-sm"
                         lang={answer.label.lang}
                         dir={answer.label.dir}
                       />
                     }
                   />
-                  <div className="shrink-0">
+                  <div className="max-w-full">
                     <UnconnectedField
                       name={`shape-for-${index + 1}`}
                       label={intl.formatMessage(messages.shapeForValue, {
@@ -466,10 +475,11 @@ export default function NodeShapeMappingFields({
                       component={ShapePickerField}
                       small
                       nodeColor={nodeColor}
+                      customShapes={customShapes}
                       value={shapeForValue(mapping, answer.value)}
                       disabled={disabled}
                       onChange={(next) => {
-                        if (isNodeShape(next)) {
+                        if (next !== undefined) {
                           onChange(
                             withDiscreteShape(mapping, answer.value, next),
                           );
@@ -494,14 +504,14 @@ export default function NodeShapeMappingFields({
               {groupHeading(intl.formatMessage(messages.shapeThresholds))}
               {/* Everything under the lowest threshold, which is the type's
                   own default shape and not something to be chosen again. */}
-              <div className={`${ROW_CLASSES} opacity-70`}>
+              <div className={`${ROW_CLASSES} flex-wrap opacity-70`}>
                 <span className="text-sm">
                   {intl.formatMessage(messages.shapeBelowFirstThreshold)}
                 </span>
                 {/* Mathematical mapping symbol, independent of locale. */}
                 {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
                 <span className="text-xl text-current/70">→</span>
-                <div className="shrink-0">
+                <div className="max-w-full">
                   <UnconnectedField
                     name="shape-below-first-threshold"
                     label={intl.formatMessage(messages.shapeDefaultSwatch)}
@@ -509,6 +519,7 @@ export default function NodeShapeMappingFields({
                     component={ShapePickerField}
                     small
                     nodeColor={nodeColor}
+                    customShapes={customShapes}
                     value={defaultShape}
                     disabled
                     onChange={() => undefined}
@@ -541,6 +552,7 @@ export default function NodeShapeMappingFields({
                   index={index}
                   config={config}
                   nodeColor={nodeColor}
+                  customShapes={customShapes}
                   disabled={disabled}
                   onUpdate={(next) =>
                     onChange(

@@ -24,7 +24,7 @@ import type {
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
 import Icon from '@codaco/fresco-ui/Icon';
-import Node from '@codaco/fresco-ui/Node';
+import Node, { resolveNodeShapeReference } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -424,7 +424,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           shape={
             nodeTypeDefinition && item.data
               ? resolveNodeShape(
-                  nodeTypeDefinition.shape,
+                  nodeTypeDefinition,
                   item.data[entityAttributesProperty],
                 )
               : undefined
@@ -542,7 +542,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                   <DropOverlay
                     dropTargetId={sourceDropTargetId}
                     nodeColor={dropNodeColor}
-                    nodeShape={nodeTypeDefinition?.shape.default}
+                    nodeShape={resolveNodeShapeReference(
+                      nodeTypeDefinition?.shape.default,
+                      nodeTypeDefinition?.customShapes,
+                    )}
                     message={intl.formatMessage(runtimeMessages.dropToRemove, {
                       subject,
                     })}

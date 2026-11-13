@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="24" r="18" fill="var(--node-color, #e0457b)"/>
+  <path d="M8 96 V72 C8 56 22 46 38 46 H62 C78 46 92 56 92 72 V96 Z" fill="var(--node-color, #e0457b)"/>
+  <circle cx="43.5" cy="21" r="3" fill="var(--surface, #3a3566)"/>
+  <circle cx="56.5" cy="21" r="3" fill="var(--surface, #3a3566)"/>
+  <path d="M42.5 28.5 Q50 35 57.5 28.5" fill="none" stroke="var(--surface, #3a3566)" stroke-width="3.2" stroke-linecap="round"/>
+  <rect id="label-area" x="18" y="58" width="64" height="32" fill="#ffffff"/>
+</svg>

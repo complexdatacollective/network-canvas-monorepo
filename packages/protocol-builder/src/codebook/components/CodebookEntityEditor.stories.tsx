@@ -44,6 +44,29 @@ const PERSON_WITH_SHAPE_MAPPING: SectionDoc = {
   },
 };
 
+const HOME_SHAPE =
+  '<svg viewBox="0 0 100 100"><path d="M8 48 L50 10 L92 48 V92 H8 Z" fill="var(--node-color, #e04f6d)"/><path d="M8 48 L50 10 L92 48" fill="none" stroke="var(--node-color-dark, #a8324c)" stroke-width="8" stroke-linejoin="round"/><rect id="label-area" x="18" y="52" width="64" height="32" fill="#ffffff"/></svg>';
+const SCHOOL_SHAPE =
+  '<svg viewBox="0 0 100 100"><rect x="6" y="34" width="88" height="58" rx="6" fill="#f2b84b"/><path d="M50 6 L50 34 M50 8 L72 16 L50 24" fill="#d9483b" stroke="#5b3a1e" stroke-width="4" stroke-linejoin="round"/><rect id="label-area" x="14" y="46" width="72" height="36" fill="#3b2a12"/></svg>';
+
+/** A type that draws itself with the researcher's own SVG shapes. */
+const PLACE_WITH_CUSTOM_SHAPES: SectionDoc = {
+  ...PERSON,
+  name: 'Place',
+  customShapes: {
+    home: { name: 'Home', svg: HOME_SHAPE },
+    school: { name: 'School', svg: SCHOOL_SHAPE },
+  },
+  shape: {
+    default: 'custom:home',
+    dynamic: {
+      variable: 'ethnicity',
+      type: 'discrete',
+      map: [{ value: 'asian', shape: 'custom:school' }],
+    },
+  },
+};
+
 function ExistingNodeEditor() {
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -213,5 +236,52 @@ export const WithAShapeMapping: Story = {
         'Some values are unmapped and will use the default shape.',
       ),
     ).toBeVisible();
+  },
+};
+
+/**
+ * A node type with its own shapes: each is listed with a preview and a name,
+ * offered in the default picker and in every mapping row after the built-in
+ * shapes, and cannot be removed while the type still uses it.
+ */
+export const WithCustomShapes: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-place-custom-shapes-1"
+      dialog={{ title: 'Edit this node type', open: true }}
+      subject={{ entity: 'node', type: 'place' }}
+      initialDraft={PLACE_WITH_CUSTOM_SHAPES}
+      authoritativeDocument={PLACE_WITH_CUSTOM_SHAPES}
+      existingEntityNames={['Person']}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'unreachable' }),
+          refusal: { kind: 'unreachable' } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await expect(
+      within(
+        dialog.getByRole('radiogroup', { name: /^Shape(?! for)/ }),
+      ).getByRole('radio', { name: 'Select shape Home' }),
+    ).toHaveAttribute('aria-checked', 'true');
+    await expect(
+      within(
+        dialog.getByRole('radiogroup', { name: 'Shape for Asian' }),
+      ).getByRole('radio', { name: 'Select shape School' }),
+    ).toHaveAttribute('aria-checked', 'true');
+    await expect(
+      dialog.getByRole('button', { name: 'Remove shape Home' }),
+    ).toBeDisabled();
+    await expect(
+      dialog.getByRole('button', { name: 'Remove shape School' }),
+    ).toBeDisabled();
   },
 };

@@ -9,6 +9,7 @@ import {
   type Ref,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
 } from 'react';
@@ -16,6 +17,12 @@ import { useMergeRefs } from 'react-best-merge-refs';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  getCustomShapeId,
+  isCustomShapeReference,
+  type NodeShapeReference,
+  type ParsedNodeShapeSvg,
+} from '@codaco/protocol-validation';
 
 import { useFitText } from './hooks/useFitText';
 import {
@@ -28,12 +35,33 @@ import {
   useSafeAnimate,
   useShouldSkipAnimations,
 } from './hooks/useSafeAnimate';
+import {
+  getParsedNodeShape,
+  NODE_SHAPE_TOKEN_STYLE,
+  NodeShapeArtwork,
+  toNodeShapeIdPrefix,
+} from './node/NodeShapeArtwork';
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
+import { type CSSVariablesStyle } from './utils/cssVariables';
 import { cva, type VariantProps } from './utils/cva';
 import { withLabelBreakPoints } from './utils/labelBreakPoints';
 
 export type NodeShape = 'circle' | 'square' | 'diamond';
+/** A custom shape: the stored, validated SVG text. */
+export type NodeCustomShape = { svg: string };
+export type NodeShapeProp = NodeShape | NodeCustomShape;
+
+/** Turns a codebook shape reference into the `shape` prop. A `custom:<id>`
+ *  that the node type does not define falls back to 'circle'. */
+export function resolveNodeShapeReference(
+  reference: NodeShapeReference | undefined,
+  customShapes: Record<string, { svg: string }> | undefined,
+): NodeShapeProp | undefined {
+  if (reference === undefined) return undefined;
+  if (!isCustomShapeReference(reference)) return reference;
+  return customShapes?.[getCustomShapeId(reference)] ?? 'circle';
+}
 
 export type { ActivationSource, NodeDragEndInfo };
 
@@ -141,6 +169,11 @@ const shapeLayerVariants = cva({
     shape: 'circle',
   },
 });
+
+// A custom shape draws its own artwork, so its layer carries only the corner
+// radius the state rings follow.
+const CUSTOM_SHAPE_LAYER_CLASS =
+  'pointer-events-none absolute inset-0 rounded-[inherit]';
 
 export const labelVariants = cva({
   // No word-breaking here: a word that cannot fit its line must overflow, or
@@ -258,6 +291,39 @@ const DIAMOND_LABEL_FIT_STEPS: Record<
   lg: buildFitSteps('lg', DIAMOND_LABEL_WIDTH),
 };
 
+// A custom shape's label box is the artwork's own label area, already placed
+// inside the drawing, so the label uses all of it rather than an inscribed
+// share, and its height bounds the ladder instead of the line count alone.
+const CUSTOM_LABEL_SIZE = 'w-full! max-h-full';
+
+const CUSTOM_LABEL_FIT_STEPS: Record<NodeSize, readonly [string, ...string[]]> =
+  {
+    xxs: buildFitSteps('xxs', CUSTOM_LABEL_SIZE),
+    xs: buildFitSteps('xs', CUSTOM_LABEL_SIZE),
+    sm: buildFitSteps('sm', CUSTOM_LABEL_SIZE),
+    md: buildFitSteps('md', CUSTOM_LABEL_SIZE),
+    lg: buildFitSteps('lg', CUSTOM_LABEL_SIZE),
+  };
+
+// `currentColor` in an artwork means the node's colour; on the HTML label it
+// would otherwise resolve to the root's white text.
+const resolveCustomLabelColor = (labelColor: string | undefined) => {
+  if (labelColor === undefined) return 'var(--text)';
+  return /^currentcolor$/i.test(labelColor.trim()) ? 'var(--base)' : labelColor;
+};
+
+const customLabelAreaStyle = ({
+  labelArea,
+  labelColor,
+}: ParsedNodeShapeSvg): CSSVariablesStyle => ({
+  ...NODE_SHAPE_TOKEN_STYLE,
+  left: `${labelArea.x * 100}%`,
+  top: `${labelArea.y * 100}%`,
+  width: `${labelArea.width * 100}%`,
+  height: `${labelArea.height * 100}%`,
+  color: resolveCustomLabelColor(labelColor),
+});
+
 export function truncateNodeLabel(label: string, maxLength = 35): string {
   if (label.length <= maxLength) return label;
   // Use a soft hyphen (\u{AD}) to allow breaking long words if needed
@@ -344,7 +410,9 @@ type UINodeProps = {
    */
   'presentational'?: boolean;
   'ref'?: Ref<HTMLButtonElement>;
-} & VariantProps<typeof nodeVariants> &
+  /** A built-in shape, or a custom SVG shape */
+  'shape'?: NodeShapeProp;
+} & Omit<VariantProps<typeof nodeVariants>, 'shape'> &
   Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
     | 'color'
@@ -441,8 +509,15 @@ export default function Node(props: UINodeProps) {
   // Fit the label to the node rather than clipping it at a fixed size, so most
   // names are readable in full without any interaction at all.
   const labelBoxRef = useRef<HTMLSpanElement>(null);
-  const fitSteps =
-    shape === 'diamond'
+  // An artwork that cannot be parsed draws as a circle.
+  const customShape =
+    typeof shape === 'object' ? getParsedNodeShape(shape.svg) : null;
+  const builtInShape: NodeShape =
+    typeof shape === 'string' ? shape : customShape ? 'square' : 'circle';
+  const shapeIdPrefix = toNodeShapeIdPrefix(useId());
+  const fitSteps = customShape
+    ? CUSTOM_LABEL_FIT_STEPS[size ?? 'md']
+    : builtInShape === 'diamond'
       ? DIAMOND_LABEL_FIT_STEPS[size ?? 'md']
       : LABEL_FIT_STEPS[size ?? 'md'];
 
@@ -660,7 +735,7 @@ export default function Node(props: UINodeProps) {
 
   const rootClassName = nodeVariants({
     size,
-    shape,
+    shape: builtInShape,
     color,
     disabled,
     className,
@@ -700,9 +775,16 @@ export default function Node(props: UINodeProps) {
           diamonds) the rotation, keeping the root element transform-free */}
       <span
         ref={stateScope}
-        className={shapeLayerVariants({ shape })}
+        className={
+          customShape
+            ? CUSTOM_SHAPE_LAYER_CLASS
+            : shapeLayerVariants({ shape: builtInShape })
+        }
         aria-hidden
       >
+        {customShape && (
+          <NodeShapeArtwork shape={customShape} idPrefix={shapeIdPrefix} />
+        )}
         {/* Linking indicator - separate element so it can animate independently */}
         <AnimatePresence>
           {linking && (
@@ -749,13 +831,28 @@ export default function Node(props: UINodeProps) {
       </span>
       {/* Content layer - positioned so it paints above the shape layer, and
           the fixed-size box the label is fitted to */}
-      <span
-        ref={labelBoxRef}
-        className="relative flex size-full min-w-0 items-center justify-center overflow-hidden rounded-[inherit]"
-      >
-        {nodeContent}
-        {props.children}
-      </span>
+      {customShape ? (
+        <span
+          ref={labelBoxRef}
+          data-node-label-area
+          // Placed over the artwork's label area, which is drawn by
+          // coordinates and does not mirror.
+          data-direction-exempt
+          className="absolute flex min-w-0 items-center justify-center overflow-hidden"
+          style={customLabelAreaStyle(customShape)}
+        >
+          {nodeContent}
+          {props.children}
+        </span>
+      ) : (
+        <span
+          ref={labelBoxRef}
+          className="relative flex size-full min-w-0 items-center justify-center overflow-hidden rounded-[inherit]"
+        >
+          {nodeContent}
+          {props.children}
+        </span>
+      )}
     </>
   );
 

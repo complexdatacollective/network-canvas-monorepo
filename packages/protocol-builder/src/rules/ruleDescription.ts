@@ -1,11 +1,14 @@
 import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import {
+  type NodeShapeProp,
+  resolveNodeShapeReference,
+} from '@codaco/fresco-ui/Node';
 import type {
   Codebook,
   ColorReference,
   FilterOperator,
   LocaleTag,
-  NodeShape,
   VariableType,
 } from '@codaco/protocol-validation';
 
@@ -69,7 +72,7 @@ export type RuleDescriptionEntity =
       typeId: string | undefined;
       label: string;
       color: ColorReference;
-      shape: NodeShape | undefined;
+      shape: NodeShapeProp | undefined;
       missing: boolean;
     }>
   | Readonly<{
@@ -994,7 +997,10 @@ function describeEntity(
     typeId: entityTypeId,
     label: codebookLabel(definition?.name, entityTypeId ?? ''),
     color: definition?.color ?? DEFAULT_NODE_COLOR,
-    shape: definition?.shape.default,
+    shape: resolveNodeShapeReference(
+      definition?.shape.default,
+      definition?.customShapes,
+    ),
     missing: definition === undefined,
   });
 }

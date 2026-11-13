@@ -238,7 +238,7 @@ export default function QuickAddField({
   // shape the new node will have (resolved against the prompt's additional
   // attributes, which are the only attributes set at creation time).
   const nodeShape = nodeTypeDefinition
-    ? resolveNodeShape(nodeTypeDefinition.shape, newNodeAttributes)
+    ? resolveNodeShape(nodeTypeDefinition, newNodeAttributes)
     : 'circle';
 
   // Close form when disabled

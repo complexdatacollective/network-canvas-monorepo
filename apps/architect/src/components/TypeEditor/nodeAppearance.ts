@@ -1,12 +1,4 @@
-import {
-  type NodeColorSequence,
-  NodeColors,
-  type NodeShape,
-} from '@codaco/fresco-ui/Node';
-import { NodeShapes } from '@codaco/protocol-validation';
-
-export const isNodeShape = (value: unknown): value is NodeShape =>
-  NodeShapes.some((shape) => shape === value);
+import { type NodeColorSequence, NodeColors } from '@codaco/fresco-ui/Node';
 
 export const isNodeColorSequence = (
   value: unknown,

@@ -18,11 +18,14 @@ import type { NodeColorSequence } from '@codaco/fresco-ui/Node';
 import OptionLabel, { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type {
-  NodeShape,
-  Validation,
-  VariableOptions,
-  VariableType,
+import type { CustomShapes } from '@codaco/protocol-builder/codebook/customShapes';
+import ShapePickerField from '@codaco/protocol-builder/fields/ShapePickerField';
+import {
+  type NodeShapeReference,
+  NodeShapes,
+  type Validation,
+  type VariableOptions,
+  type VariableType,
 } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -34,7 +37,6 @@ import type {
   ShapeMappingDraft,
   ShapeThreshold,
 } from './shapeMappingTypes';
-import { ShapePickerControl, SHAPES } from './ShapePicker';
 import { SHAPE_MAPPING_FIELD } from './validateEntityType';
 const additionalMessages = defineMessages({
   addThreshold: {
@@ -210,10 +212,10 @@ const getThresholdInputConfig = (
 
 // One shape band is reserved for the "below first threshold" default, so the
 // remaining shapes cap how many thresholds can be distinguished.
-const MAX_THRESHOLDS = SHAPES.length - 1;
+const MAX_THRESHOLDS = NodeShapes.length - 1;
 
 const ITEM_ROW_CLASSES =
-  'bg-input text-input-contrast flex w-full min-h-20 items-center gap-3 rounded-lg px-4';
+  'bg-input text-input-contrast flex w-full min-h-20 items-center gap-3 rounded-lg px-4 py-2';
 
 // The item component is a stable top-level component (so ArrayField never
 // remounts rows); the per-variable input bounds and the node colour reach it
@@ -221,6 +223,7 @@ const ITEM_ROW_CLASSES =
 type ThresholdItemContextValue = {
   config: ThresholdInputConfig;
   nodeColor?: NodeColorSequence;
+  customShapes?: CustomShapes;
 };
 
 const ThresholdItemContext = createContext<ThresholdItemContextValue>({
@@ -238,7 +241,7 @@ const ThresholdItem = ({
   onDelete,
 }: ArrayFieldItemProps<ShapeThreshold>) => {
   const intl = useAppIntl();
-  const { config, nodeColor } = useContext(ThresholdItemContext);
+  const { config, nodeColor, customShapes } = useContext(ThresholdItemContext);
   const value = item.value ?? 0;
   const shape = item.shape;
   const [draft, setDraft] = useState(() => String(value));
@@ -279,9 +282,10 @@ const ThresholdItem = ({
       {/* Mathematical mapping symbol, independent of locale. */}
       {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
       <span className="text-xl text-current/70">→</span>
-      <ShapePickerControl
+      <ShapePickerField
         small
         nodeColor={nodeColor}
+        customShapes={customShapes}
         aria-label={intl.formatMessage(messages.shapeAtThreshold, {
           value: intl.formatNumber(value, { maximumSignificantDigits: 21 }),
         })}
@@ -314,7 +318,8 @@ type ShapeMappingEditorProps = CreateFormFieldProps<
   {
     variables?: Record<string, ShapeMappingVariable>;
     nodeColor?: NodeColorSequence;
-    defaultShape?: NodeShape;
+    defaultShape?: NodeShapeReference;
+    customShapes?: CustomShapes;
   }
 >;
 
@@ -330,6 +335,7 @@ const ShapeMappingEditor = ({
   variables,
   nodeColor,
   defaultShape,
+  customShapes,
 }: ShapeMappingEditorProps) => {
   const intl = useAppIntl();
   const localization = useSelector(getLocalization);
@@ -373,7 +379,7 @@ const ShapeMappingEditor = ({
 
   const handleDiscreteShapeChange = (
     optionValue: DiscreteShapeMapEntry['value'],
-    shape: NodeShape,
+    shape: NodeShapeReference,
   ) => {
     const currentMap = dynamic.map ?? [];
     const existingIndex = currentMap.findIndex(
@@ -418,7 +424,7 @@ const ShapeMappingEditor = ({
 
   const getShapeForValue = (
     optionValue: DiscreteShapeMapEntry['value'],
-  ): NodeShape | undefined =>
+  ): NodeShapeReference | undefined =>
     dynamic.map?.find(
       (entry) => JSON.stringify(entry.value) === JSON.stringify(optionValue),
     )?.shape;
@@ -450,9 +456,10 @@ const ShapeMappingEditor = ({
                 label={option.label}
                 render={<span className="flex-1 text-sm" />}
               />
-              <ShapePickerControl
+              <ShapePickerField
                 small
                 nodeColor={nodeColor}
+                customShapes={customShapes}
                 aria-label={intl.formatMessage(messages.shapeFor, {
                   value1: optionLabelText(option.label),
                 })}
@@ -488,11 +495,12 @@ const ShapeMappingEditor = ({
             {/* Mathematical mapping symbol, independent of locale. */}
             {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
             <span className="text-xl text-current/70">→</span>
-            <ShapePickerControl
+            <ShapePickerField
               small
               disabled
               readOnly
               nodeColor={nodeColor}
+              customShapes={customShapes}
               value={defaultShape}
               aria-label={intl.formatMessage(messages.defaultShape)}
             />
@@ -511,7 +519,7 @@ const ShapeMappingEditor = ({
             />
           </Surface>
           <ThresholdItemContext.Provider
-            value={{ config: thresholdConfig, nodeColor }}
+            value={{ config: thresholdConfig, nodeColor, customShapes }}
           >
             <ArrayField<ShapeThreshold>
               aria-label={intl.formatMessage(messages.thresholds)}
@@ -551,7 +559,8 @@ type ShapeVariableMappingProps = {
   /** The committed mapping, seeding the field when one is already configured. */
   initialMapping?: ShapeMappingDraft;
   nodeColor?: NodeColorSequence;
-  defaultShape?: NodeShape;
+  defaultShape?: NodeShapeReference;
+  customShapes?: CustomShapes;
 };
 
 /**
@@ -566,6 +575,7 @@ const ShapeVariableMapping = ({
   initialMapping,
   nodeColor,
   defaultShape,
+  customShapes,
 }: ShapeVariableMappingProps) => {
   const intl = useAppIntl();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
@@ -615,6 +625,7 @@ const ShapeVariableMapping = ({
             variables={variables}
             nodeColor={nodeColor}
             defaultShape={defaultShape}
+            customShapes={customShapes}
             // Completeness is judged for the mapping as a whole by the
             // dialog's form-level `validateEntityType`, which reports at this
             // same field name.

@@ -9,7 +9,7 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { NodeShape } from '@codaco/fresco-ui/Node';
+import type { NodeShapeProp } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { ColorReference } from '@codaco/protocol-validation';
@@ -121,7 +121,7 @@ type EntityTypeProps = {
   type: string;
   name: string;
   color: ColorReference;
-  shape?: NodeShape;
+  shape?: NodeShapeProp;
   usage: UsageItem[];
   inUse?: boolean;
   search?: string;
