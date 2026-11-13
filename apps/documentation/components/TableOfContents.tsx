@@ -49,7 +49,7 @@ const TOCLink = ({
       className={cx(
         'focusable hover:text-accent my-2 block text-base transition-colors',
         sideBar && 'm-2 text-sm',
-        node.level === 3 && 'ml-6 font-normal',
+        node.level === 3 && 'ms-6 font-normal',
         sideBar && highlighted && 'text-accent font-semibold',
       )}
     >
