@@ -139,7 +139,7 @@ const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_.:-]*$/;
 const HREF_PATTERN = /^#([A-Za-z_][A-Za-z0-9_.:-]*)$/;
 const URL_REFERENCE_PATTERN =
   /^url\(\s*(['"]?)#([A-Za-z_][A-Za-z0-9_.:-]*)\1\s*\)$/i;
-const UNSAFE_VALUE_PATTERN = /[<\\]|javascript:|expression\(|@import/i;
+const UNSAFE_VALUE_PATTERN = /[<\\;{}]|\/\*|javascript:|expression\(|@import/i;
 
 /**
  * Rewrites one attribute for rendering, or drops it. Every id, and every

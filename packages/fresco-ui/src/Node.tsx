@@ -60,7 +60,14 @@ export function resolveNodeShapeReference(
 ): NodeShapeProp | undefined {
   if (reference === undefined) return undefined;
   if (!isCustomShapeReference(reference)) return reference;
-  return customShapes?.[getCustomShapeId(reference)] ?? 'circle';
+  const id = getCustomShapeId(reference);
+  // An own entry only: an id such as `constructor` must not reach the
+  // prototype.
+  const custom =
+    customShapes && Object.hasOwn(customShapes, id)
+      ? customShapes[id]
+      : undefined;
+  return typeof custom?.svg === 'string' ? custom : 'circle';
 }
 
 export type { ActivationSource, NodeDragEndInfo };

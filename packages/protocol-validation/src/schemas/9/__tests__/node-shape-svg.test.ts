@@ -714,3 +714,82 @@ describe('serializeNodeShapeSvg', () => {
     },
   );
 });
+
+describe('hardening', () => {
+  const wrap = (body: string) => `<svg viewBox="0 0 10 10">${body}</svg>`;
+
+  it('refuses values that could end a CSS declaration', () => {
+    for (const fill of ['red;background:blue', 'red}', 'red/*x*/', '{red']) {
+      expect(
+        isValidNodeShapeSvg(
+          wrap(`<rect width="5" height="5" fill="${fill}"/>`),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it('keeps only a colour as the label colour', () => {
+    const area = (fill: string) =>
+      parseNodeShapeSvg(
+        wrap(
+          `<circle cx="5" cy="5" r="4"/><rect id="label-area" x="1" y="1" width="8" height="8" fill="${fill}"/>`,
+        ),
+      );
+    for (const fill of [
+      '#fff',
+      'white',
+      'rgb(1 2 3)',
+      'var(--text)',
+      'var(--node-color, #123456)',
+    ]) {
+      const result = area(fill);
+      expect(
+        result.success && result.issues.length === 0 && result.shape.labelColor,
+      ).toBe(fill);
+    }
+    const bad = area('red !important');
+    expect(bad.success && bad.shape.labelColor).toBeUndefined();
+    expect(bad.issues.map((issue) => issue.code)).toContain(
+      'invalid-label-area',
+    );
+  });
+
+  it('removes <use> when nested references multiply past the limit', () => {
+    const levels = Array.from({ length: 8 }, (_, level) => {
+      const inner =
+        level === 0
+          ? '<circle cx="1" cy="1" r="1"/>'
+          : `<use href="#l${level - 1}"/>`.repeat(10);
+      return `<g id="l${level}">${inner}</g>`;
+    }).join('');
+    const result = parseNodeShapeSvg(
+      wrap(
+        `<defs>${levels}</defs><rect width="5" height="5"/><use href="#l7"/>`,
+      ),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.issues.map((issue) => issue.code)).toContain(
+      'unsupported-element',
+    );
+    expect(serializeNodeShapeSvg(result.shape)).not.toContain('<use');
+    expect(isValidNodeShapeSvg(serializeNodeShapeSvg(result.shape))).toBe(true);
+  });
+
+  it('removes a <use> that reaches itself', () => {
+    const result = parseNodeShapeSvg(
+      wrap('<rect width="5" height="5"/><g id="a"><use href="#a"/></g>'),
+    );
+    expect(result.success && result.issues.length > 0).toBe(true);
+  });
+
+  it('keeps an ordinary <use>', () => {
+    expect(
+      isValidNodeShapeSvg(
+        wrap(
+          '<defs><circle id="dot" r="1"/></defs><use href="#dot" x="2" y="2"/>',
+        ),
+      ),
+    ).toBe(true);
+  });
+});

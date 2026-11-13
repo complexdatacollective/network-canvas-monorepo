@@ -299,3 +299,10 @@ describe('Node built-in shapes', () => {
     },
   );
 });
+
+describe('resolveNodeShapeReference lookups', () => {
+  it('draws a circle for an id that only exists on the prototype', () => {
+    expect(resolveNodeShapeReference('custom:constructor', {})).toBe('circle');
+    expect(resolveNodeShapeReference('custom:__proto__', {})).toBe('circle');
+  });
+});

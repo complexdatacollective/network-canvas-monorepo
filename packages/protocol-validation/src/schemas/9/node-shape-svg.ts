@@ -176,7 +176,16 @@ const URL_REFERENCE_PATTERN =
 const VAR_PATTERN = /^var\(\s*--([A-Za-z0-9-]+)\s*(?:,\s*(.*?)\s*)?\)$/is;
 const COLOR_FUNCTION_PATTERN =
   /^(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^()]*\)$/i;
-const UNSAFE_VALUE_PATTERN = /[<\\]|javascript:|expression\(|@import/i;
+// `;`, braces and comment markers never occur in a legitimate value (a
+// `style` attribute is split into declarations before this is applied), and
+// refusing them keeps a value from ending the declaration it is written into.
+const UNSAFE_VALUE_PATTERN = /[<\\;{}]|\/\*|javascript:|expression\(|@import/i;
+// The label colour is written into a CSS declaration rather than an SVG
+// attribute, so it is held to a colour and nothing else.
+const LABEL_COLOR_PATTERN =
+  /^(?:#[0-9a-f]{3,8}|[a-z]+|(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^()]*\)|var\(\s*--[a-z0-9-]+\s*(?:,\s*(?:#[0-9a-f]{3,8}|[a-z]+|(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^()]*\))\s*)?\))$/i;
+// How many elements a shape may draw once every <use> is expanded.
+const MAX_EXPANDED_ELEMENTS = 5_000;
 const NUMBER_PATTERN = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
 const LENGTH_PATTERN = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(?:px)?$/i;
 
@@ -440,7 +449,65 @@ const appendText = (element: NodeShapeSvgElement, text: string) => {
 /** Lenient parse: unsupported content is REMOVED and reported in `issues`;
  *  `success: false` only when nothing usable remains (not XML, no <svg> root,
  *  no viewBox, too long, no drawable content). */
+const childElements = (element: NodeShapeSvgElement) =>
+  element.children.filter((child) => typeof child !== 'string');
+
+/**
+ * Whether the shape draws more than the limit once each <use> is replaced by
+ * what it references. A handful of nested <use> elements can multiply into
+ * millions of drawn elements; a reference that reaches itself never ends.
+ */
+const expandsBeyondLimit = (root: NodeShapeSvgElement) => {
+  const byId = new Map<string, NodeShapeSvgElement>();
+  const index = (element: NodeShapeSvgElement) => {
+    const id = element.attributes.id;
+    if (id !== undefined && !byId.has(id)) byId.set(id, element);
+    childElements(element).forEach(index);
+  };
+  index(root);
+
+  const sizes = new Map<NodeShapeSvgElement, number>();
+  const visiting = new Set<NodeShapeSvgElement>();
+  const size = (element: NodeShapeSvgElement): number => {
+    const known = sizes.get(element);
+    if (known !== undefined) return known;
+    if (visiting.has(element)) return Number.POSITIVE_INFINITY;
+    visiting.add(element);
+    let total = 1;
+    for (const child of childElements(element)) total += size(child);
+    const target =
+      element.tag === 'use'
+        ? byId.get((element.attributes.href ?? '').trim().slice(1))
+        : undefined;
+    if (target) total += size(target);
+    visiting.delete(element);
+    sizes.set(element, total);
+    return total;
+  };
+  return size(root) > MAX_EXPANDED_ELEMENTS;
+};
+
+const removeUseElements = (element: NodeShapeSvgElement) => {
+  element.children = element.children.filter(
+    (child) => typeof child === 'string' || child.tag !== 'use',
+  );
+  childElements(element).forEach(removeUseElements);
+};
+
+const hasRenderedDrawable = (element: NodeShapeSvgElement): boolean =>
+  childElements(element).some(
+    (child) =>
+      !NON_RENDERED_CONTAINERS.has(child.tag) &&
+      (DRAWABLE_ELEMENTS.has(child.tag) || hasRenderedDrawable(child)),
+  );
+
 export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
+  if (typeof source !== 'string') {
+    return {
+      success: false,
+      issues: [{ code: 'not-xml', detail: 'The shape is not text.' }],
+    };
+  }
   if (source.length > MAX_NODE_SHAPE_SVG_LENGTH) {
     return {
       success: false,
@@ -624,7 +691,15 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
       labelRect = { x, y, width, height };
       const fill = kept.get('fill')?.trim();
       if (fill !== undefined && fill !== '' && fill !== 'none') {
-        labelColor = fill;
+        if (LABEL_COLOR_PATTERN.test(fill)) {
+          labelColor = fill;
+        } else {
+          addIssue(
+            state,
+            'invalid-label-area',
+            `The label area's fill "${fill}" is not a colour.`,
+          );
+        }
       }
       return;
     }
@@ -696,6 +771,15 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
         },
       ],
     };
+  }
+  if (expandsBeyondLimit(root)) {
+    addIssue(
+      state,
+      'unsupported-element',
+      '<use> (the shape repeats its own parts too many times)',
+    );
+    removeUseElements(root);
+    hasDrawable = hasRenderedDrawable(root);
   }
   if (!hasDrawable) {
     return {
