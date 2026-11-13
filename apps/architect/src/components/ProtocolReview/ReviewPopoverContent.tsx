@@ -805,12 +805,16 @@ const ReviewPopoverContent = ({
   // height stops a little short of the room there is: a popup that fills the
   // room exactly is one the positioner moves to another side of the button,
   // which a problem longer than the list before it would otherwise do.
+  // It widens while a text of several lines is being edited in a rich text
+  // editor, whose toolbar needs more room than the list does.
   const frame =
-    'flex max-h-[min(54rem,calc(var(--available-height,100dvh)-0.5rem))] w-[min(32rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[inherit]';
-  // A view that replaces another arrives with a short fade and rise.
+    'flex max-h-[min(54rem,calc(var(--available-height,100dvh)-0.5rem))] w-[min(32rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[inherit] has-[[data-wide-editor]]:w-[min(48rem,calc(100vw-2rem))]';
+  // A view that replaces another arrives with a short fade and rise. The
+  // spring utility transitions every property, so only these two keep it:
+  // the width, which changes while an editor is open, must not spring.
   const arriving =
     switched &&
-    'spring-short transition-[opacity,translate] motion-reduce:transition-none starting:translate-y-2 starting:opacity-0';
+    'spring-short motion-safe:[transition-property:opacity,translate]! motion-reduce:transition-none starting:translate-y-2 starting:opacity-0';
 
   if (shown) {
     return (

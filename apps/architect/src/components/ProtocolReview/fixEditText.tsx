@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { getValidationLabel } from '@codaco/protocol-builder/codebook/variableValidation';
@@ -8,6 +10,7 @@ import Markdown from '~/components/Markdown';
 import { useAppSelector } from '~/ducks/hooks';
 import type { FixTextEdit } from '~/protocolReview/describeFix';
 import { getProtocol } from '~/selectors/protocol';
+import { cx } from '~/utils/cva';
 
 export const fixEditMessages = defineMessages({
   notSet: {
@@ -141,23 +144,50 @@ export const useFixEditContexts = (
   );
 };
 
+/** The small heading over one side of a change: Now, or After the fix. */
+export const ChangeLabel = ({
+  id,
+  side,
+  children,
+}: {
+  id?: string;
+  side: 'now' | 'after';
+  children: ReactNode;
+}) => (
+  <span
+    id={id}
+    className={cx(
+      'flex items-center gap-2 text-xs font-bold tracking-widest uppercase',
+      side === 'now' ? 'text-current/60' : 'text-primary',
+    )}
+  >
+    <span
+      aria-hidden
+      className={cx(
+        'size-2 shrink-0 rounded-full',
+        side === 'now' ? 'bg-current/40' : 'bg-primary',
+      )}
+    />
+    {children}
+  </span>
+);
+
 /** One text or number a fix changes, as it is now; absent when it has none. */
 export const NowBox = ({ id, edit }: { id?: string; edit: FixTextEdit }) => {
   const intl = useAppIntl();
   if (edit.now === null && edit.kind !== 'number') return null;
   return (
-    <div
-      id={id}
-      className="bg-surface border-outline flex flex-col gap-1 rounded border p-3"
-    >
-      <span className="text-sm font-bold">
+    <div id={id} className="flex flex-col gap-2">
+      <ChangeLabel side="now">
         {intl.formatMessage(fixEditMessages.now)}
-      </span>
-      {edit.now === null ? (
-        <span>{intl.formatMessage(fixEditMessages.notSet)}</span>
-      ) : (
-        <FixText text={edit.now} markdown={edit.markdown} />
-      )}
+      </ChangeLabel>
+      <div className="bg-surface border-outline rounded border p-4">
+        {edit.now === null ? (
+          <span>{intl.formatMessage(fixEditMessages.notSet)}</span>
+        ) : (
+          <FixText text={edit.now} markdown={edit.markdown} />
+        )}
+      </div>
     </div>
   );
 };

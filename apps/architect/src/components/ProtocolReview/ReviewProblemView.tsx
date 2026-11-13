@@ -32,6 +32,7 @@ import type { FixTextEdit } from '~/protocolReview/describeFix';
 import type { FindingDecision } from '~/protocolReview/reviewStore';
 
 import {
+  ChangeLabel,
   fixEditMessages,
   FixText,
   NowBox,
@@ -262,15 +263,23 @@ const TextEditor = ({
   const id = useId();
   if (edit.markdown) {
     return (
-      <RichTextField
-        id={id}
-        name={id}
-        aria-labelledby={labelledBy}
-        aria-describedby={describedBy}
-        value={value}
-        onChange={(next) => onChange(next ?? '')}
-        singleLine={edit.singleLine}
-      />
+      // A text of several lines gets the editor's whole toolbar, which is
+      // wider than the panel: the panel widens while it is open
+      // (`data-wide-editor`, read by the panel's frame).
+      <div
+        data-wide-editor={edit.singleLine ? undefined : ''}
+        className="min-w-0"
+      >
+        <RichTextField
+          id={id}
+          name={id}
+          aria-labelledby={labelledBy}
+          aria-describedby={describedBy}
+          value={value}
+          onChange={(next) => onChange(next ?? '')}
+          singleLine={edit.singleLine}
+        />
+      </div>
     );
   }
   return edit.singleLine ? (
@@ -321,43 +330,53 @@ const AfterFixBox = ({
   const invalid = editing && !editIsValid(edit, value);
   const labelledBy = contextId ? `${contextId} ${labelId}` : labelId;
   return (
-    <div className="bg-surface border-primary flex flex-col gap-1 rounded border-2 p-3">
+    <div className="flex flex-col gap-2">
+      {/* As tall as its label, as Now's is: the button overhangs it rather
+          than setting its height. */}
       <div className="flex items-center justify-between gap-2">
-        <span id={labelId} className="text-sm font-bold">
+        <ChangeLabel id={labelId} side="after">
           {label}
-        </span>
+        </ChangeLabel>
         {editable && (
           <Button
             size="sm"
             variant="text"
+            className="-my-2"
             onClick={() => onChange(editing ? undefined : edit.after)}
           >
             {editing ? resetLabel : editLabel}
           </Button>
         )}
       </div>
-      {editing ? (
-        edit.kind === 'number' ? (
-          <InputField
-            type="number"
-            aria-labelledby={labelledBy}
-            aria-invalid={invalid || undefined}
-            aria-describedby={invalid ? errorId : undefined}
-            value={value}
-            onChange={(next) => onChange(next ?? '')}
-          />
+      <div
+        className={
+          // The editor draws its own field, so it is not boxed again.
+          editing ? undefined : 'bg-surface border-primary rounded border-2 p-4'
+        }
+      >
+        {editing ? (
+          edit.kind === 'number' ? (
+            <InputField
+              type="number"
+              aria-labelledby={labelledBy}
+              aria-invalid={invalid || undefined}
+              aria-describedby={invalid ? errorId : undefined}
+              value={value}
+              onChange={(next) => onChange(next ?? '')}
+            />
+          ) : (
+            <TextEditor
+              edit={edit}
+              labelledBy={labelledBy}
+              describedBy={describedBy}
+              value={value}
+              onChange={onChange}
+            />
+          )
         ) : (
-          <TextEditor
-            edit={edit}
-            labelledBy={labelledBy}
-            describedBy={describedBy}
-            value={value}
-            onChange={onChange}
-          />
-        )
-      ) : (
-        <FixText text={edit.after} markdown={edit.markdown} />
-      )}
+          <FixText text={edit.after} markdown={edit.markdown} />
+        )}
+      </div>
       {invalid && (
         <span id={errorId} className="text-destructive text-sm">
           {notANumber}
@@ -678,7 +697,7 @@ const ReviewProblemView = ({
                 </ul>
               )}
               {current.textEdits.map((edit) => (
-                <div key={edit.path} className="flex flex-col gap-2">
+                <div key={edit.path} className="mt-4 flex flex-col gap-3">
                   {editContexts[edit.path] && (
                     <span
                       id={`${current.id}${edit.path}-context`}
@@ -687,7 +706,7 @@ const ReviewProblemView = ({
                       {editContexts[edit.path]}
                     </span>
                   )}
-                  <div className="grid gap-3 @min-[36rem]:grid-cols-2">
+                  <div className="flex flex-col gap-4">
                     <NowBox id={`${current.id}${edit.path}-now`} edit={edit} />
                     <AfterFixBox
                       edit={edit}

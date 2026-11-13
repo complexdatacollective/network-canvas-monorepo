@@ -425,6 +425,28 @@ const isCodebookEntity = (value: unknown): value is 'node' | 'edge' | 'ego' =>
   value === 'node' || value === 'edge' || value === 'ego';
 
 /**
+ * The id of the one stage `operations` add, when adding it is the only
+ * change they make to the list of stages; null otherwise.
+ */
+const addedStageId = (
+  operations: readonly StoredOperation[],
+): string | null => {
+  const listChanges = operations.filter((operation) => {
+    const segments = parsePath(operation.path);
+    return (
+      segments?.[0] === 'stages' &&
+      (segments.length === 1 ||
+        (segments.length === 2 &&
+          (operation.op === 'insert' || operation.op === 'remove')))
+    );
+  });
+  const [only] = listChanges;
+  if (listChanges.length !== 1 || only?.op !== 'insert') return null;
+  const stage = parsed(only.value);
+  return isJsonObject(stage) && typeof stage.id === 'string' ? stage.id : null;
+};
+
+/**
  * Where a fix's edits land, which is where the researcher would make them:
  * the Stages screen for one that adds or removes stages (or edits several),
  * the stage for one that edits one stage, the codebook (or one type in it)
@@ -448,7 +470,20 @@ export const resolveFixPlace = (
       (segments.length === 1 ||
         (segments.length === 2 && (op === 'insert' || op === 'remove'))),
   );
-  if (changesStageList) return { kind: 'stages', href: STAGES_HREF };
+  if (changesStageList) {
+    // A fix that only adds one stage is about that stage once it is there:
+    // after it is made, it is the place to see and adjust what it added.
+    const added = addedStageId(operations);
+    if (added !== null) {
+      const stage = resolveFindingLocation(protocol, {
+        stageId: added,
+        codebookEntity: null,
+        codebookTypeId: null,
+      });
+      if (stage.kind === 'stage') return stage;
+    }
+    return { kind: 'stages', href: STAGES_HREF };
+  }
 
   const stageIds = new Set(
     paths.flatMap(({ segments }) =>

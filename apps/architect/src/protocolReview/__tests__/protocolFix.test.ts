@@ -285,6 +285,20 @@ describe('resolveFixPlace', () => {
     ).toMatchObject({ kind: 'stages' });
   });
 
+  it('sends a fix that adds a stage to that stage, once it is there', () => {
+    const add = op('insert', '/stages/finish', {
+      id: 'knows',
+      type: 'Information',
+      label: { en: 'Who knows whom' },
+    });
+    expect(placeOf(add)).toMatchObject({ kind: 'stages' });
+    const added = applyOperations(protocol, [add]);
+    if (!added.ok) throw new Error('The insert did not apply');
+    expect(
+      resolveFixPlace(added.result as typeof protocol, [add], problemAt),
+    ).toMatchObject({ kind: 'stage', stageId: 'knows', position: 3 });
+  });
+
   it('sends a fix that edits one stage, even with the codebook, to that stage', () => {
     expect(
       placeOf(
