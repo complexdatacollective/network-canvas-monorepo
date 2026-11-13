@@ -164,6 +164,11 @@ const buildAutomaticLayout = () => {
     initialNodes: { count: 6 },
     behaviours: { automaticLayout: true },
   });
+  // People reach an automatic layout from a name generator without a
+  // position, so the layout is computed from scratch, as it is in an interview.
+  for (let index = 0; index < 6; index += 1) {
+    si.unsetNodeAttribute(index, layoutVar.id);
+  }
   stage.addEdgeType({ type: friendship.id });
   si.addEdges(
     [

@@ -399,7 +399,8 @@ const convexHullsGroups: ScenarioDefinition = {
         const vis = await Promise.all(
           polys.map((p) => p.getAttribute('visibility')),
         );
-        return vis.every((v) => v === 'visible');
+        // A hull with no placed members is marked hidden.
+        return vis.every((v) => v !== 'hidden');
       })
       .toBe(true);
 

@@ -502,8 +502,13 @@ export const SupportNetwork: Story = {
   render: () => <CegrmWrapper seed={11} step={3} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Tom')).toBeVisible();
-    await expect(await canvas.findByText('Beth')).toBeVisible();
+    const tom = await canvas.findByText('Tom');
+    const beth = await canvas.findByText('Beth');
+    // People are hidden until the automatic layout has been computed.
+    await waitFor(async () => {
+      await expect(tom).toBeVisible();
+      await expect(beth).toBeVisible();
+    });
   },
 };
 

@@ -1,8 +1,6 @@
 import type {
   ForceLink,
   ForceManyBody,
-  ForceX,
-  ForceY,
   Simulation,
   SimulationLinkDatum,
 } from 'd3-force';
@@ -10,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { VariableOptionValue } from '@codaco/protocol-validation';
 
-import { collideRadiusForNode } from '../layoutGeometry';
+import { collideRadiusForNode, EDGE_GAP_RATIO } from '../layoutGeometry';
 
 // The shared auto-layout worker drives a REAL d3-force simulation (unlike the
 // legacy Sociogram worker test, which mocks d3-force). We spy on
@@ -33,6 +31,9 @@ type SimNode = {
   vy?: number;
   fx?: number | null;
   fy?: number | null;
+  placed?: boolean;
+  anchorX?: number;
+  anchorY?: number;
   groupKeys?: VariableOptionValue[];
 };
 type SimLink = SimulationLinkDatum<SimNode>;
@@ -99,6 +100,29 @@ const minPairwiseDistance = (nodes: SimNode[]): number => {
   return min;
 };
 
+// How many pairs of ties cross, ignoring pairs that share a person.
+const countCrossings = (
+  nodes: SimNode[],
+  edges: readonly (readonly [number, number])[],
+) => {
+  const side = (p: SimNode, q: SimNode, r: SimNode) =>
+    ((q.x ?? 0) - (p.x ?? 0)) * ((r.y ?? 0) - (p.y ?? 0)) -
+    ((q.y ?? 0) - (p.y ?? 0)) * ((r.x ?? 0) - (p.x ?? 0));
+  let crossings = 0;
+  edges.forEach(([a, b], i) => {
+    for (const [c, d] of edges.slice(i + 1)) {
+      if (a === c || a === d || b === c || b === d) continue;
+      const [p, q, r, t] = [nodes[a]!, nodes[b]!, nodes[c]!, nodes[d]!];
+      if (
+        side(r, t, p) * side(r, t, q) < 0 &&
+        side(p, q, r) * side(p, q, t) < 0
+      )
+        crossings += 1;
+    }
+  });
+  return crossings;
+};
+
 // Reference canvas height for converting px geometry to sim distances.
 const HEIGHT = 900;
 // Sim-space collide radius for a base 48px node on a HEIGHT-tall canvas.
@@ -116,6 +140,21 @@ const TWO_GROUPS: SimNode[] = [
   { nodeId: 'b2', x: 0.8, y: 0.44, groupKeys: ['B'] },
   { nodeId: 'b3', x: 0.6, y: -0.44, groupKeys: ['B'] },
 ];
+
+// Links the four-node fixtures into one component, pulled to the centre as a
+// whole.
+const CHAIN: SimLink[] = [
+  { source: 0, target: 1 },
+  { source: 1, target: 2 },
+  { source: 2, target: 3 },
+];
+
+const SCRATCH_OPTIONS = {
+  collideRadius: SIM_COLLIDE_RADIUS,
+  boundsInset: 64 / HEIGHT,
+  simWidth: 1600 / HEIGHT,
+  simHeight: 1,
+};
 
 const cloneNodes = (nodes: SimNode[]): SimNode[] =>
   nodes.map((node) => ({ ...node, groupKeys: node.groupKeys?.slice() }));
@@ -161,8 +200,6 @@ describe('autoLayout worker', () => {
     const sim = capturedSim!;
     const nodes = sim.nodes();
     const charge = sim.force('charge') as ForceManyBody<SimNode>;
-    const biasX = sim.force('biasX') as ForceX<SimNode>;
-    const biasY = sim.force('biasY') as ForceY<SimNode>;
     const link = sim.force('link') as ForceLink<SimNode, SimLink>;
     const liveLinks = link.links();
 
@@ -171,16 +208,15 @@ describe('autoLayout worker', () => {
     expect(sim.alphaMin()).toBe(0.025);
     expect(charge).toBeTruthy();
     expect(charge.strength()(nodes[0]!, 0, nodes)).toBeCloseTo(
-      (-0.006 * 10) / nodes.length,
+      -0.006 * Math.sqrt(10 / nodes.length),
     );
-    expect(biasX.strength()(nodes[0]!, 0, nodes)).toBe(0.13);
-    expect(biasX.x()(nodes[0]!, 0, nodes)).toBeCloseTo(simWidth * 0.5);
-    expect(biasY.strength()(nodes[0]!, 0, nodes)).toBe(0.13);
-    expect(biasY.y()(nodes[0]!, 0, nodes)).toBe(0.5);
+    expect(sim.force('centre')).toBeTruthy();
+    expect(sim.force('componentGap')).toBeTruthy();
     expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
-      1.9 * (collideRadiusForNode(48) / 800),
+      1.6 * (collideRadiusForNode(48) / 800),
     );
-    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(0.5);
+    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(1);
+    expect(link.iterations()).toBe(3);
   });
 
   it('pulls same-group nodes closer together after start', () => {
@@ -213,12 +249,459 @@ describe('autoLayout worker', () => {
     expect(groupBAfter).toBeLessThan(groupBBefore);
   });
 
-  it('starts with the canonical hot alpha', () => {
-    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+  it('settles synchronously on start, posting one end and no ticks', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      options: { collideRadius: SIM_COLLIDE_RADIUS },
+    });
 
     handleMessage({ type: 'start' });
 
-    expect(capturedSim!.alpha()).toBe(1);
+    expect(posted.map((m) => m.type)).toEqual(['end']);
+    const maxSpeed = Math.max(
+      ...capturedSim!.nodes().map((n) => Math.hypot(n.vx ?? 0, n.vy ?? 0)),
+    );
+    expect(maxSpeed).toBeLessThan(0.01);
+  });
+
+  it('does not lay out again when update_links repeats the current links', () => {
+    const links: SimLink[] = [{ source: 0, target: 1 }];
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      links: links.map((link) => ({ ...link })),
+    });
+    handleMessage({ type: 'start' });
+    handleMessage({
+      type: 'update_links',
+      links: links.map((link) => ({ ...link })),
+    });
+
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
+  describe('coming back to people who all have the places it saved', () => {
+    const PLACED: SimNode[] = [
+      { nodeId: 'p', x: 0.6, y: 0.4 },
+      { nodeId: 'q', x: 1.0, y: 0.45 },
+      { nodeId: 'r', x: 0.8, y: 0.7 },
+    ];
+
+    it('leaves them where they are', () => {
+      handleMessage({
+        type: 'initialize',
+        nodes: cloneNodes(PLACED),
+        links: [{ source: 0, target: 1 }],
+        options: SCRATCH_OPTIONS,
+        keepPlaced: true,
+      });
+      handleMessage({ type: 'start' });
+
+      const end = posted.find((m) => m.type === 'end')!;
+      expect(end.nodes.map(({ x, y }) => ({ x, y }))).toEqual(
+        PLACED.map(({ x, y }) => ({ x, y })),
+      );
+    });
+
+    it('still makes room where people are too close', () => {
+      handleMessage({
+        type: 'initialize',
+        nodes: [
+          { nodeId: 'p', x: 0.8, y: 0.5 },
+          { nodeId: 'q', x: 0.81, y: 0.5 },
+        ],
+        options: SCRATCH_OPTIONS,
+        keepPlaced: true,
+      });
+      handleMessage({ type: 'start' });
+
+      const end = posted.find((m) => m.type === 'end')!;
+      expect(minPairwiseDistance(end.nodes)).toBeGreaterThanOrEqual(
+        2 * SIM_COLLIDE_RADIUS - 1e-9,
+      );
+    });
+  });
+
+  it('stays paused when initialized paused, until started', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      paused: true,
+    });
+    handleMessage({ type: 'update_links', links: [{ source: 0, target: 3 }] });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.5, fy: 0.7 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: null, fy: null },
+    });
+
+    expect(posted.some((m) => m.type === 'end')).toBe(false);
+
+    handleMessage({ type: 'start' });
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      'a link change',
+      () =>
+        handleMessage({
+          type: 'update_links',
+          links: [{ source: 0, target: 3 }],
+        }),
+    ],
+    [
+      'a drag',
+      () => {
+        const nodeId = capturedSim!.nodes()[0]!.nodeId!;
+        handleMessage({
+          type: 'update_node',
+          nodeId,
+          node: { fx: 0.2, fy: 0.2 },
+        });
+        handleMessage({
+          type: 'update_node',
+          nodeId,
+          node: { fx: null, fy: null },
+        });
+      },
+    ],
+  ])('resumes %s made while paused as an anchored re-settle', (_, change) => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    handleMessage({ type: 'stop' });
+    change();
+
+    handleMessage({ type: 'start' });
+
+    expect(capturedSim!.force('anchorX')).toBeTruthy();
+    expect(capturedSim!.force('anchorY')).toBeTruthy();
+  });
+
+  it('does not lay out again when resumed with nothing changed', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    const settled = capturedSim!.nodes().map(({ x, y }) => ({ x, y }));
+    handleMessage({ type: 'stop' });
+    posted = [];
+
+    handleMessage({ type: 'start' });
+
+    expect(posted).toEqual([]);
+    expect(capturedSim!.nodes().map(({ x, y }) => ({ x, y }))).toEqual(settled);
+  });
+
+  it('settles anchored after the node set changes', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS).slice(1),
+      incremental: true,
+    });
+    handleMessage({ type: 'start' });
+
+    expect(capturedSim!.force('anchorX')).toBeTruthy();
+    expect(capturedSim!.force('anchorY')).toBeTruthy();
+  });
+
+  it('keeps people round until the first link exists, then puts people with no ties on an oval ring', () => {
+    const layout = (links: SimLink[]) => {
+      posted = [];
+      handleMessage({
+        type: 'initialize',
+        nodes: Array.from({ length: 8 }, (_, i) => ({
+          nodeId: `n${i}`,
+          x: 0.8,
+          y: 0.5,
+          placed: false,
+        })),
+        links,
+        options: SCRATCH_OPTIONS,
+      });
+      handleMessage({ type: 'start' });
+      return posted.find((m) => m.type === 'end')!.nodes;
+    };
+    const spread = (nodes: SimNode[]) => {
+      const xs = nodes.map((n) => n.x ?? 0);
+      const ys = nodes.map((n) => n.y ?? 0);
+      return {
+        x: Math.max(...xs) - Math.min(...xs),
+        y: Math.max(...ys) - Math.min(...ys),
+      };
+    };
+
+    const round = spread(layout([]));
+    expect(round.x / round.y).toBeLessThan(1.3);
+    expect(round.y / round.x).toBeLessThan(1.3);
+
+    const nodes = layout([{ source: 0, target: 1 }]);
+    const wide = spread(nodes);
+    expect(wide.x).toBeGreaterThan(1.3 * wide.y);
+    const { simWidth, boundsInset } = SCRATCH_OPTIONS;
+    const halfX = simWidth / 2 - boundsInset;
+    const halfY = 0.5 - boundsInset;
+    const ring = {
+      x: 0.78 * (halfX + (halfY - halfX) * 0.5),
+      y: 0.78 * halfY,
+    };
+    for (const loner of nodes.slice(2)) {
+      const onRing = Math.hypot(
+        ((loner.x ?? 0) - simWidth / 2) / ring.x,
+        ((loner.y ?? 0) - 0.5) / ring.y,
+      );
+      expect(onRing).toBeGreaterThan(0.8);
+      expect(onRing).toBeLessThan(1.4);
+    }
+  });
+
+  it('ignores a repeated start once the layout has settled', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    handleMessage({ type: 'start' });
+
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
+  it('lays out from scratch with the exact minimum gap and separate components kept apart', () => {
+    const component = [0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 7, 8];
+    handleMessage({
+      type: 'initialize',
+      nodes: component.map((_, i) => ({
+        nodeId: `n${i}`,
+        x: 0.8,
+        y: 0.5,
+        placed: false,
+      })),
+      links: [
+        { source: 0, target: 1 },
+        { source: 2, target: 3 },
+        { source: 4, target: 5 },
+        { source: 6, target: 7 },
+        { source: 7, target: 8 },
+        { source: 8, target: 6 },
+        { source: 9, target: 10 },
+        { source: 10, target: 11 },
+        { source: 12, target: 13 },
+        { source: 13, target: 14 },
+        { source: 14, target: 15 },
+        { source: 15, target: 12 },
+      ],
+      options: SCRATCH_OPTIONS,
+    });
+    handleMessage({ type: 'start' });
+
+    const end = posted.find((m) => m.type === 'end')!;
+    const radius = 48 / HEIGHT;
+    let closest = Infinity;
+    let closestBetweenTied = Infinity;
+    end.nodes.forEach((a, i) => {
+      end.nodes.forEach((b, j) => {
+        if (j <= i) return;
+        const distance = Math.hypot(
+          (a.x ?? 0) - (b.x ?? 0),
+          (a.y ?? 0) - (b.y ?? 0),
+        );
+        closest = Math.min(closest, distance);
+        if (
+          component[i] !== component[j] &&
+          component[i]! < 6 &&
+          component[j]! < 6
+        ) {
+          closestBetweenTied = Math.min(closestBetweenTied, distance);
+        }
+      });
+    });
+    expect(closest).toBeGreaterThanOrEqual(2 * SIM_COLLIDE_RADIUS - 1e-9);
+    expect((closestBetweenTied - 2 * radius) / radius).toBeGreaterThan(1.4);
+  });
+
+  it('keeps ties short from scratch', () => {
+    const tree: SimLink[] = [
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [1, 4],
+      [1, 5],
+      [2, 6],
+      [2, 7],
+      [3, 8],
+      [4, 9],
+      [6, 10],
+      [8, 11],
+      [8, 12],
+      [11, 13],
+    ].map(([source, target]) => ({ source: source!, target: target! }));
+    handleMessage({
+      type: 'initialize',
+      nodes: Array.from({ length: 18 }, (_, i) => ({
+        nodeId: `n${i}`,
+        x: 0.8,
+        y: 0.5,
+        placed: false,
+      })),
+      links: tree,
+      options: SCRATCH_OPTIONS,
+    });
+    handleMessage({ type: 'start' });
+
+    const nodes = posted.find((m) => m.type === 'end')!.nodes;
+    const longest = Math.max(
+      ...tree.map(({ source, target }) => {
+        const a = nodes[source as number]!;
+        const b = nodes[target as number]!;
+        return Math.hypot((a.x ?? 0) - (b.x ?? 0), (a.y ?? 0) - (b.y ?? 0));
+      }),
+    );
+    const radius = SIM_COLLIDE_RADIUS / (1 + EDGE_GAP_RATIO);
+    expect(longest).toBeLessThan(4 * radius);
+  });
+
+  it('untangles the best layout from scratch', () => {
+    const edges = [
+      [0, 1],
+      [0, 4],
+      [0, 5],
+      [0, 7],
+      [0, 8],
+      [1, 4],
+      [1, 6],
+      [1, 7],
+      [2, 4],
+      [2, 6],
+      [3, 5],
+      [4, 8],
+      [6, 7],
+    ] as const;
+    handleMessage({
+      type: 'initialize',
+      nodes: Array.from({ length: 9 }, (_, i) => ({
+        nodeId: `n${i}`,
+        x: 0.8,
+        y: 0.5,
+        placed: false,
+      })),
+      links: edges.map(([source, target]) => ({ source, target })),
+      options: {
+        collideRadius: (48 * 1.5) / HEIGHT,
+        boundsInset: 64 / HEIGHT,
+        simWidth: 1.6,
+        simHeight: 1,
+      },
+    });
+    handleMessage({ type: 'start' });
+
+    const nodes = posted.find((m) => m.type === 'end')!.nodes;
+    expect(countCrossings(nodes, edges)).toBe(0);
+  });
+
+  it('holds the minimum gap between the people not held on every tick of a drag', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      links: [
+        { source: 0, target: 1 },
+        { source: 1, target: 2 },
+        { source: 3, target: 4 },
+      ],
+      options: SCRATCH_OPTIONS,
+    });
+    handleMessage({ type: 'start' });
+    const sim = capturedSim!;
+    const target = sim.nodes()[3]!;
+    // Drop a1 on top of b1, so everyone near b1 has to make room at once.
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: target.x, fy: target.y },
+    });
+
+    sim.stop();
+    let ticks = 0;
+    for (let i = 0; i < 2000; i += 1) {
+      sim.tick();
+      sim.on('tick')!.call(sim);
+      ticks += 1;
+      const free = sim.nodes().filter((node) => node.fx == null);
+      expect(minPairwiseDistance(free)).toBeGreaterThanOrEqual(
+        2 * SIM_COLLIDE_RADIUS - 1e-9,
+      );
+      if (sim.alpha() < sim.alphaMin()) break;
+    }
+    expect(ticks).toBeGreaterThan(1);
+  });
+
+  it('moves people aside gradually as a held person is dragged quickly past them', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: [
+        { nodeId: 'held', x: 0.5, y: 0.5 },
+        { nodeId: 'passed', x: 0.89, y: 0.5 },
+      ],
+      options: SCRATCH_OPTIONS,
+    });
+    handleMessage({ type: 'start' });
+    const sim = capturedSim!;
+    const [start, passed] = sim.nodes() as [SimNode, SimNode];
+    const from = { x: start.x ?? 0, y: start.y ?? 0 };
+    const to = { x: (passed.x ?? 0) * 2 - from.x, y: (passed.y ?? 0) + 0.05 };
+
+    // Each move is longer than the minimum gap, as a quick pointer move is,
+    // and passes just off the other person's centre.
+    const MOVES = 4;
+    let largestStep = 0;
+    for (let move = 1; move <= MOVES; move += 1) {
+      handleMessage({
+        type: 'update_node',
+        nodeId: 'held',
+        node: {
+          fx: from.x + ((to.x - from.x) * move) / MOVES,
+          fy: from.y + ((to.y - from.y) * move) / MOVES,
+        },
+      });
+      sim.stop();
+      for (let tick = 0; tick < 15; tick += 1) {
+        const before = { x: passed.x ?? 0, y: passed.y ?? 0 };
+        sim.tick();
+        sim.on('tick')!.call(sim);
+        largestStep = Math.max(
+          largestStep,
+          Math.hypot((passed.x ?? 0) - before.x, (passed.y ?? 0) - before.y),
+        );
+      }
+    }
+
+    // Holding the gap against the held person throws the other person about a
+    // full collision radius in one tick.
+    expect(largestStep).toBeLessThan(SIM_COLLIDE_RADIUS / 2);
+  });
+
+  it('ends a held drag once, when the live layout settles', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    posted = [];
+    const nodeId = capturedSim!.nodes()[0]!.nodeId!;
+    handleMessage({ type: 'update_node', nodeId, node: { fx: 0.2, fy: 0.2 } });
+
+    // Mirror d3's timer step: tick, emit 'tick', then stop and emit 'end'
+    // once alpha falls below alphaMin.
+    const sim = capturedSim!;
+    sim.stop();
+    for (let i = 0; i < 2000; i += 1) {
+      sim.tick();
+      sim.on('tick')!.call(sim);
+      if (sim.alpha() < sim.alphaMin()) {
+        sim.on('end')!.call(sim);
+        break;
+      }
+    }
+
+    expect(posted.filter((m) => m.type === 'tick').length).toBeGreaterThan(0);
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
   });
 
   it('pins a node on update_node {fx,fy} and releases it on {fx:null,fy:null}', () => {
@@ -243,9 +726,33 @@ describe('autoLayout worker', () => {
     const released = capturedSim!.nodes().find((n) => n.nodeId === 'a1');
     expect(released?.fx).toBeNull();
     expect(released?.fy).toBeNull();
-    // Snap-on-clear: x/y inherit the previously fixed coordinates.
-    expect(released?.x).toBe(0.5);
-    expect(released?.y).toBe(0.7);
+    // Releasing settles the layout and reports it.
+    expect(posted.at(-1)?.type).toBe('end');
+  });
+
+  it('anchors a released node where it was dropped, not where the drag began', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.5, fy: 0.7 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.9, fy: 0.3 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: null, fy: null },
+    });
+
+    const released = capturedSim!.nodes().find((n) => n.nodeId === 'a1');
+    expect(released?.anchorX).toBe(0.9);
+    expect(released?.anchorY).toBe(0.3);
   });
 
   it('emits an end message on stop', () => {
@@ -271,12 +778,10 @@ describe('autoLayout worker', () => {
     expect(capturedSim!.force('link')).toBeTruthy();
     expect(capturedSim!.alpha()).toBe(alphaWhilePaused);
 
-    // Settled but not paused: adding links must reheat (alpha rises back above
-    // the alphaMin floor) so the new edge re-runs the layout.
+    // Settled but not paused: adding links re-runs the layout and reports it.
     handleMessage({ type: 'start' });
-    capturedSim!.stop(); // halt the d3 timer; advance alpha by manual ticks only
-    tickManually(600);
-    const alphaSettled = capturedSim!.alpha();
+    const endsBefore = posted.filter((m) => m.type === 'end').length;
+    const before = capturedSim!.nodes().map((n) => ({ x: n.x, y: n.y }));
     handleMessage({
       type: 'update_links',
       links: [
@@ -285,8 +790,83 @@ describe('autoLayout worker', () => {
       ],
     });
     expect(capturedSim!.force('link')).toBeTruthy();
-    expect(capturedSim!.alpha()).toBeGreaterThan(alphaSettled);
-    expect(capturedSim!.alpha()).toBeGreaterThan(capturedSim!.alphaMin());
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(endsBefore + 1);
+    expect(capturedSim!.nodes().map((n) => ({ x: n.x, y: n.y }))).not.toEqual(
+      before,
+    );
+  });
+
+  describe('with two crossing ties between four placed people', () => {
+    const CROSSED = [
+      [0, 2],
+      [1, 3],
+    ] as const;
+    // Four people already placed on the corners of a square, tied across its
+    // diagonals. Starting the layout would pull them into two separate pairs,
+    // so each case changes the network without starting it first.
+    const setUp = ({ paused = false } = {}) => {
+      const corners = [
+        [-1, -1],
+        [1, -1],
+        [1, 1],
+        [-1, 1],
+      ];
+      handleMessage({
+        type: 'initialize',
+        nodes: corners.map(([dx, dy], i) => ({
+          nodeId: `n${i}`,
+          x: 0.89 + dx! * 0.15,
+          y: 0.5 + dy! * 0.15,
+        })),
+        links: CROSSED.map(([source, target]) => ({ source, target })),
+        options: SCRATCH_OPTIONS,
+        paused,
+      });
+    };
+
+    it('swaps people to remove the crossing when a tie is added', () => {
+      setUp();
+      const edges = [...CROSSED, [0, 1]] as const;
+      handleMessage({
+        type: 'update_links',
+        links: edges.map(([source, target]) => ({ source, target })),
+      });
+
+      expect(countCrossings(capturedSim!.nodes(), edges)).toBe(0);
+    });
+
+    it('swaps people to remove the crossing when ties added while paused are resumed', () => {
+      setUp({ paused: true });
+      const edges = [...CROSSED, [0, 1]] as const;
+      handleMessage({
+        type: 'update_links',
+        links: edges.map(([source, target]) => ({ source, target })),
+      });
+      handleMessage({ type: 'start' });
+
+      expect(countCrossings(capturedSim!.nodes(), edges)).toBe(0);
+    });
+
+    it('swaps others to remove the crossing when one is let go, leaving them where they were dropped', () => {
+      setUp();
+      const held = capturedSim!.nodes()[0]!;
+      const drop = { fx: (held.x ?? 0) - 0.02, fy: (held.y ?? 0) - 0.02 };
+      handleMessage({ type: 'update_node', nodeId: 'n0', node: drop });
+      handleMessage({
+        type: 'update_node',
+        nodeId: 'n0',
+        node: { fx: null, fy: null },
+      });
+
+      const nodes = capturedSim!.nodes();
+      expect(countCrossings(nodes, CROSSED)).toBe(0);
+      // Swapping them away would put someone else nearest the drop.
+      const distanceToDrop = (node: SimNode) =>
+        Math.hypot((node.x ?? 0) - drop.fx, (node.y ?? 0) - drop.fy);
+      expect(
+        nodes.toSorted((a, b) => distanceToDrop(a) - distanceToDrop(b))[0],
+      ).toBe(held);
+    });
   });
 
   it('is deterministic: same seed and messages produce identical positions', () => {
@@ -328,7 +908,7 @@ describe('autoLayout worker', () => {
     const link = capturedSim!.force('link') as ForceLink<SimNode, SimLink>;
     const liveLinks = link.links();
     expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
-      1.9 * SIM_COLLIDE_RADIUS,
+      1.6 * SIM_COLLIDE_RADIUS,
     );
     handleMessage({ type: 'start' });
     tickManually(300);
@@ -360,6 +940,7 @@ describe('autoLayout worker', () => {
     handleMessage({
       type: 'initialize',
       nodes,
+      links: CHAIN,
       options: {
         collideRadius: SIM_COLLIDE_RADIUS,
         simHeight: 1,
@@ -400,6 +981,7 @@ describe('autoLayout worker', () => {
     handleMessage({
       type: 'initialize',
       nodes,
+      links: CHAIN,
       options: {
         collideRadius: SIM_COLLIDE_RADIUS,
         simWidth: SIM_WIDTH,
@@ -422,46 +1004,7 @@ describe('autoLayout worker', () => {
     }
   });
 
-  it('stops early once every node speed falls below the threshold', () => {
-    // The velocity-based early stop posts 'end' once the layout has cooled past
-    // the alpha ceiling AND the max per-node speed drops below the threshold,
-    // cutting the long low-alpha tail. Drive the worker's REAL tick handler (not
-    // the manual replay) so the early-stop branch runs: stop the d3 timer, then
-    // dispatch tick events ourselves until 'end' is posted.
-    handleMessage({
-      type: 'initialize',
-      nodes: cloneNodes(TWO_GROUPS),
-      options: { collideRadius: SIM_COLLIDE_RADIUS },
-    });
-    handleMessage({ type: 'start' });
-
-    const sim = capturedSim!;
-    sim.stop(); // halt the d3 timer; we drive ticks manually below
-
-    // Retrieve the worker's registered tick listener (the early-stop logic lives
-    // there) so we can invoke it after each manual tick, exactly as the d3 timer
-    // would, without the timer's async scheduling.
-    const onTick = sim.on('tick');
-    expect(onTick).toBeTypeOf('function');
-
-    let endPosted = false;
-    // Tick until the worker's tick handler posts 'end' via the early stop, or we
-    // exhaust a generous budget (the layout settles well within this).
-    for (let i = 0; i < 600 && !endPosted; i += 1) {
-      sim.tick();
-      onTick!.call(sim);
-      endPosted = posted.some((m) => m.type === 'end');
-    }
-
-    expect(endPosted).toBe(true);
-    // The simulation actually settled: max per-node speed is tiny at the stop.
-    const maxSpeed = Math.max(
-      ...sim.nodes().map((n) => Math.hypot(n.vx ?? 0, n.vy ?? 0)),
-    );
-    expect(maxSpeed).toBeLessThan(0.01);
-  });
-
-  it('only ever posts {type, nodes} payloads with no persistence-shaped fields', () => {
+  it('only ever posts {type, nodes} payloads, with no persistence-shaped fields', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });
     tickManually(20);

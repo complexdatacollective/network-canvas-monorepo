@@ -452,11 +452,12 @@ class SociogramFixture {
 
   /**
    * Get the number of edges currently displayed on the canvas.
-   * Edges are rendered as SVG line elements.
+   * Edges are rendered as SVG line elements; one whose endpoints are not both
+   * placed is marked hidden.
    */
   async getEdgeCount(): Promise<number> {
     const svg = this.page.locator('svg');
-    const lines = svg.locator('line[visibility="visible"]');
+    const lines = svg.locator('line:not([visibility="hidden"])');
     return lines.count();
   }
 

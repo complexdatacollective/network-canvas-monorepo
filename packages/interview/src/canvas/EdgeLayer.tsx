@@ -103,14 +103,16 @@ export default function EdgeLayer({
           return;
         }
 
-        visual.setAttribute('visibility', 'visible');
+        // Inherit visibility rather than force it, so a canvas that hides its
+        // contents (while its first layout is computed) hides its ties too.
+        visual.removeAttribute('visibility');
         visual.setAttribute('x1', String(from.x));
         visual.setAttribute('y1', String(from.y));
         visual.setAttribute('x2', String(to.x));
         visual.setAttribute('y2', String(to.y));
 
         if (hit) {
-          hit.setAttribute('visibility', 'visible');
+          hit.removeAttribute('visibility');
           hit.setAttribute('x1', String(from.x));
           hit.setAttribute('y1', String(from.y));
           hit.setAttribute('x2', String(to.x));
