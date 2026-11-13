@@ -65,6 +65,14 @@ function Fields({ typed }: { typed: string }) {
       <div className="text-center">
         <InputField aria-label="Centred block" defaultValue="centred?" />
       </div>
+      {/* A translation into Arabic: its language is known, so a Latin product
+          name at its start does not turn it left to right. */}
+      <div lang="ar" dir="rtl" data-typed-language="">
+        <InputField
+          aria-label="Arabic translation"
+          defaultValue="Network Canvas مقابلة!"
+        />
+      </div>
     </div>
   );
 }
@@ -132,6 +140,15 @@ export const ArabicInALeftToRightInterface: Story = {
       getComputedStyle(canvas.getByRole('textbox', { name: 'Centred block' }))
         .textAlign,
     ).toBe('left');
+    const translation = canvas.getByRole('textbox', {
+      name: 'Arabic translation',
+    });
+    await expect(getComputedStyle(translation).direction).toBe('rtl');
+    await expect(getComputedStyle(translation).unicodeBidi).not.toBe(
+      'plaintext',
+    );
+    await expect(getComputedStyle(translation).textAlign).toBe('right');
+
     // The Arabic paragraph's "!" ends it, on the left of its first word.
     const bang = characterBox(prompt, 'مرحبا بكم!', '!');
     const firstLetter = characterBox(prompt, 'مرحبا بكم!', 'م');

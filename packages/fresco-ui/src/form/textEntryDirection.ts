@@ -60,6 +60,11 @@ export type TextEntryDirection = {
  * A host that draws its own `<input>`, `<textarea>` or editable element calls
  * this too, so every box follows one rule (the `direction/text-entry` lint
  * rule asks for it).
+ *
+ * A host that knows the language of everything typed inside a region (an
+ * editor for one translation) marks the region instead of each box: `lang`,
+ * that language's `dir`, and `data-typed-language`. `text-own-direction` then
+ * guesses nothing inside it, and the boxes take the region's direction.
  */
 export function textEntryDirection({
   type,

@@ -1,5 +1,6 @@
 import type { ChangeEvent, FocusEvent, KeyboardEvent } from 'react';
 
+import { textEntryDirection } from '@codaco/fresco-ui/form/textEntryDirection';
 import useSelectOnFocus from '@codaco/fresco-ui/hooks/useSelectOnFocus';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -134,6 +135,10 @@ const StageNameInput = ({
   const selectOnFocusHandlers =
     useSelectOnFocus<HTMLTextAreaElement>(selectOnFocus);
 
+  // The editing language's direction when there is one; otherwise the name
+  // is read by its own first letter.
+  const direction = textEntryDirection({ dir });
+
   return (
     /*
      * A textarea cannot size itself to its content, so the same text is laid
@@ -149,12 +154,13 @@ const StageNameInput = ({
       className="grid w-full grid-cols-[minmax(0,1fr)]"
     >
       {/*
-       * Both the copy that sizes the box and the box itself read a name in
-       * its own direction (`textEntryDirection`), so they wrap alike.
+       * Both the copy that sizes the box and the box itself take the same
+       * direction (`textEntryDirection`), so they wrap alike.
        */}
       <div
         aria-hidden="true"
-        className={cx(sharedTextLayout, 'text-own-direction invisible')}
+        dir={direction.dir}
+        className={cx(sharedTextLayout, direction.className, 'invisible')}
       >
         {/*
          * The trailing space holds the height of a line ending in whitespace,
@@ -183,9 +189,10 @@ const StageNameInput = ({
         aria-invalid={ariaInvalid}
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
+        dir={direction.dir}
         className={cx(
           sharedTextLayout,
-          'text-own-direction',
+          direction.className,
           'focusable h-full resize-none overflow-hidden bg-transparent outline-none placeholder:opacity-40',
           ariaInvalid && 'text-destructive-ink',
         )}

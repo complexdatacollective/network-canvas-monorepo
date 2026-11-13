@@ -126,11 +126,19 @@
  * fields for such values are fixed left to right instead (see fresco-ui's
  * `textEntryDirection`).
  *
+ * Inside a region whose language is known (`data-typed-language`, set beside
+ * that language's `lang` and `dir`), nothing is guessed: a translation into
+ * Arabic is right to left even when it starts with a Latin product name, so
+ * the box takes the region's direction.
+ *
  * Its side is the interface's: see `text-interface-side`.
  */
 @utility text-own-direction {
-  unicode-bidi: plaintext;
   @apply text-interface-side;
+
+  &:not([data-typed-language] *) {
+    unicode-bidi: plaintext;
+  }
 }
 
 /*

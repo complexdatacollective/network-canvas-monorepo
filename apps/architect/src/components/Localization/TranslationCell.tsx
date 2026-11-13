@@ -407,6 +407,8 @@ const PlainTextCell = ({
     <td
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -701,6 +703,8 @@ const RichTextCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -812,6 +816,8 @@ const MessageCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -964,6 +970,8 @@ const DynamicCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}

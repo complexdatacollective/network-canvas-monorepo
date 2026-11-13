@@ -187,4 +187,26 @@ describe('StageNameInput', () => {
     expect(enter.defaultPrevented).toBe(true);
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('takes the editing language’s direction, box and sizer alike', () => {
+    const { container } = render(
+      <StageNameInput lang="ar" dir="rtl" value="Network Canvas مقابلة" />,
+    );
+    const input = screen.getByRole('textbox');
+    const sizer = container.querySelector('[aria-hidden="true"]');
+    for (const element of [input, sizer]) {
+      expect(element).toHaveAttribute('dir', 'rtl');
+      expect(element).not.toHaveClass('text-own-direction');
+    }
+  });
+
+  it('reads a name by its own first letter when no language is known', () => {
+    const { container } = render(<StageNameInput value="Network Canvas" />);
+    const input = screen.getByRole('textbox');
+    const sizer = container.querySelector('[aria-hidden="true"]');
+    for (const element of [input, sizer]) {
+      expect(element).not.toHaveAttribute('dir');
+      expect(element).toHaveClass('text-own-direction');
+    }
+  });
 });
