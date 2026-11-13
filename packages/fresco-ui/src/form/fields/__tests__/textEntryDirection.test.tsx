@@ -76,6 +76,13 @@ describe('the fields lay out what is typed', () => {
     },
   );
 
+  it('keeps a phone number left to right when the caller passes no direction', () => {
+    const { container } = render(
+      <InputField type="tel" dir={undefined} aria-label="Phone" />,
+    );
+    expect(container.querySelector('input')).toHaveAttribute('dir', 'ltr');
+  });
+
   it('leaves a date field to the browser', () => {
     const { container } = render(<InputField type="date" aria-label="When" />);
     const input = container.querySelector('input');

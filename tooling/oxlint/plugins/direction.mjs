@@ -321,7 +321,7 @@ const textEntry = {
     },
     messages: {
       missing:
-        'This box lays out what is typed in the interface’s direction, so a Latin name typed in a right-to-left interface shows its punctuation at the wrong end (`!team-b`). Spread fresco-ui’s `textEntryDirection` (its `dir` and class) onto it, give it the `dir` of the language its text is in, or add `text-own-direction`.',
+        'This box lays out what is typed in the interface’s direction, so a Latin name typed in a right-to-left interface shows its punctuation at the wrong end (`!team-b`). Give it the `dir` and class fresco-ui’s `textEntryDirection` returns (`dir={direction.dir}`, and `direction.className` in its classes), give it the `dir` of the language its text is in, or add `text-own-direction`.',
     },
     schema: [],
   },

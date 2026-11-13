@@ -309,10 +309,12 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
               inputClassName,
             ),
           })}
-          dir={textDirection.dir}
           type={type}
           inputMode={inputMode ?? (isNumber ? 'decimal' : undefined)}
           {...inputProps}
+          // After the spread: a `dir` the caller set is already in this, and
+          // one passed as `undefined` must not unfix a phone number.
+          dir={textDirection.dir}
           onChange={(e) => {
             onChange?.(e.target.value);
             nativeOnChange?.(e);

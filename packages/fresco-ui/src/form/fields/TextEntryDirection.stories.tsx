@@ -35,6 +35,8 @@ function Fields({ typed }: { typed: string }) {
   const [text, setText] = useState('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [centred, setCentred] = useState('centred?');
+  const [translation, setTranslation] = useState('Network Canvas مقابلة!');
   return (
     <div className="flex max-w-md flex-col gap-4">
       <Paragraph>{typed}</Paragraph>
@@ -63,14 +65,19 @@ function Fields({ typed }: { typed: string }) {
       {/* A browser starts a text box's text on its own side, even inside a
           centred block; the boxes keep that. */}
       <div className="text-center">
-        <InputField aria-label="Centred block" defaultValue="centred?" />
+        <InputField
+          aria-label="Centred block"
+          value={centred}
+          onChange={(value) => setCentred(value ?? '')}
+        />
       </div>
       {/* A translation into Arabic: its language is known, so a Latin product
           name at its start does not turn it left to right. */}
       <div lang="ar" dir="rtl" data-typed-language="">
         <InputField
           aria-label="Arabic translation"
-          defaultValue="Network Canvas مقابلة!"
+          value={translation}
+          onChange={(value) => setTranslation(value ?? '')}
         />
       </div>
     </div>
@@ -136,13 +143,13 @@ export const ArabicInALeftToRightInterface: Story = {
     const canvas = within(canvasElement);
     const prompt = canvas.getByRole('textbox', { name: 'Prompt' });
     await waitFor(() => expect(prompt.textContent).toContain('مرحبا بكم!'));
-    await expect(
-      getComputedStyle(canvas.getByRole('textbox', { name: 'Centred block' }))
-        .textAlign,
-    ).toBe('left');
+    const centred = canvas.getByRole('textbox', { name: 'Centred block' });
+    await expect(centred).toHaveValue('centred?');
+    await expect(getComputedStyle(centred).textAlign).toBe('left');
     const translation = canvas.getByRole('textbox', {
       name: 'Arabic translation',
     });
+    await expect(translation).toHaveValue('Network Canvas مقابلة!');
     await expect(getComputedStyle(translation).direction).toBe('rtl');
     await expect(getComputedStyle(translation).unicodeBidi).not.toBe(
       'plaintext',
