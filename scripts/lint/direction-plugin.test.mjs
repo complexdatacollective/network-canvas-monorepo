@@ -196,6 +196,67 @@ describe('typed-text-matches-parent', () => {
   });
 });
 
+// Fixtures name values they never define; only this rule's reports count.
+const textEntryReports = (source) =>
+  lint(source).filter((code) => code === 'text-entry');
+
+describe('text-entry', () => {
+  it.each([
+    ['a text input', '<input aria-label="Name" />'],
+    ['a typed text input', '<input type="text" aria-label="Name" />'],
+    ['a search input', '<input type="search" aria-label="Search" />'],
+    ['a phone input', '<input type="tel" aria-label="Phone" />'],
+    [
+      'an input whose type is an expression',
+      '<input type={kind} aria-label="Name" />',
+    ],
+    ['a text area', '<textarea aria-label="Notes" />'],
+    ['an editable element', '<div contentEditable aria-label="Notes" />'],
+    ['a text area with other classes', '<textarea className="w-full p-2" />'],
+  ])('reports %s that takes the interface’s direction', (_label, jsx) => {
+    expect(
+      textEntryReports(
+        `export const A = ({ kind }: { kind: string }) => ${jsx};`,
+      ),
+    ).toEqual(['text-entry']);
+  });
+
+  it.each([
+    ['with a dir', '<input dir="ltr" aria-label="Phone" />'],
+    ['with a computed dir', '<textarea dir={direction} />'],
+    [
+      'with text-own-direction',
+      '<textarea className="text-own-direction w-full" />',
+    ],
+    [
+      'inside an element with a dir',
+      '<fieldset dir="ltr"><input aria-label="Code" /></fieldset>',
+    ],
+    ['hidden from everyone', '<input aria-hidden="true" readOnly />'],
+    [
+      'inside a hidden element',
+      '<div aria-hidden="true"><input name="trap" /></div>',
+    ],
+    ['drawn by the browser', '<input type="checkbox" aria-label="Agree" />'],
+    ['a date', '<input type="date" aria-label="When" />'],
+    ['typed by a spread', '<input {...getInputProps()} />'],
+    ['not editable', '<div contentEditable={false} />'],
+  ])('accepts a box %s', (_label, jsx) => {
+    expect(
+      textEntryReports(`declare const direction: string;
+            declare const getInputProps: () => object;
+            export const A = () => ${jsx};`),
+    ).toEqual([]);
+  });
+
+  it('reads a same-file class constant', () => {
+    expect(
+      textEntryReports(`const boxClasses = 'text-own-direction w-full';
+            export const A = () => <textarea className={boxClasses} />;`),
+    ).toEqual([]);
+  });
+});
+
 describe('logical-popup-side', () => {
   it.each(['left', 'right'])('reports side="%s"', (side) => {
     expect(
