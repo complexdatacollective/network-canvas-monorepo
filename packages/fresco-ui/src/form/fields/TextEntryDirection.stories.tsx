@@ -59,6 +59,11 @@ function Fields({ typed }: { typed: string }) {
         aria-label="Prompt"
         value={paragraphs('مرحبا بكم!', 'Hello, world!')}
       />
+      {/* A browser starts a text box's text on its own side, even inside a
+          centred block; the boxes keep that. */}
+      <div className="text-center">
+        <InputField aria-label="Centred block" defaultValue="centred?" />
+      </div>
     </div>
   );
 }
@@ -89,11 +94,14 @@ export const LatinInARightToLeftInterface: Story = {
     await userEvent.type(name, 'team-b!');
     // A text box's lines take the direction of their first letter.
     await expect(getComputedStyle(name).unicodeBidi).toBe('plaintext');
+    // …and start on the interface's side.
+    await expect(getComputedStyle(name).textAlign).toBe('right');
 
     // A phone number is left to right whatever starts it.
     const phone = canvas.getByRole('textbox', { name: 'Phone' });
     await userEvent.type(phone, '+1 555-0100');
     await expect(getComputedStyle(phone).direction).toBe('ltr');
+    await expect(getComputedStyle(phone).textAlign).toBe('right');
 
     const notes = canvas.getByRole('textbox', { name: 'Notes' });
     await expect(getComputedStyle(notes).unicodeBidi).toBe('plaintext');
@@ -119,6 +127,10 @@ export const ArabicInALeftToRightInterface: Story = {
     const canvas = within(canvasElement);
     const prompt = canvas.getByRole('textbox', { name: 'Prompt' });
     await waitFor(() => expect(prompt.textContent).toContain('مرحبا بكم!'));
+    await expect(
+      getComputedStyle(canvas.getByRole('textbox', { name: 'Centred block' }))
+        .textAlign,
+    ).toBe('left');
     // The Arabic paragraph's "!" ends it, on the left of its first word.
     const bang = characterBox(prompt, 'مرحبا بكم!', '!');
     const firstLetter = characterBox(prompt, 'مرحبا بكم!', 'م');

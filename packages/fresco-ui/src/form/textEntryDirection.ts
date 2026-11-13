@@ -65,7 +65,7 @@ export function textEntryDirection({
     (type !== undefined && LEFT_TO_RIGHT_TYPES.has(type)) ||
     (inputMode !== undefined && LEFT_TO_RIGHT_MODES.has(inputMode))
   ) {
-    return { dir: 'ltr', className: 'text-match-parent' };
+    return { dir: 'ltr', className: 'text-interface-side' };
   }
   if (type === undefined || TEXT_TYPES.has(type)) {
     return { dir: undefined, className: 'text-own-direction' };

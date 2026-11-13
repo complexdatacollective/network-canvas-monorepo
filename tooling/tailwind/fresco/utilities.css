@@ -115,20 +115,39 @@
 /*
  * For text being typed, whose language the interface cannot know: a name, an
  * address, a translation. Each line reads in the direction of its own first
- * letter, as it is typed, and stays on the interface's side. An empty box, or
- * a line with no letter yet, keeps the interface's direction, so a translated
- * placeholder and the caret start where the interface's text starts.
+ * letter, as it is typed (`unicode-bidi: plaintext`), and stays on the
+ * interface's side. An empty box, or a line with no letter yet, keeps the
+ * interface's direction, so a translated placeholder and the caret start
+ * where the interface's text starts.
  *
  * Unlike `dir="auto"`, which reads the whole box and counts an empty one as
  * left to right, this works line by line and needs no script. A line that is
  * all digits and symbols (`+1 555-0100`) has no letter to go by, which is why
  * fields for such values are fixed left to right instead (see fresco-ui's
  * `textEntryDirection`).
+ *
+ * Its side is the interface's: see `text-interface-side`.
  */
 @utility text-own-direction {
   unicode-bidi: plaintext;
-  text-align: -webkit-match-parent;
-  text-align: match-parent;
+  @apply text-interface-side;
+}
+
+/*
+ * A box's text starts on the interface's side (its parent's direction),
+ * whatever direction the text itself runs: the side a browser starts a text
+ * box on, kept when the box's lines follow their own letters
+ * (`text-own-direction`) or are fixed left to right (a phone number in an
+ * Arabic form). Neither `start`, which under `unicode-bidi: plaintext`
+ * follows each line's direction, nor `match-parent`, which would let a box
+ * inside a centred block centre its text, gives that.
+ */
+@utility text-interface-side {
+  text-align: left;
+
+  :dir(rtl) > & {
+    text-align: right;
+  }
 }
 
 /* Replacement for interview centering mixin — used by all interview stage components. */

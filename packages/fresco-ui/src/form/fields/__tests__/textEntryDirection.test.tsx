@@ -9,7 +9,7 @@ import RichTextEditorField from '../RichTextEditor';
 import TextAreaField from '../TextArea';
 
 const OWN = { dir: undefined, className: 'text-own-direction' };
-const LEFT_TO_RIGHT = { dir: 'ltr', className: 'text-match-parent' };
+const LEFT_TO_RIGHT = { dir: 'ltr', className: 'text-interface-side' };
 const BROWSER = { dir: undefined, className: undefined };
 
 describe('textEntryDirection', () => {
@@ -71,7 +71,7 @@ describe('the fields lay out what is typed', () => {
       );
       const input = container.querySelector('input');
       expect(input).toHaveAttribute('dir', 'ltr');
-      expect(input).toHaveClass('text-match-parent');
+      expect(input).toHaveClass('text-interface-side');
       expect(input).not.toHaveClass('text-own-direction');
     },
   );
