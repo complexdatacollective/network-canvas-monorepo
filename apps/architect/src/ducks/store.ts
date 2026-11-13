@@ -7,6 +7,7 @@ import {
   rememberReducer,
 } from 'redux-remember';
 
+import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import { setActiveProtocolScope } from '~/utils/activeProtocolScope';
 import { reportError } from '~/utils/reportError';
 import { createSessionStorageDriver } from '~/utils/sessionStorageDriver';
@@ -101,6 +102,10 @@ store.subscribe(() => {
     setActiveProtocolScope(id);
   }
 });
+
+// The stored review follows the active protocol the same way, and for the same
+// reason: rehydration changes the id without passing through middleware.
+keepProtocolReviewOnActiveProtocol(store);
 
 export { store };
 

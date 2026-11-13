@@ -53,6 +53,16 @@ const RECLAIM_BLOCKED_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
       description:
         'Error shown when adding a resource file is refused: the other tab saved the protocol meanwhile and a nested editor is still open. The researcher finishes or cancels it, then adds the file again.',
     },
+    // The wizard is not what holds the reclaim up either, and it sits in
+    // front of whatever does. Closing it would discard what was typed, so the
+    // way out says what is kept and names neither blocker.
+    'study-details': {
+      id: 'architect.constants.utils.protocollockmessages.reclaimBlockedMessages.studyDetails',
+      defaultMessage:
+        'These changes cannot be saved over the version the other tab saved. What you have entered here is kept. Deal with the other unsaved changes in this tab first, then try again.',
+      description:
+        'Error on the last step of the study details dialog for the automated protocol review, when saving is refused: the other tab saved the protocol meanwhile and this tab has other unsaved changes waiting for a decision. The dialog stays open with what the researcher entered.',
+    },
   });
 const OPEN_ELSEWHERE_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
   defineMessages({
@@ -93,6 +103,13 @@ const OPEN_ELSEWHERE_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
       description:
         'Error shown when adding a resource file is refused because the protocol is open in another tab that holds the saved copy. The researcher closes the other tab, then adds the file again.',
     },
+    'study-details': {
+      id: 'architect.constants.utils.protocollockmessages.openElsewhereMessages.studyDetails',
+      defaultMessage:
+        'This protocol is open in another tab, which holds the saved copy. What you have entered here is kept. Close the other tab, then try again.',
+      description:
+        'Error on the last step of the study details dialog for the automated protocol review, when saving is refused because the protocol is open in another tab that holds the saved copy. The dialog stays open with what the researcher entered; they close the other tab and press the button again.',
+    },
   });
 
 /**
@@ -113,6 +130,10 @@ const OPEN_ELSEWHERE_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
  *   store keyed by protocol id and then names it in the manifest. This is the
  *   one surface that is not itself the thing holding the reclaim, so it is
  *   listed once per blocker; see `assetImportSurface`.
+ * - `study-details` — the last step of the protocol review's study details
+ *   wizard, which writes the details into the protocol. The wizard keeps what
+ *   was typed in its own store, so a refusal leaves it open rather than
+ *   closing it.
  */
 export const REFUSAL_SURFACES = [
   'stage',
@@ -120,6 +141,7 @@ export const REFUSAL_SURFACES = [
   'api-key',
   'asset-import-stage-draft',
   'asset-import-nested-editor',
+  'study-details',
 ] as const;
 
 export type RefusalSurface = (typeof REFUSAL_SURFACES)[number];

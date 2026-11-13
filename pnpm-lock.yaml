@@ -433,6 +433,9 @@ importers:
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../../packages/protocol-builder-core
+      '@codaco/protocol-review-worker':
+        specifier: workspace:^
+        version: link:../../workers/protocol-review
       '@codaco/protocol-utilities':
         specifier: workspace:^
         version: link:../../packages/protocol-utilities

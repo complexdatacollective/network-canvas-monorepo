@@ -1,6 +1,7 @@
 import { Dexie, type EntityTable } from 'dexie';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { clearReviewRecords } from '~/protocolReview/reviewStore';
 import type { ProtocolSourceRef } from '~/templates';
 
 import { PROTOCOL_DB_NAME } from './storageNames';
@@ -70,26 +71,39 @@ assetDb.version(1).stores({
 });
 
 /**
- * Remove every protocol this app stores, then reload.
+ * Remove every protocol this app stores, and every protocol's automated
+ * review (kept in a database of its own, beside the protocols), then reload.
  *
  * Only this app's own library. Architect 8's library on the same origin is not
  * this app's to delete — its protocols stay listed, and Architect 8's own
  * Clear all removes them. localStorage is left alone for the same reason: every
  * key in it (language, analytics, dismissed notices) is shared with Architect 8.
  *
- * Throws when the library cannot be cleared, so the caller can say so.
+ * Throws when either cannot be cleared, so the caller can say so, and removes
+ * nothing then. The two are separate databases, which no one transaction
+ * spans: the reviews go first (a failure there leaves the library untouched),
+ * and are put back if the library's own transaction then fails. So what the
+ * caller reports is what the researcher still has.
  */
 export async function clearAllStorage(): Promise<void> {
-  await assetDb.transaction(
-    'rw',
-    [assetDb.assets, assetDb.protocols, assetDb.legacyProtocolChoices],
-    async () => {
-      await Promise.all([
-        assetDb.assets.clear(),
-        assetDb.protocols.clear(),
-        assetDb.legacyProtocolChoices.clear(),
-      ]);
-    },
-  );
+  // A review describes a protocol that no longer exists once the library is
+  // empty; nothing else would ever read or remove it.
+  const restoreReviews = await clearReviewRecords();
+  try {
+    await assetDb.transaction(
+      'rw',
+      [assetDb.assets, assetDb.protocols, assetDb.legacyProtocolChoices],
+      async () => {
+        await Promise.all([
+          assetDb.assets.clear(),
+          assetDb.protocols.clear(),
+          assetDb.legacyProtocolChoices.clear(),
+        ]);
+      },
+    );
+  } catch (error) {
+    await restoreReviews();
+    throw error;
+  }
   window.location.reload();
 }

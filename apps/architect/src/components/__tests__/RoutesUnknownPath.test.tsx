@@ -34,6 +34,10 @@ vi.mock('~/components/pages/SummaryPage', () => ({
   default: () => <div data-testid="summary-page" />,
 }));
 
+vi.mock('~/components/pages/ExperimentsPage', () => ({
+  default: () => <div data-testid="experiments-page" />,
+}));
+
 vi.mock('~/components/ProjectNav/ProjectLayout', () => ({
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -89,10 +93,18 @@ describe('Routes, at an address no page answers', () => {
   });
 
   it('replaces an unknown editor address with the protocol page', async () => {
-    const location = renderAt('/protocol/experiments', { withProtocol: true });
+    const location = renderAt('/protocol/retired-page', { withProtocol: true });
 
     expect(await screen.findByTestId('protocol')).toBeInTheDocument();
     await waitFor(() => expect(location.history).toEqual(['/protocol']));
+  });
+
+  it('opens the experimental features page at its own address', async () => {
+    const location = renderAt('/protocol/experiments', { withProtocol: true });
+
+    expect(await screen.findByTestId('experiments-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('protocol')).not.toBeInTheDocument();
+    expect(location.history).toEqual(['/protocol/experiments']);
   });
 
   it('leaves an address a page answers alone', async () => {

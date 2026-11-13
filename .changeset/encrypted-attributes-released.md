@@ -8,9 +8,8 @@
 Encrypted attributes are no longer an experimental feature. The Anonymisation
 interface, which asks a participant for a passphrase and encrypts the
 attributes you choose so that researchers can't read them, is now always
-available when you add a stage in Architect. Architect's Experimental Features
-page, where encrypted attributes had to be switched on for each protocol, has
-been removed.
+available when you add a stage in Architect. It no longer has to be switched
+on for each protocol from Architect's Experimental features page.
 
 In interviews, an attribute marked as encrypted is now always encrypted.
 Upgrading a protocol to schema 9 keeps each attribute working as it did: if a
