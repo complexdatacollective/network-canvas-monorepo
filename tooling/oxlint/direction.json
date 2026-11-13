@@ -7,6 +7,7 @@
   "rules": {
     "direction/inline-arrow-turns": "error",
     "direction/typed-text-matches-parent": "error",
+    "direction/text-entry": "error",
     "direction/logical-popup-side": "error",
     "direction/base-ui-number-locale": "error"
   }

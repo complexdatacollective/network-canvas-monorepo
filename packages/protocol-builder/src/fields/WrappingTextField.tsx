@@ -1,6 +1,7 @@
 import type { ChangeEvent, KeyboardEvent } from 'react';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import { textEntryDirection } from '@codaco/fresco-ui/form/textEntryDirection';
 import { getInputState } from '@codaco/fresco-ui/form/utils/getInputState';
 import {
   controlVariants,
@@ -68,12 +69,21 @@ export default function WrappingTextField({
   };
 
   const text = value ?? '';
+  const direction = textEntryDirection({ dir: props.dir });
 
   return (
     <div
       className={wrapperVariants({ className, state: getInputState(props) })}
     >
-      <div aria-hidden="true" className={cx(sharedTextLayout, 'invisible')}>
+      {/*
+       * The copy that sizes the box takes the box's direction, so the two
+       * wrap alike (`textEntryDirection`).
+       */}
+      <div
+        aria-hidden="true"
+        dir={direction.dir}
+        className={cx(sharedTextLayout, direction.className, 'invisible')}
+      >
         {/*
          * The trailing space holds the height of a line ending in whitespace,
          * which a block collapses away and the textarea shows a caret on.
@@ -82,6 +92,7 @@ export default function WrappingTextField({
       </div>
       <textarea
         {...props}
+        dir={direction.dir}
         value={text}
         placeholder={placeholder}
         onChange={handleChange}
@@ -91,6 +102,7 @@ export default function WrappingTextField({
         aria-multiline={false}
         className={cx(
           sharedTextLayout,
+          direction.className,
           placeholderVariants(),
           'h-full cursor-[inherit] resize-none overflow-hidden bg-transparent outline-none focus:ring-0',
         )}

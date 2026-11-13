@@ -10,6 +10,7 @@ import {
 } from '../../styles/controlVariants';
 import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { textEntryDirection } from '../textEntryDirection';
 import { getInputState } from '../utils/getInputState';
 
 const textareaWrapperOwnVariants = cva({
@@ -49,6 +50,8 @@ const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>(
   function TextAreaField(props, ref) {
     const { className, value, onChange, disabled, readOnly, ...rest } = props;
 
+    const direction = textEntryDirection({ dir: rest.dir });
+
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       onChange?.(e.target.value);
     };
@@ -63,11 +66,12 @@ const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>(
         <textarea
           ref={ref}
           {...rest}
+          dir={direction.dir}
           value={value ?? ''}
           disabled={disabled}
           readOnly={readOnly}
           onChange={handleChange}
-          className={textareaVariants()}
+          className={textareaVariants({ className: direction.className })}
         />
       </div>
     );

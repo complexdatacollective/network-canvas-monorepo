@@ -908,7 +908,13 @@ describe('FieldPreviewPane', () => {
 
       const field = screen.getByRole('spinbutton', { name: 'كم عمرك؟' });
       expect(field.closest('[lang]')).toHaveAttribute('lang', 'ar');
-      expect(field.closest('[dir]')).toHaveAttribute('dir', 'rtl');
+      // The number box itself is fixed left to right; the field around it
+      // takes the language's direction.
+      expect(field).toHaveAttribute('dir', 'ltr');
+      expect(field.parentElement?.closest('[dir]')).toHaveAttribute(
+        'dir',
+        'rtl',
+      );
     });
 
     it('shows each answer’s label in the chosen language', async () => {

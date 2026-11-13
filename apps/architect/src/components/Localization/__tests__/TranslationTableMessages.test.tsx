@@ -130,6 +130,7 @@ describe('TranslationTable: texts with versions', () => {
     renderTable();
 
     const cell = messageCell('English').closest('td');
+    expect(cell).toHaveAttribute('data-typed-language');
     // The text is nothing but a choice between versions, so each is written
     // out under its case; the words are readable before the cell is edited.
     const versions = [

@@ -86,6 +86,9 @@ describe('LocalizedStringField', () => {
     expect(input).toHaveValue("Who's {here}?");
     expect(input.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(input.closest('[dir]')).toHaveAttribute('dir', 'ltr');
+    // Its language is known, so what is typed takes that language's
+    // direction rather than its first letter's.
+    expect(input.closest('[lang]')).toHaveAttribute('data-typed-language');
   });
 
   it('edits the initial language first when the protocol declares it', () => {

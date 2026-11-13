@@ -620,7 +620,7 @@ async function readNameControlMetrics(page: Page) {
       clientWidth: el.clientWidth,
       scrollWidth: el.scrollWidth,
       lineHeight: parseFloat(style.lineHeight),
-      direction: style.direction,
+      unicodeBidi: style.unicodeBidi,
       overflowY: style.overflowY,
     };
   });
@@ -665,9 +665,12 @@ for (const viewport of NAME_VIEWPORTS) {
     expectNameWithinBound(metrics);
     expect(metrics.overflowY).toBe('hidden');
 
-    // AC3: `dir="auto"` gives an RTL name an RTL base direction, so it reads
-    // and truncates from the correct end.
-    expect(metrics.direction).toBe('rtl');
+    // AC3: each line of the name takes the direction of its own first letter
+    // (`text-own-direction`), so an RTL name reads and truncates from the
+    // correct end. The element's own `direction` stays the interface's; the
+    // fresco-ui "Typed text direction" story measures where such a line's
+    // characters land.
+    expect(metrics.unicodeBidi).toBe('plaintext');
 
     // AC3 again: wrapping was never the defect. A ~400-grapheme mixed RTL and
     // emoji name wraps with no horizontal overflow at any width.

@@ -163,6 +163,7 @@
     "./form/hooks/useFormValue": "./src/form/hooks/useFormValue.ts",
     "./form/store/formStoreProvider": "./src/form/store/formStoreProvider.tsx",
     "./form/store/types": "./src/form/store/types.ts",
+    "./form/textEntryDirection": "./src/form/textEntryDirection.ts",
     "./form/utils/focusFirstError": "./src/form/utils/focusFirstError.ts",
     "./form/utils/getInputState": "./src/form/utils/getInputState.ts",
     "./form/utils/objectPath": "./src/form/utils/objectPath.ts",
@@ -805,6 +806,10 @@
       "./form/store/types": {
         "types": "./dist/form/store/types.d.ts",
         "default": "./dist/form/store/types.js"
+      },
+      "./form/textEntryDirection": {
+        "types": "./dist/form/textEntryDirection.d.ts",
+        "default": "./dist/form/textEntryDirection.js"
       },
       "./form/utils/focusFirstError": {
         "types": "./dist/form/utils/focusFirstError.d.ts",

@@ -476,20 +476,20 @@ const ProtocolInfoCard = () => {
               `lh` so it is exactly three lines at every width and in every size
               tier, and it applies to values the cap never saw (imported or
               pre-cap names), which is what makes legacy protocols safe on load.
-              `dir="auto"` gives an RTL name an RTL base direction so it reads
-              and truncates from the correct end, and `text-align: match-parent`
-              keeps the name on the side the rest of the card is on whichever
-              way it reads. */}
+              `text-own-direction` lays the name out in the direction of its
+              own first letter, so it reads and truncates from the correct
+              end, and keeps it on the side the rest of the card is on
+              whichever way it reads; empty, the placeholder keeps the
+              interface's direction (`dir="auto"` counted it left to right). */}
           <textarea
             rows={1}
-            dir="auto"
             className={headingVariants({
               level: 'h1',
               variant: 'page-heading',
               margin: 'none',
               className: cx(
                 'text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none rounded-sm border-none bg-transparent p-0 font-black outline-none focus-visible:ring-2 focus-visible:outline-none',
-                'text-match-parent max-h-[3lh] overflow-hidden wrap-break-word',
+                'text-own-direction max-h-[3lh] overflow-hidden wrap-break-word',
                 // WebKit on iOS greys a disabled field's text through this
                 // property rather than `color`, which would fade the title.
                 'disabled:[-webkit-text-fill-color:currentColor]',

@@ -407,6 +407,8 @@ const PlainTextCell = ({
     <td
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -432,6 +434,10 @@ const PlainTextCell = ({
         )}
         <textarea
           rows={1}
+          // The translation is in this column's language, whatever its first
+          // letter: an Arabic sentence that opens with a product name is
+          // still right to left.
+          dir={localeDirection(locale)}
           value={text}
           // A one-line text holds no line break: one typed with Shift+Enter
           // or pasted becomes a space.
@@ -697,6 +703,8 @@ const RichTextCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -724,6 +732,8 @@ const RichTextCell = ({
             value={text}
             onChange={(markdown) => draft.change(markdown ?? '')}
             singleLine={singleLine}
+            // In this column's language, as the plain-text cell's box is.
+            dir={localeDirection(locale)}
             className={CELL_EDITOR_CLASSES}
             autoFocus
           />
@@ -806,6 +816,8 @@ const MessageCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -958,6 +970,8 @@ const DynamicCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}

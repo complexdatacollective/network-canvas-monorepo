@@ -141,7 +141,7 @@ export const FocusRingIsNotClipped: Story = {
         <AccordionPanel>
           <input
             aria-label="Flush field"
-            className="focusable bg-surface-1 mt-3 mb-3 block w-full rounded-sm px-3 py-2"
+            className="focusable bg-surface-1 text-own-direction mt-3 mb-3 block w-full rounded-sm px-3 py-2"
           />
         </AccordionPanel>
       </AccordionItem>

@@ -102,7 +102,14 @@ export function LocalizedStringField({
   return (
     <div className="flex flex-col gap-2">
       <EditingLanguageSwitcher values={[value]} />
-      <div key={locale} lang={locale} dir={localeDirection(locale)}>
+      {/* Everything typed here is in the editing language, so its direction
+          is known rather than guessed (`textEntryDirection`). */}
+      <div
+        key={locale}
+        lang={locale}
+        dir={localeDirection(locale)}
+        data-typed-language=""
+      >
         {children({
           value: translationText(value, locale),
           onChange: (text) =>
