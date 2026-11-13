@@ -112,6 +112,25 @@
   text-align: match-parent;
 }
 
+/*
+ * For text being typed, whose language the interface cannot know: a name, an
+ * address, a translation. Each line reads in the direction of its own first
+ * letter, as it is typed, and stays on the interface's side. An empty box, or
+ * a line with no letter yet, keeps the interface's direction, so a translated
+ * placeholder and the caret start where the interface's text starts.
+ *
+ * Unlike `dir="auto"`, which reads the whole box and counts an empty one as
+ * left to right, this works line by line and needs no script. A line that is
+ * all digits and symbols (`+1 555-0100`) has no letter to go by, which is why
+ * fields for such values are fixed left to right instead (see fresco-ui's
+ * `textEntryDirection`).
+ */
+@utility text-own-direction {
+  unicode-bidi: plaintext;
+  text-align: -webkit-match-parent;
+  text-align: match-parent;
+}
+
 /* Replacement for interview centering mixin — used by all interview stage components. */
 @utility interface {
   @apply relative flex min-h-0 w-full shrink grow basis-auto flex-col items-center justify-center;

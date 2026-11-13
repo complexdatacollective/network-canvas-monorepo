@@ -286,6 +286,90 @@ const typedTextMatchesParent = {
   },
 };
 
+// Inputs a person types into. Every other type (checkbox, date, file, range
+// …) is drawn by the browser.
+const TEXT_ENTRY_TYPES = new Set([
+  'email',
+  'number',
+  'password',
+  'search',
+  'tel',
+  'text',
+  'url',
+]);
+
+const isTrue = (attr) => {
+  if (!attr) return false;
+  if (attr.value === null) return true;
+  const value = literalValue(attr);
+  return value === true || value === 'true';
+};
+
+/** The JSX elements around a node, innermost first, within its file. */
+const enclosingElements = function* (node) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (current.type === 'JSXElement') yield current.openingElement;
+  }
+};
+
+const textEntry = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'A box someone types into lays out its text by the text, not by the interface.',
+    },
+    messages: {
+      missing:
+        'This box lays out what is typed in the interface’s direction, so a Latin name typed in a right-to-left interface shows its punctuation at the wrong end (`!team-b`). Spread fresco-ui’s `textEntryDirection` (its `dir` and class) onto it, give it the `dir` of the language its text is in, or add `text-own-direction`.',
+    },
+    schema: [],
+  },
+  create(context) {
+    // A test's stand-in field is typed into by the test, not by a person.
+    if (/(?:\.test\.[cm]?[jt]sx?|\/__tests__\/)/.test(context.filename)) {
+      return {};
+    }
+    return {
+      JSXOpeningElement(node) {
+        if (node.name.type !== 'JSXIdentifier') return;
+        const tag = node.name.name;
+        let entry;
+        if (tag === 'textarea') {
+          entry = true;
+        } else if (tag === 'input') {
+          const type = attribute(node, 'type');
+          // With no `type` of its own, a spread may give it one (a drop
+          // zone's `getInputProps()` makes it a file input); unread, it is
+          // left alone. A type given as an expression may be text: checked.
+          if (!type && hasSpread(node)) return;
+          const value = type ? literalValue(type) : 'text';
+          entry = value === undefined || TEXT_ENTRY_TYPES.has(value);
+        } else {
+          const editable = attribute(node, 'contentEditable');
+          entry =
+            editable !== undefined &&
+            literalValue(editable) !== false &&
+            literalValue(editable) !== 'false';
+        }
+        if (!entry) return;
+        if (attribute(node, 'dir')) return;
+        if (/\btext-own-direction\b/.test(classText(context, node))) return;
+        // Hidden from everyone (a username for password managers, a spam
+        // trap): nobody types into it or reads it.
+        if (isTrue(attribute(node, 'aria-hidden'))) return;
+        for (const element of enclosingElements(node.parent)) {
+          if (isTrue(attribute(element, 'aria-hidden'))) return;
+          // A direction set around it, for a known language or a value
+          // written one way in every language (a code's boxes).
+          if (attribute(element, 'dir')) return;
+        }
+        context.report({ node, messageId: 'missing' });
+      },
+    };
+  },
+};
+
 const logicalPopupSide = {
   meta: {
     type: 'problem',
@@ -380,6 +464,7 @@ export default {
   rules: {
     'inline-arrow-turns': inlineArrowTurns,
     'typed-text-matches-parent': typedTextMatchesParent,
+    'text-entry': textEntry,
     'logical-popup-side': logicalPopupSide,
     'base-ui-number-locale': baseUiNumberLocale,
   },

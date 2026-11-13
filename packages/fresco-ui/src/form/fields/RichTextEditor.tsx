@@ -84,6 +84,7 @@ import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
 import { isRecord } from '../../utils/isRecord';
 import type { CreateFormFieldProps } from '../Field/types';
+import { textEntryDirection } from '../textEntryDirection';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
 import { documentInSchema, marksInSchema } from './richText/fitToSchema';
@@ -1155,6 +1156,14 @@ type EditorSelectionRange = {
   to: number;
 };
 
+/**
+ * The editor's blocks, each laid out by its own first letter. The utility
+ * goes on every block, not on the editor: `unicode-bidi` is not inherited,
+ * so a paragraph inside an element that has it still takes the interface's
+ * direction.
+ */
+const OWN_DIRECTION_BLOCKS = '[&_:is(p,h1,h2,h3,h4,h5,h6)]:text-own-direction';
+
 type RichTextEditorFieldProps = CreateFormFieldProps<
   JSONContent,
   'div',
@@ -1361,6 +1370,7 @@ export default function RichTextEditorField({
   const ariaLabel = props['aria-label'];
   const ariaLabelledBy = props['aria-labelledby'];
   const ariaRequired = props['aria-required'];
+  const knownDirection = props.dir;
 
   // Read by the editor's handlers when they run.
   useLayoutEffect(() => {
@@ -1419,8 +1429,19 @@ export default function RichTextEditorField({
       attributes['data-placeholder'] = placeholder;
     }
 
+    // A caller that knows the text's language gives its direction. Otherwise
+    // each paragraph and heading reads in the direction of its own first
+    // letter, as a text box's lines do (`textEntryDirection`).
+    const direction = textEntryDirection({ dir: knownDirection });
+    if (direction.dir !== undefined) {
+      attributes.dir = direction.dir;
+    } else if (direction.className !== undefined) {
+      attributes.class = OWN_DIRECTION_BLOCKS;
+    }
+
     return attributes;
   }, [
+    knownDirection,
     ariaDescribedBy,
     ariaInvalid,
     ariaLabel,

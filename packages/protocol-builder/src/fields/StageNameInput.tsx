@@ -148,7 +148,14 @@ const StageNameInput = ({
       dir={dir}
       className="grid w-full grid-cols-[minmax(0,1fr)]"
     >
-      <div aria-hidden="true" className={cx(sharedTextLayout, 'invisible')}>
+      {/*
+       * Both the copy that sizes the box and the box itself read a name in
+       * its own direction (`textEntryDirection`), so they wrap alike.
+       */}
+      <div
+        aria-hidden="true"
+        className={cx(sharedTextLayout, 'text-own-direction invisible')}
+      >
         {/*
          * The trailing space holds the height of a line ending in whitespace,
          * which a block collapses away and the textarea shows a caret on.
@@ -178,6 +185,7 @@ const StageNameInput = ({
         aria-describedby={ariaDescribedBy}
         className={cx(
           sharedTextLayout,
+          'text-own-direction',
           'focusable h-full resize-none overflow-hidden bg-transparent outline-none placeholder:opacity-40',
           ariaInvalid && 'text-destructive-ink',
         )}

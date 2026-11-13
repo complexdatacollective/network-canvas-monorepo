@@ -432,6 +432,10 @@ const PlainTextCell = ({
         )}
         <textarea
           rows={1}
+          // The translation is in this column's language, whatever its first
+          // letter: an Arabic sentence that opens with a product name is
+          // still right to left.
+          dir={localeDirection(locale)}
           value={text}
           // A one-line text holds no line break: one typed with Shift+Enter
           // or pasted becomes a space.
@@ -724,6 +728,8 @@ const RichTextCell = ({
             value={text}
             onChange={(markdown) => draft.change(markdown ?? '')}
             singleLine={singleLine}
+            // In this column's language, as the plain-text cell's box is.
+            dir={localeDirection(locale)}
             className={CELL_EDITOR_CLASSES}
             autoFocus
           />
