@@ -6,16 +6,16 @@ Une subvention de cinq ans du National Institute on Drug Abuse finance Network C
 
 ### Ce que Studio ajoutera
 
-Studio devrait inclure tout ce que proposent les applications de bureau et pour tablettes, ainsi que :
+Studio devrait inclure tout ce que proposent les applications de bureau et pour tablettes, ainsi que :
 
-- des entretiens dans le navigateur web, sur n’importe quel appareil, en auto-administration à distance ou aux côtés d’un chercheur
+- des entretiens dans le navigateur web, sur n’importe quel appareil, en auto-administration à distance ou aux côtés d’un membre de l’équipe de recherche
 - la conception, le partage et la modification de protocoles en équipe
 - des études longitudinales qui reprennent les données d’entretiens antérieurs
 - une API ouverte pour des liens en temps réel avec les logiciels d’analyse
 - un accès fondé sur les rôles pour les grandes équipes de projet
-- des outils de planification des enquêtes et d’échantillonnage des participants
+- des outils de planification des enquêtes et d’échantillonnage des personnes participantes
 - des améliorations d’accessibilité, dont la localisation linguistique
 
 ### Façonné par la communauté
 
-Les projets sont nés de cinq années de retours de chercheurs utilisant Network Canvas, et l’équipe mènera des enquêtes et des groupes de discussion auprès de la communauté à mesure que le travail avance. [Voir la subvention sur NIH RePORTER](https://reporter.nih.gov/project-details/10715902).
+Les projets sont nés de cinq années de retours d’équipes de recherche utilisant Network Canvas, et l’équipe mènera des enquêtes et des groupes de discussion auprès de la communauté à mesure que le travail avance. [Voir la subvention sur NIH RePORTER](https://reporter.nih.gov/project-details/10715902).

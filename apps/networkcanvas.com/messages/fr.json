@@ -102,10 +102,10 @@
   "UpdatesPage": {
     "metadata": {
       "title": "Nouveautés",
-      "description": "Les nouveautés de l’ensemble du projet Network Canvas : versions logicielles, financements, articles de recherche, ateliers et autres jalons."
+      "description": "Les nouveautés de l’ensemble du projet Network Canvas : versions logicielles, financements, articles de recherche, ateliers et autres jalons."
     },
     "heading": "Nouveautés",
-    "introduction": "Les nouveautés du projet Network Canvas depuis ses débuts en 2013 : versions logicielles, financements, articles de recherche, ateliers et autres jalons.",
+    "introduction": "Les nouveautés du projet Network Canvas depuis ses débuts en 2013 : versions logicielles, financements, articles de recherche, ateliers et autres jalons.",
     "search": {
       "label": "Rechercher dans les nouveautés",
       "placeholder": "Rechercher dans les nouveautés",
@@ -282,7 +282,7 @@
         "unavailable": "Impossible de télécharger le fichier de protocole. Vérifiez votre connexion et réessayez.",
         "unreadable": "Impossible d’ouvrir le fichier de protocole. Il est peut-être corrompu.",
         "unsupported-version": "Ce protocole utilise une version de schéma que le moteur d’entretien ne peut pas exécuter.",
-        "invalid": "Le protocole n’a pas passé la validation : le moteur d’entretien ne peut donc pas l’exécuter."
+        "invalid": "Le protocole n’est pas valide : le moteur d’entretien ne peut donc pas l’exécuter."
       },
       "retry": "Réessayer"
     },
@@ -468,7 +468,7 @@
       "interviewer": {
         "label": "Entretiens en face à face",
         "heading": "Interviewer : menez des entretiens partout",
-        "description": "Interviewer a lui aussi été repensé pour le navigateur : téléversez un protocole sur <link>interviewer.networkcanvas.com</link> et lancez-vous sans rien installer. Installez-le comme <pwa>PWA</pwa> pour travailler hors ligne : il reste l’outil idéal pour les études de réseaux en présentiel, réalisées avec l’aide d’une personne qui mène l’entretien.",
+        "description": "Interviewer a lui aussi été repensé pour le navigateur : importez un protocole dans <link>interviewer.networkcanvas.com</link> et déployez votre étude sans rien installer. Installez-le comme <pwa>PWA</pwa> pour travailler hors ligne : il reste l’outil idéal pour les études de réseaux en présentiel, réalisées avec l’aide d’une personne qui mène l’entretien.",
         "iconAlt": "Icône de l’application Interviewer",
         "screenshotAlt": "Tableau de bord d’Interviewer affichant des cartes de protocole et une action pour reprendre un entretien",
         "bullets": {
@@ -537,7 +537,7 @@
       },
       "oneToMany": {
         "shortName": "Recensement des dyades (un à plusieurs)",
-        "name": "Interface de recensement des dyades (un à plusieurs)",
+        "name": "Interface « Recensement des dyades (un à plusieurs) »",
         "summary": "Créez des liens entre une personne focale et plusieurs autres personnes sur un même écran, au lieu d’examiner chaque paire séparément.",
         "details": {
           "0": "Utilisez-la lorsqu’un réseau comprend des figures centrales susceptibles d’avoir des relations avec de nombreuses autres personnes.",
@@ -547,7 +547,7 @@
       },
       "familyPedigree": {
         "shortName": "Arbre généalogique",
-        "name": "Interface d’arbre généalogique",
+        "name": "Interface « Arbre généalogique »",
         "summary": "Guidez les personnes participantes dans la construction d’une structure familiale complexe, grâce à un parcours visuel dédié.",
         "details": {
           "0": "Créez les membres de la famille et leurs relations en même temps, avec une disposition automatique qui garde l’arbre généalogique lisible à mesure qu’il s’agrandit.",
@@ -557,8 +557,8 @@
       },
       "narrativePedigree": {
         "shortName": "Arbre généalogique narratif",
-        "name": "Interface d’arbre généalogique narratif",
-        "summary": "Transformez un arbre généalogique créé précédemment en une visualisation en lecture seule qui utilise la notation clinique standard des arbres généalogiques.",
+        "name": "Interface « Arbre généalogique narratif »",
+        "summary": "Transformez une étape « Arbre généalogique » précédente en une visualisation en lecture seule qui utilise la notation clinique standard des arbres généalogiques.",
         "details": {
           "0": "Montrez les membres de la famille atteints et les personnes porteuses obligatoires d’une ou plusieurs affections, selon les modes de transmission pris en charge.",
           "1": "Affichez si vous le souhaitez les statuts « à risque » possibles, lorsque l’étude prévoit un accompagnement adapté pour leur interprétation.",
@@ -567,7 +567,7 @@
       },
       "networkComposer": {
         "shortName": "Compositeur de réseau",
-        "name": "Interface du compositeur de réseau",
+        "name": "Interface « Compositeur de réseau »",
         "summary": "Construisez et modifiez l’ensemble du réseau personnel d’une personne participante sur un canevas libre.",
         "details": {
           "0": "Ajoutez des personnes, renseignez les attributs des personnes et des relations, tracez plusieurs types de relations et réorganisez le réseau au fil de la conversation.",
@@ -630,7 +630,7 @@
         "name": "Arrière-plans SVG adaptatifs pour le sociogramme",
         "summary": "Créez des arrière-plans de sociogramme dont les zones, les axes et les libellés s’adaptent aux canevas d’entretien en orientation portrait comme paysage.",
         "details": {
-          "0": "Téléversez un fichier SVG dont les éléments sont positionnés par rapport au canevas disponible plutôt que sur une grille de pixels fixe.",
+          "0": "Importez un fichier SVG dont les éléments sont positionnés par rapport au canevas disponible plutôt que sur une grille de pixels fixe.",
           "1": "Gardez les libellés lisibles et les zones étendues jusqu’aux bords du canevas lorsque les personnes participantes font pivoter une tablette ou utilisent un écran de format différent.",
           "2": "Utilisez le modèle de contexte social fourni comme point de départ pour des quadrants, des axes indépendants, des catégories ou des contextes qui se chevauchent."
         }
@@ -680,7 +680,7 @@
         "name": "Filtrage avancé des exportations",
         "summary": "Trouvez et exportez précisément les entretiens dont vous avez besoin, même lorsqu’une grande étude s’étend sur de nombreuses pages de résultats.",
         "details": {
-          "0": "Filtrez côté serveur par protocole, date, progression, taille du réseau, statut d’exportation ou identifiant de personne participante, sur l’ensemble des données.",
+          "0": "Filtrez côté serveur par protocole, date, progression, taille du réseau, statut d’exportation ou identifiant de la personne participante, sur l’ensemble des données.",
           "1": "Sélectionnez tous les entretiens qui correspondent aux filtres actifs, et pas seulement les lignes visibles à l’écran.",
           "2": "Exportez tous les entretiens, les entretiens terminés ou les entretiens non exportés parmi les résultats filtrés, sans toucher aux autres enregistrements."
         }
@@ -791,7 +791,7 @@
     "destinations": {
       "label": "Bien démarrer",
       "heading": "Commencez à explorer la nouvelle génération",
-      "closing": "Si vous avez des questions ou rencontrez des problèmes, le <community>forum communautaire</community> est le meilleur endroit pour nous joindre et échanger avec d’autres équipes de recherche qui utilisent les outils. Nous espérons que ces nouveaux outils feront une réelle différence dans vos recherches. Notre équipe est extrêmement reconnaissante pour les retours de la communauté et pour le soutien constant qui rend ce travail possible.",
+      "closing": "Si vous avez des questions ou rencontrez des problèmes, le <community>forum de la communauté</community> est le meilleur endroit pour nous joindre et échanger avec d’autres équipes de recherche qui utilisent les outils. Nous espérons que ces nouveaux outils feront une réelle différence dans vos recherches. Notre équipe est extrêmement reconnaissante pour les retours de la communauté et pour le soutien constant qui rend ce travail possible.",
       "architect": {
         "title": "Ouvrir Architect",
         "category": "Concevoir des protocoles",
