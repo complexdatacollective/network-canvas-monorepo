@@ -16,6 +16,18 @@ export const documentationAppLocales = defineAppLocales([
 ] as const satisfies readonly (AppLocale & { locale: Locale })[]);
 
 /**
+ * The writing direction of a documentation language, for `<html dir>`. Every
+ * language offered today is left to right; a right-to-left one needs only its
+ * entry above, since the layout is written against the reading direction.
+ */
+export function getLocaleDirection(locale: Locale): 'ltr' | 'rtl' {
+  return (
+    documentationAppLocales.find((entry) => entry.locale === locale)
+      ?.direction ?? 'ltr'
+  );
+}
+
+/**
  * Each documentation language as the Network Canvas websites name it. The
  * shared navigation takes these, and the switcher stores them in the language
  * cookie every website reads, so a choice made here carries to the others.

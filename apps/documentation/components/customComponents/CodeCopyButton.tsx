@@ -19,7 +19,7 @@ const CodeCopyButton = ({ code }: { code: string }) => {
   };
 
   return (
-    <div className="absolute top-2 right-2 flex items-center gap-2">
+    <div className="absolute inset-e-2 top-2 flex items-center gap-2">
       {/* Always-present live region so the "Copied!" result is announced; it
           also renders the visible confirmation bubble when copied. */}
       <output

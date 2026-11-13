@@ -22,14 +22,14 @@ export function Hero() {
         <FancyHeading
           level="h1"
           variant="display-heading"
-          className="tablet-portrait:mx-0 tablet-portrait:text-left mx-auto max-w-5xl text-center"
+          className="tablet-portrait:mx-0 tablet-portrait:text-start mx-auto max-w-5xl text-center"
         >
           {t('Hero.title')}
         </FancyHeading>
         <FancyParagraph
           intent="lead"
           margin="none"
-          className="tablet-portrait:text-left tablet-landscape:text-xl max-w-2xl text-center text-lg leading-relaxed"
+          className="tablet-portrait:text-start tablet-landscape:text-xl max-w-2xl text-center text-lg leading-relaxed"
         >
           {t('Hero.tagline')}
         </FancyParagraph>

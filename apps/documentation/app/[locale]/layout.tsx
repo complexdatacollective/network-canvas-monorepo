@@ -14,6 +14,7 @@ import { preload } from 'react-dom';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 import type { Messages } from '~/app/types';
 import { LayoutComponent } from '~/components/Layout';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
@@ -22,6 +23,7 @@ import { env } from '~/env';
 import {
   documentationAppCatalogSource,
   documentationAppLocales,
+  getLocaleDirection,
 } from '~/lib/i18n/appLocales';
 import { locales } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
@@ -91,7 +93,11 @@ export default async function MainLayout(props: MainLayoutProps) {
   }
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={getLocaleDirection(locale)}
+      suppressHydrationWarning
+    >
       <body className="flex min-h-dvh flex-col">
         {/* Outermost, so every `motion` component in the docs inherits it.
             `reducedMotion="user"` is the provider's default: motion then drops
@@ -121,7 +127,9 @@ export default async function MainLayout(props: MainLayoutProps) {
                   manageDocument={false}
                   timeZone={timeZone}
                 >
-                  <LayoutComponent>{children}</LayoutComponent>
+                  <LocaleDirectionProvider>
+                    <LayoutComponent>{children}</LayoutComponent>
+                  </LocaleDirectionProvider>
                 </AppI18nProvider>
               </NextIntlClientProvider>
             </ThemeProvider>
