@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.11.1
+
+### Patch Changes
+
+- Align the French website with the shared French glossary: gender-neutral wording for participants and research teams in the Updates pages, "importer" for bringing a protocol or file into Architect and Interviewer, consistent terms with the apps, and no-break spaces before French high punctuation.
+
 ## 0.11.0
 
 ### Minor Changes
