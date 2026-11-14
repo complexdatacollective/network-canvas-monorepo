@@ -1,5 +1,238 @@
 # @codaco/app-i18n
 
+## 0.4.0
+
+### Minor Changes
+
+- 2c391db: Add `@codaco/app-i18n/message-errors`, an entry for code that refuses with
+  messages but renders nothing, such as a server. It exports `defineMessages`,
+  `createMessageError` and `formatMessageError` and loads no react-intl or React
+  at run time, so a server bundle that uses it does not carry React.
+- dbe200d: `withoutBidiFormatting` (from `@codaco/app-i18n/messages`) removes every bidi formatting character from a string: the Arabic letter mark, the left-to-right and right-to-left marks, embeddings, overrides and isolates. Use it to compare what two renders say when one carries the isolates a right-to-left message puts around its values.
+- c512d27: Add Arabic (`ar`), the first right-to-left language, to the shared language
+  list and translate every shared catalog into it: the common controls, the
+  components, the export and protocol messages, and the protocol upgrade notes.
+  An app that lists `ar` among its languages now gets these in Arabic, laid out
+  right to left. No app lists it yet.
+
+  The Arabic is Modern Standard Arabic, checked by reverse translation and not
+  yet reviewed by a native speaker. Its terminology is recorded in
+  `packages/app-i18n/glossary/ar.md`.
+
+- 19e728a: Names and other text placed inside a sentence now keep their place in it when
+  the two run in different directions. In Arabic, a Latin name that ends in
+  punctuation or a number ("team-b!", "Wave 2") no longer has its punctuation
+  moved to the wrong end or swaps places with a nearby number; in English, an
+  Arabic or Hebrew name no longer pulls the words beside it out of order. This
+  covers the interface's own messages in every app and the protocol's messages
+  in the interview. English text with English names is unchanged.
+
+  `createAppIntl` and `AppI18nProvider` wrap each text value in Unicode
+  first-strong isolates (U+2068 … U+2069) when the sentence is right to left, or
+  when the value contains right-to-left text; numbers, dates and rich-text
+  values are left alone. `createAppIntl` takes an optional `direction`, which
+  defaults to the locale's own. `@codaco/app-i18n/messages` exports the
+  isolation helpers (`isolateArguments`, `isolatedArgumentNames`,
+  `withoutIsolates`), and `@codaco/shared-consts` exports `textDirectionOf`,
+  the direction a language tag is written in.
+
+- 43ffe6f: The words a participant reads in an interview now come from the protocol,
+  in the protocol's language, wherever the protocol can hold them, and the
+  interview shows less text of its own.
+
+  **Stage settings.** Text a participant sees on one kind of stage is now a
+  setting of that stage, which researchers can change and translate. Network
+  Canvas has wording for each one in English, German, Spanish, French, Italian,
+  Dutch, Brazilian Portuguese, and Simplified and Traditional Chinese, and the
+  interview shows that wording until a researcher changes it:
+
+  - Finish screen: the finish button, its confirmation question, the finished
+    notice and the message shown if finishing fails.
+  - Name generators: the minimum and maximum notices, the quick-add hint, the
+    message for an external list that could not load, the roster's "nothing
+    left to add" notice, and its search label and no-match text.
+  - Geospatial: the offline notice, the message for a map that cannot be shown,
+    the label for a place outside the selectable areas, and the search label,
+    no-match and search-failed texts.
+  - Network Composer, Narrative, Sociogram and Narrative Pedigree: the name box
+    placeholder, panel headings, the tools' tooltips, and the Narrative
+    Pedigree's key, its condition menu's "Select a condition" choice, snapshot
+    button and snapshot headings.
+  - Family Pedigree: every word of drawing, connecting and adding to the family,
+    as the stage's `wording`, including the name question and the checklist of
+    family members still needed. The guidance under the name question is always
+    shown: Network Canvas's unless the researcher has changed it.
+
+  A stage holds one of these settings only where its author changed the
+  wording, or wrote it in a language Network Canvas has no wording in. For each
+  one it does not hold in a language, the interview shows Network Canvas's
+  wording, where Network Canvas has wording in that language
+  (`stageWordingShown(stage, localization)`, from
+  `@codaco/interview/supplied-wording`). Architect's stage editor,
+  translation table and protocol summary show that wording for a setting the
+  stage does not hold, and a translation that reads exactly as Network Canvas
+  words it is not saved, so a correction to Network Canvas's wording reaches
+  every protocol that has not changed it. Leaving a cell of the translation
+  table empty puts Network Canvas's wording for that language back. A setting shown only under some
+  configuration, such as the layout tooltips while automatic layout is on, is
+  offered only while that configuration is on, and the researcher's wording for
+  it is removed when the configuration is switched off, so a protocol never asks
+  for text its participants cannot see to be translated. Upgrading a protocol
+  from schema 8 writes none of this wording into it, so each stage reads as it
+  always has. Several
+  settings read differently when they are about the participant and when they
+  are about someone else, or show a name or a number; Architect's stage editor,
+  translation table and protocol summary show each version separately, named,
+  with placeholders as named pills. Each setting says which placeholders a
+  version must show, in every language, so a rewording or a translation cannot
+  drop a person's name or a count by accident. A version for a plural
+  form that only one number takes, such as English "one", may leave the number
+  out. Architect marks the placeholders a version still needs, and names the
+  missing placeholder and its version in the error.
+
+  **Interface text.** The text several stages share is the protocol's
+  `interfaceText`, translated in the translation table like the rest of the
+  protocol, in six groups: interview navigation (Back, Continue, Exit interview
+  and its explanation); buttons (Cancel, Done on a Name Generator, Delete on a
+  Family Pedigree or Network Composer, and Yes and No where a question is
+  answered with them); messages (the screen error, the item error on an
+  Information stage that shows a file, and one error message that also stands
+  in for a form that could not be submitted); the passphrase prompt; the
+  discard-changes question and explanation, offered while a stage can ask it; and validation messages, one for each answer check, offered only for the
+  checks the protocol uses. As with stage settings, a protocol holds an entry
+  only where its author changed the wording. The Yes answer is also the discard dialog's confirm
+  button. The interview shows this text in the protocol's language; its own
+  words, such as the language chooser, still follow the participant's browser.
+
+  **Less built-in text.** Headings, labels and messages that repeated what the
+  screen already showed were removed: for example the pedigree checklist's
+  heading, the condition key's "What the symbols mean", the dyad censuses'
+  "Select all that apply", and the separate passphrase confirmations, now one.
+  Canvas tools are icon buttons with tooltips, and drawer toggles show the
+  number of people still to place.
+
+  For developers: `@codaco/app-i18n` adds `AppIntlOverlay`, which lays a set of
+  messages over a catalog in a chosen locale; `@codaco/fresco-ui`'s rich text
+  editor takes a `tokens` prop to insert placeholders, each of which may be
+  marked `required`, the new `TokenPill` subpath draws a placeholder the same
+  way in text that is only read (`TokenPill`, `TokenizedText`), `Table` takes a
+  `scrollerClassName` for its scrolling element, and a dialog's busy
+  confirm button is announced through a status region;
+  `@codaco/interview/supplied-wording` gives `stageWithoutSuppliedText` (a stage
+  as it is stored) and `stageWithSuppliedText` (as an editor holds it),
+  `withoutSuppliedWording` and `withSuppliedWording` for a whole protocol, and
+  `suppliedWordingIn` (Network Canvas's own wording for a text of a protocol);
+  `@codaco/protocol-validation` adds `suppliedStageSettingApplies`,
+  `messageVariants`, `composeMessage`, `findMessageArgumentProblem`,
+  `findMissingPlacement` and `requiredArgumentsOf`, and a declared `text` or
+  `plural` argument may list the versions it is `required` in; and
+  `SyntheticInterview.addStage` takes a stage's own `wording`.
+
+- 2408129: `appI18n()` no longer removes the ICU parser from production builds. Protocol strings are ICU messages that `@codaco/protocol-validation` and the interview runtime parse while the app runs, so a bundle without the parser could not validate or render a protocol. The plugin still compiles `defineMessages` defaults and imported locale catalogs to AST at build time.
+
+  Breaking: `appI18n` takes no options, and the `build: 'library'` option and the `AppI18nBuildKind` and `AppI18nOptions` types are gone, because there is no longer an application-only alias for a library build to opt out of. Call `appI18n()` in application and library builds alike. Next.js hosts should also delete the `@formatjs/icu-messageformat-parser` `resolveAlias` entry the README used to recommend.
+
+- e71256e: Every app, website and interview now chooses its language the same way, from
+  one module in `@codaco/shared-consts`.
+
+  - `negotiateLocale(requested, available, fallback?)` is the one negotiation:
+    CLDR best fit with ICU's defaults, with no rules of our own.
+    `parseAcceptLanguage`, `canonicalizeLocaleTag` and
+    `normalizeLocalePreferences` move here too.
+  - `resolveLocale({ chosen, requested, available, fallback })` puts the
+    language a person chose first, then the best fit for their requested
+    languages, then the fallback. Its `source` is `'chosen'`, `'negotiated'` or
+    `'default'`.
+  - A choice is kept per scope and never read by another: a choice in an app's
+    language switcher is not a choice for an interview, and a Language Chooser
+    stage's choice belongs to that interview alone.
+    `webStorageLocalePreference` keeps a choice in `localStorage` or
+    `sessionStorage`; `readLocalePreferenceCookie` and
+    `serializeLocalePreferenceCookies` keep one in a cookie, optionally shared
+    by every site of a domain. `siteLocalePreferenceCookie` is the one choice
+    every Network Canvas website shares.
+  - `resolveAppLocale` reports a kept choice as `source: 'chosen'` (was
+    `'stored'`).
+  - `resolveProtocolLocale(chosen, requested, localization)` chooses an
+    interview's language. A stated language the protocol does not offer now
+    gives way to the browser's languages rather than the protocol's default.
+
+- 08d76d8: `useLocaleCatalog` takes an optional fourth argument, `restored`: a locale the
+  host brought back from storage after mounting, such as a language chosen
+  before a reload. While the requested locale is the restored one, the hook
+  suspends until its catalog has loaded, as it does on a first load, instead of
+  keeping the language already on screen. Text the host words from elsewhere
+  then changes language in the same render as the catalog. If the restored
+  locale cannot be loaded, the language on screen stays and the failure is
+  reported as before.
+- 6079888: The wording Network Canvas supplies for a schema 9 protocol is now the
+  interview's own. Each text a protocol may reword is one of the interview's
+  messages, written in English in the interview's source, with one catalogue
+  per language, English included, in `packages/interview/src/locales/wording`.
+  Nothing a participant reads changes.
+
+  For developers:
+
+  - `@codaco/interview/supplied-wording` is where a tool reads that wording. It
+    gives the functions that show, compare or remove it, bound to the
+    interview's catalogues: `stageWordingShown`, `stageWithSuppliedText`,
+    `stageWithoutSuppliedText`, `suppliedStageText`, `interfaceTextShown`,
+    `interfaceTextShownBy`, `interfaceTextAsShown`, `suppliedInterfaceText`,
+    `withInterfaceText`, `interfaceTextWithUpdates`, `withSuppliedWording`,
+    `withoutSuppliedWording`, `suppliedWordingIn` and
+    `familyPedigreeWordingIn`. It also exports the catalogues themselves
+    (`SUPPLIED_WORDING`). The module loads in Node as it is.
+  - `@codaco/protocol-validation` no longer holds any of the wording. It keeps
+    what the schema fixes: which texts Network Canvas words (`SUPPLIED_TEXTS`,
+    each naming the interview message that words it), the arguments each must
+    show, when a protocol shows each one, and the languages
+    (`SUPPLIED_LANGUAGES`). `suppliedWordingFrom(catalogues)` gives the
+    functions above for a set of catalogues. Validation needs no catalogue: it
+    asks only whether a text has words in a language, which the schema version
+    decides.
+  - Without a catalogue, `withoutUnshownWording(protocol)`,
+    `withoutUnshownInterfaceText(protocol)` and
+    `stageWithoutUnshownWording(stage)` remove the wording a protocol holds for
+    text it does not show. The schema 8 migration uses the first: it still
+    writes none of Network Canvas's wording, and a document that already holds
+    a copy of it keeps the copy until a tool with the interview's catalogue next
+    stores the protocol.
+  - `SyntheticInterview` writes a stand-in naming each text, in place of
+    Network Canvas's English, for a fixture whose default language Network
+    Canvas has no wording in.
+  - `stampTranslationSources` in `@codaco/app-i18n/catalog-guards` takes the
+    path of the extracted English, for a package that keeps its translations in
+    another folder.
+
+### Patch Changes
+
+- 9fdb4ff: Message extraction and the build transforms (`appI18n()` for Vite and the Next loader) now keep a message's whitespace as written, so a markdown message's blank lines still separate its paragraphs in a production build. The `formatjs/no-multiple-whitespaces` lint rule still keeps stray spacing out of every other message.
+- 15155f3: Browser languages are now matched with the ICU defaults of CLDR best fit
+  (`@formatjs/intl-localematcher` 0.10). Before, a later exact match could beat
+  an earlier regional one: a browser set to Mexican Spanish with English as a
+  fallback (`es-MX, en`) got English even though Spanish is available. Now each
+  later preference counts for only slightly less than the one before, so that
+  browser gets Spanish, while a browser set to Afrikaans and English
+  (`af, en`) gets English rather than Dutch.
+- 3d7bcc6: Add `LocaleDirectionProvider` (`@codaco/fresco-ui/LocaleDirectionProvider`) and
+  the `useAppDirection` hook (`@codaco/app-i18n/react`). Mount the provider once
+  inside `AppI18nProvider` so that Base UI menus, sliders, tabs and popups follow
+  the writing direction of the app's language, as the page's layout already does.
+  Without an `AppI18nProvider` above them both read left to right.
+
+  Add `AppDirectionOverride` (`@codaco/app-i18n/react`) for tools that show an
+  interface in a direction its language does not have, such as a Storybook
+  direction control: every `AppI18nProvider` beneath it writes and reports that
+  direction.
+
+- f1a4324: Add a right-to-left development pseudo-locale, `ar-XB`
+  (`pseudoRtlAppLocale`), beside the accented `en-XA`. Under it the interface is
+  laid out right to left and each message's own text runs right to left, while
+  interpolated values keep their own direction. `pseudoAppLocales` lists both for
+  a development registry, and `isPseudoLocale` tests a tag for either.
+- Updated dependencies ([4de3f45](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4de3f45c1ecc06799211c41c1d72cee8fce7aa10), [19e728a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/19e728aebcbf13881af7e2166ac58aee78cfb815), [2ff161c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2ff161cd71741a8405cef57ac08aa5b5b8ac9fd0), [2729855](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2729855a94c6a71f68283236ddb3c5810f1b6638), [c058462](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c0584624345133246137fb4effff9920fce288ff), [cbf2a84](https://github.com/complexdatacollective/network-canvas-monorepo/commit/cbf2a84605fdefaaab11a7395f889906e6ad5073), [e71256e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e71256e0716c38ca6da345259fd433c87e9bb2cd), [9f8cdca](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9f8cdca05af6967e306493ef04cffdb62e447f97), [151e511](https://github.com/complexdatacollective/network-canvas-monorepo/commit/151e511823d3cf083db2d2bb8e98c740cb9c657d), [cad7309](https://github.com/complexdatacollective/network-canvas-monorepo/commit/cad7309fa78cb2609416f1f445fdc4ad8ffcf226), [e0d2994](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e0d2994b35fed99290c56989b53b15167106d752), [6e89119](https://github.com/complexdatacollective/network-canvas-monorepo/commit/6e89119c4da3ecc0319b213961507a37431a415a))
+  - @codaco/shared-consts@7.0.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,77 @@
 # @codaco/background-creator
 
+## 1.0.3
+
+### Patch Changes
+
+- 28ff7c6: Text in Arabic, Persian, Urdu and other languages written in the Arabic script
+  no longer has its letters pulled apart in Safari. Small labels and buttons use
+  a little extra space between letters, and Safari put that space inside words,
+  where the letters of this script must join. It showed wherever a protocol's
+  text or the interface was in one of those languages, on an iPad in particular.
+  Text in these languages now takes no letter-spacing.
+
+  Arabic set in the monospace style, such as Interviewer's status line, is now
+  drawn in Readex Pro like the rest of the page, in place of a wider system
+  font.
+
+  `@codaco/tailwind-config`: `--font-monospace` now reads `--monospace-font`,
+  which the theme sets for `lang="ar"`; a theme of your own may set it too.
+
+- 173339d: The toolbar's colour swatches are grouped by a `<fieldset>`, as fresco-ui's
+  radio groups are, rather than by a `<div>` with a group role.
+- 34646d4: Downloading an SVG or exporting a script now saves the file in every desktop
+  browser.
+
+  In Safari on a Mac, "Download SVG" opened the share menu instead of saving
+  the file; it now downloads to your Downloads folder, as it does in Firefox. In
+  browsers that cannot show a Save dialog, such as the browser built into some
+  desktop apps, nothing happened at all; the file now downloads there too.
+
+- 5669fa1: Menu, select and combobox items now have a small gap between them, so a run of checked or selected items no longer merges into one block.
+- c34db26: Node labels are easier to read. The node colors are adjusted, most of them darker, so their white labels stand out: all eight node colors now meet the WCAG AA contrast ratio of 4.5:1 for text, and the lighter half of each node stands out at 3:1 against the interview background. Nodes keep their two-tone diagonal.
+
+  The node colors in the default and interview themes (`--node-1` to `--node-8`) are now derived from the brand colors rather than equal to them. The brand color Neon Coral is slightly lighter and less saturated, and Mustard, Neon Carrot, Sea Serpent, Kiwi and Paradise Pink shift in hue, so edge, ordinal and categorical colors, the destructive and warning colors, the loading spinner, Background Creator's color swatches, and generated background patterns built from them change color slightly too.
+
+  In Architect, a read-only shape picker now tells assistive technology that its shapes are unavailable, matching the read-only type picker.
+
+- e69cfe5: The R script now reads and writes your data correctly whatever language
+  settings R is running with.
+
+  Where R is not set to UTF-8, which includes many servers and containers, the
+  script stopped reading at the first character outside basic Latin, so values
+  such as "Renée" or "你好" were cut off or the script failed. It now keeps every
+  name and value as written, and a file saved from Excel with a byte-order mark
+  is read cleanly.
+
+- e405448: Arabic text is now set in Readex Pro, a typeface that ships with the apps, so
+  it looks the same on every device instead of depending on the fonts each one
+  has installed. This applies to text marked as Arabic: an interface or
+  interview shown in Arabic, and Arabic wording inside another language where
+  the app knows its language. Text in every other language is unchanged,
+  including languages such as Persian and Urdu that share the script.
+
+  `@codaco/tailwind-config` adds `fonts/readex-pro.css`, and its themes add
+  Readex Pro to the heading and body stacks for `lang="ar"` only. A host that
+  imports `fonts/nunito.css` and `fonts/inclusive-sans.css` should import the
+  new file beside them; without it Arabic falls back to a system font as
+  before. Only the Arabic subset is declared (23 KB), and a browser fetches it
+  only for a page that shows Arabic. Each theme now names the Latin face of its
+  stacks as `--heading-face` and `--body-face`; a theme of your own that sets
+  `--heading-font` or `--body-font` should set those too. The site navigation
+  bundle ships the file in `dist/fonts/`.
+
+- 83711be: Buttons that were drawn as a hollow outline are now filled, or plain text where
+  they sit beside another filled button, so secondary actions read more clearly.
+  In Background Creator the Delete button is now solid red. In
+  `@codaco/fresco-ui`, the `outline` variant of `Button`, `IconButton` and
+  `buttonVariants` is removed: use `default` for a secondary action, or `text`
+  beside a neutral filled button. `CollectionSortSelect` now defaults to the
+  `default` variant.
+- Updated dependencies ([18a9704](https://github.com/complexdatacollective/network-canvas-monorepo/commit/18a9704dafa62cfa67a6b83e8b9b3671d8fbcc38), [e223df4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e223df472e2b4e0778a2b1418a9cf587ff38256c), [9f851e6](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9f851e634613886b43064e63d8ef8298658e6ea1), [28ff7c6](https://github.com/complexdatacollective/network-canvas-monorepo/commit/28ff7c67668defa0e6868972223c1a2eff6ecae6), [c512d27](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c512d27443dcb5ce025d2bfa4d5f7364ee8c8483), [22a05bd](https://github.com/complexdatacollective/network-canvas-monorepo/commit/22a05bd3791fb5bf42355ae59959c650b2e63da0), [3d7bcc6](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3d7bcc6e0f461d0c8526b5528cd1b32f59277f4c), [fae4bb6](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fae4bb60c8dfd889b49e838621788d1728d2ee74), [731bfea](https://github.com/complexdatacollective/network-canvas-monorepo/commit/731bfead9a4b0c2ebd587c8ea47866577b813f53), [d179c39](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d179c39829969829cd9690919dcb0272da0af220), [5669fa1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5669fa125753a8159779edf013fa4aeb20a75db0), [c210bce](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c210bcea0f237d5e98e71921f297fb5411540f30), [9c1aeff](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9c1aeff40eca424c3ed29d3f98ff6b6b4e1a4c74), [7002c7c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7002c7c68cda62a061bc2d66869b4830a727b7e2), [ed8fef3](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ed8fef34d368c0db913e7db78077a701bbb23144), [ffd921b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ffd921b1e8dceff6e082d886025b7b7885dd8e43), [43ffe6f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/43ffe6f1680658ff475ed51bc924557f282afbd8), [38bbefa](https://github.com/complexdatacollective/network-canvas-monorepo/commit/38bbeface8c200142985951fe5d41bffa3b5aafc), [c058462](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c0584624345133246137fb4effff9920fce288ff), [97fa878](https://github.com/complexdatacollective/network-canvas-monorepo/commit/97fa878d015f3d724d617d96e4ef0e2401021080), [e19212d](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e19212d927ad92bf8866c1ea5a513628676419cf), [552956e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/552956e8508851acab50a881777a11f66626c883), [151e511](https://github.com/complexdatacollective/network-canvas-monorepo/commit/151e511823d3cf083db2d2bb8e98c740cb9c657d), [bbe09b4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bbe09b43aeec3ab10d7577d946e29a3e285666dc), [ca97000](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ca97000fb02653324f07343037df9cef94a1e0dd), [7050d25](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7050d258394cefd7e854858d8eb90df2bedba4cd), [665ac9f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/665ac9f58b0ae3bc4a2aafabd84cf16f8fc47776), [bec9b59](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bec9b594e43ae07bd2c72ad476b6f243c0ec7f8f), [729c670](https://github.com/complexdatacollective/network-canvas-monorepo/commit/729c67096aa934d9fcdbf0405a864a978e39556c), [1769104](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1769104cce2773332238e4b941a6b6cae91750f9), [9584bc7](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9584bc7253cc40be09316da3e850c083ee71fbcd), [6956edc](https://github.com/complexdatacollective/network-canvas-monorepo/commit/6956edcc582e652c765136a4909fc7244de82de3), [66b2226](https://github.com/complexdatacollective/network-canvas-monorepo/commit/66b2226e4a8865cc003b501cced0cfbf55fb3e4b), [d7647d1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d7647d1109ba986e8a5bd1cf8193b75973adff82), [3701fa2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3701fa2aa3c2d34f86e90c55351453af3f795d3e), [6d1307c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/6d1307c702f02f8c0450fdd6282088de05b9cd73), [7225b5c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7225b5cce7ec60634b21a86342682c0622f0f714), [90ddb32](https://github.com/complexdatacollective/network-canvas-monorepo/commit/90ddb329959d48ba4da0813827a7717b91988459), [0cd3a3e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0cd3a3ebbcadfdfcb19ecd8b595f0bb5f13f4ed8), [21ea84b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/21ea84bb89452b462d15b588375813bf34badf37), [b42f631](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b42f631494112610a010af7ee328d04a351a3696), [c097a07](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c097a07bbd031069a84f0356ef0f40eee7a3bba4), [9483e9e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9483e9eff45cf51bf9790c18240e5054ac619c66), [db8a2af](https://github.com/complexdatacollective/network-canvas-monorepo/commit/db8a2afe52bcd4eebf3240b0aab2fee13a33a77a), [362070b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/362070b9ba2b90b22bee9fdf855c17fad46df202), [fdae501](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdae50134c248f8e43ffb035f77b14e694b5cb68), [c1aa9d5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c1aa9d500ccf695a9b47bcce41d6896ddb009157), [bee5470](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bee5470aad3225c65e8fb50aede02f8452d3102b), [630410b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/630410bedccb59e3ea94d866a3234a98abd3a78c), [3af50e5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3af50e53208e22c8d31770e560705b41175959e9), [8f55311](https://github.com/complexdatacollective/network-canvas-monorepo/commit/8f553114f1b1fc1e534020210f1d34ed7b7faf84), [380412a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/380412a04671dc3da3ec2d0c31f04d77454afdb6), [930660c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/930660c7fcbdd4976ac819a1186125fd51ba42fe), [5dda5bb](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5dda5bb0592cf4f304e3089335396e3d47380b11), [c34db26](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c34db2601b78441316b3d9c9ec8d1b839d92f3db), [cbf2a84](https://github.com/complexdatacollective/network-canvas-monorepo/commit/cbf2a84605fdefaaab11a7395f889906e6ad5073), [26d832e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/26d832edb74e7701ae927a2e31c067db2c0bc588), [72b189a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/72b189ae35ec66ae2cafb99ff0fe47686c72ace8), [b76e7d7](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b76e7d7182865841faa1d9d2a0ab343eb9a21555), [e405448](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e40544803d2aa9f26c4809bb7e1ab6a4d17269d3), [92cf293](https://github.com/complexdatacollective/network-canvas-monorepo/commit/92cf293eb8b7d10d3a0d601283e3996f56eab415), [8470005](https://github.com/complexdatacollective/network-canvas-monorepo/commit/84700053a750432593dfe5df51fe1cddaf36f58e), [83711be](https://github.com/complexdatacollective/network-canvas-monorepo/commit/83711be1df32ae45de94e3d8c379bd26001c76da), [7111c0e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7111c0e56f32573bc27027e8c9347534dd3c2846), [f00c6fc](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f00c6fcf566a9ff47def0490f76edd5a0edfb580), [18f0696](https://github.com/complexdatacollective/network-canvas-monorepo/commit/18f06960be51e4bd2b3395393a99d92196efdafc), [01189fd](https://github.com/complexdatacollective/network-canvas-monorepo/commit/01189fdde1a68bb8d6e53bf1e855917c39a06b21), [d5d75b8](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d5d75b8a421f1c661d0bdadb785b4af9bf74eca2), [b1ba41f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b1ba41f43dfc8294f5783d2ed7a83e6160f031d7), [a3d63d1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a3d63d15d33fb591613d371258f7218b98898094), [92dece3](https://github.com/complexdatacollective/network-canvas-monorepo/commit/92dece3e675c3207fafb7b3141d14e61e56c4f02), [ad201b2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ad201b20d586082ba4f20d06961177fa74149db6), [276e1ef](https://github.com/complexdatacollective/network-canvas-monorepo/commit/276e1efcee5b0ce2f03198ba24289505a1fd7889), [7b38b84](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7b38b84c6df8324e1798c2c305142d72cb289c6f), [332df6a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/332df6ae2b31b24b4da8d109c8a221cab6c1e494), [b4bc4c1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b4bc4c1e8e984545ab707101ace9cba9ab8e02d7), [fb5a9b1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fb5a9b143805085701026350697339bfa3c8fb2f), [a7ca9c1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a7ca9c137e5031acc3744a8024edb6f23898cfeb), [6e89119](https://github.com/complexdatacollective/network-canvas-monorepo/commit/6e89119c4da3ecc0319b213961507a37431a415a))
+  - @codaco/fresco-ui@9.0.0
+  - @codaco/tailwind-config@1.6.0
+
 ## 1.0.2
 
 ### Patch Changes
