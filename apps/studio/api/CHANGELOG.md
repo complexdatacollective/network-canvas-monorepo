@@ -1,5 +1,50 @@
 # @codaco/studio-api
 
+## 1.1.0
+
+### Minor Changes
+
+- A stage's save can carry the shared wording it brings into the protocol, such
+  as a map stage's search message once its search is turned on. Studio writes
+  that wording into the protocol's settings in the same revision as the stage,
+  and refuses the save if the wording cannot be stored.
+
+### Patch Changes
+
+- A Latin name inside a right-to-left sentence keeps its punctuation at the end
+  it was typed at, and a right-to-left name inside an English sentence no longer
+  pulls the words beside it out of order.
+- Studio keeps the researcher's language choice with the locale system every
+  Network Canvas app shares, and matches browser languages with its best fit.
+- Text marked as Arabic in Studio is now set in Readex Pro, a typeface that
+  ships with Studio, so it looks the same on every device. Text in every other
+  language is unchanged.
+- An idle Studio deployment no longer sends a trace for every background check. The worker's job polls that find nothing, the once-a-second maintenance readings, and `/healthz` and `/readyz` probes are no longer exported, along with the database queries they run. A poll that claims a job is still traced from the job's processing onwards. When telemetry is on, an idle worker now exports roughly a twelfth of the trace data it did.
+- The protocol editor's file messages are now in the reader's language. When
+  Studio cannot store, find or accept a file (an image, audio, video or roster),
+  it used to show the server's English, such as "this host holds no bytes for
+  that resource". It now says what happened in words that can be translated, and
+  uses the same words the editor's own checks use for a roster it cannot read.
+- Studio's stage editors do much less work each time they redraw, so editing a stage stays more responsive in large protocols.
+- A protocol in Studio now holds only the wording its author changed. A new
+  protocol holds none of Network Canvas's own wording, a stage is saved without
+  the wording that reads exactly as Network Canvas words it, and shared wording
+  put back to Network Canvas's is removed from the protocol's settings. The
+  stage editors still show Network Canvas's wording for everything a protocol
+  does not word itself, and the interview shows it to participants.
+- Text that stayed in English whatever the interface language is now translated.
+  The team activity log names each kind of action in the reader's language, in
+  its rows, its detail dialog and its action filter; the server no longer sends
+  an English title with each event or filter option. The protocol editor's
+  outline names each screen's kind by its interface name ("Name Generator (quick
+  add)") rather than its type id ("NameGeneratorQuickAdd"). The Validation card
+  describes each problem in Studio's own words, saying when something required is
+  missing, instead of showing the schema library's message ("Invalid input:
+  expected string, received undefined"); the protocol's own rules keep their
+  wording.
+- The protocol editor now works better with a keyboard and a screen reader. Moving a screen in the outline with the arrow keys or the move buttons is announced with its new position, and focus stays on the screen you moved, including at the top and bottom of the list. Focus also stays on Add while a new screen is being added, and returns to it after you refresh the outline. Each validation problem is now a button that takes you to the screen and field it is about, and the number of problems is announced when it changes. If you lose the right to edit a screen, or open one that someone else is editing, the editor now says so aloud.
+- Studio's loading and confirmation messages are now announced to screen readers as standard status messages. An invitation that expires while the team members page is open now leaves the pending list within a minute, instead of staying until the page is reloaded.
+
 ## 1.0.2
 
 ### Patch Changes
