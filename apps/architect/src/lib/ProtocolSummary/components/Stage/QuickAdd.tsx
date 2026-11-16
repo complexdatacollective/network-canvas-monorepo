@@ -2,6 +2,7 @@ import { useContext } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { getVariableTypeLabel } from '~/config/variables';
 
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
@@ -62,7 +63,9 @@ const QuickAdd = ({ quickAdd = null }: QuickAddProps) => {
           [
             <span key="type-label">{intl.formatMessage(messages.type)}</span>,
             <span key="type-value">
-              {variableMeta?.type || intl.formatMessage(chromeMessages.unknown)}
+              {variableMeta?.type
+                ? getVariableTypeLabel(variableMeta.type, intl)
+                : intl.formatMessage(chromeMessages.unknown)}
             </span>,
           ],
         ]}
