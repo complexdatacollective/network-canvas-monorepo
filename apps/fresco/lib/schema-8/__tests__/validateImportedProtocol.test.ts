@@ -129,7 +129,9 @@ describe('validateImportedLegacyProtocol', () => {
     };
     const result = await validateImportedLegacyProtocol(protocol);
 
-    expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toBe('validation-failed');
+    expect(result).toMatchObject({
+      success: false,
+      error: 'validation-failed',
+    });
   });
 });
