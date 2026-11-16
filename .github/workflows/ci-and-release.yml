@@ -780,6 +780,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+      # The background-creator suite runs its generated R script and refuses to
+      # skip under CI, so this all-package run needs Rscript as the shard does.
+      - name: Install R for the background-creator script suite
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:
@@ -1685,7 +1689,11 @@ jobs:
             # `.env` in its own package directory. Only its shard writes them,
             # so the secrets never reach a runner with no use for them.
             protocolValidation: true
+          # @codaco/background-creator runs the R script it generates through
+          # Rscript, which the runner image does not ship, and its suite
+          # refuses to skip under CI. Only its shard installs R.
           - shard: 4
+            rscript: true
           - shard: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -1735,6 +1743,9 @@ jobs:
           docker logs studio-sync-postgres || true
           echo "::error::Postgres did not accept connections within 120s"
           exit 1
+      - name: Install R for the background-creator script suite
+        if: matrix.rscript
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         # Only the shard whose bucket holds @codaco/protocol-validation. The

@@ -3,10 +3,29 @@ import { readFileSync } from 'node:fs';
 
 import { test } from 'vitest';
 
-const workflow = readFileSync(
-  new URL('../../.github/workflows/chromatic.yml', import.meta.url),
-  'utf8',
-);
+import {
+  findSteps,
+  getJob,
+  getStep,
+  liveSteps,
+  needsOf,
+  readWorkflow,
+  stepIndex,
+} from './workflow-model.mjs';
+
+const workflow = readWorkflow('chromatic.yml');
+const job = (name) => getJob(workflow, name);
+// Folded `>-` conditions arrive with their line breaks turned into spaces;
+// compare them with runs of whitespace collapsed.
+const flat = (text) => text.replace(/\s+/g, ' ').trim();
+
+const PUSH_TO_DEFAULT =
+  "(github.event_name == 'push' && github.ref_name == github.event.repository.default_branch)";
+const SNAPSHOT_JOBS = [
+  ['fresco-ui', '@codaco/fresco-ui', 'fresco_ui'],
+  ['interview', '@codaco/interview', 'interview'],
+  ['interviewer', '@codaco/interviewer', 'interviewer'],
+];
 
 const packages = {
   'fresco-ui': JSON.parse(
@@ -29,179 +48,231 @@ const packages = {
   ),
 };
 
-function job(name) {
-  return workflow.match(
-    new RegExp(
-      `^ {2}${name}:\\n(?<body>[\\s\\S]*?)(?=^ {2}\\S|$(?![\\s\\S]))`,
-      'm',
-    ),
-  )?.groups?.body;
-}
-
 function untraced(script) {
   return [...script.matchAll(/--untraced '([^']+)'/g)].map((match) => match[1]);
 }
 
+const runChromatic = (name) => getStep(job(name), { name: 'Run Chromatic' });
+
 test('all UI Test contexts are emitted for PR SHAs without merge-queue work', () => {
-  assert.match(workflow, /^  pull_request:\n    branches: \[main\]$/m);
-  assert.doesNotMatch(workflow, /^  merge_group:/m);
-  assert.match(workflow, /^  workflow_run:$/m);
-  assert.doesNotMatch(workflow, /pull_request_target/);
-  assert.match(workflow, /- CI and Release/);
-  assert.match(
-    workflow,
-    /branches:\n\s+- main\n\s+- 'changeset-release\/\*\*'/,
-  );
+  assert.deepEqual(workflow.on.pull_request, { branches: ['main'] });
+  assert.equal('merge_group' in workflow.on, false);
+  assert.equal('pull_request_target' in workflow.on, false);
+  assert.deepEqual(workflow.on.workflow_run, {
+    workflows: ['CI and Release'],
+    types: ['completed'],
+  });
+  assert.deepEqual(workflow.on.push.branches, ['main', 'changeset-release/**']);
 
   const statuses = job('required-statuses');
-  assert.ok(statuses, 'required-statuses job exists');
-  assert.doesNotMatch(statuses, /merge_group/);
-  assert.match(statuses, /github\.actor != 'dependabot\[bot\]'/);
-  assert.match(statuses, /github\.event_name == 'workflow_run'/);
-  assert.match(statuses, /workflow_run\.actor\.login == 'dependabot\[bot\]'/);
-  assert.match(
-    statuses,
-    /workflow_run\.pull_requests\[0\]\.base\.ref == 'main'/,
+  const condition = flat(statuses.if);
+  assert.doesNotMatch(JSON.stringify(statuses), /merge_group/);
+  assert.ok(condition.includes("github.actor != 'dependabot[bot]'"));
+  assert.ok(condition.includes("github.event_name == 'workflow_run'"));
+  assert.ok(
+    condition.includes(
+      "github.event.workflow_run.actor.login == 'dependabot[bot]'",
+    ),
   );
-  assert.match(
-    statuses,
-    /workflow_run\.head_repository\.full_name != github\.repository/,
+  assert.ok(
+    condition.includes(
+      "github.event.workflow_run.pull_requests[0].base.ref == 'main'",
+    ),
   );
-  assert.match(
-    statuses,
-    /!startsWith\(github\.event\.pull_request\.head\.ref, 'changeset-release\/'\)/,
+  assert.ok(
+    condition.includes(
+      'github.event.workflow_run.head_repository.full_name != github.repository',
+    ),
   );
-  assert.match(
-    statuses,
-    /CHROMATIC_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/,
+  assert.ok(
+    condition.includes(
+      "!startsWith(github.event.pull_request.head.ref, 'changeset-release/')",
+    ),
   );
-  assert.match(statuses, /refs\/pull\/\$PR_NUMBER\/head/);
-  for (const packageName of [
-    '@codaco/fresco-ui',
-    '@codaco/interview',
-    '@codaco/interviewer',
-  ]) {
-    assert.match(statuses, new RegExp(`run_skip [^\\n]+ ${packageName}`));
+
+  const verifyHead = getStep(statuses, { id: 'verify-head' });
+  assert.equal(verifyHead.if, "github.event_name == 'workflow_run'");
+  assert.ok(
+    verifyHead.run.includes(
+      'git fetch --no-tags --depth=1 origin "refs/pull/$PR_NUMBER/head"',
+    ),
+  );
+
+  const publish = getStep(statuses, {
+    name: 'Publish passing UI Test statuses without snapshots',
+  });
+  assert.ok(
+    stepIndex(statuses, { id: 'verify-head' }) <
+      statuses.steps.indexOf(publish),
+  );
+  assert.equal(
+    publish.env.CHROMATIC_SHA,
+    '${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha || github.sha }}',
+  );
+  assert.ok(
+    publish.run.includes('--skip --skip-update-check --no-interactive'),
+  );
+  for (const [project, packageName] of SNAPSHOT_JOBS) {
+    assert.match(
+      publish.run,
+      new RegExp(`^run_skip ${project} ${packageName} `, 'm'),
+    );
   }
-  assert.match(statuses, /--skip --skip-update-check --no-interactive/);
 });
 
 test('release runs serialize by ref while main builds are commit-scoped', () => {
-  const concurrency = workflow.match(
-    /^concurrency:\n(?<body>[\s\S]*?)\n\njobs:/m,
-  )?.groups?.body;
+  const { concurrency } = workflow;
   assert.ok(concurrency, 'top-level concurrency exists');
-  assert.match(concurrency, /github\.event_name/);
-  assert.match(concurrency, /github\.ref_name/);
-  assert.match(
-    concurrency,
-    /github\.ref_name == github\.event\.repository\.default_branch && github\.sha/,
+  assert.match(concurrency.group, /github\.event_name/);
+  assert.match(concurrency.group, /github\.ref_name/);
+  assert.ok(
+    concurrency.group.includes(
+      'github.ref_name == github.event.repository.default_branch && github.sha',
+    ),
   );
-  assert.match(concurrency, /cancel-in-progress: true/);
+  assert.equal(concurrency['cancel-in-progress'], true);
 });
 
 test('Chromatic diagnostic logs are retained briefly without changing status semantics', () => {
-  assert.equal(
-    workflow.match(/uses: actions\/upload-artifact@[a-f0-9]{40}(?=\s|$)/g)
-      ?.length,
-    5,
+  const uploads = Object.keys(workflow.jobs).flatMap((name) =>
+    findSteps(job(name), { uses: 'actions/upload-artifact' }),
   );
-  assert.equal(workflow.match(/retention-days: 7/g)?.length, 5);
-  assert.equal(workflow.match(/if-no-files-found: ignore/g)?.length, 5);
+  assert.equal(uploads.length, 5);
+  for (const upload of uploads) {
+    assert.match(upload.uses, /^actions\/upload-artifact@[a-f0-9]{40}$/);
+    assert.equal(upload.if, 'always()');
+    assert.equal(upload.with['retention-days'], 7);
+    assert.equal(upload.with['if-no-files-found'], 'ignore');
+  }
 });
 
 test('release selection uses the fail-closed lockfile-aware detector', () => {
   const detect = job('detect');
-  assert.ok(detect, 'detect job exists');
-  assert.match(detect, /scripts\/ci\/chromatic-affected\.mjs/);
-  assert.match(detect, /--base "\$BEFORE_SHA"/);
-  assert.match(detect, /--release-ref "\$GITHUB_REF_NAME"/);
-  assert.match(detect, /--main "origin\/\$DEFAULT_BRANCH"/);
-  assert.doesNotMatch(detect, /git merge-base/);
-  assert.match(detect, /GITHUB_STEP_SUMMARY/);
+  const affected = getStep(detect, { id: 'affected' });
+  assert.equal(
+    detect.outputs.fresco_ui,
+    '${{ steps.affected.outputs.fresco_ui }}',
+  );
+  assert.ok(affected.run.includes('node scripts/ci/chromatic-affected.mjs'));
+  assert.ok(affected.run.includes('--base "$BEFORE_SHA"'));
+  assert.ok(affected.run.includes('--release-ref "$GITHUB_REF_NAME"'));
+  assert.ok(affected.run.includes('--main "origin/$DEFAULT_BRANCH"'));
+  assert.equal(affected.env.BEFORE_SHA, '${{ github.event.before }}');
+  assert.doesNotMatch(JSON.stringify(detect), /git merge-base/);
+  assert.ok(affected.run.includes('} >> "$GITHUB_STEP_SUMMARY"'));
 });
 
 test('default-branch pushes replace release-branch skip builds with real builds', () => {
   const detect = job('detect');
-  assert.ok(detect, 'detect job exists');
-  assert.match(
-    detect,
-    /github\.ref_name == github\.event\.repository\.default_branch\n\s+\|\| github\.actor != 'dependabot\[bot\]'/,
+  assert.ok(
+    flat(detect.if).includes(
+      "(github.ref_name == github.event.repository.default_branch || github.actor != 'dependabot[bot]')",
+    ),
   );
-  assert.match(
-    detect,
-    /"\$GITHUB_EVENT_NAME" == "push" && "\$GITHUB_REF_NAME" == "\$DEFAULT_BRANCH"/,
+  const affected = getStep(detect, { id: 'affected' });
+  assert.ok(
+    affected.run.includes(
+      'if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH" ]]; then\n  selection=',
+    ),
   );
-  assert.match(detect, /default branch needs a complete target build/);
+  assert.ok(
+    affected.run.includes('default branch needs a complete target build'),
+  );
 
   const skipped = job('skip-unaffected');
-  assert.ok(skipped, 'skip-unaffected job exists');
-  assert.match(
-    skipped,
-    /!\(github\.event_name == 'push'\n\s+&& github\.ref_name == github\.event\.repository\.default_branch\)/,
-  );
+  assert.ok(flat(skipped.if).includes(`!${PUSH_TO_DEFAULT}`));
 
-  for (const jobName of ['fresco-ui', 'interview', 'interviewer']) {
+  for (const [jobName, packageName, output] of SNAPSHOT_JOBS) {
     const body = job(jobName);
-    assert.ok(body, `${jobName} job exists`);
-    assert.match(
-      body,
-      /\(github\.event_name == 'push'\n\s+&& github\.ref_name == github\.event\.repository\.default_branch\)/,
+    assert.equal(
+      flat(body.if),
+      `${PUSH_TO_DEFAULT} || needs.detect.outputs.${output} == 'true'`,
     );
-    assert.match(body, /Build Storybook/);
-    assert.match(
-      body,
-      /DEFAULT_BRANCH: \$\{\{ github\.event\.repository\.default_branch \}\}/,
+    const build = getStep(body, { name: 'Build Storybook' });
+    assert.equal(
+      build.run,
+      `pnpm exec turbo run build-storybook --filter=${packageName}`,
     );
-    assert.match(
-      body,
-      /if \[\[ "\$GITHUB_EVENT_NAME" == "push" && "\$GITHUB_REF_NAME" == "\$DEFAULT_BRANCH" \]\]; then\n\s+chromatic_args\+=\(--force-rebuild\)/,
+    const run = runChromatic(jobName);
+    assert.ok(body.steps.indexOf(build) < body.steps.indexOf(run));
+    assert.equal(
+      run.env.DEFAULT_BRANCH,
+      '${{ github.event.repository.default_branch }}',
     );
-    assert.doesNotMatch(body, /--skip /);
+    assert.ok(
+      run.run.includes(
+        'if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH" ]]; then\n  chromatic_args+=(--force-rebuild)\nfi',
+      ),
+    );
+    assert.doesNotMatch(JSON.stringify(body), /--skip /);
   }
 });
 
 test('unaffected release projects call Chromatic skip from one setup job', () => {
   const skipped = job('skip-unaffected');
-  assert.ok(skipped, 'skip-unaffected job exists');
-  assert.match(skipped, /ignore-scripts: true/);
-  assert.match(skipped, /--skip --skip-update-check --no-interactive/);
-  assert.match(skipped, /run_skip fresco-ui @codaco\/fresco-ui/);
-  assert.match(skipped, /run_skip interview @codaco\/interview/);
-  assert.match(skipped, /run_skip interviewer @codaco\/interviewer/);
-
-  for (const [jobName, output] of [
-    ['fresco-ui', 'fresco_ui'],
-    ['interview', 'interview'],
-    ['interviewer', 'interviewer'],
-  ]) {
-    const body = job(jobName);
-    assert.ok(body, `${jobName} job exists`);
+  assert.deepEqual(needsOf(skipped), ['detect']);
+  const setup = getStep(skipped, { uses: './.github/actions/turbo-ci-setup' });
+  assert.equal(setup.with['ignore-scripts'], true);
+  const publish = getStep(skipped, {
+    name: 'Publish unaffected UI Test statuses without snapshots',
+  });
+  assert.ok(skipped.steps.indexOf(setup) < skipped.steps.indexOf(publish));
+  assert.ok(
+    publish.run.includes('--skip --skip-update-check --no-interactive'),
+  );
+  for (const [project, packageName, output] of SNAPSHOT_JOBS) {
     assert.match(
-      body,
-      new RegExp(`needs\\.detect\\.outputs\\.${output} == 'true'`),
+      publish.run,
+      new RegExp(`^ *run_skip ${project} ${packageName} `, 'm'),
     );
-    assert.match(body, /Verify TurboSnap metadata/);
-    assert.match(body, /chromatic-observability\.mjs/);
-    assert.doesNotMatch(body, /--skip /);
+    const affectedVariable = `${output.toUpperCase()}_AFFECTED`;
+    assert.equal(
+      publish.env[affectedVariable],
+      `\${{ needs.detect.outputs.${output} }}`,
+    );
+    assert.ok(
+      publish.run.includes(`if [[ "$${affectedVariable}" != "true" ]]; then`),
+    );
+  }
+
+  for (const [jobName, , output] of SNAPSHOT_JOBS) {
+    const body = job(jobName);
+    assert.deepEqual(needsOf(body), ['detect']);
+    assert.ok(
+      flat(body.if).endsWith(`needs.detect.outputs.${output} == 'true'`),
+    );
+    const directory =
+      jobName === 'interviewer' ? 'apps/interviewer' : `packages/${jobName}`;
+    const verify = getStep(body, { name: 'Verify TurboSnap metadata' });
+    assert.equal(
+      verify.run,
+      `test -s ${directory}/storybook-static/preview-stats.json`,
+    );
+    assert.ok(
+      stepIndex(body, { name: 'Build Storybook' }) < body.steps.indexOf(verify),
+    );
+    assert.ok(
+      body.steps.indexOf(verify) < body.steps.indexOf(runChromatic(jobName)),
+    );
+    const summary = getStep(body, { name: 'Summarize Chromatic build' });
+    assert.equal(summary.if, 'always()');
+    assert.ok(
+      summary.run.includes('node scripts/ci/chromatic-observability.mjs'),
+    );
+    assert.ok(summary.run.includes(jobName));
+    assert.doesNotMatch(JSON.stringify(liveSteps(body)), /--skip /);
   }
 });
 
 test('affected release projects pass runtime options through pnpm', () => {
-  for (const [jobName, packageName] of [
-    ['fresco-ui', '@codaco/fresco-ui'],
-    ['interview', '@codaco/interview'],
-    ['interviewer', '@codaco/interviewer'],
-  ]) {
-    const body = job(jobName);
-    assert.ok(body, `${jobName} job exists`);
-    assert.match(
-      body,
-      new RegExp(
-        `pnpm --filter ${packageName.replace('/', '\\/')} chromatic \\\\\\n\\s+"\\$\\{chromatic_args\\[@\\]\\}" \\\\\\n\\s+--log-file="\\$RUNNER_TEMP/chromatic-${jobName}\\.log"`,
+  for (const [jobName, packageName] of SNAPSHOT_JOBS) {
+    const { run } = runChromatic(jobName);
+    assert.ok(
+      run.includes(
+        `pnpm --filter ${packageName} chromatic \\\n  "\${chromatic_args[@]}" \\\n  --log-file="$RUNNER_TEMP/chromatic-${jobName}.log"`,
       ),
     );
-    assert.doesNotMatch(body, /pnpm --filter [^\n]+ chromatic -- \\/);
+    assert.doesNotMatch(run, /pnpm --filter [^\n]+ chromatic -- \\/);
   }
 });
 

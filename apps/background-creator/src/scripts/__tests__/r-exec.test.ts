@@ -40,7 +40,15 @@ function findLocale(
   });
 }
 
+// A developer without R skips these suites; a CI runner without it has lost
+// its R setup step, which must fail rather than pass with nothing run.
 const rscriptMissing = !rscriptAvailable();
+const inCI = process.env.CI === 'true' || process.env.CI === '1';
+if (rscriptMissing && inCI) {
+  throw new Error(
+    'Rscript is not on PATH, so the generated R script suites cannot run in CI',
+  );
+}
 const defaultOpts = { layoutVariable: 'location', outputVariable: 'zone' };
 
 describe.skipIf(rscriptMissing)('generated R script executes', () => {
