@@ -59,7 +59,11 @@ async function readCaseIds(page: Page): Promise<string[]> {
   const labels = await page
     .getByRole('checkbox', { name: /^Select synthetic-/ })
     .evaluateAll((boxes) =>
-      boxes.map((box) => box.getAttribute('aria-label') ?? ''),
+      boxes.map((box) => {
+        const label = box.getAttribute('aria-label');
+        if (label === null) throw new Error('row checkbox has no aria-label');
+        return label;
+      }),
     );
   return labels.map((label) => label.replace(/^Select /, ''));
 }
@@ -132,8 +136,10 @@ test.describe('interview data management', () => {
     const target = ids[ids.length - 1];
     if (target === undefined) throw new Error('no rows to search for');
 
-    await page.getByTestId('data-search').fill(target);
-    await expect(page).toHaveURL(/q=synthetic-/);
+    // A fragment from the middle of the id, so search must match substrings.
+    const fragment = target.slice(-12, -4);
+    await page.getByTestId('data-search').fill(fragment);
+    await expect(page).toHaveURL(new RegExp(`q=${fragment}`));
     await expect.poll(() => readCaseIds(page)).toEqual([target]);
   });
 
@@ -173,6 +179,9 @@ test.describe('interview data management', () => {
       .poll(() => chipCount(page, 'All'))
       .toBe(SYNTHETIC_SESSION_COUNT);
     const complete = await chipCount(page, 'Complete');
+    // Order only means something with at least two rows; the seed guarantees
+    // two complete sessions.
+    expect(complete).toBeGreaterThan(1);
     await expect
       .poll(async () => (await readCaseIds(page)).length)
       .toBe(complete);
