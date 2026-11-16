@@ -49,6 +49,4 @@ EdgeLayout.defaultProps = {
   edges: [],
 };
 
-export { EdgeLayout };
-
 export default EdgeLayout;

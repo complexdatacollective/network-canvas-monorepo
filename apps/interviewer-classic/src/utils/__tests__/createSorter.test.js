@@ -891,9 +891,6 @@ describe('Special cases', () => {
     expect(sorted).toEqual(['a', 'A', 'á', 'â', 'ä']);
   });
 
-  it.todo('Handles paths with array notation');
-  it.todo('Handles paths with array indexes');
-
   describe('Node type rules', () => {
     it('combines node type rules with other rules', () => {
       const mockItems = [

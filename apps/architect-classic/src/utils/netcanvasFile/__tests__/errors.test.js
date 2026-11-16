@@ -34,6 +34,7 @@ describe('netcanvasFile/errors', () => {
     it('if error code is EACCES it returns error with friendlyCode IncorrectPermissions', () => {
       const errorHandler = handleError();
       const mockError = new Error();
+      expect.assertions(1);
       mockError.code = 'EACCES';
       try {
         errorHandler(mockError);
@@ -42,9 +43,10 @@ describe('netcanvasFile/errors', () => {
       }
     });
 
-    it('if error code is ENOENT it returns error with friendlyCode IncorrectPermissions', () => {
+    it('if error code is ENOENT it returns error with friendlyCode NotFound', () => {
       const errorHandler = handleError();
       const mockError = new Error();
+      expect.assertions(1);
       mockError.code = 'ENOENT';
       try {
         errorHandler(mockError);
@@ -56,6 +58,7 @@ describe('netcanvasFile/errors', () => {
     it('if error code is something else it returns the default friendlyCode', () => {
       const errorHandler = handleError('ExampleCode');
       const mockError = new Error();
+      expect.assertions(1);
       try {
         errorHandler(mockError);
       } catch (e) {
@@ -66,6 +69,7 @@ describe('netcanvasFile/errors', () => {
     it('logs the error', () => {
       const errorHandler = handleError('ExampleCode');
       const mockError = new Error();
+      expect.assertions(1);
       try {
         errorHandler(mockError);
       } catch (_e) {
