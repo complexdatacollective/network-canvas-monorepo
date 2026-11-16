@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { TriangleAlert } from 'lucide-react';
+import { expect, screen, userEvent } from 'storybook/test';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -83,4 +84,30 @@ type Story = StoryObj<typeof meta>;
 
 // One toast for each kind of warning an export gave, each kept until it is
 // dismissed.
-export const EveryKind: Story = {};
+export const EveryKind: Story = {
+  play: async () => {
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Finish export' }),
+    );
+
+    for (const name of [
+      'Some characters were removed from the GraphML files',
+      'Some characters were removed from protocol text in the GraphML files',
+      'Some columns were given new names',
+    ]) {
+      await expect(
+        await screen.findByRole('heading', { name }),
+      ).toBeInTheDocument();
+    }
+    await expect(
+      screen.getByText(
+        'The node type name “Person” in Friendship study, with U+0007 removed',
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText(
+        'In the GraphML files of Friendship study, the Person column “Colour_red”, from the variable Colour, was written as “Colour_red_2”.',
+      ),
+    ).toBeInTheDocument();
+  },
+};
