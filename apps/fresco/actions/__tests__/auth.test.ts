@@ -1,4 +1,4 @@
-import { formatActionError } from './formatActionError';
+import { formatActionError, formErrorMessages } from './formatActionError';
 vi.mock('~/i18n/server', async () => {
   const { createAppIntl } = await import('@codaco/app-i18n/messages');
   return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
@@ -201,7 +201,13 @@ describe('login', () => {
 
       const result = await login({ username: '', password: 'secret' });
 
-      expect(result.success).toBe(false);
+      expect(result).toEqual({
+        success: false,
+        formErrors: [],
+        fieldErrors: { username: ['Username cannot be empty'] },
+      });
+      expect(mockCheckRateLimit).not.toHaveBeenCalled();
+      expect(mockPrismaKeyFindUnique).not.toHaveBeenCalled();
     });
   });
 
@@ -221,11 +227,12 @@ describe('login', () => {
         password: 'password123',
       });
 
-      expect(result.success).toBe(false);
-      expect('rateLimited' in result && result.rateLimited).toBe(true);
-      if (!result.success && 'rateLimited' in result) {
-        expect(result.retryAfter).toBe(1700000000000);
-      }
+      expect(result).toEqual({
+        success: false,
+        rateLimited: true,
+        retryAfter: 1700000000000,
+      });
+      expect(mockPrismaKeyFindUnique).not.toHaveBeenCalled();
     });
   });
 
@@ -242,12 +249,10 @@ describe('login', () => {
         password: 'password123',
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Incorrect username or password',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Incorrect username or password',
+      ]);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
 
     it('returns formErrors when key has no hashed_password', async () => {
@@ -266,12 +271,10 @@ describe('login', () => {
         password: 'password123',
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Incorrect username or password',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Incorrect username or password',
+      ]);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
 
     it('records a failed login attempt when user is not found', async () => {
@@ -309,12 +312,10 @@ describe('login', () => {
         password: 'wrongpassword',
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Incorrect username or password',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Incorrect username or password',
+      ]);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
 
     it('records a failed login attempt when password is invalid', async () => {
@@ -388,13 +389,12 @@ describe('login', () => {
         password: 'correctpassword',
       });
 
-      expect(result.success).toBe(false);
-      expect('requiresTwoFactor' in result && result.requiresTwoFactor).toBe(
-        true,
-      );
-      if (!result.success && 'requiresTwoFactor' in result) {
-        expect(result.twoFactorToken).toBe(twoFactorToken);
-      }
+      expect(result).toEqual({
+        success: false,
+        requiresTwoFactor: true,
+        twoFactorToken,
+      });
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
       expect(mockCreateTwoFactorToken).toHaveBeenCalledWith(
         userId,
         'test-installation-id',
