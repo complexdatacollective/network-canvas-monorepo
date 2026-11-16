@@ -72,6 +72,8 @@ export const editEntityLabels = defineMessages({
  * in the first one's colour, and a node with the shape and icon every
  * interface has always drawn one with.
  */
+const DEFAULT_NODE_ICON = 'add-a-person';
+
 export function newEntityDraft(
   entity: RuleEntityTarget,
   existingTypes: number,
@@ -88,7 +90,7 @@ export function newEntityDraft(
     name: '',
     color: palette[existingTypes % palette.length] ?? palette[0],
     shape: { default: 'circle' },
-    icon: 'add-a-person',
+    icon: DEFAULT_NODE_ICON,
   };
 }
 
@@ -166,6 +168,17 @@ function EntityEditorDialog({
   */
   const [openedDocument] = useState(liveDocument);
   const editedDocument = liveDocument ?? openedDocument;
+  // A node type may be stored without an icon, and the editor requires one:
+  // the draft opens with the default so an unrelated change can be saved.
+  const editedDraft = useMemo(
+    () =>
+      editedDocument !== undefined &&
+      entity === 'node' &&
+      editedDocument.icon === undefined
+        ? { ...editedDocument, icon: DEFAULT_NODE_ICON }
+        : editedDocument,
+    [editedDocument, entity],
+  );
 
   /*
     Every type name the protocol already carries, of BOTH kinds, minus the one
@@ -235,7 +248,7 @@ function EntityEditorDialog({
     );
   }
 
-  if (editedDocument === undefined) return null;
+  if (editedDocument === undefined || editedDraft === undefined) return null;
 
   return (
     <CodebookEntityEditor
@@ -243,7 +256,7 @@ function EntityEditorDialog({
       sessionKey={session.key}
       dialog={dialog}
       subject={subject}
-      initialDraft={editedDocument}
+      initialDraft={editedDraft}
       authoritativeDocument={editedDocument}
       readOnly={readOnly}
       existingEntityNames={existingEntityNames}

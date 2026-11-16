@@ -18,10 +18,12 @@ import type { CodebookLink } from '../codebookLinks';
 
 const renderCodebook = (
   props: { link?: CodebookLink; onLinkClosed?: () => void } = {},
+  prepare: (protocol: CurrentProtocol) => void = () => {},
 ) => {
   const protocol = structuredClone(
     developmentProtocol,
   ) as unknown as CurrentProtocol;
+  prepare(protocol);
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefault) =>
@@ -120,6 +122,29 @@ describe('the codebook’s editors', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(onLinkClosed).toHaveBeenCalledTimes(1));
+  });
+
+  it('saves a change to a node type that was stored without an icon', async () => {
+    const { store, user } = renderCodebook(
+      { link: { entity: 'node', type: 'person_node_type' } },
+      (protocol) => {
+        delete protocol.codebook.node?.person_node_type?.icon;
+      },
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Edit this node type',
+    });
+    const name = within(dialog).getByRole('textbox', {
+      name: 'Node type name',
+    });
+    await user.clear(name);
+    await user.type(name, 'Renamed');
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Save entity' }),
+    );
+
+    await waitFor(() => expect(typeNames(store, 'node')).toContain('Renamed'));
   });
 
   it('opens nothing for a link to a type that does not exist', () => {
