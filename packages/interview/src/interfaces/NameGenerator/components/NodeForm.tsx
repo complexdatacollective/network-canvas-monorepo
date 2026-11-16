@@ -38,6 +38,7 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
+import { addButtonName } from '../../../components/addButtonName';
 import PassphraseEntry from '../../../components/PassphraseEntry';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
 import useProtocolForm from '../../../forms/useProtocolForm';
@@ -241,7 +242,7 @@ const NodeForm = (props: NodeFormProps) => {
             type="button"
             onClick={() => setShow(true)}
             disabled={disabled}
-            aria-label="Add a person"
+            aria-label={addButtonName(icon)}
             lang="en"
             className="focusable relative aspect-square size-28 rounded-full"
           >

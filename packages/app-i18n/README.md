@@ -96,6 +96,9 @@ in an English voice: a visually hidden span, a live region, or a control or
 group whose own content has no translated text. Leave `lang` off an element
 that also holds translated or entered text, such as a list of names or a
 button with a visible label. Marking it would mark that text as English too.
+A sentence that inserts a name or a protocol's words, such as "Sam and Ana"
+or "Showing Diabetes", stays an English sentence; leave `lang` off it for the
+same reason.
 
 A text that is also seen, whether as visible text, a placeholder, a tooltip
 or a `title`, is not screen-reader-only. It stays a translated message.

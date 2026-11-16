@@ -12,6 +12,7 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from './actionButtonVariants';
+import { addButtonName } from './addButtonName';
 
 const actionButtonVariants = cva({
   base: 'group focusable relative me-4 mt-2 flex aspect-square h-26 rounded-full',
@@ -68,7 +69,7 @@ const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(
   ({ iconName, className, disabled, ...rest }, ref) => {
     return (
       <button
-        aria-label="Add a person"
+        aria-label={addButtonName(iconName)}
         lang="en"
         ref={ref}
         {...rest}

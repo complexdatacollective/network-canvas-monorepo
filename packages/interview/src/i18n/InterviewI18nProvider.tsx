@@ -7,6 +7,7 @@ import {
   defineAppLocales,
 } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { CloseButtonTooltipContext } from '@codaco/fresco-ui/CloseButton';
 
 /** The language the built-in messages are written in, and the only one. */
 const BUILT_IN_LOCALES = defineAppLocales([
@@ -23,7 +24,8 @@ const NO_CATALOG: CatalogMessages = Object.freeze({});
  * text stands in for the built-in messages (see `InterfaceTextOverlay`), and
  * its stages hold their own wording. What stays built in is text only screen
  * readers read, such as announcements and accessible names, which is English
- * until it can be localised too.
+ * until it can be localised too. So a close button shows no tooltip here: it
+ * would be English whatever the interview's language.
  *
  * Nothing loads, so nothing suspends and nothing can fail to load.
  */
@@ -35,7 +37,9 @@ export function InterviewI18nProvider({ children }: { children: ReactNode }) {
       messages={NO_CATALOG}
       manageDocument={false}
     >
-      {children}
+      <CloseButtonTooltipContext value={false}>
+        {children}
+      </CloseButtonTooltipContext>
     </AppI18nProvider>
   );
 }
