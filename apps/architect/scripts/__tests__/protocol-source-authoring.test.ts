@@ -1,10 +1,14 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
-import { type CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  validateProtocol,
+} from '@codaco/protocol-validation';
+import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation/schema-version';
 
 import {
   createTempRepoRoot,
@@ -90,6 +94,12 @@ const refused = (result: SourceSaveResponse) => {
 // Resolves to the asset directory's parent for both the temporary and the
 // final file, so a save that ignored it would leave a file there to find.
 const ESCAPING_SOURCE = 'a/../../image.png';
+
+const listFiles = async (root: string): Promise<string[]> =>
+  (await readdir(root, { recursive: true, withFileTypes: true }))
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(entry.parentPath, entry.name))
+    .toSorted();
 
 const makeRequest = (
   protocol: CurrentProtocol,
@@ -247,38 +257,74 @@ describe('protocol source authoring', () => {
     await expect(readFile(join(assetDir, '../image.png'))).rejects.toThrow();
   });
 
-  // Schema 8 documents carry no asset-source rule, so only the save's own
-  // filename check stands between them and the file system.
-  it('rejects path-like asset sources in a schema 8 document', async () => {
-    const result = await saveProtocolSource(repoRoot, {
-      sourceRef,
-      protocol: {
-        schemaVersion: 8,
-        stages: [],
-        codebook: { node: {}, edge: {}, ego: {} },
-        assetManifest: {
-          image: {
-            id: 'image',
-            name: 'Image',
-            type: 'image',
-            source: ESCAPING_SOURCE,
-          },
+  it('refuses a valid schema 8 document without touching the file system', async () => {
+    await writeFile(join(assetDir, 'stale.png'), 'old');
+    const schema8Protocol = {
+      schemaVersion: 8,
+      stages: [],
+      codebook: { node: {}, edge: {}, ego: {} },
+      assetManifest: {
+        image: {
+          id: 'image',
+          name: 'Image',
+          type: 'image',
+          source: 'image.png',
         },
       },
+    };
+    // The refusal must come from the version, not from a schema 8 rule.
+    await expect(validateProtocol(schema8Protocol)).resolves.toMatchObject({
+      success: true,
+    });
+    const filesBefore = await listFiles(protocolsRoot);
+
+    const result = await saveProtocolSource(repoRoot, {
+      sourceRef,
+      protocol: schema8Protocol,
       assets: [
         {
           id: 'image',
           name: 'Image',
-          source: ESCAPING_SOURCE,
+          source: 'image.png',
           dataBase64: btoa('new image'),
         },
       ],
     });
 
-    expect(refused(result).issues).toContain(
-      'Asset image has an unsafe source filename.',
+    expect(refused(result).error).toBe(
+      `Protocol sources must use schema version ${CURRENT_SCHEMA_VERSION}; received 8.`,
     );
-    await expect(readFile(join(assetDir, '../image.png'))).rejects.toThrow();
+    await expect(listFiles(protocolsRoot)).resolves.toEqual(filesBefore);
+    await expect(readFile(join(assetDir, 'stale.png'), 'utf8')).resolves.toBe(
+      'old',
+    );
+  });
+
+  it.each([
+    [
+      'a newer schema version',
+      { schemaVersion: CURRENT_SCHEMA_VERSION + 1 },
+      `${CURRENT_SCHEMA_VERSION + 1}`,
+    ],
+    [
+      'a schema version that is not a number',
+      { schemaVersion: `${CURRENT_SCHEMA_VERSION}` },
+      `"${CURRENT_SCHEMA_VERSION}"`,
+    ],
+    ['no schema version', { schemaVersion: undefined }, 'none'],
+  ])('refuses a document with %s', async (_label, override, received) => {
+    const filesBefore = await listFiles(protocolsRoot);
+
+    const result = await saveProtocolSource(repoRoot, {
+      sourceRef,
+      protocol: { ...makeProtocol(), ...override },
+      assets: [],
+    });
+
+    expect(refused(result).error).toBe(
+      `Protocol sources must use schema version ${CURRENT_SCHEMA_VERSION}; received ${received}.`,
+    );
+    await expect(listFiles(protocolsRoot)).resolves.toEqual(filesBefore);
   });
 
   it('rejects duplicate asset source filenames', async () => {

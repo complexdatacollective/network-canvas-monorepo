@@ -22,6 +22,7 @@ import {
 import type { Plugin } from 'vite';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation/schema-version';
 
 const PROTOCOL_SOURCE_ENDPOINT = '/__architect/protocol-source/save';
 const PROTOCOL_SOURCE_AUTHORING_HEADER =
@@ -145,6 +146,15 @@ const parseRequest = (value: unknown): SourceSaveRequest => {
     throw new Error('Request body does not match the source-save contract.');
   }
 
+  const { schemaVersion } = value.protocol;
+  if (schemaVersion !== CURRENT_SCHEMA_VERSION) {
+    const received =
+      schemaVersion === undefined ? 'none' : JSON.stringify(schemaVersion);
+    throw new Error(
+      `Protocol sources must use schema version ${CURRENT_SCHEMA_VERSION}; received ${received}.`,
+    );
+  }
+
   const assets = value.assets.map((asset): SourceSaveAsset => {
     if (
       !isRecord(asset) ||
@@ -171,7 +181,7 @@ const parseRequest = (value: unknown): SourceSaveRequest => {
       kind: value.sourceRef.kind,
       id: value.sourceRef.id,
     },
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- only checked to be an object here; the save handler validates it with validateProtocol before writing anything
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- only its shape and schemaVersion are checked here; the save handler validates it with validateProtocol before writing anything
     protocol: value.protocol as CurrentProtocol,
     assets,
   };
