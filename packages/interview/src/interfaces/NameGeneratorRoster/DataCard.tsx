@@ -119,7 +119,12 @@ const DataCard = ({
       aria-label={label}
     >
       <header className="border-platinum-dark/30 border-b px-6 py-4">
-        <Heading level="label" margin="none">
+        <Heading
+          level="label"
+          margin="none"
+          dir="auto"
+          className="text-match-parent"
+        >
           {label}
         </Heading>
       </header>
@@ -137,7 +142,10 @@ const DataCard = ({
               >
                 {detailLabel}
               </Heading>
-              <dd className="text-sm leading-tight font-medium wrap-break-word">
+              <dd
+                dir="auto"
+                className="text-match-parent text-sm leading-tight font-medium wrap-break-word"
+              >
                 {isEmptyValue(value) ? (
                   <>
                     {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative dash for an empty value; the words follow for screen readers. */}

@@ -120,31 +120,40 @@ test('reports Arabic text marked as another language', async ({ page }) => {
   expect(issues[0]).toContain('under lang="en"');
 });
 
-test('reports Latin text read but not drawn, unless it is marked English', async ({
+test('reports Latin text seen only on demand: a tooltip, alt text, an option', async ({
   page,
 }) => {
   const issues = await audit(
     page,
     [
       '<img alt="Network icon" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">',
-      '<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Loading</span>',
-      '<span lang="en" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Saving</span>',
+      '<button title="Close">×</button>',
+      '<select><option>سارة</option><option>Other</option><option lang="es">Español</option></select>',
     ].join(''),
   );
-  expect(issues).toHaveLength(2);
+  expect(issues).toHaveLength(3);
   expect(issues.join('\n')).toContain('alt “Network icon”');
-  expect(issues.join('\n')).toContain('hidden text “Loading”');
+  expect(issues.join('\n')).toContain('title “Close”');
+  expect(issues.join('\n')).toContain('an option “Other”');
 });
 
-// Text only a screen reader reads is English in every language, and an
-// element holding translated text cannot be marked English without marking
-// that text too.
-test('accepts an English aria-label as screen-reader text', async ({
+// Text only a screen reader reads is English in every language, names
+// inserted into it included, and an element holding translated text cannot
+// be marked English without marking that text too.
+test('accepts English screen-reader text, names inserted in it included', async ({
   page,
 }) => {
+  const hidden =
+    'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)';
   const issues = await audit(
     page,
-    '<ul aria-label="People"><li>سارة</li></ul><button aria-label="file upload">رفع</button>',
+    [
+      '<ul aria-label="People"><li>سارة</li></ul>',
+      '<button aria-label="file upload">رفع</button>',
+      `<span style="${hidden}">Loading</span>`,
+      `<span style="${hidden}">team-b! and سارة</span>`,
+      `<div aria-live="polite" style="${hidden}">Choose where سارة belongs.</div>`,
+    ].join(''),
   );
   expect(issues).toEqual([]);
 });
