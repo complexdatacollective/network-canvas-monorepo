@@ -5,7 +5,7 @@ import type { MapMouseEvent } from 'mapbox-gl/esm';
 import type { ColorReference, MapOptions } from '@codaco/protocol-validation';
 
 import { getMapLanguage } from './mapboxLanguage';
-import { getMapboxLocale } from './mapboxLocale';
+import { getMapboxLocale, markMapboxControlNames } from './mapboxLocale';
 
 export type ExtendedMapOptions = MapOptions & {
   showTransit?: boolean;
@@ -311,6 +311,7 @@ export const useMapbox = ({
           ? {}
           : { language: mapLanguageRef.current }),
       });
+      markMapboxControlNames(mapRef.current);
     } catch (err) {
       // mapbox-gl's Map constructor throws synchronously when the environment
       // can't host a map — most commonly "Failed to initialize WebGL" on
