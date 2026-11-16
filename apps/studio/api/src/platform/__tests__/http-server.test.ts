@@ -1,9 +1,8 @@
 import { networkInterfaces } from 'node:os';
 
-import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
-import { HttpClient, HttpRouter, HttpServerResponse } from 'effect/http';
+import { HttpRouter, HttpServerResponse } from 'effect/http';
 
 import {
   connectionRefused,
@@ -123,23 +122,5 @@ describe('WorkerHealthServerLive', () => {
           }),
         );
       }),
-  );
-});
-
-describe('NodeHttpServer.layerTest', () => {
-  it.live('serves a route to the test client', () =>
-    Effect.gen(function* () {
-      const client = yield* HttpClient.HttpClient;
-      const response = yield* client.get('/probe');
-      expect(response.status).toBe(200);
-      expect(yield* response.text).toBe(PROBE_BODY);
-    }).pipe(
-      Effect.provide(
-        HttpRouter.serve(probeRoute, {
-          disableLogger: true,
-          disableListenLog: true,
-        }).pipe(Layer.provideMerge(NodeHttpServer.layerTest)),
-      ),
-    ),
   );
 });

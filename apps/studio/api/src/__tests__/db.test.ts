@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+
 import { createPool } from '../db/pool.ts';
 import { reachableDb } from './support/postgres.ts';
 
@@ -8,13 +10,15 @@ import { reachableDb } from './support/postgres.ts';
 
 const db = await reachableDb();
 
-describe.skipIf(!db)('postgres connectivity', () => {
-  it('answers a round-trip query through the pool', async () => {
+describe.skipIf(!db)('the application pool', () => {
+  it('runs every query as the application role', async () => {
     if (!db) throw new Error('unreachable: probe guaranteed db');
     const pool = createPool(db);
     try {
-      const result = await pool.query('SELECT 1 AS one');
-      expect(result.rows).toEqual([{ one: 1 }]);
+      const result = await pool.query<{ role: string }>(
+        'SELECT current_user AS role',
+      );
+      expect(result.rows).toEqual([{ role: TENANT_ROLES.app }]);
     } finally {
       await pool.end();
     }
