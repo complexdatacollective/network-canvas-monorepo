@@ -88,9 +88,12 @@ describe('the stage a harness call opens', () => {
     // the compiler happened to reach for. An object literal written straight
     // into the annotation is checked member by member against the union, and
     // the diagnostic lands on a line the directive below is not on.
-    const idAndStage = { stageId: 'ego-form-1', stage: BUILT_STAGE };
+    // Each id is one the Information editor may open, so the only thing
+    // wrong with the call is that it names two stages.
+    const idAndStage: { stageId: 'information-1'; stage: typeof BUILT_STAGE } =
+      { stageId: 'information-1', stage: BUILT_STAGE };
     const idAndCreate = {
-      stageId: 'ego-form-1',
+      stageId: 'information-1',
       create: { type: 'Information', position: 0 },
     } as const;
     const stageAndCreate = {
