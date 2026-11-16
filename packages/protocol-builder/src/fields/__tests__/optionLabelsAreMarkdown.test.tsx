@@ -206,7 +206,7 @@ const attributeLabelBox = (position: number) =>
   screen.getByRole('textbox', { name: `Option ${position} label` });
 
 describe('the codebook’s own attribute editor', () => {
-  it('offers bold and italic on an option label, and nothing else', () => {
+  it('mounts the one-line option label box for an option label', () => {
     renderAttributeEditor([
       { label: storedLabel('Distant'), value: 'distant' },
     ]);
@@ -367,7 +367,7 @@ function renderInlineList(options: readonly unknown[]) {
 const rowLabelBox = () => screen.getByRole('textbox', { name: 'Label' });
 
 describe('the inline list a row mounts', () => {
-  it('offers bold and italic on an option label, and nothing else', async () => {
+  it('mounts the one-line option label box for an option label', async () => {
     const { user } = renderInlineList([
       { label: storedLabel('Close'), value: 'close' },
     ]);
@@ -514,7 +514,7 @@ const answerBox = (records: 'true' | 'false') =>
   screen.getByRole('textbox', { name: `Label for “${records}”` });
 
 describe('the two answers of a yes-or-no attribute', () => {
-  it('offers bold and italic on an answer’s words, and nothing else', async () => {
+  it('mounts the one-line option label box for an answer’s words', async () => {
     renderBooleanAnswers([
       { label: storedLabel('Related'), value: true },
       { label: storedLabel('Not related'), value: false },

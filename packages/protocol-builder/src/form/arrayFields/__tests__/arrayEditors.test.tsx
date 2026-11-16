@@ -250,8 +250,10 @@ describe('Options', () => {
   });
 
   // The characters a value may hold are tabled against the rule itself in
-  // cellRules.test.ts; this proves the cell asks it.
-  it.each(['友人'])('accepts the option value %j', async (value) => {
+  // cellRules.test.ts; this proves the cell asks it. The one row carries
+  // another script, a space and punctuation, so a rule of the cell's own that
+  // refused any of them would fail here.
+  it.each(['友人 a.b [1]'])('accepts the option value %j', async (value) => {
     const { user } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [

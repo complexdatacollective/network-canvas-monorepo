@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
+import { validationRuleMessages } from '@codaco/protocol-validation/messages';
 
 import { getValidationLabel } from '../variableValidation.ts';
 
@@ -12,20 +13,47 @@ import { getValidationLabel } from '../variableValidation.ts';
  * catalogue of its own, so the rule a researcher ticked as "Minimum length"
  * came back from the validator as "Minimum text length" and read as a
  * different rule. The names are now the shared ones, and this fails if a copy
- * is reintroduced here.
+ * of any of them is reintroduced here.
  */
 const intl = createAppIntl({ locale: 'en' });
 
+/**
+ * Every shared rule's English name, written out rather than read from the
+ * shared catalogue, so a local copy that drifts from it is caught.
+ */
+const SHARED_NAMES: Readonly<Record<string, string>> = {
+  required: 'Required answer',
+  requiredAcceptsNull: 'Allow explicit missing answers',
+  minLength: 'Minimum text length',
+  maxLength: 'Maximum text length',
+  minValue: 'Minimum value',
+  maxValue: 'Maximum value',
+  minSelected: 'Minimum selection',
+  maxSelected: 'Maximum selection',
+  unique: 'Unique value',
+  differentFrom: 'Different from another attribute',
+  sameAs: 'Same as another attribute',
+  greaterThanVariable: 'Greater than another attribute',
+  lessThanVariable: 'Less than another attribute',
+  greaterThanOrEqualToVariable: 'Greater than or equal to another attribute',
+  lessThanOrEqualToVariable: 'Less than or equal to another attribute',
+  additionalAttributes: 'Fixed attributes',
+  parameters: 'Input control settings',
+  component: 'Input control',
+  egoVariable: 'Participant indicator',
+};
+
 describe('what a validation rule is called', () => {
-  it('names the rules the researcher ticks with the shared words', () => {
-    // Spot-checks the four the package used to name differently, so this test
-    // still says something if `validationRuleMessages` is ever re-exported
-    // from a second copy rather than from the package that owns it.
-    expect(getValidationLabel('minLength', intl)).toBe('Minimum text length');
-    expect(getValidationLabel('maxLength', intl)).toBe('Maximum text length');
-    expect(getValidationLabel('required', intl)).toBe('Required answer');
-    expect(getValidationLabel('sameAs', intl)).toBe(
-      'Same as another attribute',
+  it('names every rule the shared catalogue names', () => {
+    expect(Object.keys(SHARED_NAMES).toSorted()).toEqual(
+      Object.keys(validationRuleMessages).toSorted(),
     );
   });
+
+  it.each(Object.entries(SHARED_NAMES))(
+    'calls %s "%s", the shared name',
+    (rule, name) => {
+      expect(getValidationLabel(rule, intl)).toBe(name);
+    },
+  );
 });

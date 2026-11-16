@@ -400,10 +400,10 @@ describe('the names the write stores', () => {
     });
   });
 
-  it('stores an attribute named in another script', () => {
-    const written = create(sectionOf({}), text('友人'));
+  it('stores an attribute named in another script, with a space', () => {
+    const written = create(sectionOf({}), text('友人 cercano'));
     expect(storedVariable(written, 'new-variable')).toMatchObject({
-      name: '友人',
+      name: '友人 cercano',
     });
   });
 

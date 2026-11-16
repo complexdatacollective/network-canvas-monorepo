@@ -191,7 +191,8 @@ const SURFACES = {
     },
   },
   /**
-   * A rule requiring three answers, left two to choose from.
+   * A rule requiring three answers, on an attribute whose third option the
+   * play removes.
    *
    * The refusal is written by the codebook schema's own contradiction
    * analyser, which the editor runs over the whole entity before it asks the
@@ -218,6 +219,7 @@ const SURFACES = {
       options: [
         { label: { en: 'Low' }, value: 'low' },
         { label: { en: 'Middle' }, value: 'middle' },
+        { label: { en: 'High' }, value: 'high' },
       ],
       validation: { minSelected: 3 },
     },
@@ -355,12 +357,13 @@ const resolved = (element: Element, property: string): string =>
   getComputedStyle(element).getPropertyValue(property).trim();
 
 /**
- * The ink an option field's error is drawn in, on the tinted row it sits in.
+ * The destructive ink as each option field on a tinted row resolves it.
  *
  * The page's own destructive ink is too faint to read on the accent surface,
  * so the row points `--destructive-ink` at the accent surface's own
- * `--surface-accent-destructive`. Asserted as each field's error region
- * resolves it, which is what the error text is painted with.
+ * `--surface-accent-destructive`. An error on that row is boxed rather than
+ * drawn in the ink, so what is painted with it there is the required-field
+ * asterisk; `expectRequiredMarkInAccentInk` measures that paint.
  */
 async function expectAccentInk(
   canvasElement: HTMLElement,
@@ -376,6 +379,7 @@ async function expectAccentInk(
       throw new Error(`no error region for the field "${fieldName}"`);
     }
     const ink = resolved(region, '--destructive-ink');
+    await expect(ink).not.toBe('');
     await expect(ink).toBe(resolved(region, '--surface-accent-destructive'));
     await expect(ink).not.toBe(pageInk);
     // The fill a destructive control paints with is the page's own: only the
@@ -386,12 +390,52 @@ async function expectAccentInk(
   }
 }
 
+/** The colour `color` resolves to when it is set to this value beside `host`. */
+const paintedColour = (host: Element, color: string): string => {
+  const probe = document.createElement('span');
+  probe.style.color = color;
+  host.append(probe);
+  const painted = getComputedStyle(probe).color;
+  probe.remove();
+  return painted;
+};
+
+/**
+ * Each field's required-field asterisk, as it is painted, against probes
+ * painted with the accent surface's destructive ink and the page's own.
+ */
+async function expectRequiredMarkInAccentInk(
+  canvasElement: HTMLElement,
+  fieldNames: readonly string[],
+): Promise<void> {
+  const pageInk = paintedColour(canvasElement, 'var(--destructive-ink)');
+  for (const fieldName of fieldNames) {
+    const field = canvasElement.querySelector(
+      `[data-field-name="${fieldName}"]`,
+    );
+    if (field === null) throw new Error(`no field named "${fieldName}"`);
+    const marks = [...field.querySelectorAll('[aria-hidden="true"]')].filter(
+      (element) => element.textContent?.trim() === '*',
+    );
+    await expect(marks).toHaveLength(1);
+    for (const mark of marks) {
+      const accentInk = paintedColour(
+        field,
+        'var(--surface-accent-destructive)',
+      );
+      await expect(getComputedStyle(mark).color).toBe(accentInk);
+      await expect(accentInk).not.toBe(pageInk);
+    }
+  }
+}
+
 export const NewCategoricalVariable: Story = {};
 
 /**
  * An attribute whose choices are already written. Each option field sits on
- * a tinted row, and its error is drawn in the ink that row can carry, while
- * the button that removes the option keeps the page's destructive fill.
+ * a tinted row, and its required-field mark is drawn in the destructive ink
+ * that row can carry, while the button that removes the option keeps the
+ * page's destructive fill.
  */
 export const ExistingVariable: Story = {
   args: { mode: 'update' },
@@ -408,6 +452,12 @@ export const ExistingVariable: Story = {
     }
 
     await expectAccentInk(canvasElement, [
+      'option-1-label',
+      'option-1-value',
+      'option-2-label',
+      'option-2-value',
+    ]);
+    await expectRequiredMarkInAccentInk(canvasElement, [
       'option-1-label',
       'option-1-value',
       'option-2-label',
@@ -576,12 +626,18 @@ export const ScaleSettings: Story = {
  * package's own copy for a save that did not happen, which is what the second
  * assertion is here to hold: "wait a moment and try again" is the wrong thing
  * to tell someone whose next save cannot succeed until they change something.
+ *
+ * The draft never leaves the editor: nothing is accepted, focus goes to the
+ * refusal, and the researcher can still fix it and save.
  */
 export const RefusedByContradiction: Story = {
   args: { mode: 'update', surface: 'contradiction' },
   ...inEnglish,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Remove option 3' }),
+    );
     await userEvent.click(
       canvas.getByRole('button', { name: 'Save attribute' }),
     );
@@ -591,5 +647,10 @@ export const RefusedByContradiction: Story = {
       'Attribute "preference": minSelected (3) is greater than the number of options (2)',
     );
     await expect(alert).not.toHaveTextContent('Wait a moment and try again');
+    await expect(alert).toHaveFocus();
+    await expect(canvas.getByText('No accepted edit yet.')).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Save attribute' }),
+    ).toBeEnabled();
   },
 };

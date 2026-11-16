@@ -1812,8 +1812,10 @@ describe('renaming the attribute a picker holds', () => {
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
   });
 
-  // As above: the rule's own table is in variableNameRules.test.ts.
-  it.each(['友人'])(
+  // As above: the rule's own table is in variableNameRules.test.ts. The row
+  // carries another script and a space, so a rename rule of its own that
+  // refused either would fail here.
+  it.each(['友人 cercano'])(
     'takes the name %j, which the codebook can store',
     async (name) => {
       const harness = renderStageEditor({
