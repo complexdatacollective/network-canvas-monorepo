@@ -314,7 +314,7 @@ describe('the names the picker gives the theme’s own swatches', () => {
         return titleCase(hue ?? '');
       });
 
-      expect(names).toEqual(expected);
+      expect(names.map((message) => message.defaultMessage)).toEqual(expected);
     },
   );
 

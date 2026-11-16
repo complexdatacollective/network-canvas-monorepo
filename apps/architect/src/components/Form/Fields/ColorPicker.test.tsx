@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useContext, type ContextType, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import { colorSequenceHueName } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
@@ -195,9 +196,10 @@ describe('ColorPicker', () => {
       />,
     );
 
+    const intl = createAppIntl({ locale: 'en' });
     const expected = Array.from(
       { length: COLOR_PALETTES['cat-color-seq'] },
-      (_, index) => colorSequenceHueName(`cat-color-seq-${index + 1}`),
+      (_, index) => colorSequenceHueName(`cat-color-seq-${index + 1}`, intl),
     );
     expect(expected).not.toContain(undefined);
 
