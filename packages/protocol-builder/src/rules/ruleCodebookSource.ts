@@ -32,3 +32,25 @@ export function useRuleCodebook(): Readonly<Codebook> {
   // oxlint-disable-next-line react-hooks/rules-of-hooks -- see above: the branch never changes between renders of one mounted editor
   return useProtocolContext().codebook;
 }
+
+/**
+ * Whether the rule editors beneath build against a codebook given to them
+ * rather than the open protocol's, and so choose a rule's type from that
+ * codebook alone.
+ */
+export function useHasGivenRuleCodebook(): boolean {
+  return useContext(RuleCodebookContext) !== undefined;
+}
+
+const EdgeCountRulesContext = createContext(false);
+
+/**
+ * Lets the rule editors beneath build rules that count the edges joining a
+ * node to others. Only a condition holds one: a filter keeps or drops
+ * entities and has no one node to count for.
+ */
+export const EdgeCountRulesProvider = EdgeCountRulesContext.Provider;
+
+export function useOffersEdgeCountRules(): boolean {
+  return useContext(EdgeCountRulesContext);
+}

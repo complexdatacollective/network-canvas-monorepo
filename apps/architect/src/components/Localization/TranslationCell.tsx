@@ -930,6 +930,13 @@ const useDynamicSite = (
           conditions: nodeLabel?.conditions,
         }),
         bindings: nodeLabel?.dynamicValues ?? {},
+        // Read, to say what each "If" in the label tests.
+        conditions: {
+          values: nodeLabel?.conditions ?? {},
+          codebook,
+          subject: { entity: 'node', type: labelledNodeType },
+          allowEgoRules: false,
+        },
       };
     }
     const bindings = (
@@ -937,9 +944,23 @@ const useDynamicSite = (
         ? stage.dynamicValues
         : {}
     ) as DynamicValues;
+    const subject: unknown =
+      isRecord(stage) && 'subject' in stage ? stage.subject : undefined;
     return {
       context: dynamicValueContextFor({ codebook, stage, sitePath, site }),
       bindings,
+      conditions: {
+        values:
+          isRecord(stage) && isRecord(stage.conditions) ? stage.conditions : {},
+        codebook,
+        subject:
+          isRecord(subject) &&
+          (subject.entity === 'node' || subject.entity === 'edge') &&
+          typeof subject.type === 'string'
+            ? { entity: subject.entity, type: subject.type }
+            : undefined,
+        allowEgoRules: true,
+      },
     };
     // `sitePath` is a fresh array each render; the row's path decides it.
     // oxlint-disable-next-line react-hooks/exhaustive-deps

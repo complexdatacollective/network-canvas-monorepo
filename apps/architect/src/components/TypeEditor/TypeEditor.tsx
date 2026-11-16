@@ -123,9 +123,9 @@ const messages = defineMessages({
   dynamicLabelDescription: {
     id: 'architect.typeEditor.typeEditor.dynamicLabelDescription',
     defaultMessage:
-      'Write the label shown on every node of this type, in place of the label the interview chooses on its own. The label can show the node’s attributes, add text or emoji, and change depending on an attribute’s value, on how the node is connected, or on conditions you define. It updates as the interview goes on.',
+      'Write the label shown on every node of this type, in place of the label the interview chooses on its own. The label can show the node’s attributes, add text or emoji, and change depending on an attribute’s value or on rules you set, such as how many edges the node has. It updates as the interview goes on.',
     description:
-      'Description under the Dynamic label heading in the node type editor. Attributes are the variables recorded about each node of this type; a node is connected when an edge joins it to another node.',
+      'Description under the Dynamic label heading in the node type editor. Attributes are the variables recorded about each node of this type; an edge joins a node to another node.',
   },
   label: {
     id: 'architect.typeEditor.typeEditor.label',
@@ -136,9 +136,9 @@ const messages = defineMessages({
   labelHint: {
     id: 'architect.typeEditor.typeEditor.labelHint',
     defaultMessage:
-      "Type text or emoji. Use the syringe button, or type '{', to insert an attribute, the default label, a connection or a condition. Click an inserted pill to write the text for each of its cases, and insert a value inside one of them to combine conditions.",
+      "Type text or emoji. Use the syringe button, or type '{', to insert an attribute or the default label. Use the logic button beside it to insert an If, whose rules you set, or different text for each answer to an attribute. Click an inserted pill to write the text for each of its cases; logic can be inserted inside a case too.",
     description:
-      'Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button that opens the menu of values that can be inserted; a pill is the chip an inserted value is shown as. The default label is the label the interview would otherwise choose for a node. The quoted brace is the literal character the researcher types.',
+      'Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button that opens the menu of values that can be inserted; the logic button is the toolbar button beside it, which opens the menu of logic; a pill is the chip an inserted value or piece of logic is shown as. The default label is the label the interview would otherwise choose for a node. The quoted brace is the literal character the researcher types.',
   },
   chooseAnIconToDisplayOn: {
     id: 'architect.typeEditor.typeEditor.chooseAnIconToDisplayOn',

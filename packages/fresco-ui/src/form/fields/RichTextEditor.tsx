@@ -1874,6 +1874,11 @@ export default function RichTextEditorField({
     setLinkValidationMessage('');
   }
 
+  const latestEditor = useRef(editor);
+  useLayoutEffect(() => {
+    latestEditor.current = editor;
+  });
+
   if (!editor) {
     return null;
   }
@@ -1993,37 +1998,62 @@ export default function RichTextEditorField({
 
   const insertItem = (item: RichTextInsertMenuItem) => {
     if (item.disabled === true) return;
-    const content = isContentList(item.content)
-      ? [...item.content]
-      : item.content;
-    if (triggered !== null && !triggered.editor.isDestroyed) {
-      const { editor: into, position } = triggered;
-      // The trigger the menu was opened by is replaced, if it is still there.
-      const typed =
-        into.state.doc.textBetween(
-          position,
-          Math.min(position + 1, into.state.doc.content.size),
-        ) === insertMenu?.trigger;
-      const sizeBefore = into.state.doc.content.size;
-      into
-        .chain()
-        .focus()
-        .insertContentAt(
-          typed ? { from: position, to: position + 1 } : position,
-          content,
-        )
-        .run();
-      selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
+    // Where the caret is now, for content that arrives later: by then the
+    // editor may have been replaced by one holding the same document.
+    const opened = triggered;
+    const picked = actOn;
+    const pickedRange = {
+      from: picked.state.selection.from,
+      to: picked.state.selection.to,
+    };
+    const pickedInField = picked === editor;
+    const insert = (given: JSONContent | readonly JSONContent[]) => {
+      const content = isContentList(given) ? [...given] : given;
+      if (opened !== null && !opened.editor.isDestroyed) {
+        const { editor: into, position } = opened;
+        // The trigger the menu was opened by is replaced, if it is still
+        // there.
+        const typed =
+          into.state.doc.textBetween(
+            position,
+            Math.min(position + 1, into.state.doc.content.size),
+          ) === insertMenu?.trigger;
+        const sizeBefore = into.state.doc.content.size;
+        into
+          .chain()
+          .focus()
+          .insertContentAt(
+            typed ? { from: position, to: position + 1 } : position,
+            content,
+          )
+          .run();
+        selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
+        setCaretReturnsTo(into);
+        return;
+      }
+      // The field's editor as it is now: the one picked in may have been
+      // replaced since, without yet knowing it.
+      const into =
+        pickedInField || picked.isDestroyed ? latestEditor.current : picked;
+      if (into === null || into.isDestroyed) return;
+      // The same place in the editor that took the picked one's place, when
+      // that was the field's own; otherwise wherever its caret is.
+      const size = into.state.doc.content.size;
+      const range =
+        into === picked || pickedInField
+          ? {
+              from: Math.min(pickedRange.from, size),
+              to: Math.min(pickedRange.to, size),
+            }
+          : { from: into.state.selection.from, to: into.state.selection.to };
+      into.chain().focus().insertContentAt(range, content).run();
+      selectInsertedVersions(into, range.from, size, range.to - range.from);
       setCaretReturnsTo(into);
-    } else {
-      const { from, to } = actOn.state.selection;
-      const sizeBefore = actOn.state.doc.content.size;
-      actOn.chain().focus().insertContent(content).run();
-      selectInsertedVersions(actOn, from, sizeBefore, to - from);
-      setCaretReturnsTo(actOn);
-    }
+    };
     setTriggered(null);
     setOpenMenu(null);
+    if (item.request === undefined) insert(item.content);
+    else item.request(insert);
   };
   // One of the two menus, behind its toolbar button: the values to insert
   // (also opened by typing the trigger), or the logic.

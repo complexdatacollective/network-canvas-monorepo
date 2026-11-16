@@ -9,7 +9,10 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
 import type { RuleDraft } from '../rules/rule.ts';
 import type { RuleTargetType } from '../rules/ruleCodebook.ts';
-import { useRuleCodebook } from '../rules/ruleCodebookSource.ts';
+import {
+  EdgeCountRulesProvider,
+  useRuleCodebook,
+} from '../rules/ruleCodebookSource.ts';
 import type { RuleTypeOption } from '../rules/RuleEditorDialog.tsx';
 import RuleList from '../rules/RuleList.tsx';
 import {
@@ -73,7 +76,33 @@ const messages = defineMessages({
     id: 'protocolBuilder.ruleSet.addConditionRule',
     defaultMessage: 'Add new rule',
     description:
-      'Action that adds a rule to one of the conditions of a node type’s own label. A condition is a named set of rules a node either meets or does not, which the label chooses its wording by.',
+      'Action that adds a rule to the rules of an “If” in a piece of text a participant reads. The text shows one wording when the rules are met and another when they are not.',
+  },
+  conditionTargetNode: {
+    id: 'protocolBuilder.ruleSet.conditionTargetNode',
+    defaultMessage: 'Node - compare one of the attributes of the node.',
+    description:
+      'Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will compare an attribute of the node (network member) the text is shown with.',
+  },
+  conditionTargetEdge: {
+    id: 'protocolBuilder.ruleSet.conditionTargetEdge',
+    defaultMessage:
+      'Edges - whether the node has an edge, how many it has, or an attribute of one.',
+    description:
+      'Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will be about the edges (relationships) that join the node the text is shown with to other nodes.',
+  },
+  conditionTargetOwnEdge: {
+    id: 'protocolBuilder.ruleSet.conditionTargetOwnEdge',
+    defaultMessage: 'Edge - compare one of the attributes of the edge.',
+    description:
+      'Choice offered when a researcher starts a rule for an “If” in a piece of text shown with one edge (a relationship between two network members): the rule will compare an attribute of that edge.',
+  },
+  conditionTargetEgo: {
+    id: 'protocolBuilder.ruleSet.conditionTargetEgo',
+    defaultMessage:
+      'Participant - compare one of the participant’s attributes.',
+    description:
+      'Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will compare an attribute recorded for the participant themselves.',
   },
   addSkipLogicRule: {
     id: 'protocolBuilder.ruleSet.addSkipLogicRule',
@@ -103,6 +132,13 @@ export type RuleSetFieldProps = CreateFormFieldProps<
      * readers and voice control.
      */
     addRuleLabel: string;
+    /**
+     * What the set's rules may be about, in place of what `variant` allows:
+     * a condition's follow from what its text is shown with.
+     */
+    targets?: readonly RuleTargetType[];
+    /** What each target is offered as, in place of the usual sentences. */
+    targetLabels?: Readonly<Partial<Record<RuleTargetType, string>>>;
   }
 >;
 
@@ -139,6 +175,8 @@ function RuleSetControl({
   onFocus,
   variant = 'filter',
   addRuleLabel,
+  targets,
+  targetLabels,
   disabled = false,
   readOnly = false,
   'aria-labelledby': ariaLabelledBy,
@@ -159,15 +197,17 @@ function RuleSetControl({
   // target this set cannot be about is one the researcher must not be offered
   // AND one a stored rule is reported for, and a set that offered less than it
   // accepted would leave a rule it will not let anyone rebuild.
-  const allowedTargets = ruleSetTargets(variant);
+  const allowedTargets = targets ?? ruleSetTargets(variant);
 
   const ruleTypes = useMemo(
     () =>
       allowedTargets.map<RuleTypeOption>((target) => ({
-        label: intl.formatMessage(RULE_TYPE_LABELS[target]),
+        label:
+          targetLabels?.[target] ??
+          intl.formatMessage(RULE_TYPE_LABELS[target]),
         value: target,
       })),
-    [allowedTargets, intl],
+    [allowedTargets, intl, targetLabels],
   );
 
   const updateRules = useCallback(
@@ -285,20 +325,43 @@ export function QueryRuleSetField(
 }
 
 /**
- * The rule builder of one condition of a node type's own label. Its rules
- * are asked of one node: a node rule about that node, an edge rule about the
- * edges that join it to others, which is what a stage's filter may hold too.
- * The codebook it builds against is the one a `RuleCodebookProvider` gives.
+ * The rule builder of a condition: what a piece of text chooses its wording
+ * by. Its rules are asked where the text is shown: a node rule about the
+ * node it is shown with, an edge rule about the edges that join that node to
+ * others (or about the edge itself, for an edge's form), an ego rule about
+ * the participant. `targets` says which of these this text has. The codebook
+ * it builds against is the one a `RuleCodebookProvider` gives.
  */
-export function ConditionRuleSetField(
-  props: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel'>,
-) {
+export function ConditionRuleSetField({
+  aboutEdge = false,
+  ...props
+}: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel' | 'targetLabels'> &
+  Readonly<{
+    /** Whether the rules are asked of an edge rather than of a node. */
+    aboutEdge?: boolean;
+  }>) {
   const intl = useAppIntl();
+  const targetLabels = useMemo(
+    () => ({
+      node: intl.formatMessage(messages.conditionTargetNode),
+      edge: intl.formatMessage(
+        aboutEdge
+          ? messages.conditionTargetOwnEdge
+          : messages.conditionTargetEdge,
+      ),
+      ego: intl.formatMessage(messages.conditionTargetEgo),
+    }),
+    [aboutEdge, intl],
+  );
   return (
-    <RuleSetControl
-      {...props}
-      variant="filter"
-      addRuleLabel={intl.formatMessage(messages.addConditionRule)}
-    />
+    // Edges are counted for a node, so only its rules may count them.
+    <EdgeCountRulesProvider value={!aboutEdge}>
+      <RuleSetControl
+        {...props}
+        variant="query"
+        targetLabels={targetLabels}
+        addRuleLabel={intl.formatMessage(messages.addConditionRule)}
+      />
+    </EdgeCountRulesProvider>
   );
 }

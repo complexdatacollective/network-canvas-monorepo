@@ -9,6 +9,9 @@ import {
 import {
   countTokenId,
   documentToMessageNodes,
+  type IfBlockLabels,
+  ifBlockAttributes,
+  ifBlockRowsIn,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
   MessageDocumentProblem,
@@ -310,5 +313,121 @@ describe('a count pill outside its plural', () => {
     expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
       '{n, plural, other {# friends}}',
     );
+  });
+});
+
+describe('an "If" on a condition', () => {
+  const block: IfBlockLabels = {
+    is: (node) =>
+      node.type === 'select' &&
+      node.argument.startsWith('if') &&
+      node.versions.length === 2,
+    label: (rows) => `If ${rows[0]?.argument}`,
+    summary: (rows) => `If ${rows[0]?.argument}`,
+    rowLabel: (row, index) =>
+      `${index === 0 ? 'If' : 'Else if'} ${row.argument} ${row.key}`,
+    otherwiseLabel: 'Otherwise',
+    rowAction: 'Edit rules',
+    rowRemovable: 'Remove',
+    actions: [{ id: 'addElseIf', label: 'Add else if' }],
+  };
+  const withIf: MessageDocumentLabels = { ...labels, ifBlock: block };
+  const versionsOf = (message: string) => {
+    const structure = messageStructure(message);
+    if (!('nodes' in structure)) throw new Error('unreadable');
+    const document = messageToDocument(structure.nodes, PLAIN, withIf);
+    const element = document.content?.[0]?.content?.find(
+      (node) => node.type === 'versions',
+    );
+    const attrs = element?.attrs;
+    const listed: unknown = attrs?.versions;
+    const versions = (Array.isArray(listed) ? listed : []).filter(isVersion);
+    return { document, attrs, versions };
+  };
+  const isVersion = (
+    value: unknown,
+  ): value is {
+    key: string;
+    label: string;
+    content: Record<string, unknown>[];
+    removable?: string;
+  } =>
+    typeof value === 'object' &&
+    value !== null &&
+    'key' in value &&
+    typeof value.key === 'string' &&
+    'label' in value &&
+    typeof value.label === 'string' &&
+    'content' in value &&
+    Array.isArray(value.content);
+  const CHAIN =
+    'A {if1, select, yes {one} other {{if2, select, no {two} other {three}}}} B';
+
+  it('lists each "else if" the text nests as a row of the one "If"', () => {
+    const { attrs, versions } = versionsOf(CHAIN);
+    expect(
+      versions.map((version) => `${version.key}=${version.label}`),
+    ).toEqual([
+      'if:if1:yes=If if1 yes',
+      'if:if2:no=Else if if2 no',
+      'other=Otherwise',
+    ]);
+    expect(attrs?.variant).toBe('logic');
+    expect(attrs?.actions).toEqual([{ id: 'addElseIf', label: 'Add else if' }]);
+  });
+
+  it('writes the rows back as the nesting they were read from', () => {
+    const { document } = versionsOf(CHAIN);
+    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
+      CHAIN,
+    );
+  });
+
+  it('keeps an "If" inside a version as an "If" of its own, not a row', () => {
+    const nested =
+      '{if1, select, yes {x {if2, select, yes {y} other {z}}} other {w}}';
+    const { document, versions } = versionsOf(nested);
+    expect(versions).toHaveLength(2);
+    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
+      nested,
+    );
+  });
+
+  it('offers to remove a row only while another row would be left', () => {
+    const one = versionsOf('{if1, select, yes {a} other {b}}').versions;
+    expect(one[0]).not.toHaveProperty('removable');
+    expect(versionsOf(CHAIN).versions[0]).toHaveProperty('removable', 'Remove');
+  });
+
+  it('rewrites the element when a row is removed, renaming the rows left', () => {
+    const { versions } = versionsOf(CHAIN);
+    const { rows, otherwise } = ifBlockRowsIn({ versions });
+    const rewritten = ifBlockAttributes(rows.slice(1), otherwise, block);
+    expect(rewritten.versions.map((version) => version.label)).toEqual([
+      'If if2 no',
+      'Otherwise',
+    ]);
+    expect(
+      printMessageStructure(
+        documentToMessageNodes(
+          {
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'versions', attrs: rewritten }],
+              },
+            ],
+          },
+          PLAIN,
+        ),
+      ),
+    ).toBe('{if2, select, no {two} other {three}}');
+  });
+
+  it('leaves a switch that is not an "If" as the versions it has', () => {
+    const { attrs, versions } = versionsOf('{kind, select, a {x} other {y}}');
+    expect(versions.map((version) => version.key)).toEqual(['a', 'other']);
+    expect(attrs?.variant).toBeUndefined();
   });
 });

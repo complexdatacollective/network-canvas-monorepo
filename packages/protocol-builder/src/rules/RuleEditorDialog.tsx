@@ -14,13 +14,19 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
-import type { Codebook, VariableType } from '@codaco/protocol-validation';
+import {
+  type Codebook,
+  EdgeCountComparisons,
+  edgeCountNeedsValue,
+  type VariableType,
+} from '@codaco/protocol-validation';
 
 import EntityTypePickerField from '../fields/EntityTypePickerField.tsx';
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
   RuleOperandField,
+  WholeNumberValueField,
 } from '../fields/RuleValueField.tsx';
 import VariablePickerField from '../fields/VariablePickerField.tsx';
 import DialogForm, {
@@ -32,7 +38,13 @@ import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useHasProtocolBuilderHost } from '../state/context.ts';
 import { useLatest } from '../state/useLatest.ts';
 import type { RuleOperatorOption, RuleOperatorSubject } from './operators.ts';
-import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
+import {
+  incompleteRulePart,
+  isEdgeCountComparison,
+  isEdgeCountRuleDraft,
+  type RuleDraft,
+  type RulePart,
+} from './rule.ts';
 import {
   assertNoSuchDateProblem,
   assertNoSuchNumberProblem,
@@ -57,8 +69,17 @@ import {
   ruleVariables,
   ruleVariableType,
 } from './ruleCodebook.ts';
-import { useRuleCodebook } from './ruleCodebookSource.ts';
-import { describeRule, type RuleProblemCode } from './ruleDescription.ts';
+import {
+  useHasGivenRuleCodebook,
+  useOffersEdgeCountRules,
+  useRuleCodebook,
+} from './ruleCodebookSource.ts';
+import {
+  describeRule,
+  edgeCountComparisonText,
+  edgeCountMessages,
+  type RuleProblemCode,
+} from './ruleDescription.ts';
 import {
   dateResolutionMessages,
   ruleEditorRequiredMessage,
@@ -158,6 +179,44 @@ const messages = defineMessages({
     defaultMessage: 'Presence',
     description:
       'One of two choices for what a rule is based on: whether anything of this type is in the interview network at all.',
+  },
+  ruleKindCount: {
+    id: 'protocolBuilder.ruleEditor.ruleKindCount',
+    defaultMessage: 'Number of edges',
+    description:
+      'One of the choices for what a rule about edges (relationships between network members) is based on: how many edges join the node to others.',
+  },
+  ruleKindCountHint: {
+    id: 'protocolBuilder.ruleEditor.ruleKindCountHint',
+    defaultMessage:
+      'Based on how many of these edges join the node to others, or on whether it has the most or the fewest among nodes of its type.',
+    description:
+      'Explains the "Number of edges" choice for a rule about edges — relationships between network members.',
+  },
+  edgeCountSection: {
+    id: 'protocolBuilder.ruleEditor.edgeCountSection',
+    defaultMessage: 'Number of edges',
+    description:
+      'Heading of the part of the rule editor where a researcher says how a count of edges (relationships) is compared.',
+  },
+  edgeCountLabel: {
+    id: 'protocolBuilder.ruleEditor.edgeCountLabel',
+    defaultMessage: 'Comparison',
+    description:
+      'Label of the control where a researcher chooses how the number of edges joining a node to others is compared: exactly, more than, the most, and so on.',
+  },
+  edgeCountHint: {
+    id: 'protocolBuilder.ruleEditor.edgeCountHint',
+    defaultMessage:
+      'The highest and the lowest compare the node with the other nodes of its type. Nodes that tie all match, and none matches while every node has the same number.',
+    description:
+      'Guidance under the control where a researcher chooses how a count of edges is compared.',
+  },
+  edgeCountValueLabel: {
+    id: 'protocolBuilder.ruleEditor.edgeCountValueLabel',
+    defaultMessage: 'Number of edges',
+    description:
+      'Label of the control where a researcher types the number a count of edges is compared with.',
   },
   ruleKindNodeAttributeHint: {
     id: 'protocolBuilder.ruleEditor.ruleKindNodeAttributeHint',
@@ -487,6 +546,16 @@ const TYPE_RULE = 'ALTER/TYPE';
  * operator carried over from a text attribute cannot be applied to a
  * categorical one, and a value carried over from either is meaningless.
  */
+const COUNT_RULE = 'EDGE/COUNT';
+const COUNT_FIELD = 'options.count';
+
+/**
+ * In the type control of a rule that counts edges, the choice of every edge
+ * rather than one type's. Never stored: a rule that counts every edge names
+ * no type. Not a name an edge type's id can take.
+ */
+const ANY_EDGE_TYPE = '$any';
+
 const RULE_CASCADE = [
   TARGET_FIELD,
   ENTITY_TYPE_FIELD,
@@ -497,6 +566,29 @@ const RULE_CASCADE = [
 
 /** Written out per entity kind: an entity class is a token, never copy. */
 const ruleKindOptions = (
+  target: RuleEntityTarget,
+  intl: IntlShape,
+  { counts, onlyCounts }: Readonly<{ counts: boolean; onlyCounts: boolean }>,
+): readonly Readonly<{
+  label: string;
+  description: string;
+  value: string;
+}>[] => [
+  ...(counts && target === 'edge'
+    ? [
+        {
+          label: intl.formatMessage(messages.ruleKindCount),
+          description: intl.formatMessage(messages.ruleKindCountHint),
+          value: COUNT_RULE,
+        },
+      ]
+    : []),
+  // Every edge has no one type's attributes, and is "present" exactly when
+  // its count is more than none.
+  ...(onlyCounts ? [] : entityRuleKindOptions(target, intl)),
+];
+
+const entityRuleKindOptions = (
   target: RuleEntityTarget,
   intl: IntlShape,
 ): readonly Readonly<{
@@ -598,6 +690,7 @@ const asString = (value: FieldValue | undefined): string | undefined =>
 const seedRuleKind = (rule: RuleDraft): string | undefined => {
   const options = rule.options;
   if (options === undefined) return undefined;
+  if (isEdgeCountRuleDraft(rule)) return COUNT_RULE;
   if (typeof options.type !== 'string' || options.type === '') return undefined;
   return typeof options.attribute === 'string' ? VARIABLE_RULE : TYPE_RULE;
 };
@@ -642,12 +735,27 @@ const ruleOptionsFromValues = (
  * so it is joined on at the one place a rule leaves the editor — a check that
  * only reads the draft has no business minting one.
  */
-const ruleDraftFromValues = (
-  values: Record<string, FieldValue>,
-): RuleDraft => ({
-  type: typeof values[TARGET_FIELD] === 'string' ? values[TARGET_FIELD] : '',
-  options: ruleOptionsFromValues(values.options),
-});
+const ruleDraftFromValues = (values: Record<string, FieldValue>): RuleDraft => {
+  const type =
+    typeof values[TARGET_FIELD] === 'string' ? values[TARGET_FIELD] : '';
+  const { count, ...options } = ruleOptionsFromValues(values.options);
+  if (type !== 'edge' || values[RULE_KIND_FIELD] !== COUNT_RULE) {
+    return { type, options };
+  }
+  // A rule that counts edges holds what it counts, how the count is
+  // compared and, for a comparison with a number, the number.
+  return {
+    type,
+    options: {
+      ...(typeof options.type === 'string' &&
+        options.type !== ANY_EDGE_TYPE && { type: options.type }),
+      count,
+      ...(isEdgeCountComparison(count) &&
+        edgeCountNeedsValue(count) &&
+        typeof options.value === 'number' && { value: options.value }),
+    },
+  };
+};
 
 /** One of a draft's option ids, or `undefined` when it is not answered. */
 const draftString = (
@@ -1137,6 +1245,10 @@ type EntityBranchProps = BranchProps &
     target: RuleEntityTarget;
     entityTypeId: string | undefined;
     ruleKind: string | undefined;
+    /** Whether the rule may count edges (see `EdgeCountRulesProvider`). */
+    offersCounts: boolean;
+    /** How the count is compared, once chosen. */
+    count: string | undefined;
   }>;
 
 function EntityRuleFields({
@@ -1144,6 +1256,8 @@ function EntityRuleFields({
   seed,
   entityTypeId,
   ruleKind,
+  offersCounts,
+  count,
   attributeId,
   operator,
   variableOptions,
@@ -1172,11 +1286,52 @@ function EntityRuleFields({
           label={intl.formatMessage(messages.ruleKindLabel)}
           hint={intl.formatMessage(messages.ruleKindHint)}
           component={RichSelectGroupField}
-          options={[...ruleKindOptions(target, intl)]}
+          options={[
+            ...ruleKindOptions(target, intl, {
+              counts: offersCounts,
+              onlyCounts: entityTypeId === ANY_EDGE_TYPE,
+            }),
+          ]}
           initialValue={seedRuleKind(seed)}
           required={intl.formatMessage(ruleEditorRequiredMessage)}
         />
       </Section>
+
+      {ruleKind === COUNT_RULE && entityTypeId !== undefined && (
+        <Section title={intl.formatMessage(messages.edgeCountSection)}>
+          <Field
+            name={COUNT_FIELD}
+            label={intl.formatMessage(messages.edgeCountLabel)}
+            hint={intl.formatMessage(messages.edgeCountHint)}
+            component={NativeSelectField}
+            placeholder={intl.formatMessage(messages.operatorPlaceholder)}
+            options={EdgeCountComparisons.map((comparison) => ({
+              value: comparison,
+              label: edgeCountComparisonText(comparison, intl),
+            }))}
+            initialValue={
+              isEdgeCountComparison(seed.options?.count)
+                ? seed.options.count
+                : undefined
+            }
+            required={intl.formatMessage(ruleEditorRequiredMessage)}
+          />
+          {isEdgeCountComparison(count) && edgeCountNeedsValue(count) && (
+            <Field
+              name={RULE_VALUE_FIELD}
+              label={intl.formatMessage(messages.edgeCountValueLabel)}
+              component={WholeNumberValueField}
+              min={0}
+              initialValue={
+                typeof seed.options?.value === 'number'
+                  ? seed.options.value
+                  : undefined
+              }
+              required={intl.formatMessage(ruleEditorRequiredMessage)}
+            />
+          )}
+        </Section>
+      )}
 
       {ruleKind === TYPE_RULE && entityTypeId !== undefined && (
         <Section title={intl.formatMessage(messages.presenceConditionSection)}>
@@ -1257,10 +1412,15 @@ function RuleEditorFields({
   description: ReactNode;
 }>) {
   const codebook = useRuleCodebook();
-  const hasProtocolHost = useHasProtocolBuilderHost();
+  // A codebook given for these rules holds the only types they may be
+  // about, so the type is chosen from it and not from the protocol's.
+  const givenCodebook = useHasGivenRuleCodebook();
+  const hasProtocolHost = useHasProtocolBuilderHost() && !givenCodebook;
+  const offersCounts = useOffersEdgeCountRules();
   const intl = useAppIntl();
   const localize = useLocalizedText();
   const values = useFormValue(RULE_CASCADE);
+  const count = asString(useFormValue([COUNT_FIELD])[COUNT_FIELD]);
   const target = isRuleTargetType(values[TARGET_FIELD])
     ? values[TARGET_FIELD]
     : undefined;
@@ -1301,12 +1461,21 @@ function RuleEditorFields({
   const entityTypeChoices = useMemo(
     () =>
       target === 'node' || target === 'edge'
-        ? ruleEntityTypeOptions(codebook, target).map(({ value, label }) => ({
-            value,
-            label,
-          }))
+        ? [
+            ...(target === 'edge' && offersCounts
+              ? [
+                  {
+                    value: ANY_EDGE_TYPE,
+                    label: intl.formatMessage(edgeCountMessages.anyEdge),
+                  },
+                ]
+              : []),
+            ...ruleEntityTypeOptions(codebook, target).map(
+              ({ value, label }) => ({ value, label }),
+            ),
+          ]
         : [],
-    [codebook, target],
+    [codebook, intl, offersCounts, target],
   );
 
   // The operator the rule HOLDS is part of the list, because a stored operator
@@ -1382,9 +1551,11 @@ function RuleEditorFields({
             options={entityTypeChoices}
             initialValue={
               seedString(seed, 'type') ??
-              (entityTypeChoices.length === 1
-                ? entityTypeChoices[0]?.value
-                : undefined)
+              (target === seed.type && isEdgeCountRuleDraft(seed)
+                ? ANY_EDGE_TYPE
+                : entityTypeChoices.length === 1
+                  ? entityTypeChoices[0]?.value
+                  : undefined)
             }
             required={intl.formatMessage(ruleEditorRequiredMessage)}
           />
@@ -1422,6 +1593,8 @@ function RuleEditorFields({
           target={target}
           entityTypeId={entityTypeId}
           ruleKind={ruleKind}
+          offersCounts={offersCounts}
+          count={count}
         />
       )}
     </>

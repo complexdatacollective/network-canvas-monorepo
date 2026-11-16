@@ -140,9 +140,12 @@ describe('a value with answers inserted in a row dialog', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
     const dialog = within(await screen.findByRole('dialog'));
+    // Wording by answer is logic, which has a menu of its own.
     await harness.user.click(
       dialog.getByRole('button', {
-        name: 'Inject piped text from interview metadata or a network attribute',
+        name: /Different wording/.test(option.source)
+          ? 'Insert logic'
+          : 'Inject piped text from interview metadata or a network attribute',
       }),
     );
     await harness.user.click(
@@ -181,9 +184,7 @@ describe('a value shown by answer in an open dialog', () => {
     );
     const dialog = within(await screen.findByRole('dialog'));
     await harness.user.click(
-      dialog.getByRole('button', {
-        name: 'Inject piped text from interview metadata or a network attribute',
-      }),
+      dialog.getByRole('button', { name: 'Insert logic' }),
     );
     await harness.user.click(
       await screen.findByRole('option', {
@@ -254,16 +255,21 @@ describe('a yes-or-no value without labels for its answers', () => {
       name: /First node: flagged.*Add labels for its yes and no answers first/,
     });
     expect(asItself).toHaveAttribute('aria-disabled', 'true');
-    expect(
-      screen.getByRole('option', {
-        name: /First node: flagged.*Different wording for each answer/,
-      }),
-    ).not.toHaveAttribute('aria-disabled', 'true');
-
     await harness.user.click(asItself);
     expect(
       dialog.getByRole('textbox', { name: /^Prompt text/ }),
     ).not.toHaveTextContent('flagged');
+
+    // By answer it needs no labels, and is offered with the logic.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Insert logic' }),
+    );
+    expect(
+      await screen.findByRole('option', {
+        name: /First node: flagged.*Different wording for each answer/,
+      }),
+    ).not.toHaveAttribute('aria-disabled', 'true');
   });
 });
 

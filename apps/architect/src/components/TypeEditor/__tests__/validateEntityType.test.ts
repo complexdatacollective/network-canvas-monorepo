@@ -129,16 +129,39 @@ describe('validateEntityType() with a dynamic label', () => {
     expect(labelErrorOf({ text: {} })).toBeDefined();
   });
 
-  it('accepts a label that shows the default label and a connection', () => {
+  const hasKnows = {
+    about: 'node',
+    rules: [
+      {
+        id: 'has-knows',
+        type: 'edge',
+        options: { type: 'knows', operator: 'EXISTS' },
+      },
+    ],
+  };
+
+  it('accepts a label that shows the default label and tests a condition', () => {
     expect(
       labelErrorOf({
         text: { en: '{linked, select, yes {🔗 } other {}}{nodeLabel}' },
         dynamicValues: {
-          linked: { path: 'node.$connected.knows', cases: { yes: true } },
+          linked: { path: '$condition.linked', cases: { yes: true } },
           nodeLabel: { path: 'node.$label' },
         },
+        conditions: { linked: hasKnows },
       }),
     ).toBeUndefined();
+  });
+
+  it('refuses a label that tests a condition it does not declare', () => {
+    expect(
+      labelErrorOf({
+        text: { en: '{linked, select, yes {🔗 } other {}}' },
+        dynamicValues: {
+          linked: { path: '$condition.linked', cases: { yes: true } },
+        },
+      }),
+    ).toBeDefined();
   });
 
   it('refuses a label that shows an attribute where it could be missing', () => {
@@ -150,37 +173,13 @@ describe('validateEntityType() with a dynamic label', () => {
     ).toBeDefined();
   });
 
-  it('refuses a condition with no name, no rules or no join', () => {
-    const rule = (id: string) => ({
-      type: 'node',
-      id,
-      options: { type: 'person', attribute: 'nameVar', operator: 'EXISTS' },
-    });
+  it('refuses a condition with no rules', () => {
     const withCondition = (condition: unknown) => ({
       text: { en: 'x' },
-      conditions: { named: condition },
+      conditions: { if1: condition },
     });
-    expect(
-      labelErrorOf(
-        withCondition({ name: ' ', filter: { rules: [rule('a')] } }),
-      ),
-    ).toBeDefined();
-    expect(labelErrorOf(withCondition({ name: 'Named' }))).toBeDefined();
-    expect(
-      labelErrorOf(
-        withCondition({
-          name: 'Named',
-          filter: { rules: [rule('a'), rule('b')] },
-        }),
-      ),
-    ).toBeDefined();
-    expect(
-      labelErrorOf(
-        withCondition({
-          name: 'Named',
-          filter: { join: 'AND', rules: [rule('a'), rule('b')] },
-        }),
-      ),
-    ).toBeUndefined();
+    expect(labelErrorOf(withCondition({}))).toBeDefined();
+    expect(labelErrorOf(withCondition({ rules: [] }))).toBeDefined();
+    expect(labelErrorOf(withCondition(hasKnows))).toBeUndefined();
   });
 });

@@ -2,9 +2,13 @@ import { isEqual } from 'es-toolkit';
 
 import type {
   RichTextVersion,
+  RichTextVersionsAction,
   RichTextVersionsAttributes,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import type { TokenPillLabel } from '@codaco/fresco-ui/TokenPill';
+import type {
+  TokenPillLabel,
+  TokenPillVariant,
+} from '@codaco/fresco-ui/TokenPill';
 import {
   MISSING_CASE,
   type MessageNode,
@@ -37,7 +41,80 @@ export type MessageDocumentLabels = Readonly<{
    */
   switchSummary: (node: MessageSwitch) => TokenPillLabel;
   versionLabel: (node: MessageSwitch, key: string) => string;
+  /**
+   * Whether a switch is logic (versions chosen by a test) rather than a
+   * value shown when it is known; a value when not given.
+   */
+  variantOf?: (node: MessageSwitch) => TokenPillVariant;
+  /** How a switch on a condition reads, as an "If"; see `IfBlockLabels`. */
+  ifBlock?: IfBlockLabels;
 }>;
+
+/** One row of an "If": the condition it tests, and the case it is for. */
+export type IfRow = Readonly<{ argument: string; key: string }>;
+
+/**
+ * How the editor shows a switch on a condition: as one "If" whose rows are
+ * the condition's case, each "else if" the text nests in the version for
+ * every other case, and what it reads otherwise.
+ */
+export type IfBlockLabels = Readonly<{
+  /** Whether `node` switches on a condition, on one of its two cases. */
+  is: (node: MessageSwitch) => boolean;
+  label: (rows: readonly IfRow[]) => string;
+  summary: (rows: readonly IfRow[]) => TokenPillLabel;
+  rowLabel: (row: IfRow, index: number) => string;
+  otherwiseLabel: string;
+  /** Names the button a row's label is, where its rules can be edited. */
+  rowAction?: string;
+  /** Names the button that removes a row, where one can be removed. */
+  rowRemovable?: string;
+  /** Buttons under the rows, such as “Add else if”. */
+  actions?: readonly RichTextVersionsAction[];
+}>;
+
+const IF_ROW_KEY = /^if:([^:]+):([^:]+)$/;
+
+/** The key the editor gives the row of an "If" for `row`. */
+const ifRowKey = (row: IfRow): string => `if:${row.argument}:${row.key}`;
+
+/** The row an editor's version key stands for, if it is a row of an "If". */
+export const ifRowOf = (versionKey: string): IfRow | undefined => {
+  const match = IF_ROW_KEY.exec(versionKey);
+  return match?.[1] === undefined || match[2] === undefined
+    ? undefined
+    : { argument: match[1], key: match[2] };
+};
+
+/**
+ * The rows of the "If" that `node` opens: its own case, then the case of
+ * each "If" that is the whole of the version before it shown otherwise.
+ */
+const ifRowsOf = (
+  node: MessageSwitch,
+  is: IfBlockLabels['is'],
+): Readonly<{
+  rows: readonly (IfRow & Readonly<{ nodes: readonly MessageNode[] }>)[];
+  otherwise: readonly MessageNode[];
+}> => {
+  const rows: (IfRow & Readonly<{ nodes: readonly MessageNode[] }>)[] = [];
+  let current = node;
+  for (;;) {
+    const own = current.versions.find(({ key }) => key !== 'other');
+    const otherwise =
+      current.versions.find(({ key }) => key === 'other')?.nodes ?? [];
+    rows.push({
+      argument: current.argument,
+      key: own?.key ?? '',
+      nodes: own?.nodes ?? [],
+    });
+    const [only, ...rest] = otherwise;
+    if (only?.kind !== 'switch' || rest.length > 0 || !is(only)) {
+      return { rows, otherwise };
+    }
+    current = only;
+  }
+};
 
 /**
  * The editor holds `#`, the number a plural is on, as a placeholder named
@@ -53,7 +130,60 @@ type SwitchMeta = Readonly<{
   argument: string;
   type: MessageSwitch['type'];
   offset?: number;
+  /** Set for an "If", whose versions are its rows (see `ifRowsOf`). */
+  rows?: true;
 }>;
+
+type IfRowContent = IfRow & Readonly<{ content: readonly RichTextContent[] }>;
+
+/**
+ * The editor's element for an "If" of `rows`, each with the line it shows,
+ * and the line shown `otherwise`. Also how an "If" already in the text is
+ * rewritten when a row is added or removed, or its rules change what a row
+ * is called.
+ */
+export const ifBlockAttributes = (
+  rows: readonly IfRowContent[],
+  otherwise: readonly RichTextContent[],
+  block: IfBlockLabels,
+): RichTextVersionsAttributes => ({
+  label: block.label(rows),
+  summary: block.summary(rows),
+  versions: [
+    ...rows.map((row, index) => ({
+      key: ifRowKey(row),
+      label: block.rowLabel(row, index),
+      content: row.content,
+      ...(block.rowAction !== undefined && { action: block.rowAction }),
+      ...(block.rowRemovable !== undefined &&
+        rows.length > 1 && { removable: block.rowRemovable }),
+    })),
+    { key: 'other', label: block.otherwiseLabel, content: otherwise },
+  ],
+  variant: 'logic',
+  ...(block.actions !== undefined &&
+    block.actions.length > 0 && { actions: block.actions }),
+  meta: {
+    argument: rows[0]?.argument ?? '',
+    type: 'select',
+    rows: true,
+  } satisfies SwitchMeta,
+});
+
+/** The rows of an "If" as the editor holds it, and what it shows otherwise. */
+export const ifBlockRowsIn = (
+  attributes: Readonly<{ versions: readonly RichTextVersion[] }>,
+): Readonly<{
+  rows: readonly IfRowContent[];
+  otherwise: readonly RichTextContent[];
+}> => ({
+  rows: attributes.versions.flatMap((version) => {
+    const row = ifRowOf(version.key);
+    return row === undefined ? [] : [{ ...row, content: version.content }];
+  }),
+  otherwise:
+    attributes.versions.find(({ key }) => key === 'other')?.content ?? [],
+});
 
 /**
  * A switch's versions in the order the editor shows them: what the text reads
@@ -270,6 +400,25 @@ export const messageToDocument = (
           type: 'token',
           attrs: { id: countTokenId(plural ?? '') },
         });
+      } else if (labels.ifBlock?.is(node) === true) {
+        const block = labels.ifBlock;
+        const { rows, otherwise } = ifRowsOf(node, block.is);
+        const line = (lineNodes: readonly MessageNode[]) => {
+          const nested = level(lineNodes, plural);
+          return versionLine(nested.text, nested.pieces, format);
+        };
+        pieces.push({
+          type: 'versions',
+          attrs: ifBlockAttributes(
+            rows.map((row) => ({
+              argument: row.argument,
+              key: row.key,
+              content: line(row.nodes),
+            })),
+            line(otherwise),
+            block,
+          ),
+        });
       } else {
         const inner = node.type === 'plural' ? node.argument : plural;
         const versions: RichTextVersion[] = inShownOrder(node.versions).map(
@@ -291,6 +440,7 @@ export const messageToDocument = (
           label: labels.switchLabel(node),
           summary: labels.switchSummary(node),
           versions,
+          ...(labels.variantOf?.(node) === 'logic' && { variant: 'logic' }),
           meta,
         };
         pieces.push({ type: 'versions', attrs });
@@ -385,6 +535,39 @@ const pieceNode = (
   }
   const meta: unknown = attrs.meta;
   if (!isSwitchMeta(meta) || !Array.isArray(attrs.versions)) return undefined;
+  if (meta.rows === true) {
+    // An "If": each row after the first is an "If" of its own, the whole of
+    // what the row before it reads otherwise.
+    const listed = attrs.versions.filter(isRichTextVersion);
+    const nodesOf = (version: RichTextVersion | undefined) =>
+      version === undefined
+        ? []
+        : messageNodesOf(
+            lineDocument(version.content),
+            format,
+            true,
+            pluralArgument,
+          );
+    let otherwise: MessageNode[] = nodesOf(
+      listed.find(({ key }) => key === 'other'),
+    );
+    let outermost: MessageSwitch | undefined;
+    for (const version of listed.toReversed()) {
+      const row = ifRowOf(version.key);
+      if (row === undefined) continue;
+      outermost = {
+        kind: 'switch',
+        argument: row.argument,
+        type: 'select',
+        versions: [
+          { key: row.key, nodes: nodesOf(version) },
+          { key: 'other', nodes: otherwise },
+        ],
+      };
+      otherwise = [outermost];
+    }
+    return outermost;
+  }
   const versions = inRecordedOrder(
     attrs.versions.filter(isRichTextVersion),
   ).map((version): MessageVersion => ({

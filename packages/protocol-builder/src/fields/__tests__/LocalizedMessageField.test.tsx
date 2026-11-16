@@ -143,8 +143,10 @@ describe('LocalizedMessageField', () => {
     });
 
     const line = await findLine();
+    // Folded, the pill says what the versions change with, then what they
+    // can show.
     const pill = within(line).getByRole('button', {
-      name: 'Participant or someone else',
+      name: /^Participant or someone else/,
     });
     expect(pill).toBeVisible();
     expect(pill).toHaveAttribute('aria-expanded', 'false');

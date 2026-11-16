@@ -1052,3 +1052,58 @@ describe('a problem beside an operator that negates its comparison', () => {
     }
   });
 });
+
+describe('a rule that counts edges', () => {
+  const edgeType = Object.keys(codebook.edge ?? {})[0] ?? '';
+  const edgeName = codebook.edge?.[edgeType]?.name ?? '';
+
+  it('reads as what it counts, how, and the number', () => {
+    const description = describeRule({
+      rule: {
+        id: 'count-1',
+        type: 'edge',
+        options: { type: edgeType, count: 'GREATER_THAN', value: 3 },
+      },
+      codebook,
+    });
+    expect(description.text).toBe(`${edgeName} count is more than 3`);
+    expect(description.operand?.items).toEqual([3]);
+    expect(description.problems).toEqual([]);
+  });
+
+  it('counts every edge when it names no type, which is not a missing type', () => {
+    const description = describeRule({
+      rule: { id: 'count-2', type: 'edge', options: { count: 'MOST' } },
+      codebook,
+    });
+    expect(description.text).toBe(
+      'Any edge count is the highest of its node type',
+    );
+    expect(description.operand).toBeUndefined();
+    expect(description.problems).toEqual([]);
+  });
+
+  it('is unfinished without the number its comparison needs', () => {
+    const description = describeRule({
+      rule: { id: 'count-3', type: 'edge', options: { count: 'EXACTLY' } },
+      codebook,
+    });
+    expect(description.problems.map((problem) => problem.code)).toEqual([
+      'incomplete',
+    ]);
+  });
+
+  it('reports an edge type that has left the codebook', () => {
+    const description = describeRule({
+      rule: {
+        id: 'count-4',
+        type: 'edge',
+        options: { type: 'gone', count: 'FEWEST' },
+      },
+      codebook,
+    });
+    expect(description.problems.map((problem) => problem.code)).toEqual([
+      'missingEntityType',
+    ]);
+  });
+});

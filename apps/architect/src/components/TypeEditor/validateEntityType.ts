@@ -45,8 +45,8 @@ const THRESHOLDS_ASCENDING_MESSAGE = defineMessages({
 
 /**
  * A node type's own label is one opaque field value too (its text, the
- * values the text shows and its conditions), so its messages are keyed at
- * that field.
+ * values the text shows and the conditions it tests), so its messages are
+ * keyed at that field.
  */
 export const DYNAMIC_LABEL_FIELD = 'dynamicLabel';
 
@@ -67,30 +67,13 @@ const LABEL_PROBLEM_MESSAGE = defineMessages({
       'Validation error on the Dynamic label section of the node type editor when the label text is not valid, for example because it shows a value in a place where the value could be missing. The specific problem is already shown directly beneath the label field.',
   },
 }).message;
-const CONDITION_NAME_MESSAGE = defineMessages({
-  message: {
-    id: 'architect.constants.components.typeeditor.validateentitytype.conditionNameMessage',
-    defaultMessage: 'Give every condition a name.',
-    description:
-      'Validation error on the Dynamic label section of the node type editor when one of its conditions has an empty name. A condition is a named set of rules a node either meets or does not.',
-  },
-}).message;
 const CONDITION_RULES_MESSAGE = defineMessages({
   message: {
     id: 'architect.constants.components.typeeditor.validateentitytype.conditionRulesMessage',
     defaultMessage:
-      'Add at least one rule to every condition, or remove the condition.',
+      'Every “If” in the label needs at least one rule. Open it and choose “Edit rules”, or remove it.',
     description:
-      'Validation error on the Dynamic label section of the node type editor when one of its conditions has no rules. A condition is a named set of rules a node either meets or does not.',
-  },
-}).message;
-const CONDITION_JOIN_MESSAGE = defineMessages({
-  message: {
-    id: 'architect.constants.components.typeeditor.validateentitytype.conditionJoinMessage',
-    defaultMessage:
-      'Choose how the rules of every condition with more than one rule are matched.',
-    description:
-      'Validation error on the Dynamic label section of the node type editor when a condition has several rules but the researcher has not chosen whether all of them or any one of them must match.',
+      'Validation error on the Dynamic label section of the node type editor when an “If” in the label text has no rules. “Edit rules” is the name of the button on each row of an “If”.',
   },
 }).message;
 
@@ -113,16 +96,11 @@ const dynamicLabelError = (
 
   const conditions = isRecord(label.conditions) ? label.conditions : {};
   for (const condition of Object.values(conditions)) {
-    if (!isRecord(condition)) continue;
-    if (typeof condition.name !== 'string' || condition.name.trim() === '') {
-      return createMessageError(CONDITION_NAME_MESSAGE);
-    }
-    const filter = isRecord(condition.filter) ? condition.filter : {};
-    const rules = Array.isArray(filter.rules) ? filter.rules : [];
+    const rules =
+      isRecord(condition) && Array.isArray(condition.rules)
+        ? condition.rules
+        : [];
     if (rules.length === 0) return createMessageError(CONDITION_RULES_MESSAGE);
-    if (rules.length > 1 && filter.join !== 'AND' && filter.join !== 'OR') {
-      return createMessageError(CONDITION_JOIN_MESSAGE);
-    }
   }
 
   // The protocol's own check, against what a label of this type can show.

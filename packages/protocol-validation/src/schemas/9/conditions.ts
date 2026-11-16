@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { DYNAMIC_VALUE_NAME } from '../../localization/dynamicValueMessages.ts';
 import type { DynamicValueRole } from './dynamic-values.ts';
 import { entityTypeReference } from './entity-type-reference.ts';
-import { type FilterRule, filterRuleSchema } from './filters/index.ts';
+import { filterRuleSchema } from './filters/index.ts';
 
 /**
  * How a count of edges is compared: against a number, or against the counts
@@ -73,10 +73,6 @@ export type ConditionRule = z.infer<typeof ConditionRuleSchema>;
 /** Whether a condition's rule counts edges rather than comparing an answer. */
 export const isEdgeCountRule = (rule: ConditionRule): rule is EdgeCountRule =>
   'count' in rule.options;
-
-/** A condition's rules that are filter rules, as a filter holds them. */
-export const filterRulesOf = (rules: readonly ConditionRule[]): FilterRule[] =>
-  rules.filter((rule): rule is FilterRule => !isEdgeCountRule(rule));
 
 /** The roles a condition's node and edge rules can be asked of. */
 export const CONDITION_ROLES = [

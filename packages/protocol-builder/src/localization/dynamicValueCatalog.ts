@@ -1,14 +1,11 @@
 import {
   CASED_VARIABLE_TYPES,
-  CONNECTIVITY_MEASURES,
-  type ConnectivityMeasure,
   DYNAMIC_VALUE_NAME,
   type DynamicValueBinding,
   type DynamicValueRole,
   type DynamicValues,
   type DynamicValueSiteContext,
   dynamicValueConditionPathFor,
-  dynamicValueConnectivityPathFor,
   dynamicValueLabelPathFor,
   dynamicValueNamesIn,
   dynamicValueParticipantPathFor,
@@ -38,13 +35,7 @@ export type DynamicValueChoice = Readonly<{
    * What it is: a value the interview knows, an attribute, the label the
    * interview shows on a node, or whether that node is the participant.
    */
-  kind:
-    | 'intrinsic'
-    | 'attribute'
-    | 'label'
-    | 'participant'
-    | 'connectivity'
-    | 'condition';
+  kind: 'intrinsic' | 'attribute' | 'label' | 'participant' | 'condition';
   /**
    * For a node type's own label, where "the label" is the one the interview
    * would otherwise have chosen for the node.
@@ -55,12 +46,8 @@ export type DynamicValueChoice = Readonly<{
    * which the menu lists as that node's rather than as the context's.
    */
   ownNode?: true;
-  /** What a connectivity value asks of the node (see `ConnectivityMeasure`). */
-  measure?: ConnectivityMeasure;
-  /** The one edge type a connectivity value counts, with its name. */
-  edgeType?: Readonly<{ id: string; name: string | undefined }>;
-  /** The condition a condition value names, with its name. */
-  condition?: Readonly<{ id: string; name: string | undefined }>;
+  /** The condition a condition value names. */
+  condition?: Readonly<{ id: string }>;
   /** The role whose value it is, or undefined for an interview value. */
   role: DynamicValueRole | undefined;
   /** The attribute's name, or the interview value's key; empty for a label. */
@@ -192,52 +179,31 @@ export const dynamicValueChoices = (
       },
     ];
   };
-  // What only a node type's own label knows of its node, each true or false
-  // and so only ever worded for: how it is connected, by every edge and by
-  // the edges of each type, and the type's conditions.
-  const flag = (
-    path: string,
-    rest: Pick<
-      DynamicValueChoice,
-      'kind' | 'measure' | 'edgeType' | 'condition'
-    >,
-  ): DynamicValueChoice => ({
-    path,
-    role: 'node',
-    variableId: '',
-    variableName: undefined,
-    variableType: 'boolean',
-    optional: false,
-    numeric: false,
-    options: [{ value: true, label: undefined }],
-    unshowable: 'switch',
-    ...rest,
-  });
-  const nodeFactsOf = (role: DynamicValueRole): DynamicValueChoice[] => {
-    if (role !== 'node' || context.nodeLabel === undefined) return [];
-    const { edgeTypes, conditions } = context.nodeLabel;
-    return [
-      ...[...conditions].map(([id, name]) =>
-        flag(dynamicValueConditionPathFor(id), {
+  // The conditions declared beside the text: each true or false, and so
+  // only ever worded for, as an "If".
+  const conditions = [...(context.conditions ?? [])].flatMap(
+    ([id, { about }]): DynamicValueChoice[] => {
+      const path = dynamicValueConditionPathFor(id);
+      if (dynamicValueStatus({ path }, context).status !== 'available') {
+        return [];
+      }
+      return [
+        {
+          path,
           kind: 'condition',
-          condition: { id, name },
-        }),
-      ),
-      ...CONNECTIVITY_MEASURES.flatMap((measure) => [
-        flag(dynamicValueConnectivityPathFor(measure), {
-          kind: 'connectivity',
-          measure,
-        }),
-        ...[...edgeTypes].map(([id, name]) =>
-          flag(dynamicValueConnectivityPathFor(measure, id), {
-            kind: 'connectivity',
-            measure,
-            edgeType: { id, name },
-          }),
-        ),
-      ]),
-    ];
-  };
+          condition: { id },
+          role: about ?? 'ego',
+          variableId: '',
+          variableName: undefined,
+          variableType: 'boolean',
+          optional: false,
+          numeric: false,
+          options: [{ value: true, label: undefined }],
+          unshowable: 'switch',
+        },
+      ];
+    },
+  );
   // Whether the node is the participant only chooses wording: a version for
   // the participant, and the other for everyone else.
   const participantOf = (role: DynamicValueRole): DynamicValueChoice[] => {
@@ -307,20 +273,17 @@ export const dynamicValueChoices = (
     ...labelOf(role),
     ...participantOf(role),
     ...attributesOf(role),
-    ...nodeFactsOf(role),
   ]);
-  return [...attributes, ...intrinsics];
+  return [...attributes, ...intrinsics, ...conditions];
 };
 
 /**
  * Whether `choice` is only ever true or false, and so only chooses between
  * two versions of the text and is never shown itself: whether a node is the
- * participant, how it is connected, or one of its type's conditions.
+ * participant, or a condition declared beside the text.
  */
 export const isFlagChoice = (choice: DynamicValueChoice): boolean =>
-  choice.kind === 'participant' ||
-  choice.kind === 'connectivity' ||
-  choice.kind === 'condition';
+  choice.kind === 'participant' || choice.kind === 'condition';
 
 /** Words of `text` as an argument name: ASCII letters and digits, camel-cased. */
 const identifierFrom = (text: string): string => {
@@ -377,18 +340,6 @@ const nameFor = (
   if (choice.kind === 'condition') {
     return unique(
       identifierFrom(choice.condition?.id ?? '') || 'condition',
-      taken,
-    );
-  }
-  if (choice.kind === 'connectivity') {
-    const measure = choice.measure ?? 'connected';
-    const edges = identifierFrom(
-      choice.edgeType?.name ?? choice.edgeType?.id ?? '',
-    );
-    return unique(
-      edges === ''
-        ? measure
-        : measure + edges.charAt(0).toUpperCase() + edges.slice(1),
       taken,
     );
   }
@@ -460,7 +411,7 @@ export const bindingFor = (
   }
   // Whether the node is the participant has its one case, for the
   // participant, under the name the schema gives it; so has anything else
-  // that is only true or false (how a node is connected, a condition).
+  // that is only true or false (a condition).
   const participantCases: Record<string, boolean> = {
     [choice.kind === 'participant' ? PARTICIPANT_CASE : TRUE_CASE]: true,
   };

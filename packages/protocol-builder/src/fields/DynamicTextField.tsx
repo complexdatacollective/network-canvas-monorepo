@@ -5,6 +5,7 @@ import {
   useContext,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
@@ -15,6 +16,8 @@ import RichTextEditorField, {
   type RichTextEditorToken,
   type RichTextInsertMenu,
   type RichTextInsertMenuItem,
+  type RichTextVersionsActionEvent,
+  type RichTextVersionsAttributes,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
@@ -34,8 +37,10 @@ import {
   type DynamicValues,
   type DynamicValueSite,
   dynamicValueArgumentsAt,
+  dynamicValueConditionPathFor,
   dynamicValueNamesIn,
   escapeMessageText,
+  FALSE_CASE,
   findDynamicValueProblem,
   type LocaleTag,
   type LocalizedString,
@@ -44,11 +49,21 @@ import {
   type MessageNode,
   type MessageSwitch,
   messageStructure,
+  parseDynamicValuePath,
   pluralValueExamples,
   printMessageStructure,
+  TRUE_CASE,
 } from '@codaco/protocol-validation';
 
 import { variableTypeLabel } from '../codebook/variableTypeLabels.ts';
+import {
+  asConditionDraft,
+  type ConditionDraft,
+  conditionAboutChoices,
+  conditionCodebook,
+  conditionSentence,
+  newConditionId,
+} from '../localization/conditionText.ts';
 import {
   bindingFor,
   bindingRecordedFor,
@@ -61,6 +76,11 @@ import { resolveTranslation } from '../localization/localizedText.ts';
 import {
   countTokenId,
   documentToMessageNodes,
+  type IfBlockLabels,
+  type IfRow,
+  ifBlockAttributes,
+  ifBlockRowsIn,
+  ifRowOf,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
   MessageDocumentProblem,
@@ -72,10 +92,12 @@ import {
   textFieldPropsFor,
 } from '../localization/textShape.ts';
 import {
+  type DynamicValueConditions,
   type DynamicValueSiteState,
   useDynamicValueSite,
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
+import ConditionDialog from '../rules/ConditionDialog.tsx';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
 
 const PLAIN_LINE: LocalizedTextShape = { format: 'plain', lines: 'single' };
@@ -178,77 +200,96 @@ const messages = defineMessages({
     description:
       'Heading in the insert-a-value menu of a node type’s own label, above the default label and the attributes of the node the label is shown on. A node is one entity in the network, which may not be a person.',
   },
-  connectionsGroup: {
-    id: 'protocolBuilder.dynamicText.connectionsGroup',
-    defaultMessage: 'Connections',
+  logicMenu: {
+    id: 'protocolBuilder.dynamicText.logicMenu',
+    defaultMessage: 'Insert logic',
     description:
-      'Heading in the insert-a-value menu of a node type’s own label, above the values that say how the node is connected to other nodes by edges. An edge is a connection between two nodes.',
+      'Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu.',
   },
-  conditionsGroup: {
-    id: 'protocolBuilder.dynamicText.conditionsGroup',
-    defaultMessage: 'Conditions',
+  logicIf: {
+    id: 'protocolBuilder.dynamicText.logicIf',
+    defaultMessage: 'If … else',
     description:
-      'Heading in the insert-a-value menu of a node type’s own label, above the conditions the researcher has defined for this node type. A condition is a named set of rules a node either meets or does not.',
+      'Entry in the insert-logic menu. Choosing it asks for rules, then inserts a piece of text with two versions: one shown when the rules are met, one shown otherwise. The ellipsis stands for the rules.',
   },
-  connectedAny: {
-    id: 'protocolBuilder.dynamicText.connectedAny',
-    defaultMessage: 'Has any edge',
+  logicIfDescription: {
+    id: 'protocolBuilder.dynamicText.logicIfDescription',
+    defaultMessage: 'One wording when rules you set are met, another otherwise',
     description:
-      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node is connected to another node by an edge of any type. It only chooses between two versions of the label and is never shown itself.',
+      'Second line of the “If … else” entry in the insert-logic menu, saying what it inserts.',
   },
-  connectedType: {
-    id: 'protocolBuilder.dynamicText.connectedType',
-    defaultMessage: 'Has a {edgeType} edge',
+  logicIfNot: {
+    id: 'protocolBuilder.dynamicText.logicIfNot',
+    defaultMessage: 'If not … else',
     description:
-      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node is connected to another node by an edge of one type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself.',
+      'Entry in the insert-logic menu. Choosing it asks for rules, then inserts a piece of text with two versions: one shown when the rules are NOT met, one shown otherwise. The ellipsis stands for the rules.',
   },
-  mostConnectedAny: {
-    id: 'protocolBuilder.dynamicText.mostConnectedAny',
-    defaultMessage: 'Most connections',
+  logicIfNotDescription: {
+    id: 'protocolBuilder.dynamicText.logicIfNotDescription',
+    defaultMessage:
+      'One wording when rules you set are not met, another otherwise',
     description:
-      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has more edges, of any type, than any other node of its type. It only chooses between two versions of the label and is never shown itself.',
+      'Second line of the “If not … else” entry in the insert-logic menu, saying what it inserts.',
   },
-  mostConnectedType: {
-    id: 'protocolBuilder.dynamicText.mostConnectedType',
-    defaultMessage: 'Most {edgeType} connections',
+  newIfTitle: {
+    id: 'protocolBuilder.dynamicText.newIfTitle',
+    defaultMessage: 'When should this text be shown?',
     description:
-      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has more edges of one type than any other node of its type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself.',
+      'Title of the dialog where a researcher sets the rules of a new “If” in a piece of text a participant reads.',
   },
-  leastConnectedAny: {
-    id: 'protocolBuilder.dynamicText.leastConnectedAny',
-    defaultMessage: 'Least connections',
+  editIfTitle: {
+    id: 'protocolBuilder.dynamicText.editIfTitle',
+    defaultMessage: 'Edit rules',
     description:
-      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has fewer edges, of any type, than any other node of its type. It only chooses between two versions of the label and is never shown itself.',
+      'Title of the dialog where a researcher changes the rules of an “If” in a piece of text a participant reads. Also names the button on each row of an “If” that opens it.',
   },
-  leastConnectedType: {
-    id: 'protocolBuilder.dynamicText.leastConnectedType',
-    defaultMessage: 'Least {edgeType} connections',
+  ifRow: {
+    id: 'protocolBuilder.dynamicText.ifRow',
+    defaultMessage: 'If {rules}',
     description:
-      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has fewer edges of one type than any other node of its type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself.',
+      'Label of the first row of an “If” in a piece of text: the wording shown when its rules are met. rules is those rules as a phrase, such as “Age is more than 30” or “Friend exists and Close is true”. Also what the “If” is called while folded to a pill.',
   },
-  byConnectivity: {
-    id: 'protocolBuilder.dynamicText.byConnectivity',
-    defaultMessage: 'Different label when this is true of the node',
+  ifNotRow: {
+    id: 'protocolBuilder.dynamicText.ifNotRow',
+    defaultMessage: 'If not: {rules}',
     description:
-      'Second line of an entry in the insert-a-value menu of a node type’s own label, under a value that says how the node is connected (such as “Has any edge” or “Most connections”). Choosing it inserts a piece of text with two versions: one shown on a node it is true of, one on every other node.',
+      'Label of the first row of an “If not” in a piece of text: the wording shown when its rules are NOT met. rules is those rules as a phrase, such as “Age is more than 30”.',
   },
-  byCondition: {
-    id: 'protocolBuilder.dynamicText.byCondition',
-    defaultMessage: 'Different label when the node meets this condition',
+  elseIfRow: {
+    id: 'protocolBuilder.dynamicText.elseIfRow',
+    defaultMessage: 'Else if {rules}',
     description:
-      'Second line of an entry in the insert-a-value menu of a node type’s own label, under one of the conditions the researcher defined. Choosing it inserts a piece of text with two versions: one shown on a node that meets the condition’s rules, one on every other node.',
+      'Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are met. rules is those rules as a phrase, such as “Age is more than 30”.',
   },
-  versionsByFlag: {
-    id: 'protocolBuilder.dynamicText.versionsByFlag',
-    defaultMessage: 'Wording depending on “{value}”',
+  elseIfNotRow: {
+    id: 'protocolBuilder.dynamicText.elseIfNotRow',
+    defaultMessage: 'Else if not: {rules}',
     description:
-      'Accessible name of a piece of text with two versions: one shown when something is true of the node, one when it is not. value is the name of what is asked, such as “Has any edge” or the name of a condition the researcher defined.',
+      'Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are NOT met. rules is those rules as a phrase.',
+  },
+  noRules: {
+    id: 'protocolBuilder.dynamicText.noRules',
+    defaultMessage: '(no rules yet)',
+    description:
+      'Stands in for the rules of an “If” in a piece of text when it has none that can be described, in a label such as “If (no rules yet)”.',
+  },
+  addElseIf: {
+    id: 'protocolBuilder.dynamicText.addElseIf',
+    defaultMessage: 'Add else if',
+    description:
+      'Button under the rows of an “If” in a piece of text. It asks for rules, then adds a row shown when the rows above it did not apply and those rules are met.',
+  },
+  removeIfRow: {
+    id: 'protocolBuilder.dynamicText.removeIfRow',
+    defaultMessage: 'Remove this case',
+    description:
+      'Names the button that removes one row (its rules and its wording) from an “If” in a piece of text that has more than one.',
   },
   versionOtherwise: {
     id: 'protocolBuilder.dynamicText.versionOtherwise',
     defaultMessage: 'Otherwise',
     description:
-      'Label of the version of a node’s label shown when what it depends on is not true of the node. The other version is labelled with what is asked of the node, such as “Has any edge” or the name of a condition the researcher defined.',
+      'Label of the last row of an “If” in a piece of text: the wording shown when none of the rows above applied.',
   },
   byAnswer: {
     id: 'protocolBuilder.dynamicText.byAnswer',
@@ -360,27 +401,17 @@ const recordedName = (name: string): TokenPillLabel => ({
   dir: 'auto',
 });
 
-const namingFor = (intl: IntlShape): Naming => ({
+const namingFor = (
+  intl: IntlShape,
+  // Where the conditions themselves are not in reach, an "If" is named
+  // without its rules.
+  conditionLabel: (conditionId: string) => string = () =>
+    intl.formatMessage(messages.ifRow, { rules: '…' }),
+): Naming => ({
   valueLabel: (choice) => {
     if (choice.role === undefined) return intl.formatMessage(messages.today);
     if (choice.kind === 'condition') {
-      // The researcher's name for the condition, not the interface's words.
-      return {
-        text: choice.condition?.name ?? choice.condition?.id ?? '',
-        dir: 'auto',
-      };
-    }
-    if (choice.kind === 'connectivity') {
-      const edgeType = choice.edgeType?.name ?? choice.edgeType?.id;
-      const [any, typed] =
-        choice.measure === 'mostConnected'
-          ? [messages.mostConnectedAny, messages.mostConnectedType]
-          : choice.measure === 'leastConnected'
-            ? [messages.leastConnectedAny, messages.leastConnectedType]
-            : [messages.connectedAny, messages.connectedType];
-      return edgeType === undefined
-        ? intl.formatMessage(any)
-        : intl.formatMessage(typed, { edgeType });
+      return conditionLabel(choice.condition?.id ?? '');
     }
     if (choice.kind === 'label' && choice.defaultLabel === true) {
       return intl.formatMessage(messages.defaultNodeLabel);
@@ -415,17 +446,13 @@ const namingFor = (intl: IntlShape): Naming => ({
   // ends, is listed together; a value of a pair's node says which node.
   groupLabel: (choice) =>
     intl.formatMessage(
-      choice.kind === 'connectivity'
-        ? messages.connectionsGroup
-        : choice.kind === 'condition'
-          ? messages.conditionsGroup
-          : choice.ownNode === true
-            ? messages.nodeAttributesGroup
-            : choice.role === undefined
-              ? messages.interviewGroup
-              : choice.role === 'ego'
-                ? messages.roleEgo
-                : messages.roleContext,
+      choice.ownNode === true
+        ? messages.nodeAttributesGroup
+        : choice.role === undefined
+          ? messages.interviewGroup
+          : choice.role === 'ego'
+            ? messages.roleEgo
+            : messages.roleContext,
     ),
 });
 
@@ -529,9 +556,7 @@ const messageLabelsFor = ({
     if (node.type === 'plural') {
       return numberSwitchLabels(intl, locale).switchLabel(value);
     }
-    if (choice?.kind === 'connectivity' || choice?.kind === 'condition') {
-      return intl.formatMessage(messages.versionsByFlag, { value });
-    }
+    if (choice?.kind === 'condition') return value;
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
     );
@@ -553,11 +578,10 @@ const messageLabelsFor = ({
           : participantVersionMessages.aboutParticipant,
       );
     }
-    // What is asked of the node names the version shown when it is true:
-    // open, the versions take the pill's place, so nothing else says what
-    // they depend on.
+    // A condition switched on in some shape other than an "If" (text another
+    // tool wrote): each version is named for the condition.
     const flag = choiceByName.get(node.argument);
-    if (flag?.kind === 'connectivity' || flag?.kind === 'condition') {
+    if (flag?.kind === 'condition') {
       return key === 'other'
         ? intl.formatMessage(messages.versionOtherwise)
         : presentationalTextValue(naming.valueLabel(flag));
@@ -599,7 +623,44 @@ export type DynamicMessageSite = Readonly<{
   bindings: DynamicValueSiteState['bindings'];
   setBindings?: DynamicValueSiteState['setBindings'];
   namesInUse?: DynamicValueSiteState['namesInUse'];
+  /**
+   * The conditions the text can test, and what their rules may be about.
+   * Without `set` they are read, to say what each "If" tests, and never
+   * written.
+   */
+  conditions?: Omit<DynamicValueConditions, 'set'> &
+    Readonly<{ set?: DynamicValueConditions['set'] }>;
 }>;
+
+/** An "If" whose rules a researcher is setting, in the dialog. */
+type ConditionEditing =
+  | Readonly<{
+      kind: 'insert';
+      negated: boolean;
+      insert: (content: readonly RichTextContent[]) => void;
+    }>
+  | Readonly<{
+      kind: 'edit';
+      conditionId: string;
+      event: RichTextVersionsActionEvent;
+    }>
+  | Readonly<{ kind: 'elseIf'; event: RichTextVersionsActionEvent }>;
+
+const NO_CONDITIONS: Readonly<Record<string, unknown>> = Object.freeze({});
+
+const NEW_CONDITION: ConditionDraft = Object.freeze({ rules: [] });
+
+/** The action of an "If" that adds a row to it. */
+const ADD_ELSE_IF = 'addElseIf';
+
+/** The id of the condition `binding` stands for, if it stands for one. */
+const conditionIdOf = (
+  binding: DynamicValueBinding | undefined,
+): string | undefined => {
+  if (binding === undefined) return undefined;
+  const parsed = parseDynamicValuePath(binding.path);
+  return parsed?.kind === 'condition' ? parsed.conditionId : undefined;
+};
 
 export type DynamicMessageEditorProps = Readonly<{
   id: string;
@@ -661,36 +722,164 @@ export function DynamicMessageEditor({
     [markdown, singleLine],
   );
   const { context, bindings, setBindings, namesInUse } = site;
+  const conditionValues = site.conditions?.values ?? NO_CONDITIONS;
+  const setConditions = readOnly ? undefined : site.conditions?.set;
+  const aboutChoices = conditionAboutChoices(context, site.conditions?.subject);
+  const allowEgoRules =
+    site.conditions?.allowEgoRules === true && context.roles.has('ego');
+  // An "If" can be written where conditions can be, and where there is
+  // something for its rules to be about.
+  const writesConditions =
+    setConditions !== undefined &&
+    setBindings !== undefined &&
+    (aboutChoices.length > 0 || allowEgoRules);
+  const [editing, setEditing] = useState<ConditionEditing | null>(null);
+  // A condition that went with the last text that tested it, kept so that
+  // undoing the removal brings its rules back with the text.
+  const removedConditions = useRef(
+    new Map<
+      string,
+      Readonly<{ binding: DynamicValueBinding; value: unknown }>
+    >(),
+  );
 
   const labelText = (label: unknown): string =>
     label === undefined
       ? ''
       : resolveTranslation(label, localization, locale).text;
 
-  const naming = namingFor(intl);
+  /** What an "If" on these conditions reads as, in the editor. */
+  const ifBlockFor = (
+    allBindings: DynamicValues,
+    values: Readonly<Record<string, unknown>>,
+  ): IfBlockLabels => {
+    const rulesOf = (argument: string): string => {
+      const conditionId = conditionIdOf(
+        Object.hasOwn(allBindings, argument)
+          ? allBindings[argument]
+          : undefined,
+      );
+      const condition = asConditionDraft(
+        conditionId !== undefined && Object.hasOwn(values, conditionId)
+          ? values[conditionId]
+          : undefined,
+      );
+      const sentence = conditionSentence(condition, {
+        codebook: conditionCodebook(
+          site.conditions?.codebook,
+          site.conditions?.subject,
+          condition.about ?? aboutChoices[0],
+          true,
+        ),
+        intl,
+        localization,
+        locale,
+      });
+      return sentence === '' ? intl.formatMessage(messages.noRules) : sentence;
+    };
+    const rowLabel = (row: IfRow, index: number) =>
+      intl.formatMessage(
+        row.key === FALSE_CASE
+          ? index === 0
+            ? messages.ifNotRow
+            : messages.elseIfNotRow
+          : index === 0
+            ? messages.ifRow
+            : messages.elseIfRow,
+        { rules: rulesOf(row.argument) },
+      );
+    const first = (rows: readonly IfRow[]) =>
+      rows[0] === undefined ? '' : rowLabel(rows[0], 0);
+    return {
+      is: (node) =>
+        node.type === 'select' &&
+        conditionIdOf(
+          Object.hasOwn(allBindings, node.argument)
+            ? allBindings[node.argument]
+            : undefined,
+        ) !== undefined &&
+        node.versions.length === 2 &&
+        node.versions.some(({ key }) => key === 'other') &&
+        node.versions.some(
+          ({ key }) => key === TRUE_CASE || key === FALSE_CASE,
+        ),
+      label: first,
+      summary: first,
+      rowLabel,
+      otherwiseLabel: intl.formatMessage(messages.versionOtherwise),
+      ...(writesConditions && {
+        rowAction: intl.formatMessage(messages.editIfTitle),
+        rowRemovable: intl.formatMessage(messages.removeIfRow),
+        actions: [
+          { id: ADD_ELSE_IF, label: intl.formatMessage(messages.addElseIf) },
+        ],
+      }),
+    };
+  };
+  const ifBlock = ifBlockFor(bindings, conditionValues);
+
+  const naming = namingFor(intl, (conditionId) =>
+    ifBlock.rowLabel(
+      {
+        argument:
+          Object.entries(bindings).find(
+            ([, binding]) => conditionIdOf(binding) === conditionId,
+          )?.[0] ?? conditionId,
+        key: TRUE_CASE,
+      },
+      0,
+    ),
+  );
   const choices = dynamicValueChoices(context);
 
   // Every binding the menu could add, named now so a value chosen from it
   // arrives under the name it is offered with.
   const offered: DynamicValues = {};
   const items: RichTextInsertMenuItem[] = [];
+  // Logic has a menu of its own: an "If", then wording by each answer.
+  const logicItems: RichTextInsertMenuItem[] = writesConditions
+    ? [false, true].map((negated) => ({
+        id: negated ? 'ifNot' : 'if',
+        label: intl.formatMessage(
+          negated ? messages.logicIfNot : messages.logicIf,
+        ),
+        description: intl.formatMessage(
+          negated
+            ? messages.logicIfNotDescription
+            : messages.logicIfDescription,
+        ),
+        content: [],
+        request: (insert) => setEditing({ kind: 'insert', negated, insert }),
+      }))
+    : [];
   const choiceByName = new Map<string, DynamicValueChoice>();
   for (const [bindingName, binding] of Object.entries(bindings)) {
     const choice = choices.find((each) => each.path === binding.path);
     if (choice !== undefined) choiceByName.set(bindingName, choice);
   }
 
-  const labels = messageLabelsFor({
-    intl,
-    naming,
-    choiceByName,
-    bindings,
-    offered,
-    locale,
-    labelText,
-  });
+  const labels: MessageDocumentLabels = {
+    ...messageLabelsFor({
+      intl,
+      naming,
+      choiceByName,
+      bindings,
+      offered,
+      locale,
+      labelText,
+    }),
+    // A value shown when it is known is still a value; any other set of
+    // versions is logic.
+    variantOf: (node) =>
+      node.versions.every(({ key }) => key === MISSING_CASE || key === 'other')
+        ? 'value'
+        : 'logic',
+    ifBlock,
+  };
 
   for (const choice of choices) {
+    // A condition is written with the "If" that tests it, never chosen.
+    if (choice.kind === 'condition') continue;
     const { name: bindingName, binding } = bindingFor(
       choice,
       bindings,
@@ -724,17 +913,11 @@ export function DynamicMessageEditor({
     // so it is offered once, as its two versions; so is how a node is
     // connected, and each of its type's conditions.
     if (isFlagChoice(choice)) {
-      items.push({
+      logicItems.push({
         id: `answers:${choice.path}`,
         label: valueLabel,
         group,
-        description: intl.formatMessage(
-          choice.kind === 'participant'
-            ? messages.byParticipant
-            : choice.kind === 'condition'
-              ? messages.byCondition
-              : messages.byConnectivity,
-        ),
+        description: intl.formatMessage(messages.byParticipant),
         content: inlineContent(
           [
             {
@@ -781,7 +964,7 @@ export function DynamicMessageEditor({
     });
     const caseKeys = Object.keys(usable.cases ?? {});
     if (caseKeys.length > 0) {
-      items.push({
+      logicItems.push({
         id: `answers:${choice.path}`,
         label: valueLabel,
         group,
@@ -805,7 +988,7 @@ export function DynamicMessageEditor({
       });
     }
     if (choice.numeric) {
-      items.push({
+      logicItems.push({
         id: `number:${choice.path}`,
         label: valueLabel,
         group,
@@ -833,6 +1016,10 @@ export function DynamicMessageEditor({
 
   const offeredTokens: RichTextEditorToken[] = [...choiceByName].flatMap(
     ([bindingName, choice]) => {
+      // A condition is only ever tested, never shown, so it has no pill;
+      // an "If" written or removed then leaves the editor's pills as they
+      // were.
+      if (choice.kind === 'condition') return [];
       const label = naming.valueLabel(choice);
       return [
         { id: bindingName, label, text: `{${bindingName}}`, inToolbar: false },
@@ -851,7 +1038,15 @@ export function DynamicMessageEditor({
       ...(message === '' ? [] : dynamicValueNamesIn(message)),
     ]),
   ]
-    .filter((bindingName) => !choiceByName.has(bindingName))
+    .filter(
+      (bindingName) =>
+        !choiceByName.has(bindingName) &&
+        conditionIdOf(
+          Object.hasOwn(bindings, bindingName)
+            ? bindings[bindingName]
+            : undefined,
+        ) === undefined,
+    )
     .flatMap((bindingName) => [
       { id: bindingName, label: recordedName(bindingName), inToolbar: false },
       {
@@ -867,6 +1062,10 @@ export function DynamicMessageEditor({
     items,
     trigger: '{',
   };
+  const logicMenu: RichTextInsertMenu = {
+    label: intl.formatMessage(messages.logicMenu),
+    items: logicItems,
+  };
 
   // What the document's pills and version labels say, so a renamed
   // attribute or answer relabels a document already open.
@@ -876,7 +1075,7 @@ export function DynamicMessageEditor({
       naming.valueLabel(choice),
       choice.options.map((option) => labelText(option.label)),
     ]),
-  );
+  ).concat(JSON.stringify([conditionValues, writesConditions]));
 
   // The stored message as the editor's document, or why it cannot be one.
   const parsed = useMemo(() => {
@@ -953,20 +1152,161 @@ export function DynamicMessageEditor({
     const removed = [...before].filter(
       (used) => !after.has(used) && Object.hasOwn(bindings, used),
     );
+    // An "If" whose removal was undone comes back with its rules.
+    const restored: [string, unknown][] = [];
+    for (const used of after) {
+      const kept = removedConditions.current.get(used);
+      if (kept === undefined || Object.hasOwn(bindings, used)) continue;
+      const conditionId = conditionIdOf(kept.binding);
+      if (conditionId === undefined) continue;
+      recorded.push([used, kept.binding]);
+      restored.push([conditionId, kept.value]);
+    }
     if (recorded.length === 0 && removed.length === 0) return;
     const inUse =
       removed.length === 0 || namesInUse === undefined
         ? new Set<string>()
         : namesInUse();
     const nextBindings: Record<string, DynamicValueBinding> = {};
+    const dropped: string[] = [];
     for (const [bindingName, binding] of Object.entries(bindings)) {
       if (!removed.includes(bindingName) || inUse.has(bindingName)) {
         nextBindings[bindingName] = binding;
+        continue;
       }
+      // A condition goes with the last text that tested it.
+      const conditionId = conditionIdOf(binding);
+      if (conditionId === undefined) continue;
+      dropped.push(conditionId);
+      removedConditions.current.set(bindingName, {
+        binding,
+        value: Object.hasOwn(conditionValues, conditionId)
+          ? conditionValues[conditionId]
+          : undefined,
+      });
     }
     for (const [used, binding] of recorded) nextBindings[used] = binding;
     setBindings(nextBindings);
+    if (
+      setConditions !== undefined &&
+      (dropped.length > 0 || restored.length > 0)
+    ) {
+      setConditions({
+        ...Object.fromEntries(
+          Object.entries(conditionValues).filter(
+            ([conditionId]) => !dropped.includes(conditionId),
+          ),
+        ),
+        ...Object.fromEntries(restored),
+      });
+    }
   };
+
+  /** A new condition's id, which no binding or condition here has taken. */
+  const freshConditionId = () => {
+    const inUse = namesInUse?.() ?? new Set<string>();
+    return newConditionId(
+      (candidate) =>
+        Object.hasOwn(bindings, candidate) ||
+        Object.hasOwn(conditionValues, candidate) ||
+        inUse.has(candidate) ||
+        removedConditions.current.has(candidate),
+    );
+  };
+
+  const handleVersionsAction = (event: RichTextVersionsActionEvent) => {
+    if (!writesConditions) return;
+    if (event.action === ADD_ELSE_IF) {
+      setEditing({ kind: 'elseIf', event });
+      return;
+    }
+    const row =
+      event.versionKey === undefined ? undefined : ifRowOf(event.versionKey);
+    if (row === undefined) return;
+    if (event.action === 'edit') {
+      const conditionId = conditionIdOf(
+        Object.hasOwn(bindings, row.argument)
+          ? bindings[row.argument]
+          : undefined,
+      );
+      if (conditionId !== undefined) {
+        setEditing({ kind: 'edit', conditionId, event });
+      }
+      return;
+    }
+    if (event.action === 'remove') {
+      const { rows, otherwise } = ifBlockRowsIn(event.attributes);
+      const kept = rows.filter(
+        (each) => each.argument !== row.argument || each.key !== row.key,
+      );
+      // The last row goes only with the whole "If".
+      if (kept.length === 0) return;
+      event.update(ifBlockAttributes(kept, otherwise, ifBlock));
+    }
+  };
+
+  const saveCondition = (condition: ConditionDraft) => {
+    const session = editing;
+    setEditing(null);
+    if (
+      session === null ||
+      setConditions === undefined ||
+      setBindings === undefined
+    ) {
+      return;
+    }
+    // The text is changed first and the stage after it. Changing the text
+    // draws the editor at once, and a condition already written by then
+    // would have this field hand the editor its old text back, relabelled,
+    // in the middle of the edit.
+    if (session.kind === 'edit') {
+      const nextValues = {
+        ...conditionValues,
+        [session.conditionId]: condition,
+      };
+      // The rows say their rules, so the "If" in the text is relabelled.
+      const { rows, otherwise } = ifBlockRowsIn(session.event.attributes);
+      session.event.update(
+        ifBlockAttributes(rows, otherwise, ifBlockFor(bindings, nextValues)),
+      );
+      setConditions(nextValues);
+      return;
+    }
+    const conditionId = freshConditionId();
+    const key =
+      session.kind === 'insert' && session.negated ? FALSE_CASE : TRUE_CASE;
+    const nextValues = { ...conditionValues, [conditionId]: condition };
+    const nextBindings: DynamicValues = {
+      ...bindings,
+      [conditionId]: {
+        path: dynamicValueConditionPathFor(conditionId),
+        cases: { [key]: key === TRUE_CASE },
+      },
+    };
+    const block = ifBlockFor(nextBindings, nextValues);
+    const added = { argument: conditionId, key, content: [] };
+    if (session.kind === 'elseIf') {
+      const { rows, otherwise } = ifBlockRowsIn(session.event.attributes);
+      session.event.update(
+        ifBlockAttributes([...rows, added], otherwise, block),
+      );
+    } else {
+      const attrs: RichTextVersionsAttributes = ifBlockAttributes(
+        [added],
+        [],
+        block,
+      );
+      session.insert([{ type: 'versions', attrs }]);
+    }
+    setConditions(nextValues);
+    setBindings(nextBindings);
+  };
+
+  const editedCondition =
+    editing?.kind === 'edit' &&
+    Object.hasOwn(conditionValues, editing.conditionId)
+      ? asConditionDraft(conditionValues[editing.conditionId])
+      : NEW_CONDITION;
 
   const problem = useMemo(() => {
     if (!showsProblems || message === '' || parsed === undefined) {
@@ -1019,6 +1359,8 @@ export function DynamicMessageEditor({
         tokens={tokens}
         versions
         insertMenu={insertMenu}
+        {...(logicItems.length > 0 && { logicMenu })}
+        onVersionsAction={handleVersionsAction}
         value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
         onChange={handleChange}
         className={className}
@@ -1027,6 +1369,23 @@ export function DynamicMessageEditor({
         <output aria-live="polite" className="text-destructive block text-sm">
           {problem}
         </output>
+      )}
+      {editing !== null && (
+        <ConditionDialog
+          open
+          title={intl.formatMessage(
+            editing.kind === 'edit'
+              ? messages.editIfTitle
+              : messages.newIfTitle,
+          )}
+          condition={editedCondition}
+          aboutChoices={aboutChoices}
+          codebook={site.conditions?.codebook}
+          subject={site.conditions?.subject}
+          allowEgoRules={allowEgoRules}
+          onSave={saveCondition}
+          onCancel={() => setEditing(null)}
+        />
       )}
     </div>
   );

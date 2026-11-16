@@ -51,6 +51,15 @@ export type RichTextInsertMenuItem = Readonly<{
    */
   disabled?: boolean;
   content: JSONContent | readonly JSONContent[];
+  /**
+   * For something that has to be set up before it can be inserted (the
+   * rules of an "If"): chosen, the menu closes and calls this in place of
+   * inserting `content`. Calling `insert` then inserts what it is given
+   * where the caret was; never calling it inserts nothing.
+   */
+  request?: (
+    insert: (content: JSONContent | readonly JSONContent[]) => void,
+  ) => void;
 }>;
 
 /**

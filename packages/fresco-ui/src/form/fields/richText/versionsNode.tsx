@@ -610,48 +610,52 @@ function VersionEditor({
   return (
     <span className={versionClasses}>
       <span
-        aria-hidden
-        className={
+        className={cx(
           parentLabels.length > 0
             ? nestedVersionLabelClasses
-            : versionLabelClasses
-        }
+            : versionLabelClasses,
+          'flex flex-col items-start gap-1',
+        )}
       >
-        <span {...labelLanguage} className={versionLabelTextClasses}>
+        <span
+          aria-hidden
+          {...labelLanguage}
+          className={versionLabelTextClasses}
+        >
           {version.label}
         </span>
+        {(version.action !== undefined || version.removable !== undefined) && (
+          // Under the label, which stays hidden from screen readers as the
+          // name of the row's editor: these are the row's own controls.
+          <span
+            {...labelLanguage}
+            data-version-actions={version.key}
+            contentEditable={false}
+            className="flex flex-wrap gap-x-3 gap-y-1"
+          >
+            {version.action !== undefined && (
+              <button
+                type="button"
+                disabled={!(nested?.editable ?? false)}
+                className={versionActionClasses}
+                onClick={() => onAction('edit')}
+              >
+                {version.action}
+              </button>
+            )}
+            {version.removable !== undefined && (
+              <button
+                type="button"
+                disabled={!(nested?.editable ?? false)}
+                className={versionActionClasses}
+                onClick={() => onAction('remove')}
+              >
+                {version.removable}
+              </button>
+            )}
+          </span>
+        )}
       </span>
-      {(version.action !== undefined || version.removable !== undefined) && (
-        // Beside the label, which stays hidden from screen readers as the
-        // name of the row's editor: these are the row's own controls.
-        <span
-          {...labelLanguage}
-          data-version-actions={version.key}
-          contentEditable={false}
-          className="col-start-1 -mt-1 flex flex-wrap gap-x-3 gap-y-1 pb-1"
-        >
-          {version.action !== undefined && (
-            <button
-              type="button"
-              disabled={!(nested?.editable ?? false)}
-              className={versionActionClasses}
-              onClick={() => onAction('edit')}
-            >
-              {version.action}
-            </button>
-          )}
-          {version.removable !== undefined && (
-            <button
-              type="button"
-              disabled={!(nested?.editable ?? false)}
-              className={versionActionClasses}
-              onClick={() => onAction('remove')}
-            >
-              {version.removable}
-            </button>
-          )}
-        </span>
-      )}
       <VersionPathContext.Provider value={labels}>
         <EditorContent
           editor={editor}
@@ -711,13 +715,6 @@ function VersionsView({
     () => versionsPreview(attributes, tokenLabel),
     [attributes, tokenLabel],
   );
-  const report = (action: string, versionKey?: string) =>
-    nested?.onVersionsAction?.({
-      action,
-      ...(versionKey !== undefined && { versionKey }),
-      attributes: { ...latest.current, meta: node.attrs.meta as unknown },
-      update: (next) => updateAttributes(next),
-    });
   const insideVersion = useContext(VersionPathContext).length > 0;
 
   // Open while the element is selected, until Escape or leaving the field
@@ -775,6 +772,19 @@ function VersionsView({
     setFolded(true);
     selectSelf();
   };
+  const report = (action: string, versionKey?: string) =>
+    nested?.onVersionsAction?.({
+      action,
+      ...(versionKey !== undefined && { versionKey }),
+      attributes: { ...latest.current, meta: node.attrs.meta as unknown },
+      update: (next) => {
+        updateAttributes(next);
+        // Carried out, often from a dialog that took the focus away: the
+        // element is opened again, where the researcher left it.
+        setFolded(false);
+        requestAnimationFrame(() => selectSelf());
+      },
+    });
   return (
     <NodeViewWrapper
       ref={wrapperRef}
@@ -855,7 +865,9 @@ function VersionsView({
         // the consumer gives them.
         className={cx(
           expanded ? 'inline-grid' : 'hidden',
-          'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-3 gap-y-2 align-baseline',
+          // A long label (the rules of an "If") wraps in its column rather than
+          // pushing the lines out of the field.
+          'max-w-full grid-cols-[fit-content(16rem)_minmax(0,1fr)] items-start gap-x-3 gap-y-2 align-baseline',
           // The field's text area is the container. Its width, not the
           // window's, decides when the rows stack; inside a version they
           // always do, for the room each level of nesting would take.

@@ -1343,6 +1343,46 @@
     "defaultMessage": "This change could not be sent, and nothing was saved. Check your connection and try again.",
     "description": "Refusal shown in a codebook editor when the change never reached the application it is running in."
   },
+  "protocolBuilder.conditionDialog.aboutEdge": {
+    "defaultMessage": "The edge",
+    "description": "Choice of what the rules of an “If” are asked of: the one edge (relationship) the text is shown with."
+  },
+  "protocolBuilder.conditionDialog.aboutFirstNode": {
+    "defaultMessage": "The first node of the pair",
+    "description": "Choice of what the rules of an “If” are asked of, for text shown with a pair of nodes: the first of the two."
+  },
+  "protocolBuilder.conditionDialog.aboutFocalNode": {
+    "defaultMessage": "The node being asked about",
+    "description": "Choice of what the rules of an “If” are asked of, for text shown while the participant is asked about one node in particular."
+  },
+  "protocolBuilder.conditionDialog.aboutHint": {
+    "defaultMessage": "This text is shown with more than one node. Node and edge rules are asked of the one you choose here.",
+    "description": "Guidance under the control where a researcher chooses which node the rules of an “If” are asked of."
+  },
+  "protocolBuilder.conditionDialog.aboutLabel": {
+    "defaultMessage": "Rules about",
+    "description": "Label of the control where a researcher chooses which of the nodes on screen the rules of an “If” are asked of, for text shown with more than one (a pair of nodes)."
+  },
+  "protocolBuilder.conditionDialog.aboutNode": {
+    "defaultMessage": "The node",
+    "description": "Choice of what the rules of an “If” are asked of: the one node (network member) the text is shown with."
+  },
+  "protocolBuilder.conditionDialog.aboutSecondNode": {
+    "defaultMessage": "The second node of the pair",
+    "description": "Choice of what the rules of an “If” are asked of, for text shown with a pair of nodes: the second of the two."
+  },
+  "protocolBuilder.conditionDialog.rulesHint": {
+    "defaultMessage": "The text shows this version when the rules are met, where and when it is shown.",
+    "description": "Guidance under the rule builder in the dialog where a researcher sets when an “If” in a piece of text applies."
+  },
+  "protocolBuilder.conditionDialog.rulesLabel": {
+    "defaultMessage": "Rules",
+    "description": "Label of the rule builder in the dialog where a researcher sets when an “If” in a piece of text applies."
+  },
+  "protocolBuilder.conditionDialog.submit": {
+    "defaultMessage": "Save rules",
+    "description": "Button that saves the rules of an “If” in a piece of text and closes the dialog."
+  },
   "protocolBuilder.contentBlock.audioDescriptionHint": {
     "defaultMessage": "What this recording is, read aloud in place of the file’s name to a participant using a screen reader.",
     "description": "Guidance under the description control of a block that plays an audio recording."
@@ -1503,17 +1543,13 @@
     "defaultMessage": "Resize form and preview panes",
     "description": "Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them."
   },
+  "protocolBuilder.dynamicText.addElseIf": {
+    "defaultMessage": "Add else if",
+    "description": "Button under the rows of an “If” in a piece of text. It asks for rules, then adds a row shown when the rows above it did not apply and those rules are met."
+  },
   "protocolBuilder.dynamicText.byAnswer": {
     "defaultMessage": "Different wording for each answer",
     "description": "Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with one version for each answer to this attribute, so the text can say something different depending on the answer."
-  },
-  "protocolBuilder.dynamicText.byCondition": {
-    "defaultMessage": "Different label when the node meets this condition",
-    "description": "Second line of an entry in the insert-a-value menu of a node type’s own label, under one of the conditions the researcher defined. Choosing it inserts a piece of text with two versions: one shown on a node that meets the condition’s rules, one on every other node."
-  },
-  "protocolBuilder.dynamicText.byConnectivity": {
-    "defaultMessage": "Different label when this is true of the node",
-    "description": "Second line of an entry in the insert-a-value menu of a node type’s own label, under a value that says how the node is connected (such as “Has any edge” or “Most connections”). Choosing it inserts a piece of text with two versions: one shown on a node it is true of, one on every other node."
   },
   "protocolBuilder.dynamicText.byNumber": {
     "defaultMessage": "Wording that fits the number",
@@ -1522,22 +1558,6 @@
   "protocolBuilder.dynamicText.byParticipant": {
     "defaultMessage": "Different wording for the participant and everyone else",
     "description": "Second line of the “Participant or someone else” entry in the insert-a-value menu. Choosing it inserts a piece of text with two versions: one shown when the question is asked about the participant themselves (such as “Are you still living?”), one for everyone else in their family (such as “Is this person still living?”)."
-  },
-  "protocolBuilder.dynamicText.conditionsGroup": {
-    "defaultMessage": "Conditions",
-    "description": "Heading in the insert-a-value menu of a node type’s own label, above the conditions the researcher has defined for this node type. A condition is a named set of rules a node either meets or does not."
-  },
-  "protocolBuilder.dynamicText.connectedAny": {
-    "defaultMessage": "Has any edge",
-    "description": "Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node is connected to another node by an edge of any type. It only chooses between two versions of the label and is never shown itself."
-  },
-  "protocolBuilder.dynamicText.connectedType": {
-    "defaultMessage": "Has a {edgeType} edge",
-    "description": "Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node is connected to another node by an edge of one type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself."
-  },
-  "protocolBuilder.dynamicText.connectionsGroup": {
-    "defaultMessage": "Connections",
-    "description": "Heading in the insert-a-value menu of a node type’s own label, above the values that say how the node is connected to other nodes by edges. An edge is a connection between two nodes."
   },
   "protocolBuilder.dynamicText.defaultNodeLabel": {
     "defaultMessage": "Default label",
@@ -1555,9 +1575,29 @@
     "defaultMessage": "Second node: {attribute}",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the second of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
   },
+  "protocolBuilder.dynamicText.editIfTitle": {
+    "defaultMessage": "Edit rules",
+    "description": "Title of the dialog where a researcher changes the rules of an “If” in a piece of text a participant reads. Also names the button on each row of an “If” that opens it."
+  },
+  "protocolBuilder.dynamicText.elseIfNotRow": {
+    "defaultMessage": "Else if not: {rules}",
+    "description": "Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are NOT met. rules is those rules as a phrase."
+  },
+  "protocolBuilder.dynamicText.elseIfRow": {
+    "defaultMessage": "Else if {rules}",
+    "description": "Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are met. rules is those rules as a phrase, such as “Age is more than 30”."
+  },
   "protocolBuilder.dynamicText.firstNodeLabel": {
     "defaultMessage": "First node: label",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the first node’s attributes such as “First node: nickname”: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
+  },
+  "protocolBuilder.dynamicText.ifNotRow": {
+    "defaultMessage": "If not: {rules}",
+    "description": "Label of the first row of an “If not” in a piece of text: the wording shown when its rules are NOT met. rules is those rules as a phrase, such as “Age is more than 30”."
+  },
+  "protocolBuilder.dynamicText.ifRow": {
+    "defaultMessage": "If {rules}",
+    "description": "Label of the first row of an “If” in a piece of text: the wording shown when its rules are met. rules is those rules as a phrase, such as “Age is more than 30” or “Friend exists and Close is true”. Also what the “If” is called while folded to a pill."
   },
   "protocolBuilder.dynamicText.insertMenu": {
     "defaultMessage": "Inject piped text from interview metadata or a network attribute",
@@ -1571,29 +1611,41 @@
     "defaultMessage": "Participant or someone else",
     "description": "Name of a value in the insert-a-value menu of a question on the Family Pedigree stage, and of the piece of text it inserts: whether the family member the question is asked about is the participant themselves or someone else in their family. It only chooses between two versions of the text and is never shown itself."
   },
-  "protocolBuilder.dynamicText.leastConnectedAny": {
-    "defaultMessage": "Least connections",
-    "description": "Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has fewer edges, of any type, than any other node of its type. It only chooses between two versions of the label and is never shown itself."
+  "protocolBuilder.dynamicText.logicIf": {
+    "defaultMessage": "If … else",
+    "description": "Entry in the insert-logic menu. Choosing it asks for rules, then inserts a piece of text with two versions: one shown when the rules are met, one shown otherwise. The ellipsis stands for the rules."
   },
-  "protocolBuilder.dynamicText.leastConnectedType": {
-    "defaultMessage": "Least {edgeType} connections",
-    "description": "Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has fewer edges of one type than any other node of its type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself."
+  "protocolBuilder.dynamicText.logicIfDescription": {
+    "defaultMessage": "One wording when rules you set are met, another otherwise",
+    "description": "Second line of the “If … else” entry in the insert-logic menu, saying what it inserts."
   },
-  "protocolBuilder.dynamicText.mostConnectedAny": {
-    "defaultMessage": "Most connections",
-    "description": "Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has more edges, of any type, than any other node of its type. It only chooses between two versions of the label and is never shown itself."
+  "protocolBuilder.dynamicText.logicIfNot": {
+    "defaultMessage": "If not … else",
+    "description": "Entry in the insert-logic menu. Choosing it asks for rules, then inserts a piece of text with two versions: one shown when the rules are NOT met, one shown otherwise. The ellipsis stands for the rules."
   },
-  "protocolBuilder.dynamicText.mostConnectedType": {
-    "defaultMessage": "Most {edgeType} connections",
-    "description": "Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has more edges of one type than any other node of its type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself."
+  "protocolBuilder.dynamicText.logicIfNotDescription": {
+    "defaultMessage": "One wording when rules you set are not met, another otherwise",
+    "description": "Second line of the “If not … else” entry in the insert-logic menu, saying what it inserts."
+  },
+  "protocolBuilder.dynamicText.logicMenu": {
+    "defaultMessage": "Insert logic",
+    "description": "Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu."
   },
   "protocolBuilder.dynamicText.needsAnswerLabels": {
     "defaultMessage": "Add labels for its yes and no answers first",
     "description": "Second line of an entry in the insert-a-value menu that cannot be chosen yet. The entry is a yes-or-no attribute without its own words for its two answers, so the text has nothing in the protocol’s languages to show for it. The researcher can add those words where the attribute is set up."
   },
+  "protocolBuilder.dynamicText.newIfTitle": {
+    "defaultMessage": "When should this text be shown?",
+    "description": "Title of the dialog where a researcher sets the rules of a new “If” in a piece of text a participant reads."
+  },
   "protocolBuilder.dynamicText.no": {
     "defaultMessage": "No",
     "description": "Label of the version of a piece of text shown when a yes-or-no attribute is no."
+  },
+  "protocolBuilder.dynamicText.noRules": {
+    "defaultMessage": "(no rules yet)",
+    "description": "Stands in for the rules of an “If” in a piece of text when it has none that can be described, in a label such as “If (no rules yet)”."
   },
   "protocolBuilder.dynamicText.nodeAttributesGroup": {
     "defaultMessage": "Node Attributes",
@@ -1606,6 +1658,10 @@
   "protocolBuilder.dynamicText.nodeLabelDescription": {
     "defaultMessage": "Text shown on the node",
     "description": "Short note under “Node label” in the insert-a-value menu, saying that the value is the same text the interview shows on the node itself. Other items in the menu show the kind of answer here, such as “Text” or “Number”."
+  },
+  "protocolBuilder.dynamicText.removeIfRow": {
+    "defaultMessage": "Remove this case",
+    "description": "Names the button that removes one row (its rules and its wording) from an “If” in a piece of text that has more than one."
   },
   "protocolBuilder.dynamicText.roleContext": {
     "defaultMessage": "Contextual Attributes",
@@ -1649,15 +1705,11 @@
   },
   "protocolBuilder.dynamicText.versionOtherwise": {
     "defaultMessage": "Otherwise",
-    "description": "Label of the version of a node’s label shown when what it depends on is not true of the node. The other version is labelled with what is asked of the node, such as “Has any edge” or the name of a condition the researcher defined."
+    "description": "Label of the last row of an “If” in a piece of text: the wording shown when none of the rows above applied."
   },
   "protocolBuilder.dynamicText.versionsByAnswer": {
     "defaultMessage": "Wording for each answer to {value}",
     "description": "Accessible name of a piece of text with one version for each answer to an attribute. value is the attribute’s name."
-  },
-  "protocolBuilder.dynamicText.versionsByFlag": {
-    "defaultMessage": "Wording depending on “{value}”",
-    "description": "Accessible name of a piece of text with two versions: one shown when something is true of the node, one when it is not. value is the name of what is asked, such as “Has any edge” or the name of a condition the researcher defined."
   },
   "protocolBuilder.dynamicText.versionsByNumber": {
     "defaultMessage": "Wording that fits the number {value}",
@@ -4571,57 +4623,9 @@
     "defaultMessage": "Stage filter",
     "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview."
   },
-  "protocolBuilder.nodeLabel.addCondition": {
-    "defaultMessage": "Add condition",
-    "description": "Button that adds a new condition to a node type’s own label."
-  },
-  "protocolBuilder.nodeLabel.conditionInUse": {
-    "defaultMessage": "The label uses this condition. Remove it from the label before removing the condition.",
-    "description": "Note under a condition of a node type’s own label that cannot be removed because the label’s text chooses its wording by it."
-  },
-  "protocolBuilder.nodeLabel.conditionName": {
-    "defaultMessage": "Condition name",
-    "description": "Label of the field naming one condition of a node type’s own label. The name is what the condition is called in the label field’s insert menu; participants never see it."
-  },
-  "protocolBuilder.nodeLabel.conditionNameHint": {
-    "defaultMessage": "Shown in the label’s syringe menu. Participants never see it.",
-    "description": "Hint under the Condition name field. The syringe menu is the menu the label field’s syringe toolbar button opens."
-  },
-  "protocolBuilder.nodeLabel.conditionRules": {
-    "defaultMessage": "Rules",
-    "description": "Label of the rule builder of one condition of a node type’s own label, where the researcher adds the rules a node must meet."
-  },
-  "protocolBuilder.nodeLabel.conditionRulesHint": {
-    "defaultMessage": "Each rule is asked of the node the label is on: a node rule about one of its attributes, an edge rule about the edges that connect it to other nodes.",
-    "description": "Hint under the rule builder of one condition of a node type’s own label."
-  },
-  "protocolBuilder.nodeLabel.conditionsDescription": {
-    "defaultMessage": "A condition is a set of rules that a node either meets or does not, such as “age is greater than 65” or “has a Friends edge”. Once you have added a condition, insert it into the label from the syringe menu to show different text on nodes that meet it.",
-    "description": "Explanation under the Conditions heading of a node type’s own label. The syringe menu is the menu the label field’s syringe toolbar button opens, listing the values that can be inserted. Friends is an example edge type name."
-  },
-  "protocolBuilder.nodeLabel.conditionsHeading": {
-    "defaultMessage": "Conditions",
-    "description": "Heading above the list of conditions of a node type’s own label. A condition is a named set of rules a node either meets or does not; the label can show different text on nodes that meet it."
-  },
-  "protocolBuilder.nodeLabel.conditionsNeedSavedType": {
-    "defaultMessage": "Save this node type before adding conditions. A condition’s rules are about the node type’s attributes, which it does not have yet.",
-    "description": "Note shown in place of the list of conditions while a new node type is being created and has not been saved yet."
-  },
-  "protocolBuilder.nodeLabel.newConditionName": {
-    "defaultMessage": "Condition {number, number}",
-    "description": "Name given to a newly added condition of a node type’s own label until the researcher renames it. number counts the conditions, starting at 1."
-  },
-  "protocolBuilder.nodeLabel.removeCondition": {
-    "defaultMessage": "Remove condition",
-    "description": "Button that removes one condition from a node type’s own label."
-  },
-  "protocolBuilder.nodeLabel.removeNamedCondition": {
-    "defaultMessage": "Remove condition “{name}”",
-    "description": "Accessible name of the button that removes one condition from a node type’s own label. name is the condition’s name as the researcher wrote it."
-  },
   "protocolBuilder.nodeLabel.textPlaceholder": {
-    "defaultMessage": "Write the label, and insert values with the syringe button…",
-    "description": "Placeholder inside the text field where a researcher writes the label shown on every node of a node type. The syringe button is the toolbar button that inserts a value, such as one of the node’s attributes."
+    "defaultMessage": "Write the label, and insert values and logic from the toolbar…",
+    "description": "Placeholder inside the text field where a researcher writes the label shown on every node of a node type. The toolbar above the text has a button that inserts a value, such as one of the node’s attributes, and one that inserts logic, such as an “If”."
   },
   "protocolBuilder.nodePanels.addLabel": {
     "defaultMessage": "Add new panel",
@@ -6975,6 +6979,10 @@
     "defaultMessage": "has selected options not equal to",
     "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
   },
+  "protocolBuilder.ruleDescription.anyEdge": {
+    "defaultMessage": "Any edge",
+    "description": "What a rule that counts edges (relationships between network members) is said to count when it counts edges of every type rather than one type. It opens a sentence such as “Any edge count is more than 3”."
+  },
   "protocolBuilder.ruleDescription.dateResolutionFull": {
     "defaultMessage": "a full date",
     "description": "Noun phrase naming the precision a date attribute records answers at: a day, a month and a year together. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
@@ -6986,6 +6994,38 @@
   "protocolBuilder.ruleDescription.dateResolutionYear": {
     "defaultMessage": "a year",
     "description": "Noun phrase naming the precision a date attribute records answers at: a year alone. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
+  },
+  "protocolBuilder.ruleDescription.edgeCountExactly": {
+    "defaultMessage": "count is exactly",
+    "description": "Part of a sentence describing a rule about how many edges (relationships) join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is exactly 3”."
+  },
+  "protocolBuilder.ruleDescription.edgeCountFewest": {
+    "defaultMessage": "count is the lowest of its node type",
+    "description": "Part of a sentence describing a rule that matches the node with fewer edges than any other node of the same type. It follows the name of the edge type counted, as in “Friend count is the lowest of its node type”."
+  },
+  "protocolBuilder.ruleDescription.edgeCountGreaterThan": {
+    "defaultMessage": "count is more than",
+    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is more than 3”."
+  },
+  "protocolBuilder.ruleDescription.edgeCountGreaterThanOrEqual": {
+    "defaultMessage": "count is at least",
+    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is at least 3”."
+  },
+  "protocolBuilder.ruleDescription.edgeCountLessThan": {
+    "defaultMessage": "count is less than",
+    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is less than 3”."
+  },
+  "protocolBuilder.ruleDescription.edgeCountLessThanOrEqual": {
+    "defaultMessage": "count is at most",
+    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is at most 3”."
+  },
+  "protocolBuilder.ruleDescription.edgeCountMost": {
+    "defaultMessage": "count is the highest of its node type",
+    "description": "Part of a sentence describing a rule that matches the node with more edges than any other node of the same type. It follows the name of the edge type counted, as in “Friend count is the highest of its node type”."
+  },
+  "protocolBuilder.ruleDescription.edgeCountNot": {
+    "defaultMessage": "count is not",
+    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is not 3”."
   },
   "protocolBuilder.ruleDescription.egoContains": {
     "defaultMessage": "that contains",
@@ -7207,6 +7247,22 @@
     "defaultMessage": "Edge attribute",
     "description": "Label of the control where a researcher chooses which attribute of an edge — a relationship between network members — a rule asks about."
   },
+  "protocolBuilder.ruleEditor.edgeCountHint": {
+    "defaultMessage": "The highest and the lowest compare the node with the other nodes of its type. Nodes that tie all match, and none matches while every node has the same number.",
+    "description": "Guidance under the control where a researcher chooses how a count of edges is compared."
+  },
+  "protocolBuilder.ruleEditor.edgeCountLabel": {
+    "defaultMessage": "Comparison",
+    "description": "Label of the control where a researcher chooses how the number of edges joining a node to others is compared: exactly, more than, the most, and so on."
+  },
+  "protocolBuilder.ruleEditor.edgeCountSection": {
+    "defaultMessage": "Number of edges",
+    "description": "Heading of the part of the rule editor where a researcher says how a count of edges (relationships) is compared."
+  },
+  "protocolBuilder.ruleEditor.edgeCountValueLabel": {
+    "defaultMessage": "Number of edges",
+    "description": "Label of the control where a researcher types the number a count of edges is compared with."
+  },
   "protocolBuilder.ruleEditor.edgeTypeHint": {
     "defaultMessage": "Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.",
     "description": "Guidance under the control where a researcher chooses which kind of edge a rule is about. One rule covers one type, so several types need several rules."
@@ -7351,6 +7407,14 @@
     "defaultMessage": "Attribute",
     "description": "One of two choices for what a rule is based on: one of the entity’s attributes — the variables a study records about it."
   },
+  "protocolBuilder.ruleEditor.ruleKindCount": {
+    "defaultMessage": "Number of edges",
+    "description": "One of the choices for what a rule about edges (relationships between network members) is based on: how many edges join the node to others."
+  },
+  "protocolBuilder.ruleEditor.ruleKindCountHint": {
+    "defaultMessage": "Based on how many of these edges join the node to others, or on whether it has the most or the fewest among nodes of its type.",
+    "description": "Explains the \"Number of edges\" choice for a rule about edges — relationships between network members."
+  },
   "protocolBuilder.ruleEditor.ruleKindEdgeAttributeHint": {
     "defaultMessage": "Rule based on the value of this edge type's attributes.",
     "description": "Explains the \"Attribute\" choice for a rule about an edge — a relationship between two network members."
@@ -7461,7 +7525,7 @@
   },
   "protocolBuilder.ruleSet.addConditionRule": {
     "defaultMessage": "Add new rule",
-    "description": "Action that adds a rule to one of the conditions of a node type’s own label. A condition is a named set of rules a node either meets or does not, which the label chooses its wording by."
+    "description": "Action that adds a rule to the rules of an “If” in a piece of text a participant reads. The text shows one wording when the rules are met and another when they are not."
   },
   "protocolBuilder.ruleSet.addFilterRule": {
     "defaultMessage": "Add new filter rule",
@@ -7470,6 +7534,22 @@
   "protocolBuilder.ruleSet.addSkipLogicRule": {
     "defaultMessage": "Add new skip logic rule",
     "description": "Action that adds a rule to the set deciding whether a stage is shown to a participant at all. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once."
+  },
+  "protocolBuilder.ruleSet.conditionTargetEdge": {
+    "defaultMessage": "Edges - whether the node has an edge, how many it has, or an attribute of one.",
+    "description": "Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will be about the edges (relationships) that join the node the text is shown with to other nodes."
+  },
+  "protocolBuilder.ruleSet.conditionTargetEgo": {
+    "defaultMessage": "Participant - compare one of the participant’s attributes.",
+    "description": "Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will compare an attribute recorded for the participant themselves."
+  },
+  "protocolBuilder.ruleSet.conditionTargetNode": {
+    "defaultMessage": "Node - compare one of the attributes of the node.",
+    "description": "Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will compare an attribute of the node (network member) the text is shown with."
+  },
+  "protocolBuilder.ruleSet.conditionTargetOwnEdge": {
+    "defaultMessage": "Edge - compare one of the attributes of the edge.",
+    "description": "Choice offered when a researcher starts a rule for an “If” in a piece of text shown with one edge (a relationship between two network members): the rule will compare an attribute of that edge."
   },
   "protocolBuilder.ruleSet.joinAll": {
     "defaultMessage": "All rules must match",

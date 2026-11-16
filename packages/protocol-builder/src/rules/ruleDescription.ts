@@ -1,12 +1,14 @@
 import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
-import type {
-  Codebook,
-  ColorReference,
-  FilterOperator,
-  LocaleTag,
-  NodeShape,
-  VariableType,
+import {
+  type Codebook,
+  type ColorReference,
+  type EdgeCountComparison,
+  edgeCountNeedsValue,
+  type FilterOperator,
+  type LocaleTag,
+  type NodeShape,
+  type VariableType,
 } from '@codaco/protocol-validation';
 
 import {
@@ -21,7 +23,13 @@ import {
   operatorsWithRegExp,
   type PresenceOperator,
 } from './operators.ts';
-import { isCompleteRule, isRuleDraft, ruleDraftOptions } from './rule.ts';
+import {
+  isCompleteRule,
+  isEdgeCountComparison,
+  isEdgeCountRuleDraft,
+  isRuleDraft,
+  ruleDraftOptions,
+} from './rule.ts';
 import {
   assertNoSuchDateProblem,
   assertNoSuchNumberProblem,
@@ -526,6 +534,76 @@ const PRESENCE_OPERATOR_TEXT = defineMessages({
   },
 }) satisfies Record<PresenceOperator, MessageDescriptor>;
 
+/**
+ * How a rule that counts edges reads after what it counts: "Friend count is
+ * more than 3", "Any edge count is the highest".
+ */
+const EDGE_COUNT_TEXT = defineMessages({
+  EXACTLY: {
+    id: 'protocolBuilder.ruleDescription.edgeCountExactly',
+    defaultMessage: 'count is exactly',
+    description:
+      'Part of a sentence describing a rule about how many edges (relationships) join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is exactly 3”.',
+  },
+  NOT: {
+    id: 'protocolBuilder.ruleDescription.edgeCountNot',
+    defaultMessage: 'count is not',
+    description:
+      'Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is not 3”.',
+  },
+  GREATER_THAN: {
+    id: 'protocolBuilder.ruleDescription.edgeCountGreaterThan',
+    defaultMessage: 'count is more than',
+    description:
+      'Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is more than 3”.',
+  },
+  GREATER_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.ruleDescription.edgeCountGreaterThanOrEqual',
+    defaultMessage: 'count is at least',
+    description:
+      'Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is at least 3”.',
+  },
+  LESS_THAN: {
+    id: 'protocolBuilder.ruleDescription.edgeCountLessThan',
+    defaultMessage: 'count is less than',
+    description:
+      'Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is less than 3”.',
+  },
+  LESS_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.ruleDescription.edgeCountLessThanOrEqual',
+    defaultMessage: 'count is at most',
+    description:
+      'Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is at most 3”.',
+  },
+  MOST: {
+    id: 'protocolBuilder.ruleDescription.edgeCountMost',
+    defaultMessage: 'count is the highest of its node type',
+    description:
+      'Part of a sentence describing a rule that matches the node with more edges than any other node of the same type. It follows the name of the edge type counted, as in “Friend count is the highest of its node type”.',
+  },
+  FEWEST: {
+    id: 'protocolBuilder.ruleDescription.edgeCountFewest',
+    defaultMessage: 'count is the lowest of its node type',
+    description:
+      'Part of a sentence describing a rule that matches the node with fewer edges than any other node of the same type. It follows the name of the edge type counted, as in “Friend count is the lowest of its node type”.',
+  },
+}) satisfies Record<EdgeCountComparison, MessageDescriptor>;
+
+export const edgeCountMessages = defineMessages({
+  anyEdge: {
+    id: 'protocolBuilder.ruleDescription.anyEdge',
+    defaultMessage: 'Any edge',
+    description:
+      'What a rule that counts edges (relationships between network members) is said to count when it counts edges of every type rather than one type. It opens a sentence such as “Any edge count is more than 3”.',
+  },
+});
+
+/** What each way of comparing a count of edges is called, for a list of them. */
+export const edgeCountComparisonText = (
+  comparison: EdgeCountComparison,
+  intl: IntlShape = englishIntl,
+): string => intl.formatMessage(EDGE_COUNT_TEXT[comparison]);
+
 const generalMessages = defineMessages({
   egoLabel: {
     id: 'protocolBuilder.ruleDescription.egoLabel',
@@ -663,7 +741,10 @@ export function describeRule({
   const hasAttributeKey = Object.hasOwn(options, 'attribute');
 
   const entity = describeEntity(codebook, target, entityTypeId, intl);
-  if (entity?.missing === true) {
+  // A rule that counts edges may name no type, to count every edge.
+  const countsEveryEdge =
+    isEdgeCountRuleDraft(rule) && entityTypeId === undefined;
+  if (entity?.missing === true && !countsEveryEdge) {
     problems.push({
       code: 'missingEntityType',
       message: say(
@@ -673,6 +754,72 @@ export function describeRule({
             ? problemMessages.missingEdgeType
             : problemMessages.missingEgo,
       ),
+    });
+  }
+
+  if (isEdgeCountRuleDraft(rule)) {
+    // Every edge counts where the rule names no type.
+    const counted: RuleDescriptionEntity | undefined =
+      entityTypeId === undefined
+        ? Object.freeze({
+            kind: 'edge' as const,
+            typeId: undefined,
+            label: say(edgeCountMessages.anyEdge),
+            color: DEFAULT_EDGE_COLOR,
+            missing: false,
+          })
+        : entity;
+    const comparison = isEdgeCountComparison(options.count)
+      ? options.count
+      : undefined;
+    if (!isCompleteRule(rule)) {
+      problems.push({
+        code: 'incomplete',
+        message: say(problemMessages.incomplete),
+      });
+    }
+    if (typeof rule.id !== 'string') {
+      problems.push({
+        code: 'missingId',
+        message: say(problemMessages.missingId),
+      });
+    } else if (duplicateIds?.has(rule.id) === true) {
+      problems.push({
+        code: 'duplicateId',
+        message: say(problemMessages.duplicateId),
+      });
+    }
+    const countOperator: RuleDescriptionOperator = Object.freeze({
+      id: comparison,
+      text: comparison === undefined ? '' : say(EDGE_COUNT_TEXT[comparison]),
+    });
+    const countOperand: RuleDescriptionOperand | undefined =
+      comparison !== undefined &&
+      edgeCountNeedsValue(comparison) &&
+      typeof options.value === 'number'
+        ? Object.freeze({
+            items: Object.freeze([options.value]),
+            authoredLabels: false,
+          })
+        : undefined;
+    return Object.freeze({
+      target,
+      entity: counted,
+      attribute: undefined,
+      operator: countOperator,
+      operand: countOperand,
+      attributePresence: false,
+      columns: false,
+      text: [
+        counted?.label ?? '',
+        countOperator.text,
+        ...(countOperand?.items ?? []).map((item) =>
+          typeof item === 'number' ? intl.formatNumber(item) : item,
+        ),
+      ]
+        .filter((part) => part !== '')
+        .join(' '),
+      problems: Object.freeze(problems),
     });
   }
 
