@@ -500,6 +500,7 @@ describe('NetworkComposer with encrypted variables', () => {
         (attempt) =>
           attempt.nodeId === 'node-b' && attempt.variableId === variableId,
       );
+    // Long enough for a wrongly repeated decryption to be attempted.
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(attemptsOn(QUICK_ADD_VAR)).toHaveLength(1);
     expect(attemptsOn(NOTES_VAR)).toHaveLength(1);
