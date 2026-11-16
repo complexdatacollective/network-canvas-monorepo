@@ -18,6 +18,25 @@ function createDefaultState(overrides: Partial<FilterState> = {}): FilterState {
 
 describe('FilterManager', () => {
   describe('queries', () => {
+    it('reads each value from its own state field', () => {
+      const manager = new FilterManager(
+        createDefaultState({
+          filterQuery: 'typed',
+          filterDebouncedQuery: 'settled',
+          filterIsFiltering: true,
+          filterIsIndexing: false,
+          filterMatchCount: 3,
+        }),
+        vi.fn(),
+      );
+
+      expect(manager.query).toBe('typed');
+      expect(manager.debouncedQuery).toBe('settled');
+      expect(manager.isFiltering).toBe(true);
+      expect(manager.isIndexing).toBe(false);
+      expect(manager.matchCount).toBe(3);
+    });
+
     describe('hasActiveFilter', () => {
       it('should return true when filter is active with results', () => {
         const state = createDefaultState({

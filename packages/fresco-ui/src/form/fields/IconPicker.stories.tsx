@@ -80,7 +80,15 @@ import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    await awaitPassiveEffects();
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole('combobox', { name: 'Icon' });
+
+    await expect(trigger).toHaveTextContent('add-a-person');
+  },
+};
 
 /** Opened, searched across naming conventions, and chosen with the keyboard. */
 export const SearchAndChoose: Story = {

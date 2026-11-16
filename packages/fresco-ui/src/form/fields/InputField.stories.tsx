@@ -15,8 +15,10 @@ import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import Paragraph from '../../typography/Paragraph';
+import DatePickerField from './DatePicker';
 import { expectInvalidControlToKeepFocusRing } from './focusRingTestHelpers';
 import InputField from './InputField';
+import RelativeDatePickerField from './RelativeDatePicker';
 
 const meta: Meta<typeof InputField> = {
   title: 'Systems/Form/Fields/InputField',
@@ -364,15 +366,31 @@ export const EmptyDate: Story = {
   render: () => (
     <div className="flex w-80 flex-col gap-3">
       <InputField type="date" aria-label="Empty date" value="" />
+      <DatePickerField
+        type="full"
+        aria-label="Empty absolute date"
+        name="absolute-date"
+        value=""
+      />
+      <RelativeDatePickerField
+        aria-label="Empty relative date"
+        name="relative-date"
+        value=""
+      />
       <InputField type="date" aria-label="Filled date" value="2026-09-01" />
     </div>
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-
-    await expect(
-      getComputedStyle(canvas.getByLabelText('Empty date')).fontStyle,
-    ).toBe('italic');
+    for (const label of [
+      'Empty date',
+      'Empty absolute date',
+      'Empty relative date',
+    ]) {
+      await expect(
+        getComputedStyle(canvas.getByLabelText(label)).fontStyle,
+      ).toBe('italic');
+    }
     await expect(
       getComputedStyle(canvas.getByLabelText('Filled date')).fontStyle,
     ).toBe('normal');

@@ -466,6 +466,16 @@ describe('Collection', () => {
       ).toBeNull();
     });
 
+    it('marks only the disabled items', () => {
+      render(<ControlledCollection disabledKeys={['2']} />);
+
+      expect(screen.getByTestId('item-1')).not.toHaveAttribute('data-disabled');
+      expect(screen.getByTestId('item-2')).toHaveAttribute(
+        'data-disabled',
+        'true',
+      );
+    });
+
     it('should apply ARIA attributes', () => {
       render(<ControlledCollection />);
 
@@ -493,6 +503,25 @@ describe('Collection', () => {
         await user.click(screen.getByTestId('item-3'));
 
         expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['2', '3']));
+      });
+
+      it('reports every key to a controlled caller on Ctrl+A', async () => {
+        const user = userEvent.setup();
+        const onSelectionChange = vi.fn();
+
+        render(
+          <ControlledCollection
+            selectionMode="multiple"
+            onSelectionChange={onSelectionChange}
+          />,
+        );
+
+        await user.click(screen.getByTestId('item-1'));
+        await user.keyboard('{Control>}a{/Control}');
+
+        expect(onSelectionChange).toHaveBeenLastCalledWith(
+          new Set(['1', '2', '3', '4', '5']),
+        );
       });
     });
 

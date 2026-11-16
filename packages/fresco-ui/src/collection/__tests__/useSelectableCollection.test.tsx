@@ -312,7 +312,9 @@ describe('useSelectableCollection', () => {
 
   describe('selection', () => {
     describe('Space/Enter', () => {
-      it('should toggle selection on Enter', () => {
+      // Items handle these keys while they hold DOM focus; this arm runs when
+      // the listbox itself does.
+      it.each([' ', 'Enter'])('toggles the focused item on %j', (key) => {
         selectionManager = createMockSelectionManager({ focusedKey: '2' });
 
         const { getByTestId } = render(
@@ -322,7 +324,7 @@ describe('useSelectableCollection', () => {
           />,
         );
 
-        fireEvent.keyDown(getByTestId('collection'), { key: 'Enter' });
+        fireEvent.keyDown(getByTestId('collection'), { key });
 
         expect(selectionManager.toggleSelection).toHaveBeenCalledWith('2');
       });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod/mini';
 
 import { createCatalogSource } from '@codaco/app-i18n/locales';
@@ -1320,11 +1320,7 @@ describe('Validation Functions', () => {
       answer: 'test',
       build: (attribute: string) =>
         validations.differentFrom(attribute, createMockContext()),
-      buildUnspecified: () =>
-        validations.differentFrom(
-          null as unknown as string,
-          createMockContext(),
-        ),
+      unspecified: null,
     },
     {
       rule: 'sameAs',
@@ -1332,8 +1328,7 @@ describe('Validation Functions', () => {
       answer: 'test',
       build: (attribute: string) =>
         validations.sameAs(attribute, createMockContext()),
-      buildUnspecified: () =>
-        validations.sameAs(null as unknown as string, createMockContext()),
+      unspecified: null,
     },
     ...(
       [
@@ -1348,20 +1343,30 @@ describe('Validation Functions', () => {
       answer: 10,
       build: (attribute: string) =>
         validations[rule]({ attribute, type: 'number' }, createMockContext()),
-      buildUnspecified: () =>
-        validations[rule](
-          { attribute: null, type: 'number' } as unknown as {
-            attribute: string;
-            type: 'number';
-          },
-          createMockContext(),
-        ),
+      unspecified: { attribute: null, type: 'number' },
     })),
-  ])('$rule guards', ({ rule, attribute, answer, build, buildUnspecified }) => {
-    it('throws when the rule names no attribute', () => {
-      expect(() => buildUnspecified()({}).safeParse(answer)).toThrow(
-        `Attribute must be specified for ${rule} validation`,
+  ])('$rule guards', ({ rule, attribute, answer, build, unspecified }) => {
+    // Protocol data reaches the rule untyped, so the missing attribute goes in
+    // through the same props bag a Field builds its validation from.
+    it('refuses a rule that names no attribute', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const result = await makeValidationFunction({
+        [rule]: unspecified,
+        validationContext: createMockContext(),
+      })({}).safeParseAsync(answer);
+
+      expect(result.success).toBe(false);
+      expect(consoleError).toHaveBeenCalledWith(
+        'Error while validating:',
+        expect.objectContaining({
+          message: expect.stringContaining(
+            `Attribute must be specified for ${rule} validation`,
+          ),
+        }),
       );
+      consoleError.mockRestore();
     });
 
     it('throws when the attribute is not in the codebook', () => {

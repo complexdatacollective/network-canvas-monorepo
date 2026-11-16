@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
@@ -566,41 +566,70 @@ export const LongOptionList: Story = {
   },
 };
 
-const unbrokenLabel = `Stage 12 — ${'Unbrokendestinationlabel'.repeat(12)}`;
+const unbrokenLabel = 'Unbrokendestinationlabel'.repeat(12);
 
 /**
- * A styled select in a narrow container, holding an option label with no
- * break opportunity that is longer than the viewport is wide. The popup may
- * grow past the trigger, but never past the viewport, and the label wraps
- * inside its item instead of running off the edge.
+ * Styled selects holding an option label with no break opportunity that is
+ * longer than the viewport is wide, and an option far shorter than its
+ * trigger. The popup may grow past the trigger, but never past the viewport
+ * and never narrower than the trigger, and a long label wraps inside its item
+ * instead of running off the edge.
  */
 export const LongUnbrokenOption: Story = {
   render: () => (
-    <div style={{ width: '8rem' }}>
-      <StyledSelectField
-        aria-label="Destination"
-        name="destination"
-        options={[{ value: 'destination', label: unbrokenLabel }]}
-        value="destination"
-        onChange={() => undefined}
-      />
+    <div className="flex flex-col gap-4">
+      <div style={{ width: '8rem' }}>
+        <StyledSelectField
+          aria-label="Destination"
+          name="destination"
+          options={[{ value: 'destination', label: unbrokenLabel }]}
+          value="destination"
+          onChange={() => undefined}
+        />
+      </div>
+      <div style={{ width: '16rem' }}>
+        <StyledSelectField
+          aria-label="Size"
+          name="size"
+          options={[{ value: 'small', label: 'S' }]}
+          value="small"
+          onChange={() => undefined}
+        />
+      </div>
     </div>
   ),
   play: async ({ canvasElement }) => {
-    await userEvent.click(
-      within(canvasElement).getByRole('combobox', { name: 'Destination' }),
-    );
+    const canvas = within(canvasElement);
+    await document.fonts.ready;
 
+    await userEvent.click(
+      canvas.getByRole('combobox', { name: 'Destination' }),
+    );
     const option = await screen.findByRole('option', { name: unbrokenLabel });
     const text = within(option).getByText(unbrokenLabel);
-    const box = option.getBoundingClientRect();
+    const optionBox = option.getBoundingClientRect();
+    const textBox = text.getBoundingClientRect();
 
-    await expect(box.left).toBeGreaterThanOrEqual(0);
-    await expect(box.right).toBeLessThanOrEqual(window.innerWidth);
-    await expect(text.scrollWidth).toBeLessThanOrEqual(text.clientWidth);
-    await expect(text.getBoundingClientRect().height).toBeGreaterThan(
-      parseFloat(getComputedStyle(text).lineHeight),
+    await expect(optionBox.left).toBeGreaterThanOrEqual(0);
+    await expect(optionBox.right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(textBox.left).toBeGreaterThanOrEqual(optionBox.left);
+    await expect(textBox.right).toBeLessThanOrEqual(optionBox.right);
+    // More than one line of text, so the word wrapped rather than clipped.
+    await expect(textBox.height).toBeGreaterThan(
+      2 * parseFloat(getComputedStyle(text).fontSize),
     );
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('option', { name: unbrokenLabel })).toBeNull(),
+    );
+
+    const sizeTrigger = canvas.getByRole('combobox', { name: 'Size' });
+    await userEvent.click(sizeTrigger);
+    const shortOption = await screen.findByRole('option', { name: 'S' });
+    await expect(
+      shortOption.getBoundingClientRect().width,
+    ).toBeGreaterThanOrEqual(sizeTrigger.getBoundingClientRect().width - 16);
   },
 };
 

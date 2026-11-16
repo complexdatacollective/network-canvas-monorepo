@@ -187,6 +187,16 @@ export const NegativeOption: Story = {
     );
     await expect(getComputedStyle(no).borderTopColor).not.toBe(destructive);
     await expect(getComputedStyle(indicatorOf(no)).color).toBe(primary);
+
+    // End where the story starts, on the destructive state it exists to show.
+    await userEvent.click(no);
+    await waitFor(() =>
+      expect(getComputedStyle(no).borderTopColor).toBe(destructive),
+    );
+    await expect(getComputedStyle(indicatorOf(no)).color).toBe(destructive);
+    await waitFor(() =>
+      expect(getComputedStyle(yes).borderTopColor).not.toBe(primary),
+    );
   },
 };
 
