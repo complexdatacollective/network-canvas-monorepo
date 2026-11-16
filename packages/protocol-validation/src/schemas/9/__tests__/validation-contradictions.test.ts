@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { dateWithinPickerRange } from '@codaco/shared-consts';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { findValidationContradictions } from '../variables/validation-contradictions.ts';
@@ -2769,7 +2770,14 @@ describe('record schema conformance — contradiction refinement', () => {
         validation: { greaterThanVariable: 'a' },
       },
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'a.validation.greaterThanVariable',
+        code: 'custom',
+        message:
+          'Attributes "start", "end" form an impossible comparison cycle',
+      },
+    ]);
   });
 
   it('accepts the same constraint stated from both sides', () => {
@@ -2837,23 +2845,34 @@ describe('R1 — absolute floors on count-valued rules', () => {
       }).success,
     ).toBe(true);
     expect(
-      VariablesSchema.safeParse({
-        first_name: {
+      parseIssues(
+        VariablesSchema.safeParse({
+          first_name: {
+            name: 'first_name',
+            type: 'text',
+            component: 'Text',
+            validation: { required: true, maxLength: 0 },
+          },
+        }),
+      ),
+    ).toEqual([
+      {
+        path: 'first_name.validation.maxLength',
+        code: 'custom',
+        message:
+          'Attribute "first_name": required answers cannot satisfy maxLength (0)',
+      },
+    ]);
+    expect(
+      parseIssues(
+        VariableSchema.safeParse({
           name: 'first_name',
           type: 'text',
           component: 'Text',
-          validation: { required: true, maxLength: 0 },
-        },
-      }).success,
-    ).toBe(false);
-    expect(
-      VariableSchema.safeParse({
-        name: 'first_name',
-        type: 'text',
-        component: 'Text',
-        validation: { minLength: -1 },
-      }).success,
-    ).toBe(false);
+          validation: { minLength: -1 },
+        }),
+      ),
+    ).toEqual([{ path: 'validation.minLength', code: 'too_small' }]);
   });
 
   it('accepts selection-count boundaries and rejects negative minSelected', () => {
@@ -2871,17 +2890,26 @@ describe('R1 — absolute floors on count-valued rules', () => {
       VariableSchema.safeParse(categorical({ maxSelected: 0 })).success,
     ).toBe(true);
     expect(
-      VariablesSchema.safeParse({
-        colors: categorical({ required: true, maxSelected: 0 }),
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        VariablesSchema.safeParse({
+          colors: categorical({ required: true, maxSelected: 0 }),
+        }),
+      ),
+    ).toEqual([
+      {
+        path: 'colors.validation.maxSelected',
+        code: 'custom',
+        message:
+          'Attribute "colors": required answers cannot satisfy maxSelected (0)',
+      },
+    ]);
     expect(
       VariableSchema.safeParse(categorical({ minSelected: 0, maxSelected: 1 }))
         .success,
     ).toBe(true);
     expect(
-      VariableSchema.safeParse(categorical({ minSelected: -1 })).success,
-    ).toBe(false);
+      parseIssues(VariableSchema.safeParse(categorical({ minSelected: -1 }))),
+    ).toEqual([{ path: 'validation.minSelected', code: 'too_small' }]);
   });
 
   it('accepts the floor values themselves and negative minValue/maxValue', () => {
@@ -2986,26 +3014,59 @@ describe('DatePicker parameters refinement', () => {
 
   it('rejects a bound finer than the picker resolution', () => {
     expect(
-      VariableSchema.safeParse(datePicker({ type: 'year', min: '2020-05-03' }))
-        .success,
-    ).toBe(false);
+      parseIssues(
+        VariableSchema.safeParse(
+          datePicker({ type: 'year', min: '2020-05-03' }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: 'parameters.min',
+        code: 'custom',
+        message:
+          'DatePicker "min" must be a valid YYYY date matching the picker\'s resolution',
+      },
+    ]);
   });
 
   it('rejects a bound coarser than the picker resolution', () => {
     expect(
-      VariableSchema.safeParse(datePicker({ type: 'full', min: '2020' }))
-        .success,
-    ).toBe(false);
+      parseIssues(
+        VariableSchema.safeParse(datePicker({ type: 'full', min: '2020' })),
+      ),
+    ).toEqual([
+      {
+        path: 'parameters.min',
+        code: 'custom',
+        message:
+          'DatePicker "min" must be a valid YYYY-MM-DD date matching the picker\'s resolution',
+      },
+    ]);
   });
 
   it('rejects impossible calendar dates and months', () => {
     expect(
-      VariableSchema.safeParse(datePicker({ min: '2020-02-31' })).success,
-    ).toBe(false);
+      parseIssues(VariableSchema.safeParse(datePicker({ min: '2020-02-31' }))),
+    ).toEqual([
+      {
+        path: 'parameters.min',
+        code: 'custom',
+        message:
+          'DatePicker "min" must be a valid YYYY-MM-DD date matching the picker\'s resolution',
+      },
+    ]);
     expect(
-      VariableSchema.safeParse(datePicker({ type: 'month', max: '2020-13' }))
-        .success,
-    ).toBe(false);
+      parseIssues(
+        VariableSchema.safeParse(datePicker({ type: 'month', max: '2020-13' })),
+      ),
+    ).toEqual([
+      {
+        path: 'parameters.max',
+        code: 'custom',
+        message:
+          'DatePicker "max" must be a valid YYYY-MM date matching the picker\'s resolution',
+      },
+    ]);
   });
 
   it('rejects min after max', () => {
@@ -3048,8 +3109,15 @@ describe('DatePicker parameters refinement', () => {
 
   it('still rejects an impossible calendar date with a small year', () => {
     expect(
-      VariableSchema.safeParse(datePicker({ min: '0099-02-30' })).success,
-    ).toBe(false);
+      parseIssues(VariableSchema.safeParse(datePicker({ min: '0099-02-30' }))),
+    ).toEqual([
+      {
+        path: 'parameters.min',
+        code: 'custom',
+        message:
+          'DatePicker "min" must be a valid YYYY-MM-DD date matching the picker\'s resolution',
+      },
+    ]);
   });
 
   // Eighth-wave Finding 2: the interview builds a year/month-resolution
@@ -3075,9 +3143,17 @@ describe('DatePicker parameters refinement', () => {
     'rejects a month-resolution bound %s whose year is below 1000',
     (bound) => {
       expect(
-        VariableSchema.safeParse(datePicker({ type: 'month', max: bound }))
-          .success,
-      ).toBe(false);
+        parseIssues(
+          VariableSchema.safeParse(datePicker({ type: 'month', max: bound })),
+        ),
+      ).toEqual([
+        {
+          path: 'parameters.max',
+          code: 'custom',
+          message:
+            'DatePicker "max" must use a four-digit year of 1000 or later at year/month resolution',
+        },
+      ]);
     },
   );
 

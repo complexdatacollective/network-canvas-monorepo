@@ -6,7 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import Dialog from './dialogs/Dialog';
 import Field from './form/Field/Field';
@@ -99,7 +99,6 @@ describe('Section', () => {
     await waitFor(() => {
       expect(toggle).toHaveAttribute('aria-checked', 'false');
     });
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -259,38 +258,24 @@ describe('Section', () => {
   });
 
   it('accepts defaultOpen only for toggleable sections', () => {
-    const toggleableProps = {
-      title: 'Toggleable section',
-      toggleable: true,
-      defaultOpen: false,
-    } satisfies SectionProps;
-
-    // @ts-expect-error defaultOpen is invalid when toggleable is omitted.
-    const alwaysOpenProps: SectionProps = {
-      title: 'Always-open section',
-      defaultOpen: false,
-    };
-
-    // @ts-expect-error defaultOpen is invalid when toggleable is false.
-    const explicitlyAlwaysOpenProps: SectionProps = {
-      title: 'Explicitly always-open section',
-      toggleable: false,
-      defaultOpen: false,
-    };
-
-    // @ts-expect-error onOpenChange is invalid when toggleable is omitted.
-    const guardedAlwaysOpenProps: SectionProps = {
-      title: 'Always-open guarded section',
-      onOpenChange: () => true,
-    };
-
-    expect(toggleableProps).toMatchObject({
-      toggleable: true,
-      defaultOpen: false,
-    });
-    void alwaysOpenProps;
-    void explicitlyAlwaysOpenProps;
-    void guardedAlwaysOpenProps;
+    expectTypeOf<{
+      title: string;
+      toggleable: true;
+      defaultOpen: boolean;
+    }>().toExtend<SectionProps>();
+    expectTypeOf<{
+      title: string;
+      defaultOpen: boolean;
+    }>().not.toExtend<SectionProps>();
+    expectTypeOf<{
+      title: string;
+      toggleable: false;
+      defaultOpen: boolean;
+    }>().not.toExtend<SectionProps>();
+    expectTypeOf<{
+      title: string;
+      onOpenChange: () => boolean;
+    }>().not.toExtend<SectionProps>();
   });
 
   it('opens and closes exactly once from the keyboard', async () => {

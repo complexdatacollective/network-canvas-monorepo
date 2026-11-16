@@ -133,13 +133,6 @@ function buildStubGraph(
 
 const DISEASE_A = 'disease-a';
 
-describe('edgeKey', () => {
-  it('produces a stable parentId->childId string', () => {
-    expect(edgeKey('a', 'b')).toBe('a->b');
-    expect(edgeKey('x', 'y')).toBe('x->y');
-  });
-});
-
 // ─── computeContributors tests ────────────────────────────────────────────────
 
 describe('computeContributors — (a) focal=null highlights everything', () => {

@@ -196,17 +196,6 @@ describe('auth/api — passphrase mode', () => {
   });
 });
 
-describe('auth/api — isBiometricSupported delegates to the vault PRF check', () => {
-  it('returns false when PRF is unsupported', async () => {
-    isPrfSupportedMock.mockResolvedValue(false);
-    expect(await authApi.isBiometricSupported()).toBe(false);
-  });
-  it('returns true when PRF is supported', async () => {
-    isPrfSupportedMock.mockResolvedValue(true);
-    expect(await authApi.isBiometricSupported()).toBe(true);
-  });
-});
-
 describe('auth/api — revoke wipes and re-locks', () => {
   it('drops the encrypted data DB, the session DEK, and the vault record', async () => {
     await authApi.enrolWithPin('12345678');

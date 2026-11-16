@@ -15,7 +15,7 @@ test.use({ locale: 'es-MX' });
 /** The header's language pill, whatever language it is currently named in. */
 function languageSwitcher(page: Page) {
   return page.getByRole('combobox', {
-    name: /^(Idioma de la interfaz|Interface language):/,
+    name: /^Interface language:/,
   });
 }
 
@@ -58,7 +58,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(switcher).toHaveText(/^Español$/);
   await expect(switcher.locator('[lang]')).toHaveAttribute('lang', 'es');
   await expect(switcher).toHaveAccessibleName(
-    'Idioma de la interfaz: Automático (Español)',
+    'Interface language: Automático (Español)',
   );
   await switcher.click();
   const popover = languagePopover(page);
@@ -106,7 +106,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await expect(languageSwitcher(page)).toHaveText(/^Español$/);
   await expect(languageSwitcher(page)).toHaveAccessibleName(
-    'Idioma de la interfaz: Automático (Español)',
+    'Interface language: Automático (Español)',
   );
 });
 
@@ -194,7 +194,7 @@ test('authors an Information stage in Spanish and previews it in the protocol’
   ).toBeVisible();
   await selectLanguage(page, 'es');
   await expect(
-    page.getByRole('list', { name: 'Etapas del protocolo' }),
+    page.getByRole('list', { name: 'Protocol stages' }),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(beforeSwitch);
   await page
@@ -265,7 +265,7 @@ test('uploads and inspects a resource in Spanish with an unchanged authored file
   await seed(emptyProtocol(), { name: 'Resource_Study_Á1' });
   await page.goto('/protocol/assets');
   await page
-    .getByRole('button', { name: 'Subir archivo' })
+    .getByRole('button', { name: 'Upload file' })
     .locator('input[type="file"]')
     .setInputFiles({
       name: 'Research_Map_Á1.svg',
@@ -274,7 +274,7 @@ test('uploads and inspects a resource in Spanish with an unchanged authored file
         '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#6ecae8"/></svg>',
       ),
     });
-  const library = page.getByRole('listbox', { name: 'Biblioteca de recursos' });
+  const library = page.getByRole('listbox', { name: 'Resource library' });
   await expect(
     library.getByRole('heading', { name: 'Research_Map_Á1.svg', exact: true }),
   ).toBeVisible();
@@ -303,7 +303,7 @@ test('updates an open protocol-info table when another tab changes the device la
   await seed(emptyProtocol(), { name: 'Metadata_Study_Á1' });
   await page.goto('/');
   await page
-    .getByRole('button', { name: 'Acciones de Metadata_Study_Á1' })
+    .getByRole('button', { name: 'Actions for Metadata_Study_Á1' })
     .click();
   await page.getByRole('menuitem', { name: 'Ver más información' }).click();
   const info = page.getByRole('dialog', { name: 'Metadata_Study_Á1' });

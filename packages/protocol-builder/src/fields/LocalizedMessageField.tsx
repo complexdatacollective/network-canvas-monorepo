@@ -65,12 +65,6 @@ const messages = defineMessages({
     description:
       'Second line of an entry in the insert-a-value menu of a text a participant reads. The entry names something the text can change with, such as “Participant or someone else” or “Relation”; choosing it inserts a piece of text with one version for each of its cases, such as one about the participant and one about someone else.',
   },
-  versionsByCase: {
-    id: 'protocolBuilder.localizedMessage.versionsByCase',
-    defaultMessage: 'Wording that changes with {value}',
-    description:
-      'Accessible name of a piece of text with one version for each case of something it changes with. value is that thing’s name, such as “Participant or someone else” or “Relation”.',
-  },
   pluralVersion: {
     id: 'protocolBuilder.localizedMessage.pluralVersion',
     defaultMessage: 'When “{placeholder}” is {numbers}',
@@ -375,9 +369,7 @@ const messageNaming = (
     switchLabel: (node) =>
       node.type === 'plural'
         ? numbers.switchLabel(valueLabel(node.argument))
-        : intl.formatMessage(messages.versionsByCase, {
-            value: valueLabel(node.argument),
-          }),
+        : `Wording that changes with ${valueLabel(node.argument)}`,
     versionLabel: (node, key) =>
       node.type === 'plural'
         ? numbers.versionLabel(key)

@@ -27,34 +27,6 @@ import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { cx } from '~/utils/cva';
 
 import { timelineRowGrid } from './rowLayout';
-const chromeMessages = defineMessages({
-  editStage: {
-    id: 'architect.chrome.timeline.timelineStageRow.editStage',
-    defaultMessage:
-      'Edit stage {position, number}: {stageName}, {interfaceName}',
-    description:
-      'Accessible name of the control on a timeline stage that opens the stage for editing; read only by screen readers. position is its number in the timeline, stageName its title, interfaceName the name of its interface type.',
-  },
-  editStage76e56: {
-    id: 'architect.chrome.timeline.timelineStageRow.editStage76e56',
-    defaultMessage: 'Edit stage {position, number}: {stageName}',
-    description:
-      'Accessible name of the control on a timeline stage that opens the stage for editing, used when the stage type has no known name. position is its number in the timeline; stageName is its title.',
-  },
-  viewStage: {
-    id: 'architect.chrome.timeline.timelineStageRow.viewStage',
-    defaultMessage:
-      'View stage {position, number}: {stageName}, {interfaceName}',
-    description:
-      'Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it.',
-  },
-  viewStageWithoutInterface: {
-    id: 'architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface',
-    defaultMessage: 'View stage {position, number}: {stageName}',
-    description:
-      'Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it. Used when the stage type has no known name.',
-  },
-});
 const messages = defineMessages({
   hasFilter: {
     id: 'architect.timeline.timelineStageRow.hasFilter',
@@ -68,22 +40,7 @@ const messages = defineMessages({
     description:
       'Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has skip logic set.',
   },
-  deleteStage: {
-    id: 'architect.timeline.timelineStageRow.deleteStage',
-    defaultMessage: 'Delete stage {position, number}: {stageName}',
-    description:
-      'Accessible name of the trash button on a timeline stage that deletes the stage, after confirmation. position is its number in the timeline; stageName is its title.',
-  },
 });
-const finalMessages = defineMessages({
-  untitledStage: {
-    id: 'architect.final.components.Timeline.TimelineStageRow.untitledStage',
-    defaultMessage: 'Untitled stage',
-    description:
-      "Name used in a timeline stage's accessible labels when the stage has no title yet.",
-  },
-});
-
 // Reveal Delete on row hover or when keyboard focus reaches the button itself.
 // Using the row's `focus-within` state would also react to pointer focus on the
 // preview button, leaving Delete stuck visible after a preview-origin drag.
@@ -181,8 +138,7 @@ const TimelineStageRow = ({
     if (readOnly) dragControls.stop();
   }, [readOnly, dragControls]);
 
-  const stageName =
-    stage.label || intl.formatMessage(finalMessages.untitledStage);
+  const stageName = stage.label || 'Untitled stage';
   const position = index + 1;
   // The row's thumbnail is what tells a sighted researcher which interface a
   // stage uses; naming the open control after it too keeps a screen-reader
@@ -190,22 +146,10 @@ const TimelineStageRow = ({
   // not know — an imported protocol can carry one — in which case the label
   // says what it can rather than inventing a name.
   const interfaceName = interfaceDisplayName(stage.type, intl);
-  const withInterface = readOnly
-    ? chromeMessages.viewStage
-    : chromeMessages.editStage;
-  const withoutInterface = readOnly
-    ? chromeMessages.viewStageWithoutInterface
-    : chromeMessages.editStage76e56;
+  const openVerb = readOnly ? 'View' : 'Edit';
   const openControlLabel = interfaceName
-    ? intl.formatMessage(withInterface, {
-        position: position,
-        stageName: stageName,
-        interfaceName: interfaceName,
-      })
-    : intl.formatMessage(withoutInterface, {
-        position: position,
-        stageName: stageName,
-      });
+    ? `${openVerb} stage ${position}: ${stageName}, ${interfaceName}`
+    : `${openVerb} stage ${position}: ${stageName}`;
 
   // The whole arrow-key reorder mechanism — bounds check, refusal channel, and
   // the refocus a keyboard move otherwise loses — belongs to fresco-ui's
@@ -374,10 +318,8 @@ const TimelineStageRow = ({
               render={
                 <IconButton
                   icon={<Trash2 />}
-                  aria-label={intl.formatMessage(messages.deleteStage, {
-                    position: position,
-                    stageName: stageName,
-                  })}
+                  aria-label={`Delete stage ${position}: ${stageName}`}
+                  lang="en"
                   aria-disabled={deleteBlockedReason !== undefined || undefined}
                   aria-describedby={
                     deleteBlockedReason === undefined

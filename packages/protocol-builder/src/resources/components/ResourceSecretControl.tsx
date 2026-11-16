@@ -2,11 +2,7 @@ import { Redacted } from 'effect';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import {
-  createMessageError,
-  defineMessages,
-  formatMessageError,
-} from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -87,12 +83,6 @@ const messages = defineMessages({
     defaultMessage: 'Add API key',
     description:
       'Button that submits the name and value of a new API key to the host.',
-  },
-  addedAnnouncement: {
-    id: 'protocolBuilder.resourceSecret.addedAnnouncement',
-    defaultMessage: '{name} was added.',
-    description:
-      'Announced to assistive technology once an API key has been added. name is the name the researcher gave it.',
   },
 });
 
@@ -184,10 +174,8 @@ export default function ResourceSecretControl({
     Readonly<{ name?: string; value?: string }>
   >({});
   /**
-   * What was announced last, encoded for the same reason the errors above are:
-   * an announcement stays in its live region until another replaces it, so a
-   * sentence formatted when the key was staged would be the one thing left in
-   * the old language after the application changes its own.
+   * What was announced last. English in every language, because it is read
+   * only by a screen reader.
    */
   const [status, setStatus] = useState('');
   const waitingId = useId();
@@ -315,11 +303,7 @@ export default function ResourceSecretControl({
         // holding the value it carried.
         unsettled.current = undefined;
         requestId.current = uuid();
-        setStatus(
-          createMessageError(messages.addedAnnouncement, {
-            name: Redacted.value(staged.name),
-          }),
-        );
+        setStatus(`${Redacted.value(staged.name)} was added.`);
         onStaged(staged);
       },
       // The key was staged for a form nobody is watching any more — the
@@ -435,8 +419,13 @@ export default function ResourceSecretControl({
           {intl.formatMessage(messages.submit)}
         </Button>
 
-        <span className="sr-only" aria-live="polite" aria-atomic="true">
-          {formatMessageError(status, intl) ?? status}
+        <span
+          className="sr-only"
+          aria-live="polite"
+          aria-atomic="true"
+          lang="en"
+        >
+          {status}
         </span>
       </div>
     </form>

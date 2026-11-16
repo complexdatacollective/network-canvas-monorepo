@@ -4,12 +4,14 @@ import { motion } from 'motion/react';
 import { useState } from 'react';
 import { action } from 'storybook/actions';
 import { useArgs } from 'storybook/preview-api';
+import { expect, within } from 'storybook/test';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button, IconButton, MotionButton } from '../../../Button';
 import Dialog from '../../../dialogs/Dialog';
+import Surface from '../../../layout/Surface';
 import { withDialogProvider } from '../../../storybook-support/withDialogProvider';
 import { cx } from '../../../utils/cva';
 import Field from '../../Field/Field';
@@ -1159,5 +1161,58 @@ empty object instead.
         editorComponent={ContactDialogEditor}
       />
     );
+  },
+};
+
+function NestedSurfaceItem({ item }: ArrayFieldItemProps<SimpleItemType>) {
+  return (
+    <Surface noContainer data-testid="nested-surface">
+      {item?.label}
+    </Surface>
+  );
+}
+
+/**
+ * Each row is an accent Surface, so a Surface an item renders inside it
+ * steps one level up the accent ladder rather than restarting it.
+ */
+export const NestedSurfaces: Story = {
+  render: () => (
+    <ArrayField<SimpleItemType>
+      value={sampleItems}
+      onChange={action('onChange')}
+      itemComponent={NestedSurfaceItem}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const backgroundOf = (className: string) => {
+      const probe = document.createElement('span');
+      probe.className = className;
+      canvasElement.append(probe);
+      const { backgroundColor } = getComputedStyle(probe);
+      probe.remove();
+      return backgroundColor;
+    };
+    const accent = backgroundOf('bg-surface-accent');
+    const accentRaised = backgroundOf('bg-surface-accent-1');
+    await expect(accent).not.toBe(accentRaised);
+
+    const nestedSurfaces = await canvas.findAllByTestId('nested-surface');
+    await expect(nestedSurfaces).toHaveLength(sampleItems.length);
+    for (const nested of nestedSurfaces) {
+      const row = nested.closest('li');
+      if (!row) throw new Error('Expected each item inside a list row');
+      const rowStyle = getComputedStyle(row);
+      const nestedStyle = getComputedStyle(nested);
+      await expect(rowStyle.getPropertyValue('--surface-depth').trim()).toBe(
+        '0',
+      );
+      await expect(nestedStyle.getPropertyValue('--surface-depth').trim()).toBe(
+        '1',
+      );
+      await expect(rowStyle.backgroundColor).toBe(accent);
+      await expect(nestedStyle.backgroundColor).toBe(accentRaised);
+    }
   },
 };

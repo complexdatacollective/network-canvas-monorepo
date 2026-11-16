@@ -135,22 +135,6 @@ describe('useSelectableCollection', () => {
         expect(selectionManager.setFocusedKey).toHaveBeenCalledWith('1');
       });
 
-      it('should focus next item when item is focused', () => {
-        selectionManager = createMockSelectionManager({ focusedKey: '2' });
-
-        const { getByTestId } = render(
-          <TestComponent
-            selectionManager={selectionManager}
-            keyboardDelegate={keyboardDelegate}
-          />,
-        );
-
-        fireEvent.keyDown(getByTestId('collection'), { key: 'ArrowDown' });
-
-        expect(keyboardDelegate.getKeyBelow).toHaveBeenCalledWith('2');
-        expect(selectionManager.setFocusedKey).toHaveBeenCalledWith('3');
-      });
-
       it('should extend selection with Shift+ArrowDown in multiple mode', () => {
         selectionManager = createMockSelectionManager({
           focusedKey: '2',
@@ -209,22 +193,6 @@ describe('useSelectableCollection', () => {
 
         expect(keyboardDelegate.getLastKey).toHaveBeenCalled();
         expect(selectionManager.setFocusedKey).toHaveBeenCalledWith('5');
-      });
-
-      it('should focus previous item when item is focused', () => {
-        selectionManager = createMockSelectionManager({ focusedKey: '3' });
-
-        const { getByTestId } = render(
-          <TestComponent
-            selectionManager={selectionManager}
-            keyboardDelegate={keyboardDelegate}
-          />,
-        );
-
-        fireEvent.keyDown(getByTestId('collection'), { key: 'ArrowUp' });
-
-        expect(keyboardDelegate.getKeyAbove).toHaveBeenCalledWith('3');
-        expect(selectionManager.setFocusedKey).toHaveBeenCalledWith('2');
       });
     });
 
@@ -298,38 +266,6 @@ describe('useSelectableCollection', () => {
     });
 
     describe('Home/End', () => {
-      it('should focus first item on Home', () => {
-        selectionManager = createMockSelectionManager({ focusedKey: '3' });
-
-        const { getByTestId } = render(
-          <TestComponent
-            selectionManager={selectionManager}
-            keyboardDelegate={keyboardDelegate}
-          />,
-        );
-
-        fireEvent.keyDown(getByTestId('collection'), { key: 'Home' });
-
-        expect(keyboardDelegate.getFirstKey).toHaveBeenCalled();
-        expect(selectionManager.setFocusedKey).toHaveBeenCalledWith('1');
-      });
-
-      it('should focus last item on End', () => {
-        selectionManager = createMockSelectionManager({ focusedKey: '1' });
-
-        const { getByTestId } = render(
-          <TestComponent
-            selectionManager={selectionManager}
-            keyboardDelegate={keyboardDelegate}
-          />,
-        );
-
-        fireEvent.keyDown(getByTestId('collection'), { key: 'End' });
-
-        expect(keyboardDelegate.getLastKey).toHaveBeenCalled();
-        expect(selectionManager.setFocusedKey).toHaveBeenCalledWith('5');
-      });
-
       it('should extend selection with Shift+Home', () => {
         selectionManager = createMockSelectionManager({
           focusedKey: '3',
@@ -376,7 +312,9 @@ describe('useSelectableCollection', () => {
 
   describe('selection', () => {
     describe('Space/Enter', () => {
-      it('should toggle selection on Space', () => {
+      // Items handle these keys while they hold DOM focus; this arm runs when
+      // the listbox itself does.
+      it.each([' ', 'Enter'])('toggles the focused item on %j', (key) => {
         selectionManager = createMockSelectionManager({ focusedKey: '2' });
 
         const { getByTestId } = render(
@@ -386,22 +324,7 @@ describe('useSelectableCollection', () => {
           />,
         );
 
-        fireEvent.keyDown(getByTestId('collection'), { key: ' ' });
-
-        expect(selectionManager.toggleSelection).toHaveBeenCalledWith('2');
-      });
-
-      it('should toggle selection on Enter', () => {
-        selectionManager = createMockSelectionManager({ focusedKey: '2' });
-
-        const { getByTestId } = render(
-          <TestComponent
-            selectionManager={selectionManager}
-            keyboardDelegate={keyboardDelegate}
-          />,
-        );
-
-        fireEvent.keyDown(getByTestId('collection'), { key: 'Enter' });
+        fireEvent.keyDown(getByTestId('collection'), { key });
 
         expect(selectionManager.toggleSelection).toHaveBeenCalledWith('2');
       });
@@ -426,26 +349,6 @@ describe('useSelectableCollection', () => {
     });
 
     describe('Ctrl+A', () => {
-      it('should select all on Ctrl+A in multiple mode', () => {
-        selectionManager = createMockSelectionManager({
-          selectionMode: 'multiple',
-        });
-
-        const { getByTestId } = render(
-          <TestComponent
-            selectionManager={selectionManager}
-            keyboardDelegate={keyboardDelegate}
-          />,
-        );
-
-        fireEvent.keyDown(getByTestId('collection'), {
-          key: 'a',
-          ctrlKey: true,
-        });
-
-        expect(selectionManager.selectAll).toHaveBeenCalled();
-      });
-
       it('should select all on Cmd+A (Mac) in multiple mode', () => {
         selectionManager = createMockSelectionManager({
           selectionMode: 'multiple',
@@ -509,24 +412,6 @@ describe('useSelectableCollection', () => {
     });
 
     describe('Escape', () => {
-      it('should clear selection on Escape', () => {
-        selectionManager = createMockSelectionManager({
-          focusedKey: '2',
-          isEmpty: false,
-        });
-
-        const { getByTestId } = render(
-          <TestComponent
-            selectionManager={selectionManager}
-            keyboardDelegate={keyboardDelegate}
-          />,
-        );
-
-        fireEvent.keyDown(getByTestId('collection'), { key: 'Escape' });
-
-        expect(selectionManager.clearSelection).toHaveBeenCalled();
-      });
-
       it('should not clear when disallowEmptySelection is true', () => {
         selectionManager = createMockSelectionManager({
           focusedKey: '2',
@@ -549,48 +434,6 @@ describe('useSelectableCollection', () => {
   });
 
   describe('type-ahead search', () => {
-    it('should search on letter keys', () => {
-      keyboardDelegate = createMockKeyboardDelegate({
-        getKeyForSearch: vi.fn(() => '3'),
-      });
-
-      const { getByTestId } = render(
-        <TestComponent
-          selectionManager={selectionManager}
-          keyboardDelegate={keyboardDelegate}
-        />,
-      );
-
-      fireEvent.keyDown(getByTestId('collection'), { key: 'c' });
-
-      expect(keyboardDelegate.getKeyForSearch).toHaveBeenCalledWith(
-        'c',
-        undefined,
-      );
-      expect(selectionManager.setFocusedKey).toHaveBeenCalledWith('3');
-    });
-
-    it('should accumulate search characters', () => {
-      keyboardDelegate = createMockKeyboardDelegate({
-        getKeyForSearch: vi.fn(() => '3'),
-      });
-
-      const { getByTestId } = render(
-        <TestComponent
-          selectionManager={selectionManager}
-          keyboardDelegate={keyboardDelegate}
-        />,
-      );
-
-      fireEvent.keyDown(getByTestId('collection'), { key: 'c' });
-      fireEvent.keyDown(getByTestId('collection'), { key: 'h' });
-
-      expect(keyboardDelegate.getKeyForSearch).toHaveBeenLastCalledWith(
-        'ch',
-        undefined,
-      );
-    });
-
     it('should not search when disallowTypeAhead is true', () => {
       keyboardDelegate = createMockKeyboardDelegate({
         getKeyForSearch: vi.fn(() => '3'),

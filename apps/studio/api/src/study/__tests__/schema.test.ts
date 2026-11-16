@@ -863,7 +863,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
             Effect.gen(function* () {
               const studyId = yield* newStudy();
               const waveId = yield* newWave(studyId);
-              const secondWaveId = yield* newWave(studyId, { wave_number: 2 });
+              yield* newWave(studyId, { wave_number: 2 });
               yield* closeStudy(studyId);
 
               expect(
@@ -909,8 +909,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                   [openWaveId],
                 ),
               ).toBe(1);
-
-              expect(secondWaveId).toBeTruthy();
             }),
         );
       });
@@ -1168,7 +1166,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
           'holds participant identity immutable and refuses unmarked deletes',
           () =>
             Effect.gen(function* () {
-              const { studyId, participantId } = yield* newTrio();
+              const { participantId } = yield* newTrio();
               const otherStudyId = yield* newStudy();
 
               expect(
@@ -1197,7 +1195,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               ).toContain(
                 'participant rows are deleted only by an audited erasure or the maintenance purge',
               );
-              expect(studyId).toBeTruthy();
             }),
         );
 

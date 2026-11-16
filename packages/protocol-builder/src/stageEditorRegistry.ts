@@ -1,23 +1,15 @@
 /**
- * Where every editor is wired in, and the only file an editor has to change to
- * be wired in.
+ * Where every editor is wired in: import its part and add it to
+ * `REGISTRY_PARTS`. A part is what `defineStageEditor` answers with: one
+ * editor, one interface, one line here.
  *
- * ADDING AN EDITOR IS TWO LINES:
+ * `stageEditorRegistry` and every check below are derived from that list, and
+ * a schema stage type that no part covers fails `typecheck` rather than a
+ * review.
  *
- * 1. Import its part and add it to `REGISTRY_PARTS`.
- * 2. Delete the stage types it claims from `AWAITING_STAGE_EDITORS`.
- *
- * A part is what `defineStageEditor` answers with: one editor, one interface,
- * one line here.
- *
- * Nothing else — `stageEditorRegistry` and every check below are derived from
- * those two lists, and both are checked in both directions at compile time, so
- * a part added without its types being removed (or a type removed that no part
- * covers) fails `typecheck` rather than a review.
- *
- * Both lists are written to be merged rather than to be read: one entry per
- * line, in alphabetical order, each with a trailing comma, so that families
- * landing on separate branches change separate lines. `__tests__/
+ * The list is written to be merged rather than to be read: one entry per line,
+ * in alphabetical order, each with a trailing comma, so that editors landing on
+ * separate branches change separate lines. `__tests__/
  * stageEditorRegistry.test.tsx` holds that shape in place.
  *
  * AN EDITOR DECLARES ITS PART AWAY FROM HERE — through `defineStageEditor`,
@@ -160,9 +152,7 @@ export const stageEditorRegistry: StageEditorRegistryPart =
  * package ships. It never supplies one to take the rest away — and dispatching
  * through what it handed over did exactly that: a host naming only
  * `Information` would leave every other stage throwing
- * `UnregisteredStageTypeError`, in the host, from the day the first family
- * lands. Nothing shows it while the package's own registry is still empty,
- * which is why it cannot wait for the families to be got right.
+ * `UnregisteredStageTypeError` in the host.
  *
  * Not `composeStageEditorRegistry`, which refuses a second claim on an
  * interface: two FAMILIES claiming one is a mistake with no answer, while a
@@ -173,8 +163,7 @@ export const stageEditorRegistry: StageEditorRegistryPart =
  *
  * Takes the base rather than reading `stageEditorRegistry` itself, so it is a
  * function of what it is given: the only caller passes the package's own, and
- * a test can hand it a registry that HAS families in it, which is the state
- * this exists for and the one this branch cannot otherwise produce.
+ * a test can hand it a registry of its own.
  */
 export function stageEditorsWithHostOverrides(
   base: StageEditorRegistryPart,
@@ -201,17 +190,10 @@ type MergeAll<Parts extends readonly unknown[]> = Parts extends readonly [
 export type RegisteredIn<Parts extends readonly StageEditorRegistryPart[]> =
   Extract<keyof MergeAll<Parts>, StageType>;
 
-/** The stage types it leaves to some family that has not landed yet. */
-export type UnregisteredIn<Parts extends readonly StageEditorRegistryPart[]> =
-  Exclude<StageType, RegisteredIn<Parts>>;
-
-/** `true` only when `Listed` names every type `Parts` leaves uncovered. */
-export type AwaitingListIsComplete<
+/** `true` only when the parts between them cover every schema stage type. */
+export type CoversEveryStageType<
   Parts extends readonly StageEditorRegistryPart[],
-  Listed extends readonly StageType[],
-> = [Exclude<UnregisteredIn<Parts>, Listed[number]>] extends [never]
-  ? true
-  : false;
+> = [Exclude<StageType, RegisteredIn<Parts>>] extends [never] ? true : false;
 
 /** `true` only when no two parts in the tuple claim the same stage type. */
 export type PartsAreDisjoint<Parts extends readonly StageEditorRegistryPart[]> =
@@ -224,35 +206,17 @@ export type PartsAreDisjoint<Parts extends readonly StageEditorRegistryPart[]> =
       : false
     : true;
 
-export type RegisteredStageType = RegisteredIn<typeof REGISTRY_PARTS>;
-
-export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
-
-/**
- * Every stage type still waiting for the family that will own it.
- *
- * Spelled out rather than derived, and checked in both directions. A type that
- * gains an editor must leave this list, or the `satisfies` below refuses it.
- * A type the schema gains that no family covers must join it, or
- * `UnregisteredStageTypesAreListed` refuses to compile — which is the whole
- * point of writing it down: the day the last family lands, this list is empty,
- * and adding a schema member then breaks the build in this package until an
- * editor exists for it.
- */
-export const AWAITING_STAGE_EDITORS =
-  [] as const satisfies readonly UnregisteredStageType[];
-
 export type Assert<T extends true> = T;
 
 /**
- * Compile-time proof that nothing is missing from the list above.
+ * Compile-time proof that every schema stage type has an editor.
  *
  * A pure type: it has no runtime cost, and it fails the typecheck rather than
  * a test, so a stage type added to the schema cannot reach a review with
- * nothing rendering it and nothing saying so.
+ * nothing rendering it.
  */
-export type UnregisteredStageTypesAreListed = Assert<
-  AwaitingListIsComplete<typeof REGISTRY_PARTS, typeof AWAITING_STAGE_EDITORS>
+export type EveryStageTypeHasAnEditor = Assert<
+  CoversEveryStageType<typeof REGISTRY_PARTS>
 >;
 
 /**

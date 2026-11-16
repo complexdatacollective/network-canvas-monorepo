@@ -484,7 +484,8 @@ export default function GeospatialInterface({
         {useStub && (
           <button
             type="button"
-            aria-label={intl.formatMessage(interfaceMessages.stubMap)}
+            aria-label="Stubbed map (click to select test feature)"
+            lang="en"
             onClick={handleStubMapClick}
             disabled={!stubReady}
             data-testid="geospatial-stub-click-area"
@@ -521,7 +522,8 @@ export default function GeospatialInterface({
                   setLocationValue(null);
                 }}
                 color="primary"
-                aria-label={intl.formatMessage(interfaceMessages.deselect)}
+                aria-label="Deselect"
+                lang="en"
                 icon={<X />}
                 data-testid="deselect-outside-area-button"
               />
@@ -574,7 +576,8 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomIn}
             icon={<ZoomIn />}
-            aria-label={intl.formatMessage(interfaceMessages.mapZoomIn)}
+            aria-label="Zoom in"
+            lang="en"
             color="dynamic"
             data-testid="map-zoom-in"
           />
@@ -582,7 +585,8 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomOut}
             icon={<ZoomOut />}
-            aria-label={intl.formatMessage(interfaceMessages.mapZoomOut)}
+            aria-label="Zoom out"
+            lang="en"
             color="dynamic"
             data-testid="map-zoom-out"
           />
@@ -590,7 +594,8 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onRecenter}
             icon={<LocateFixed />}
-            aria-label={intl.formatMessage(interfaceMessages.recenterMap)}
+            aria-label="Recenter Map"
+            lang="en"
             color="dynamic"
             data-testid="map-recenter"
           />

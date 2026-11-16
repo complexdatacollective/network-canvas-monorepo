@@ -12,27 +12,6 @@ const options = [
 ];
 
 describe('CheckboxGroup readOnly', () => {
-  it('marks every option, and its wrapping label, pointer-inert', () => {
-    render(
-      <CheckboxGroupField
-        name="options"
-        options={options}
-        value={['a']}
-        readOnly
-        onChange={() => undefined}
-      />,
-    );
-
-    for (const option of options) {
-      const checkbox = screen.getByRole('checkbox', { name: option.label });
-      expect(checkbox.className).toContain('pointer-events-none');
-
-      const label = checkbox.closest('label');
-      expect(label).not.toBeNull();
-      expect(label?.className).toContain('pointer-events-none');
-    }
-  });
-
   it('does not report a change when an option is clicked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

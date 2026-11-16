@@ -72,8 +72,8 @@ describe.skipIf(!testDb)('queueing a sign-in email', () => {
 
     suite.effect('rejects rather than resolve when the queue refuses', () =>
       Effect.gen(function* () {
-        const outcome = yield* Effect.exit(sendThroughHook);
-        assert.isTrue(outcome._tag === 'Failure');
+        const refused = yield* Effect.flip(sendThroughHook);
+        assert.instanceOf(refused, JobRefused);
       }).pipe(Effect.provide(refusingJobs)),
     );
 
@@ -84,7 +84,6 @@ describe.skipIf(!testDb)('queueing a sign-in email', () => {
           const response = yield* requestMagicLink(
             `refused-${Date.now()}@example.org`,
           );
-          assert.notStrictEqual(response.status, 200);
           assert.isAtLeast(response.status, 500);
         }).pipe(Effect.provide(liveAuth.pipe(Layer.provide(refusingJobs)))),
     );

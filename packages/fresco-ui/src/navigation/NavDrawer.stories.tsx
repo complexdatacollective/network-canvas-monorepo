@@ -348,9 +348,11 @@ export const StaysOpenWhenTheNavigationIsCancelled: Story = {
       within(dialog).getByRole('link', { name: 'Participants 84' }),
     );
 
-    await expect(
-      await screen.findByRole('dialog', { name: 'Study' }),
-    ).toBeVisible();
+    // The close on a committed navigation runs in an effect after the click,
+    // so a check made at once passes while the drawer is about to close.
+    // Give it time to be wrong.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expect(screen.getByRole('dialog', { name: 'Study' })).toBeVisible();
   },
 };
 

@@ -241,6 +241,11 @@ describe('browsing a protocol another tab holds', () => {
     },
   );
 
+  // A fixture that lost its stages would leave the sweep below with no cases.
+  it('has stage editors to sweep', () => {
+    expect(STAGE_ROUTES.length).toBeGreaterThan(0);
+  });
+
   it.each(STAGE_ROUTES)(
     'opens a %s stage read-only, with nothing that edits it',
     async (_type, path) => {

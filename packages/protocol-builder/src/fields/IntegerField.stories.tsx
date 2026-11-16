@@ -155,6 +155,11 @@ export const SomethingThatIsNotACount: Story = {
       );
     });
     await expect(box).toHaveAttribute('aria-invalid', 'true');
+    // And announced when it arrives, rather than only found by someone who
+    // goes looking for the control's description.
+    await expect(
+      canvas.getByText(NOT_A_WHOLE_NUMBER).closest('[aria-live]'),
+    ).not.toBeNull();
   },
 };
 

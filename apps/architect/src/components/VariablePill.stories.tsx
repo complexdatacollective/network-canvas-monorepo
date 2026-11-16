@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect } from 'storybook/test';
 
 import type { VariableType } from '@codaco/protocol-validation';
 
@@ -128,11 +129,26 @@ independently:
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Static: Story = {};
+const borderOf = (canvasElement: HTMLElement) => {
+  const pill = canvasElement.querySelector('data');
+  if (!pill) throw new Error('the pill did not render a data element');
+  return getComputedStyle(pill).backgroundImage;
+};
+
+export const Static: Story = {
+  play: async ({ canvasElement }) => {
+    await expect(borderOf(canvasElement)).not.toContain('conic-gradient');
+  },
+};
 
 export const Animated: Story = {
   args: {
     animated: true,
+  },
+  // Animation is independent of editing: the pill stays a non-interactive
+  // data element and still draws the orbiting gradient border.
+  play: async ({ canvasElement }) => {
+    await expect(borderOf(canvasElement)).toContain('conic-gradient');
   },
 };
 

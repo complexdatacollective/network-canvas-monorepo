@@ -222,8 +222,12 @@ export function useDataViewColumns({
           />
         ),
         enableSorting: true,
+        // Typed by whoever started the interview, in its own direction.
         cell: ({ getValue }) => (
-          <span className="font-monospace text-xs font-bold">
+          <span
+            dir="auto"
+            className="text-match-parent font-monospace text-xs font-bold"
+          >
             {getValue<string>()}
           </span>
         ),
@@ -244,7 +248,11 @@ export function useDataViewColumns({
               aria-hidden
               className="bg-sea-green h-2.5 w-2.5 rounded-full"
             />
-            <span className="font-heading font-extrabold">
+            {/* The researcher's name for the protocol, in its own direction. */}
+            <span
+              dir="auto"
+              className="text-match-parent font-heading font-extrabold"
+            >
               {getValue<string>()}
             </span>
           </span>

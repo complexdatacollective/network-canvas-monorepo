@@ -125,8 +125,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         ).toBeVisible();
 
         // Ben Brown's location is '' in roster-small.json. DataCard renders an
-        // empty value as the interview's "No value" message
-        // (interview.interfaces.emptyValue).
+        // empty value as screen-reader-only "No value" text.
         const benCard = roster.getRosterNode('Ben Brown');
         await expect(
           benCard.getByText('No value', { exact: true }),

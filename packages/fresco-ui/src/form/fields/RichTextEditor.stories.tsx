@@ -1012,6 +1012,8 @@ export const WithVersionsAndInsertMenu: Story = {
       'false',
     );
     // Apart from the edits before it, so undo takes back only the removal.
+    // The history groups edits made within 500 ms of each other, and nothing
+    // on the page reports that window closing, so this waits it out.
     await new Promise((resolve) => setTimeout(resolve, 600));
     await userEvent.keyboard('{Backspace}');
     await waitFor(() =>

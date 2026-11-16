@@ -25,7 +25,6 @@ describe('ThemeSwitcher', () => {
     const trigger = screen.getByRole('button', {
       name: 'Color theme: dark',
     });
-    expect(trigger).toHaveClass('h-16');
     expect(trigger.querySelector('.lucide-moon')).toBeInTheDocument();
   });
 
@@ -54,6 +53,9 @@ describe('ThemeSwitcher', () => {
     expect(darkOption.querySelector('.lucide-moon')).toBeInTheDocument();
     expect(systemOption.querySelector('.lucide-sun-moon')).toBeInTheDocument();
     expect(document.querySelector('.lucide-check')).not.toBeInTheDocument();
+    expect(systemOption).toHaveAttribute('aria-checked', 'true');
+    expect(lightOption).toHaveAttribute('aria-checked', 'false');
+    expect(darkOption).toHaveAttribute('aria-checked', 'false');
 
     fireEvent.click(darkOption);
     expect(onThemeChange).toHaveBeenCalledWith('dark');

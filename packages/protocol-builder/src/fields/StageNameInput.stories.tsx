@@ -83,16 +83,22 @@ export const ASpectator: Story = {
 /**
  * A pasted name is still one line: breaks become spaces rather than being
  * dropped, so two pasted lines do not run together into one word.
+ *
+ * Nothing is shortened on the way. `maxLength` is the browser's and lands on
+ * the raw value first, so a normalisation that dropped characters would leave
+ * the cap discarding ones the finished name had room for.
  */
 export const APasteWithLineBreaks: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const box = canvas.getByRole('textbox', { name: 'Stage name' });
+    const pasted = 'Close ties\n   and weak ties';
 
     await userEvent.click(box);
-    await userEvent.paste('Who you turn to\nwhen things are hard');
+    await userEvent.paste(pasted);
 
-    await expect(box).toHaveValue('Who you turn to when things are hard');
+    // Each break became one space, and the run of spaces after it is kept.
+    await expect(box).toHaveValue('Close ties    and weak ties');
   },
 };
 

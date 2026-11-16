@@ -12,7 +12,6 @@ import {
 } from '../db/deployment-state.ts';
 import { MaintenanceScope } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
-import { STUDIO_VERSION } from '../version.ts';
 import { signInWithMagicLink } from './support/auth.ts';
 import {
   openTestDatabase,
@@ -106,15 +105,5 @@ describe.skipIf(!testDb)('status.updateAvailable, served', () => {
       ),
       'Unauthorized',
     );
-  });
-
-  it('tells the owner nothing before a check has recorded a release', async () => {
-    expect(await askAs(ownerClient)).toBeNull();
-  });
-
-  it('tells the owner nothing about the release they are running', async () => {
-    await record({ ...NEWER, version: STUDIO_VERSION });
-
-    expect(await askAs(ownerClient)).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import {
   interfaceTextAsShown,
   interfaceTextFor,
@@ -680,16 +681,24 @@ describe('the interface text a protocol shows', () => {
     ]);
     expect(InterfaceTextSchema.safeParse(noForms).success).toBe(true);
     expect(
-      InterfaceTextSchema.safeParse({ navigation: { back: { en: ' ' } } })
-        .success,
-    ).toBe(false);
+      parseIssues(
+        InterfaceTextSchema.safeParse({ navigation: { back: { en: ' ' } } }),
+      ),
+    ).toEqual([
+      {
+        path: 'navigation.back.en',
+        code: 'custom',
+        message: 'Text cannot be blank.',
+      },
+    ]);
     // The old group names are gone, and so are the groups that held only
     // text screen readers read.
     for (const group of ['interview', 'roster', 'egoForm']) {
       expect(
-        InterfaceTextSchema.safeParse({ [group]: { back: { en: 'Back' } } })
-          .success,
-      ).toBe(false);
+        parseIssues(
+          InterfaceTextSchema.safeParse({ [group]: { back: { en: 'Back' } } }),
+        ),
+      ).toEqual([{ path: '', code: 'unrecognized_keys', keys: [group] }]);
     }
   });
 
@@ -910,7 +919,9 @@ describe('writing interface text into a protocol’s settings', () => {
       { group: 'navigation', key: 'sideways', value: { en: 'Sideways' } },
     ]);
     expect(written).toEqual({ navigation: { sideways: { en: 'Sideways' } } });
-    expect(InterfaceTextSchema.safeParse(written).success).toBe(false);
+    expect(parseIssues(InterfaceTextSchema.safeParse(written))).toEqual([
+      { path: 'navigation', code: 'unrecognized_keys', keys: ['sideways'] },
+    ]);
   });
 });
 

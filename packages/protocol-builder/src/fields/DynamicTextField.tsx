@@ -316,24 +316,6 @@ const messages = defineMessages({
     description:
       'Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with a version for each kind of number (such as one or several), so the words agree with the number, as in “1 child” and “3 children”.',
   },
-  versionsByPresence: {
-    id: 'protocolBuilder.dynamicText.versionsByPresence',
-    defaultMessage: 'Wording depending on whether {value} is known',
-    description:
-      'Accessible name of a piece of text with two versions: one shown when a value is known, one when it is not. value is the value’s name, such as “nickname”.',
-  },
-  versionsByAnswer: {
-    id: 'protocolBuilder.dynamicText.versionsByAnswer',
-    defaultMessage: 'Wording for each answer to {value}',
-    description:
-      'Accessible name of a piece of text with one version for each answer to an attribute. value is the attribute’s name.',
-  },
-  versionsByNumber: {
-    id: 'protocolBuilder.dynamicText.versionsByNumber',
-    defaultMessage: 'Wording that fits the number {value}',
-    description:
-      'Accessible name of a piece of text with a version for each kind of number, so the words agree with the number. value is the name of the number.',
-  },
   versionMissing: {
     id: 'protocolBuilder.dynamicText.versionMissing',
     defaultMessage: 'If not known',
@@ -496,8 +478,7 @@ export const isBlankMessage = (nodes: readonly MessageNode[]): boolean =>
  * wording (`LocalizedMessageVersions`), whose numbers switch the same way.
  */
 export const numberSwitchLabels = (intl: IntlShape, locale: LocaleTag) => ({
-  switchLabel: (value: string) =>
-    intl.formatMessage(messages.versionsByNumber, { value }),
+  switchLabel: (value: string) => `Wording that fits the number ${value}`,
   versionLabel: (key: string) => {
     const exact = /^=(\d+)$/.exec(key);
     const counts = exact
@@ -560,10 +541,9 @@ const messageLabelsFor = ({
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
     );
-    return intl.formatMessage(
-      presence ? messages.versionsByPresence : messages.versionsByAnswer,
-      { value },
-    );
+    return presence
+      ? `Wording depending on whether ${value} is known`
+      : `Wording for each answer to ${value}`;
   },
   versionLabel: (node, key) => {
     if (node.type === 'plural') {

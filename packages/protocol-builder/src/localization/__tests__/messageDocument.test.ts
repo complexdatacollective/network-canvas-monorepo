@@ -144,13 +144,9 @@ describe('messageToDocument', () => {
   );
 
   it('still reads a markdown document whose versions are one line each', () => {
-    const structure = messageStructure(
-      '# Title\n\n{kind, select, a {**one**} other {two}}\n\n- item',
-    );
-    if (!('nodes' in structure)) throw new Error('unreadable');
-    expect(() =>
-      messageToDocument(structure.nodes, MARKDOWN, labels),
-    ).not.toThrow();
+    const message =
+      '# Title\n\n{kind, select, a {**one**} other {two}}\n\n- item';
+    expect(ast(roundTrip(message, MARKDOWN))).toEqual(ast(message));
   });
 });
 

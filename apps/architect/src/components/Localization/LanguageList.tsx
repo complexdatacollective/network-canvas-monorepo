@@ -136,23 +136,12 @@ const messages = defineMessages({
     description:
       'Accessible name and tooltip of the edit button, with a pencil icon, in a protocol language’s row. It opens the translation table showing that language beside the default language, where its translations can be written and changed. language is the language name.',
   },
-  removeLanguage: {
-    id: 'architect.localization.languageList.removeLanguage',
-    defaultMessage: 'Remove {language}',
-    description:
-      'Accessible name of the delete button at the end of a protocol language’s row, which removes that language from the protocol. language is the language name.',
-  },
   coverage: {
     id: 'architect.localization.languageList.coverage',
     defaultMessage:
       '{translated, number} of {total, plural, one {# string} other {# strings}} translated',
     description:
       'How much of a protocol is translated into one language. total is the number of localized strings in the protocol.',
-  },
-  coverageLabel: {
-    id: 'architect.localization.languageList.coverageLabel',
-    defaultMessage: '{language} translation progress',
-    description: 'Accessible name of the progress bar of one language.',
   },
   noText: {
     id: 'architect.localization.languageList.noText',
@@ -451,9 +440,8 @@ const LanguageRow = ({
                 percentProgress={(translated / total) * 100}
                 nudge={false}
                 tone="info"
-                label={intl.formatMessage(messages.coverageLabel, {
-                  language,
-                })}
+                // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+                label={`${language} translation progress`}
               />
             </div>
             <span className="flex items-center gap-1 text-sm">
@@ -514,9 +502,8 @@ const LanguageRow = ({
               ref={removeButtonRef}
               variant="text"
               color="dynamic"
-              aria-label={intl.formatMessage(messages.removeLanguage, {
-                language,
-              })}
+              aria-label={`Remove ${language}`}
+              lang="en"
               aria-disabled={removalBlockedReason !== null || undefined}
               aria-describedby={
                 removalBlockedReason === null ? undefined : removalReasonId

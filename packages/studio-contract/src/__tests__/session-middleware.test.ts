@@ -1,16 +1,15 @@
 import { Effect, type Layer, Schema } from 'effect';
 import { Rpc, RpcGroup } from 'effect/rpc';
-import { describe, expect, it } from 'vitest';
+import { describe, expectTypeOf, it } from 'vitest';
 
 import { AuditActor } from '../middleware/auditActor.ts';
 import { Authenticated, Principal } from '../middleware/authenticated.ts';
 import { ParticipantSession } from '../middleware/session.ts';
 import { ParticipantRpcs } from '../rpc/participant.ts';
 
-// A type test: each consumed `@ts-expect-error` fails `tsc` when the
-// requirement it guards stops being enforced.
-
-const requiresNothing = <ROut, E>(layer: Layer.Layer<ROut, E>) => layer;
+// A type test: `tsc` checks each `expectTypeOf`; vitest only runs the file.
+// A handler that reads a service its procedure's middleware does not provide
+// leaves that service as a requirement of the handlers layer.
 
 const unreachable = Effect.die('a type probe; never run');
 
@@ -28,61 +27,52 @@ const ResearcherProbeRpcs = RpcGroup.make(
 
 describe('what a participant handler can read', () => {
   it('reads the participant session and the audit actor', () => {
-    requiresNothing(
-      ParticipantRpcs.toLayer(
-        participantHandlers(Effect.all([ParticipantSession, AuditActor])),
-      ),
+    const handlers = ParticipantRpcs.toLayer(
+      participantHandlers(Effect.all([ParticipantSession, AuditActor])),
     );
-    expect(true).toBe(true);
+    expectTypeOf<Layer.Services<typeof handlers>>().toBeNever();
   });
 
   it('cannot read the researcher Principal', () => {
-    requiresNothing(
-      // @ts-expect-error Principal is not provided to participant procedures
-      ParticipantRpcs.toLayer(participantHandlers(Principal)),
-    );
-    expect(true).toBe(true);
+    const handlers = ParticipantRpcs.toLayer(participantHandlers(Principal));
+    expectTypeOf<Layer.Services<typeof handlers>>().toEqualTypeOf<Principal>();
   });
 
   it('gives participant.redeem neither credential', () => {
-    requiresNothing(
-      // @ts-expect-error redeem carries no RequireSession
-      ParticipantRpcs.toLayer({
-        ...participantHandlers(Effect.void),
-        'participant.redeem': () =>
-          Effect.andThen(ParticipantSession, unreachable),
-      }),
-    );
-    requiresNothing(
-      // @ts-expect-error redeem carries no Authenticated
-      ParticipantRpcs.toLayer({
-        ...participantHandlers(Effect.void),
-        'participant.redeem': () => Effect.andThen(Principal, unreachable),
-      }),
-    );
-    expect(true).toBe(true);
+    const readsSession = ParticipantRpcs.toLayer({
+      ...participantHandlers(Effect.void),
+      'participant.redeem': () =>
+        Effect.andThen(ParticipantSession, unreachable),
+    });
+    expectTypeOf<
+      Layer.Services<typeof readsSession>
+    >().toEqualTypeOf<ParticipantSession>();
+
+    const readsPrincipal = ParticipantRpcs.toLayer({
+      ...participantHandlers(Effect.void),
+      'participant.redeem': () => Effect.andThen(Principal, unreachable),
+    });
+    expectTypeOf<
+      Layer.Services<typeof readsPrincipal>
+    >().toEqualTypeOf<Principal>();
   });
 });
 
 describe('what a researcher handler can read', () => {
   it('reads the Principal and the audit actor', () => {
-    requiresNothing(
-      ResearcherProbeRpcs.toLayer({
-        'probe.researcher': () =>
-          Effect.andThen(Effect.all([Principal, AuditActor]), unreachable),
-      }),
-    );
-    expect(true).toBe(true);
+    const handlers = ResearcherProbeRpcs.toLayer({
+      'probe.researcher': () =>
+        Effect.andThen(Effect.all([Principal, AuditActor]), unreachable),
+    });
+    expectTypeOf<Layer.Services<typeof handlers>>().toBeNever();
   });
 
   it('cannot read the participant session', () => {
-    requiresNothing(
-      // @ts-expect-error ParticipantSession is not provided to researcher procedures
-      ResearcherProbeRpcs.toLayer({
-        'probe.researcher': () =>
-          Effect.andThen(ParticipantSession, unreachable),
-      }),
-    );
-    expect(true).toBe(true);
+    const handlers = ResearcherProbeRpcs.toLayer({
+      'probe.researcher': () => Effect.andThen(ParticipantSession, unreachable),
+    });
+    expectTypeOf<
+      Layer.Services<typeof handlers>
+    >().toEqualTypeOf<ParticipantSession>();
   });
 });

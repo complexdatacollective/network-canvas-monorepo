@@ -110,25 +110,39 @@ describe('TimeAgo', () => {
     },
   );
 
+  // Dates are built from local fields so the formatted string does not depend
+  // on the machine's time zone.
   it('falls back to the locale-formatted date beyond a week', () => {
-    const date = new Date(Date.now() - 8 * DAY_MS);
-    render(<TimeAgo date={date} />);
-    const element = screen.getByTestId('time-ago');
-    // The exact string is locale-dependent; it must match the title, which
-    // always carries the locale-formatted timestamp.
-    expect(element.textContent).toBe(element.getAttribute('title'));
+    vi.useFakeTimers({ now: new Date(2026, 2, 15, 12, 0) });
+    try {
+      render(<TimeAgo date={new Date(2026, 2, 1, 9, 30)} />);
+
+      expect(screen.getByTestId('time-ago')).toHaveTextContent(
+        '3/1/2026, 9:30 AM',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('toggles to the raw timestamp on click', async () => {
-    const user = userEvent.setup();
-    render(<TimeAgo date={new Date(Date.now() - 2 * DAY_MS)} />);
-    const element = screen.getByTestId('time-ago');
+    vi.useFakeTimers({
+      now: new Date(2026, 2, 15, 12, 0),
+      shouldAdvanceTime: true,
+    });
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(<TimeAgo date={new Date(2026, 2, 13, 9, 30)} />);
+      const element = screen.getByTestId('time-ago');
 
-    await user.click(element);
-    expect(element.textContent).toBe(element.getAttribute('title'));
+      await user.click(element);
+      expect(element).toHaveTextContent('3/13/2026, 9:30 AM');
 
-    await user.click(element);
-    expect(element).toHaveTextContent('2 days ago');
+      await user.click(element);
+      expect(element).toHaveTextContent('2 days ago');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('moves on from "just now" the moment a minute has passed', () => {

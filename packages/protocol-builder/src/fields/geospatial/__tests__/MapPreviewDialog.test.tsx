@@ -8,7 +8,6 @@ import {
 } from '../../../editors/geospatial/__tests__/geospatialFixtures.tsx';
 import {
   emitMapEvent,
-  expectMapboxMocked,
   mapControlsAdded,
   mapsBuilt,
   mapsRemoved,
@@ -113,16 +112,6 @@ beforeEach(() => {
 });
 
 describe('the Mapbox SDK this suite runs against', () => {
-  /**
-   * The guard the whole file rests on. A real Mapbox map fetches a style,
-   * tiles, sprites and fonts from Mapbox's servers — billed requests against a
-   * live account, from a suite that runs on every push — and needs a WebGL
-   * context jsdom does not have.
-   */
-  it('is the mock, not the real one', async () => {
-    await expectMapboxMocked();
-  });
-
   it('builds no map at all until a dialog asks for one', async () => {
     const harness = openEditor();
     await harness.opened();

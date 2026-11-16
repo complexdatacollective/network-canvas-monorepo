@@ -408,7 +408,9 @@ export const MaxNodesReached: Story = {
     const forwardButton = canvas.getByRole('button', { name: 'Next Step' });
     await waitFor(
       async () => {
-        await expect(forwardButton.className).toMatch(/animate-pulse-glow/);
+        await expect(getComputedStyle(forwardButton).animationName).toBe(
+          'animate-pulse-glow',
+        );
       },
       { timeout: 3000 },
     );

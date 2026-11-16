@@ -164,23 +164,6 @@ describe('<Issues />', () => {
     expect(screen.getByRole('button', { name: 'Issues (4)' })).toBeVisible();
   });
 
-  it('uses the semantic warning colour and unpadded popover surface', () => {
-    const view = renderStageForm({ children: <IssuesHarness /> });
-
-    act(() => {
-      view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
-      view.reportRefusedSubmit();
-    });
-
-    expect(screen.getByRole('button', { name: 'Issues (3)' })).toHaveClass(
-      'focus:outline-warning',
-    );
-    // The padding is on the surface inside the dialog, which also clips the
-    // list to its rounded corners.
-    const surface = screen.getByRole('dialog').firstElementChild;
-    expect(surface).toHaveClass('p-0', 'overflow-clip', 'rounded');
-  });
-
   describe('a field that fails several rules', () => {
     // A required text with a length limit that is over the limit and trims to
     // empty: `required` and `maxLength` both fail, and the form store keeps

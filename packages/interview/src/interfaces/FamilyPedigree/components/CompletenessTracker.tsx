@@ -138,7 +138,9 @@ function DoneText({
 }) {
   return (
     <span className="line-through opacity-70">
-      <span className="sr-only">{prefix}</span>
+      <span className="sr-only" lang="en">
+        {prefix}
+      </span>
       {children}
     </span>
   );
@@ -246,11 +248,12 @@ function CompletenessTracker({
   const fraction = progress.total === 0 ? 0 : progress.done / progress.total;
   const complete = progress.total > 0 && progress.items.length === 0;
   // Read out before each item already done, apart from the item's words.
-  const donePrefix = `${intl.formatMessage(messages.trackerItemDone)} `;
-  const progressLabel = intl.formatMessage(messages.trackerProgressLabel, {
-    complete: complete ? 'true' : 'false',
-    percent: fraction,
-  });
+  const donePrefix = 'Done: ';
+  const progressLabel = `${
+    complete
+      ? 'Your family tree has everything needed'
+      : `Family tree ${Math.round(fraction * 100)}% complete`
+  }. Show what’s still needed.`;
 
   // The answered item leaves the list, taking focus with it: focus moves to
   // the list, or to the ring once nothing is left.
@@ -281,6 +284,7 @@ function CompletenessTracker({
         <ToolbarButton
           ref={triggerRef}
           aria-label={progressLabel}
+          lang="en"
           className="aspect-square w-16 p-0!"
           data-testid="pedigree-completeness"
           onPointerEnter={pointerEnter}

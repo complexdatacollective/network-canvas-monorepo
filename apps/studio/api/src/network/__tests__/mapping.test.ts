@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import { describe, expect, it } from 'vitest';
 
 import { canonicalize } from '@codaco/studio-sync/apply';
@@ -90,8 +88,10 @@ describe('the snapshot payload', () => {
       finishOutcome: 'ineligible',
     });
     expect(snapshot.payload).toBe(expected);
+    // The digest is stored with the snapshot, so it is pinned rather than
+    // recomputed with the recipe under test.
     expect(snapshot.payloadHash).toBe(
-      createHash('sha256').update(expected).digest('hex'),
+      'bc9832a05184568e98c312431bfa223614b71227d2ab16c1a990b78165c5f7ca',
     );
   });
 

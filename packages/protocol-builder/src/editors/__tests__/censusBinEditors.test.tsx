@@ -925,7 +925,7 @@ describe('the family’s editors, swept under es', () => {
     await closeDialog(harness);
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Editar pregunta' }),
+      screen.getByRole('button', { name: 'Edit pregunta' }),
     );
     await screen.findByRole('dialog');
     expectNoLocaleLeaks(
@@ -940,7 +940,7 @@ describe('the family’s editors, swept under es', () => {
     await closeDialog(harness);
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Eliminar pregunta' }),
+      screen.getByRole('button', { name: 'Delete pregunta' }),
     );
     await screen.findByRole('dialog');
     expectNoLocaleLeaks(

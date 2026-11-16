@@ -185,7 +185,7 @@ describe('Fresco hands the interview the request’s languages, never its own', 
     expect(props).not.toHaveProperty('allowLanguageSelection');
 
     fireEvent.click(
-      screen.getByRole('combobox', { name: /^Idioma de la interfaz/ }),
+      screen.getByRole('combobox', { name: /^Interface language/ }),
     );
     fireEvent.click(await screen.findByRole('option', { name: /^Automático/ }));
     await waitFor(() =>

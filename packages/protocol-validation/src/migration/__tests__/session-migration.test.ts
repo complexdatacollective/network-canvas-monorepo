@@ -238,7 +238,10 @@ describe('session migration', () => {
       if (first.success) return;
       expect(first.error.reason).toBe('step-failed');
       // The failed attempt left nothing behind for the next session.
-      expect(migrateSession(session()).success).toBe(false);
+      expect(migrateSession(session())).toMatchObject({
+        success: false,
+        error: { reason: 'step-failed' },
+      });
     });
   });
 });

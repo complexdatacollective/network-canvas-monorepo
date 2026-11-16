@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -220,7 +219,7 @@ export default function SketchImport() {
       <main
         className="flex min-h-dvh w-full items-center justify-center"
         aria-busy
-        aria-label={intl.formatMessage(commonMessages.loading)}
+        aria-label="Loading…"
       >
         <Spinner />
       </main>

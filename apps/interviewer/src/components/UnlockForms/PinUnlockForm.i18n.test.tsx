@@ -39,7 +39,7 @@ it('reformats a submitted PIN error without resubmitting and preserves focus for
   expect(verifyPin).toHaveBeenCalledTimes(1);
   const segments = within(
     screen.getByTestId('segmented-code-pin'),
-  ).getAllByLabelText(/oculto/);
+  ).getAllByLabelText(/, hidden$/);
   expect(segments).toHaveLength(8);
   for (const segment of segments) expect(segment).toHaveValue('');
   expect(segments[0]).toHaveFocus();

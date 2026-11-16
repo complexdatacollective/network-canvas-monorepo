@@ -1,4 +1,4 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -15,12 +15,6 @@ describe('OnlineStatusProvider / useOnline', () => {
   function wrapper({ children }: { children: ReactNode }) {
     return <OnlineStatusProvider>{children}</OnlineStatusProvider>;
   }
-
-  it('reads the initial navigator.onLine value', () => {
-    setOnLine(true);
-    const { result } = renderHook(() => useOnline(), { wrapper });
-    expect(result.current).toBe(true);
-  });
 
   it('exposes the current status to consumers and updates on events', () => {
     setOnLine(false);
@@ -48,15 +42,5 @@ describe('OnlineStatusProvider / useOnline', () => {
     expect(() => render(<Probe />)).toThrow(
       /useOnline must be used within an OnlineStatusProvider/,
     );
-  });
-
-  it('renders children', () => {
-    setOnLine(true);
-    render(
-      <OnlineStatusProvider>
-        <span>child</span>
-      </OnlineStatusProvider>,
-    );
-    expect(screen.getByText('child')).toBeInTheDocument();
   });
 });

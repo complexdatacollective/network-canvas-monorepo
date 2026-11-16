@@ -75,30 +75,6 @@ const messages = defineMessages({
     description:
       'Shown under one option’s value cell when another option in the same list is stored as the same answer. Terse because it sits inside a row.',
   },
-  reorderOption: {
-    id: 'protocolBuilder.option.reorderOption',
-    defaultMessage: 'Reorder option {position} of {count, number}',
-    description:
-      'Accessible name of the handle that drags one option into a different position. position is the option’s own place in the list, counting from one; count is how many options the list holds.',
-  },
-  editOption: {
-    id: 'protocolBuilder.option.editOption',
-    defaultMessage: 'Edit option {position}',
-    description:
-      'Accessible name of the button that opens one option for editing. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart.',
-  },
-  removeOptionAt: {
-    id: 'protocolBuilder.option.removeOptionAt',
-    defaultMessage: 'Remove option {position}',
-    description:
-      'Accessible name of the button that deletes one option. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart.',
-  },
-  finishEditing: {
-    id: 'protocolBuilder.option.finishEditing',
-    defaultMessage: 'Finish editing option',
-    description:
-      'Accessible name of the button that collapses an option back to a single line once the researcher has filled it in.',
-  },
   untitled: {
     id: 'protocolBuilder.option.untitled',
     defaultMessage: 'Untitled option',
@@ -277,13 +253,7 @@ export default function Option({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={intl.formatMessage(messages.reorderOption, {
-              // The option's own number, which the researcher reads as this
-              // option's name rather than as a quantity — so it is passed as
-              // they would say it, ungrouped.
-              position: String(index + 1),
-              count: itemCount,
-            })}
+            label={`Reorder option ${index + 1} of ${itemCount}`}
           />
         )}
         <div className="min-w-0 flex-1 truncate">
@@ -312,9 +282,8 @@ export default function Option({
         <div className="flex shrink-0 items-center gap-2">
           <IconButton
             icon={<Pencil />}
-            aria-label={intl.formatMessage(messages.editOption, {
-              position: String(index + 1),
-            })}
+            aria-label={`Edit option ${index + 1}`}
+            lang="en"
             color="dynamic"
             disabled={interactionDisabled}
             onClick={onEdit}
@@ -322,9 +291,8 @@ export default function Option({
           <IconButton
             ref={deleteTriggerRef}
             icon={<Trash2 />}
-            aria-label={intl.formatMessage(messages.removeOptionAt, {
-              position: String(index + 1),
-            })}
+            aria-label={`Remove option ${index + 1}`}
+            lang="en"
             color="destructive"
             disabled={interactionDisabled}
             onClick={onDelete}
@@ -347,7 +315,8 @@ export default function Option({
       <div className="flex items-center justify-end gap-2">
         <IconButton
           icon={<Check />}
-          aria-label={intl.formatMessage(messages.finishEditing)}
+          aria-label="Finish editing option"
+          lang="en"
           color="primary"
           disabled={interactionDisabled}
           onClick={handleFinishEditing}
@@ -355,9 +324,8 @@ export default function Option({
         <IconButton
           ref={deleteTriggerRef}
           icon={<Trash2 />}
-          aria-label={intl.formatMessage(messages.removeOptionAt, {
-            position: String(index + 1),
-          })}
+          aria-label={`Remove option ${index + 1}`}
+          lang="en"
           color="destructive"
           disabled={interactionDisabled}
           onClick={onDelete}

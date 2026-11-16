@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, within } from 'storybook/test';
 
 import { paletteColorStyles } from './styles/palette';
 import Tag, { type TagColor } from './Tag';
@@ -71,6 +72,34 @@ export const Toggle: Story = {
 
 export const Disabled: Story = {
   args: { disabled: true, onPressedChange: () => undefined },
+};
+
+/**
+ * `uppercase={false}` keeps a label's own casing, and drops the caps
+ * tracking with it: letter-spacing meant for capitals reads as gaps in
+ * mixed-case text.
+ */
+export const OwnCasing: Story = {
+  render: () => (
+    <div className="flex items-center gap-2">
+      <Tag color="sea-green">Default caps</Tag>
+      <Tag color="sea-green" uppercase={false}>
+        mRNA vaccine
+      </Tag>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const caps = getComputedStyle(canvas.getByText('Default caps'));
+    const ownCasing = getComputedStyle(canvas.getByText('mRNA vaccine'));
+
+    await expect(caps.textTransform).toBe('uppercase');
+    await expect(ownCasing.textTransform).toBe('none');
+    // Same size, so only the caps tracking can tell the two apart.
+    await expect(Number.parseFloat(ownCasing.letterSpacing)).toBeLessThan(
+      Number.parseFloat(caps.letterSpacing),
+    );
+  },
 };
 
 export const Sizes: Story = {

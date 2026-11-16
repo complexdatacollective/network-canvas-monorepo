@@ -143,10 +143,9 @@ const isSentence = (text: string): boolean => {
 /**
  * Runs that look like a sentence and are not copy.
  *
- * Empty, and kept for the reason `NOT_CONVERTED_YET` is: an entry is a claim
- * somebody has to defend, and an empty list says this package has none to
- * make. Anything added here names the exact text, so it cannot silently widen
- * to cover a sentence written next to it.
+ * Empty: an entry is a claim somebody has to defend, and an empty list says
+ * this package has none to make. Anything added here names the exact text, so
+ * it cannot silently widen to cover a sentence written next to it.
  */
 const NOT_COPY: readonly string[] = [];
 

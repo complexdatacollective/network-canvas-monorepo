@@ -4,13 +4,11 @@ import { ChevronUp, GripHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type ReactNode, type RefObject, useId, useState } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
-import { interfaceMessages } from '../messages';
 
 const MotionChevron = motion.create(ChevronUp);
 
@@ -28,7 +26,6 @@ const CollapsablePrompts = (props: {
   className?: string;
   collapsible?: boolean;
 }) => {
-  const intl = useAppIntl();
   const { dragConstraints, children, className, collapsible = true } = props;
   const { prompt } = usePrompts();
   const [collapsed, setCollapsed] = useState(false);
@@ -82,11 +79,8 @@ const CollapsablePrompts = (props: {
             onClick={() => setCollapsed(!collapsed)}
             aria-expanded={!collapsed}
             aria-controls={contentId}
-            aria-label={
-              collapsed
-                ? intl.formatMessage(interfaceMessages.showInstructions)
-                : intl.formatMessage(interfaceMessages.hideInstructions)
-            }
+            aria-label={collapsed ? 'Show instructions' : 'Hide instructions'}
+            lang="en"
             className="focusable -m-2 cursor-pointer rounded p-2"
             data-testid="prompts-toggle"
           >

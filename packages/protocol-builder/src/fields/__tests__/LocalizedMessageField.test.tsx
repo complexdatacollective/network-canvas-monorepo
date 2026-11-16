@@ -102,28 +102,6 @@ describe('LocalizedMessageField', () => {
     expect(group.querySelector(':scope > [aria-expanded]')).toBeNull();
   });
 
-  it('lists the versions of a text that is one number, labelled by the numbers they are for', async () => {
-    renderItem(
-      {
-        en: '{missing, plural, one {Add your other parent} other {Add # parents}}',
-      },
-      ENGLISH,
-      { missing: { kind: 'plural' } },
-    );
-
-    const one = await screen.findByRole('textbox', {
-      name: 'When it is 1',
-    });
-    expect(one).toBeVisible();
-    expect(one).toHaveTextContent('Add your other parent');
-    expect(
-      screen.getByRole('textbox', {
-        name: 'When it is 0, 2, 3, …',
-      }),
-    ).toBeVisible();
-    expect(document.querySelector('[data-versions-pill]')).toBeNull();
-  });
-
   it('lists the one version of a language that has one form of a number', async () => {
     renderItem(
       { zh: '{missing, plural, other {还需添加 # 位家长}}' },

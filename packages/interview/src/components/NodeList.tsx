@@ -4,7 +4,6 @@ import { motion } from 'motion/react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { useDragAndDrop } from '@codaco/fresco-ui/collection/dnd/useDragAndDrop';
 import { InlineGridLayout } from '@codaco/fresco-ui/collection/layout/InlineGridLayout';
@@ -18,7 +17,6 @@ import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { readNodeLabelSource } from '../interfaces/Anonymisation/nodeLabel';
 import { useDecryptedOutcomes } from '../interfaces/Anonymisation/useDecryptionScope';
 import { useNodeLabeller } from '../interfaces/Anonymisation/useNodeLabel';
@@ -86,7 +84,6 @@ const NodeList = memo(
     // All other Collection props passed through
     ...collectionProps
   }: NodeListProps) => {
-    const intl = useAppIntl();
     const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 4 }), []);
     // Safe animate so the exit fade skips (instant swap) under reduced
     // motion / MotionConfig skipAnimations; the scope doubles as the
@@ -298,7 +295,7 @@ const NodeList = memo(
             className={containerClasses}
             animate={animate}
             animationKey={displayAnimationKey}
-            aria-label={ariaLabel ?? intl.formatMessage(messages.nodeList)}
+            aria-label={ariaLabel ?? 'Item list'}
             emptyState={emptyState}
             viewportClassName="p-4"
           >

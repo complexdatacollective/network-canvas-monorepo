@@ -9,7 +9,6 @@ import type { VariableValue } from '@codaco/shared-consts';
 
 import { type ContentFormat } from '../../localization/contentFormat';
 import { useContentFormat } from '../../localization/useContentFormat';
-import { interfaceMessages } from '../messages';
 
 export type DataCardDetail = {
   id: string;
@@ -143,8 +142,9 @@ const DataCard = ({
                   <>
                     {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative dash for an empty value; the words follow for screen readers. */}
                     <span aria-hidden="true">—</span>
-                    <span className="sr-only">
-                      {intl.formatMessage(interfaceMessages.emptyValue)}
+                    <span className="sr-only" lang="en">
+                      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+                      {'No value'}
                     </span>
                   </>
                 ) : (

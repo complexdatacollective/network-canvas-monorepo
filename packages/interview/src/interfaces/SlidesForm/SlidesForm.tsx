@@ -17,7 +17,7 @@ import {
   createMessageError,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
-import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
@@ -61,7 +61,6 @@ import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues'
 import discardChangesDialog, {
   failedCheckReason,
 } from '../discardChangesDialog';
-import { interfaceMessages } from '../messages';
 import JoinedSlides from './JoinedSlides';
 
 type SlidesFormAnalyticsProps = {
@@ -382,7 +381,6 @@ export default function SlidesForm({
   form,
   form_kind,
 }: SlidesFormProps & SlidesFormAnalyticsProps) {
-  const intl = useAppIntl();
   const { confirm } = useDialog();
   const track = useTrack();
 
@@ -587,7 +585,7 @@ export default function SlidesForm({
           <button
             type="submit"
             key="submit"
-            aria-label={intl.formatMessage(interfaceMessages.submit)}
+            aria-label="Submit"
             hidden
             onClick={handleEnterSubmit}
           />

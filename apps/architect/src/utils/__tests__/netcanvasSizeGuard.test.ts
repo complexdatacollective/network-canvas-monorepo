@@ -58,26 +58,6 @@ describe('loadGuardedNetcanvas', () => {
     expect(total).toBeGreaterThanOrEqual(payload.length);
   });
 
-  it('rejects when the declared uncompressed total exceeds the cap', async () => {
-    const zip = await JSZip.loadAsync(
-      await buildZip({ 'protocol.json': '{"schemaVersion":8}' }),
-    );
-    // Force the declared total over the cap without allocating gigabytes.
-    const oversizedZip = {
-      forEach: (cb: (path: string, entry: unknown) => void) => {
-        cb('assets/bomb.bin', {
-          dir: false,
-          _data: { uncompressedSize: MAX_UNCOMPRESSED_BYTES + 1 },
-        });
-      },
-    } as unknown as JSZip;
-    expect(declaredUncompressedTotal(oversizedZip)).toBeGreaterThan(
-      MAX_UNCOMPRESSED_BYTES,
-    );
-    // Sanity: the real small zip is well under the cap.
-    expect(declaredUncompressedTotal(zip)).toBeLessThan(MAX_UNCOMPRESSED_BYTES);
-  });
-
   it('loadGuardedNetcanvas rejects when the declared uncompressed total exceeds the cap', async () => {
     // Load a real tiny zip, then override its central-directory report so the
     // declared uncompressed size crosses the cap. This exercises the full

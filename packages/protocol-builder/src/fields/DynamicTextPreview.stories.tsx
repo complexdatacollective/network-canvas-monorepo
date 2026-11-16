@@ -108,7 +108,6 @@ export const ShowingAValue: Story = {
         shown.querySelector('[data-token="today"]'),
       ).toHaveTextContent('Today’s date');
     });
-    await expect(shown.querySelector('[data-token="today"]')).not.toBeNull();
     await expect(shown).toHaveTextContent(/^Welcome\. Today is .+\.$/);
   },
 };

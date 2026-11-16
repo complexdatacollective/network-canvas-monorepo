@@ -120,19 +120,33 @@ test('reports Arabic text marked as another language', async ({ page }) => {
   expect(issues[0]).toContain('under lang="en"');
 });
 
-test('reports Latin text only a screen reader reads', async ({ page }) => {
+test('reports Latin text read but not drawn, unless it is marked English', async ({
+  page,
+}) => {
   const issues = await audit(
     page,
     [
-      '<button aria-label="file upload">رفع</button>',
       '<img alt="Network icon" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">',
       '<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Loading</span>',
+      '<span lang="en" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Saving</span>',
     ].join(''),
   );
-  expect(issues).toHaveLength(3);
-  expect(issues.join('\n')).toContain('aria-label “file upload”');
+  expect(issues).toHaveLength(2);
   expect(issues.join('\n')).toContain('alt “Network icon”');
   expect(issues.join('\n')).toContain('hidden text “Loading”');
+});
+
+// Text only a screen reader reads is English in every language, and an
+// element holding translated text cannot be marked English without marking
+// that text too.
+test('accepts an English aria-label as screen-reader text', async ({
+  page,
+}) => {
+  const issues = await audit(
+    page,
+    '<ul aria-label="People"><li>سارة</li></ul><button aria-label="file upload">رفع</button>',
+  );
+  expect(issues).toEqual([]);
 });
 
 test('accepts an attribute that repeats a name the page shows set apart', async ({
@@ -146,7 +160,7 @@ test('accepts an attribute that repeats a name the page shows set apart', async 
   ).toEqual([]);
 });
 
-test('reports a box that runs past the window, unless something clips it', async ({
+test('reports a box that runs past the window, unless clipped or hidden', async ({
   page,
 }) => {
   const issues = await audit(
@@ -154,6 +168,9 @@ test('reports a box that runs past the window, unless something clips it', async
     [
       '<div id="wide" style="width: 1200px">عريض</div>',
       '<div style="overflow: hidden"><div style="width: 1200px">مقصوص</div></div>',
+      // Decoration hidden from screen readers, like the celebration's
+      // particles, is not part of the page anyone reads.
+      '<div aria-hidden="true"><div style="width: 1200px">زينة</div></div>',
     ].join(''),
   );
   expect(issues).toHaveLength(1);

@@ -10,6 +10,7 @@ import {
   checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
+  checkScreenReaderText,
   collectSourceFiles,
   extractMessages,
   formatStampReport,
@@ -730,5 +731,61 @@ describe('checkCatalogLoaders', () => {
       'no loader for the committed de catalog',
       'loader for fr has no committed catalog',
     ]);
+  });
+});
+
+describe('checkScreenReaderText', () => {
+  const sourceDir = (code: string) => {
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-sr-'));
+    writeFileSync(join(dir, 'Thing.tsx'), code);
+    return dir;
+  };
+
+  it('reports an accessible name, description or value text given a message', () => {
+    const dir = sourceDir(
+      [
+        '<button aria-label={intl.formatMessage(messages.close)} />',
+        '<div aria-description={intl.formatMessage(',
+        '  messages.hint,',
+        ')} />',
+        '<input aria-valuetext={intl.formatMessage({ id: "a.b" })} />',
+        '<Node ariaLabel={intl.formatMessage(messages.node, { n })} />',
+      ].join('\n'),
+    );
+    expect(checkScreenReaderText(collectSourceFiles(dir), dir, {})).toEqual([
+      'screen-reader text is a message: Thing.tsx: messages.close',
+      'screen-reader text is a message: Thing.tsx: messages.hint',
+      'screen-reader text is a message: Thing.tsx: { id: "a.b" }',
+      'screen-reader text is a message: Thing.tsx: messages.node',
+    ]);
+  });
+
+  it('accepts English written in the component, and translated visible copy', () => {
+    const dir = sourceDir(
+      [
+        '<button aria-label="Close" lang="en" />',
+        '<input placeholder={intl.formatMessage(messages.search)} />',
+        '<p title={intl.formatMessage(messages.tip)} />',
+      ].join('\n'),
+    );
+    expect(checkScreenReaderText(collectSourceFiles(dir), dir, {})).toEqual([]);
+  });
+
+  it('excuses text also shown, and reports an excuse with nothing to excuse', () => {
+    const dir = sourceDir(
+      '<ToolbarIconButton aria-label={intl.formatMessage(messages.undo)} />',
+    );
+    const files = collectSourceFiles(dir);
+    expect(
+      checkScreenReaderText(files, dir, {
+        'Thing.tsx: messages.undo': 'shown as a tooltip',
+      }),
+    ).toEqual([]);
+    expect(
+      checkScreenReaderText(files, dir, {
+        'Thing.tsx: messages.undo': 'shown as a tooltip',
+        'Thing.tsx: messages.redo': 'shown as a tooltip',
+      }),
+    ).toEqual(['no longer found: Thing.tsx: messages.redo']);
   });
 });

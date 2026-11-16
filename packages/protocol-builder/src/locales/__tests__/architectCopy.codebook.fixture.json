@@ -74,11 +74,6 @@
     "es": "Por debajo del primer umbral",
     "from": "74a07e626 architect.typeEditor.shapeVariableMapping.belowFirstThreshold"
   },
-  "protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed": {
-    "en": "Below first threshold cannot be removed",
-    "es": "No se puede eliminar la opción por debajo del primer umbral",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved"
-  },
   "protocolBuilder.codebookEntity.shapeDefaultSwatch": {
     "en": "Default shape",
     "es": "Forma predeterminada",
@@ -138,11 +133,6 @@
     "en": "No thresholds yet — every value uses the default shape.",
     "es": "Todavía no hay umbrales: todos los valores usan la forma predeterminada.",
     "from": "74a07e626 architect.additional.typeEditor.shapeVariableMapping.noThresholdsYetEveryValue"
-  },
-  "protocolBuilder.codebookEntity.shapeRemoveThreshold": {
-    "en": "Remove threshold {value1, number}",
-    "es": "Eliminar umbral {value1, number}",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.removeThreshold"
   },
   "protocolBuilder.codebookEntity.shapeThresholdValue": {
     "en": "Threshold {value1, number} value",

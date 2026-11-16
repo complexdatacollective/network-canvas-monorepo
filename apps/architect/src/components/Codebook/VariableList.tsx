@@ -16,12 +16,6 @@ import {
 } from '@codaco/fresco-ui/DataTable/features';
 import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 const messages = defineMessages({
-  tableLabel: {
-    id: 'architect.codebook.variableList.tableLabel',
-    defaultMessage: 'Attributes',
-    description:
-      'Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached.',
-  },
   name: {
     id: 'architect.codebook.variableList.name',
     defaultMessage: 'Name',
@@ -105,7 +99,7 @@ const Variables = ({ variables = [] }: VariableListProps) => {
     <div className="mt-7">
       <DataTable
         table={table}
-        aria-label={intl.formatMessage(messages.tableLabel)}
+        aria-label="Attributes"
         showPagination={false}
         emptyText={intl.formatMessage(messages.noAttributes)}
       />

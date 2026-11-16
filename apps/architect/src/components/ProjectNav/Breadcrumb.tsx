@@ -1,18 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { Fragment } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { cx } from '~/utils/cva';
-const messages = defineMessages({
-  breadcrumb: {
-    id: 'architect.projectNav.breadcrumb.breadcrumb',
-    defaultMessage: 'Breadcrumb',
-    description:
-      'Accessible name of the breadcrumb navigation in the top bar, which shows the name of the open protocol; read only by screen readers.',
-  },
-});
-
 export type BreadcrumbItem = {
   label: string;
   onClick?: () => void;
@@ -34,10 +23,9 @@ const labelClasses =
 // `title` exposes the whole value either way.
 
 const Breadcrumb = ({ items }: BreadcrumbProps) => {
-  const intl = useAppIntl();
   return (
     <nav
-      aria-label={intl.formatMessage(messages.breadcrumb)}
+      aria-label={'Breadcrumb'}
       className="flex min-w-0 flex-1 items-center gap-2.5"
     >
       {items.map((item, index) => (

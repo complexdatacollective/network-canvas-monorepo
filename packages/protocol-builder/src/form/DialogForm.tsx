@@ -12,11 +12,7 @@ import {
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import {
-  createMessageError,
-  defineMessage,
-  defineMessages,
-} from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessage } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
@@ -41,21 +37,6 @@ import {
   dormantFieldsOf,
   mountedPathsOf,
 } from './documentFromSubmission.ts';
-
-const dialogMessages = defineMessages({
-  resizeHandle: {
-    id: 'protocolBuilder.dialogForm.resizeHandle',
-    defaultMessage: 'Resize form and preview panes',
-    description:
-      'Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them.',
-  },
-  configurationPane: {
-    id: 'protocolBuilder.dialogForm.configurationPane',
-    defaultMessage: 'Configuration',
-    description:
-      'Accessible name of the half of a two-pane editing dialog that holds the controls, as opposed to the live preview of what they are describing.',
-  },
-});
 
 /**
  * What a form-level check — or a save the host could not take — reports.
@@ -515,7 +496,7 @@ function DialogFormBody({
               min={30}
               max={70}
               stickyHandle
-              aria-label={intl.formatMessage(dialogMessages.resizeHandle)}
+              aria-label="Resize form and preview panes"
               className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
             >
               {/* Named only here. A dialog with an aside has two regions a
@@ -526,9 +507,7 @@ function DialogFormBody({
               <FormWithoutProvider
                 id={domFormId}
                 onSubmit={handleSubmit}
-                aria-label={intl.formatMessage(
-                  dialogMessages.configurationPane,
-                )}
+                aria-label="Configuration"
                 className="min-w-0 @min-[60rem]:pe-4"
               >
                 {fields}
