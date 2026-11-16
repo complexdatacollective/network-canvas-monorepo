@@ -19,8 +19,13 @@ import type {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import {
+  EMPTY_CONNECTIVITY,
+  getConnectivityIndex,
+} from '../nodeLabels/connectivity';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
+import { conditionReadsNetwork } from './conditions';
 import type { DynamicValueSources } from './resolveDynamicText';
 
 const DynamicValueScopeContext = createContext<DynamicValueSources | null>(
@@ -83,15 +88,29 @@ export function StageDynamicValues({
       state.session.network?.ego?.[entityAttributesProperty] ?? NO_ATTRIBUTES,
   );
 
+  // Followed only by a stage whose conditions ask about edges, so that text
+  // elsewhere is not read again each time the network changes.
+  const readsNetwork = useMemo(
+    () => Object.values(stage?.conditions ?? {}).some(conditionReadsNetwork),
+    [stage],
+  );
+  const connectivity = useSelector((state: RootState) =>
+    readsNetwork ? getConnectivityIndex(state) : EMPTY_CONNECTIVITY,
+  );
+
   const sources = useMemo((): DynamicValueSources | null => {
     if (stage === undefined) return null;
     const variables = subjectVariables(codebook, stage);
     const intrinsics: Record<IntrinsicDynamicValue, unknown> = { now };
+    const subject = 'subject' in stage ? stage.subject : undefined;
     return {
       bindings: stage.dynamicValues ?? NO_BINDINGS,
       intrinsics,
       attributes: { ego: egoAttributes },
       labels: NO_LABELS,
+      conditions: stage.conditions,
+      nodeType: subject?.entity === 'node' ? subject.type : undefined,
+      connectivity,
       variablesFor: (role) => {
         if (role === 'ego') return codebook?.ego?.variables ?? {};
         if (role === 'edge') return variables.edge;
@@ -100,7 +119,7 @@ export function StageDynamicValues({
         return variables.node;
       },
     };
-  }, [codebook, stage, egoAttributes, now]);
+  }, [codebook, stage, egoAttributes, now, connectivity]);
 
   return (
     <DynamicValueScopeContext.Provider value={sources}>
@@ -118,6 +137,12 @@ type RoleValues<T> = Readonly<Partial<Record<DynamicValueRole, T | undefined>>>;
 export type DynamicValueEntities = Readonly<{
   attributes?: RoleValues<Readonly<Record<string, unknown>>>;
   labels?: RoleValues<string>;
+  /**
+   * The id of each entity that is saved in the network, which a condition
+   * that asks about a node's edges finds them by. One not saved yet (a node
+   * a form is adding) has none, and so no edges.
+   */
+  ids?: RoleValues<string>;
   /** Whether each node that may be the participant is. */
   participants?: RoleValues<boolean>;
 }>;
@@ -146,11 +171,12 @@ const withRoles = <T,>(
  */
 export const withDynamicValueEntities = (
   sources: DynamicValueSources,
-  { attributes, labels, participants }: DynamicValueEntities,
+  { attributes, labels, ids, participants }: DynamicValueEntities,
 ): DynamicValueSources => ({
   ...sources,
   attributes: withRoles(sources.attributes, attributes),
   labels: withRoles(sources.labels, labels),
+  entityIds: withRoles(sources.entityIds ?? {}, ids),
   participants: withRoles(sources.participants ?? {}, participants),
 });
 
@@ -165,6 +191,7 @@ export const withDynamicValueEntities = (
 export function DynamicValueEntity({
   attributes,
   labels,
+  ids,
   participants,
   children,
 }: DynamicValueEntities & { children: ReactNode }) {
@@ -176,9 +203,10 @@ export function DynamicValueEntity({
         : withDynamicValueEntities(parent, {
             attributes,
             labels,
+            ids,
             participants,
           }),
-    [parent, attributes, labels, participants],
+    [parent, attributes, labels, ids, participants],
   );
 
   return (

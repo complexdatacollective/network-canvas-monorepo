@@ -424,6 +424,10 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       dyadTarget: toNode?.[entityAttributesProperty],
     },
     labels: { dyadSource: fromLabel, dyadTarget: toLabel },
+    ids: {
+      dyadSource: fromNode?.[entityPrimaryKeyProperty],
+      dyadTarget: toNode?.[entityPrimaryKeyProperty],
+    },
   });
 
   return (

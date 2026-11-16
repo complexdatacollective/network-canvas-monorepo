@@ -9,11 +9,7 @@ import type {
   NodeLabel,
   Variable,
 } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  type NcEdge,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import type { DynamicValueSources } from '../dynamicValues/resolveDynamicText';
 import { useResolveLocalizedStringWhereLocalized } from '../localization/ProtocolLocalizationProvider';
@@ -21,9 +17,9 @@ import { makeGetCodebookForNodeType } from '../selectors/protocol';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import {
-  buildConnectivityIndex,
   type ConnectivityIndex,
   EMPTY_CONNECTIVITY,
+  getConnectivityIndex,
 } from './connectivity';
 import {
   nodeFactSignature,
@@ -32,23 +28,7 @@ import {
   nodeLabelPlanFor,
 } from './labelPlan';
 
-const NO_NODES: readonly NcNode[] = [];
-const NO_EDGES: readonly NcEdge[] = [];
 const NO_VARIABLES: Readonly<Record<string, Variable>> = {};
-
-/**
- * How the interview's nodes are connected, for the labels that depend on it.
- * It reads the whole network rather than the nodes a stage's filter leaves,
- * so a node is labelled alike on every stage. Rebuilt only when the nodes or
- * the edges change, and read only by labels that ask about edges.
- */
-const getConnectivityIndex = createSelector(
-  [
-    (state: RootState) => state.session.network?.nodes ?? NO_NODES,
-    (state: RootState) => state.session.network?.edges ?? NO_EDGES,
-  ],
-  buildConnectivityIndex,
-);
 
 /** Whether any node type's label reads the network's edges. */
 const getAnyLabelReadsNetwork = createSelector(getCodebook, (codebook) =>
@@ -94,7 +74,7 @@ const resolveNodeLabel = ({
     intrinsics: { now: undefined },
     attributes: { node: attributes },
     labels: { node: defaultLabel },
-    nodeFacts: nodeFactsOf(plan, signature),
+    conditionFacts: nodeFactsOf(plan, signature),
     variablesFor: (role) => (role === 'node' ? variables : undefined),
   };
   let text: string;

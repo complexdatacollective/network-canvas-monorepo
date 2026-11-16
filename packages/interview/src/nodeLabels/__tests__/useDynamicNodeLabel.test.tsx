@@ -231,41 +231,42 @@ describe('a node type’s own label', () => {
     expect(renderLabel(store, school).result.current).toBe('D');
   });
 
-  it('chooses a version by a condition’s rules', () => {
+  it('chooses a version by a condition’s rules, met or not', () => {
     const label: NodeLabel = NodeLabelSchema.parse({
-      text: { en: '{large, select, yes {⭐ } other {}}{nodeLabel}' },
+      text: {
+        en: '{large, select, yes {⭐ } other {}}{small, select, no {· } other {}}{nodeLabel}',
+      },
       dynamicValues: {
-        large: { path: 'node.$condition.large', cases: { yes: true } },
+        large: { path: '$condition.large', cases: { yes: true } },
+        small: { path: '$condition.large', cases: { no: false } },
         nodeLabel: { path: 'node.$label' },
       },
       conditions: {
         large: {
-          name: 'Large hospital',
-          filter: {
-            join: 'AND',
-            rules: [
-              {
-                type: 'node',
-                id: 'r1',
-                options: {
-                  type: 'place',
-                  attribute: 'kind',
-                  operator: 'EXACTLY',
-                  value: 'hospital',
-                },
+          about: 'node',
+          join: 'AND',
+          rules: [
+            {
+              type: 'node',
+              id: 'r1',
+              options: {
+                type: 'place',
+                attribute: 'kind',
+                operator: 'EXACTLY',
+                value: 'hospital',
               },
-              {
-                type: 'node',
-                id: 'r2',
-                options: {
-                  type: 'place',
-                  attribute: 'beds',
-                  operator: 'GREATER_THAN',
-                  value: 100,
-                },
+            },
+            {
+              type: 'node',
+              id: 'r2',
+              options: {
+                type: 'place',
+                attribute: 'beds',
+                operator: 'GREATER_THAN',
+                value: 100,
               },
-            ],
-          },
+            },
+          ],
         },
       },
     });
@@ -273,7 +274,7 @@ describe('a node type’s own label', () => {
     const small = place('b', { nameVar: 'B', kind: 'hospital', beds: 40 });
     const store = storeWith(label, [large, small]);
     expect(renderLabel(store, large).result.current).toBe('⭐ A');
-    expect(renderLabel(store, small).result.current).toBe('B');
+    expect(renderLabel(store, small).result.current).toBe('· B');
   });
 
   it('reads the translation in the participant’s language', () => {
@@ -299,18 +300,28 @@ describe('a node type’s own label', () => {
 });
 
 describe('a label that follows how its node is connected', () => {
-  const label: NodeLabel = {
+  const edgeRule = (id: string, options: Record<string, unknown>) => ({
+    about: 'node',
+    rules: [{ type: 'edge', id, options }],
+  });
+  const label: NodeLabel = NodeLabelSchema.parse({
     text: {
       en: '{linked, select, yes {🔗 } other {}}{near, select, yes {📍 } other {}}{most, select, yes {👑 } other {}}{least, select, yes {🌱 } other {}}{nodeLabel}',
     },
     dynamicValues: {
-      linked: { path: 'node.$connected', cases: { yes: true } },
-      near: { path: 'node.$connected.near', cases: { yes: true } },
-      most: { path: 'node.$mostConnected', cases: { yes: true } },
-      least: { path: 'node.$leastConnected', cases: { yes: true } },
+      linked: { path: '$condition.linked', cases: { yes: true } },
+      near: { path: '$condition.near', cases: { yes: true } },
+      most: { path: '$condition.most', cases: { yes: true } },
+      least: { path: '$condition.least', cases: { yes: true } },
       nodeLabel: { path: 'node.$label' },
     },
-  };
+    conditions: {
+      linked: edgeRule('r1', { count: 'GREATER_THAN', value: 0 }),
+      near: edgeRule('r2', { type: 'near', operator: 'EXISTS' }),
+      most: edgeRule('r3', { count: 'MOST' }),
+      least: edgeRule('r4', { count: 'FEWEST' }),
+    },
+  });
   const a = place('a', { nameVar: 'A' });
   const b = place('b', { nameVar: 'B' });
   const c = place('c', { nameVar: 'C' });
@@ -364,13 +375,16 @@ describe('a label that follows how its node is connected', () => {
   });
 
   it('does not redraw a node whose facts an edge elsewhere leaves alone', async () => {
-    const onlyLinked: NodeLabel = {
+    const onlyLinked: NodeLabel = NodeLabelSchema.parse({
       text: { en: '{linked, select, yes {🔗 } other {}}{nodeLabel}' },
       dynamicValues: {
-        linked: { path: 'node.$connected', cases: { yes: true } },
+        linked: { path: '$condition.linked', cases: { yes: true } },
         nodeLabel: { path: 'node.$label' },
       },
-    };
+      conditions: {
+        linked: edgeRule('r1', { count: 'GREATER_THAN_OR_EQUAL', value: 1 }),
+      },
+    });
     const store = storeWith(onlyLinked, [a, b, c, d]);
     const labelOfA = renderLabel(store, a);
     const before = labelOfA.renders();

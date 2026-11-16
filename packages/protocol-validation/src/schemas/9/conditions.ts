@@ -132,8 +132,16 @@ export const ConditionSchema = z
 
 export type Condition = z.infer<typeof ConditionSchema>;
 
-/** Conditions by id; an id is an argument-like name. */
-export const ConditionsSchema = z
+/**
+ * Conditions by id; an id is an argument-like name.
+ *
+ * Declared with its type written out: every stage schema holds it, and left
+ * to inference the stage union's type grows past what the compiler will
+ * write into a declaration.
+ */
+export type Conditions = Record<string, Condition>;
+
+export const ConditionsSchema: z.ZodType<Conditions> = z
   .record(z.string(), ConditionSchema)
   .superRefine((conditions, ctx) => {
     for (const id of Object.keys(conditions)) {
@@ -146,5 +154,3 @@ export const ConditionsSchema = z
       }
     }
   });
-
-export type Conditions = z.infer<typeof ConditionsSchema>;

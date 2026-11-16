@@ -224,6 +224,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   const focalOnScreen = useValuesUntilExit(source?.[entityPrimaryKeyProperty], {
     attributes: { focal: source?.[entityAttributesProperty] },
     labels: { focal: focalLabel },
+    ids: { focal: source?.[entityPrimaryKeyProperty] },
   });
 
   return (

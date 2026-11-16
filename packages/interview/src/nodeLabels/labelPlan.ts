@@ -1,7 +1,4 @@
-import { predicate } from '@codaco/network-query';
 import {
-  type ConnectivityMeasure,
-  type FilterRule,
   type NodeLabel,
   parseDynamicValuePath,
 } from '@codaco/protocol-validation';
@@ -11,84 +8,28 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import {
+  conditionHolds,
+  conditionReadsNetwork,
+} from '../dynamicValues/conditions';
 import type { ConnectivityIndex } from './connectivity';
 
-/** Something true or false of one node, which its label chooses wording by. */
+/** One of a label's conditions, asked of one node. */
 type NodeFact = Readonly<{
-  /** The binding path that names it (`node.$connected`, and so on). */
-  path: string;
+  conditionId: string;
   read: (node: NcNode, connectivity: ConnectivityIndex) => boolean;
 }>;
 
 /**
  * What reading a node type's label takes besides the node's own answers: the
- * facts it chooses its wording by, and whether any of them reads the
+ * conditions it chooses its wording by, and whether any of them reads the
  * network's edges. Worked out once for a label and kept.
  */
 export type NodeLabelPlan = Readonly<{
   facts: readonly NodeFact[];
-  /** Whether any fact depends on the edges, or on the other nodes. */
+  /** Whether any condition depends on the edges, or on the other nodes. */
   readsNetwork: boolean;
 }>;
-
-const connectivityFact =
-  (measure: ConnectivityMeasure, edgeType: string | undefined) =>
-  (node: NcNode, connectivity: ConnectivityIndex): boolean => {
-    const own = connectivity.degree(node[entityPrimaryKeyProperty], edgeType);
-    if (measure === 'connected') return own > 0;
-    // A node has the most, or the fewest, only where the nodes of its type
-    // differ: when each has as many edges as the next, none stands out.
-    const { min, max } = connectivity.extremes(node.type, edgeType);
-    if (min === max) return false;
-    return measure === 'mostConnected' ? own === max : own === min;
-  };
-
-/**
- * One rule of a condition, asked of one node. A node rule compares one of
- * its attributes (or asks whether it is of the type at all); an edge rule
- * asks whether an edge of a type joins it to another node, and, with an
- * attribute, whether such an edge's attribute matches. The comparison is the
- * one skip logic and filters make (`predicate`).
- */
-const ruleFact = (
-  rule: FilterRule,
-): ((node: NcNode, connectivity: ConnectivityIndex) => boolean) => {
-  const { options } = rule;
-  const { type, operator, value: other } = options;
-  const attribute =
-    'attribute' in options && options.attribute ? options.attribute : undefined;
-  if (rule.type === 'node') {
-    if (attribute === undefined) {
-      return (node) =>
-        operator === 'EXISTS' ? node.type === type : node.type !== type;
-    }
-    const matches = predicate(operator);
-    return (node) =>
-      node.type === type &&
-      matches({ value: node[entityAttributesProperty][attribute], other });
-  }
-  if (rule.type === 'edge') {
-    if (attribute === undefined) {
-      return (node, connectivity) => {
-        const has =
-          connectivity.degree(node[entityPrimaryKeyProperty], type) > 0;
-        return operator === 'EXISTS' ? has : !has;
-      };
-    }
-    const matches = predicate(operator);
-    return (node, connectivity) =>
-      connectivity.edgesOf(node[entityPrimaryKeyProperty]).some(
-        (edge) =>
-          edge.type === type &&
-          matches({
-            value: edge[entityAttributesProperty][attribute],
-            other,
-          }),
-      );
-  }
-  // A valid protocol holds no rule about the participant here.
-  return () => false;
-};
 
 const plans = new WeakMap<NodeLabel, NodeLabelPlan>();
 
@@ -100,39 +41,31 @@ export const nodeLabelPlanFor = (label: NodeLabel): NodeLabelPlan => {
   const facts: NodeFact[] = [];
   let readsNetwork = false;
   const seen = new Set<string>();
+  const conditions = label.conditions ?? {};
   for (const binding of Object.values(label.dynamicValues ?? {})) {
-    if (seen.has(binding.path)) continue;
-    seen.add(binding.path);
     const parsed = parseDynamicValuePath(binding.path);
-    if (parsed?.kind === 'connectivity') {
-      readsNetwork = true;
-      facts.push({
-        path: binding.path,
-        read: connectivityFact(parsed.measure, parsed.edgeType),
-      });
-    } else if (parsed?.kind === 'condition') {
-      const conditions = label.conditions ?? {};
-      const condition = Object.hasOwn(conditions, parsed.conditionId)
-        ? conditions[parsed.conditionId]
-        : undefined;
-      // A condition the label does not declare is never met.
-      if (condition === undefined) {
-        facts.push({ path: binding.path, read: () => false });
-        continue;
-      }
-      const { join, rules } = condition.filter;
-      if (rules.some((rule) => rule.type === 'edge')) readsNetwork = true;
-      const tests = rules.map(ruleFact);
-      facts.push({
-        path: binding.path,
-        read:
-          join === 'AND'
-            ? (node, connectivity) =>
-                tests.every((test) => test(node, connectivity))
-            : (node, connectivity) =>
-                tests.some((test) => test(node, connectivity)),
-      });
+    if (parsed?.kind !== 'condition' || seen.has(parsed.conditionId)) continue;
+    const { conditionId } = parsed;
+    seen.add(conditionId);
+    const condition = Object.hasOwn(conditions, conditionId)
+      ? conditions[conditionId]
+      : undefined;
+    // A condition the label does not declare is never met.
+    if (condition === undefined) {
+      facts.push({ conditionId, read: () => false });
+      continue;
     }
+    if (conditionReadsNetwork(condition)) readsNetwork = true;
+    facts.push({
+      conditionId,
+      read: (node, connectivity) =>
+        conditionHolds(condition, {
+          attributes: { node: node[entityAttributesProperty] },
+          entityIds: { node: node[entityPrimaryKeyProperty] },
+          nodeType: node.type,
+          connectivity,
+        }),
+    });
   }
 
   const plan: NodeLabelPlan = { facts, readsNetwork };
@@ -141,9 +74,9 @@ export const nodeLabelPlanFor = (label: NodeLabel): NodeLabelPlan => {
 };
 
 /**
- * A node's facts as one short text, a `1` or a `0` for each in the plan's
- * order: equal texts are equal facts, so a subscriber that compares them
- * hears about a change in the network only when it changes this node's
+ * A node's conditions as one short text, a `1` or a `0` for each in the
+ * plan's order: equal texts are equal answers, so a subscriber that compares
+ * them hears about a change in the network only when it changes this node's
  * label.
  */
 export const nodeFactSignature = (
@@ -158,11 +91,14 @@ export const nodeFactSignature = (
   return signature;
 };
 
-/** The facts a signature records, by the path that names each. */
+/** The answers a signature records, by condition id. */
 export const nodeFactsOf = (
   plan: NodeLabelPlan,
   signature: string,
 ): Readonly<Record<string, boolean>> =>
   Object.fromEntries(
-    plan.facts.map((fact, index) => [fact.path, signature[index] === '1']),
+    plan.facts.map((fact, index) => [
+      fact.conditionId,
+      signature[index] === '1',
+    ]),
   );

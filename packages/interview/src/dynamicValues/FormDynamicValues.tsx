@@ -254,6 +254,11 @@ export function FormDynamicValues({
         liveAttributes === undefined || formSubject == null
           ? {}
           : { [ROLES[formSubject.entity]]: liveAttributes },
+      // A node or edge the form is adding is not in the network yet.
+      ids:
+        entityId === undefined || formSubject == null
+          ? {}
+          : { [ROLES[formSubject.entity]]: entityId },
       labels: {
         ...(nodeLabel !== undefined && { node: nodeLabel }),
         ...(fromLabel !== undefined && { edgeFrom: fromLabel }),
@@ -266,7 +271,15 @@ export function FormDynamicValues({
           ? {}
           : { node: isParticipant },
     }),
-    [liveAttributes, formSubject, nodeLabel, fromLabel, toLabel, isParticipant],
+    [
+      liveAttributes,
+      formSubject,
+      entityId,
+      nodeLabel,
+      fromLabel,
+      toLabel,
+      isParticipant,
+    ],
   );
 
   return <DynamicValueEntity {...entities}>{children}</DynamicValueEntity>;

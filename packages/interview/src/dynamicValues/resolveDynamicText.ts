@@ -1,6 +1,7 @@
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { getMarkdownAttributeValues } from '@codaco/fresco-ui/RenderMarkdown';
 import {
+  type Conditions,
   DYNAMIC_VALUE_MARKER,
   type DynamicValueBinding,
   type DynamicValueRole,
@@ -17,7 +18,9 @@ import {
 } from '@codaco/protocol-validation';
 
 import type { ContentFormat } from '../localization/contentFormat';
+import type { ConnectivityIndex } from '../nodeLabels/connectivity';
 import { readOwnProperty } from '../utils/ownProperty';
+import { conditionHolds } from './conditions';
 
 /**
  * Everything a stage's text can show at one place in the interview: the
@@ -40,12 +43,21 @@ export type DynamicValueSources = Readonly<{
    */
   participants?: Readonly<Partial<Record<DynamicValueRole, boolean>>>;
   /**
-   * What is true or false of the node a node type's label is on, by the
-   * path that names it: how it is connected (`node.$connected`) and the
-   * type's conditions (`node.$condition.<id>`). Only a node's own label has
-   * these; a path without an entry reads as missing.
+   * The conditions the text can choose its wording by, by id (the stage's,
+   * or a node type label's), with what they are asked of here: the id of
+   * each entity on screen that is saved in the network, the node type its
+   * node roles are of, and how the network's nodes are connected.
    */
-  nodeFacts?: Readonly<Record<string, boolean>>;
+  conditions?: Conditions | undefined;
+  entityIds?: Readonly<Partial<Record<DynamicValueRole, string>>>;
+  nodeType?: string | undefined;
+  connectivity?: ConnectivityIndex | undefined;
+  /**
+   * Conditions already judged, by id, for a caller that judges them itself
+   * (a node's label, which follows each one closely). A condition without an
+   * entry is judged from `conditions`.
+   */
+  conditionFacts?: Readonly<Record<string, boolean>>;
   variablesFor: (
     role: DynamicValueRole,
   ) => Readonly<Record<string, Variable>> | undefined;
@@ -113,17 +125,27 @@ const resolveDynamicValue = (
       ...(matched !== undefined && { case: matched }),
     };
   }
-  if (parsed.kind === 'connectivity' || parsed.kind === 'condition') {
-    const facts = sources.nodeFacts;
-    const fact =
-      facts !== undefined && Object.hasOwn(facts, binding.path)
-        ? facts[binding.path]
-        : undefined;
-    if (fact === undefined) return { missing: true };
-    const matched = caseOf(binding, fact);
+  if (parsed.kind === 'condition') {
+    const { conditionId } = parsed;
+    const judged =
+      sources.conditionFacts === undefined
+        ? undefined
+        : readOwnProperty(sources.conditionFacts, conditionId);
+    const condition =
+      sources.conditions === undefined
+        ? undefined
+        : readOwnProperty(sources.conditions, conditionId);
+    const met =
+      judged ??
+      (condition === undefined
+        ? undefined
+        : conditionHolds(condition, sources));
+    // A condition the text's stage does not declare reads as missing.
+    if (met === undefined) return { missing: true };
+    const matched = caseOf(binding, met);
     return {
       missing: false,
-      value: fact,
+      value: met,
       ...(matched !== undefined && { case: matched }),
     };
   }
