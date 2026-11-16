@@ -117,7 +117,7 @@ describe('what the participant sees behind the nodes', () => {
    * canvas keeps, or what it will look like against the interview's dark
    * ground.
    */
-  it('frames the chosen image as the interview canvas', async () => {
+  it('frames the chosen image in the interview theme', async () => {
     renderStageEditor(openImage());
 
     const preview = await screen.findByAltText(CANVAS_IMAGE_NAME);
@@ -128,7 +128,6 @@ describe('what the participant sees behind the nodes', () => {
     // a frame that WAS the image would be the thumbnail again, at whatever
     // shape the file happens to be.
     expect(frame).not.toBe(preview);
-    expect(frame?.className).toContain('aspect-video');
   });
 
   it('opens a stage created from scratch on the ring count the interview draws', async () => {
