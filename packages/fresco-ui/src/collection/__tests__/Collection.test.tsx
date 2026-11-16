@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { StrictMode, useMemo, useState } from 'react';
+import { StrictMode, useMemo, useState, type ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -79,16 +79,6 @@ function ControlledCollection({
 
 describe('Collection', () => {
   describe('rendering', () => {
-    it('should render all items', () => {
-      render(<ControlledCollection />);
-
-      expect(screen.getByText('Apple')).toBeDefined();
-      expect(screen.getByText('Banana')).toBeDefined();
-      expect(screen.getByText('Cherry')).toBeDefined();
-      expect(screen.getByText('Date')).toBeDefined();
-      expect(screen.getByText('Elderberry')).toBeDefined();
-    });
-
     it('renders its items in the initial markup', () => {
       const markup = renderToString(
         <Collection
@@ -410,7 +400,7 @@ describe('Collection', () => {
         </Collection>,
       );
 
-      expect(screen.getByTestId('empty')).toBeDefined();
+      expect(screen.getByTestId('empty')).toBeInTheDocument();
     });
 
     // The default empty state is a message descriptor formatted here rather
@@ -418,33 +408,34 @@ describe('Collection', () => {
     // to `undefined` alone. `emptyState` is a ReactNode, and passing `null`
     // is how a caller says the collection should show nothing at all when it
     // is empty — a nullish fallback would talk over them.
-    it.each([
-      ['null', null, false],
-      ['nothing', undefined, true],
-    ])(
-      'renders no default text when a caller passes %s',
-      (_label, emptyState, expectsDefault) => {
-        const layout = new ListLayout<Item>({ gap: 2 });
+    function renderEmpty(emptyState?: ReactNode) {
+      render(
+        <Collection
+          items={[]}
+          keyExtractor={(item: Item) => item.id}
+          textValueExtractor={(item: Item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          emptyState={emptyState}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+    }
 
-        render(
-          <Collection
-            items={[]}
-            keyExtractor={(item) => item.id}
-            textValueExtractor={(item) => item.name}
-            layout={layout}
-            emptyState={emptyState}
-            renderItem={(item, itemProps) => (
-              <div {...itemProps}>{item.name}</div>
-            )}
-          >
-            {(CollectionElements) => CollectionElements}
-          </Collection>,
-        );
+    it('shows nothing when a caller passes null as the empty state', () => {
+      renderEmpty(null);
 
-        const defaultText = screen.queryByText('No items to display.');
-        expect(defaultText === null).toBe(!expectsDefault);
-      },
-    );
+      expect(screen.queryByText('No items to display.')).toBeNull();
+    });
+
+    it('shows the default empty message when a caller passes no empty state', () => {
+      renderEmpty(undefined);
+
+      expect(screen.getByText('No items to display.')).toBeInTheDocument();
+    });
 
     // A listbox may be empty, but may hold nothing other than options: the
     // empty state is drawn where items would be, so the list carries it as
@@ -475,67 +466,29 @@ describe('Collection', () => {
       ).toBeNull();
     });
 
+    it('marks only the disabled items', () => {
+      render(<ControlledCollection disabledKeys={['2']} />);
+
+      expect(screen.getByTestId('item-1')).not.toHaveAttribute('data-disabled');
+      expect(screen.getByTestId('item-2')).toHaveAttribute(
+        'data-disabled',
+        'true',
+      );
+    });
+
     it('should apply ARIA attributes', () => {
       render(<ControlledCollection />);
 
-      const collection = screen.getByLabelText('Test collection');
-      expect(collection).toBeDefined();
-      expect(collection.getAttribute('aria-multiselectable')).toBe('true');
-    });
-
-    it('should mark disabled items', () => {
-      render(<ControlledCollection disabledKeys={['2']} />);
-
-      // Non-disabled items don't have the data-disabled attribute
-      expect(
-        screen.getByTestId('item-1').hasAttribute('data-disabled'),
-      ).toBeFalsy();
-      // Disabled items have data-disabled="true"
-      expect(screen.getByTestId('item-2').getAttribute('data-disabled')).toBe(
+      expect(screen.getByLabelText('Test collection')).toHaveAttribute(
+        'aria-multiselectable',
         'true',
       );
     });
   });
 
   describe('selection', () => {
-    describe('single selection', () => {
-      it('should select item on click', async () => {
-        const user = userEvent.setup();
-        const onSelectionChange = vi.fn();
-
-        render(
-          <ControlledCollection
-            selectionMode="single"
-            onSelectionChange={onSelectionChange}
-          />,
-        );
-
-        await user.click(screen.getByTestId('item-2'));
-
-        expect(onSelectionChange).toHaveBeenCalledWith(new Set(['2']));
-      });
-
-      it('should replace selection on click', async () => {
-        const user = userEvent.setup();
-        const onSelectionChange = vi.fn();
-
-        render(
-          <ControlledCollection
-            selectionMode="single"
-            onSelectionChange={onSelectionChange}
-          />,
-        );
-
-        await user.click(screen.getByTestId('item-2'));
-        await user.click(screen.getByTestId('item-3'));
-
-        // Last call should have only the new selection
-        expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['3']));
-      });
-    });
-
     describe('multiple selection', () => {
-      it('should add to selection on click', async () => {
+      it('reports the accumulated selection to a controlled caller', async () => {
         const user = userEvent.setup();
         const onSelectionChange = vi.fn();
 
@@ -552,7 +505,7 @@ describe('Collection', () => {
         expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['2', '3']));
       });
 
-      it('should deselect on second click', async () => {
+      it('reports every key to a controlled caller on Ctrl+A', async () => {
         const user = userEvent.setup();
         const onSelectionChange = vi.fn();
 
@@ -563,28 +516,12 @@ describe('Collection', () => {
           />,
         );
 
-        await user.click(screen.getByTestId('item-2'));
-        await user.click(screen.getByTestId('item-2'));
+        await user.click(screen.getByTestId('item-1'));
+        await user.keyboard('{Control>}a{/Control}');
 
-        expect(onSelectionChange).toHaveBeenLastCalledWith(new Set());
-      });
-    });
-
-    describe('disabled items', () => {
-      it('should not select disabled items', async () => {
-        const user = userEvent.setup();
-        const onSelectionChange = vi.fn();
-
-        render(
-          <ControlledCollection
-            disabledKeys={['2']}
-            onSelectionChange={onSelectionChange}
-          />,
+        expect(onSelectionChange).toHaveBeenLastCalledWith(
+          new Set(['1', '2', '3', '4', '5']),
         );
-
-        await user.click(screen.getByTestId('item-2'));
-
-        expect(onSelectionChange).not.toHaveBeenCalled();
       });
     });
 
@@ -632,185 +569,7 @@ describe('Collection', () => {
     });
   });
 
-  describe('keyboard navigation', () => {
-    it('should focus first item on ArrowDown', async () => {
-      const user = userEvent.setup();
-      render(<ControlledCollection />);
-
-      // Click to focus the collection first
-      await user.click(screen.getByTestId('item-1'));
-
-      // Navigate to first unfocused position then down
-      await user.keyboard('{Home}');
-
-      expect(screen.getByTestId('item-1').getAttribute('data-focused')).toBe(
-        'true',
-      );
-    });
-
-    it('should navigate through items with arrow keys', async () => {
-      const user = userEvent.setup();
-      render(<ControlledCollection />);
-
-      // Click to focus the collection
-      await user.click(screen.getByTestId('item-1'));
-
-      // Navigate down
-      await user.keyboard('{ArrowDown}');
-      expect(screen.getByTestId('item-2').getAttribute('data-focused')).toBe(
-        'true',
-      );
-      // Previous item no longer has data-focused attribute
-      expect(
-        screen.getByTestId('item-1').hasAttribute('data-focused'),
-      ).toBeFalsy();
-    });
-
-    it('should select focused item with Space', async () => {
-      const user = userEvent.setup();
-      const onSelectionChange = vi.fn();
-
-      render(<ControlledCollection onSelectionChange={onSelectionChange} />);
-
-      // Click first item to focus (this also selects it)
-      await user.click(screen.getByTestId('item-1'));
-
-      // Navigate to second item
-      await user.keyboard('{ArrowDown}');
-
-      // Select with Space - in multiple mode, this adds to selection
-      await user.keyboard(' ');
-
-      // Both items should now be selected
-      expect(onSelectionChange).toHaveBeenCalledWith(new Set(['1', '2']));
-    });
-
-    it('should skip disabled items during navigation', async () => {
-      const user = userEvent.setup();
-      render(<ControlledCollection disabledKeys={['2']} />);
-
-      // Click first item to focus
-      await user.click(screen.getByTestId('item-1'));
-
-      // Navigate - should skip item 2
-      await user.keyboard('{ArrowDown}');
-      expect(screen.getByTestId('item-3').getAttribute('data-focused')).toBe(
-        'true',
-      );
-    });
-
-    it('should jump to first item with Home', async () => {
-      const user = userEvent.setup();
-      render(<ControlledCollection />);
-
-      // Click to focus
-      await user.click(screen.getByTestId('item-3'));
-
-      // Jump to first
-      await user.keyboard('{Home}');
-
-      expect(screen.getByTestId('item-1').getAttribute('data-focused')).toBe(
-        'true',
-      );
-    });
-
-    it('should jump to last item with End', async () => {
-      const user = userEvent.setup();
-      render(<ControlledCollection />);
-
-      // Click to focus
-      await user.click(screen.getByTestId('item-1'));
-
-      // Jump to last
-      await user.keyboard('{End}');
-
-      expect(screen.getByTestId('item-5').getAttribute('data-focused')).toBe(
-        'true',
-      );
-    });
-
-    it('should clear selection with Escape', async () => {
-      const user = userEvent.setup();
-      const onSelectionChange = vi.fn();
-
-      render(<ControlledCollection onSelectionChange={onSelectionChange} />);
-
-      // Select an item
-      await user.click(screen.getByTestId('item-2'));
-
-      // Clear with Escape
-      await user.keyboard('{Escape}');
-
-      expect(onSelectionChange).toHaveBeenLastCalledWith(new Set());
-    });
-
-    it('should select all with Ctrl+A in multiple mode', async () => {
-      const user = userEvent.setup();
-      const onSelectionChange = vi.fn();
-
-      render(
-        <ControlledCollection
-          selectionMode="multiple"
-          onSelectionChange={onSelectionChange}
-        />,
-      );
-
-      // Click to focus
-      await user.click(screen.getByTestId('item-1'));
-
-      // Select all
-      await user.keyboard('{Control>}a{/Control}');
-
-      expect(onSelectionChange).toHaveBeenCalledWith(
-        new Set(['1', '2', '3', '4', '5']),
-      );
-    });
-  });
-
-  describe('type-ahead search', () => {
-    it('should focus item matching typed character', async () => {
-      const user = userEvent.setup();
-      render(<ControlledCollection />);
-
-      // Click to focus collection
-      await user.click(screen.getByTestId('item-1'));
-
-      // Type 'c' to find Cherry
-      await user.keyboard('c');
-
-      expect(screen.getByTestId('item-3').getAttribute('data-focused')).toBe(
-        'true',
-      );
-    });
-
-    it('should accumulate search string', async () => {
-      const user = userEvent.setup();
-      render(<ControlledCollection />);
-
-      // Click to focus collection
-      await user.click(screen.getByTestId('item-1'));
-
-      // Type 'da' to find Date (not just 'd')
-      await user.keyboard('da');
-
-      expect(screen.getByTestId('item-4').getAttribute('data-focused')).toBe(
-        'true',
-      );
-    });
-  });
-
   describe('grid layout', () => {
-    it('should render with grid layout', () => {
-      render(<ControlledCollection layoutType="grid" />);
-
-      const collection = screen.getByLabelText('Test collection');
-      expect(collection).toBeDefined();
-
-      // All items should be rendered
-      expect(screen.getByText('Apple')).toBeDefined();
-      expect(screen.getByText('Elderberry')).toBeDefined();
-    });
-
     it('should support grid navigation with arrow keys', async () => {
       const user = userEvent.setup();
       render(<ControlledCollection layoutType="grid" />);

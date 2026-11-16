@@ -449,6 +449,10 @@ describe('the rows the arrow keys stop at', () => {
       ),
     );
 
+    it('has a choice to open in some shape', () => {
+      expect(openings.length).toBeGreaterThan(0);
+    });
+
     it.each(openings)(
       'list a neighbour exactly when the key moves to one, with a choice opened (shape %i, choice %s)',
       async (_index, _id, shape, foldable) => {
@@ -472,24 +476,29 @@ describe('the rows the arrow keys stop at', () => {
       },
     );
 
-    const foldings = all.flatMap((shape, index) =>
-      (['leaving', 'Escape'] as const).map(
-        (fold) => [index, fold, shape] as const,
-      ),
-    );
+    // Only a top-level choice that adds a row of its own can fold away
+    // under a row the test is holding.
+    const foldings = all.flatMap((shape, index) => {
+      const base = build(shape).expected;
+      const [foldable] = base.foldable.filter(
+        (each) => each.around.length === 0,
+      );
+      if (!foldable) return [];
+      const opened = build(shape, new Set([foldable.id])).expected;
+      const inside = opened.rows.find((name) => !base.rows.includes(name));
+      if (!inside) return [];
+      return (['leaving', 'Escape'] as const).map(
+        (fold) => [index, fold, shape, base, foldable, inside] as const,
+      );
+    });
+
+    it('has a pill to fold in some shape', () => {
+      expect(foldings.length).toBeGreaterThan(0);
+    });
 
     it.each(foldings)(
       'leave the list when a pill folds again (shape %i, by %s)',
-      async (_index, fold, shape) => {
-        const base = build(shape).expected;
-        const [foldable] = base.foldable.filter(
-          (each) => each.around.length === 0,
-        );
-        if (!foldable) return;
-        const opened = build(shape, new Set([foldable.id])).expected;
-        const inside = opened.rows.find((name) => !base.rows.includes(name));
-        if (!inside) return;
-
+      async (_index, fold, shape, base, foldable, inside) => {
         const user = quickUser();
         render(fieldFor(build(shape).json));
         await screen.findByRole('group', { name: 'Choice C' });

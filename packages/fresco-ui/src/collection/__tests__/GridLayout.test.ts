@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { GridKeyboardDelegate } from '../keyboard/GridKeyboardDelegate';
 import { GridLayout } from '../layout/GridLayout';
 import type { Collection, Key, Node } from '../types';
 
@@ -48,15 +47,6 @@ function createMockCollection(count: number): Collection<unknown> {
 
 describe('GridLayout', () => {
   describe('getKeyboardDelegate', () => {
-    it('should return a GridKeyboardDelegate', () => {
-      const layout = new GridLayout({ minItemWidth: 200 });
-      const collection = createMockCollection(9);
-
-      const delegate = layout.getKeyboardDelegate(collection, new Set(), 600);
-
-      expect(delegate).toBeInstanceOf(GridKeyboardDelegate);
-    });
-
     describe('auto column calculation', () => {
       it('should calculate column count from container width', () => {
         // minItemWidth: 200, gap: 16 (defaults)

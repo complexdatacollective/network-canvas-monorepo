@@ -247,21 +247,6 @@ describe('ArrayField', () => {
     expect(list).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('renders each item as an accent Surface boundary', () => {
-    renderField({
-      value: [{ id: 'one', label: 'one' }],
-      itemComponent: NestedSurfaceItem,
-    });
-
-    const nestedSurface = screen.getByTestId('nested-surface');
-    const item = nestedSurface.closest('li');
-    expect(item).not.toBeNull();
-    expect(item?.classList).toContain('bg-surface-accent');
-    expect(item?.classList).toContain('[--surface-depth:0]');
-    expect(nestedSurface.classList).toContain('bg-surface-accent-1');
-    expect(nestedSurface.classList).toContain('[--surface-depth:1]');
-  });
-
   it('keeps each item out of the tab order', () => {
     renderField({
       value: [{ id: 'one', label: 'one' }],

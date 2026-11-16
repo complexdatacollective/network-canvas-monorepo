@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { useMemo } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -48,7 +48,7 @@ describe('Collection items that cannot be selected', () => {
     seen.clear();
     render(<Harness selectionMode="none" />);
 
-    expect(screen.getByTestId('item-1')).toBeDefined();
+    expect(seen.has('1')).toBe(true);
     // A handler that exists but does nothing reads as "clickable" to whatever
     // renders the item — a Node then shows a pointer cursor and press
     // feedback for something no press can affect.
