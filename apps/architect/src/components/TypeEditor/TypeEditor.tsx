@@ -136,7 +136,7 @@ const messages = defineMessages({
   labelHint: {
     id: 'architect.typeEditor.typeEditor.labelHint',
     defaultMessage:
-      "Type text or emoji. Use the syringe button, or type '{', to insert an attribute or the default label. Use the logic button beside it to insert an If, whose rules you set, or different text for each answer to an attribute. Click an inserted pill to write the text for each of its cases; logic can be inserted inside a case too.",
+      "Type text or emoji. Use the syringe button, or type '{', to insert an attribute or the default label. Use the logic button beside it to insert an If, whose rules you set, or different wording for each of an attribute’s answers. Click an inserted pill to write the text for each of its cases; logic can be inserted inside a case too.",
     description:
       'Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button that opens the menu of values that can be inserted; the logic button is the toolbar button beside it, which opens the menu of logic; a pill is the chip an inserted value or piece of logic is shown as. The default label is the label the interview would otherwise choose for a node. The quoted brace is the literal character the researcher types.',
   },

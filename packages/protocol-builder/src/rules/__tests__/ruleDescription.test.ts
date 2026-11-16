@@ -1066,8 +1066,12 @@ describe('a rule that counts edges', () => {
       },
       codebook,
     });
-    expect(description.text).toBe(`${edgeName} count is more than 3`);
-    expect(description.operand?.items).toEqual([3]);
+    expect(description.text).toBe(
+      `Number of “${edgeName}” edges is more than 3`,
+    );
+    // One sentence, with nothing beside it for a row to draw apart.
+    expect(description.entity).toBeUndefined();
+    expect(description.operand).toBeUndefined();
     expect(description.problems).toEqual([]);
   });
 
@@ -1077,7 +1081,7 @@ describe('a rule that counts edges', () => {
       codebook,
     });
     expect(description.text).toBe(
-      'Any edge count is the highest of its node type',
+      'Has the highest number of edges of any type among nodes of its type',
     );
     expect(description.operand).toBeUndefined();
     expect(description.problems).toEqual([]);

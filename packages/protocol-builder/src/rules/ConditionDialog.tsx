@@ -27,14 +27,14 @@ import {
 const messages = defineMessages({
   aboutLabel: {
     id: 'protocolBuilder.conditionDialog.aboutLabel',
-    defaultMessage: 'Rules about',
+    defaultMessage: 'Check rules against',
     description:
       'Label of the control where a researcher chooses which of the nodes on screen the rules of an “If” are asked of, for text shown with more than one (a pair of nodes).',
   },
   aboutHint: {
     id: 'protocolBuilder.conditionDialog.aboutHint',
     defaultMessage:
-      'This text is shown with more than one node. Node and edge rules are asked of the one you choose here.',
+      'This text is shown alongside two nodes. Node rules and edge rules are checked against the node you choose here.',
     description:
       'Guidance under the control where a researcher chooses which node the rules of an “If” are asked of.',
   },
@@ -46,8 +46,7 @@ const messages = defineMessages({
   },
   rulesHint: {
     id: 'protocolBuilder.conditionDialog.rulesHint',
-    defaultMessage:
-      'The text shows this version when the rules are met, where and when it is shown.',
+    defaultMessage: 'The text shows this version when the rules are met.',
     description:
       'Guidance under the rule builder in the dialog where a researcher sets when an “If” in a piece of text applies.',
   },

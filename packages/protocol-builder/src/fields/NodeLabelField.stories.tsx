@@ -137,7 +137,7 @@ export const AVersionForEachAnswer: Story = {
     // The field's value reaches the editor a turn after it mounts.
     await waitFor(() => expect(box).toHaveTextContent('kind'));
     await expect(box).toHaveTextContent('Default label');
-    await expect(box).toHaveTextContent('If Near exists: 🔗');
+    await expect(box).toHaveTextContent('If: Near exists: 🔗');
     await expect(box).toHaveTextContent('kind: 🏥 · 🏫');
   },
 };

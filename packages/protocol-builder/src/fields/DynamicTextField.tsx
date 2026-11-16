@@ -190,7 +190,8 @@ const messages = defineMessages({
   },
   defaultNodeLabelDescription: {
     id: 'protocolBuilder.dynamicText.defaultNodeLabelDescription',
-    defaultMessage: 'The label the interview would otherwise choose',
+    defaultMessage:
+      'The label the interview would give the node if this label were not set',
     description:
       'Short note under “Default label” in the insert-a-value menu of a node type’s own label, saying that the value is the label the interview chooses by its usual rules (the node’s name, or another of its answers).',
   },
@@ -245,7 +246,7 @@ const messages = defineMessages({
   },
   ifRow: {
     id: 'protocolBuilder.dynamicText.ifRow',
-    defaultMessage: 'If {rules}',
+    defaultMessage: 'If: {rules}',
     description:
       'Label of the first row of an “If” in a piece of text: the wording shown when its rules are met. rules is those rules as a phrase, such as “Age is more than 30” or “Friend exists and Close is true”. Also what the “If” is called while folded to a pill.',
   },
@@ -257,7 +258,7 @@ const messages = defineMessages({
   },
   elseIfRow: {
     id: 'protocolBuilder.dynamicText.elseIfRow',
-    defaultMessage: 'Else if {rules}',
+    defaultMessage: 'Else if: {rules}',
     description:
       'Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are met. rules is those rules as a phrase, such as “Age is more than 30”.',
   },

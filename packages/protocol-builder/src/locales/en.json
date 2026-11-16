@@ -1280,11 +1280,11 @@
     "description": "Choice of what the rules of an “If” are asked of, for text shown while the participant is asked about one node in particular."
   },
   "protocolBuilder.conditionDialog.aboutHint": {
-    "defaultMessage": "This text is shown with more than one node. Node and edge rules are asked of the one you choose here.",
+    "defaultMessage": "This text is shown alongside two nodes. Node rules and edge rules are checked against the node you choose here.",
     "description": "Guidance under the control where a researcher chooses which node the rules of an “If” are asked of."
   },
   "protocolBuilder.conditionDialog.aboutLabel": {
-    "defaultMessage": "Rules about",
+    "defaultMessage": "Check rules against",
     "description": "Label of the control where a researcher chooses which of the nodes on screen the rules of an “If” are asked of, for text shown with more than one (a pair of nodes)."
   },
   "protocolBuilder.conditionDialog.aboutNode": {
@@ -1296,7 +1296,7 @@
     "description": "Choice of what the rules of an “If” are asked of, for text shown with a pair of nodes: the second of the two."
   },
   "protocolBuilder.conditionDialog.rulesHint": {
-    "defaultMessage": "The text shows this version when the rules are met, where and when it is shown.",
+    "defaultMessage": "The text shows this version when the rules are met.",
     "description": "Guidance under the rule builder in the dialog where a researcher sets when an “If” in a piece of text applies."
   },
   "protocolBuilder.conditionDialog.rulesLabel": {
@@ -1464,7 +1464,7 @@
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu of a node type’s own label: the label the interview would choose for the node if the node type had no label of its own, taken from the node’s name or another of its answers. A node is one entity in the network, which may not be a person."
   },
   "protocolBuilder.dynamicText.defaultNodeLabelDescription": {
-    "defaultMessage": "The label the interview would otherwise choose",
+    "defaultMessage": "The label the interview would give the node if this label were not set",
     "description": "Short note under “Default label” in the insert-a-value menu of a node type’s own label, saying that the value is the label the interview chooses by its usual rules (the node’s name, or another of its answers)."
   },
   "protocolBuilder.dynamicText.dyadSourceValue": {
@@ -1484,7 +1484,7 @@
     "description": "Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are NOT met. rules is those rules as a phrase."
   },
   "protocolBuilder.dynamicText.elseIfRow": {
-    "defaultMessage": "Else if {rules}",
+    "defaultMessage": "Else if: {rules}",
     "description": "Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are met. rules is those rules as a phrase, such as “Age is more than 30”."
   },
   "protocolBuilder.dynamicText.firstNodeLabel": {
@@ -1496,7 +1496,7 @@
     "description": "Label of the first row of an “If not” in a piece of text: the wording shown when its rules are NOT met. rules is those rules as a phrase, such as “Age is more than 30”."
   },
   "protocolBuilder.dynamicText.ifRow": {
-    "defaultMessage": "If {rules}",
+    "defaultMessage": "If: {rules}",
     "description": "Label of the first row of an “If” in a piece of text: the wording shown when its rules are met. rules is those rules as a phrase, such as “Age is more than 30” or “Friend exists and Close is true”. Also what the “If” is called while folded to a pill."
   },
   "protocolBuilder.dynamicText.insertMenu": {
@@ -6759,9 +6759,9 @@
     "defaultMessage": "has selected options not equal to",
     "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
   },
-  "protocolBuilder.ruleDescription.anyEdge": {
-    "defaultMessage": "Any edge",
-    "description": "What a rule that counts edges (relationships between network members) is said to count when it counts edges of every type rather than one type. It opens a sentence such as “Any edge count is more than 3”."
+  "protocolBuilder.ruleDescription.anyEdgeType": {
+    "defaultMessage": "Edges of any type",
+    "description": "Choice in the list of edge types (kinds of relationship between network members) a rule can count, above the protocol’s own edge types: edges of every type are counted together."
   },
   "protocolBuilder.ruleDescription.dateResolutionFull": {
     "defaultMessage": "a full date",
@@ -6775,37 +6775,69 @@
     "defaultMessage": "a year",
     "description": "Noun phrase naming the precision a date attribute records answers at: a year alone. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
   },
-  "protocolBuilder.ruleDescription.edgeCountExactly": {
-    "defaultMessage": "count is exactly",
-    "description": "Part of a sentence describing a rule about how many edges (relationships) join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is exactly 3”."
+  "protocolBuilder.ruleDescription.edgeCountChoiceExactly": {
+    "defaultMessage": "Is exactly",
+    "description": "Choice in the list of ways to compare the number of edges (relationships) a node has with a number the researcher types: the number of edges is exactly that number."
   },
-  "protocolBuilder.ruleDescription.edgeCountFewest": {
-    "defaultMessage": "count is the lowest of its node type",
-    "description": "Part of a sentence describing a rule that matches the node with fewer edges than any other node of the same type. It follows the name of the edge type counted, as in “Friend count is the lowest of its node type”."
+  "protocolBuilder.ruleDescription.edgeCountChoiceFewest": {
+    "defaultMessage": "Is the lowest among nodes of its type",
+    "description": "Choice in the list of ways to compare the number of edges a node has. It takes no number: the node has fewer edges than any other node of the same node type."
   },
-  "protocolBuilder.ruleDescription.edgeCountGreaterThan": {
-    "defaultMessage": "count is more than",
-    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is more than 3”."
+  "protocolBuilder.ruleDescription.edgeCountChoiceGreaterThan": {
+    "defaultMessage": "Is more than",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is greater than that number."
   },
-  "protocolBuilder.ruleDescription.edgeCountGreaterThanOrEqual": {
-    "defaultMessage": "count is at least",
-    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is at least 3”."
+  "protocolBuilder.ruleDescription.edgeCountChoiceGreaterThanOrEqual": {
+    "defaultMessage": "Is at least",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is that number or more."
   },
-  "protocolBuilder.ruleDescription.edgeCountLessThan": {
-    "defaultMessage": "count is less than",
-    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is less than 3”."
+  "protocolBuilder.ruleDescription.edgeCountChoiceLessThan": {
+    "defaultMessage": "Is less than",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is smaller than that number."
   },
-  "protocolBuilder.ruleDescription.edgeCountLessThanOrEqual": {
-    "defaultMessage": "count is at most",
-    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is at most 3”."
+  "protocolBuilder.ruleDescription.edgeCountChoiceLessThanOrEqual": {
+    "defaultMessage": "Is at most",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is that number or fewer."
   },
-  "protocolBuilder.ruleDescription.edgeCountMost": {
-    "defaultMessage": "count is the highest of its node type",
-    "description": "Part of a sentence describing a rule that matches the node with more edges than any other node of the same type. It follows the name of the edge type counted, as in “Friend count is the highest of its node type”."
+  "protocolBuilder.ruleDescription.edgeCountChoiceMost": {
+    "defaultMessage": "Is the highest among nodes of its type",
+    "description": "Choice in the list of ways to compare the number of edges a node has. It takes no number: the node has more edges than any other node of the same node type."
   },
-  "protocolBuilder.ruleDescription.edgeCountNot": {
-    "defaultMessage": "count is not",
-    "description": "Part of a sentence describing a rule about how many edges join a node to others. It follows the name of the edge type counted and is followed by a number, as in “Friend count is not 3”."
+  "protocolBuilder.ruleDescription.edgeCountChoiceNot": {
+    "defaultMessage": "Is not",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is anything but that number."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceExactly": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is exactly {count, number}} other {Number of “{edgeType}” edges is exactly {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, as the researcher wrote it, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceFewest": {
+    "defaultMessage": "{scope, select, any {Has the lowest number of edges of any type among nodes of its type} other {Has the lowest number of “{edgeType}” edges among nodes of its type}}",
+    "description": "Describes a rule that a node meets when no other node of the same node type has fewer edges (relationships) than it has; nodes that tie for the lowest all meet it, but no node meets it when every node of that type has the same number. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. “its type” is the node type of the node the rule is about."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceGreaterThan": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is more than {count, number}} other {Number of “{edgeType}” edges is more than {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceGreaterThanOrEqual": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is at least {count, number}} other {Number of “{edgeType}” edges is at least {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceLessThan": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is less than {count, number}} other {Number of “{edgeType}” edges is less than {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceLessThanOrEqual": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is at most {count, number}} other {Number of “{edgeType}” edges is at most {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceMost": {
+    "defaultMessage": "{scope, select, any {Has the highest number of edges of any type among nodes of its type} other {Has the highest number of “{edgeType}” edges among nodes of its type}}",
+    "description": "Describes a rule that a node meets when no other node of the same node type has more edges (relationships) than it has; nodes that tie for the highest all meet it, but no node meets it when every node of that type has the same number. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. “its type” is the node type of the node the rule is about."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceNot": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is not {count, number}} other {Number of “{edgeType}” edges is not {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes: the number is anything but count. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”."
   },
   "protocolBuilder.ruleDescription.egoContains": {
     "defaultMessage": "that contains",
@@ -7028,7 +7060,7 @@
     "description": "Label of the control where a researcher chooses which attribute of an edge — a relationship between network members — a rule asks about."
   },
   "protocolBuilder.ruleEditor.edgeCountHint": {
-    "defaultMessage": "The highest and the lowest compare the node with the other nodes of its type. Nodes that tie all match, and none matches while every node has the same number.",
+    "defaultMessage": "“Is the highest” and “Is the lowest” compare the node’s number of edges with those of the other nodes of its type. Nodes that tie for the highest, or for the lowest, all match. No node matches when every node of that type has the same number of edges.",
     "description": "Guidance under the control where a researcher chooses how a count of edges is compared."
   },
   "protocolBuilder.ruleEditor.edgeCountLabel": {
@@ -7192,7 +7224,7 @@
     "description": "One of the choices for what a rule about edges (relationships between network members) is based on: how many edges join the node to others."
   },
   "protocolBuilder.ruleEditor.ruleKindCountHint": {
-    "defaultMessage": "Based on how many of these edges join the node to others, or on whether it has the most or the fewest among nodes of its type.",
+    "defaultMessage": "Based on how many edges join the node to other nodes, or on whether it has more or fewer of them than the other nodes of its type.",
     "description": "Explains the \"Number of edges\" choice for a rule about edges — relationships between network members."
   },
   "protocolBuilder.ruleEditor.ruleKindEdgeAttributeHint": {

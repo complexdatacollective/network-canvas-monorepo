@@ -189,7 +189,7 @@ const messages = defineMessages({
   ruleKindCountHint: {
     id: 'protocolBuilder.ruleEditor.ruleKindCountHint',
     defaultMessage:
-      'Based on how many of these edges join the node to others, or on whether it has the most or the fewest among nodes of its type.',
+      'Based on how many edges join the node to other nodes, or on whether it has more or fewer of them than the other nodes of its type.',
     description:
       'Explains the "Number of edges" choice for a rule about edges — relationships between network members.',
   },
@@ -208,7 +208,7 @@ const messages = defineMessages({
   edgeCountHint: {
     id: 'protocolBuilder.ruleEditor.edgeCountHint',
     defaultMessage:
-      'The highest and the lowest compare the node with the other nodes of its type. Nodes that tie all match, and none matches while every node has the same number.',
+      '“Is the highest” and “Is the lowest” compare the node’s number of edges with those of the other nodes of its type. Nodes that tie for the highest, or for the lowest, all match. No node matches when every node of that type has the same number of edges.',
     description:
       'Guidance under the control where a researcher chooses how a count of edges is compared.',
   },
