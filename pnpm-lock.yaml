@@ -2526,6 +2526,9 @@ importers:
       fuse.js:
         specifier: 'catalog:'
         version: 7.5.0
+      gemoji:
+        specifier: ^8.1.0
+        version: 8.1.0
       immer:
         specifier: ^11.2.9
         version: 11.2.9

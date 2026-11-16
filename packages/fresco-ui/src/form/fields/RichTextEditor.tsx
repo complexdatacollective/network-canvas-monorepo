@@ -48,6 +48,7 @@ import {
   Minus,
   Plus,
   Redo,
+  Smile,
   Split,
   Syringe,
   Trash2,
@@ -97,6 +98,11 @@ import type { CreateFormFieldProps } from '../Field/types';
 import { textEntryDirection } from '../textEntryDirection';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
+import {
+  EMOJI_MENU_LIMIT,
+  loadEmojiMenuItems,
+  typedEmojiSearch,
+} from './richText/emojiMenu';
 import { documentInSchema, marksInSchema } from './richText/fitToSchema';
 import {
   InsertMenuList,
@@ -170,6 +176,12 @@ const messages = defineMessages({
     defaultMessage: 'Thematic break',
     description:
       'Accessible name of the toolbar button inserting a horizontal rule.',
+  },
+  emojiMenu: {
+    id: 'frescoUi.richTextEditor.emojiMenu',
+    defaultMessage: 'Insert emoji',
+    description:
+      'Accessible name and tooltip of the toolbar button in the rich text editor that opens a searchable menu of emoji to insert into the text. Also names the menu.',
   },
   undo: {
     id: 'frescoUi.richTextEditor.undo',
@@ -807,6 +819,8 @@ type ExtensionOptions = {
   trigger?: string;
   /** Told when the trigger is typed, and where it now sits. */
   onTrigger: (editor: Editor, position: number) => void;
+  /** Given what opens the emoji menu as it is typed; absent, nothing does. */
+  onEmojiTyped?: (editor: Editor, position: number, typed: string) => void;
   /**
    * For a version's own editor: the history its edits belong to, the field's.
    * The version keeps none of its own, and its undo and redo keys act on the
@@ -900,6 +914,45 @@ const createInsertTrigger = (
     },
   });
 
+/**
+ * Opens the emoji menu as the start of an emoji's name is typed: a colon
+ * that opens a word, then the letters `typedEmojiSearch` asks for. `onTyped`
+ * is given where the colon sits and what was typed from it on.
+ */
+const createEmojiTrigger = (
+  onTyped: (editor: Editor, position: number, typed: string) => void,
+) =>
+  Extension.create({
+    name: 'emojiMenuTrigger',
+    addProseMirrorPlugins() {
+      const { editor } = this;
+      return [
+        new Plugin({
+          key: new PluginKey('emojiMenuTrigger'),
+          props: {
+            handleTextInput: (view, from, _to, text) => {
+              const { $from } = view.state.selection;
+              const before =
+                $from.parent.textBetween(
+                  0,
+                  $from.parentOffset,
+                  undefined,
+                  ' ',
+                ) + text;
+              const typed = typedEmojiSearch(before);
+              if (typed === undefined) return false;
+              const position = from + text.length - typed.length;
+              // After the character is in: the menu replaces what was
+              // typed if an emoji is chosen.
+              queueMicrotask(() => onTyped(editor, position, typed));
+              return false;
+            },
+          },
+        }),
+      ];
+    },
+  });
+
 // Factory function to create custom extensions with typography classes
 function createCustomExtensions({
   headingLevels,
@@ -915,6 +968,7 @@ function createCustomExtensions({
   versions,
   trigger,
   onTrigger,
+  onEmojiTyped,
   history,
   placeholderWhenReadOnly = false,
 }: ExtensionOptions): AnyExtension[] {
@@ -1024,6 +1078,10 @@ function createCustomExtensions({
 
   if (trigger !== undefined && trigger !== '') {
     extensions.push(createInsertTrigger(trigger, onTrigger));
+  }
+
+  if (onEmojiTyped !== undefined) {
+    extensions.push(createEmojiTrigger(onEmojiTyped));
   }
 
   if (headingLevels.length > 0) {
@@ -1249,6 +1307,12 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      */
     'logicMenu'?: RichTextInsertMenu;
     /**
+     * Whether the editor offers its menu of emoji, from the toolbar and by
+     * typing a colon and the first letters of an emoji's name (`:sm`). An
+     * emoji is inserted as the character itself. On unless turned off.
+     */
+    'emojiMenu'?: boolean;
+    /**
      * Carries out what a set of versions asks of its consumer: editing or
      * removing one of its versions, or one of its own actions (see
      * `RichTextVersionsActionEvent`).
@@ -1312,6 +1376,7 @@ export default function RichTextEditorField({
   openWholeMessageVersions = false,
   insertMenu,
   logicMenu,
+  emojiMenu: offersEmoji = true,
   onVersionsAction,
   className,
   onFocus,
@@ -1326,10 +1391,21 @@ export default function RichTextEditorField({
   const [triggered, setTriggered] = useState<{
     editor: Editor;
     position: number;
+    /** What was typed to open the menu, which a pick replaces. */
+    typed: string;
     anchor: { left: number; top: number; height: number };
   } | null>(null);
-  // Which of the two menus is open: the one of values, or the one of logic.
-  const [openMenu, setOpenMenu] = useState<'values' | 'logic' | null>(null);
+  // Which of the menus is open: the one of values, of logic, or of emoji.
+  const [openMenu, setOpenMenu] = useState<'values' | 'logic' | 'emoji' | null>(
+    null,
+  );
+  // The emoji, once the menu has been asked for: the list is loaded then.
+  const [emojiItems, setEmojiItems] = useState<
+    readonly RichTextInsertMenuItem[] | null
+  >(null);
+  const loadEmoji = useCallback(() => {
+    void loadEmojiMenuItems().then(setEmojiItems);
+  }, []);
   const setIsInsertMenuOpen = useCallback(
     (open: boolean) => setOpenMenu(open ? 'values' : null),
     [setOpenMenu],
@@ -1343,12 +1419,14 @@ export default function RichTextEditorField({
   // that lands in the same render as a pick's close, and so never shows the
   // menu as closed.
   const [caretReturnsTo, setCaretReturnsTo] = useState<Editor | null>(null);
+  const triggerCharacter = insertMenu?.trigger ?? '';
   const onTrigger = useCallback(
     (typedIn: Editor, position: number) => {
       const coords = typedIn.view.coordsAtPos(position);
       setTriggered({
         editor: typedIn,
         position,
+        typed: triggerCharacter,
         anchor: {
           left: coords.left,
           top: coords.top,
@@ -1358,8 +1436,28 @@ export default function RichTextEditorField({
       setCaretReturnsTo(typedIn);
       setIsInsertMenuOpen(true);
     },
-    [setTriggered, setIsInsertMenuOpen, setCaretReturnsTo],
+    [setTriggered, setIsInsertMenuOpen, setCaretReturnsTo, triggerCharacter],
   );
+  const onEmojiTyped = useCallback(
+    (typedIn: Editor, position: number, typed: string) => {
+      const coords = typedIn.view.coordsAtPos(position);
+      setTriggered({
+        editor: typedIn,
+        position,
+        typed,
+        anchor: {
+          left: coords.left,
+          top: coords.top,
+          height: coords.bottom - coords.top,
+        },
+      });
+      setCaretReturnsTo(typedIn);
+      loadEmoji();
+      setOpenMenu('emoji');
+    },
+    [setTriggered, setCaretReturnsTo, loadEmoji, setOpenMenu],
+  );
+  const emojiTrigger = offersEmoji ? onEmojiTyped : undefined;
   // The version being written, when the caret is in one: the toolbar acts on
   // it rather than on the line around it.
   const [versionEditor, setVersionEditor] = useState<Editor | null>(null);
@@ -1551,6 +1649,7 @@ export default function RichTextEditorField({
         versions,
         trigger: insertMenu?.trigger,
         onTrigger,
+        onEmojiTyped: emojiTrigger,
       }),
     [
       interfaceLanguage,
@@ -1566,6 +1665,7 @@ export default function RichTextEditorField({
       versions,
       insertMenu?.trigger,
       onTrigger,
+      emojiTrigger,
     ],
   );
   // The field's own editor, once there is one, keeps the history of every
@@ -1596,6 +1696,7 @@ export default function RichTextEditorField({
             versions,
             trigger: insertMenu?.trigger,
             onTrigger,
+            onEmojiTyped: emojiTrigger,
             history: sharedHistory,
           })
         : [],
@@ -1606,6 +1707,7 @@ export default function RichTextEditorField({
       versions,
       insertMenu?.trigger,
       onTrigger,
+      emojiTrigger,
       sharedHistory,
       emptyVersionText,
     ],
@@ -1995,6 +2097,13 @@ export default function RichTextEditorField({
     toolbarTokens.length > 0 ||
     insertMenu !== undefined ||
     logicMenu !== undefined;
+  // The emoji menu's button stands beside those, in no group of its own: a
+  // group of one would only say its name twice.
+  const showInsert = showTokens || offersEmoji;
+  const emojiMenuContents: RichTextInsertMenu = {
+    label: intl.formatMessage(messages.emojiMenu),
+    items: emojiItems ?? [],
+  };
 
   const insertItem = (item: RichTextInsertMenuItem) => {
     if (item.disabled === true) return;
@@ -2011,23 +2120,39 @@ export default function RichTextEditorField({
       const content = isContentList(given) ? [...given] : given;
       if (opened !== null && !opened.editor.isDestroyed) {
         const { editor: into, position } = opened;
-        // The trigger the menu was opened by is replaced, if it is still
+        // What the menu was opened by typing is replaced, if it is still
         // there.
         const typed =
+          opened.typed.length > 0 &&
           into.state.doc.textBetween(
             position,
-            Math.min(position + 1, into.state.doc.content.size),
-          ) === insertMenu?.trigger;
+            Math.min(
+              position + opened.typed.length,
+              into.state.doc.content.size,
+            ),
+          ) === opened.typed;
+        // Letters typed on after an emoji's opening ones, before the menu
+        // had taken the keyboard, are part of the same name.
+        const length = opened.typed.startsWith(':')
+          ? (/^:[\w+-]*/.exec(
+              into.state.doc.textBetween(
+                position,
+                Math.min(position + 40, into.state.doc.content.size),
+                '\n',
+                '\n',
+              ),
+            )?.[0].length ?? opened.typed.length)
+          : opened.typed.length;
         const sizeBefore = into.state.doc.content.size;
         into
           .chain()
           .focus()
           .insertContentAt(
-            typed ? { from: position, to: position + 1 } : position,
+            typed ? { from: position, to: position + length } : position,
             content,
           )
           .run();
-        selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
+        selectInsertedVersions(into, position, sizeBefore, typed ? length : 0);
         setCaretReturnsTo(into);
         return;
       }
@@ -2059,12 +2184,13 @@ export default function RichTextEditorField({
   // (also opened by typing the trigger), or the logic.
   const renderMenu = (
     menu: RichTextInsertMenu,
-    kind: 'values' | 'logic',
+    kind: 'values' | 'logic' | 'emoji',
     Icon: typeof Syringe,
   ) => (
     <Popover
       open={openMenu === kind && !isDisabled}
       onOpenChange={(open) => {
+        if (open && kind === 'emoji') loadEmoji();
         setOpenMenu(open ? kind : null);
         if (open) setCaretReturnsTo(null);
         if (!open) setTriggered(null);
@@ -2128,7 +2254,18 @@ export default function RichTextEditorField({
           return false;
         }}
       >
-        <InsertMenuList menu={menu} onPick={insertItem} />
+        <InsertMenuList
+          menu={menu}
+          onPick={insertItem}
+          {...(kind === 'emoji' && {
+            limit: EMOJI_MENU_LIMIT,
+            // Opened by typing, it searches for what was typed after the
+            // colon.
+            ...(triggered !== null && {
+              initialSearch: triggered.typed.slice(1),
+            }),
+          })}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -2150,7 +2287,7 @@ export default function RichTextEditorField({
     showHeadings,
     showLists,
     showThematicBreak,
-    showTokens,
+    showInsert,
     showHistory,
   ].filter(Boolean);
   const hasToolbar = visibleGroups.length > 0;
@@ -2562,7 +2699,7 @@ export default function RichTextEditorField({
               showHeadings ||
               showLists ||
               showThematicBreak) &&
-              showTokens && (
+              showInsert && (
                 <Toolbar.Separator className={toolbarSeparatorStyles} />
               )}
 
@@ -2617,11 +2754,13 @@ export default function RichTextEditorField({
               </Toolbar.Group>
             )}
 
+            {offersEmoji && renderMenu(emojiMenuContents, 'emoji', Smile)}
+
             {(showTextFormatting ||
               showHeadings ||
               showLists ||
               showThematicBreak ||
-              showTokens) &&
+              showInsert) &&
               showHistory && (
                 <Toolbar.Separator className={toolbarSeparatorStyles} />
               )}

@@ -1279,3 +1279,38 @@ export const InsertMenuWithAnUnavailableItem: Story = {
     );
   },
 };
+
+/**
+ * Every editor offers a menu of emoji, from the toolbar button and by typing
+ * a colon and the first two letters of an emoji's name (`:ro`). The menu is
+ * searched by name and tag, and an emoji is inserted as the character
+ * itself, so the stored text is unchanged. A colon in a sentence ("Note: …",
+ * "10:30") never opens it. `emojiMenu={false}` leaves it out.
+ */
+export const EmojiMenu: Story = {
+  render: () => <EditorWithValue initial={undefined} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    await userEvent.click(editor);
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Insert emoji' }));
+    const search = await body.findByRole('combobox', { name: 'Search' });
+    await userEvent.type(search, 'hospital');
+    await userEvent.click(await body.findByRole('option', { name: /🏥/ }));
+    await waitFor(() => expect(editor).toHaveTextContent('🏥'));
+
+    // Typed: the menu opens on the second letter, already searching.
+    await waitFor(() => expect(editor).toHaveFocus());
+    await userEvent.keyboard(' :ro');
+    const typed = await body.findByRole('combobox', { name: 'Search' });
+    await expect(typed).toHaveValue('ro');
+    // The search goes on narrowing as more of the name is typed.
+    await waitFor(() => expect(typed).toHaveFocus());
+    await userEvent.keyboard('cket');
+    await expect(typed).toHaveValue('rocket');
+    await userEvent.click(await body.findByRole('option', { name: /^🚀 / }));
+    await waitFor(() => expect(editor).toHaveTextContent('🏥 🚀'));
+  },
+};

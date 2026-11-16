@@ -2,7 +2,7 @@
 
 import { Autocomplete } from '@base-ui/react/autocomplete';
 import type { JSONContent } from '@tiptap/react';
-import { useMemo } from 'react';
+import { type FocusEvent, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -95,9 +95,15 @@ const groupsOf = (items: readonly RichTextInsertMenuItem[]): Group[] => {
 export function InsertMenuList({
   menu,
   onPick,
+  initialSearch,
+  limit,
 }: {
   menu: RichTextInsertMenu;
   onPick: (item: RichTextInsertMenuItem) => void;
+  /** What the search box holds as the menu opens, when it opens on a search. */
+  initialSearch?: string;
+  /** The most items listed at once, for a menu too long to draw whole. */
+  limit?: number;
 }) {
   const intl = useAppIntl();
   const groups = useMemo(() => groupsOf(menu.items), [menu.items]);
@@ -109,6 +115,8 @@ export function InsertMenuList({
       inline
       open
       autoHighlight="always"
+      {...(initialSearch !== undefined && { defaultValue: initialSearch })}
+      {...(limit !== undefined && { limit })}
       itemToStringValue={(item: RichTextInsertMenuItem) =>
         [presentationalTextValue(item.label), item.description, item.group]
           .filter(Boolean)
@@ -118,6 +126,20 @@ export function InsertMenuList({
       <div className="flex w-72 max-w-full flex-col gap-2">
         <Autocomplete.Input
           autoFocus
+          // Opened on a search already typed, the caret goes after it, so
+          // what is typed next goes on with the same word.
+          {...(initialSearch !== undefined && {
+            onFocus: (event: FocusEvent<HTMLInputElement>) => {
+              // A frame on: the popover selects the text of the control it
+              // hands focus to, after this.
+              const input = event.currentTarget;
+              requestAnimationFrame(() => {
+                if (input.ownerDocument.activeElement !== input) return;
+                const end = input.value.length;
+                input.setSelectionRange(end, end);
+              });
+            },
+          })}
           aria-label={search}
           placeholder={search}
           className={cx(

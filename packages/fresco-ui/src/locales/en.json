@@ -767,6 +767,10 @@
     "defaultMessage": "Bullet list",
     "description": "Accessible name of the bullet-list toggle in the editor toolbar."
   },
+  "frescoUi.richTextEditor.emojiMenu": {
+    "defaultMessage": "Insert emoji",
+    "description": "Accessible name and tooltip of the toolbar button in the rich text editor that opens a searchable menu of emoji to insert into the text. Also names the menu."
+  },
   "frescoUi.richTextEditor.emptyVersion": {
     "defaultMessage": "Shows nothing",
     "description": "Muted hint shown inside an empty version of a piece of text, such as the version shown when a participant’s name is not known. An empty version is allowed: in that case nothing is shown in its place. The hint is not part of the text."

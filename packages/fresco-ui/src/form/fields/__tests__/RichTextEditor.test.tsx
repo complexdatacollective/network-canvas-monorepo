@@ -1184,9 +1184,10 @@ describe('versions that are the whole message', () => {
     expect(
       screen.getByRole('textbox', { name: 'When it is 1' }),
     ).toHaveTextContent('one item');
-    // No pill to open and nothing that claims to be expanded or collapsed.
+    // No pill to open and nothing in the text that claims to be expanded or
+    // collapsed (the toolbar's menu buttons are another matter).
     expect(pillOf()).toBeNull();
-    expect(document.querySelector('[aria-expanded]')).toBeNull();
+    expect(document.querySelector('.tiptap [aria-expanded]')).toBeNull();
     expect(
       screen.getByRole('group', { name: 'Wording that changes with a number' }),
     ).toBeVisible();

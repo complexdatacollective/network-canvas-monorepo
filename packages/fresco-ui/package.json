@@ -1050,6 +1050,7 @@
     "cva": "1.0.0-beta.12",
     "es-toolkit": "catalog:",
     "fuse.js": "catalog:",
+    "gemoji": "^8.1.0",
     "immer": "^11.2.9",
     "lucide-react": "catalog:",
     "nanoid": "^6.0.2",
