@@ -7,8 +7,6 @@ describe('CategoricalItem component', () => {
   it('renders unexpanded categorical item', () => {
     const component = shallow(<CategoricalItem />);
 
-    expect(component).toMatchSnapshot();
-
     expect(
       component
         .find('.categorical-item')

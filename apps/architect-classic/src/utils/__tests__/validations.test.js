@@ -193,12 +193,4 @@ describe('Validations', () => {
       expect(subject([1, 2, 3])).toBe(errorMessage);
     });
   });
-
-  it.todo('uniqueArrayAttributr()');
-
-  it.todo('uniqueByList()');
-
-  it.todo('ISODate()');
-
-  it.todo('allowedVariableName()');
 });

@@ -34,12 +34,13 @@ describe('API auth helpers', () => {
 
       const result = await requireApiTokenAuth(request);
 
-      expect('error' in result).toBe(true);
-      if ('error' in result) {
-        expect(result.error).toBeInstanceOf(NextResponse);
-        const body = (await result.error.json()) as { error: string };
-        expect(body.error).toContain('Authentication required');
-      }
+      if (!('error' in result)) throw new Error('Expected an auth error');
+      expect(result.error).toBeInstanceOf(NextResponse);
+      expect(result.error.status).toBe(401);
+      expect(await result.error.json()).toEqual({
+        error: 'Authentication required. Provide a Bearer token.',
+      });
+      expect(mockVerifyApiToken).not.toHaveBeenCalled();
     });
 
     it('should return error when token is invalid', async () => {
@@ -51,7 +52,11 @@ describe('API auth helpers', () => {
 
       const result = await requireApiTokenAuth(request);
 
-      expect('error' in result).toBe(true);
+      if (!('error' in result)) throw new Error('Expected an auth error');
+      expect(result.error.status).toBe(401);
+      expect(await result.error.json()).toEqual({
+        error: 'Invalid API token',
+      });
       expect(mockVerifyApiToken).toHaveBeenCalledWith('invalid-token');
     });
 
@@ -66,18 +71,6 @@ describe('API auth helpers', () => {
 
       expect(result).toEqual({ valid: true });
       expect(mockVerifyApiToken).toHaveBeenCalledWith('valid-token');
-    });
-
-    it('should extract token from Bearer prefix', async () => {
-      mockVerifyApiToken.mockResolvedValue({ valid: true });
-
-      const request = new NextRequest('http://localhost:3000/api/v1/test', {
-        headers: { Authorization: 'Bearer my-secret-token' },
-      });
-
-      await requireApiTokenAuth(request);
-
-      expect(mockVerifyApiToken).toHaveBeenCalledWith('my-secret-token');
     });
   });
 });

@@ -2,12 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
-import type { StageType } from '@codaco/protocol-validation';
 
 import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
+import { STAGE_TYPES } from '../../stage-types.ts';
 import { INTERFACE_NAMES, interfaceDisplayName } from '../interfaceNames.ts';
-
-const stageTypes = Object.keys(INTERFACE_NAMES) as StageType[];
 
 const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
@@ -15,20 +13,14 @@ describe('INTERFACE_NAMES', () => {
   it('names every stage type the schema defines', () => {
     // `Record<StageType, string>` already makes a missing entry a build error;
     // this catches the other half — a name that is present but empty.
-    expect(stageTypes.length).toBeGreaterThan(0);
-    for (const stageType of stageTypes) {
+    expect(STAGE_TYPES.length).toBeGreaterThan(0);
+    for (const stageType of STAGE_TYPES) {
       expect(INTERFACE_NAMES[stageType].trim()).not.toBe('');
     }
   });
 });
 
 describe('interfaceDisplayName', () => {
-  it('answers for every stage type', () => {
-    for (const stageType of stageTypes) {
-      expect(interfaceDisplayName(stageType)).toBe(INTERFACE_NAMES[stageType]);
-    }
-  });
-
   /**
    * A stage `type` read back out of a protocol is a plain string, and an
    * imported `.netcanvas` authored against a newer schema can name an

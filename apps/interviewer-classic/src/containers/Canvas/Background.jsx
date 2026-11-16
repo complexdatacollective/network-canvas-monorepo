@@ -32,6 +32,4 @@ Background.defaultProps = {
   image: null,
 };
 
-export { Background };
-
 export default Background;

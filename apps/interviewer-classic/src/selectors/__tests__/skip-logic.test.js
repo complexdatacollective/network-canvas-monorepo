@@ -211,7 +211,7 @@ describe('skip-logic selector', () => {
       expect(skipped).toEqual(false);
     });
 
-    it('returns false for stage if skip logic query with OR is not met', () => {
+    it('returns true for stage if skip logic query with OR is met', () => {
       const skipped = isStageSkipped(6)(mockState);
       expect(skipped).toEqual(true);
     });

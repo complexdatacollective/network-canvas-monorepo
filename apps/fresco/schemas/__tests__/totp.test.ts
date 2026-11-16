@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { type z } from 'zod';
 
 vi.mock('server-only', () => ({}));
 import {
@@ -6,6 +7,17 @@ import {
   verifyTotpSetupSchema,
   verifyTwoFactorSchema,
 } from '../totp';
+
+function expectIssue(
+  result: z.ZodSafeParseResult<unknown>,
+  path: string,
+  message: string,
+) {
+  expect(result.success).toBe(false);
+  expect(result.error?.issues).toContainEqual(
+    expect.objectContaining({ path: [path], message }),
+  );
+}
 
 describe('TOTP Schema Validators', () => {
   describe('verifyTotpSetupSchema', () => {
@@ -15,19 +27,35 @@ describe('TOTP Schema Validators', () => {
     });
 
     it('rejects a code containing non-numeric characters', () => {
-      expect(() => verifyTotpSetupSchema.parse({ code: '12345a' })).toThrow();
+      expectIssue(
+        verifyTotpSetupSchema.safeParse({ code: '12345a' }),
+        'code',
+        'Code must be exactly 6 digits',
+      );
     });
 
     it('rejects a code shorter than 6 digits', () => {
-      expect(() => verifyTotpSetupSchema.parse({ code: '12345' })).toThrow();
+      expectIssue(
+        verifyTotpSetupSchema.safeParse({ code: '12345' }),
+        'code',
+        'Code must be exactly 6 digits',
+      );
     });
 
     it('rejects a code longer than 6 digits', () => {
-      expect(() => verifyTotpSetupSchema.parse({ code: '1234567' })).toThrow();
+      expectIssue(
+        verifyTotpSetupSchema.safeParse({ code: '1234567' }),
+        'code',
+        'Code must be exactly 6 digits',
+      );
     });
 
     it('rejects when code is omitted because the prefault empty string fails length validation', () => {
-      expect(() => verifyTotpSetupSchema.parse({})).toThrow();
+      expectIssue(
+        verifyTotpSetupSchema.safeParse({}),
+        'code',
+        'Code must be exactly 6 digits',
+      );
     });
   });
 
@@ -42,24 +70,30 @@ describe('TOTP Schema Validators', () => {
     });
 
     it('rejects an empty twoFactorToken', () => {
-      expect(() =>
-        verifyTwoFactorSchema.parse({ twoFactorToken: '', code: '123456' }),
-      ).toThrow();
+      expectIssue(
+        verifyTwoFactorSchema.safeParse({ twoFactorToken: '', code: '123456' }),
+        'twoFactorToken',
+        'Two-factor token is required',
+      );
     });
 
     it('rejects an empty code', () => {
-      expect(() =>
-        verifyTwoFactorSchema.parse({
+      expectIssue(
+        verifyTwoFactorSchema.safeParse({
           twoFactorToken: 'token-abc',
           code: '',
         }),
-      ).toThrow();
+        'code',
+        'Code cannot be empty',
+      );
     });
 
     it('rejects when code is omitted because the prefault empty string fails min(1) validation', () => {
-      expect(() =>
-        verifyTwoFactorSchema.parse({ twoFactorToken: 'token-abc' }),
-      ).toThrow();
+      expectIssue(
+        verifyTwoFactorSchema.safeParse({ twoFactorToken: 'token-abc' }),
+        'code',
+        'Code cannot be empty',
+      );
     });
   });
 
@@ -70,16 +104,28 @@ describe('TOTP Schema Validators', () => {
     });
 
     it('rejects a code containing non-numeric characters', () => {
-      expect(() => disableTotpSchema.parse({ code: 'abc123' })).toThrow();
+      expectIssue(
+        disableTotpSchema.safeParse({ code: 'abc123' }),
+        'code',
+        'Must be a 6-digit code or a recovery code',
+      );
     });
 
     it('rejects a code that is not 6 digits long', () => {
-      expect(() => disableTotpSchema.parse({ code: '12345' })).toThrow();
-      expect(() => disableTotpSchema.parse({ code: '1234567' })).toThrow();
+      expectIssue(
+        disableTotpSchema.safeParse({ code: '12345' }),
+        'code',
+        'Must be a 6-digit code or a recovery code',
+      );
+      expectIssue(
+        disableTotpSchema.safeParse({ code: '1234567' }),
+        'code',
+        'Must be a 6-digit code or a recovery code',
+      );
     });
 
-    it('rejects when code is omitted because the prefault empty string fails length validation', () => {
-      expect(() => disableTotpSchema.parse({})).toThrow();
+    it('rejects when code is omitted because the prefault empty string fails min(1) validation', () => {
+      expectIssue(disableTotpSchema.safeParse({}), 'code', 'Code is required');
     });
   });
 });

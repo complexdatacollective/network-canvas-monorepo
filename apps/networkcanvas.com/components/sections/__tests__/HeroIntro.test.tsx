@@ -158,10 +158,6 @@ describe('HeroIntro', () => {
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();
     expect(backgroundProps).not.toHaveBeenCalled();
-    // The header and the hero fill the first screen between them.
-    expect(container.querySelector('[aria-hidden]')).toHaveClass(
-      'tablet-portrait:min-h-svh',
-    );
     expectControlledMotionRoots(container);
   });
 

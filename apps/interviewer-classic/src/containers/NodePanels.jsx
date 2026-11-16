@@ -198,8 +198,6 @@ const mapDispatchToProps = {
   removeNode: sessionsActions.removeNode,
 };
 
-export { NodePanels };
-
 export default compose(
   connect(makeMapStateToProps, mapDispatchToProps),
   MonitorDragSource(['isDragging', 'meta']),

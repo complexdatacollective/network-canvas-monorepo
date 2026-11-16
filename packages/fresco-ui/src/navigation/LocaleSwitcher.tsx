@@ -14,7 +14,6 @@ import {
   type KeyboardEvent,
   type ReactElement,
   useEffect,
-  useId,
   useRef,
   useState,
 } from 'react';
@@ -39,7 +38,6 @@ import {
   dropdownItemVariants,
   proportionalLucideIconVariants,
 } from '../styles/controlVariants';
-import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 import { automaticLocaleMessage } from './automaticLocaleMessage';
@@ -192,7 +190,6 @@ export default function LocaleSwitcher({
   defaultOpen,
 }: LocaleSwitcherProps) {
   const intl = useAppIntl();
-  const headingId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const portalContainer = usePortalContainer();
   const [query, setQuery] = useState('');
@@ -379,7 +376,7 @@ export default function LocaleSwitcher({
           className="z-3000"
         >
           <Combobox.Popup
-            aria-labelledby={headingId}
+            aria-label={intl.formatMessage(messages.heading)}
             initialFocus={searchable ? undefined : listRef}
             render={
               <BaseUISharedPopoverContainer
@@ -395,11 +392,8 @@ export default function LocaleSwitcher({
               />
             }
           >
-            <div className="flex flex-col gap-2 px-4 pt-3 pb-2">
-              <Heading level="label" margin="none" id={headingId}>
-                {intl.formatMessage(messages.heading)}
-              </Heading>
-              {searchable && (
+            {searchable && (
+              <div className="px-4 pt-3 pb-2">
                 <Combobox.Input
                   placeholder={intl.formatMessage(messages.searchPlaceholder)}
                   aria-label={intl.formatMessage(commonMessages.search)}
@@ -423,8 +417,8 @@ export default function LocaleSwitcher({
                     );
                   }}
                 />
-              )}
-            </div>
+              </div>
+            )}
             <Combobox.Empty
               className="px-4 pb-3 empty:hidden"
               render={
@@ -436,10 +430,13 @@ export default function LocaleSwitcher({
             <Combobox.List
               ref={listRef}
               className="max-h-96 overflow-hidden has-data-empty:hidden"
-              aria-labelledby={headingId}
+              aria-label={intl.formatMessage(messages.heading)}
               render={
                 <ScrollArea
-                  viewportClassName="flex flex-col px-2 pb-2"
+                  viewportClassName={cx(
+                    'flex flex-col px-2 pb-2',
+                    !searchable && 'pt-2',
+                  )}
                   tabIndex={searchable ? -1 : 0}
                 />
               }

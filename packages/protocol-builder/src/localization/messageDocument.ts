@@ -4,6 +4,7 @@ import type {
   RichTextVersion,
   RichTextVersionsAttributes,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import type { TokenPillLabel } from '@codaco/fresco-ui/TokenPill';
 import {
   MISSING_CASE,
   type MessageNode,
@@ -30,8 +31,11 @@ export type MessageDocumentFormat = Readonly<{
 /** What the editor calls a switch and each of its versions. */
 export type MessageDocumentLabels = Readonly<{
   switchLabel: (node: MessageSwitch) => string;
-  /** What a switch's folded pill says: the name of the value it is on. */
-  switchSummary: (node: MessageSwitch) => string;
+  /**
+   * What a switch's folded pill says: the name of the value it is on, as the
+   * interface's words or, for a name someone wrote, in its own direction.
+   */
+  switchSummary: (node: MessageSwitch) => TokenPillLabel;
   versionLabel: (node: MessageSwitch, key: string) => string;
 }>;
 

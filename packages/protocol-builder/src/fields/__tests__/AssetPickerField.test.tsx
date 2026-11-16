@@ -423,7 +423,12 @@ describe('AssetPickerField', () => {
     const nodes = await screen.findByText('Nodes');
     expect(nodes.nextElementSibling).toHaveTextContent('2');
     expect(screen.getByText('Edges').nextElementSibling).toHaveTextContent('1');
-    expect(screen.getByText('age, name')).toBeVisible();
+    // Each name a researcher's file supplied reads in its own direction.
+    const attributes = screen.getByText('age', {
+      selector: 'bdi',
+    }).parentElement;
+    expect(attributes).toHaveTextContent('age, name');
+    expect(attributes).toBeVisible();
   });
 
   it('uses the interview network without asking the host for a resource', async () => {

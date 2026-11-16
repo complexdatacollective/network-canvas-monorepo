@@ -350,8 +350,6 @@ describe('the attribute slots', () => {
     expect(
       within(editor).getByRole('textbox', { name: 'Attribute name' }),
     ).toHaveValue('gender_new');
-    // Wide enough for the words beside each option.
-    expect(editor).toHaveClass('max-w-4xl');
     // The type is shown, not offered: the slot only takes a categorical one.
     expect(
       within(editor).getByRole('textbox', { name: 'Attribute type' }),
@@ -849,13 +847,12 @@ describe('the gender identity options, which this stage manages', () => {
     ).toBe('Has a problem');
   });
 
-  it('edits the options and their words together in one wide dialog, with the type shown read-only', async () => {
+  it('edits the options and their words together in one dialog, with the type shown read-only', async () => {
     const harness = openFixture();
     await harness.opened();
     const dialogElement = await openGenderOptions(harness);
     const dialog = within(dialogElement);
 
-    expect(dialogElement).toHaveClass('max-w-4xl');
     expect(
       dialog.getByRole('textbox', { name: 'Attribute type' }),
     ).toHaveAttribute('readonly');

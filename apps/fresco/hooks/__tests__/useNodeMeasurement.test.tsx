@@ -71,49 +71,6 @@ describe('useNodeMeasurement', () => {
     expect(getByTestId('height').textContent).toBe('0');
   });
 
-  test('creates a hidden container on document.body', () => {
-    setup();
-    render(<TestConsumer component={<div>test</div>} />);
-
-    const containers = document.querySelectorAll(
-      'div[style*="visibility: hidden"]',
-    );
-    expect(containers.length).toBeGreaterThanOrEqual(1);
-  });
-
-  test('renders content into the hidden container', () => {
-    setup();
-    render(<TestConsumer component={<div>test</div>} />);
-
-    const containers = document.querySelectorAll(
-      'div[style*="visibility: hidden"]',
-    );
-    const container = containers[0]!;
-    expect(container.children.length).toBeGreaterThan(0);
-  });
-
-  test('creates a ResizeObserver for the content', () => {
-    setup();
-    render(<TestConsumer component={<div>test</div>} />);
-
-    expect(latestObserverInstances.length).toBeGreaterThan(0);
-    expect(latestObserverInstances[0]!.observeSpy).toHaveBeenCalled();
-  });
-
-  test('updates dimensions when ResizeObserver fires', () => {
-    setup();
-    const { getByTestId } = render(
-      <TestConsumer component={<div>test</div>} />,
-    );
-
-    act(() => {
-      triggerAllObservers(120, 80);
-    });
-
-    expect(getByTestId('width').textContent).toBe('120');
-    expect(getByTestId('height').textContent).toBe('80');
-  });
-
   test('updates dimensions when size changes', () => {
     setup();
     const { getByTestId } = render(
@@ -149,17 +106,22 @@ describe('useNodeMeasurement', () => {
     expect(after).toBeLessThan(before);
   });
 
-  test('disconnects observer on unmount', () => {
+  test('renders the component into a hidden wrapper, observes that wrapper, and disconnects on unmount', () => {
     setup();
-    const { unmount } = render(<TestConsumer component={<div>test</div>} />);
+    const { getByTestId, unmount } = render(
+      <TestConsumer component={<div data-testid="measured">test</div>} />,
+    );
 
-    expect(latestObserverInstances.length).toBeGreaterThan(0);
+    const wrapper = getByTestId('measured').parentElement;
+    expect(wrapper).toHaveStyle({ visibility: 'hidden' });
+    expect(wrapper).toHaveAttribute('aria-hidden', 'true');
+
+    expect(latestObserverInstances).toHaveLength(1);
+    const [observer] = latestObserverInstances;
+    expect(observer?.observeSpy.mock.calls).toEqual([[wrapper]]);
 
     unmount();
 
-    const anyDisconnected = latestObserverInstances.some(
-      (obs) => obs.disconnectSpy.mock.calls.length > 0,
-    );
-    expect(anyDisconnected).toBe(true);
+    expect(observer?.disconnectSpy).toHaveBeenCalledOnce();
   });
 });

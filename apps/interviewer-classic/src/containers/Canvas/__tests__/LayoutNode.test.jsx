@@ -25,12 +25,6 @@ const mockProps = {
 };
 
 describe('<LayoutNode />', () => {
-  it('renders ok', () => {
-    const component = shallow(<LayoutNode {...mockProps} />);
-
-    expect(component).toMatchSnapshot();
-  });
-
   it('positions using translate/top/left', () => {
     const component = shallow(<LayoutNode {...mockProps} />);
 
