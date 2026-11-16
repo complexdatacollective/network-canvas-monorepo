@@ -22,8 +22,7 @@ function isOnLineage(status: Status | undefined): boolean {
 }
 
 // An affected male (or one inferred affected) passes his single X, and so the
-// condition, to EVERY daughter. A carrier or at-risk father is not affected and
-// has no disease X to pass on.
+// condition, to EVERY daughter, which makes him a certain source for her.
 const AFFECTED_MALE_STATUSES: ReadonlySet<Status> = new Set<Status>([
   'affected',
   'obligateAffected',
@@ -49,9 +48,10 @@ const AFFECTED_MALE_STATUSES: ReadonlySet<Status> = new Set<Status>([
  *   - under X-linked RECESSIVE a daughter of an affected father who carries
  *     the condition is explained by the X he gave her, so the maternal line is
  *     excluded whatever the mother's status. A daughter who is herself recorded
- *     `affected` needs a disease X from each parent, so both lines are kept for
- *     her. This drops an incidental maternal-line relative (e.g. a
- *     maternal grandmother flagged only as an at-risk prior);
+ *     `affected` may have received a copy from each parent, so her mother's
+ *     line is kept as a possible source. This drops an incidental
+ *     maternal-line relative (e.g. a maternal grandmother flagged only as an
+ *     at-risk prior);
  *   - under X-linked DOMINANT one affected X suffices, so an affected father
  *     never excludes an affected/transmitting mother — every on-lineage parent
  *     qualifies for a daughter;
@@ -98,8 +98,8 @@ function transmittingParents(
         );
         // A daughter who carries it is explained by her affected father's X
         // whatever her mother's status, so her path runs only through him. A
-        // daughter recorded affected needs a disease X from each parent, so
-        // both lines stay.
+        // daughter recorded affected may have received a copy from each
+        // parent, so her mother's line is kept as a possible source.
         const childIsAffected = statuses.get(childId) === 'affected';
         if (affectedFathers.length > 0 && !childIsAffected) {
           return affectedFathers.map((p) => p.id);
