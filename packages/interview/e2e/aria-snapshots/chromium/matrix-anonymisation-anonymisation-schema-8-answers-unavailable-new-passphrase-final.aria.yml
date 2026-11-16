@@ -3,8 +3,7 @@
     - heading "People named before the update" [level=2]
   - listbox "Added Nodes":
     - option "Answer unavailable"
-  - button "Add a person":
-    - img "Add a person"
+  - button "Add a person"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

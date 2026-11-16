@@ -32,6 +32,7 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
+import { addButtonName } from '../../../components/addButtonName';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getNodeIconName } from '../../../selectors/name-generator';
@@ -342,8 +343,10 @@ export default function QuickAddField({
           <button
             type="button"
             ref={buttonRef}
-            aria-label={checked ? 'Quick add input' : undefined}
-            lang={checked ? 'en' : undefined}
+            aria-label={checked ? 'Quick add input' : addButtonName(icon)}
+            // Open, the button shows the name being typed, which is not
+            // English; closed, it holds only the icon.
+            lang={checked ? undefined : 'en'}
             className="focusable relative aspect-square size-28 rounded-full"
             data-testid="quick-add-toggle"
           >
@@ -414,9 +417,12 @@ export default function QuickAddField({
                     exit={{ y: '100%' }}
                     className="flex h-full items-center justify-center"
                   >
-                    {/* The icon's title is the button's only name. */}
                     {isInterviewerIconName(icon) && (
-                      <Icon name={icon} className={actionIconClass} />
+                      <Icon
+                        name={icon}
+                        className={actionIconClass}
+                        aria-hidden
+                      />
                     )}
                   </motion.div>
                 )}
