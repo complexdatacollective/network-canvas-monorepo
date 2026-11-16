@@ -879,8 +879,9 @@ describe('SyntheticInterview', () => {
 
       const protocol = si.getProtocol();
       const [stageConfig] = protocol.stages;
-      expect(stageConfig?.type).toBe('TieStrengthCensus');
-      if (stageConfig?.type !== 'TieStrengthCensus') return;
+      if (stageConfig?.type !== 'TieStrengthCensus') {
+        throw new Error('expected a TieStrengthCensus stage');
+      }
       const [prompt] = stageConfig.prompts;
       expect(
         prompt &&

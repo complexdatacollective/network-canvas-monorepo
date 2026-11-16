@@ -81,11 +81,12 @@ describe('NetworkWeaveBackground', () => {
       expect(Math.abs(lowerStart - upperStart)).toBeLessThan(8);
     }
 
-    for (const tributary of container.querySelectorAll(
-      '.network-weave__tributary',
-    )) {
+    const tributaries = container.querySelectorAll('.network-weave__tributary');
+    expect(tributaries.length).toBeGreaterThan(0);
+    for (const tributary of tributaries) {
       expect(tributary.getAttribute('d')).toMatch(/^M -/);
       expect(tributary.getAttribute('d')).toContain(' C ');
+      expect(Number(tributary.getAttribute('stroke-width'))).toBeGreaterThan(0);
     }
 
     expect(container.querySelector('circle')).toBeNull();
@@ -442,9 +443,11 @@ describe('NetworkWeaveBackground', () => {
       expect(Math.abs(dashTravel) % dashPeriod).toBe(0);
       expect(flow.getAttribute('stroke-dashoffset')).toBeNull();
     }
-    for (const signal of container.querySelectorAll(
+    const ribbonFlows = container.querySelectorAll(
       '.network-weave__ribbon-flow',
-    )) {
+    );
+    expect(ribbonFlows.length).toBeGreaterThan(0);
+    for (const signal of ribbonFlows) {
       expect(signal.getAttribute('mask')).toBeNull();
     }
     expect(styles).not.toContain('opacity:');
