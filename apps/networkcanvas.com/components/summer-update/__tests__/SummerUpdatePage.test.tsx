@@ -294,7 +294,7 @@ describe('SummerUpdatePage', () => {
       'Streamlined updates',
       'Tablet support restored',
     ]) {
-      expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+      screen.getByRole('heading', { name: title });
     }
   });
 
@@ -364,9 +364,7 @@ describe('SummerUpdatePage', () => {
       'Interviewer',
       'Fresco 4.0.0',
     ].forEach((heading) => {
-      expect(
-        screen.getByRole('heading', { level: 3, name: heading }),
-      ).toBeInTheDocument();
+      screen.getByRole('heading', { level: 3, name: heading });
     });
 
     [
@@ -383,9 +381,11 @@ describe('SummerUpdatePage', () => {
       expect(card.querySelector('svg')).toBeInTheDocument();
     });
 
-    const geospatialDetails = screen
-      .getByRole('heading', { name: 'Geospatial interface' })
-      .closest('[aria-live="polite"]');
+    const geospatialHeading = screen.getByRole('heading', {
+      name: 'Geospatial interface',
+    });
+    const geospatialDetails = geospatialHeading.closest('[aria-live="polite"]');
+    const geospatialContent = geospatialHeading.parentElement;
     const geospatialScreenshot = screen.getByRole('img', {
       name: 'Geospatial interface preview',
     });
@@ -393,8 +393,15 @@ describe('SummerUpdatePage', () => {
     if (!(geospatialDetails instanceof HTMLElement)) {
       throw new Error('Feature details panel did not render');
     }
+    if (!(geospatialContent?.lastElementChild instanceof HTMLElement)) {
+      throw new Error('Feature details content did not render');
+    }
 
     expect(geospatialDetails).toContainElement(geospatialScreenshot);
+    // The screenshot closes the details, after the documentation link.
+    expect(geospatialContent.lastElementChild).toContainElement(
+      geospatialScreenshot,
+    );
     expect(
       within(geospatialDetails).queryByText('New interface'),
     ).not.toBeInTheDocument();
@@ -566,8 +573,8 @@ describe('SummerUpdatePage', () => {
       throw new Error('Project resource layout did not render');
     }
 
-    expect(websiteHeading).toBeInTheDocument();
-    expect(documentationHeading).toBeInTheDocument();
+    expect(websiteArticle).toContainElement(websiteHeading);
+    expect(documentationArticle).toContainElement(documentationHeading);
     expect(websiteArticle).toContainElement(websiteScreenshot);
     expect(documentationArticle).toContainElement(documentationScreenshot);
     expect(documentationArticle.firstElementChild).toBe(

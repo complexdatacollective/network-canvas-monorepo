@@ -16,6 +16,14 @@ const newsItems: NewsItem[] = [
 
 afterEach(cleanup);
 
+function entranceItemOf(element: HTMLElement | undefined) {
+  const item = element?.closest('.entrance-motion-item');
+  if (!(item instanceof HTMLElement)) {
+    throw new Error('Hero item is not inside an entrance-motion item');
+  }
+  return item;
+}
+
 describe('Hero', () => {
   it('links the primary action to Get Started', () => {
     renderWithIntl(<Hero newsItems={newsItems} />);
@@ -32,12 +40,10 @@ describe('Hero', () => {
   it('shows the headline, body copy and the news it is given', () => {
     renderWithIntl(<Hero newsItems={newsItems} />);
 
-    expect(
-      screen.getByRole('heading', {
-        name: 'Simplifying complex network data collection.',
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Network Canvas provides/)).toBeInTheDocument();
+    screen.getByRole('heading', {
+      name: 'Simplifying complex network data collection.',
+    });
+    screen.getByText(/Network Canvas provides/);
     expect(screen.getAllByText('Fixture-only hero news')).toHaveLength(3);
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
@@ -56,9 +62,8 @@ describe('Hero', () => {
         name: '[Read more] Fixture-only hero news',
       })[0],
       screen.getByRole('link', { name: 'Get Started' }),
-    ].map((element) => element?.closest('.entrance-motion-item'));
+    ].map(entranceItemOf);
 
-    for (const item of items) expect(item).not.toBeNull();
     // Heading, media row, news and call to action each enter on their own.
     expect(new Set(items).size).toBe(4);
   });

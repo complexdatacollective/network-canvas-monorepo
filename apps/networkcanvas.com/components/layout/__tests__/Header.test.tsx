@@ -147,21 +147,25 @@ describe('localized layout navigation', () => {
     );
   });
 
-  it('uses theme icons instead of checkmarks in the theme menu', () => {
+  it('offers each theme as a radio option and marks the current one', () => {
     renderWithIntl(<ThemeSwitcher view="desktop" />);
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Color theme: System' }),
     );
 
-    const lightOption = screen.getByRole('menuitemradio', { name: 'Light' });
-    const darkOption = screen.getByRole('menuitemradio', { name: 'Dark' });
-    const systemOption = screen.getByRole('menuitemradio', { name: 'System' });
-
-    expect(lightOption.querySelector('.lucide-sun')).toBeInTheDocument();
-    expect(darkOption.querySelector('.lucide-moon')).toBeInTheDocument();
-    expect(systemOption.querySelector('.lucide-sun-moon')).toBeInTheDocument();
-    expect(document.querySelector('.lucide-check')).not.toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole('menuitemradio')
+        .map((option) => [
+          option.textContent,
+          option.getAttribute('aria-checked'),
+        ]),
+    ).toEqual([
+      ['Light', 'false'],
+      ['Dark', 'false'],
+      ['System', 'true'],
+    ]);
   });
 
   it('renders translated footer links and language selection', () => {

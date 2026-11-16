@@ -121,12 +121,12 @@ describe('GetStartedIntro', () => {
       screen.getByRole('link', {
         name: 'Design or create an interview protocol',
       }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute('href', '#design');
     expect(
       screen.getByRole('link', {
         name: 'Collect data using Network Canvas',
       }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute('href', '#collect');
     expect(documentationLink).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/',

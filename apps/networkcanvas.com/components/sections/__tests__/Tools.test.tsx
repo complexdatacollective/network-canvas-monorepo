@@ -166,15 +166,16 @@ describe('Tools', () => {
     ).toBeInTheDocument();
 
     for (const app of apps) {
-      const panel = within(card(app.name));
+      const article = card(app.name);
+      const panel = within(article);
+      const heading = panel.getByRole('heading', { level: 3, name: app.name });
       const actionLink = panel.getByRole('link', { name: app.actionName });
       const previewLink = panel.getByRole('link', {
         name: `${app.variant} preview`,
       });
 
-      expect(
-        panel.getByRole('heading', { level: 3, name: app.name }),
-      ).toBeInTheDocument();
+      // The card takes its accessible name from its own heading.
+      expect(article).toHaveAttribute('aria-labelledby', heading.id);
       expect(actionLink).toHaveAttribute('href', app.href);
       expect(actionLink).toHaveAttribute('target', '_blank');
       expect(previewLink).toHaveAttribute('href', app.href);
