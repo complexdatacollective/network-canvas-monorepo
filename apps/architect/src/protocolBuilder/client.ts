@@ -19,14 +19,21 @@ export type ArchitectClient = Readonly<{
    */
   setOtherTabName: (name: string) => void;
   /**
-   * Hands an edit's imports over to the protocol, for an editor that saves
-   * through Redux rather than through a `Submit` carrying the promotion.
-   * Architect's `stage` has already written the asset, so this only stops the
-   * edit's discard from taking it back. Answers whether every resource named
-   * was the edit's to hand over.
+   * Checks that an edit's imports can be handed over to the protocol, for an
+   * editor that saves through Redux rather than through a `Submit` carrying
+   * the promotion. Asked before the save, so a refusal leaves nothing written;
+   * `complete` hands them over once the save has succeeded. Architect's
+   * `stage` has already written the asset, so completing only stops the
+   * edit's discard from taking it back.
    */
-  adoptStagedResources: (promotion: ResourcePromotion) => boolean;
+  planStagedResourceAdoption: (
+    promotion: ResourcePromotion,
+  ) => StagedResourceAdoption;
 }>;
+
+type StagedResourceAdoption =
+  | Readonly<{ status: 'ok'; complete: () => void }>
+  | Readonly<{ status: 'failed'; resourceId: string | undefined }>;
 
 export function createArchitectClient(
   store: ArchitectStore,
@@ -45,11 +52,15 @@ export function createArchitectClient(
     setOtherTabName: (name) => {
       currentOtherTabName = name;
     },
-    adoptStagedResources: ({ editId, resourceIds }) => {
+    planStagedResourceAdoption: ({ editId, resourceIds }) => {
       const planned = resources.planPromotion(editId, resourceIds);
-      if (planned.status === 'failed') return false;
-      resources.completePromotion(planned.data.ids);
-      return true;
+      if (planned.status === 'failed') {
+        return { status: 'failed', resourceId: planned.failure.resourceId };
+      }
+      return {
+        status: 'ok',
+        complete: () => resources.completePromotion(planned.data.ids),
+      };
     },
   };
 }

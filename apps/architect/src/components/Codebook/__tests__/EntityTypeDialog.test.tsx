@@ -59,7 +59,10 @@ vi.mock('~/protocolBuilder/useArchitectClient', async () => {
   return {
     useArchitectClient: () => ({
       adapter: host.adapter,
-      adoptStagedResources: () => true,
+      planStagedResourceAdoption: () => ({
+        status: 'ok',
+        complete: () => undefined,
+      }),
     }),
   };
 });

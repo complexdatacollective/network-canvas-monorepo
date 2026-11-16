@@ -2,10 +2,15 @@ import { get } from 'es-toolkit/compat';
 import { createElement, useCallback, useMemo, useState } from 'react';
 import { useStore } from 'react-redux';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import {
+  customShapeForAsset,
+  readCustomShapes,
+} from '@codaco/protocol-builder/codebook/customShapes';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import {
   ResourceClientProvider,
@@ -19,7 +24,9 @@ import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
 import TypeEditor, {
   type EntityTypeValues,
 } from '~/components/TypeEditor/TypeEditor';
-import validateEntityType from '~/components/TypeEditor/validateEntityType';
+import validateEntityType, {
+  CUSTOM_SHAPES_FIELD,
+} from '~/components/TypeEditor/validateEntityType';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
@@ -75,6 +82,20 @@ const messages = defineMessages({
     id: 'architect.codebook.entityTypeDialog.oK',
     defaultMessage: 'OK',
     description: 'Button that dismisses the could-not-save-type error dialog.',
+  },
+  shapeImageUnavailable: {
+    id: 'architect.codebook.entityTypeDialog.shapeImageUnavailable',
+    defaultMessage:
+      'The image for the shape "{name}" is no longer available. Remove this shape and add it again.',
+    description:
+      'Refusal shown under the custom shapes field of the node type editor when saving fails because the SVG image one custom shape is drawn from can no longer be kept with the protocol. name is the name the researcher gave that shape.',
+  },
+  imageUnavailable: {
+    id: 'architect.codebook.entityTypeDialog.imageUnavailable',
+    defaultMessage:
+      'An image added to this node type is no longer available. Remove the shape that uses it and add it again.',
+    description:
+      'Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified.',
   },
   saveAndClose: {
     id: 'architect.codebook.entityTypeDialog.saveAndClose',
@@ -156,7 +177,7 @@ const EntityTypeDialog = (props: EntityTypeDialogProps) => {
         <EntityTypeForm
           {...props}
           entity={entity}
-          adoptStagedResources={client.adoptStagedResources}
+          planStagedResourceAdoption={client.planStagedResourceAdoption}
         />
       </ResourceClientProvider>
     </ProtocolBuilder>
@@ -166,7 +187,7 @@ const EntityTypeDialog = (props: EntityTypeDialogProps) => {
 type EntityTypeFormProps = EntityTypeDialogProps &
   Readonly<{
     entity: 'node' | 'edge' | 'ego';
-    adoptStagedResources: ArchitectClient['adoptStagedResources'];
+    planStagedResourceAdoption: ArchitectClient['planStagedResourceAdoption'];
   }>;
 
 const EntityTypeForm = ({
@@ -175,7 +196,7 @@ const EntityTypeForm = ({
   type,
   onClose,
   finalFocus,
-  adoptStagedResources,
+  planStagedResourceAdoption,
 }: EntityTypeFormProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
@@ -214,7 +235,9 @@ const EntityTypeForm = ({
   }, [entity, isNew, intl]);
 
   const handleSubmit = useCallback(
-    async (values: Record<string, FieldValue>) => {
+    async (
+      values: Record<string, FieldValue>,
+    ): Promise<FormSubmissionResult> => {
       // `updateType` replaces the whole definition, and `getFormValues()`
       // reports registered fields only — so the properties this editor does
       // not render (`variables` above all) are carried over from the committed
@@ -223,16 +246,38 @@ const EntityTypeForm = ({
 
       // Architect has already written each imported image to the protocol's
       // assets; handing them over stops this edit's cancel from removing them.
+      // Checked before the save so a type is never written naming an image
+      // this edit could not keep.
+      const promotion = staged.promotion();
+      const adoption =
+        promotion === undefined
+          ? undefined
+          : planStagedResourceAdoption(promotion);
+      if (adoption?.status === 'failed') {
+        const shapes = readCustomShapes(values[CUSTOM_SHAPES_FIELD]);
+        const shapeId =
+          adoption.resourceId === undefined
+            ? undefined
+            : customShapeForAsset(shapes, adoption.resourceId);
+        const shapeName =
+          shapeId === undefined ? undefined : shapes?.[shapeId]?.name;
+        return {
+          success: false,
+          fieldErrors: {
+            [CUSTOM_SHAPES_FIELD]: [
+              shapeName === undefined
+                ? createMessageError(messages.imageUnavailable)
+                : createMessageError(messages.shapeImageUnavailable, {
+                    name: shapeName,
+                  }),
+            ],
+          },
+        };
+      }
       const keepImports = () => {
-        const promotion = staged.promotion();
-        if (promotion === undefined) return;
-        if (adoptStagedResources(promotion)) {
-          staged.promoted();
-          return;
-        }
-        // Only reachable if a resource named by this edit was imported by
-        // another; the type itself is saved either way.
-        reportError(new Error('an imported resource belonged to another edit'));
+        if (adoption === undefined) return;
+        adoption.complete();
+        staged.promoted();
       };
 
       try {
@@ -279,6 +324,7 @@ const EntityTypeForm = ({
           },
         });
       }
+      return { success: true };
     },
     [
       dispatch,
@@ -289,7 +335,7 @@ const EntityTypeForm = ({
       isNew,
       openDialog,
       staged,
-      adoptStagedResources,
+      planStagedResourceAdoption,
     ],
   );
 

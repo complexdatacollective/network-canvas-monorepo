@@ -591,6 +591,10 @@
     "defaultMessage": "Could not update type",
     "description": "Title of the error dialog shown when saving changes to an existing node type or edge type fails."
   },
+  "architect.codebook.entityTypeDialog.imageUnavailable": {
+    "defaultMessage": "An image added to this node type is no longer available. Remove the shape that uses it and add it again.",
+    "description": "Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified."
+  },
   "architect.codebook.entityTypeDialog.oK": {
     "defaultMessage": "OK",
     "description": "Button that dismisses the could-not-save-type error dialog."
@@ -598,6 +602,10 @@
   "architect.codebook.entityTypeDialog.saveAndClose": {
     "defaultMessage": "Save and Close",
     "description": "Submit button of the node type or edge type dialog that saves the type and closes the dialog."
+  },
+  "architect.codebook.entityTypeDialog.shapeImageUnavailable": {
+    "defaultMessage": "The image for the shape \"{name}\" is no longer available. Remove this shape and add it again.",
+    "description": "Refusal shown under the custom shapes field of the node type editor when saving fails because the SVG image one custom shape is drawn from can no longer be kept with the protocol. name is the name the researcher gave that shape."
   },
   "architect.codebook.error.attributeInUse": {
     "defaultMessage": "This attribute is in use and cannot be deleted. Remove it from the stages listed under \"Used In\" first.",

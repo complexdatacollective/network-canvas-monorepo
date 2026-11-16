@@ -694,7 +694,8 @@ describe("Architect's in-process protocol-builder host", () => {
 
   /**
    * The node type dialog saves through Redux rather than a submit, so the
-   * client hands it the edit's imports to keep once the type is written.
+   * client checks the edit's imports before the type is written and hands
+   * them over once it is.
    */
   it('keeps the imports an edit adopted when that edit is then discarded', async () => {
     const store = configureStore({ reducer: rootReducer });
@@ -712,11 +713,17 @@ describe("Architect's in-process protocol-builder host", () => {
     const foreign = await importResource(client, OTHER_EDIT);
 
     expect(
-      architect.adoptStagedResources({ editId: EDIT, resourceIds: [foreign] }),
-    ).toBe(false);
-    expect(
-      architect.adoptStagedResources({ editId: EDIT, resourceIds: [kept] }),
-    ).toBe(true);
+      architect.planStagedResourceAdoption({
+        editId: EDIT,
+        resourceIds: [foreign],
+      }),
+    ).toEqual({ status: 'failed', resourceId: foreign });
+    const adoption = architect.planStagedResourceAdoption({
+      editId: EDIT,
+      resourceIds: [kept],
+    });
+    if (adoption.status !== 'ok') throw new Error('expected adoption to plan');
+    adoption.complete();
     await client.call('ResourcesDiscard', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
