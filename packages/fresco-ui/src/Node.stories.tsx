@@ -1555,6 +1555,7 @@ export const CustomShapes: Story = {
                   size={size}
                   shape={shape}
                   label={size === 'xxs' ? '' : 'Robin'}
+                  ariaLabel="Robin"
                   color={sequenceColor(index + 1)}
                 />
                 <span className="text-xs text-current/70">{size}</span>
@@ -1659,6 +1660,7 @@ export const CustomShapesInterview: Story = {
               size={size}
               shape={shape}
               label={size === 'xxs' ? '' : 'Robin'}
+              ariaLabel="Robin"
             />
           )),
         )}

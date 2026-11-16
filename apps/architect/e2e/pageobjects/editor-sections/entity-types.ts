@@ -149,7 +149,7 @@ export async function mapNodeShapeToAttribute(
     // group is named for the answer it maps; each swatch is named for the
     // shape it offers.
     await dialog
-      .getByRole('radiogroup', { name: `Shape for ${value}`, exact: true })
+      .getByRole('radiogroup', { name: value, exact: true })
       .getByRole('radio', { name: `Select shape ${shape}`, exact: true })
       .click();
   }

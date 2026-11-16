@@ -35,7 +35,7 @@ describe('Shape Mapping Validation', () => {
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(parseIssues(result)).toEqual([
-      { path: 'codebook.node.person.shape.default', code: 'invalid_value' },
+      { path: 'codebook.node.person.shape.default', code: 'invalid_union' },
     ]);
   });
 
