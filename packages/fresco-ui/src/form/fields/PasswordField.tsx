@@ -120,6 +120,10 @@ export default function PasswordField({
         }
         {...props}
         type={showPassword || masked ? 'text' : 'password'}
+        // A password is left to right however it is shown: revealed, or
+        // masked by `-webkit-text-security`, it is a `text` input, which
+        // would otherwise follow its first letter.
+        dir={props.dir ?? 'ltr'}
         autoComplete={suppressPasswordManager ? 'off' : props.autoComplete}
         className={props.className}
         inputClassName={cx(

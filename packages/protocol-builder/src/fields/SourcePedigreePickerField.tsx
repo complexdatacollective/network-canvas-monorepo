@@ -1,5 +1,3 @@
-import { useRef } from 'react';
-
 import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -9,6 +7,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 
 import { narrativePedigreeMessages } from '../editors/narrative-pedigree/sections/narrativePedigreeMessages.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 
 /**
  * One pedigree on offer, in the shape the native select reads.
@@ -115,11 +114,10 @@ export default function SourcePedigreePickerField({
    * at all is read the same way — a section can withdraw its list, and the
    * stage can be taken away, while the question stands.
    */
-  const offered = useRef({ options, disabled, readOnly });
-  offered.current = { options, disabled, readOnly };
+  const offered = useLatest({ options, disabled, readOnly });
 
   const stillOffered = (next: string): boolean => {
-    const live = offered.current;
+    const live = offered();
     if (live.disabled || live.readOnly) return false;
     return live.options.some(
       (option) => option.disabled !== true && option.value === next,

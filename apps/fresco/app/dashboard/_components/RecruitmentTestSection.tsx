@@ -23,25 +23,25 @@ const messages = defineMessages({
     id: 'fresco.RecruitmentTestSection.selectAProtocol',
     defaultMessage: 'Select a Protocol...',
     description:
-      'Researcher-facing RecruitmentTestSection: Select a Protocol...',
+      'Placeholder and accessible name of the dropdown, in the recruitment test of the Developer Tools settings, for choosing which protocol to start a test interview with.',
   },
   selectAParticipant: {
     id: 'fresco.RecruitmentTestSection.selectAParticipant',
     defaultMessage: 'Select a Participant...',
     description:
-      'Researcher-facing RecruitmentTestSection: Select a Participant...',
+      'Placeholder and accessible name of the dropdown, in the recruitment test of the Developer Tools settings, for choosing which participant the test interview is started for.',
   },
   startInterviewWithGET: {
     id: 'fresco.RecruitmentTestSection.startInterviewWithGET',
     defaultMessage: 'Start Interview with GET',
     description:
-      'Researcher-facing RecruitmentTestSection: Start Interview with GET',
+      'Button in the recruitment test of the Developer Tools settings that starts an interview by opening the interview link as a web page request. GET is the technical name of that request type; keep it untranslated.',
   },
   startInterviewWithPOST: {
     id: 'fresco.RecruitmentTestSection.startInterviewWithPOST',
     defaultMessage: 'Start Interview with POST',
     description:
-      'Researcher-facing RecruitmentTestSection: Start Interview with POST',
+      'Button in the recruitment test of the Developer Tools settings that starts an interview by sending the participant identifier in a request body. POST is the technical name of that request type; keep it untranslated.',
   },
 });
 

@@ -14,7 +14,7 @@ type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 function renderNotice(status: PassphraseNoticeStatus, store: EncryptionStore) {
   render(
     <Provider store={store}>
-      <InterviewI18nProvider requestedLocale="en">
+      <InterviewI18nProvider>
         <PassphraseNotice status={status} />
       </InterviewI18nProvider>
     </Provider>,

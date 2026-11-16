@@ -90,6 +90,29 @@ const messages = defineMessages({
 type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
   InjectedFieldProps & {
     options: ComboboxOption[];
+    /**
+     * An option that depends on what has been typed into the search box, such
+     * as a value that can be entered but is too many to list. Called with the
+     * trimmed search text whenever it is not empty; return `undefined` when the
+     * text offers nothing. A returned option whose value is already in
+     * `options` is ignored, so it never appears twice.
+     *
+     * The option is listed after the matches for the text, and is listed
+     * whatever its `label` is: it does not have to contain the search text.
+     * Once chosen it stays in the list for as long as it is selected. "Select
+     * All" chooses every enabled option in `options` and keeps the options
+     * already chosen from the search text; it does not choose one that is only
+     * being offered. For a list too long to select as a whole, such as one the
+     * search text extends, set `showSelectAll={false}`.
+     */
+    optionFromSearch?: (search: string) => ComboboxOption | undefined;
+    /**
+     * Choose one option instead of several. Choosing an option replaces the
+     * choice and closes the list; choosing the chosen option again keeps it.
+     * The value is still a list, holding at most one value, and "Select All" and
+     * "Deselect All" are not shown unless asked for.
+     */
+    single?: boolean;
     placeholder?: string;
     searchPlaceholder?: string;
     emptyMessage?: string;
@@ -131,12 +154,14 @@ function ComboboxField(props: ComboboxFieldProps) {
   const intl = useAppIntl();
   const {
     options,
+    optionFromSearch,
+    single = false,
     placeholder = intl.formatMessage(messages.placeholder),
     searchPlaceholder = intl.formatMessage(messages.searchPlaceholder),
     emptyMessage = intl.formatMessage(messages.noItems),
     showSearch = true,
-    showSelectAll = true,
-    showDeselectAll = true,
+    showSelectAll = !single,
+    showDeselectAll = !single,
     singular = intl.formatMessage(messages.defaultSingular),
     plural = intl.formatMessage(messages.defaultPlural),
     renderOption,
@@ -178,6 +203,14 @@ function ComboboxField(props: ComboboxFieldProps) {
     },
   });
 
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`), and
+  // anything but a list of chosen values renders as nothing selected.
+  const selectedValues = useMemo(
+    () => (Array.isArray(value) ? value : EMPTY_SELECTION),
+    [value],
+  );
+
   const handleValueChange = (
     newValue: unknown[] | null,
     _event: Combobox.Root.ChangeEventDetails,
@@ -186,6 +219,25 @@ function ComboboxField(props: ComboboxFieldProps) {
     if (newValue === null) {
       onChange?.([]);
     } else if (newValue.every(isComboboxOption)) {
+      if (single) {
+        const [chosen] = newValue.filter(
+          (opt) => !selectedValues.includes(opt.value),
+        );
+        // Choosing the chosen option again leaves it chosen.
+        if (chosen === undefined) return;
+        setChosenFromSearch(
+          options.some((option) => option.value === chosen.value)
+            ? []
+            : [chosen],
+        );
+        onChange?.([chosen.value]);
+        onOpenChange(false);
+        return;
+      }
+      const fromSearch = newValue.filter(
+        (opt) => !options.some((option) => option.value === opt.value),
+      );
+      if (fromSearch.length > 0) setChosenFromSearch(fromSearch);
       onChange?.(newValue.map((opt) => opt.value));
     }
   };
@@ -207,7 +259,12 @@ function ComboboxField(props: ComboboxFieldProps) {
   const handleSelectAll = () => {
     if (readOnly) return;
     const enabledOptions = options.filter((opt) => !opt.disabled);
-    onChange?.(enabledOptions.map((opt) => opt.value));
+    // The options chosen from the search text stay chosen; one that is only
+    // being offered is not chosen by this.
+    const keptFromSearch = selectedValues.filter(
+      (selected) => !options.some((opt) => opt.value === selected),
+    );
+    onChange?.([...enabledOptions.map((opt) => opt.value), ...keptFromSearch]);
   };
 
   const handleDeselectAll = () => {
@@ -215,26 +272,72 @@ function ComboboxField(props: ComboboxFieldProps) {
     onChange?.([]);
   };
 
-  // Rendering only: for one render the store can still hold the previous
-  // field's value (see the render-tolerance contract on `useField`), and
-  // anything but a list of chosen values renders as nothing selected.
-  const selectedValues = useMemo(
-    () => (Array.isArray(value) ? value : EMPTY_SELECTION),
-    [value],
+  // The options that came from the search text and have been chosen. Kept
+  // while they are selected, because the text that offered them is gone once
+  // the search is cleared.
+  const [chosenFromSearch, setChosenFromSearch] = useState<ComboboxOption[]>(
+    [],
   );
+
+  const optionFromCurrentSearch = useMemo(() => {
+    const search = inputValue.trim();
+    if (!optionFromSearch || search === '') return undefined;
+    const offered = optionFromSearch(search);
+    return offered !== undefined &&
+      !options.some((option) => option.value === offered.value)
+      ? offered
+      : undefined;
+  }, [inputValue, optionFromSearch, options]);
+
+  // Every option that can be shown or selected: the matches, then the ones
+  // chosen from earlier searches, then the one the current text offers.
+  const allOptions = useMemo(() => {
+    const kept = chosenFromSearch.filter(
+      (option) =>
+        selectedValues.includes(option.value) &&
+        !options.some((other) => other.value === option.value),
+    );
+    const offered =
+      optionFromCurrentSearch !== undefined &&
+      !kept.some((option) => option.value === optionFromCurrentSearch.value)
+        ? [optionFromCurrentSearch]
+        : [];
+    return [...options, ...kept, ...offered];
+  }, [chosenFromSearch, optionFromCurrentSearch, options, selectedValues]);
 
   // Convert value array to selected options
   const selectedOptions = useMemo(() => {
-    return options.filter((opt) => selectedValues.includes(opt.value));
-  }, [options, selectedValues]);
+    return allOptions.filter((opt) => selectedValues.includes(opt.value));
+  }, [allOptions, selectedValues]);
+
+  // Base UI's own multiple-selection match, with the offered option always
+  // matching: it is offered because of the text, not because it contains it.
+  const { contains } = Combobox.useFilter({ multiple: true });
+  const filter = useMemo(
+    () =>
+      optionFromCurrentSearch === undefined
+        ? undefined
+        : (
+            item: unknown,
+            query: string,
+            itemToString?: (item: unknown) => string,
+          ) =>
+            (isComboboxOption(item) &&
+              item.value === optionFromCurrentSearch.value) ||
+            contains(item, query, itemToString),
+    [contains, optionFromCurrentSearch],
+  );
 
   // Generate trigger label text
   const triggerLabel = useMemo(() => {
     if (selectedValues.length === 0) return null;
-    if (selectedValues.length === options.length) {
+    if (
+      allOptions.length > 0 &&
+      allOptions.every((option) => selectedValues.includes(option.value))
+    ) {
       return intl.formatMessage(messages.allSelected, {
         plural,
-        count: options.length,
+        count: allOptions.length,
       });
     }
     return intl.formatMessage(messages.someSelected, {
@@ -242,7 +345,7 @@ function ComboboxField(props: ComboboxFieldProps) {
       singular,
       plural,
     });
-  }, [selectedValues, options.length, singular, plural, intl]);
+  }, [selectedValues, allOptions, singular, plural, intl]);
 
   const state = getInputState(props);
 
@@ -253,9 +356,10 @@ function ComboboxField(props: ComboboxFieldProps) {
       itemToStringLabel={(option: ComboboxOption) =>
         presentationalTextValue(option.label)
       }
+      filter={filter}
       {...rest}
       multiple
-      items={options}
+      items={allOptions}
       value={selectedOptions}
       onValueChange={handleValueChange}
       inputValue={inputValue}
@@ -301,6 +405,11 @@ function ComboboxField(props: ComboboxFieldProps) {
         {/* The popup layer, as `Popover`'s: this can open from inside one. */}
         <Combobox.Positioner align="start" sideOffset={10} className="z-3000">
           <Combobox.Popup
+            // The popup is a dialog when it holds the search input, and a
+            // dialog needs a name of its own; the field's name is the one a
+            // participant already knows it by.
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
             render={
               <Surface
                 floating

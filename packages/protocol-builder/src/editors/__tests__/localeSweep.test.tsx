@@ -83,7 +83,7 @@ const settled = async (harness: StageEditorHarness) => {
   await screen.findByRole('textbox', { name: 'Nombre de la etapa' });
   await waitFor(() =>
     expect(harness.outline().map((entry) => entry.title)).toContain(
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ),
   );
 };

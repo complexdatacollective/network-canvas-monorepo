@@ -37,7 +37,11 @@ export default defineMain({
   stories: ['../src/**/*.stories.tsx'],
   typescript: { check: false },
   viteFinal: async (config) => {
-    config.plugins = [...(config.plugins ?? []), react(), tailwindcss()];
+    config.plugins = [
+      ...(config.plugins ?? []),
+      react({ compiler: true }),
+      tailwindcss(),
+    ];
     const alias = config.resolve?.alias;
     config.resolve = {
       ...config.resolve,

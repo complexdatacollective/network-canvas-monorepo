@@ -135,7 +135,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'quickAdd1',
             type: 'NameGeneratorQuickAdd',
-            quickAddHint: localized('Press Enter when you are finished.'),
+            addNamePlaceholder: localized('Type a name, then press Enter'),
             label: localized('Quick Add'),
             subject: { entity: 'node', type: 'person' },
             quickAdd: 'doesNotExist',
@@ -162,7 +162,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'quickAdd1',
             type: 'NameGeneratorQuickAdd',
-            quickAddHint: localized('Press Enter when you are finished.'),
+            addNamePlaceholder: localized('Type a name, then press Enter'),
             label: localized('Quick Add'),
             subject: { entity: 'node', type: 'person' },
             quickAdd: 'age',
@@ -189,7 +189,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'quickAdd1',
             type: 'NameGeneratorQuickAdd',
-            quickAddHint: localized('Press Enter when you are finished.'),
+            addNamePlaceholder: localized('Type a name, then press Enter'),
             label: localized('Quick Add'),
             subject: { entity: 'node', type: 'person' },
             quickAdd: 'name',
@@ -733,7 +733,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       const result = stageSchema.safeParse({
         id: 'quickAdd1',
         type: 'NameGeneratorQuickAdd',
-        quickAddHint: localized('Press Enter when you are finished.'),
+        addNamePlaceholder: localized('Type a name, then press Enter'),
         label: localized('Generate'),
         subject: { entity: 'node', type: 'person' },
         quickAdd: 'name',

@@ -1,7 +1,7 @@
 import { isEqual } from 'es-toolkit/compat';
 import { useSyncExternalStore } from 'react';
 
-import type { Stage } from '@codaco/protocol-validation';
+import type { InterfaceTextUpdate, Stage } from '@codaco/protocol-validation';
 
 /**
  * What the stage editor currently on screen is holding, published where the
@@ -37,7 +37,10 @@ type StageDraftBeacon = Readonly<{
    * A deep comparison against the document the editor opened on, so undoing an
    * edit by hand reports clean again. Codebook edits are NOT part of it: they
    * commit immediately under their own lock and survive this editor being
-   * cancelled, so they are not this draft's to lose.
+   * cancelled, so they are not this draft's to lose. Neither are the shared
+   * words the protocol already holds, for the same reason; but wording the
+   * researcher gave a shared entry the protocol does not hold yet is saved
+   * only with the stage, so it is.
    */
   dirty: boolean;
   /**
@@ -45,13 +48,24 @@ type StageDraftBeacon = Readonly<{
    * or a rescue download builds the protocol the researcher is looking at.
    */
   stage: Stage | undefined;
+  /**
+   * The shared words the stage brings in that the protocol does not hold yet,
+   * as a save would write them with it (`pendingSharedWording`): part of the
+   * protocol the researcher is looking at, for the same readers.
+   */
+  interfaceText: readonly InterfaceTextUpdate[];
 }>;
+
+const NO_WORDS: readonly InterfaceTextUpdate[] = Object.freeze([]);
+
+const NO_PENDING_WORDS = Object.freeze({ words: NO_WORDS, reworded: false });
 
 const CLOSED: StageDraftBeacon = Object.freeze({
   open: false,
   editing: false,
   dirty: false,
   stage: undefined,
+  interfaceText: NO_WORDS,
 });
 
 let current: StageDraftBeacon = CLOSED;
@@ -87,12 +101,19 @@ export function publishStageDraft(
   committed: Readonly<Record<string, unknown>>,
   draft: Readonly<Record<string, unknown>>,
   editing: boolean,
+  /** The shared words held with the stage, when it holds any. */
+  interfaceText: Readonly<{
+    words: readonly InterfaceTextUpdate[];
+    /** Whether any of them is the researcher's rather than Network Canvas's. */
+    reworded: boolean;
+  }> = NO_PENDING_WORDS,
 ): void {
   announce({
     open: true,
     editing,
-    dirty: !isEqual(prune(draft), prune(committed)),
+    dirty: interfaceText.reworded || !isEqual(prune(draft), prune(committed)),
     stage,
+    interfaceText: interfaceText.words,
   });
 }
 

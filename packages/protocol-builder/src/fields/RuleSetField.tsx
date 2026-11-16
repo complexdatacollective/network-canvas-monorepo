@@ -122,6 +122,8 @@ export type RuleSetFieldProps = CreateFormFieldProps<
  * protocol is stored, and a codebook edit committed elsewhere reaches every
  * rule preview and every control inside the rule editor as it lands.
  */
+const NO_RULES: readonly RuleDraft[] = [];
+
 function RuleSetControl({
   id,
   name,
@@ -141,8 +143,10 @@ function RuleSetControl({
   const intl = useAppIntl();
   const codebook = protocolContext.codebook;
 
-  const ruleSet = asRuleSetValue(value);
-  const rules = ruleSet?.rules ?? [];
+  // Read once per value: the reader builds a new array of rules each time it
+  // runs, and the callbacks below depend on that array.
+  const ruleSet = useMemo(() => asRuleSetValue(value), [value]);
+  const rules = ruleSet?.rules ?? NO_RULES;
   const join = ruleSet?.join;
 
   // What the rules in this set may be ABOUT, which is both what it offers to
@@ -183,21 +187,21 @@ function RuleSetControl({
   );
 
   return (
-    <div
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- focus and blur bubble up from the controls inside the set; the fieldset only reports them to the form and is not itself operated
+    <fieldset
       id={id}
       data-name={name}
-      role="group"
       onBlur={onBlur}
       onFocus={onFocus}
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
-      // No `aria-required` here: `group` is not a role that may carry it (axe
+      // No `aria-required` here: a fieldset's `group` role may not carry it (axe
       // reports `aria-allowed-attr`), and a rule set that announced it that
       // way would be announcing it in a place assistive technology is entitled
       // to ignore. The field's own "Required" marker is in the description
       // above, which is where it is read.
       aria-invalid={ariaInvalid}
-      className="flex flex-col gap-8"
+      className="flex min-w-0 flex-col gap-8"
     >
       <RuleList
         rules={rules}
@@ -227,7 +231,7 @@ function RuleSetControl({
           }}
         />
       )}
-    </div>
+    </fieldset>
   );
 }
 

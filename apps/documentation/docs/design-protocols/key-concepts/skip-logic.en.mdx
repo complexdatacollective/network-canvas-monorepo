@@ -30,11 +30,11 @@ The following is a high level overview of how skip logic works:
 
 ## Adding skip logic to a stage
 
-To add skip logic to a stage, open it from the timeline view, and click **Use skip logic** to expand the section.
+To add skip logic to a stage, open it from the timeline view, and switch on the toggle beside the **Skip logic** section's title to expand the section.
 
 ![](/assets/img/key-concepts/skip-logic/skip-logic-section.png)
 
-To disable skip logic for a stage, click the toggle at the top of this section.
+To remove skip logic from a stage, switch the toggle off. Architect asks you to confirm first, because this deletes the stage's rules.
 
 You can see which stages have skip logic enabled from the badge beside each
 stage on the timeline. The badge also shows where the interview continues when
@@ -51,21 +51,21 @@ The operators available for an attribute rule depend on the variable's type, jus
 
 ## The join operator
 
-Rules are chained together (or 'joined') using either `AND` or `OR` logic, which is set in the skip logic configuration section using the **Must match** options **all rules** and **any rules** respectively. The joining operators govern how multiple rules are evaluated together to determine the overall boolean value that the query returns.
+Rules are chained together (or 'joined') using either `AND` or `OR` logic, which is set in the skip logic configuration section using the **Rule Matching** options **All rules must match** and **Any rule can match** respectively. The joining operators govern how multiple rules are evaluated together to determine the overall boolean value that the query returns.
 
 If rules are joined by `AND` statements, and all individual rules evaluate to `true`, so will the top level constraint (for example: `true && true === true`). Conversely, if any individual rules evaluate to false, so too will the top level constraint (`true && false === false`). If rules are joined by `OR` statements, any individual rule evaluating truthfully will cause the top level constraint to also evaluate as true (`true || false || false === true`).
 
 ![](/assets/img/key-concepts/skip-logic/must-match.png)
 
-This means that the choice of join operator can have an extremely significant impact on the way that your rules are collectively evaluated. One way of thinking about the difference is that you should use the "all rules" option in situations where there is only _one_ scenario where a stage should be shown. You can then add as many rules as you need to ensure that this scenario is as specific as possible.
+This means that the choice of join operator can have an extremely significant impact on the way that your rules are collectively evaluated. One way of thinking about the difference is that you should use the "All rules must match" option in situations where there is only _one_ scenario where a stage should be shown. You can then add as many rules as you need to ensure that this scenario is as specific as possible.
 
-Alternatively, use the "any rules" option for situations where there are many reasons a stage should be shown. For example you may show an information screen with an embedded intervention video if a participant has demonstrated any one of a number of risk behaviors.
+Alternatively, use the "Any rule can match" option for situations where there are many reasons a stage should be shown. For example you may show an information screen with an embedded intervention video if a participant has demonstrated any one of a number of risk behaviors.
 
 ## Skip or show
 
-Before we know the final outcome of the skip logic rule, we have to consider one last configurable property: the **show this stage if** or **skip this stage if** selector. This option allows you to decide if a 'true' outcome from evaluating your rules should cause the stage to be skipped or to be shown. This effectively allows you to write rules in terms of _negatives_ - that is, to instead write rules that define when a stage should be **shown** rather than when it should be skipped. This can be more useful if you have a lot of values to include or exclude.
+Before we know the final outcome of the skip logic rule, we have to consider one last configurable property: the **Action** setting, which is either **Show this stage** or **Skip this stage**. This option allows you to decide if a 'true' outcome from evaluating your rules should cause the stage to be skipped or to be shown. This effectively allows you to write rules in terms of _negatives_ - that is, to instead write rules that define when a stage should be **shown** rather than when it should be skipped. This can be more useful if you have a lot of values to include or exclude.
 
-For example, if you wished to skip a stage based on whether a categorical variable with many options is set to all but one possible value, you would typically have to write a rule for each value and use the `OR` operator. However, if you set the skip logic to **show this stage if**, you would only need to define a single rule that includes the value that is specifically permissible.
+For example, if you wished to skip a stage based on whether a categorical variable with many options is set to all but one possible value, you would typically have to write a rule for each value and use the `OR` operator. However, if you set the action to **Show this stage**, you would only need to define a single rule that includes the value that is specifically permissible.
 
 <TipBox>
 
@@ -118,9 +118,9 @@ You can implement a simple skip logic rule to address this, as follows:
 
 ![](/assets/img/key-concepts/skip-logic/example.png)
 
-In the above example, you could also configure your skip logic to achieve the same outcome by implementing the inverse rule (i.e. skip stage if alter of a type Person with Relationship excludes 4, 5, 6, 7, or 8).
+You can't get the same outcome by turning this into its inverse, **Skip this stage** with a rule that Relationship _excludes_ 4, 5, 6, 7, and 8. A rule about alters matches as soon as any one alter fits it, so that rule would skip the stage whenever the participant named at least one friend, spouse/partner, or coworker, even if they also named relatives.
 
-In either case, once you create more than one rule in your skip logic for a given stage, you need to determine whether you want all the rules matched or just any of the rules matched. In keeping with the examples above, imagine that you want to create a subsequent stage to capture data about a participant's biological nuclear family. You want this stage to be shown if a participant previously nominated alters with Relationship type 'parent', 'sibling' or 'child' and where these alters include type Relatedness of 'biological'. Here you would use the `ALL` operator since you would not want the stage to be shown if the participant has alters in their network of Relationship type 'parent', 'sibling' or 'child' but none of them include type Relatedness 'biological'.
+Once you create more than one rule in your skip logic for a given stage, you need to determine whether you want all the rules matched or just any of the rules matched. In keeping with the examples above, imagine that you want to create a subsequent stage to capture data about a participant's biological nuclear family. You want this stage to be shown if a participant previously nominated alters with Relationship type 'parent', 'sibling' or 'child' and where these alters include type Relatedness of 'biological'. Here you would use the `AND` operator (**All rules must match**) since you would not want the stage to be shown if the participant has alters in their network of Relationship type 'parent', 'sibling' or 'child' but none of them include type Relatedness 'biological'. With `AND`, all rules about alters must be matched by the same alter, so the stage is shown only if at least one alter has both one of those Relationship values and the Relatedness value 'biological'.
 
 ## Related concepts
 

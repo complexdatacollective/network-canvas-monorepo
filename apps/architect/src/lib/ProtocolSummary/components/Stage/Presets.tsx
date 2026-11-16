@@ -17,7 +17,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.presets.presets',
     defaultMessage: 'Presets',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Presets.',
+      'Section heading in the printable protocol summary, above the list of presets (saved views) of a narrative stage.',
   },
 });
 

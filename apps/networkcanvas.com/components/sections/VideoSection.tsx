@@ -27,11 +27,9 @@ export function VideoSection() {
 
   return (
     <Container>
-      <Reveal {...scrollDrivenRevealMotion}>
-        <SectionHeading title={t('heading')}>
-          {t.rich('description', { channel: renderChannelLink })}
-        </SectionHeading>
-      </Reveal>
+      <SectionHeading title={t('heading')}>
+        {t.rich('description', { channel: renderChannelLink })}
+      </SectionHeading>
 
       <Reveal
         {...scrollDrivenRevealMotion}

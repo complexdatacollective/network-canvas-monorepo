@@ -26,18 +26,20 @@ const messages = defineMessages({
   typeIdentity: {
     id: 'architect.typeEditor.typeEditor.typeIdentity',
     defaultMessage: 'Type identity',
-    description: 'The title text in components / TypeEditor / TypeEditor.',
+    description:
+      "Heading of the first section of the node or edge type editor, containing the type's name.",
   },
   nameThisTypeForTheCodebook: {
     id: 'architect.typeEditor.typeEditor.nameThisTypeForTheCodebook',
     defaultMessage: 'Name this type for the codebook and exported data.',
     description:
-      'The description text in components / TypeEditor / TypeEditor.',
+      'Description under the Type identity section heading in the node or edge type editor.',
   },
   typeName: {
     id: 'architect.typeEditor.typeEditor.typeName',
     defaultMessage: '{entity, select, node {Node} other {Edge}} type name',
-    description: 'The label text in components / TypeEditor / TypeEditor.',
+    description:
+      'Label of the name field in the type editor. entity is node or edge, depending on which kind of type is being edited.',
   },
   thisNameIdentifiesTheTypeIn: {
     id: 'architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn',
@@ -51,61 +53,68 @@ const messages = defineMessages({
     defaultMessage:
       'Enter a name for this {entity, select, node {node} edge {edge} other {ego}} type...',
     description:
-      'The placeholder text in components / TypeEditor / TypeEditor.',
+      'Placeholder inside the type name field. entity is node, edge or ego, the kind of type being named.',
   },
   typeColor: {
     id: 'architect.typeEditor.typeEditor.typeColor',
     defaultMessage: 'Type color',
-    description: 'The title text in components / TypeEditor / TypeEditor.',
+    description:
+      "Heading of the section of the node or edge type editor where the type's colour is chosen.",
   },
   color: {
     id: 'architect.typeEditor.typeEditor.color',
     defaultMessage: 'Color',
-    description: 'The label text in components / TypeEditor / TypeEditor.',
+    description:
+      'Label of the colour picker field in the node or edge type editor.',
   },
   chooseAColorForThisType: {
     id: 'architect.typeEditor.typeEditor.chooseAColorForThisType',
     defaultMessage:
       'Choose a color for this {entity, select, node {node} edge {edge} other {ego}} type.',
-    description: 'The hint text in components / TypeEditor / TypeEditor.',
+    description:
+      'Hint under the colour picker in the type editor. entity is node, edge or ego, the kind of type being edited.',
   },
   nodeAppearance: {
     id: 'architect.typeEditor.typeEditor.nodeAppearance',
     defaultMessage: 'Node appearance',
-    description: 'The title text in components / TypeEditor / TypeEditor.',
+    description:
+      'Heading of the section of the node type editor that sets how nodes of this type look (their shape).',
   },
   chooseADefaultShapeAndOptionally: {
     id: 'architect.typeEditor.typeEditor.chooseADefaultShapeAndOptionally',
     defaultMessage:
       'Choose a default shape and optionally map shapes from an attribute.',
     description:
-      'The description text in components / TypeEditor / TypeEditor.',
+      'Description under the Node appearance heading in the node type editor. Attribute means a variable recorded about each node of this type.',
   },
   shape: {
     id: 'architect.typeEditor.typeEditor.shape',
     defaultMessage: 'Shape',
-    description: 'The label text in components / TypeEditor / TypeEditor.',
+    description:
+      'Label of the default node shape picker in the node type editor.',
   },
   chooseADefaultShapeForThis: {
     id: 'architect.typeEditor.typeEditor.chooseADefaultShapeForThis',
     defaultMessage: 'Choose a default shape for this node type.',
-    description: 'The hint text in components / TypeEditor / TypeEditor.',
+    description: 'Hint under the default shape picker in the node type editor.',
   },
   interfaceIcon: {
     id: 'architect.typeEditor.typeEditor.interfaceIcon',
     defaultMessage: 'Interface icon',
-    description: 'The title text in components / TypeEditor / TypeEditor.',
+    description:
+      'Heading of the section of the node type editor where an icon is chosen for the interface stages that create nodes of this type.',
   },
   icon: {
     id: 'architect.typeEditor.typeEditor.icon',
     defaultMessage: 'Icon',
-    description: 'The label text in components / TypeEditor / TypeEditor.',
+    description: 'Label of the icon picker field in the node type editor.',
   },
   chooseAnIconToDisplayOn: {
     id: 'architect.typeEditor.typeEditor.chooseAnIconToDisplayOn',
     defaultMessage:
       'Choose an icon to display on interfaces that create this {entity, select, node {node} edge {edge} other {ego}}.',
-    description: 'The hint text in components / TypeEditor / TypeEditor.',
+    description:
+      'Hint under the icon picker in the node type editor. entity is node, edge or ego, the kind of type being edited. Interfaces here are interview stages that create nodes.',
   },
 });
 const DEFAULT_NODE_ICON = 'add-a-person';

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import {
   createBaseProtocol,
   localized,
@@ -17,7 +18,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from '../stages/categorical-bin.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
@@ -2722,16 +2722,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         {
           id: 'geospatial1',
           type: 'Geospatial',
-          offlineNotice: localized(
-            'You are offline — the map will not load until you reconnect.',
-          ),
-          mapUnavailable: localized(
-            'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
-          ),
           outsideAreasLabel: localized('Outside Selectable Areas'),
-          searchFailed: localized(
-            'Search could not be completed. Try again in a moment.',
-          ),
           label: localized('Geospatial Stage'),
           subject: {
             entity: 'node',

@@ -3,9 +3,14 @@ import { expect, userEvent, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import {
+  anonymisationStage,
+  familyPedigreeStage,
+} from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
+import { markdownTextShapeAt } from '../localization/textShape.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import { LocalizedRichTextField } from './LocalizedStringField.tsx';
@@ -18,16 +23,22 @@ const EXPLANATION_LABEL = 'Explanation';
 const CENSUS_FIELD = 'prompt';
 const CENSUS_LABEL = 'Prompt text';
 
+const EXPLANATION_SHAPE = markdownTextShapeAt(anonymisationStage, [
+  EXPLANATION_FIELD,
+]);
+const CENSUS_SHAPE = markdownTextShapeAt(familyPedigreeStage, [CENSUS_FIELD]);
+
 const ANONYMISATION = sectionId({ kind: 'stage', stageId: 'anonymisation-1' });
 
 /**
- * A passage, which is what the multi-line shape is for: headings, lists and
+ * A passage, which the stage declares several lines: headings, lists and
  * links are all available, and Enter starts a new paragraph.
  */
 const explanation = (
   <Field<typeof LocalizedRichTextField>
     name={EXPLANATION_FIELD}
     component={LocalizedRichTextField}
+    shape={EXPLANATION_SHAPE}
     label={EXPLANATION_LABEL}
     hint="Say which answers the passphrase protects, who can read them, and that the answers cannot be recovered without it."
     placeholder="Some of your answers are stored so that only you can unlock them."
@@ -36,7 +47,7 @@ const explanation = (
 );
 
 /**
- * One line, which is what `singleLine` is for.
+ * One line, which is what the stage declares its prompt to be.
  *
  * The restriction is told to the editor as well as to the markdown conversion:
  * a document the editor was free to split left the conversion joining two
@@ -50,7 +61,7 @@ const censusPrompt = (
     label={CENSUS_LABEL}
     hint="Shown to the participant above the canvas for the whole stage."
     placeholder="Enter your prompt..."
-    singleLine
+    shape={CENSUS_SHAPE}
     required={REQUIRED}
   />
 );
@@ -179,11 +190,16 @@ export const OneLineOnly: Story = {
 
     const box = await canvas.findByRole('textbox', { name: CENSUS_LABEL });
     await expect(box).toHaveAttribute('aria-multiline', 'false');
-    // A prompt is one line of VALUE, not a one-line-tall box: it keeps the
-    // tall editing area. Only `compact` fields shrink to the toolbar's height.
+    // Enter cannot add a line, so the box is one line tall too: as tall as
+    // the toolbar above it, not the tall area a multi-line field opens at.
+    const editableHeight = box.parentElement?.getBoundingClientRect().height;
+    const toolbarHeight = canvas
+      .getByRole('toolbar')
+      .getBoundingClientRect().height;
+    await expect(editableHeight).toBeLessThan(120);
     await expect(
-      box.parentElement?.getBoundingClientRect().height,
-    ).toBeGreaterThanOrEqual(120);
+      Math.abs((editableHeight ?? 0) - toolbarHeight),
+    ).toBeLessThanOrEqual(1);
     await expect(
       canvas.queryByRole('button', { name: 'Heading 1' }),
     ).toBeNull();

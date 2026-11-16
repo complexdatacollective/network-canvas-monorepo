@@ -28,6 +28,7 @@ import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { type FormattedConfig, formatConfig } from '~/i18n/formatConfig';
 import { toSubmissionError } from '~/i18n/submissionErrors';
 import { getVariablesForSubject } from '~/selectors/codebook';
+import { getLocalization } from '~/selectors/protocol';
 import {
   findExportColumnConflictMessage,
   toExportColumnCandidate,
@@ -37,7 +38,7 @@ const additionalMessages = defineMessages({
     id: 'architect.additional.newVariableWindow.newVariableWindow.createNewOption',
     defaultMessage: 'Create new option',
     description:
-      'The addButtonLabel text in components / NewVariableWindow / NewVariableWindow.',
+      'Label of the button that adds one more option to the list of allowed values, in the window for creating a new codebook variable (called an attribute here).',
   },
 });
 const messages = defineMessages({
@@ -45,88 +46,88 @@ const messages = defineMessages({
     id: 'architect.newVariableWindow.newVariableWindow.attributeDefinition',
     defaultMessage: 'Attribute definition',
     description:
-      'The title text in components / NewVariableWindow / NewVariableWindow.',
+      'Title of the window for creating a new codebook variable (called an attribute here) from inside a stage editor.',
   },
   defineTheAttributeSIdentityDataType: {
     id: 'architect.newVariableWindow.newVariableWindow.defineTheAttributeSIdentityDataType',
     defaultMessage:
       "Define the attribute's identity, data type, and available values.",
     description:
-      'The description text in components / NewVariableWindow / NewVariableWindow.',
+      'Subtitle under the title of the window for creating a new codebook variable (called an attribute here); summarises what the window asks for.',
   },
   identity: {
     id: 'architect.newVariableWindow.newVariableWindow.identity',
     defaultMessage: 'Identity',
     description:
-      'The title text in components / NewVariableWindow / NewVariableWindow.',
+      'Heading of the section in the new variable window that holds the variable name.',
   },
   attributeName: {
     id: 'architect.newVariableWindow.newVariableWindow.attributeName',
     defaultMessage: 'Attribute name',
     description:
-      'The description text in components / NewVariableWindow / NewVariableWindow.',
+      'Label of the variable name field in the new variable window; also the accessible description of that section.',
   },
   theAttributeNameIsHowYou: {
     id: 'architect.newVariableWindow.newVariableWindow.theAttributeNameIsHowYou',
     defaultMessage:
       'The attribute name is how you will reference the attribute elsewhere, including in exported data.',
     description:
-      'The hint text in components / NewVariableWindow / NewVariableWindow.',
+      'Hint under the variable name field in the new variable window; explains the name identifies the variable elsewhere and in exported data.',
   },
   eGNickname: {
     id: 'architect.newVariableWindow.newVariableWindow.eGNickname',
     defaultMessage: 'e.g. Nickname',
     description:
-      'The placeholder text in components / NewVariableWindow / NewVariableWindow.',
+      'Placeholder example in the empty variable name field in the new variable window; Nickname is an example variable name.',
   },
   dataType: {
     id: 'architect.newVariableWindow.newVariableWindow.dataType',
     defaultMessage: 'Data type',
     description:
-      'The title text in components / NewVariableWindow / NewVariableWindow.',
+      'Heading of the section in the new variable window where the researcher chooses the variable type (text, number, categorical and so on).',
   },
   attributeType: {
     id: 'architect.newVariableWindow.newVariableWindow.attributeType',
     defaultMessage: 'Attribute type',
     description:
-      'The description text in components / NewVariableWindow / NewVariableWindow.',
+      'Label of the dropdown for choosing the data type of the new variable; also the accessible description of the Data type section.',
   },
   selectAttributeType: {
     id: 'architect.newVariableWindow.newVariableWindow.selectAttributeType',
     defaultMessage: 'Select attribute type',
     description:
-      'The placeholder text in components / NewVariableWindow / NewVariableWindow.',
+      'Placeholder of the data type dropdown in the new variable window before a type is chosen.',
   },
   allowedValues: {
     id: 'architect.newVariableWindow.newVariableWindow.allowedValues',
     defaultMessage: 'Allowed values',
     description:
-      'The title text in components / NewVariableWindow / NewVariableWindow.',
+      'Heading of the section in the new variable window listing the options a participant can choose from; shown only for variable types that have options.',
   },
   options: {
     id: 'architect.newVariableWindow.newVariableWindow.options',
     defaultMessage: 'Options',
     description:
-      'The label text in components / NewVariableWindow / NewVariableWindow.',
+      'Label of the list of options for the new variable in the new variable window.',
   },
   createTheValuesThisInputControl: {
     id: 'architect.newVariableWindow.newVariableWindow.createTheValuesThisInputControl',
     defaultMessage:
       'Create the values this input control offers the participant.',
     description:
-      'The hint text in components / NewVariableWindow / NewVariableWindow.',
+      'Hint under the options list in the new variable window; the input control is the question control the participant uses to answer.',
   },
   createNewAttribute: {
     id: 'architect.newVariableWindow.newVariableWindow.createNewAttribute',
     defaultMessage: 'Create New Attribute',
     description:
-      'The title text in components / NewVariableWindow / NewVariableWindow.',
+      'Title of the dialog form for creating a new codebook variable (called an attribute here).',
   },
   saveAndClose: {
     id: 'architect.newVariableWindow.newVariableWindow.saveAndClose',
     defaultMessage: 'Save and Close',
     description:
-      'The submitLabel text in components / NewVariableWindow / NewVariableWindow.',
+      'Label of the submit button that saves the new variable and closes the window.',
   },
 });
 
@@ -169,6 +170,9 @@ const NewVariableFields = ({
   lockedOptions,
 }: NewVariableFieldsProps) => {
   const intl = useAppIntl();
+  // The new options' labels are compared in the protocol's languages, as
+  // every other place that edits an option label compares them.
+  const localization = useAppSelector(getLocalization);
   const variableType = useFormStore((state) => {
     const value = state.getFieldState('type')?.value;
     return typeof value === 'string' ? value : undefined;
@@ -274,10 +278,11 @@ const NewVariableFields = ({
                   additionalMessages.createNewOption,
                 )}
                 initialValue={initialOptions}
-                validation={optionsValidation(intl, {
-                  entity,
-                  siblings: existingVariables,
-                })}
+                validation={optionsValidation(
+                  intl,
+                  { entity, siblings: existingVariables },
+                  localization,
+                )}
               />
             )}
           </Section>

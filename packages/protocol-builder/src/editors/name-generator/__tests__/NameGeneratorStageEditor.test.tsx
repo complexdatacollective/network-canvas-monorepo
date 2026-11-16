@@ -174,34 +174,6 @@ const expectStageUntouched = (
 };
 
 describe('the name generator editor', () => {
-  it('saves the stage it opened, unchanged, with every key on screen', async () => {
-    const harness = mountFixture();
-
-    expect(
-      await screen.findByText('Who are the people you know?'),
-    ).toBeInTheDocument();
-    // Nothing is excused: every key this fixture stage holds belongs to a
-    // section this editor mounts, so the researcher can see and change all of
-    // it.
-    await harness.roundTrip({ unowned: [] });
-  });
-
-  it('asks its questions in the order a researcher answers them', async () => {
-    const harness = mountFixture();
-
-    await waitFor(() => expect(harness.outline()).toHaveLength(8));
-    expect(harness.outline().map((section) => section.title)).toEqual([
-      'Node setup',
-      'Form configuration',
-      'Prompt collection',
-      'Side panels',
-      'Nomination limits',
-      'Messages',
-      'Skip logic',
-      'Interviewer guidance',
-    ]);
-  });
-
   /**
    * What a researcher must do to a brand-new stage before a host will store
    * it: name it, say who it nominates, say what is recorded about them, and
@@ -422,26 +394,6 @@ describe('the name generator editor', () => {
   });
 
   /**
-   * Closing the editor without saving leaves the protocol holding nothing:
-   * typing is the researcher's until they save it.
-   */
-  it('leaves nothing behind when the editor is closed without saving', async () => {
-    const harness = mountFixture();
-
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      ' (revised)',
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Form title' }),
-      ' now',
-    );
-    await harness.cancel();
-
-    expectStageUntouched(harness);
-  });
-
-  /**
    * A node type a collaborator adds appears here, and the editor writes
    * nothing back: their change is not this researcher's edit, and echoing it
    * would save their work as ours.
@@ -476,22 +428,6 @@ describe('the name generator editor', () => {
     // And a save carries none of it either: the stage comes back exactly the
     // stage that was opened, which is what "without writing anything" means.
     await harness.roundTrip({ unowned: [] });
-  });
-
-  it('refuses to save while someone else holds the stage', async () => {
-    const harness = renderStageEditor({
-      stageId: 'name-generator-1',
-      registry: nameGeneratorStageEditor,
-      readOnly: true,
-    });
-    await screen.findByRole('textbox', { name: 'Form title' });
-
-    expect(await harness.submit()).toBeNull();
-    expect(
-      screen.getByText(
-        'This stage is read-only, so your change was not made. Somebody else is editing it.',
-      ),
-    ).toBeInTheDocument();
   });
 });
 

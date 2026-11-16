@@ -184,13 +184,9 @@ test(
       Object.keys(protocol.codebook.node ?? {}).length +
       Object.keys(protocol.codebook.edge ?? {}).length;
     // cover + contents + one per stage + one per codebook entity + resources
-    // + the interview's shared text, when the protocol holds any
-    const expectedSections =
-      2 +
-      protocol.stages.length +
-      entityCount +
-      1 +
-      (protocol.interfaceText ? 1 : 0);
+    // + the interview's shared text, which the summary lists as the
+    // interview shows it, so every protocol has it
+    const expectedSections = 2 + protocol.stages.length + entityCount + 1 + 1;
     await expect(sections).toHaveCount(expectedSections);
 
     // Each section names its own baseline: an `id` where the document has one

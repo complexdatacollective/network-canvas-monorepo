@@ -1,14 +1,16 @@
 [context.deploy-preview]
 ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes \"turbo@$(node -p \"require('./package.json').devDependencies.turbo\")\" query affected --packages @codaco/documentation networkcanvas.com --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"
 
-[[redirects]]
-from = "/"
-to = "/en"
-status = 301
-# Next.js static export emits out/index.html (for the next-intl root
-# redirect), and Netlify [[redirects]] only fire when no static file
-# exists at the path. Force this rule so the 301 wins over index.html.
-force = true
+# Paths are relative to the repository root, the site's base directory.
+# The locale edge function makes every documentation address start with a
+# language, choosing the reader's with the locale system every Network Canvas
+# website shares. It steps in only after the files and the redirects below
+# have had their turn, so these still answer addresses without a language.
+[build]
+edge_functions = "apps/documentation/netlify/edge-functions"
+
+[functions]
+deno_import_map = "apps/documentation/netlify/import-map.json"
 
 # Renamed page slugs (keep old URLs working — may be embedded in apps/documents)
 [[redirects]]
@@ -400,10 +402,4 @@ status = 301
 [[redirects]]
 from = "/en/fresco/*"
 to = "/en/collect-data/fresco/:splat"
-status = 301
-
-# Final fallback for any other legacy flat path (real files take precedence)
-[[redirects]]
-from = "/*"
-to = "/en/get-started/network-canvas"
 status = 301

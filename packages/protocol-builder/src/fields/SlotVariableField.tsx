@@ -1,5 +1,5 @@
 import { get } from 'es-toolkit/compat';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -38,6 +38,7 @@ import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 import { slotVariableMessages } from './slotVariableMessages.ts';
 import {
   managedElsewhereIssue,
@@ -348,9 +349,9 @@ export default function SlotVariableField({
   /**
    * Everything the gate judges a pick against, kept live. The shared field
    * memoises its validation on a JSON of its props, which drops functions, so
-   * the gate reads through a ref and judges the draft as it stands at save.
+   * the gate reads through a getter and judges the draft as it stands at save.
    */
-  const judgeAgainst = useRef({
+  const judgeAgainst = useLatest({
     variableType,
     lockedOptions,
     roleMap,
@@ -365,49 +366,38 @@ export default function SlotVariableField({
     allVariables,
     managersElsewhere,
   });
-  judgeAgainst.current = {
-    variableType,
-    lockedOptions,
-    roleMap,
-    slotMap,
-    draftSlotMap,
-    subject,
-    committedValue,
-    ownSlot,
-    writerClass,
-    draftConflicting,
-    draftBoundElsewhere,
-    allVariables,
-    managersElsewhere,
-  };
 
   const slotValidation = useMemo(
     () =>
       messageRuleValidation([
         // Asked first: an attribute deleted or retyped under the slot is not a
         // conflict with another writer, and saying so is more use.
-        (value: unknown) =>
-          unusableVariableIssue(
-            judgeAgainst.current.allVariables,
+        (value: unknown) => {
+          const live = judgeAgainst();
+          return unusableVariableIssue(
+            live.allVariables,
             value,
-            judgeAgainst.current.variableType,
-            judgeAgainst.current.lockedOptions,
-          ),
+            live.variableType,
+            live.lockedOptions,
+          );
+        },
         // No committed-value escape: the protocol refuses a second stage
         // managing the options, however long it has held the attribute.
-        (value: unknown) =>
-          managedElsewhereIssue(
-            judgeAgainst.current.allVariables,
+        (value: unknown) => {
+          const live = judgeAgainst();
+          return managedElsewhereIssue(
+            live.allVariables,
             value,
-            judgeAgainst.current.managersElsewhere,
-          ),
+            live.managersElsewhere,
+          );
+        },
         (value: unknown) =>
           slotCrossClassIssue({
-            ...judgeAgainst.current,
+            ...judgeAgainst(),
             variableId: value,
           }),
       ]),
-    [],
+    [judgeAgainst],
   );
 
   // A codebook change can make (or unmake) a standing error true; re-judge a
@@ -416,6 +406,7 @@ export default function SlotVariableField({
     const state = storeApi.getState();
     if (state.getFieldErrors(name) === null) return;
     void state.validateField(name);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `allVariables` is the re-run trigger: the validation reads it through `judgeAgainst`, not through this effect
   }, [allVariables, name, storeApi]);
 
   return (

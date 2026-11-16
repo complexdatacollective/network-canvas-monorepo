@@ -1281,6 +1281,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
           })}
           ref={groupRef}
           style={{ borderRadius: groupRadius }}
+          // Reorder.Group renders a <ul>, but Safari drops list semantics
+          // from a list styled without markers, so the role stays explicit.
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
           role="list"
           layout
           // `role="list"` allows neither `aria-readonly` nor `aria-required`,

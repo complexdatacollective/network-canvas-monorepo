@@ -93,19 +93,6 @@ export const finishSessionMessages = defineMessages({
     description:
       'Label of the field holding the text, heading included, a participant reads once the interview has finished.',
   },
-  finishingTitle: {
-    id: 'protocolBuilder.finishSession.finishingTitle',
-    defaultMessage: 'Finishing the interview',
-    description:
-      'Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, and the message when finishing fails.',
-  },
-  finishingDescription: {
-    id: 'protocolBuilder.finishSession.finishingDescription',
-    defaultMessage:
-      'These start with wording Network Canvas supplies, which you can change.',
-    description:
-      'Description of the finishing section. Each field starts with supplied wording in each of the protocol’s languages that Network Canvas has it in.',
-  },
   finishLabelLabel: {
     id: 'protocolBuilder.finishSession.finishLabelLabel',
     defaultMessage: 'Finish button',
@@ -123,6 +110,26 @@ export const finishSessionMessages = defineMessages({
     defaultMessage: 'If finishing fails',
     description:
       'Label of the field holding the message a participant sees when the interview could not be ended.',
+  },
+  finishLabelHint: {
+    id: 'protocolBuilder.finishSession.finishLabelHint',
+    defaultMessage: 'Button the participant presses to end the interview.',
+    description:
+      'Hint under the setting holding the words on the finish button, in the Customize built-in wording section of the Finish stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  finishConfirmationHint: {
+    id: 'protocolBuilder.finishSession.finishConfirmationHint',
+    defaultMessage:
+      'Question asked after the participant presses the finish button, before the interview ends. Only used when the stage asks participants to confirm.',
+    description:
+      'Hint under the setting holding the confirmation question, in the Customize built-in wording section of the Finish stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  finishFailedHint: {
+    id: 'protocolBuilder.finishSession.finishFailedHint',
+    defaultMessage:
+      'Shown when the interview could not be ended, so the participant can try again.',
+    description:
+      'Hint under the setting holding the message shown when finishing fails, in the Customize built-in wording section of the Finish stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },
   outcomeTitle: {
     id: 'protocolBuilder.finishSession.outcomeTitle',

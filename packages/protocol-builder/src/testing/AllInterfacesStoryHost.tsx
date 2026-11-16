@@ -35,6 +35,9 @@ const openableStages = (): Readonly<{ stageId: string; name: string }>[] =>
     name: INTERFACE_NAMES[loadFixtureStage(stageId).type],
   }));
 
+/** The action slot is called as a function, so it is declared once here. */
+const renderHostTitle = () => <HostStageTitle />;
+
 /**
  * One `<ProtocolBuilder>`, one protocol, and a way to open a stage of every
  * interface in it.
@@ -113,7 +116,7 @@ export function AllInterfacesStoryHost() {
               // action slot is the one place a host's chrome is inside the
               // stage form's provider. Nothing else here: this host is about
               // opening one interface after another.
-              actions={() => <HostStageTitle />}
+              actions={renderHostTitle}
             />
           </section>
         </main>

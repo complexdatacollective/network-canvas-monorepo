@@ -20,13 +20,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.mapOptions.mapboxAPIKey',
     defaultMessage: 'Mapbox API Key',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / MapOptions.',
+      "Section heading in the printable protocol summary, above the Mapbox API key resource used by a geospatial stage's map.",
   },
   geoJSONDataSource: {
     id: 'architect.protocolSummary.stage.mapOptions.geoJSONDataSource',
     defaultMessage: 'GeoJSON Data Source',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / MapOptions.',
+      "Section heading in the printable protocol summary, above the uploaded GeoJSON file that supplies the regions of a geospatial stage's map.",
   },
 });
 

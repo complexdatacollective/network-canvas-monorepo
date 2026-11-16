@@ -1,0 +1,231 @@
+{
+  "SectionSwitcher": {
+    "get-started": {
+      "label": "Get Started",
+      "description": "Learn about Network Canvas, choose your tools, and plan your study."
+    },
+    "design-protocols": {
+      "label": "Design Protocols",
+      "description": "Design the interview protocol your study will run."
+    },
+    "collect-data": {
+      "label": "Collect Data",
+      "description": "Run interviews in person or remotely, and gather your data."
+    },
+    "analyze-data": {
+      "label": "Analyze Data",
+      "description": "Export and analyze the network data your interviews produce."
+    }
+  },
+  "WorkflowNav": {
+    "workflowLabel": "Workflow"
+  },
+  "TipBox": {
+    "info": "Good to know:",
+    "warning": "Take Care!"
+  },
+  "WorkInProgress": {
+    "title": "Work in Progress",
+    "content": "This article is actively being worked on, and might not be finished. If you require support or assistance with this topic, please contact the project team directly."
+  },
+  "DocSearch": {
+    "button": {
+      "buttonText": "Search documentation",
+      "buttonTextMobile": "Search docs",
+      "buttonAriaLabel": "Open search modal",
+      "buttonUnavailableText": "Search is temporarily unavailable"
+    },
+    "modal": {
+      "searchBox": {
+        "resetButtonTitle": "Clear the query",
+        "resetButtonAriaLabel": "Clear the query",
+        "cancelButtonText": "Cancel",
+        "cancelButtonAriaLabel": "Cancel",
+        "placeholderText": "Search documentation"
+      },
+      "startScreen": {
+        "recentSearchesTitle": "Recent",
+        "noRecentSearchesText": "No recent searches",
+        "saveRecentSearchButtonTitle": "Save this search",
+        "removeRecentSearchButtonTitle": "Remove this search from history",
+        "favoriteSearchesTitle": "Favorite",
+        "removeFavoriteSearchButtonTitle": "Remove this search from favorites"
+      },
+      "errorScreen": {
+        "titleText": "Unable to fetch results",
+        "helpText": "You might want to check your network connection"
+      },
+      "footer": {
+        "selectText": "to select",
+        "selectKeyAriaLabel": "Enter key",
+        "navigateText": "to navigate",
+        "navigateUpKeyAriaLabel": "Arrow up",
+        "navigateDownKeyAriaLabel": "Arrow down",
+        "closeText": "to close",
+        "closeKeyAriaLabel": "Escape key",
+        "searchByText": "Search by"
+      },
+      "noResultsScreen": {
+        "noResultsText": "No results for",
+        "suggestedQueryText": "Try searching for",
+        "reportMissingResultsText": "Believe this query should return results?",
+        "reportMissingResultsLinkText": "Let us know"
+      }
+    }
+  },
+  "SharedNavigation": {
+    "documentationHome": "Documentation home",
+    "openDocumentationMenu": "Open documentation navigation",
+    "closeDocumentationMenu": "Close documentation navigation",
+    "documentationNavigation": "Documentation navigation",
+    "documentationNavigationDescription": "Browse documentation sections and pages."
+  },
+  "Footer": {
+    "terms": "Terms of Use",
+    "privacy": "Privacy Policy",
+    "copyright": "Copyright Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub",
+    "netlify": "This site is powered by <link>Netlify</link>"
+  },
+  "ThemeTranslations": {
+    "label": "Color theme",
+    "triggerLabel": "Color theme: {theme}",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "Hero": {
+    "title": "Documentation for every stage\nof your research",
+    "tagline": "Guides and reference material for planning studies, designing protocols, collecting data, and analyzing results."
+  },
+  "Home": {
+    "title": "Home",
+    "subtitle": "Welcome to the Network Canvas documentation. This is a place to learn about the project, find tutorials, and get help with using our software."
+  },
+  "DocPage": {
+    "docAvailableTxt": "This document is also available in"
+  },
+  "TableOfContents": {
+    "title": "Table of Contents"
+  },
+  "InterfaceSummary": {
+    "screenshotAlt": "The {name} interface",
+    "type": "Type",
+    "creates": "Creates",
+    "usesPrompts": "Uses prompts",
+    "requires": "Requires",
+    "yes": "Yes",
+    "no": "No",
+    "configureIn": "Configure in",
+    "runIn": "Run in",
+    "notAvailable": "{app} (not available)",
+    "schemaRequirement": "Requires <link>protocol schema</link> {version} or later."
+  },
+  "InterfaceNames": {
+    "AlterEdgeForm": "Per Alter Edge Form",
+    "AlterForm": "Per Alter Form",
+    "Anonymisation": "Anonymisation Interface",
+    "CategoricalBin": "Categorical Bin",
+    "DyadCensus": "Dyad Census",
+    "EgoForm": "Ego Form",
+    "FamilyPedigree": "Family Pedigree",
+    "FinishSession": "Finish Screen",
+    "Geospatial": "Geospatial Interface",
+    "Information": "Information",
+    "LanguageChooser": "Language Chooser",
+    "NameGenerator": "Name Generator (using forms)",
+    "NameGeneratorQuickAdd": "Name Generator (quick add)",
+    "NameGeneratorRoster": "Name Generator for Roster Data",
+    "Narrative": "Narrative",
+    "NarrativePedigree": "Narrative Pedigree",
+    "NetworkComposer": "Network Composer",
+    "OneToManyDyadCensus": "One to Many Dyad Census",
+    "OrdinalBin": "Ordinal Bin",
+    "Sociogram": "Sociogram",
+    "TieStrengthCensus": "Tie-Strength Census"
+  },
+  "AppCompatibility": {
+    "title": "App compatibility by schema version",
+    "caption": "Which schema version of protocol each Network Canvas app can open, grouped by app generation.",
+    "app": "App",
+    "platform": "Platform",
+    "schemaProtocols": "Schema {schema} protocols",
+    "previousGeneration": "Previous generation",
+    "currentGeneration": "Current generation",
+    "groupSchema": "Schema {schema}",
+    "desktopAndTablet": "Desktop & tablet",
+    "desktop": "Desktop",
+    "browser": "Browser",
+    "native": "Native",
+    "migratesTo": "Migrates to {schema}",
+    "keepOrUpgrade": "Edits as 8, or upgrades to 9",
+    "unsupported": "Not supported",
+    "oneWayTitle": "Upgrading is one-way.",
+    "oneWayBody": "Only Architect upgrades a protocol to schema 9, and only when you choose to; it makes an upgraded copy and leaves the original unchanged. No app can convert a protocol back to an older schema version, so keep a copy of your original protocol file if you need to continue using apps that only support an older schema. Releases of Interviewer and Fresco made before schema 9 open schema 7 and 8 protocols only, so update them before you use a schema 9 protocol."
+  },
+  "WorkflowsOverview": {
+    "caption": "The three ways to run a Network Canvas study, across the design, collect, and export phases.",
+    "workflow": "Workflow",
+    "phase1": "Phase 1",
+    "phase2": "Phase 2",
+    "phase3": "Phase 3",
+    "design": "Design a protocol",
+    "collect": "Collect data",
+    "export": "Export data",
+    "desktopOnline": "Desktop, online",
+    "desktopOnlineSummary": "In-person interviews on internet-connected devices.",
+    "desktopOffline": "Desktop, offline",
+    "desktopOfflineSummary": "The same desktop flow when devices have no internet.",
+    "web": "Web-based",
+    "webSummary": "Remote interviews completed in the browser.",
+    "cloudService": "Cloud service",
+    "usbDrive": "USB drive",
+    "frescoDashboard": "Fresco dashboard",
+    "designDesktop": "Design a protocol in Architect for Interviewer (new studies); Architect Classic for Interviewer Classic.",
+    "deployCloud": "Deploy to each device via a cloud file service.",
+    "uploadCloud": "Upload exports to the same cloud service to consolidate them.",
+    "deployUsb": "Carry the protocol to devices on a USB drive.",
+    "returnUsb": "Move collected data back off via USB.",
+    "designWeb": "Design the protocol in the browser.",
+    "deployFresco": "Upload once; participants interview in their browser.",
+    "exportFresco": "Manage centrally; export from the dashboard or pull via the <link>Fresco API</link>."
+  },
+  "SummaryCard": {
+    "duration": "Duration:",
+    "summary": "Summary:",
+    "prerequisites": "Prerequisites:"
+  },
+  "CodeCopyButton": {
+    "copy": "Copy code",
+    "copied": "Copied!"
+  },
+  "CodeExample": {
+    "languageSwitcher": "Select example code language",
+    "sectionLabel": "{language} coordinate classification example",
+    "showing": "Showing the {language} example."
+  },
+  "AppSwitch": {
+    "label": "Select application"
+  },
+  "ResponsiveSvgPreview": {
+    "landscape": "Landscape",
+    "portrait": "Portrait",
+    "landscapeAlt": "{alt} in landscape orientation",
+    "portraitAlt": "{alt} in portrait orientation"
+  },
+  "Sidebar": {
+    "loading": "Loading..."
+  },
+  "NotFound": {
+    "title": "404 - Not found",
+    "heading": "The requested page could not be found.",
+    "explanation": "This is most likely to have happened because the page has been moved or deleted. We apologize for any inconvenience this has caused.",
+    "tryThis": "Please try the following:",
+    "checkSpelling": "If you typed the page address in the address bar, make sure that it is spelled correctly.",
+    "goHome": "Use the 'return home' link below to navigate to the home page, and then navigate to the page you are looking for using the menus.",
+    "contact": "Contact the project team if you believe you are seeing this page in error, including details of the page you were trying to reach. Please email us at <link>info@networkcanvas.com</link>.",
+    "returnHome": "Return Home"
+  }
+}

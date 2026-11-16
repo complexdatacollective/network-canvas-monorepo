@@ -25,6 +25,7 @@ export default function RevealWhenChosen({
       if (revealed !== null) revealBelow(choice, revealed);
     });
     return () => cancelAnimationFrame(frame);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `revealKey` is the re-run trigger: it changes when the field's revealed content does, and the effect finds that content through the DOM rather than reading the key
   }, [chosenIn, revealKey]);
 
   return (

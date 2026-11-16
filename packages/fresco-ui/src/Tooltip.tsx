@@ -3,12 +3,12 @@
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip';
 import * as React from 'react';
 
-import { MotionSurface } from './layout/Surface';
-import { ArrowSvg } from './Popover';
+import { ArrowSvg, BaseUISharedPopoverContainer } from './Popover';
 import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
 } from './popoverArrow';
+import { type PopupSide, usePhysicalSide } from './popupSide';
 import { usePortalContainer } from './PortalContainer';
 import { cx } from './utils/cva';
 
@@ -23,9 +23,14 @@ type TooltipContentProps = Omit<
   'children'
 > & {
   sideOffset?: number;
-  side?: 'top' | 'bottom' | 'left' | 'right';
+  side?: PopupSide;
   align?: 'start' | 'center' | 'end';
   showArrow?: boolean;
+  /**
+   * Classes for the arrow, which sits outside the surface `className`
+   * styles: a tooltip that recolours its surface recolours the arrow here.
+   */
+  arrowClassName?: string;
   /**
    * `none` makes the popup transparent to the pointer, for tooltips that are
    * purely decorative and must never intercept a gesture underneath them.
@@ -45,6 +50,7 @@ const TooltipContent = React.forwardRef<
       side = 'top',
       align = 'center',
       showArrow = true,
+      arrowClassName,
       pointerEvents = 'auto',
       children,
       ...props
@@ -52,10 +58,11 @@ const TooltipContent = React.forwardRef<
     ref,
   ) => {
     const portalContainer = usePortalContainer();
+    const physicalSide = usePhysicalSide(side);
     return (
       <BaseTooltip.Portal container={portalContainer ?? undefined}>
         <BaseTooltip.Positioner
-          side={side}
+          side={physicalSide}
           sideOffset={sideOffset}
           align={align}
           arrowPadding={POPOVER_ARROW_PADDING}
@@ -72,23 +79,16 @@ const TooltipContent = React.forwardRef<
             ref={ref}
             role="tooltip"
             render={
-              <MotionSurface
-                floating
+              <BaseUISharedPopoverContainer
                 spacing="sm"
                 shadow="sm"
-                className={cx(
-                  'max-w-(--available-width) overflow-visible text-sm',
-                  className,
-                )}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                noContainer
-                transition={{ type: 'spring', duration: 0.5 }}
+                animation="enter"
+                className={cx('text-sm', className)}
+                arrow={showArrow && <TooltipArrow className={arrowClassName} />}
               />
             }
             {...props}
           >
-            {showArrow && <TooltipArrow />}
             {children}
           </BaseTooltip.Popup>
         </BaseTooltip.Positioner>

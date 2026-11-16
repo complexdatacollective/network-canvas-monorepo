@@ -19,9 +19,11 @@
  *    those suites covers with its own empty-network scenario), and stage
  *    `filter` is applied by
  *    shared network selectors before any interface renders. The cross-cutting
- *    suite proves that machinery exhaustively — both skip actions (SKIP/SHOW),
- *    every Filter operator, and a stage `filter` scoping the rendered node set
- *    without mutating the stored network.
+ *    suite proves that machinery — both skip actions (SKIP/SHOW), a Filter
+ *    operator of each attribute type (what each operator means is
+ *    unit-tested in packages/network-query), skip destinations, and a stage
+ *    `filter` scoping the rendered node set without mutating the stored
+ *    network.
  *
  * Together these back each claim without 20 redundant per-interface e2e
  * navigation scenarios (which would only re-exercise the type-agnostic runtime
@@ -58,8 +60,37 @@ const dynamicValuesClaims = [
   'TieStrengthCensus',
 ].map((iface) => `${iface}:dynamicValues`);
 
+/**
+ * Family Pedigree options proved by a Storybook interaction test or a unit
+ * test, not by an e2e scenario. Each was once claimed by a scenario that
+ * repeated that test step for step (the stories run the real Shell and read the
+ * session it hands to `onSync`, as the e2e host's store does), so the scenario
+ * went and the claim now names what proves it:
+ *
+ * - `nodeConfiguration.nameAttribute=encrypted`: the `EncryptedNames` story in
+ *   FamilyPedigree.stories.tsx — the notice and locked family until the
+ *   passphrase is chosen, a typed name and the labels saved on leaving stored
+ *   encrypted, and both read back decrypted.
+ * - `form.fields[].variable=encrypted`: the `EncryptedFormField` story, where an
+ *   encrypted answer is stored encrypted beside a name stored as typed.
+ * - `nominationPrompts[].onlyForSexAssignedAtBirth=withdrawnOnChange`: the
+ *   `ChangingSexAtBirthWithdrawsANomination` story, and `nominationsWithdrawnBy`
+ *   in __tests__/model.test.ts.
+ * - `completeness.scope=secondDegree` and `=thirdDegree`: "second and third
+ *   degree" in __tests__/completeness.test.ts, which lists exactly the people
+ *   each scope asks about.
+ */
+const familyPedigreeStoryClaims = [
+  'nodeConfiguration.nameAttribute=encrypted',
+  'form.fields[].variable=encrypted',
+  'nominationPrompts[].onlyForSexAssignedAtBirth=withdrawnOnChange',
+  'completeness.scope=secondDegree',
+  'completeness.scope=thirdDegree',
+].map((key) => `FamilyPedigree:${key}`);
+
 export const sharedSuiteClaims: readonly string[] = [
   ...dynamicValuesClaims,
+  ...familyPedigreeStoryClaims,
   'AlterEdgeForm:skipLogic',
   'AlterEdgeForm:filter',
   'Anonymisation:skipLogic',

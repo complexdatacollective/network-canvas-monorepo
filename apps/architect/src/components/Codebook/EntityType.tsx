@@ -28,66 +28,77 @@ const messages = defineMessages({
   cannotDeleteType: {
     id: 'architect.codebook.entityType.cannotDeleteType',
     defaultMessage: 'Cannot delete type',
-    description: 'The title text in components / Codebook / EntityType.',
+    description:
+      'Title of the dialog shown when the researcher tries to delete a node type or edge type that stages still use.',
   },
   theCannotBeDeletedAsIt: {
     id: 'architect.codebook.entityType.theCannotBeDeletedAsIt',
     defaultMessage:
       'The {name} {entity, select, node {node} edge {edge} other {ego}} cannot be deleted as it is currently in use.',
-    description: 'Visible text in components / Codebook / EntityType.',
+    description:
+      'Body of the dialog explaining that a node type or edge type cannot be deleted because a stage uses it. name is the type name; entity is node, edge or ego and is followed by the word for the kind of type.',
   },
   oK: {
     id: 'architect.codebook.entityType.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / Codebook / EntityType.',
+    description: 'Button that dismisses the cannot-delete-type dialog.',
   },
   deleteType: {
     id: 'architect.codebook.entityType.deleteType',
     defaultMessage: 'Delete type',
-    description: 'The title text in components / Codebook / EntityType.',
+    description:
+      'Title of the dialog, and label of its destructive confirm button, for deleting a node type or edge type from the codebook. Delete is a verb.',
   },
   areYouSureYouWantTo: {
     id: 'architect.codebook.entityType.areYouSureYouWantTo',
     defaultMessage:
       'Are you sure you want to delete the {entity, select, node {node} edge {edge} other {ego}} type “{name}”? You can restore it with Undo while this protocol remains open.',
-    description: 'The description text in components / Codebook / EntityType.',
+    description:
+      'Body of the confirmation dialog for deleting a node type or edge type. entity is node, edge or ego, selecting the word before type; name is the type name, shown in quotation marks. Notes that Undo can restore it while the protocol stays open.',
   },
   type: {
     id: 'architect.codebook.entityType.type',
     defaultMessage:
       '{name} {entity, select, node {node} edge {edge} other {ego}} type',
-    description: 'The title text in components / Codebook / EntityType.',
+    description:
+      'Heading of one node type or edge type section on the Codebook page. name is the type name, for example Person; entity is node, edge or ego, selecting the word before type.',
   },
   notInUse: {
     id: 'architect.codebook.entityType.notInUse',
     defaultMessage: 'not in use',
-    description: 'Visible text in components / Codebook / EntityType.',
+    description:
+      'Warning badge on a node type or edge type section of the Codebook page, shown when no stage uses the type.',
   },
   usedIn: {
     id: 'architect.codebook.entityType.usedIn',
     defaultMessage: 'used in:',
-    description: 'Visible text in components / Codebook / EntityType.',
+    description:
+      'Label before the list of stage links on a node type or edge type section of the Codebook page, introducing the stages that use the type.',
   },
   editEntity: {
     id: 'architect.codebook.entityType.editEntity',
     defaultMessage: 'Edit entity',
-    description: 'Visible text in components / Codebook / EntityType.',
+    description:
+      'Button on a node type or edge type section of the Codebook page that opens the dialog for editing the type. Edit is a verb; entity means the node type or edge type.',
   },
   inUseInStageSRemove: {
     id: 'architect.codebook.entityType.inUseInStageSRemove',
     defaultMessage:
       '{value1, plural, one {In use in # stage — remove usages first} other {In use in # stages — remove usages first}}',
-    description: 'The title text in components / Codebook / EntityType.',
+    description:
+      'Tooltip on the disabled Delete button of a node type or edge type that stages use. value1 is the number of stages using the type; the researcher must remove those uses before deleting.',
   },
   deleteEntity: {
     id: 'architect.codebook.entityType.deleteEntity',
     defaultMessage: 'Delete entity',
-    description: 'The title text in components / Codebook / EntityType.',
+    description:
+      'Label and tooltip of the button on a node type or edge type section of the Codebook page that deletes the type. Delete is a verb; entity means the node type or edge type.',
   },
   addAttribute: {
     id: 'architect.codebook.entityType.addAttribute',
     defaultMessage: 'Add attribute',
-    description: 'Visible text in components / Codebook / EntityType.',
+    description:
+      'Button on a node type or edge type section of the Codebook page that opens a window for adding a new variable (attribute) recorded for that type.',
   },
 });
 

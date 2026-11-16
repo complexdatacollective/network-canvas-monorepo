@@ -114,7 +114,13 @@ export const Subtitle: Story = {
       <Heading level="h1" margin="none">
         SNAAPS v1.0
       </Heading>
-      <Heading level="h4" variant="subtitle" margin="none" className="mt-2">
+      <Heading
+        level="h4"
+        variant="subtitle"
+        margin="none"
+        render={<p />}
+        className="mt-2"
+      >
         Social Network Assessment for Adult Protective Services (SNAAPS),
         version 1.0: A Network Canvas Data Collection Instrument
       </Heading>

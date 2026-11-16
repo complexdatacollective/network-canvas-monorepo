@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
 } from 'react';
@@ -390,14 +391,9 @@ function DialogFormBody({
     blocked: isSubmitting,
   });
 
-  useEffect(() => {
-    const published = requestCloseRef;
-    if (published === undefined) return undefined;
-    published.current = requestClose;
-    return () => {
-      published.current = null;
-    };
-  }, [requestClose, requestCloseRef]);
+  // Hands the owner's ref the current close route, and `null` as the dialog
+  // unmounts.
+  useImperativeHandle(requestCloseRef, () => requestClose, [requestClose]);
 
   /**
    * Fresco runs every field's own validation before this is reached, so the
@@ -533,7 +529,7 @@ function DialogFormBody({
                 aria-label={intl.formatMessage(
                   dialogMessages.configurationPane,
                 )}
-                className="min-w-0 @min-[60rem]:pr-4"
+                className="min-w-0 @min-[60rem]:pe-4"
               >
                 {fields}
               </FormWithoutProvider>
@@ -542,7 +538,7 @@ function DialogFormBody({
                   inside the dialog's. What the aside contains names itself —
                   the preview is its own labelled region — so the wrapper has
                   nothing left to announce. */}
-              <div className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+              <div className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:ps-4">
                 {aside}
               </div>
             </ResizableFlexPanel>

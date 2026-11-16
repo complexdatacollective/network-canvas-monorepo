@@ -16,31 +16,31 @@ const messages = defineMessages({
     id: 'fresco.ParticipantsTable.ParticipantsSelectionBar.selected',
     defaultMessage: '{value1, plural, one {# selected} other {# selected}}',
     description:
-      'Researcher-facing ParticipantsTable / ParticipantsSelectionBar: value selected',
+      'Count shown in the floating bar that appears when rows of the Participants table are selected. value1 is the number of selected participants.',
   },
   selectAll: {
     id: 'fresco.ParticipantsTable.ParticipantsSelectionBar.selectAll',
     defaultMessage: 'Select all {value1, number}',
     description:
-      'Researcher-facing ParticipantsTable / ParticipantsSelectionBar: Select all value',
+      'Text button in the floating selection bar of the Participants table that selects every participant matching the current filter, not only the visible page. value1 is the total number of matching participants.',
   },
   deleteSelected: {
     id: 'fresco.ParticipantsTable.ParticipantsSelectionBar.deleteSelected',
     defaultMessage: 'Delete Selected',
     description:
-      'Researcher-facing ParticipantsTable / ParticipantsSelectionBar: Delete Selected',
+      'Button in the floating selection bar of the Participants table that deletes the selected participants, after a confirmation dialog.',
   },
   exportSelected: {
     id: 'fresco.ParticipantsTable.ParticipantsSelectionBar.exportSelected',
     defaultMessage: 'Export Selected',
     description:
-      'Researcher-facing ParticipantsTable / ParticipantsSelectionBar: Export Selected',
+      'Button in the floating selection bar of the Participants table that exports the selected participants, with their interview links, to a file.',
   },
   deselectAll: {
     id: 'fresco.ParticipantsTable.ParticipantsSelectionBar.deselectAll',
     defaultMessage: 'Deselect all',
     description:
-      'Researcher-facing ParticipantsTable / ParticipantsSelectionBar: Deselect all',
+      'Accessible name of the close button of the selection bar in the Participants table; read only by screen readers. Clears the selection.',
   },
 });
 

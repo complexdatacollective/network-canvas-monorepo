@@ -166,7 +166,7 @@ async function renderCategoricalBin({
 
   let dndStore: StoreApi<DndStore> | undefined;
   render(
-    <InterviewI18nProvider requestedLocale="en">
+    <InterviewI18nProvider>
       <Provider store={store}>
         <TestProtocolLocalization>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>

@@ -16,13 +16,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions',
     defaultMessage: 'Name Generation Step Instructions',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep.',
+      'Sub-heading in the printable protocol summary of a family tree census stage, above the instructions shown to participants for its name generation step.',
   },
   formFields: {
     id: 'architect.protocolSummary.stage.nameGenerationStep.formFields',
     defaultMessage: 'Form Fields',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep.',
+      'Sub-heading in the printable protocol summary of a family tree census stage, above the table of form fields in its name generation step.',
   },
 });
 

@@ -1,11 +1,51 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react';
-import type { ComponentPropsWithoutRef, ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import type { MotionValue, motionValue } from 'motion/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Grant } from '~/lib/siteContent';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { Grants } from '../Grants';
+
+const motionPreference = vi.hoisted(() => ({ reduced: false }));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionPreference.reduced,
+}));
+
+// jsdom does not scroll, so the window's scroll position is a value the test
+// sets; everything the section derives from it is real Motion.
+const page = vi.hoisted(() => ({
+  scrollY: undefined as MotionValue<number> | undefined,
+}));
+
+vi.mock('motion/react', async (importOriginal) => {
+  const actual = await importOriginal<{ motionValue: typeof motionValue }>();
+  page.scrollY = actual.motionValue(0);
+  // The heading's own scroll progress (target-relative) is not under test.
+  const scrollYProgress = actual.motionValue(0);
+  return {
+    ...actual,
+    useScroll: () => ({ scrollY: page.scrollY, scrollYProgress }),
+  };
+});
+
+function scrollPageTo(top: number) {
+  act(() => {
+    page.scrollY?.set(top);
+  });
+}
+
+const scrollTo = vi.fn((options?: ScrollToOptions | number) => {
+  scrollPageTo(typeof options === 'number' ? options : (options?.top ?? 0));
+});
 
 const grants: Grant[] = [
   {
@@ -26,190 +66,277 @@ const grants: Grant[] = [
     logoAlt: 'Second example university',
     href: 'https://example.com/grants/two',
   },
+  {
+    id: 'fixture-grant-three',
+    title: 'Fixture-only ageing study grant',
+    pis: 'PI: Third Researcher',
+    description: 'Third fixture-only grant description.',
+    logo: '/images/logos/indiana.png',
+    logoAlt: 'Third example university',
+    href: 'https://example.com/grants/three',
+  },
 ];
 
-vi.mock('@codaco/fresco-ui/typography/Heading', () => ({
-  default: ({
-    level = 'h2',
-    margin,
-    variant,
-    ...props
-  }: ComponentPropsWithoutRef<'h3'> & {
-    level?: 'h1' | 'h2' | 'h3' | 'h4' | 'label';
-    margin?: 'default' | 'none';
-    variant?: 'default' | 'subheading';
-  }) => {
-    const Tag = level === 'label' ? 'h4' : level;
+const [first, second, third] = grants as [Grant, Grant, Grant];
 
-    return (
-      <Tag
-        data-fresco-heading="true"
-        data-fresco-margin={margin}
-        data-fresco-variant={variant}
-        {...props}
-      />
-    );
-  },
-}));
+// jsdom has no layout either, so the test plays the layout engine. Each
+// pinned frame is one viewport tall, so consecutive cards settle three
+// quarters of a viewport apart; the heights below decide whether the cards and
+// the heading column fit.
+const VIEWPORT = 1000;
+const SETTLE_INTERVAL = VIEWPORT * 0.75;
+const layout = { cardBody: 400, column: 600 };
 
-vi.mock('@codaco/fresco-ui/typography/Paragraph', () => ({
-  default: ({
-    margin,
-    ...props
-  }: ComponentPropsWithoutRef<'p'> & {
-    margin?: 'default' | 'none';
-  }) => (
-    <p data-fresco-paragraph="true" data-fresco-margin={margin} {...props} />
-  ),
-}));
+// The utilities that pin the frames, as the site stylesheet defines them.
+const pinningStyles = document.createElement('style');
+pinningStyles.textContent = `
+  .sticky { position: sticky; }
+  .tablet-landscape\\:sticky { position: sticky; }
+`;
 
-vi.mock('~/components/ui/Reveal', () => ({
-  Reveal: ({
-    children,
-    delay: _delay,
-    direction: _direction,
-    distance: _distance,
-    duration: _duration,
-    easing: _easing,
-    scrollLinked: _scrollLinked,
-    scrollStagger: _scrollStagger,
-    ...props
-  }: ComponentPropsWithoutRef<'div'> & {
-    children: ReactNode;
-    delay?: number;
-    direction?: string;
-    distance?: number;
-    duration?: number;
-    easing?: readonly number[];
-    scrollLinked?: boolean;
-    scrollStagger?: number;
-  }) => <div {...props}>{children}</div>,
-}));
+function stubLayout() {
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(
+    function offsetHeight(this: HTMLElement) {
+      if (this instanceof HTMLLIElement && this.querySelector('article'))
+        return VIEWPORT;
+      if (this.hasAttribute('data-card-body')) return layout.cardBody;
+      // The block holding the heading, introduction and index.
+      if (
+        !this.querySelector('article') &&
+        this.querySelector('h2') &&
+        this.querySelector('ol')
+      )
+        return layout.column;
+      return 0;
+    },
+  );
+  vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(VIEWPORT);
+  window.scrollTo = scrollTo as typeof window.scrollTo;
+}
 
-afterEach(cleanup);
+beforeEach(() => {
+  motionPreference.reduced = false;
+  layout.cardBody = 400;
+  layout.column = 600;
+  page.scrollY?.set(0);
+  scrollTo.mockClear();
+  document.head.append(pinningStyles);
+  stubLayout();
+});
+
+afterEach(() => {
+  cleanup();
+  pinningStyles.remove();
+  vi.restoreAllMocks();
+});
+
+function renderGrants(locale?: Parameters<typeof renderWithIntl>[1]) {
+  const result = renderWithIntl(<Grants grants={grants} />, locale);
+  // The section measures itself when the window resizes (and through a
+  // ResizeObserver, which jsdom does not drive).
+  act(() => {
+    window.dispatchEvent(new Event('resize'));
+  });
+  return result;
+}
+
+function section() {
+  return screen.getByRole('region', { name: 'Grants Using Network Canvas' });
+}
+
+function cardLink(grant: Grant) {
+  return within(section()).getByRole('link', { name: grant.title });
+}
+
+function card(grant: Grant) {
+  const article = cardLink(grant).closest('article');
+  if (!article) throw new Error(`No card holds ${grant.title}`);
+  return article;
+}
+
+function escapeRegExp(text: string) {
+  return text.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// An index entry is named by the institution, then the grant title. jsdom
+// does not know the two parts are blocks, so it joins them without a space.
+function indexLink(grant: Grant) {
+  return within(section()).getByRole('link', {
+    name: new RegExp(
+      `^${escapeRegExp(grant.logoAlt)}\\s?${escapeRegExp(grant.title)}$`,
+    ),
+  });
+}
+
+function isPinned(element: HTMLElement) {
+  for (
+    let current: HTMLElement | null = element;
+    current && current !== section();
+    current = current.parentElement
+  ) {
+    if (getComputedStyle(current).position === 'sticky') return true;
+  }
+  return false;
+}
 
 describe('Grants', () => {
-  it('renders grant card copy with Fresco semantic typography', () => {
-    renderWithIntl(<Grants grants={grants} />);
+  it('draws each card’s stripe from the start edge', () => {
+    renderGrants();
 
-    const heading = screen.getByRole('heading', {
-      level: 3,
-      name: grants[0]?.title,
+    for (const grant of grants) {
+      const stripe = card(grant).querySelector('.origin-left');
+      expect(stripe).toHaveClass('inset-x-0', 'rtl:origin-right');
+    }
+  });
+
+  it('links every grant to its page from a card that names its institution', () => {
+    renderGrants();
+
+    for (const grant of grants) {
+      const link = cardLink(grant);
+      expect(link).toHaveAttribute('href', grant.href);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noreferrer');
+      expect(
+        screen.getByRole('heading', { level: 3, name: grant.title }),
+      ).toContainElement(link);
+
+      const inCard = within(card(grant));
+      expect(inCard.getByRole('img', { name: grant.logoAlt })).toBeVisible();
+      expect(inCard.getByText(grant.pis)).toBeVisible();
+      expect(inCard.getByText(grant.description)).toBeVisible();
+    }
+  });
+
+  it('indexes every grant against its own card', () => {
+    renderGrants();
+
+    for (const grant of grants) {
+      const fragment = indexLink(grant).getAttribute('href') ?? '';
+      expect(fragment).toMatch(/^#./);
+      expect(document.getElementById(fragment.slice(1))).toBe(cardLink(grant));
+    }
+  });
+
+  it('marks the grant on top of the pile as current in the index', async () => {
+    renderGrants();
+    expect(indexLink(first)).toHaveAttribute('aria-current', 'step');
+
+    scrollPageTo(SETTLE_INTERVAL);
+
+    await waitFor(() => {
+      expect(indexLink(second)).toHaveAttribute('aria-current', 'step');
     });
-    const pis = screen.getByText(grants[0]?.pis ?? '');
-    const description = screen.getByText(grants[0]?.description ?? '');
-
-    expect(heading).toHaveAttribute('data-fresco-heading', 'true');
-    expect(heading).toHaveAttribute('data-fresco-margin', 'none');
-    expect(heading).toHaveAttribute('data-fresco-variant', 'subheading');
-    expect(heading.tagName).toBe('H3');
-    expect(heading).toHaveClass('text-text');
-
-    for (const paragraph of [pis, description]) {
-      expect(paragraph).toHaveAttribute('data-fresco-paragraph', 'true');
-      expect(paragraph).toHaveAttribute('data-fresco-margin', 'none');
-      expect(paragraph.tagName).toBe('P');
-    }
-
-    expect(pis).toHaveClass('text-text/55', 'mt-5', 'text-base', 'font-bold');
-    expect(description).toHaveClass(
-      'text-text/80',
-      'mt-6',
-      'text-base',
-      'tablet-portrait:text-lg',
-      'leading-relaxed',
-    );
-    expect(
-      screen.queryByText('Justice Community Opioid Innovation Network (JCOIN)'),
-    ).not.toBeInTheDocument();
+    expect(indexLink(first)).not.toHaveAttribute('aria-current');
+    expect(indexLink(third)).not.toHaveAttribute('aria-current');
   });
 
-  it('uses Fresco icon controls to paginate grants', () => {
-    renderWithIntl(<Grants grants={grants} />);
+  it('jumps from the index to where a card lands on the pile and focuses it', async () => {
+    renderGrants();
 
-    const previous = screen.getByRole('button', { name: 'Previous grant' });
-    const next = screen.getByRole('button', { name: 'Next grant' });
+    const notPrevented = fireEvent.click(indexLink(third));
 
-    for (const control of [previous, next]) {
-      expect(control).toHaveClass(
-        'aspect-square',
-        'p-0!',
-        'size-12',
-        'tablet-portrait:size-16',
-        'bg-surface',
-        'shadow-lg',
-      );
-      expect(control.querySelector('svg')).toHaveAttribute(
-        'aria-hidden',
-        'true',
-      );
-    }
-
-    fireEvent.click(next);
-
-    expect(screen.getByRole('button', { name: 'Show grant 2' })).toHaveClass(
-      'w-10',
-    );
-
-    fireEvent.click(previous);
-
-    expect(screen.getByRole('button', { name: 'Show grant 1' })).toHaveClass(
-      'w-10',
-    );
+    expect(notPrevented).toBe(false);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 2 * SETTLE_INTERVAL + 2 });
+    expect(cardLink(third)).toHaveFocus();
+    await waitFor(() => {
+      expect(indexLink(third)).toHaveAttribute('aria-current', 'step');
+    });
   });
 
-  it('keeps pagination dots as compact native buttons', () => {
-    renderWithIntl(<Grants grants={grants} />);
+  it('brings a card reached from the keyboard to the top of the pile', () => {
+    renderGrants();
 
-    const secondGrant = screen.getByRole('button', { name: 'Show grant 2' });
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => {
+      cardLink(second).focus();
+    });
 
-    expect(secondGrant).toHaveClass('h-3', 'w-3');
-    expect(secondGrant).not.toHaveClass('aspect-square', 'elevation-low');
-
-    fireEvent.click(secondGrant);
-
-    expect(secondGrant).toHaveClass('w-10');
-    expect(screen.getByRole('button', { name: 'Show grant 1' })).toHaveClass(
-      'w-3',
-    );
+    expect(scrollTo).toHaveBeenCalledWith({ top: SETTLE_INTERVAL + 2 });
   });
 
-  it('keeps the slide clipped while leaving room for the card shadow', () => {
-    renderWithIntl(<Grants grants={grants} />);
+  it('leaves the page where it is when a pointer focuses a card', () => {
+    renderGrants();
 
-    const card = screen
-      .getByRole('heading', { name: grants[0]?.title })
-      .closest('a');
-    const viewport = card?.parentElement;
-    const frame = viewport?.parentElement;
+    fireEvent.mouseDown(cardLink(second));
+    act(() => {
+      cardLink(second).focus();
+    });
 
-    expect(frame).toHaveClass('col-span-3', 'row-start-1', 'min-w-0', 'flex-1');
-    expect(viewport).toHaveClass(
-      'overflow-hidden',
-      'p-4',
-      'tablet-portrait:p-8',
-      'pointer-events-none',
-    );
-    expect(card).toHaveClass('pointer-events-auto', 'min-h-[30rem]');
-    expect(screen.getByAltText(grants[0]?.logoAlt ?? '')).toHaveClass(
-      'h-24',
-      'tablet-portrait:h-28',
-    );
+    expect(cardLink(second)).toHaveFocus();
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 
-  it('translates grant controls and section copy into Spanish', () => {
-    renderWithIntl(<Grants grants={grants} />, 'es');
+  it('pins the cards and the heading column while they fit the viewport', () => {
+    renderGrants();
+
+    for (const grant of grants) expect(isPinned(cardLink(grant))).toBe(true);
+    expect(isPinned(screen.getByRole('heading', { level: 2 }))).toBe(true);
+  });
+
+  it('lists the cards in the page flow when one is taller than the viewport', () => {
+    layout.cardBody = VIEWPORT * 2;
+    renderGrants();
+
+    for (const grant of grants) expect(isPinned(cardLink(grant))).toBe(false);
+    // The index is an ordinary in-page link again, and keyboard focus leaves
+    // the scrolling to the browser.
+    expect(fireEvent.click(indexLink(third))).toBe(true);
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => {
+      cardLink(second).focus();
+    });
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('lets the heading column scroll when it is taller than the viewport', () => {
+    layout.column = VIEWPORT + 1;
+    renderGrants();
+
+    expect(isPinned(screen.getByRole('heading', { level: 2 }))).toBe(false);
+    for (const grant of grants) expect(isPinned(cardLink(grant))).toBe(true);
+  });
+
+  it('tilts a card while it travels up and lays it flat once it lands', async () => {
+    renderGrants();
+
+    await waitFor(() => {
+      expect(card(second).style.transform).toMatch(/rotateX\(22\.00deg\)/);
+    });
+
+    scrollPageTo(SETTLE_INTERVAL);
+
+    await waitFor(() => {
+      expect(card(second).style.transform).toMatch(/rotateX\(0\.00deg\)/);
+    });
+  });
+
+  it('keeps the cards still for visitors who prefer reduced motion', async () => {
+    motionPreference.reduced = true;
+    renderGrants();
+
+    scrollPageTo(SETTLE_INTERVAL);
+
+    // The scroll has been taken into account once the index moves on.
+    await waitFor(() => {
+      expect(indexLink(second)).toHaveAttribute('aria-current', 'step');
+    });
+    for (const grant of grants) expect(card(grant).style.transform).toBe('');
+  });
+
+  it('translates the section into Spanish', () => {
+    renderGrants('es');
 
     expect(
-      screen.getByRole('heading', {
+      screen.getByRole('region', {
         name: 'Subvenciones que utilizan Network Canvas',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Subvención anterior' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Mostrar subvención 2' }),
-    ).toBeInTheDocument();
+  });
+
+  it('renders nothing without grants', () => {
+    const { container } = renderWithIntl(<Grants grants={[]} />);
+
+    expect(container).toBeEmptyDOMElement();
   });
 });

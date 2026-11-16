@@ -217,7 +217,11 @@ export type ToolbarPopoverProps = Omit<
   trigger: ToolbarOverlayTrigger;
   children: React.ReactNode;
   ref?: React.Ref<HTMLButtonElement>;
-  /** Props forwarded to Fresco's PopoverContent. */
+  /**
+   * Props forwarded to Fresco's PopoverContent. The popup is named after the
+   * trigger's `aria-label` unless `aria-label` or `aria-labelledby` is given
+   * here; a trigger with visible text and no `aria-label` needs one of them.
+   */
   contentProps?: Omit<React.ComponentProps<typeof PopoverContent>, 'children'>;
 };
 
@@ -738,11 +742,16 @@ export function ToolbarPopover({
   const { orientation } = useToolbarContext('ToolbarPopover');
   const mergedRef = useMergedButtonRef(ref, trigger.props.ref);
   const triggerWithRef = React.cloneElement(trigger, { ref: mergedRef });
+  // The popup is a `role="dialog"`, which needs a name. An icon-only toolbar
+  // button already carries the one that says what it opens, so the popup
+  // reuses it.
+  const triggerLabel = trigger.props['aria-label'];
 
   return (
     <Popover {...props}>
       <PopoverTrigger render={triggerWithRef} />
       <PopoverContent
+        aria-label={typeof triggerLabel === 'string' ? triggerLabel : undefined}
         {...contentProps}
         // It opens over the toolbar, which casts its own shadow; a stronger
         // one keeps it reading as the higher surface.

@@ -510,6 +510,7 @@ describe('generateNetwork constraint conformance', () => {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
+        unnamedLabel: { en: 'Unnamed {count}' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
         },
@@ -1716,6 +1717,7 @@ describe('a rule between two fixed attributes', () => {
       id: 'stage-1',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
       prompts: [
@@ -2154,6 +2156,7 @@ describe('a fixed value its own rules reject', () => {
       id: 'stage-1',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'Pick people', ...extra }],
@@ -3135,6 +3138,7 @@ describe('a unique value a prompt fixes', () => {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
+        unnamedLabel: { en: 'Unnamed {count}' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
         },
@@ -3164,6 +3168,7 @@ describe('a unique value a prompt fixes', () => {
         id: 'stage-fix',
         type: 'NameGeneratorRoster',
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
+        unnamedLabel: { en: 'Unnamed {count}' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
         },
@@ -3256,6 +3261,7 @@ describe('a unique value a prompt fixes', () => {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
+        unnamedLabel: { en: 'Unnamed {count}' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
         },
@@ -3344,6 +3350,7 @@ describe('a unique value a prompt fixes', () => {
       id: 'stage-roster',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       minNodesNotice: {
         en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
       },
@@ -3412,6 +3419,7 @@ describe('a unique value two roster rows share', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
     },
@@ -3687,6 +3695,7 @@ describe('roster values held against an earlier stage', () => {
       id,
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       minNodesNotice: {
         en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
       },
@@ -4039,6 +4048,7 @@ describe('two roster rows a caller gave one primary key', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
     },

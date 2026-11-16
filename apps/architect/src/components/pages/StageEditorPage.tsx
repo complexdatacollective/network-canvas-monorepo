@@ -55,34 +55,38 @@ const messages = defineMessages({
   stageNotFound: {
     id: 'architect.stageEditor.stageEditor.stageNotFound',
     defaultMessage: 'Stage not found',
-    description: 'The title text in components / StageEditor / StageEditor.',
+    description:
+      'Title of the info dialog shown when the researcher opens the address of a timeline stage that no longer exists in the protocol.',
   },
   thatStageNoLongerExistsIt: {
     id: 'architect.stageEditor.stageEditor.thatStageNoLongerExistsIt',
     defaultMessage:
       'That stage no longer exists. It may have been deleted. Returning you to the protocol overview.',
     description:
-      'The description text in components / StageEditor / StageEditor.',
+      'Body of the info dialog shown when the stage the researcher tried to open no longer exists. Architect then returns to the protocol overview (the timeline).',
   },
   oK: {
     id: 'architect.stageEditor.stageEditor.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / StageEditor / StageEditor.',
+    description: 'Button that dismisses the Stage not found dialog.',
   },
   discardUnsavedStageChanges: {
     id: 'architect.stageEditor.stageEditor.discardUnsavedStageChanges',
     defaultMessage: 'Discard unsaved stage changes?',
-    description: 'The title text in components / StageEditor / StageEditor.',
+    description:
+      'Title of the confirmation dialog shown when the researcher cancels or leaves the stage editor while the stage has unsaved changes.',
   },
   discardChangesAndLeave: {
     id: 'architect.stageEditor.stageEditor.discardChangesAndLeave',
     defaultMessage: 'Discard Changes and Leave',
-    description: 'The label text in components / StageEditor / StageEditor.',
+    description:
+      'Button in the confirmation dialog for leaving the stage editor; throws away the unsaved stage changes and returns to the timeline.',
   },
   newStage: {
     id: 'architect.final.components.StageEditor.StageEditor.newStage',
     defaultMessage: 'New stage',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Name used for a timeline stage that is being created and has not been given a label yet. Shown in the stage editor navigation bar and as the page heading.',
   },
   otherTab: {
     id: 'architect.stageEditor.stageEditorPage.otherTab',

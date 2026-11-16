@@ -23,70 +23,76 @@ const messages = defineMessages({
   cannotDeleteResource: {
     id: 'architect.assetBrowser.assetBrowser.cannotDeleteResource',
     defaultMessage: 'Cannot delete resource',
-    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+    description:
+      'Title of the dialog shown when the researcher tries to delete an uploaded resource (file) that a stage in the protocol still uses.',
   },
   cannotDeleteThisResourceBecauseIt: {
     id: 'architect.assetBrowser.assetBrowser.cannotDeleteThisResourceBecauseIt',
     defaultMessage:
       'Cannot delete this resource because it is used within your interview. Remove any uses of the resource, and try again.',
     description:
-      'The description text in components / AssetBrowser / AssetBrowser.',
+      'Body of the dialog explaining that a resource used by a stage cannot be deleted until its uses are removed. Also the fallback message when adding the missing file for a resource fails without a specific error.',
   },
   oK: {
     id: 'architect.assetBrowser.assetBrowser.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / AssetBrowser / AssetBrowser.',
+    description:
+      'Button that dismisses an informational or error dialog in the resource library.',
   },
   deleteResource: {
     id: 'architect.assetBrowser.assetBrowser.deleteResource',
     defaultMessage: 'Delete Resource?',
-    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+    description:
+      'Title of the dialog that asks the researcher to confirm deleting an uploaded resource (file) from the protocol.',
   },
   areYouSureYouWantTo: {
     id: 'architect.assetBrowser.assetBrowser.areYouSureYouWantTo',
     defaultMessage:
       'Are you sure you want to delete this resource? You can restore it with Undo while this protocol remains open.',
     description:
-      'The description text in components / AssetBrowser / AssetBrowser.',
+      'Body of the confirmation dialog for deleting a resource. Reassures the researcher that Undo can restore the resource while the protocol stays open.',
   },
   couldNotAddTheFile: {
     id: 'architect.assetBrowser.assetBrowser.couldNotAddTheFile',
     defaultMessage: 'Could not add the file',
-    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+    description:
+      'Title of the error dialog shown when the file the researcher chose to replace a missing resource file could not be added.',
   },
   chooseTheMissingFile: {
     id: 'architect.assetBrowser.assetBrowser.chooseTheMissingFile',
     defaultMessage: 'Choose the missing file for this resource',
     description:
-      'The aria-label text in components / AssetBrowser / AssetBrowser.',
+      'Accessible name of the hidden file picker that opens when the researcher supplies a file for a resource whose file is missing from the protocol; read only by screen readers.',
   },
   deleteResourcea742f: {
     id: 'architect.assetBrowser.assetBrowser.deleteResourcea742f',
     defaultMessage: 'Delete Resource',
     description:
-      'The confirmLabel text in components / AssetBrowser / AssetBrowser.',
+      'Label of the destructive button that confirms deleting a resource, in the delete confirmation dialog.',
   },
   importResource: {
     id: 'architect.assetBrowser.assetBrowser.importResource',
     defaultMessage: 'Import resource',
-    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+    description:
+      'Heading of the section of the resource library where the researcher uploads a new resource (image, video, audio, network data, GeoJSON or API key).',
   },
   addANewResourceToThis: {
     id: 'architect.assetBrowser.assetBrowser.addANewResourceToThis',
     defaultMessage: 'Add a new resource to this protocol.',
     description:
-      'The description text in components / AssetBrowser / AssetBrowser.',
+      'Hint under the Import resource section heading, saying that a new resource (an uploaded file or API key) can be added to the protocol here.',
   },
   resourceLibrary: {
     id: 'architect.assetBrowser.assetBrowser.resourceLibrary',
     defaultMessage: 'Resource library',
-    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+    description:
+      'Heading of the section listing all resources (uploaded files and API keys) stored in the protocol.',
   },
   browseAndManageResourcesStoredIn: {
     id: 'architect.assetBrowser.assetBrowser.browseAndManageResourcesStoredIn',
     defaultMessage: 'Browse and manage resources stored in this protocol.',
     description:
-      'The description text in components / AssetBrowser / AssetBrowser.',
+      'Hint under the Resource library section heading, saying that the researcher can browse, preview, download and delete the resources stored in the protocol.',
   },
 });
 

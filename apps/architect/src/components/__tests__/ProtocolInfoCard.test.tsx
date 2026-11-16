@@ -273,9 +273,10 @@ describe('ProtocolInfoCard', () => {
       expect(nameControl()).toHaveClass('overflow-hidden');
     });
 
-    it('lets an RTL name set its own base direction', () => {
+    it('lays an RTL name out in its own direction', () => {
       renderCard('مشروع بحث الشبكات الاجتماعية');
-      expect(nameControl()).toHaveAttribute('dir', 'auto');
+      expect(nameControl()).toHaveClass('text-own-direction');
+      expect(nameControl()).not.toHaveAttribute('dir');
     });
 
     it('steps the heading down so a name at the limit fits that bound', () => {

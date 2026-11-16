@@ -26,45 +26,50 @@ const messages = defineMessages({
   copyFresco: {
     id: 'fresco.actions.totp.copyFresco',
     defaultMessage: 'Fresco ({value1})',
-    description: 'Researcher-facing actions / totp: Fresco (value)',
+    description:
+      "Issuer name shown in the authenticator app next to the researcher's account when they scan the two-factor QR code. value is the hostname of this installation. Keep Fresco as the product name.",
   },
   copyInvalidCode: {
     id: 'fresco.actions.totp.copyInvalidCode',
     defaultMessage: 'Invalid code',
-    description: 'Researcher-facing actions / totp: Invalid code',
+    description:
+      'Error returned when the two-factor code submitted while setting up, disabling or regenerating recovery codes is not in the expected form, such as not six digits.',
   },
   copyNoPendingTOTPSetupFound: {
     id: 'fresco.actions.totp.copyNoPendingTOTPSetupFound',
     defaultMessage: 'No pending TOTP setup found',
     description:
-      'Researcher-facing actions / totp: No pending TOTP setup found',
+      'Error returned when the researcher confirms a code while setting up two-factor authentication but no setup is in progress for their account. TOTP means time-based codes from an authenticator app.',
   },
   copyInvalidVerificationCode: {
     id: 'fresco.actions.totp.copyInvalidVerificationCode',
     defaultMessage: 'Invalid verification code',
-    description: 'Researcher-facing actions / totp: Invalid verification code',
+    description:
+      "Error returned when the six-digit code from the researcher's authenticator app is wrong, in the two-factor setup, disable, recovery-code or re-verification forms.",
   },
   copyTwoFactorAuthenticationIsNotEnabled: {
     id: 'fresco.actions.totp.copyTwoFactorAuthenticationIsNotEnabled',
     defaultMessage: 'Two-factor authentication is not enabled',
     description:
-      'Researcher-facing actions / totp: Two-factor authentication is not enabled',
+      'Error returned when the researcher asks to verify, disable or regenerate recovery codes for two-factor authentication but their account has no two-factor authentication set up.',
   },
   copyInvalidRecoveryCode: {
     id: 'fresco.actions.totp.copyInvalidRecoveryCode',
     defaultMessage: 'Invalid recovery code',
-    description: 'Researcher-facing actions / totp: Invalid recovery code',
+    description:
+      'Error returned when the two-factor recovery code (a single-use backup code) the researcher entered does not exist or was already used.',
   },
   copyInvalidCodeFormat: {
     id: 'fresco.actions.totp.copyInvalidCodeFormat',
     defaultMessage: 'Invalid code format',
-    description: 'Researcher-facing actions / totp: Invalid code format',
+    description:
+      'Error returned when the code entered is neither a six-digit authenticator code nor a recovery code, so it cannot be checked.',
   },
   copyCannotResetYourOwnTwoFactorAuthentication: {
     id: 'fresco.actions.totp.copyCannotResetYourOwnTwoFactorAuthentication',
     defaultMessage: 'Cannot reset your own two-factor authentication',
     description:
-      'Researcher-facing actions / totp: Cannot reset your own two-factor authentication',
+      "Error returned when a researcher tries to reset two-factor authentication on their own account; resetting is only allowed for another researcher's account.",
   },
   twoFactorRequiredByInstallation: {
     id: 'fresco.actions.totp.twoFactorRequiredByInstallation',

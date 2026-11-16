@@ -33,9 +33,9 @@ const graphicVariants = cva({
   base: 'flex items-center justify-center',
   variants: {
     size: {
-      default: 'mr-5',
-      small: 'mr-2.5',
-      tiny: 'mr-1',
+      default: 'me-5',
+      small: 'me-2.5',
+      tiny: 'me-1',
     },
   },
   defaultVariants: { size: 'default' },

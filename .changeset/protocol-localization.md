@@ -21,15 +21,15 @@ How an interview picks its language:
   languages. Its heading is the stage's own text, which starts as "Choose a
   language" and can be reworded and translated in Architect; participants read
   it in the interview's current language. The languages are listed
-  alphabetically by their own names, sorted for the language of the
-  interview's own buttons and messages, and the order they are stored in has
+  alphabetically by their own names, sorted for the interview's
+  language, and the order they are stored in has
   no effect. The current one is selected, and choosing
   another switches the whole interview at once. The choice is saved with the
   interview. The stage can appear anywhere, more than once.
-- Buttons, menus and other text that Network Canvas provides follow the
-  participant's chosen language when it is one of Network Canvas's own
-  languages, and otherwise their browser's languages. The language setting in
-  the interview's settings menu has been removed.
+- Buttons, menus and other text that Network Canvas provides are part of the
+  protocol too, so they follow the same language as the rest of the
+  interview. The language setting in the interview's settings menu has been
+  removed.
 - Text that is missing in the participant's language is shown in the best
   available translation: first in another language their browser lists, then in
   the protocol's default language, then in any language of the protocol that has

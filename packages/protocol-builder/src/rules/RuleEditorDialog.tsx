@@ -30,6 +30,7 @@ import DialogForm, {
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 import type { RuleOperatorOption, RuleOperatorSubject } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
@@ -1477,13 +1478,11 @@ export default function RuleEditorDialog({
 
   const intl = useAppIntl();
 
-  // The codebook as it now stands, read through a ref so the check below stays
-  // live without giving the validator a new identity on every revision that
-  // reaches it. Same reason `useRuleSetValidation` does it: a codebook edit
-  // committed elsewhere has to reach a dialog that is already open.
+  // The codebook as it now stands, read through a getter so the check below
+  // stays live without giving the validator a new identity on every revision
+  // that reaches it. Same reason `useRuleSetValidation` does it: a codebook
+  // edit committed elsewhere has to reach a dialog that is already open.
   const protocolContext = useProtocolContext();
-  const codebookRef = useRef(protocolContext.codebook);
-  codebookRef.current = protocolContext.codebook;
 
   /**
    * Everything the editor can tell about a draft without leaving it, run after
@@ -1496,10 +1495,11 @@ export default function RuleEditorDialog({
    * which is what let a rule pointed at a deleted entity type be saved from
    * here and marked broken by the row a moment later.
    */
-  const targetsRef = useRef(allowedTargets);
-  targetsRef.current = allowedTargets;
-  const allowEncryptedRef = useRef(allowEncryptedAttributes);
-  allowEncryptedRef.current = allowEncryptedAttributes;
+  const judgeAgainst = useLatest({
+    codebook: protocolContext.codebook,
+    targets: allowedTargets,
+    allowEncryptedAttributes,
+  });
 
   /**
    * The id this session's rule will be filed under.
@@ -1527,14 +1527,16 @@ export default function RuleEditorDialog({
     typeof seed.id === 'string' && !idIsShared ? seed.id : uuid({});
 
   const validate = useCallback(
-    (values: Record<string, FieldValue>): DialogFormErrors | undefined =>
-      ruleDraftRefusal(
+    (values: Record<string, FieldValue>): DialogFormErrors | undefined => {
+      const current = judgeAgainst();
+      return ruleDraftRefusal(
         { id: ruleId.current, ...ruleDraftFromValues(values) },
-        codebookRef.current,
-        targetsRef.current,
-        { allowEncryptedAttributes: allowEncryptedRef.current },
-      ),
-    [],
+        current.codebook,
+        current.targets,
+        { allowEncryptedAttributes: current.allowEncryptedAttributes },
+      );
+    },
+    [judgeAgainst],
   );
 
   const handleSubmit = useCallback(
@@ -1575,35 +1577,42 @@ export default function RuleEditorDialog({
         seed={seed}
         ruleTypes={ruleTypes}
         allowEncryptedAttributes={allowEncryptedAttributes}
-        description={intl.formatMessage(messages.description, {
-          // The links are tags inside the sentence rather than markup around
-          // fragments of it, so a translator moves the whole clause and the
-          // link text with it.
-          skipLogic: (chunks: ReactNode) => (
-            <NativeLink
-              key="skipLogic"
-              href={protocolAuthoringLinks.skipLogic}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {chunks}
-            </NativeLink>
-          ),
-          networkFiltering: (chunks: ReactNode) => (
-            <NativeLink
-              key="networkFiltering"
-              href={protocolAuthoringLinks.networkFiltering}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {chunks}
-            </NativeLink>
-          ),
-        })}
+        description={intl.formatMessage(messages.description, descriptionTags)}
       />
     </DialogForm>
   );
 }
+
+/**
+ * The links inside the dialog's description.
+ *
+ * Tags inside the sentence rather than markup around fragments of it, so a
+ * translator moves the whole clause and the link text with it. Defined once at
+ * module level: a tag function written inline is a component defined during
+ * render, and would remount its link on every render.
+ */
+const descriptionTags = {
+  skipLogic: (chunks: ReactNode) => (
+    <NativeLink
+      key="skipLogic"
+      href={protocolAuthoringLinks.skipLogic}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {chunks}
+    </NativeLink>
+  ),
+  networkFiltering: (chunks: ReactNode) => (
+    <NativeLink
+      key="networkFiltering"
+      href={protocolAuthoringLinks.networkFiltering}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {chunks}
+    </NativeLink>
+  ),
+};
 
 /**
  * The refusals this dialog shows, encoded rather than formatted.

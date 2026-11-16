@@ -73,9 +73,12 @@ const configure = (
     ...participantLogTransport(sessionToken),
   });
 
+// A new handle for each session: the token is not read inside, it is the
+// reason to start a fresh log stream.
 const useSessionHandle = (sessionToken: string) =>
   useMemo(
     () => createBrowserLogHandle<ParticipantLogEntry>('participant'),
+    // oxlint-disable-next-line react/memo-dependencies, react-hooks/exhaustive-deps -- `sessionToken` is the re-run trigger: each session gets its own handle.
     [sessionToken],
   );
 

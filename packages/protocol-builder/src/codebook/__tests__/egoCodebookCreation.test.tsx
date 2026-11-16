@@ -190,7 +190,7 @@ describe('the first attribute asked of the participant', () => {
 
     await waitFor(() =>
       expect(said).toHaveTextContent(
-        /Otra persona acaba de añadir el primer atributo del participante/,
+        /Otra persona acaba de añadir el primer atributo de la persona participante/,
       ),
     );
   });

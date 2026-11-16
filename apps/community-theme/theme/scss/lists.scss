@@ -1,0 +1,37 @@
+// Topic and category lists: titles in the heading face, as the website's
+// card titles are. Topic titles keep Discourse's weights, which mark read
+// and unread topics.
+
+.topic-list .main-link a.title,
+.latest-topic-list-item .main-link a.title {
+  font-family: var(--nc-heading-font);
+}
+
+.category-list .category-name,
+.category-box .category-name {
+  font-family: var(--nc-heading-font);
+  font-weight: 700;
+}
+
+.topic-list-header th,
+.topic-list .topic-list-data.num {
+  font-family: var(--nc-heading-font);
+}
+
+// Discourse colours a popular topic's view count in fixed oranges, under
+// 4.5:1 on both palettes' surfaces. As in Discourse's own WCAG palettes, the
+// counts take the muted step instead; the most-viewed stay bold.
+.heatmap-high,
+.heatmap-high a,
+.heatmap-high .d-icon,
+.heatmap-high .d-button-label,
+.heatmap-med,
+.heatmap-med a,
+.heatmap-med .d-icon,
+.heatmap-med .d-button-label,
+.heatmap-low,
+.heatmap-low a,
+.heatmap-low .d-icon,
+.heatmap-low .d-button-label {
+  color: var(--primary-medium) !important;
+}

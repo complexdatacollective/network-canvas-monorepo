@@ -1,9 +1,8 @@
 'use client';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 
-import { getStatusLabel, type Status } from '../genetics/status';
+import type { Status } from '../genetics/status';
 import { StatusMarker } from './StatusMarker';
 
 export type StickerProps = {
@@ -48,8 +47,9 @@ export const STICKER_SIZE_PX = 28;
  * absolute positioning and any participant label.
  *
  * The white background is intrinsic so the symbol is self-contained anywhere it
- * renders. The chip and all SVG content are `aria-hidden`; accessible labels
- * live in the caller's wrapper.
+ * renders. The chip and all SVG content are decorative: the condition key
+ * beside them says what each symbol means, and accessible labels live in the
+ * caller's wrapper.
  */
 export function Sticker({
   status,
@@ -60,8 +60,6 @@ export function Sticker({
   nodeMode = 'perimeter',
   onClick,
 }: StickerProps) {
-  const intl = useAppIntl();
-  const label = getStatusLabel(status, intl);
   const isInteractive = onClick !== undefined;
   const statusAttr =
     nodeMode === 'single'
@@ -83,7 +81,6 @@ export function Sticker({
     >
       <span
         aria-hidden
-        title={label}
         {...statusAttr}
         className={[
           'absolute inset-0',

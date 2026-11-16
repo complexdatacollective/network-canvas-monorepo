@@ -49,7 +49,7 @@ export default function ResourceChoiceCard({
           aria-describedby={detailId}
           onClick={() => onSelect(descriptor)}
           title={Redacted.value(descriptor.name)}
-          className="cursor-pointer text-left text-lg leading-tight font-semibold outline-none after:absolute after:inset-0 disabled:cursor-not-allowed"
+          className="cursor-pointer text-start text-lg leading-tight font-semibold outline-none after:absolute after:inset-0 disabled:cursor-not-allowed"
         >
           <span className="line-clamp-2 wrap-anywhere">
             {Redacted.value(descriptor.name)}

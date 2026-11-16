@@ -1,5 +1,6 @@
 import { useTable, type SortingState } from '@tanstack/react-table';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { DataTableColumnHeader } from '../ColumnHeader';
@@ -49,5 +50,35 @@ describe('DataTableColumnHeader', () => {
     expect(screen.getByRole('button', { name: /Name/ })).not.toHaveClass(
       'bg-selected',
     );
+  });
+
+  it('names the filter it opens for the action that opened it', async () => {
+    const FilterHarness = () => {
+      const table = useTable<DataTableFeatures, Row>({
+        features: dataTableFeatures,
+        data: [{ name: 'Ada' }, { name: 'Grace' }],
+        columns: [
+          {
+            accessorKey: 'name',
+            header: 'Name',
+            meta: { filterType: 'text', filterConfig: { type: 'text' } },
+          },
+        ],
+      });
+      const column = table.getColumn('name')!;
+      return (
+        <DataTableColumnHeader column={column} table={table} title="Name" />
+      );
+    };
+    render(<FilterHarness />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Name/ }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Filter' }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Filter' }),
+    ).toBeInTheDocument();
   });
 });

@@ -2132,6 +2132,7 @@ describe('a fixed value the greedy draw can only complete by breaking a rule', (
       id: 'stage-roster',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       label: 'People',
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'Pick people' }],

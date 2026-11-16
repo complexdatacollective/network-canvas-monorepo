@@ -22,6 +22,7 @@ import {
 import { cva, cx, type VariantProps } from '../../utils/cva';
 import { useFieldController } from '../Field/FieldController';
 import type { CreateFormFieldProps, FieldSlotController } from '../Field/types';
+import { textEntryDirection } from '../textEntryDirection';
 import { getInputState } from '../utils/getInputState';
 
 /**
@@ -250,6 +251,13 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
 
     const internalRef = useRef<HTMLInputElement>(null);
     const isNumber = type === 'number';
+    // What is typed reads in its own direction, or left to right for values
+    // written that way in every language; a `dir` the caller gives wins.
+    const textDirection = textEntryDirection({
+      type,
+      inputMode,
+      dir: inputProps.dir,
+    });
     const isInteractive = !disabled && !readOnly;
     const canStep = isInteractive && inputProps.step !== 'any';
 
@@ -297,12 +305,16 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           className={inputVariants({
             className: cx(
               type === 'date' && !value && emptyDateInputClass,
+              textDirection.className,
               inputClassName,
             ),
           })}
           type={type}
           inputMode={inputMode ?? (isNumber ? 'decimal' : undefined)}
           {...inputProps}
+          // After the spread: a `dir` the caller set is already in this, and
+          // one passed as `undefined` must not unfix a phone number.
+          dir={textDirection.dir}
           onChange={(e) => {
             onChange?.(e.target.value);
             nativeOnChange?.(e);

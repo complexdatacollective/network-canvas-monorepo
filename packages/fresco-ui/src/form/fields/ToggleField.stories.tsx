@@ -77,6 +77,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
+  // Renders through Storybook's useArgs, which only Storybook's own render
+  // may call, so the mirror check cannot draw it afresh. The other stories
+  // here cover the same layout.
+  tags: ['!mirror'],
   render: function Render(args) {
     const [, updateArgs] = useArgs();
 

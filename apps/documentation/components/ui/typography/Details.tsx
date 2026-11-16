@@ -17,7 +17,10 @@ export const Details = forwardRef<
       ref={ref}
       className={cx(
         'mt-5',
-        'border-outline my-5 rounded border-2 px-5 [&_svg]:open:rotate-90',
+        'border-outline my-5 rounded border-2 px-5',
+        // The summary's chevron is mirrored right to left (`scale`), which
+        // `rotate` composes after, so it turns the other way to point down.
+        'open:[&_svg]:rotate-90 rtl:open:[&_svg]:-rotate-90',
         className,
       )}
       {...props}
@@ -52,7 +55,7 @@ export const Summary = forwardRef<
     >
       <ChevronRight
         size={24}
-        className="text-accent inline-block h-6 w-6 transition-all"
+        className="text-accent inline-block h-6 w-6 transition-all rtl:-scale-x-100"
       />
       <div className="my-5">{children}</div>
     </summary>

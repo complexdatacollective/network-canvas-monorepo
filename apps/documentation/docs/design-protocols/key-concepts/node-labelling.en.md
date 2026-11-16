@@ -26,7 +26,7 @@ See also: [working with assets](/en/design-protocols/key-concepts/resources#netw
 
 <TipBox>
 
-Custom node labeling is not supported in [Fresco](/en/collect-data/fresco). The `nodeLabelWorker` described below only runs in Interviewer.
+Custom node labeling is not supported in [Fresco](/en/collect-data/fresco/about). The `nodeLabelWorker` described below only runs in Interviewer.
 
 </TipBox>
 

@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import type userEvent from '@testing-library/user-event';
-import { type ComponentType, useMemo, useState } from 'react';
+import { type ComponentType, useLayoutEffect, useMemo, useState } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -109,7 +109,9 @@ function renderAttributeList(
 
   function List() {
     const [disabled, setDisabled] = useState(false);
-    controls.setDisabled = setDisabled;
+    useLayoutEffect(() => {
+      controls.setDisabled = setDisabled;
+    }, [setDisabled]);
     const protocolContext = useProtocolContext();
     const committedVariableIds = useMemo(
       () => committedAttributeVariableIds(committed),

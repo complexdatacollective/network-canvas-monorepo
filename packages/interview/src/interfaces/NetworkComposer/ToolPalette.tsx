@@ -48,15 +48,16 @@ type EdgeEntry = {
 };
 
 /**
- * The words the stage holds for its tools. The connection and groups tools
- * appear only when the stage has edge types and groups, and so have words.
+ * The words of the tools, which every Network Composer shows alike. The
+ * connection and groups tools appear only when the stage has edge types and
+ * groups.
  */
 export type ComposerToolWords = Readonly<{
   addNamePlaceholder: string;
   addPerson: string;
   automaticLayout: string;
-  drawConnection?: string;
-  groups?: string;
+  drawConnection: string;
+  groups: string;
 }>;
 
 type ToolPaletteProps = {
@@ -80,7 +81,12 @@ type ToolPaletteProps = {
   activeGroup: ActiveGroup | null;
   onSelectGroup: (variable: string, value: string) => void;
   automaticLayout: boolean;
-  onToggleAutomaticLayout: (next: boolean) => void;
+  /**
+   * Switches the layout from the mode it is in when the switch is made. The
+   * pressed state shown can trail a switch still waiting to be made, so it
+   * does not decide which way to switch.
+   */
+  onToggleAutomaticLayout: () => void;
 };
 
 // Codebook edge colour token → Tailwind background/foreground classes. Literal
@@ -181,7 +187,7 @@ export default function ToolPalette({
       aria-label={intl.formatMessage(interfaceMessages.composerTools)}
       orientation="vertical"
       size="lg"
-      className="absolute top-1/2 left-4 z-10 -translate-y-1/2"
+      className="absolute inset-s-4 top-1/2 z-10 -translate-y-1/2"
     >
       <ToolbarGroup
         aria-label={intl.formatMessage(interfaceMessages.editingTools)}
@@ -226,7 +232,7 @@ export default function ToolPalette({
 
         {/* One edge button opens a menu instead of crowding the toolbar with
             identical link icons. */}
-        {edges.length > 0 && words.drawConnection !== undefined ? (
+        {edges.length > 0 ? (
           <ToolbarMenu
             trigger={
               <ToolbarIconButton
@@ -257,7 +263,7 @@ export default function ToolPalette({
         ) : null}
 
         {/* A single Groups button opens the active group value picker. */}
-        {groupVariable !== null && words.groups !== undefined ? (
+        {groupVariable !== null ? (
           <ToolbarPopover
             open={groupsOpen}
             onOpenChange={setGroupsOpen}
@@ -292,7 +298,7 @@ export default function ToolPalette({
           aria-label={words.automaticLayout}
           icon={<AutoLayoutIcon />}
           pressed={automaticLayout}
-          onPressedChange={onToggleAutomaticLayout}
+          onPressedChange={() => onToggleAutomaticLayout()}
         />
       </ToolbarGroup>
 
@@ -302,14 +308,14 @@ export default function ToolPalette({
         aria-label={intl.formatMessage(interfaceMessages.historyTools)}
       >
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.undo)}
+          aria-label={intl.formatMessage(interfaceMessages.composerUndo)}
           tooltip={false}
           icon={<UndoIcon />}
           disabled={!canUndo}
           onClick={() => void undoStore.getState().undo()}
         />
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.redo)}
+          aria-label={intl.formatMessage(interfaceMessages.composerRedo)}
           tooltip={false}
           icon={<RedoIcon />}
           disabled={!canRedo}

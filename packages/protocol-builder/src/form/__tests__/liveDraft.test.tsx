@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLayoutEffect } from 'react';
 import { expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -52,7 +53,10 @@ function renderProbe() {
   const held: { read?: () => StageFormDraft } = {};
 
   function Probe() {
-    held.read = useStageEditorForm().liveDraft;
+    const { liveDraft } = useStageEditorForm();
+    useLayoutEffect(() => {
+      held.read = liveDraft;
+    });
     return null;
   }
 
@@ -110,8 +114,12 @@ function renderFormProbe() {
   const held: { live?: () => StageFormDraft; committed?: StageFormDraft } = {};
 
   function Probe() {
-    held.live = useStageEditorForm().liveDraft;
-    held.committed = useStageEdit().committedFields;
+    const { liveDraft } = useStageEditorForm();
+    const { committedFields } = useStageEdit();
+    useLayoutEffect(() => {
+      held.live = liveDraft;
+      held.committed = committedFields;
+    });
     return null;
   }
 

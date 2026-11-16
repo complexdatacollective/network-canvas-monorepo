@@ -1,4 +1,5 @@
 import { defineAppLocales } from '@codaco/app-i18n/locales';
+import type { LocalePreferenceCookie } from '@codaco/shared-consts';
 
 // Deliberately explicit: adding an ecosystem locale cannot advertise an
 // untranslated Fresco locale. The catalog guard checks the subset contract.
@@ -13,9 +14,14 @@ export const frescoLocales = defineAppLocales([
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
   { locale: 'it', label: 'Italiano', direction: 'ltr' },
   { locale: 'fr', label: 'Français', direction: 'ltr' },
+  { locale: 'ar', label: 'العربية', direction: 'rtl' },
 ] as const);
 export type FrescoLocale = (typeof frescoLocales)[number]['locale'];
-export const localeMirrorCookie = 'fresco.locale';
+/** The device mirror of the account's choice in the dashboard's switcher. */
+export const localeMirrorCookie = {
+  name: 'fresco.locale',
+  maxAge: 31_536_000,
+} as const satisfies LocalePreferenceCookie;
 export const frescoTimeZone = 'UTC';
 
 export function isFrescoLocale(value: unknown): value is FrescoLocale {

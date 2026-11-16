@@ -281,7 +281,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
           label={label}
           render={<Heading level="h3" className="[&_strong]:font-black" />}
         />
-        <span className="ml-auto text-sm opacity-60">
+        <span className="ms-auto text-sm opacity-60">
           {contentFormat.formatNumber(nodes.length)}
         </span>
       </button>

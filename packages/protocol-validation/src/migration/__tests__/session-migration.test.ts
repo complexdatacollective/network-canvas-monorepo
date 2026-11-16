@@ -133,14 +133,16 @@ describe('session migration', () => {
   });
 
   it('passes a session through when the protocol is already current', () => {
-    const { migrateSession } = migrateProtocolWithSessions({
-      schemaVersion: 9,
-      name: 'Current',
-      codebook: {},
-      stages: withFinishStage({ stages: [] }).stages,
-      localization: { defaultLocale: 'en', locales: ['en'] },
-      experiments: {},
-    });
+    const { migrateSession } = migrateProtocolWithSessions(
+      withFinishStage({
+        schemaVersion: 9,
+        name: 'Current',
+        codebook: {},
+        stages: [],
+        localization: { defaultLocale: 'en', locales: ['en'] },
+        experiments: {},
+      }),
+    );
     const stored = session({ stageMetadata: null });
     expect(migrateSession(stored)).toEqual({
       success: true,

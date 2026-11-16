@@ -1,4 +1,3 @@
-import { composeStories } from '@storybook/react-vite';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
@@ -9,28 +8,17 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import * as entityEditorStories from '../codebook/components/CodebookEntityEditor.stories.tsx';
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
-import * as variableEditorStories from '../codebook/components/VariableEditor.stories.tsx';
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import type { CodebookWriteOutcome } from '../codebook/writes.ts';
-import * as alterEdgeFormStories from '../editors/alter-edge-form/AlterEdgeFormStageEditor.stories.tsx';
-import * as alterFormStories from '../editors/alter-form/AlterFormStageEditor.stories.tsx';
 import { dyadCensusStageEditor } from '../editors/dyad-census/DyadCensusStageEditor.ts';
-import * as egoFormStories from '../editors/ego-form/EgoFormStageEditor.stories.tsx';
-import * as familyPedigreeEditorStories from '../editors/family-pedigree/FamilyPedigreeStageEditor.stories.tsx';
-import * as informationStories from '../editors/information/InformationStageEditor.stories.tsx';
-import * as languageChooserStories from '../editors/language-chooser/LanguageChooserStageEditor.stories.tsx';
-import * as nameGeneratorStories from '../editors/name-generator/NameGeneratorStageEditor.stories.tsx';
 import { nameGeneratorStageEditor } from '../editors/name-generator/NameGeneratorStageEditor.ts';
-import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { ResourceClientProvider } from '../resources/client.tsx';
 import { contentBlocks } from '../sections/content-blocks/contentBlocks.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
-import * as storyHostStories from '../testing/StageEditorStoryHost.stories.tsx';
 import { StageEditorStoryHost } from '../testing/StageEditorStoryHost.tsx';
 
 const SUBJECT = { entity: 'node', type: 'person' } as const;
@@ -83,9 +71,10 @@ const headingLadder = (root: ParentNode = document): string[] =>
  *
  * The rule exempts the first heading it meets and then refuses any jump of
  * more than one level, which is exactly the failure a component that writes a
- * heading without saying so produces. Run here rather than left to the story
- * a11y configuration because nothing in this package's test lane replays the
- * stories.
+ * heading without saying so produces. Every story gets the same rule from the
+ * a11y addon when `test:storybook` replays it. What these tests add is the
+ * ladder itself, heading by heading, for editors opened in dialogs and under a
+ * heading level their host states.
  *
  * The count is asserted as well as the violations: axe reports a document with
  * no headings in it as inapplicable, with no violations to show, so a rendered
@@ -419,67 +408,6 @@ describe('a row of a stage editor list, opened in its dialog', () => {
     expect(dialog).toHaveAccessibleDescription(
       'Write the participant prompt and select the edge type created by an affirmative response.',
     );
-    await expectHeadingOrder(1);
-  });
-});
-
-/**
- * The stories are the surfaces a reviewer looks at and the ones Chromatic and
- * the Storybook a11y addon replay, so the rule is run over them here too —
- * this package's test lane does not mount them otherwise.
- */
-describe('every story of a surface that writes its own heading', () => {
-  /**
-   * Named by the surface as well as the story, because two of these modules
-   * both export an `Editing` and a `Spectating`: gathered into one object by
-   * story name alone, the last module read silently replaced them and two
-   * stories were swept by nothing.
-   */
-  const from = (
-    surface: string,
-    composed: Record<string, () => ReactNode>,
-  ): [string, () => ReactNode][] =>
-    Object.entries(composed).map(([name, Story]) => [
-      `${surface}/${name}`,
-      Story,
-    ]);
-
-  const stories = [
-    ...from('VariableEditor', composeStories(variableEditorStories)),
-    ...from('CodebookEntityEditor', composeStories(entityEditorStories)),
-    ...from('StageEditorShell', composeStories(shellStories)),
-    ...from('StageEditorStoryHost', composeStories(storyHostStories)),
-    // Every stage editor that has landed. An editor writes no heading of its
-    // own — it composes the shared name heading and shared sections — so what
-    // is asked of each is that the sections IT chose, and the alerts they
-    // raise, land where the composition says they do. A whole editor is also
-    // the only surface that puts both depths on screen at once, which is where
-    // a section actually sits inside another one: a heading written at a fixed
-    // level is right at the depth its author happened to be looking at and
-    // wrong one rung down.
-    ...from('AlterEdgeFormStageEditor', composeStories(alterEdgeFormStories)),
-    ...from('AlterFormStageEditor', composeStories(alterFormStories)),
-    ...from('EgoFormStageEditor', composeStories(egoFormStories)),
-    ...from(
-      'FamilyPedigreeStageEditor',
-      composeStories(familyPedigreeEditorStories),
-    ),
-    ...from('InformationStageEditor', composeStories(informationStories)),
-    ...from(
-      'LanguageChooserStageEditor',
-      composeStories(languageChooserStories),
-    ),
-    ...from('NameGeneratorStageEditor', composeStories(nameGeneratorStories)),
-  ];
-
-  it.each(stories)('has no heading skip in %s', async (_name, Story) => {
-    render(<Story />);
-    // A stage editor's story mounts over a host that answers the acquire over
-    // a promise, so it writes no heading at all on its first pass. Judged then,
-    // axe would report a document it found nothing to judge in — which
-    // `expectHeadingOrder` refuses, but only after the wait it needs anyway.
-    await screen.findAllByRole('heading');
-
     await expectHeadingOrder(1);
   });
 });

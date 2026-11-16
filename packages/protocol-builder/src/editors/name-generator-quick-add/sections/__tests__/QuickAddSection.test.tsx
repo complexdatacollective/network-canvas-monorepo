@@ -63,7 +63,7 @@ describe('what a quick-add name generator records', () => {
     // sections this mount does not include, and so does the line beside the
     // field, which the messages section owns.
     await harness.roundTrip({
-      unowned: ['subject', 'prompts', 'quickAddHint'],
+      unowned: ['subject', 'prompts', 'addNamePlaceholder'],
     });
   });
 

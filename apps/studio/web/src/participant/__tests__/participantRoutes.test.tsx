@@ -360,6 +360,33 @@ describe('the interview session', () => {
     });
   });
 
+  it('records the screen a participant has moved to when it saves their place', async () => {
+    const harness = installParticipantHarness({
+      ...readsSession(0),
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+    });
+
+    renderAt(`/session/${SESSION}`);
+
+    // Moving on is a change of screen only: no answer changes, so the save
+    // that records it carries the screen the participant is now on.
+    fireEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Next Step' },
+        { timeout: 15_000 },
+      ),
+    );
+    await waitFor(() => {
+      expect(harness.calls).toContainEqual({
+        tag: 'participant.sync',
+        payload: expect.objectContaining({ stageIndex: 1, stageId: 'finish' }),
+      });
+    });
+  });
+
   it('sends a session address that is not a session token back to the link', async () => {
     const harness = installParticipantHarness({});
 

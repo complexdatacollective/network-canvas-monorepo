@@ -360,11 +360,11 @@ describe('splitValidation — custom-routed Architect rules', () => {
   });
 });
 
-describe('uniqueArrayAttribute', () => {
-  const validation = { uniqueArrayAttribute: true };
+describe('uniqueArrayName', () => {
+  const validation = { uniqueArrayName: true };
 
   // fresco-ui's getFormValues() reassembles bracket paths into real arrays,
-  // which is exactly the shape uniqueArrayAttribute needs: it parses its
+  // which is exactly the shape uniqueArrayName needs: it parses its
   // resolved field name for `<array>[n].<attribute>` and then reads
   // `allValues[<array>]`.
   const formValues = {
@@ -463,7 +463,7 @@ describe('useValidationProps', () => {
         initialProps: {
           validation: {
             maxValue: { value: 5, message: 'At most five' },
-            uniqueArrayAttribute: true,
+            uniqueArrayName: true,
           },
           fieldName: 'value',
         },
@@ -477,7 +477,7 @@ describe('useValidationProps', () => {
     rerender({
       validation: {
         maxValue: { value: 2, message: 'At most two' },
-        uniqueArrayAttribute: true,
+        uniqueArrayName: true,
       },
       fieldName: 'rows[1].value',
     });

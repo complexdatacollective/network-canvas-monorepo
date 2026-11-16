@@ -12,7 +12,8 @@ const messages = defineMessages({
   showingOfFeatures: {
     id: 'architect.assets.geoJSON.showingOfFeatures',
     defaultMessage: 'Showing {ROW_LIMIT} of {value2} features',
-    description: 'Visible text in components / Assets / GeoJSON.',
+    description:
+      'Note above the table in the GeoJSON resource preview, shown when the file has more features (map shapes or points) than the table displays. ROW_LIMIT is the number of features shown; value2 is the total number of features in the file.',
   },
 });
 

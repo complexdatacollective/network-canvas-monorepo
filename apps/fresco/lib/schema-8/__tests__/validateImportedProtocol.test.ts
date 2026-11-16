@@ -85,6 +85,43 @@ describe('validateImportedLegacyProtocol', () => {
     });
   });
 
+  // The upgrade to the current schema refuses a blank prompt rather than
+  // inventing one. Fresco never makes that upgrade: the protocol is kept, and
+  // interviewed, at schema 8, which accepted a prompt of only spaces (an empty
+  // one it refused, as before).
+  it('keeps a schema 8 protocol with a blank stage prompt at schema 8', async () => {
+    const protocol = {
+      ...protocolAt(8),
+      codebook: {
+        ...codebook,
+        node: {
+          person: {
+            ...codebook.node.person,
+            variables: { name: { name: 'name', type: 'text' } },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'stage-quick-add',
+          type: 'NameGeneratorQuickAdd',
+          label: 'Friends',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          prompts: [{ id: 'prompt-1', text: '   ' }],
+        },
+      ],
+    };
+
+    const result = await validateImportedLegacyProtocol(protocol);
+
+    if (!result.success) throw new Error(`Expected success: ${result.error}`);
+    expect(result.protocol.schemaVersion).toBe(8);
+    expect(result.protocol.stages[0]).toMatchObject({
+      prompts: [{ id: 'prompt-1', text: '   ' }],
+    });
+  });
+
   it('refuses a schema 8 protocol that schema 8 itself would reject', async () => {
     const protocol = {
       ...protocolAt(8),

@@ -1,7 +1,5 @@
-import {
-  familyPedigreeWordingIn,
-  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
-} from '@codaco/protocol-validation';
+import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
+import { PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 

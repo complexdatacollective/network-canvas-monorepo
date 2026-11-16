@@ -120,7 +120,7 @@ export class SlidesFormFixture {
     return dialog;
   }
 
-  /** "Discard changes" primary button (DialogProvider `data-testid="dialog-primary"`). */
+  /** "Yes" primary button (DialogProvider `data-testid="dialog-primary"`). */
   get discardConfirmButton(): Locator {
     return this.page.getByTestId('dialog-primary');
   }

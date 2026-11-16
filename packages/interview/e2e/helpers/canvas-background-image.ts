@@ -22,7 +22,7 @@ const getFullBleedChecks = (image: Locator, orientation: Orientation) =>
   image.evaluate((element, expectedOrientation) => {
     const interfaceRoot = element.closest('.interface');
     const canvasRoot = element.closest('[role="application"]');
-    const navigation = document.querySelector('[role="navigation"]');
+    const navigation = document.querySelector('nav');
 
     if (!(interfaceRoot instanceof HTMLElement)) {
       throw new Error('Background image is not inside an interface root.');

@@ -42,6 +42,7 @@ export function useInterviewToastContext() {
 }
 
 const arrowVariants = cva({
+  // oxlint-disable-next-line tailwindcss/enforce-logical -- Base UI reports the physical side the toast ended up on, and the point is one corner of a square turned 45°
   base: 'size-2.5 rotate-45 rounded-br-sm data-[side=bottom]:top-[-5px] data-[side=left]:right-[-5px] data-[side=right]:left-[-5px] data-[side=top]:bottom-[-5px]',
   variants: {
     variant: {

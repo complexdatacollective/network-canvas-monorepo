@@ -4,8 +4,9 @@ import { useEffect } from 'react';
 
 import type { LocalizedString } from '@codaco/protocol-validation';
 
-import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedMessage } from '../localization/ProtocolLocalizationProvider';
 import useReadyForNextStage from './useReadyForNextStage';
+import { useStageSubjectName } from './useStageSubjectName';
 import useStageValidation from './useStageValidation';
 
 type UseCompletePlacementOptions = {
@@ -13,7 +14,8 @@ type UseCompletePlacementOptions = {
   unplacedCount: number;
   /** The stage's `behaviours.requireCompletePlacement`. */
   required: boolean | undefined;
-  /** The stage's words for the gate, which the schema requires while it is on. */
+  /** The stage's words for the gate, which the schema requires while it is
+   * on. They may name the stage's node type (`subject`). */
   notice: LocalizedString | undefined;
 };
 
@@ -27,7 +29,8 @@ function useCompletePlacement({
   required,
   notice,
 }: UseCompletePlacementOptions) {
-  const resolveString = useResolveLocalizedString();
+  const resolveMessage = useResolveLocalizedMessage();
+  const subject = useStageSubjectName();
   const { updateReady } = useReadyForNextStage();
 
   const allPlaced = unplacedCount === 0;
@@ -47,7 +50,9 @@ function useCompletePlacement({
               isMet: allPlaced,
               kind: 'unplaced_nodes',
               toast: {
-                description: notice ? resolveString(notice).text : undefined,
+                description: notice
+                  ? resolveMessage(notice, { subject }).text
+                  : undefined,
                 variant: 'destructive',
                 anchor: 'forward',
                 timeout: 4000,

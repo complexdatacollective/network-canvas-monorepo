@@ -3,15 +3,7 @@ import {
   renderHook as renderHookBase,
   type RenderHookOptions,
 } from '@testing-library/react';
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
 
@@ -68,17 +60,8 @@ vi.mock('es-toolkit', async (importOriginal) => ({
 // The hook under test (imported after mocks are declared)
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
-import { interviewCatalogSource } from '../../../i18n/catalog';
 import { type Suggestion, useGeospatialSearch } from '../useGeospatialSearch';
 import { afterHookLayoutEffects, Languages, setLanguages } from './Languages';
-
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['de', 'zh-Hans'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
 
 // Every hook here runs inside a protocol localization, as it does in the Shell.
 const renderHook = <Result, Props>(
@@ -564,22 +547,9 @@ describe('useGeospatialSearch', () => {
       expect(mockSuggest.mock.calls[0]?.[1]?.language).toBe('pt');
     });
 
-    it('uses the interface language when Search Box lacks the protocol language', async () => {
-      // Search Box has no Chinese, but the interface is in German.
-      setLanguages('zh-Hans', 'de');
-      const { result } = renderHook(useSearch);
-
-      act(() => {
-        result.current.handleQueryChange('Berlin');
-      });
-      await flushPendingSuggest();
-
-      expect(mockSuggest.mock.calls[0]?.[1]?.language).toBe('de');
-    });
-
-    it('uses English when Search Box has neither language', async () => {
-      // No Search Box support for Swahili or for a Chinese interface.
-      setLanguages('sw', 'zh-Hans');
+    it('uses English when Search Box lacks the protocol language', async () => {
+      // No Search Box support for Swahili.
+      setLanguages('sw');
       const { result } = renderHook(useSearch);
 
       act(() => {

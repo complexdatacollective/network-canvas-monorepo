@@ -1,4 +1,7 @@
-import { binBehaviours } from '../../sections/bin-behaviours/binBehaviours.tsx';
+import {
+  binBehaviours,
+  binWording,
+} from '../../sections/bin-behaviours/binBehaviours.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
@@ -11,7 +14,8 @@ import { ordinalBinPrompts } from './sections/ordinalBinPrompts.tsx';
 export const ordinalBinStageEditor = defineStageEditor('OrdinalBin', [
   subjectPicker({ entity: 'node', filter: true }),
   ordinalBinPrompts(),
-  binBehaviours('OrdinalBin'),
+  binBehaviours(),
+  binWording('OrdinalBin'),
   skipLogic(),
   interviewerGuidance(),
 ]);

@@ -5,8 +5,11 @@
 // extension-explicit module graphs resolve; `@codaco/protocol-validation` is
 // the one dependency chain guaranteed to satisfy that. Adding a relative
 // import here would break those scripts.
+//
+// It uses the `schema-version` subpath because the package root would put every
+// schema into the bundle of each route that reads this constant.
 
-import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation';
+import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation/schema-version';
 
 /**
  * The protocol schema version this interview runtime executes.

@@ -17,11 +17,16 @@ const documentationUrl =
 // The gallery subdomain is a domain alias of the production site only. Deploy
 // previews and local development serve a single host, so there the gallery
 // stays a route of this site and its links keep the `/protocol-gallery` prefix.
+// A deploy preview ignores the variable even when the Netlify site sets it for
+// every context: its gallery cards would otherwise link to the short paths that
+// only the alias serves, and 404 on the preview's own host.
 const protocolGalleryUrl =
-  process.env.NEXT_PUBLIC_PROTOCOL_GALLERY_URL ||
-  (process.env.CONTEXT === 'production'
-    ? 'https://protocolgallery.networkcanvas.com'
-    : undefined);
+  process.env.CONTEXT === 'deploy-preview'
+    ? undefined
+    : process.env.NEXT_PUBLIC_PROTOCOL_GALLERY_URL ||
+      (process.env.CONTEXT === 'production'
+        ? 'https://protocolgallery.networkcanvas.com'
+        : undefined);
 
 // The year the bundle was built, inlined into every bundle so the prerendered
 // HTML and the client's hydration render the same text. Reading the clock during
@@ -72,9 +77,9 @@ const nextConfig: NextConfig = {
     ...(documentationUrl
       ? { NEXT_PUBLIC_DOCUMENTATION_URL: documentationUrl }
       : {}),
-    ...(protocolGalleryUrl
-      ? { NEXT_PUBLIC_PROTOCOL_GALLERY_URL: protocolGalleryUrl }
-      : {}),
+    // Always defined, because Next also inlines any NEXT_PUBLIC_ variable it
+    // finds in the environment; an empty value is read as "no alias".
+    NEXT_PUBLIC_PROTOCOL_GALLERY_URL: protocolGalleryUrl ?? '',
     NEXT_PUBLIC_BUILD_YEAR: buildYear,
   },
 };

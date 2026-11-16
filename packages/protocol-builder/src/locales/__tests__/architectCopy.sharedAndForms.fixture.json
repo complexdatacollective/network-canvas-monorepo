@@ -66,8 +66,9 @@
   },
   "protocolBuilder.introduction.description": {
     "en": "Introduce the task before participants complete its forms.",
-    "es": "Presenta la tarea antes de que los participantes completen sus formularios.",
-    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete"
+    "es": "Presenta la tarea antes de que quienes participan completen sus formularios.",
+    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.introduction.headingLabel": {
     "en": "Title",
@@ -76,13 +77,15 @@
   },
   "protocolBuilder.pageContent.pageDescription": {
     "en": "Set the page heading and build the sequence of text and media blocks participants will see.",
-    "es": "Define el encabezado de la página y construye la secuencia de bloques de texto y medios que verán los participantes.",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.setThePageHeadingAndBuild"
+    "es": "Define el encabezado de la página y construye la secuencia de bloques de texto y medios que verán quienes participan.",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.setThePageHeadingAndBuild",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.pageContent.headingHint": {
     "en": "Use the page heading to show a large title element on your information stage.",
-    "es": "Usa el encabezado de página para mostrar un título grande en la etapa de información.",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.useThePageHeadingToShow"
+    "es": "Usa el encabezado de página para mostrar un título grande en la etapa «Información».",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.useThePageHeadingToShow",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.pageContent.headingPlaceholder": {
     "en": "Enter your title here...",
@@ -96,8 +99,9 @@
   },
   "protocolBuilder.pageContent.pageItemsHint": {
     "en": "Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size.",
-    "es": "Añade bloques de texto, imagen, vídeo y audio abajo, y arrástralos para cambiar su orden. Los participantes pueden desplazarse por la pantalla, así que añade tantos bloques como necesites. Los bloques de imagen y vídeo pueden tener un tamaño de visualización definido.",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.addTextImageVideoAndAudio; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Añade bloques de texto, imagen, vídeo y audio abajo, y arrástralos para cambiar su orden. Quienes participan pueden desplazarse por la pantalla, así que añade tantos bloques como necesites. Los bloques de imagen y vídeo pueden tener un tamaño de visualización definido.",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.addTextImageVideoAndAudio; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.pageContent.pageAddLabel": {
     "en": "Create new content item",
@@ -126,8 +130,9 @@
   },
   "protocolBuilder.contentBlock.sectionDescription": {
     "en": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
-    "es": "Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.chooseTheContentTypeProvideWhat"
+    "es": "Elige el tipo de contenido, proporciona lo que verán quienes participan y ajusta su presentación cuando sea posible.",
+    "from": "74a07e626 architect.sections.contentGrid.itemEditor.chooseTheContentTypeProvideWhat",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.contentBlock.kindHint": {
     "en": "Choose the type of content this item will show.",
@@ -136,8 +141,9 @@
   },
   "protocolBuilder.contentBlock.contentHint": {
     "en": "Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.",
-    "es": "Proporciona el contenido de {slotType, select, text {texto} image {imagen} audio {audio} other {vídeo}} para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.provideTheContentForThisItem; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Proporciona el contenido de {slotType, select, text {texto} image {imagen} audio {audio} other {vídeo}} para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.",
+    "from": "74a07e626 architect.sections.contentGrid.itemEditor.provideTheContentForThisItem; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.contentBlock.sizeHint": {
     "en": "Optionally constrain the height of this item. Full size lets it display at its natural height.",
@@ -176,8 +182,9 @@
   },
   "protocolBuilder.nameGeneratorPrompts.promptGroupDescription": {
     "en": "Write the instruction or question participants see for this task.",
-    "es": "Escribe la instrucción o pregunta que ven los participantes para esta tarea.",
-    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants"
+    "es": "Escribe, para esta tarea, la pregunta o instrucción que ven quienes participan.",
+    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.nameGeneratorPrompts.textPlaceholder": {
     "en": "Enter your prompt...",
@@ -216,8 +223,9 @@
   },
   "protocolBuilder.censusPrompts.binOrderAddLabel": {
     "en": "Add new bin sort rule",
-    "es": "Añadir nueva regla de orden de contenedores",
-    "from": "74a07e626 architect.additional.sections.binSortOrderSection.addNewBinSortRule"
+    "es": "Añadir nueva regla de orden del contenedor",
+    "from": "74a07e626 architect.additional.sections.binSortOrderSection.addNewBinSortRule",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.binOrderEmptyState": {
     "en": "No sort rules have been created yet.",
@@ -261,8 +269,9 @@
   },
   "protocolBuilder.sortOptions.description": {
     "en": "Configure the initial card order and the attributes participants can sort by.",
-    "es": "Configura el orden inicial de las tarjetas y los atributos por los que los participantes pueden ordenar.",
-    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.configureTheInitialCardOrderAnd"
+    "es": "Configura el orden inicial de las tarjetas y los atributos por los que quienes participan pueden ordenar.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.configureTheInitialCardOrderAnd",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.sortOptions.waitingDescription": {
     "en": "Select a roster data source before configuring sorting.",
@@ -286,8 +295,9 @@
   },
   "protocolBuilder.sortOptions.sortableHint": {
     "en": "Select attributes that help participants locate a specific roster member.",
-    "es": "Selecciona atributos que ayuden a los participantes a encontrar a un miembro específico de la lista.",
-    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectAttributesThatHelpParticipantsLocate"
+    "es": "Selecciona atributos que ayuden a quienes participan a encontrar a un miembro específico de la lista.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectAttributesThatHelpParticipantsLocate",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.sortOptions.sortableAddLabel": {
     "en": "Add new sortable property",
@@ -396,8 +406,9 @@
   },
   "protocolBuilder.quickAdd.description": {
     "en": "Choose the attribute populated when a participant creates a node with Quick Add.",
-    "es": "Elige el atributo que se completa cuando un participante crea un nodo con Adición rápida.",
-    "from": "74a07e626 architect.sections.quickAdd.quickAdd.chooseTheAttributePopulatedWhenA"
+    "es": "Elige el atributo que se completa cuando una persona participante crea un nodo con el botón Adición rápida.",
+    "from": "74a07e626 architect.sections.quickAdd.quickAdd.chooseTheAttributePopulatedWhenA",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.quickAdd.waitingDescription": {
     "en": "Select a node type above to configure this section.",
@@ -471,8 +482,9 @@
   },
   "protocolBuilder.formFields.questionSectionDescription": {
     "en": "Write the participant-facing prompt and choose how the response is collected.",
-    "es": "Escribe la pregunta para el participante y elige cómo se recoge la respuesta.",
-    "from": "74a07e626 architect.sections.form.fieldFields.writeTheParticipantFacingPromptAndChoose"
+    "es": "Escribe la pregunta para la persona participante y elige cómo se recoge la respuesta.",
+    "from": "74a07e626 architect.sections.form.fieldFields.writeTheParticipantFacingPromptAndChoose",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.formFields.componentHint": {
     "en": "How the answer is collected. For detailed information about these options, see our <link>documentation</link>.",
@@ -481,8 +493,9 @@
   },
   "protocolBuilder.formFields.promptHint": {
     "en": "The question to display to the participant. Supports markdown formatting.",
-    "es": "La pregunta que se mostrará al participante. Admite formato Markdown.",
-    "from": "74a07e626 architect.sections.form.fieldFields.theQuestionToDisplayToThe"
+    "es": "La pregunta que se mostrará a la persona participante. Admite formato Markdown.",
+    "from": "74a07e626 architect.sections.form.fieldFields.theQuestionToDisplayToThe",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.formFields.promptPlaceholder": {
     "en": "What is this person's name?",
@@ -491,8 +504,9 @@
   },
   "protocolBuilder.formFields.hintHint": {
     "en": "Optionally display a markdown-formatted hint below the question, to help participants understand how to answer.",
-    "es": "Puedes mostrar una indicación con formato Markdown debajo de la pregunta para ayudar a los participantes a entender cómo responder.",
-    "from": "74a07e626 architect.sections.form.fieldFields.optionallyDisplayAMarkdownFormattedHintBelow"
+    "es": "Puedes mostrar una indicación con formato Markdown debajo de la pregunta para ayudar a quienes participan a entender cómo responder.",
+    "from": "74a07e626 architect.sections.form.fieldFields.optionallyDisplayAMarkdownFormattedHintBelow",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.formFields.hintPlaceholder": {
     "en": "e.g. Select all that apply...",
@@ -501,8 +515,9 @@
   },
   "protocolBuilder.formFields.validationHintsHint": {
     "en": "Automatically display hints derived from this field's validation rules, helping participants understand input requirements.",
-    "es": "Muestra automáticamente indicaciones derivadas de las reglas de validación de este campo para ayudar a los participantes a entender los requisitos de entrada.",
-    "from": "74a07e626 architect.sections.form.fieldFields.automaticallyDisplayHintsDerivedFromThis; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Muestra automáticamente indicaciones derivadas de las reglas de validación de este campo para ayudar a quienes participan a entender los requisitos de entrada.",
+    "from": "74a07e626 architect.sections.form.fieldFields.automaticallyDisplayHintsDerivedFromThis; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.formFields.lockedTypeTitle": {
     "en": "Attribute type is locked",
@@ -531,8 +546,9 @@
   },
   "protocolBuilder.codebookVariable.optionsHint": {
     "en": "Define the values participants can choose for this categorical or ordinal attribute.",
-    "es": "Define los valores que los participantes pueden elegir para este atributo categórico u ordinal.",
-    "from": "74a07e626 architect.sections.form.variableDefinitionFields.defineTheValuesParticipantsCanChoose"
+    "es": "Define los valores que pueden elegir quienes participan para este atributo categórico u ordinal.",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.defineTheValuesParticipantsCanChoose",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.codebookVariable.addOption": {
     "en": "Create new option",

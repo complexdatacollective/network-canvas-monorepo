@@ -46,6 +46,7 @@ jobs:
             const releaseRefs = new Set([
               'changeset-release/documentation',
               'changeset-release/main',
+              'changeset-release/protocol-review',
               'changeset-release/studio',
               'changeset-release/website',
             ]);

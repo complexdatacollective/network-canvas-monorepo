@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "使用 Network Canvas 的资助项目",
-    "introduction": "我们很自豪地宣布，Network Canvas 正被美国多个联邦资助项目积极使用，涵盖多样化的研究情境、机构和资助方。",
-    "previous": "上一个资助项目",
-    "next": "下一个资助项目",
-    "show": "显示资助项目 {number}"
+    "introduction": "我们很自豪地宣布，Network Canvas 正被美国多个联邦资助项目积极使用，涵盖多样化的研究情境、机构和资助方。"
   },
   "Publications": {
     "heading": "使用 Network Canvas 的近期出版物",
-    "carouselLabel": "近期出版物轮播",
-    "introduction": "以下是使用 Network Canvas 的 16 篇最新出版物。浏览<all>完整出版物列表</all>。",
-    "submission": "如果您希望在此展示您的出版物，请在我们社区网站的<thread>讨论帖</thread>中留言告知我们。",
-    "thread": "讨论帖"
+    "introduction": "Network Canvas 支持了不同学科的研究，这些研究的作者之间正在形成一个网络。此处展示最新的 <strong>{count}</strong> 篇出版物。每当我们发现使用该软件的新出版物，此列表都会自动更新。",
+    "viewAll": "查看全部 {count, plural, other {# 篇出版物}}，共 {authors, plural, other {# 位作者}}",
+    "legendPublication": "出版物",
+    "legendAuthor": "作者",
+    "relatedLabel": "与此出版物有共同作者的其他出版物"
   },
   "PublicationsPage": {
     "metadata": {
@@ -336,7 +334,7 @@
       "bestFor": "最适合",
       "downloadVersion": "下载 {version} 版",
       "platformAccessibleName": "适用于 {platform} 的 {app}",
-      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持架构 7 协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用架构 9，其中包含最新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始的架构 7 文件。",
+      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持使用旧版架构的协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用最新版架构，其中包含所有新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始协议文件的副本。",
       "schemaVersionLink": "了解架构版本"
     },
     "platforms": {
@@ -389,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · 维护模式",
-        "description": "仅在您的研究必须保持与 Interviewer Classic 和架构 7 兼容时使用。",
+        "description": "仅在您的研究必须保持与 Interviewer Classic 及其旧版架构兼容时使用。",
         "bestFor": {
           "classicCompatibility": "必须保持与 Interviewer Classic 兼容的现有研究",
-          "editWithoutMigration": "需要在不迁移的情况下继续编辑的架构 7 协议"
+          "editWithoutMigration": "使用旧版架构、且需要在不迁移的情况下继续编辑的协议"
         }
       },
       "interviewerClassic": {
         "status": "Classic · 现有研究",
-        "description": "适用于已在进行的架构 7 研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。",
+        "description": "适用于基于旧版架构、已在进行的研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。",
         "bestFor": {
-          "schema7Study": "依赖架构 7 的现有研究",
+          "schema7Study": "依赖旧版架构的现有研究",
           "desktopTablet": "保留现有的桌面或平板电脑工作流程",
           "offlineCollection": "需要旧版离线收集工作流程的研究"
         }

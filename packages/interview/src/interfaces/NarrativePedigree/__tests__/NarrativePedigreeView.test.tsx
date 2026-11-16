@@ -10,7 +10,6 @@ import {
   type LocalizationDeclaration,
   type PedigreeRelationshipKind,
   type PedigreeSexAssignedAtBirth,
-  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -26,7 +25,10 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
-import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../../__tests__/TestProtocolLocalization';
 import { encryptionFor } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { installEncryptionKey } from '../../Anonymisation/unlockEncryption';
 import { encryptedPerson } from '../../FamilyPedigree/__tests__/fixtures';
@@ -217,7 +219,6 @@ const edges: NcEdge[] = [
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
-  wording: familyPedigreeWordingIn(['en', 'es']),
   label: { en: 'Family Pedigree' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   prompt: { en: 'Build your pedigree.' },
@@ -334,7 +335,6 @@ function makeStore({
         encryptionKeyId: null,
         showPassphrasePrompter: false,
         localePreference: null,
-        restoredLocalePreference: null,
       },
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -353,18 +353,22 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
   const store = makeStore({ ...options, narrativeStage: stage });
 
   // The participant's stated locale reaches the protocol's localization, so
-  // the stage's own words resolve in it, as they do in the Shell.
+  // the stage's own words resolve in it, as they do in the Shell, and so do
+  // the words every Narrative Pedigree shows alike (the protocol's interface
+  // text).
+  const interfaceText = suppliedInterfaceText(ENGLISH_AND_SPANISH, [stage]);
   const view = (requestedLocale: string) => (
     <Provider store={store}>
       <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-        <TestProtocolLocalization
-          localization={ENGLISH_AND_SPANISH}
-          locale={requestedLocale}
-        >
-          <InterviewI18nProvider requestedLocale={requestedLocale}>
+        <InterviewI18nProvider>
+          <TestProtocolLocalization
+            localization={ENGLISH_AND_SPANISH}
+            locale={requestedLocale}
+            interfaceText={interfaceText}
+          >
             <NarrativePedigreeView stage={stage} />
-          </InterviewI18nProvider>
-        </TestProtocolLocalization>
+          </TestProtocolLocalization>
+        </InterviewI18nProvider>
       </CurrentStepProvider>
     </Provider>
   );
@@ -561,6 +565,8 @@ describe('NarrativePedigreeView — encrypted names', () => {
 });
 
 describe('NarrativePedigreeView — node mode selection', () => {
+  // The stage's own words follow the language; what only screen readers read,
+  // such as the people's names and status summaries, stays in English.
   it('reformats selected condition, status, focus and snapshot in place while preserving authored copy and network data', async () => {
     const stage = makeNarrativeStage();
     stage.label = { en: 'Árbol **del estudio**' };
@@ -579,11 +585,11 @@ describe('NarrativePedigreeView — node mode selection', () => {
 
     rendered.changeLocale('es');
     expect(
-      await screen.findByRole('button', { name: 'Centrar en Tú' }),
+      await screen.findByRole('button', { name: 'Focus on Tú' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Centrar en Mother' }),
-    ).toHaveAccessibleDescription('Condition <b>A</b>: Afectado/a');
+      screen.getByRole('button', { name: 'Focus on Mother' }),
+    ).toHaveAccessibleDescription('Condition <b>A</b>: Affected');
     expect(
       screen.getByTestId('narrative-pedigree-condition'),
     ).toHaveTextContent('Condition <b>A</b>');
@@ -603,7 +609,7 @@ describe('NarrativePedigreeView — node mode selection', () => {
     );
     expect(snapshot?.querySelector('h3')).toHaveTextContent('Leyenda');
 
-    rendered.changeLocale('en-GB');
+    rendered.changeLocale('en');
     expect(
       await screen.findByRole('button', { name: 'Focus on You' }),
     ).toBeInTheDocument();
@@ -918,7 +924,7 @@ function renderCousinView(showAtRiskStatuses = true) {
       label: { en: 'Cousin Union Disease Pedigree' },
       sourceStageId: SOURCE_STAGE_ID,
       showAtRiskStatuses,
-      ...narrativePedigreeWords({ atRisk: showAtRiskStatuses }),
+      ...narrativePedigreeWords(),
       diseases: [
         {
           id: 'ar',

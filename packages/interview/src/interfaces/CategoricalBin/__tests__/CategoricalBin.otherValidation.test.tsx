@@ -29,13 +29,15 @@ import {
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
-import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
-import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../../__tests__/TestProtocolLocalization';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
 
@@ -359,9 +361,15 @@ function renderCategoricalBin(
 
   let dndStore: StoreApi<DndStore> | null = null;
 
+  const bilingual = { defaultLocale: 'en', locales: ['en', 'es'] };
+  const interfaceText = suppliedInterfaceText(bilingual, [stage]);
   const tree = (locale: string) => (
-    <InterviewI18nProvider requestedLocale={locale}>
-      <TestProtocolLocalization>
+    <InterviewI18nProvider>
+      <TestProtocolLocalization
+        localization={bilingual}
+        locale={locale}
+        interfaceText={interfaceText}
+      >
         <Provider store={store}>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
             <DialogProvider>
@@ -459,14 +467,6 @@ async function waitForDialogToClose() {
     { timeout: 10_000 },
   );
 }
-
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
 
 describe('CategoricalBin other-input honours codebook validation', () => {
   it('rejects an empty entry and an entry over maxLength when the codebook requires the field', async () => {
@@ -625,9 +625,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    expect(
-      await screen.findByText('An error occurred while submitting the form.'),
-    ).toBeVisible();
+    expect(await screen.findByText('An error occurred.')).toBeVisible();
     expect(screen.getByRole('textbox')).toHaveValue('kept for a retry');
     expect(getOtherAttribute(store)).toBeUndefined();
 
@@ -756,12 +754,15 @@ describe('CategoricalBin queued dialog localization', () => {
       name: OTHER_PROMPT_TEXT,
     });
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Other');
+    expect(screen.getByTestId('dialog-submit')).toHaveTextContent('Save');
     fireEvent.change(input, { target: { value: 'Respuesta literal á' } });
     expect(getOtherAttribute(store)).toBeUndefined();
 
-    setLocale('es-MX');
+    setLocale('es');
     // The title is the researcher's authored label, so it does not translate.
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Other');
+    // The button is worded by the protocol's interface text.
+    expect(screen.getByTestId('dialog-submit')).toHaveTextContent('Guardar');
     expect(screen.getByRole('textbox', { name: OTHER_PROMPT_TEXT })).toBe(
       input,
     );

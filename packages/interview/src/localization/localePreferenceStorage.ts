@@ -1,4 +1,5 @@
 import type { LocaleTag } from '@codaco/protocol-validation';
+import { webStorageLocalePreference } from '@codaco/shared-consts';
 
 /**
  * The participant's language choice is not interview data, so no host stores
@@ -13,16 +14,12 @@ import type { LocaleTag } from '@codaco/protocol-validation';
  */
 const STORAGE_KEY_PREFIX = 'network-canvas:interview-locale-preference:';
 
-const storageKey = (interviewId: string) =>
-  `${STORAGE_KEY_PREFIX}${interviewId}`;
-
-const sessionStorageOrNull = (): Storage | null => {
-  try {
-    return typeof window === 'undefined' ? null : window.sessionStorage;
-  } catch {
-    return null;
-  }
-};
+/** The choice kept for one interview in this tab. */
+const preferenceFor = (interviewId: string) =>
+  webStorageLocalePreference(
+    () => window.sessionStorage,
+    `${STORAGE_KEY_PREFIX}${interviewId}`,
+  );
 
 /**
  * The language this tab last chose for the interview, when the protocol still
@@ -32,22 +29,14 @@ export function readStoredLocalePreference(
   interviewId: string,
   declaredLocales: readonly LocaleTag[],
 ): LocaleTag | null {
-  try {
-    const stored = sessionStorageOrNull()?.getItem(storageKey(interviewId));
-    if (stored == null) return null;
-    return declaredLocales.includes(stored) ? stored : null;
-  } catch {
-    return null;
-  }
+  const stored = preferenceFor(interviewId).read();
+  return stored !== null && declaredLocales.includes(stored) ? stored : null;
 }
 
+/** Storage that is full or refused leaves the choice in memory only. */
 export function storeLocalePreference(
   interviewId: string,
   locale: LocaleTag,
 ): void {
-  try {
-    sessionStorageOrNull()?.setItem(storageKey(interviewId), locale);
-  } catch {
-    // Storage is full or refused: the choice stays in memory only.
-  }
+  preferenceFor(interviewId).write(locale);
 }

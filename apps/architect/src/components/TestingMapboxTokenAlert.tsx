@@ -12,29 +12,34 @@ const messages = defineMessages({
   revokedMapboxTestingToken: {
     id: 'architect.testingMapboxTokenAlert.revokedMapboxTestingToken',
     defaultMessage: 'Revoked Mapbox testing token',
-    description: 'Visible text in components / TestingMapboxTokenAlert.',
+    description:
+      "Title of an error alert at the top of the timeline, shown when the protocol uses Network Canvas's retired Mapbox testing token. Mapbox is the map service used by Geospatial stages.",
   },
   thisProtocolUsesARetiredNetwork: {
     id: 'architect.testingMapboxTokenAlert.thisProtocolUsesARetiredNetwork',
     defaultMessage:
       'This protocol uses a retired Network Canvas Mapbox testing token. It was revoked on 2 September 2026, so maps in Geospatial stages will not load. Replace it with your own token in the Resource Library.',
-    description: 'Visible text in components / TestingMapboxTokenAlert.',
+    description:
+      'Body of the error alert about the revoked Mapbox testing token. Says maps in Geospatial stages will not load and tells the researcher to replace the token with their own in the Resource Library.',
   },
   howToGetAMapboxToken: {
     id: 'architect.testingMapboxTokenAlert.howToGetAMapboxToken',
     defaultMessage: 'How to get a Mapbox token',
-    description: 'Visible text in components / TestingMapboxTokenAlert.',
+    description:
+      "Button in the Mapbox token alerts. Opens Mapbox's help page, in a new browser tab, on how to create an access token.",
   },
   usingATestingMapboxToken: {
     id: 'architect.testingMapboxTokenAlert.usingATestingMapboxToken',
     defaultMessage: 'Using a testing Mapbox token',
-    description: 'Visible text in components / TestingMapboxTokenAlert.',
+    description:
+      "Title of a warning alert at the top of the timeline, shown when the protocol uses Network Canvas's shared Mapbox testing token.",
   },
   thisProtocolUsesNetworkCanvasSShared: {
     id: 'architect.testingMapboxTokenAlert.thisProtocolUsesNetworkCanvasSShared',
     defaultMessage:
       "This protocol uses Network Canvas's shared Mapbox testing token so the map renders out of the box. It is rate-limited and for evaluation only. Before you deploy this study, replace it with your own token in the Resource Library.",
-    description: 'Visible text in components / TestingMapboxTokenAlert.',
+    description:
+      'Body of the warning alert about the shared Mapbox testing token. Says it is rate-limited and for evaluation only, and tells the researcher to replace it with their own token in the Resource Library before deploying the study.',
   },
 });
 

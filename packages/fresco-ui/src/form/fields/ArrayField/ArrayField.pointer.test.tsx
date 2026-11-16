@@ -56,6 +56,7 @@ vi.mock('motion/react', async (importOriginal) => {
           ? String(value.id)
           : undefined;
       return (
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- a stand-in for motion's Reorder.Item, which takes these drag callbacks; the real item's controls carry its semantics.
         <li
           ref={ref}
           className={className}

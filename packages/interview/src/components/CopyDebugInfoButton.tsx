@@ -62,9 +62,9 @@ export default function CopyDebugInfoButton({
       >
         {intl.formatMessage(copied ? messages.copied : messages.copy)}
       </Button>
-      <span role="status" className="sr-only">
+      <output aria-live="polite" className="sr-only">
         {copied ? intl.formatMessage(messages.copied) : null}
-      </span>
+      </output>
     </>
   );
 }

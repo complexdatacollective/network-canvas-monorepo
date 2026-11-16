@@ -78,7 +78,7 @@ export function Hero({
           </div>
           <Paragraph
             margin="none"
-            className="text-text tablet-portrait:text-left tablet-landscape:text-xl text-center text-lg leading-relaxed"
+            className="text-text tablet-portrait:text-start tablet-landscape:text-xl text-center text-lg leading-relaxed"
           >
             {t.rich('description', { strong: renderStrong })}
           </Paragraph>
@@ -100,7 +100,7 @@ export function Hero({
           <Button asChild size="xl" color="destructive" variant="raised">
             <Link href={GET_STARTED_PATH}>
               {t('getStarted')}
-              <ArrowRight aria-hidden />
+              <ArrowRight aria-hidden className="rtl:-scale-x-100" />
             </Link>
           </Button>
           <Paragraph margin="none" className="text-base-sm text-text/60">

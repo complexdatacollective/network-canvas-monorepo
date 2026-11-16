@@ -197,7 +197,9 @@ export default defineConfig({
     interfaceImagesNoInlinePlugin(),
     inlineWorkerPlugin(),
     isLibraryBuild && clientDirective.plugin,
-    react(),
+    // Storybook runs the React Compiler as Fresco does (see vitest.config.ts);
+    // the published build stays uncompiled, for each host to compile its way.
+    react({ compiler: !isLibraryBuild }),
     isLibraryBuild &&
       dts({
         entryRoot: 'src',
@@ -231,19 +233,16 @@ export default defineConfig({
     // verbatim by cssCopyPlugin and consumed via the `./styles.css` export.
     lib: {
       // The main (React) public API, plus React-free entries a server can
-      // import: the `contract` bundle of utilities/types, the per-language
-      // `locales` loaders, and the `catalog` loader a server host awaits to
-      // hand `Shell` its messages. The React code (`Shell`, contexts) is
-      // reachable only from `index`, so it never lands in those bundles —
-      // letting server (RSC) code import them without evaluating any
-      // module-level `createContext`. `catalog` and `index` share one catalog
-      // source through a common chunk, so a language loaded through either is
-      // loaded for both. The `protocol-schema-version` and `protocol-payload`
-      // entries are their own bundles so a host's Node-loaded code can import
-      // just that constant or the payload converter.
+      // import: the `contract` bundle of utilities/types. The React code
+      // (`Shell`, contexts) is reachable only from `index`, so it never lands
+      // in that bundle — letting server (RSC) code import it without
+      // evaluating any module-level `createContext`. The
+      // `protocol-schema-version` and `protocol-payload` entries are their own
+      // bundles so a host's Node-loaded code can import just that constant or
+      // the payload converter. `supplied-wording` is the wording Network
+      // Canvas supplies for a protocol, bound to the interview's catalogues,
+      // for the tools that write and list a protocol's text.
       entry: {
-        'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
-        'catalog': resolve(__dirname, 'src/i18n/catalog.ts'),
         'index': resolve(__dirname, 'src/index.ts'),
         'contract': resolve(__dirname, 'src/contract/index.ts'),
         'protocol-schema-version': resolve(
@@ -255,6 +254,10 @@ export default defineConfig({
           'src/contract/protocolPayload.ts',
         ),
         'analytics-events': resolve(__dirname, 'src/analytics/events.ts'),
+        'supplied-wording': resolve(
+          __dirname,
+          'src/wording/suppliedWording.ts',
+        ),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

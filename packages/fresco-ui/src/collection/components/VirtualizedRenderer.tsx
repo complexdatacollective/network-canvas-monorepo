@@ -2,13 +2,13 @@
 
 import { LayoutGroup } from 'motion/react';
 import {
+  type CSSProperties,
   memo,
+  type ReactNode,
   type RefObject,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 
@@ -17,6 +17,7 @@ import { useMeasureItems } from '../hooks/useMeasureItems';
 import { useStaggerAnimation } from '../hooks/useStaggerAnimation';
 import { useVirtualization } from '../hooks/useVirtualization';
 import type { Layout } from '../layout/Layout';
+import type { Size } from '../layout/types';
 import type { Collection, CollectionProps, ItemRenderer, Key } from '../types';
 import { CollectionItem } from './CollectionItem';
 
@@ -33,6 +34,35 @@ type VirtualizedRendererProps<T> = {
   overscan?: number;
   layoutGroupId?: string | null;
 };
+
+/** A visible item's wrapper, which reports its real size once it mounts. */
+function MeasuredItem({
+  itemKey,
+  onMeasure,
+  style,
+  children,
+}: {
+  itemKey: Key;
+  onMeasure: (key: Key, size: Size) => void;
+  style: CSSProperties;
+  children: ReactNode;
+}) {
+  const measure = useCallback(
+    (element: HTMLDivElement | null) => {
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+      onMeasure(itemKey, { width: rect.width, height: rect.height });
+    },
+    [itemKey, onMeasure],
+  );
+
+  return (
+    <div ref={measure} style={style}>
+      {children}
+    </div>
+  );
+}
 
 /**
  * Virtualized renderer that only renders items visible in the viewport.
@@ -63,27 +93,18 @@ function VirtualizedRendererComponent<T>({
   // Track container width for layout calculations
   const [containerWidth, setContainerWidth] = useState(0);
 
-  // Track the scroll element in state to trigger effects when ref becomes available
-  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
-
-  // Sync ref to state when it changes (runs every render to detect ref
-  // population). A passive effect, not a layout effect: `scrollRef` points at
-  // an ancestor (the ScrollArea viewport), and React attaches ancestor refs
-  // after this component's layout effects have run, so a layout effect on
-  // mount sees `null` and — with the store already seeded with items — nothing
-  // re-renders this component to try again.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (scrollRef.current !== scrollElement) {
-      setScrollElement(scrollRef.current);
-    }
-  });
-
   // Get selection manager for scroll-to-focused integration
   const selectionManager = useSelectionManager();
 
-  // Track container width with ResizeObserver (batched to RAF for performance)
-  useLayoutEffect(() => {
+  // Track container width with ResizeObserver (batched to RAF for performance).
+  // A passive effect, not a layout effect: `scrollRef` points at an ancestor
+  // (the ScrollArea viewport), and React attaches an ancestor's ref only after
+  // the layout effects beneath it have run, so a layout effect would see
+  // `null` on mount — and, with the store already seeded with items, nothing
+  // re-renders this component to try again. The viewport is only ever replaced
+  // by remounting everything inside it, this component included.
+  useEffect(() => {
+    const scrollElement = scrollRef.current;
     if (!scrollElement) return undefined;
 
     let rafId: number | null = null;
@@ -119,7 +140,7 @@ function VirtualizedRendererComponent<T>({
         cancelAnimationFrame(rafId);
       }
     };
-  }, [scrollElement]);
+  }, [scrollRef]);
 
   // Measure items in hidden container (initial sample) + expose a
   // `reportItemSize` callback that individual visible items use to upgrade
@@ -136,7 +157,7 @@ function VirtualizedRendererComponent<T>({
   // --- Lazy measurement of items in the viewport --------------------------
   //
   // Items rendered by the virtualized loop below are measured when their
-  // outer wrapper `<div>` mounts (ref callback fires). We read the real
+  // outer wrapper `<div>` mounts (`MeasuredItem`'s ref callback fires). We read the real
   // content rect via `getBoundingClientRect` and hand it to
   // `reportItemSize`, which batch-merges the new value into the
   // measurement map on the next animation frame. This refines the
@@ -148,38 +169,15 @@ function VirtualizedRendererComponent<T>({
   // Cadence:
   // - On mount: one measurement per item (the `reportItemSize` tolerance
   //   check drops the report if it matches what the layout already thinks).
-  // - On re-render: React re-attaches refs only when the outer element
-  //   actually changes, so stable items don't re-measure.
+  // - On re-render: each item's ref callback keeps its identity (its key and
+  //   `reportItemSize` never change), so React does not re-run it and stable
+  //   items don't re-measure.
   //
   // Trade-off vs. ResizeObserver: we won't automatically pick up in-place
   // content-size changes that happen *after* mount (e.g. an item whose
   // inner content grows due to an async data load). That's an acceptable
   // loss for the common case of roughly-static rendered content, and
   // matches how most virtualized libraries work.
-  const reportItemSizeRef = useRef(reportItemSize);
-  reportItemSizeRef.current = reportItemSize;
-
-  // Stable ref-callback factory. Each key gets its own callback the first
-  // time it's asked for, cached so identity stays stable across renders
-  // and React doesn't churn mount/unmount of the per-item wrapper.
-  const itemRefCallbacksRef = useRef<
-    Map<Key, (el: HTMLDivElement | null) => void>
-  >(new Map());
-  const getItemRef = useCallback((key: Key) => {
-    const cached = itemRefCallbacksRef.current.get(key);
-    if (cached) return cached;
-    const cb = (el: HTMLDivElement | null) => {
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) return;
-      reportItemSizeRef.current(key, {
-        width: rect.width,
-        height: rect.height,
-      });
-    };
-    itemRefCallbacksRef.current.set(key, cb);
-    return cb;
-  }, []);
 
   // Get rows from layout after measurements complete
   // Must update layout with containerWidth BEFORE calling updateWithMeasurements
@@ -270,7 +268,12 @@ function VirtualizedRendererComponent<T>({
                 if (!node) return null;
 
                 return (
-                  <div key={key} ref={getItemRef(key)} style={itemStyle}>
+                  <MeasuredItem
+                    key={key}
+                    itemKey={key}
+                    onMeasure={reportItemSize}
+                    style={itemStyle}
+                  >
                     <div data-stagger-item data-stagger-key={animationKey}>
                       <CollectionItem
                         node={node}
@@ -279,7 +282,7 @@ function VirtualizedRendererComponent<T>({
                         layout={layout}
                       />
                     </div>
-                  </div>
+                  </MeasuredItem>
                 );
               })}
             </div>

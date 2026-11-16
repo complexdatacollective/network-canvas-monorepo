@@ -1,4 +1,5 @@
 import { ArrowUp, TriangleAlert } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Fragment } from 'react';
 
 import {
@@ -20,9 +21,11 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
  */
 type Status = 'native' | 'migrate' | 'keepOrUpgrade' | 'unsupported';
 
+type Platform = 'desktopAndTablet' | 'desktop' | 'browser';
+
 type Row = {
   app: string;
-  platform: string;
+  platform: Platform;
   /** How this app handles a schema 7 protocol. */
   schema7: Status;
   /** How this app handles a schema 8 protocol. */
@@ -32,7 +35,7 @@ type Row = {
 };
 
 type Group = {
-  label: string;
+  label: 'previousGeneration' | 'currentGeneration';
   schema: number;
   /** The schema an automatic migration (`migrate`) brings a protocol to. */
   migratesTo: number;
@@ -41,27 +44,27 @@ type Group = {
 
 const GROUPS: Group[] = [
   {
-    label: 'Previous generation',
+    label: 'previousGeneration',
     schema: 7,
     migratesTo: 7,
     rows: [
       {
         app: 'Interviewer Classic 6.x.x',
-        platform: 'Desktop & tablet',
+        platform: 'desktopAndTablet',
         schema7: 'native',
         schema8: 'unsupported',
         schema9: 'unsupported',
       },
       {
         app: 'Architect Classic 6.x.x',
-        platform: 'Desktop',
+        platform: 'desktop',
         schema7: 'native',
         schema8: 'unsupported',
         schema9: 'unsupported',
       },
       {
         app: 'Fresco 3.x.x',
-        platform: 'Browser',
+        platform: 'browser',
         schema7: 'native',
         schema8: 'unsupported',
         schema9: 'unsupported',
@@ -69,27 +72,27 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    label: 'Current generation',
+    label: 'currentGeneration',
     schema: 9,
     migratesTo: 8,
     rows: [
       {
         app: 'Interviewer 9.x.x',
-        platform: 'Desktop & tablet',
+        platform: 'desktopAndTablet',
         schema7: 'migrate',
         schema8: 'native',
         schema9: 'native',
       },
       {
         app: 'Architect 9.x.x',
-        platform: 'Browser',
+        platform: 'browser',
         schema7: 'keepOrUpgrade',
         schema8: 'keepOrUpgrade',
         schema9: 'native',
       },
       {
         app: 'Fresco 5.x.x',
-        platform: 'Browser',
+        platform: 'browser',
         schema7: 'migrate',
         schema8: 'native',
         schema9: 'native',
@@ -112,8 +115,11 @@ const StatusCell = ({
   status: Status;
   targetSchema: number;
 }) => {
+  const t = useTranslations('AppCompatibility');
   if (status === 'native') {
-    return <span className={cx(SUCCESS_TEXT, 'font-semibold')}>Native</span>;
+    return (
+      <span className={cx(SUCCESS_TEXT, 'font-semibold')}>{t('native')}</span>
+    );
   }
 
   if (status === 'migrate') {
@@ -125,7 +131,7 @@ const StatusCell = ({
         )}
       >
         <ArrowUp className="h-4 w-4 shrink-0" aria-hidden />
-        Migrates to {targetSchema}
+        {t('migratesTo', { schema: targetSchema })}
       </span>
     );
   }
@@ -133,99 +139,101 @@ const StatusCell = ({
   if (status === 'keepOrUpgrade') {
     return (
       <span className={cx(SUCCESS_TEXT, 'font-semibold')}>
-        Edits as 8, or upgrades to 9
+        {t('keepOrUpgrade')}
       </span>
     );
   }
 
-  return <span className="text-text/60">Not supported</span>;
+  return <span className="text-text/60">{t('unsupported')}</span>;
 };
 
-const AppCompatibilityTable = () => (
-  <div className="my-8">
-    <h3 className="text-text mb-4 text-2xl font-bold">
-      App compatibility by schema version
-    </h3>
+const AppCompatibilityTable = () => {
+  const t = useTranslations('AppCompatibility');
+  return (
+    <div className="my-8">
+      <h3 className="text-text mb-4 text-2xl font-bold">{t('title')}</h3>
 
-    <Table>
-      <caption className="sr-only">
-        Which schema version of protocol each Network Canvas app can open,
-        grouped by app generation.
-      </caption>
-      <TableHeader>
-        <TableRow>
-          <TableHead scope="col">App</TableHead>
-          <TableHead scope="col">Platform</TableHead>
-          <TableHead scope="col">Schema 7 protocols</TableHead>
-          <TableHead scope="col">Schema 8 protocols</TableHead>
-          <TableHead scope="col">Schema 9 protocols</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {GROUPS.map((group) => (
-          <Fragment key={group.label}>
-            <TableRow className="bg-accent/15">
-              <TableHead
-                scope="colgroup"
-                colSpan={5}
-                className="text-text/80 text-xs font-semibold tracking-wide uppercase"
-              >
-                {group.label}
-                <span aria-hidden className="px-1.5 opacity-40">
-                  ·
-                </span>
-                Schema {group.schema}
-              </TableHead>
-            </TableRow>
-            {group.rows.map((row) => (
-              <TableRow key={row.app}>
-                <TableCell className="text-text font-bold">{row.app}</TableCell>
-                <TableCell className="text-text/70">{row.platform}</TableCell>
-                <TableCell>
-                  <StatusCell
-                    status={row.schema7}
-                    targetSchema={group.migratesTo}
-                  />
-                </TableCell>
-                <TableCell>
-                  <StatusCell
-                    status={row.schema8}
-                    targetSchema={group.migratesTo}
-                  />
-                </TableCell>
-                <TableCell>
-                  <StatusCell
-                    status={row.schema9}
-                    targetSchema={group.migratesTo}
-                  />
-                </TableCell>
+      <Table>
+        <caption className="sr-only">{t('caption')}</caption>
+        <TableHeader>
+          <TableRow>
+            <TableHead scope="col">{t('app')}</TableHead>
+            <TableHead scope="col">{t('platform')}</TableHead>
+            <TableHead scope="col">
+              {t('schemaProtocols', { schema: 7 })}
+            </TableHead>
+            <TableHead scope="col">
+              {t('schemaProtocols', { schema: 8 })}
+            </TableHead>
+            <TableHead scope="col">
+              {t('schemaProtocols', { schema: 9 })}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {GROUPS.map((group) => (
+            <Fragment key={group.label}>
+              <TableRow className="bg-accent/15">
+                <TableHead
+                  scope="colgroup"
+                  colSpan={5}
+                  className="text-text/80 text-xs font-semibold tracking-wide uppercase"
+                >
+                  {t(group.label)}
+                  <span aria-hidden className="px-1.5 opacity-40">
+                    ·
+                  </span>
+                  {t('groupSchema', { schema: group.schema })}
+                </TableHead>
               </TableRow>
-            ))}
-          </Fragment>
-        ))}
-      </TableBody>
-    </Table>
+              {group.rows.map((row) => (
+                <TableRow key={row.app}>
+                  <TableCell className="text-text font-bold">
+                    {row.app}
+                  </TableCell>
+                  <TableCell className="text-text/70">
+                    {t(row.platform)}
+                  </TableCell>
+                  <TableCell>
+                    <StatusCell
+                      status={row.schema7}
+                      targetSchema={group.migratesTo}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <StatusCell
+                      status={row.schema8}
+                      targetSchema={group.migratesTo}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <StatusCell
+                      status={row.schema9}
+                      targetSchema={group.migratesTo}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </Fragment>
+          ))}
+        </TableBody>
+      </Table>
 
-    {/* Footnote */}
-    <div className="mt-4 flex items-start gap-2">
-      <TriangleAlert
-        className={cx(WARNING_TEXT, 'mt-0.5 h-4 w-4 shrink-0')}
-        aria-hidden
-      />
-      <p className="text-text/80 text-sm">
-        <strong className={cx(WARNING_TEXT, 'font-semibold')}>
-          Upgrading is one-way.
-        </strong>{' '}
-        Only Architect upgrades a protocol to schema 9, and only when you choose
-        to; it makes an upgraded copy and leaves the original unchanged. No app
-        can convert a protocol back to an older schema version, so keep a copy
-        of your original protocol file if you need to continue using apps that
-        only support an older schema. Releases of Interviewer and Fresco made
-        before schema 9 open schema 7 and 8 protocols only, so update them
-        before you use a schema 9 protocol.
-      </p>
+      {/* Footnote */}
+      <div className="mt-4 flex items-start gap-2">
+        <TriangleAlert
+          className={cx(WARNING_TEXT, 'mt-0.5 h-4 w-4 shrink-0')}
+          aria-hidden
+        />
+        <p className="text-text/80 text-sm">
+          <strong className={cx(WARNING_TEXT, 'font-semibold')}>
+            {t('oneWayTitle')}
+          </strong>{' '}
+          {t('oneWayBody')}
+        </p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default AppCompatibilityTable;

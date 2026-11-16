@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -139,6 +140,25 @@ export const RightToLeft: Story = {
 };
 
 /** Sixteen languages in several scripts, more than fit on one screen. */
+/**
+ * Storybook's Direction control is a separate axis from the language: set to
+ * LTR, it lays out even an interview in a right-to-left language from the
+ * left. Left on Automatic (the story above), the interview follows its
+ * language.
+ */
+export const RightToLeftLanguageLaidOutLeftToRight: Story = {
+  ...RightToLeft,
+  globals: { appDirection: 'ltr' },
+  play: async ({ canvasElement }) => {
+    const heading = await within(canvasElement).findByRole(
+      'heading',
+      {},
+      { timeout: 10_000 },
+    );
+    await expect(getComputedStyle(heading).direction).toBe('ltr');
+  },
+};
+
 export const ManyLanguages: Story = {
   render: (args) => <LanguageChooserStoryWrapper {...args} />,
   args: { languages: 'Many languages' },

@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -93,9 +93,8 @@ describe('TranslationTable: text that shows values', () => {
     expect(title(store)).toEqual({ en: WELCOME });
   });
 
-  it('says which value a translation leaves out, and refuses to save it', async () => {
+  it('saves a translation that leaves out a value the original text shows', async () => {
     const { store, user } = renderTable();
-    const before = getProtocol(store.getState());
 
     await user.click(titleCell('French'));
     const editor = await screen.findByRole('textbox', {
@@ -105,58 +104,21 @@ describe('TranslationTable: text that shows values', () => {
     await user.type(editor, 'Bon retour');
     await leaveCell(user);
 
-    expect(
-      await screen.findByText(/This translation must show "\{name\}"/),
-    ).toBeInTheDocument();
-    expect(titleCell('French')).toHaveAttribute('aria-invalid', 'true');
+    expect(titleCell('French')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByText(/must show/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(getProtocol(store.getState())).toBe(before);
-  });
-
-  it('checks a translation against the original text as the table holds it, saved or not', async () => {
-    const [stage] = protocol.stages;
-    const { store, user } = renderTable({
-      ...protocol,
-      stages: [
-        {
-          ...stage,
-          title: {
-            en: WELCOME,
-            fr: 'Bon retour{name, select, missing {} other {, {name}}}',
-          },
-        },
-      ],
-    } as CurrentProtocol);
-
-    // The value goes from both languages before either is saved.
-    for (const [language, text] of [
-      ['French', 'Bon retour'],
-      ['English', 'Welcome back'],
-    ] as const) {
-      await user.click(titleCell(language));
-      const editor = await screen.findByRole('textbox', {
-        name: cellName(language),
-      });
-      await waitFor(() => expect(editor).toHaveFocus());
-      await user.clear(editor);
-      await user.type(editor, text);
-      await leaveCell(user);
-    }
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-
     await waitFor(() =>
-      expect(title(store)).toEqual({ en: 'Welcome back', fr: 'Bon retour' }),
+      expect(title(store)).toEqual({ en: WELCOME, fr: 'Bon retour' }),
     );
   });
 
-  it('refuses a default-language edit that leaves an untouched translation without a value it now shows', async () => {
+  it('saves a default-language edit that adds a value an untouched translation does not show', async () => {
     const [stage] = protocol.stages;
     const { store, user } = renderTable({
       ...protocol,
       stages: [{ ...stage, title: { en: 'Welcome back', fr: 'Bon retour' } }],
     } as CurrentProtocol);
-    const before = getProtocol(store.getState());
 
     await user.click(titleCell('English'));
     const editor = await screen.findByRole('textbox', {
@@ -178,54 +140,14 @@ describe('TranslationTable: text that shows values', () => {
     );
     await leaveCell(user);
 
-    await waitFor(() =>
-      expect(titleCell('French')).toHaveAttribute('aria-invalid', 'true'),
-    );
-    expect(
-      await screen.findByText(/This translation must show "\{name\}"/),
-    ).toBeInTheDocument();
+    expect(titleCell('French')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByText(/must show/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(getProtocol(store.getState())).toBe(before);
-  });
-
-  it('refuses that edit when Save is pressed while the edited cell still has focus', async () => {
-    const [stage] = protocol.stages;
-    const { store, user } = renderTable({
-      ...protocol,
-      stages: [{ ...stage, title: { en: 'Welcome back', fr: 'Bon retour' } }],
-    } as CurrentProtocol);
-    const before = getProtocol(store.getState());
-
-    await user.click(titleCell('English'));
-    const editor = await screen.findByRole('textbox', {
-      name: cellName('English'),
-    });
-    await waitFor(() => expect(editor).toHaveFocus());
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Inject piped text from interview metadata or a network attribute',
-      }),
-    );
-    const [option] = await screen.findAllByRole('option', {
-      name: /first_name/,
-    });
-    if (option === undefined) throw new Error('No value offered');
-    await user.click(option);
     await waitFor(() =>
-      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+      expect(title(store)).toMatchObject({ fr: 'Bon retour' }),
     );
-    await waitFor(() => expect(editor).toHaveFocus());
-
-    // Saved before the cell's blur is handled: a click event alone moves no
-    // focus, so the edited cell is never left.
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(editor).toHaveFocus();
-
-    await waitFor(() =>
-      expect(titleCell('French')).toHaveAttribute('aria-invalid', 'true'),
-    );
-    expect(getProtocol(store.getState())).toBe(before);
+    expect(JSON.stringify(title(store))).toContain('{name');
   });
 
   it('lets a translation insert a value whose binding records only some of its answers', async () => {

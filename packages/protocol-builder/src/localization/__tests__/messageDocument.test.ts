@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { suppliedStageText } from '@codaco/interview/supplied-wording';
 import {
   messageStructure,
   printMessageStructure,
-  suppliedStageText,
 } from '@codaco/protocol-validation';
 
 import {

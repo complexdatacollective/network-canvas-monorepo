@@ -318,6 +318,7 @@ describe('updates page', () => {
           'pt-BR': 'https://networkcanvas.com/pt-BR/updates',
           'it': 'https://networkcanvas.com/it/updates',
           'fr': 'https://networkcanvas.com/fr/updates',
+          'ar': 'https://networkcanvas.com/ar/updates',
         },
       },
     });

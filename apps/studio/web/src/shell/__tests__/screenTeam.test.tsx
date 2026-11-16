@@ -47,6 +47,7 @@ describe('the team a researcher log is attributed to', () => {
       const team = useScreenTeam();
       useEffect(() => {
         seen.push(team.teamId);
+        // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `teamId` is the re-run trigger the test observes: the effect must run on every route-team change.
       }, [teamId, team]);
       return <h1>{teamId}</h1>;
     }

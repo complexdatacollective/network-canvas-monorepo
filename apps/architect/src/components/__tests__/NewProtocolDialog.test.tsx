@@ -48,11 +48,12 @@ describe('NewProtocolDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('lets an RTL name set its own base direction', () => {
+  it('lays a typed name out in its own direction', () => {
     renderDialog();
-    // `Field` strips validation props but forwards everything else to the
-    // control, so this reaches the real <input>.
-    expect(nameInput()).toHaveAttribute('dir', 'auto');
+    // Each line follows its own first letter; an empty box keeps the
+    // interface's direction, so the placeholder starts on its side.
+    expect(nameInput()).toHaveClass('text-own-direction');
+    expect(nameInput()).not.toHaveAttribute('dir');
   });
 
   it('blocks creation of an over-limit name and explains why', async () => {

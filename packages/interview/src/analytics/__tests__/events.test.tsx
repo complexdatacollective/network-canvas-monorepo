@@ -267,8 +267,6 @@ describe('the analytics event catalogue', () => {
     );
     expect(
       [
-        { feature: 'locale-load', locale: 'pt-BR' },
-        { feature: 'locale-load' },
         { feature: 'information-media', media_kind: 'video' },
         {
           feature: 'stage-error-boundary',
@@ -279,8 +277,8 @@ describe('the analytics event catalogue', () => {
         { feature: 'external-data' },
         { feature: 'geospatial-map-init' },
       ].map((properties) => decode(properties)._tag),
-    ).toEqual(Array.from({ length: 7 }, () => 'Some'));
-    expect(decode({ feature: 'locale-load', locale: 'Jane Doe' })._tag).toBe(
+    ).toEqual(Array.from({ length: 5 }, () => 'Some'));
+    expect(decode({ feature: 'external-data', name: 'Jane Doe' })._tag).toBe(
       'None',
     );
   });

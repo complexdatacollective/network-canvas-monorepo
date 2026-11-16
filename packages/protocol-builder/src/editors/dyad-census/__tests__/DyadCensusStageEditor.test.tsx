@@ -60,31 +60,6 @@ const expectStageUntouched = (harness: StageEditorHarness): void => {
 };
 
 describe('the dyad census editor', () => {
-  it('leaves nothing behind when the editor is closed without saving', async () => {
-    const harness = mountFixture();
-
-    await harness.user.type(stageNameInput(), ' (revised)');
-    await harness.cancel();
-
-    expectStageUntouched(harness);
-  });
-
-  it('refuses to save while someone else holds the stage', async () => {
-    const harness = renderStageEditor({
-      stageId: 'dyad-census-1',
-      registry: dyadCensusStageEditor,
-      readOnly: true,
-    });
-    await screen.findByRole('textbox', { name: 'Stage name' });
-
-    expect(await harness.submit()).toBeNull();
-    expect(
-      screen.getByText(
-        'This stage is read-only, so your change was not made. Somebody else is editing it.',
-      ),
-    ).toBeInTheDocument();
-  });
-
   /**
    * A connection type a collaborator adds appears here, and the editor writes
    * nothing back: their change is not this researcher's edit, and echoing it

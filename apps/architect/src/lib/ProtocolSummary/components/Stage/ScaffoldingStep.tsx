@@ -11,7 +11,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.scaffoldingStep.scaffoldingStepInstructions',
     defaultMessage: 'Scaffolding Step Instructions',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / ScaffoldingStep.',
+      'Sub-heading in the printable protocol summary of a family tree census stage, above the instructions shown to participants for its scaffolding step.',
   },
 });
 
@@ -52,6 +52,7 @@ const extraMessages = defineMessages({
   enabled: {
     id: 'architect.summary.scaffolding.enabled',
     defaultMessage: '{enabled, select, true {Yes} other {No}}',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Yes or no value in the printable protocol summary of a family tree census stage, saying whether the quick start dialog is shown. enabled is true or false.',
   },
 });

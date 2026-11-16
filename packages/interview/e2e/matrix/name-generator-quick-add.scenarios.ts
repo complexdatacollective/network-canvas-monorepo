@@ -93,7 +93,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       let nameVarId = '';
       return {
         id: 'quick-add-optional-empty-value',
-        covers: ['quickAddHint'],
+        covers: ['interfaceText.quickAdd', 'addNamePlaceholder'],
         build: () => {
           const synth = new SyntheticInterview();
           const person = synth.addNodeType({ name: 'Person' });
@@ -106,9 +106,15 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
             label: 'Add contacts',
             subject: { entity: 'node', type: person.id },
             quickAdd: nameVar.id,
-            wording: { quickAddHint: QUICK_ADD_HINT },
+            // The stage's own placeholder, naming the node type.
+            wording: {
+              addNamePlaceholder: {
+                'en-US': 'A {subject} you know - matrix check',
+              },
+            },
           });
           stage.addPrompt({ text: 'Who do you know?' });
+          synth.setInterfaceText('quickAdd', 'quickAddHint', QUICK_ADD_HINT);
           return synth;
         },
         run: async ({ page, protocol, interview }) => {
@@ -117,10 +123,14 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
           await toggle.click();
 
-          // Left alone with nothing submitted, the input shows the stage's own
-          // hint (after the five seconds the interface waits), not Network
+          // Left alone with nothing submitted, the input shows the protocol's
+          // own hint (after the five seconds the interface waits), not Network
           // Canvas's.
           await expect(input).toBeVisible();
+          await expect(input).toHaveAttribute(
+            'placeholder',
+            'A Person you know - matrix check',
+          );
           await page.clock.fastForward('00:06');
           await expect(page.getByText(QUICK_ADD_HINT)).toBeVisible();
           await expect(

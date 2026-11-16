@@ -1618,6 +1618,9 @@ export async function run(
     environment = process.env,
     stderr = process.stderr,
     stdout = process.stdout,
+    // Tests that are about reporting rather than navigation pass a stub here,
+    // so they need no browser. `crawl` closes only a verifier it created.
+    verifier,
   } = {},
 ) {
   let parsed;
@@ -1651,7 +1654,7 @@ export async function run(
     (checked, total) => {
       if (showProgress) stdout.write(`\rChecked ${checked}/${total} URLs`);
     },
-    { cache, refusableURLs },
+    { cache, refusableURLs, verifier },
   );
   if (showProgress) stdout.write(`\r${' '.repeat(80)}\r`);
 

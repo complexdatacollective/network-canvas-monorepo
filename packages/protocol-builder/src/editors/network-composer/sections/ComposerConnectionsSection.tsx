@@ -231,7 +231,7 @@ export default function ComposerConnectionsSection() {
             its own content is not reliably announced. The `Alert` inside it is
             presentational because its `info` variant is a `role="status"` of its
             own, and a second polite region inside this one is announced twice. */}
-        <div role="status" aria-live="polite">
+        <output aria-live="polite" className="block">
           {dropped.questions > 0 && (
             <Alert
               key={dropped.act}
@@ -246,7 +246,7 @@ export default function ComposerConnectionsSection() {
               </AlertDescription>
             </Alert>
           )}
-        </div>
+        </output>
       </Section>
       <ConnectionForms entries={entries} />
     </BuilderSection>

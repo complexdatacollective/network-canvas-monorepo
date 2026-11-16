@@ -278,6 +278,7 @@ export default function AlterLimitsSection() {
       if (state.getFieldErrors(name) === null) continue;
       void state.validateField(name);
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `min` and `max` are the re-run trigger described above; the effect re-validates whatever errors the store holds rather than reading either value
   }, [max, min, storeApi]);
 
   return (

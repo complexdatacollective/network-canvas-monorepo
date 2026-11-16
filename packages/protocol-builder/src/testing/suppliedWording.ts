@@ -1,7 +1,7 @@
+import { suppliedStageText } from '@codaco/interview/supplied-wording';
 import {
   type LocalizedString,
   suppliedStageSettingApplies,
-  suppliedStageText,
 } from '@codaco/protocol-validation';
 
 /** A protocol with one language, the one the fixtures write in. */

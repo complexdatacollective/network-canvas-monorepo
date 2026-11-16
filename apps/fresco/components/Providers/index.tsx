@@ -1,6 +1,5 @@
 'use client';
 
-import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import { NuqsAdapter as NextNuqsAdapter } from 'nuqs/adapters/next/app';
 import { type ComponentType, type ReactNode } from 'react';
@@ -8,6 +7,7 @@ import { type ComponentType, type ReactNode } from 'react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 import LocaleLoadFailureToast from '@codaco/fresco-ui/LocaleLoadFailureToast';
 import { Toaster } from '@codaco/fresco-ui/Toast';
 import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
@@ -30,7 +30,7 @@ export default function Providers({
         disableAnimations={disableAnimations}
         disableAnimationsForAutomation={disableAnimationsForAutomation}
       >
-        <DirectionProvider direction="ltr">
+        <LocaleDirectionProvider>
           <Toast.Provider limit={7}>
             <TooltipProvider>
               <DndStoreProvider>
@@ -48,7 +48,7 @@ export default function Providers({
             />
             <Toaster />
           </Toast.Provider>
-        </DirectionProvider>
+        </LocaleDirectionProvider>
       </AnimationProvider>
     </NuqsAdapter>
   );

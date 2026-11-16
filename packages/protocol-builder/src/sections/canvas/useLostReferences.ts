@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 
 const NOTHING_LOST: readonly string[] = Object.freeze([]);
 
@@ -32,15 +32,17 @@ export function useLostReferences(
   named: readonly string[],
   offered: ReadonlySet<string>,
 ): readonly string[] {
-  const held = useRef<readonly string[]>(NOTHING_LOST);
-  const current = held.current;
-  const next = current.filter((id) => !offered.has(id));
+  const [held, setHeld] = useState<readonly string[]>(NOTHING_LOST);
+  const next = held.filter((id) => !offered.has(id));
   for (const id of named) {
     if (!offered.has(id) && !next.includes(id)) next.push(id);
   }
   const unchanged =
-    next.length === current.length &&
-    next.every((entry, index) => entry === current[index]);
-  if (!unchanged) held.current = next;
-  return held.current;
+    next.length === held.length &&
+    next.every((entry, index) => entry === held[index]);
+  if (unchanged) return held;
+  // Stored during render, which React allows for state the component owns: it
+  // discards this pass and renders again at once with the new array held.
+  setHeld(next);
+  return next;
 }

@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Route, Switch, useLocation } from 'wouter';
 
-import { BackgroundLights } from '@codaco/art';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import { ErrorBoundary } from './components/AppErrorBoundary';
 import { AppUpdateProvider } from './components/AppUpdate/AppUpdateProvider';
 import { AuthGate } from './components/AuthGate';
+import { BackdropLights } from './components/BackdropLights';
 import { InterviewerI18nProvider } from './i18n/InterviewerI18nProvider';
 import { LegacyInterviewerBackgroundInstall } from './lib/pwa/LegacyInterviewerBackgroundInstall';
 import { AppProviders } from './providers/AppProviders';
@@ -62,13 +62,7 @@ export default function App() {
                       exit={{ opacity: 0, transition: { duration: 0.5 } }}
                       transition={{ duration: 2 }}
                     >
-                      <BackgroundLights
-                        large={0}
-                        medium={4}
-                        small={0}
-                        blendMode="color-dodge"
-                        speedFactor={30}
-                      />
+                      <BackdropLights />
                     </motion.div>
                   )}
                 </AnimatePresence>

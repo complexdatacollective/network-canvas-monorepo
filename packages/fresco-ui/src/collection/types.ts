@@ -175,7 +175,12 @@ export type CollectionProps<T> = SortProps &
     'renderItem': ItemRenderer<T>;
     /** Layout instance that controls positioning */
     'layout': Layout<T>;
-    /** Function to extract text value for type-ahead search and accessibility */
+    /**
+     * Function to extract text value for type-ahead search and accessibility.
+     * Every item's text is read again whenever it changes, so pass a new one
+     * when the text changes and the same one otherwise: an inline function
+     * rebuilds the collection on every render.
+     */
     'textValueExtractor': TextValueExtractor<T>;
     /** Component to render when collection is empty */
     'emptyState'?: React.ReactNode;

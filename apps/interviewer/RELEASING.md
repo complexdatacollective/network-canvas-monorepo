@@ -657,8 +657,7 @@ silently otherwise).
 Earlier alpha builds shipped an Electron desktop app (macOS/Windows/Linux,
 SQLCipher-encrypted storage, `electron-updater` auto-update) and a Capacitor
 tablet build (iPadOS/Android). Both were retired when interviewer moved to
-the web-only offline-first PWA architecture (see
-`docs/superpowers/specs/2026-07-01-interviewer-v8-pwa-design.md`). If you're
+the web-only offline-first PWA architecture. If you're
 looking for the old signed-installer / GitHub-Releases / auto-updater-feed
 release process, it no longer applies — this file now describes the only
 release path.

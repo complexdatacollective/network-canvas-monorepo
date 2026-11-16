@@ -1,5 +1,6 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import addonA11y from '@storybook/addon-a11y';
 import addonDocs from '@storybook/addon-docs';
 import {
@@ -15,6 +16,7 @@ import './preview.css';
 import {
   globalTypes as i18nGlobalTypes,
   initialGlobals as i18nInitialGlobals,
+  mirrorAddon,
   withAppI18n,
 } from './i18n';
 import Providers from './Providers';
@@ -79,13 +81,18 @@ const ThemedDocsContainer = ({
 // See: https://github.com/chromaui/addon-visual-tests/pull/404
 
 export default definePreview({
+  // Every story is checked right to left after its play function (see
+  // `mirrorAddon` in @codaco/storybook-config, first in `addons` so it runs
+  // after the accessibility audit); a story that is not a layout in the
+  // reading direction opts out with the `!mirror` tag and says why.
+  tags: ['mirror'],
   beforeEach: () => {
     // Playwright's Linux Firefox can leave a newly isolated story iframe
     // inactive. Activate its window before interactions so native focus and
     // keyboard input reach the story, while preserving per-file isolation.
     window.focus();
   },
-  addons: [addonDocs(), addonA11y(), addonVitest()],
+  addons: [mirrorAddon, addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     options: {
       storySort: {
@@ -112,7 +119,7 @@ export default definePreview({
       // 'todo' - show a11y violations in the test UI only
       // 'error' - fail CI on a11y violations
       // 'off' - skip a11y checks entirely
-      test: 'todo',
+      test: 'error',
       /**
        * base-ui dialog adds focus guards which are picked up by a11y tests
        * but are necessary for proper focus management within the dialog,
@@ -125,6 +132,16 @@ export default definePreview({
             selector: '[data-base-ui-focus-guard]',
             enabled: false,
           },
+          /**
+           * Contrast is reported, never failed. The theme's colour pairs
+           * that miss WCAG AA are a known, accepted set (see
+           * tooling/tailwind/tests/theme-contrast.test.ts, which lists them
+           * as warnings), and the decision was to keep flagging them rather
+           * than retune the palette. `reviewOnFail` moves a failed contrast
+           * check into axe's "needs review" results: the a11y panel still
+           * shows every one, and only violations fail a story.
+           */
+          { id: 'color-contrast', reviewOnFail: true },
         ],
       },
     },

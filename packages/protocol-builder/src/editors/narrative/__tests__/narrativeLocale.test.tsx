@@ -42,14 +42,14 @@ describe('the narrative sections, read in Spanish', () => {
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Vistas predefinidas',
       'Comportamientos de la narrativa',
-      'Textos del lienzo',
+      'Personalizar la redacción predeterminada',
     ]);
     expect(
       screen.getByRole('switch', { name: 'Dibujo libre' }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Crea visualizaciones entre las que los investigadores puedan alternar durante la entrevista.',
+        'Crea visualizaciones para que quienes investigan puedan alternar entre ellas durante la entrevista.',
       ),
     ).toBeInTheDocument();
   });

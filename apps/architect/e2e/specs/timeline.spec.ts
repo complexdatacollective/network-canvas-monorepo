@@ -1,12 +1,12 @@
 import { type Locator, type Page } from '@playwright/test';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-
-import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import {
   readAnnouncements,
   recordAnnouncements,
-} from '../helpers/announcements.js';
+} from '@codaco/e2e-helpers/announcements';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
+import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { defaultLanguageText } from '../helpers/localized-text.js';
 import { readProtocolJson, settleAfterRefusal } from '../helpers/read-store.js';
@@ -830,7 +830,7 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
   // oracle, since a keyboard move legitimately hands focus to the row that
   // moved. It is pinned where it can be observed directly instead:
   // `ArrayFieldDragHandle.test.tsx`'s "drops its claim on focus when the list
-  // refuses the move" refuses a move, parks focus elsewhere, drives an
+  // refuses the move" refuses a move, lets focus fall to the page body, drives an
   // unrelated index change and waits two frames. Deleting the disarm in
   // `useKeyboardReorder` turns that test red and leaves this spec green.
   await readProtocolJson(architectPage);

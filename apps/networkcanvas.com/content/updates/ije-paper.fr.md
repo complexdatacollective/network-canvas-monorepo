@@ -1,4 +1,4 @@
-# Article : Network Canvas dans l’International Journal of Epidemiology
+# Article : Network Canvas dans l’International Journal of Epidemiology
 
 L’influence sociale et les réseaux de contacts sont essentiels pour comprendre les comportements de santé et la propagation des maladies, mais la plupart des logiciels d’enquête ne sont pas conçus pour les saisir. Cet article présente Network Canvas aux épidémiologistes comme un flux de travail complet pour concevoir et mener des entretiens sur les réseaux.
 

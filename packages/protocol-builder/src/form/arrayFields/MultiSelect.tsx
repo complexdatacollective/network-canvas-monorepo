@@ -67,7 +67,7 @@ export const MULTI_SELECT_RULE_CLASSES =
   'flex items-center py-5 bg-(--rule-bg) publish-colors text-white rounded z-1 transition-colors duration-300 ease-in-out';
 const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center gap-2 px-5';
 const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
-const MULTI_SELECT_OPTION_CLASSES = 'flex flex-1 items-start ml-5 first:ml-0';
+const MULTI_SELECT_OPTION_CLASSES = 'flex flex-1 items-start ms-5 first:ms-0';
 
 // The input and the select are swapped in one `UnconnectedField` call, and a
 // union of the two cannot satisfy both prop shapes (the select requires

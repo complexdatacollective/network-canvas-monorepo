@@ -42,7 +42,7 @@ import {
 import { generateSecureAttributes } from '../../../Anonymisation/utils';
 import QuickNodeForm from '../QuickNodeForm';
 
-const HINT = { en: 'Press Enter when you are finished.' };
+const PLACEHOLDER = { en: 'Type a name, then press Enter' };
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
@@ -120,7 +120,7 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
   return {
     id: STAGE_ID,
     type: 'NameGeneratorQuickAdd',
-    quickAddHint: { en: 'Press Enter when you are finished.' },
+    addNamePlaceholder: { en: 'Type a name, then press Enter' },
     label: { en: 'Add people' },
     subject: { entity: 'node', type: NODE_TYPE },
     quickAdd: asEntityAttributeReference(TARGET_VARIABLE),
@@ -224,7 +224,7 @@ async function renderQuickNodeForm({
         >
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
             <QuickNodeForm
-              hint={HINT}
+              placeholder={PLACEHOLDER}
               disabled={false}
               targetVariable={TARGET_VARIABLE}
               addNode={addNode}

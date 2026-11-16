@@ -1,0 +1,266 @@
+---
+title: Implementación avanzada
+date: 12th October 2026
+navOrder: 7
+translatedFrom: 8fcd7b6ca3ba13835b04971d176426514b0738c5
+---
+
+<SummaryCard duration="30 minutos">
+
+<SummarySection>
+
+En este artículo se explica cómo implementar Fresco en un VPS o en otra infraestructura con Docker. En la mayoría de los casos, el [proceso de implementación](./guide) predeterminado es suficiente. Sin embargo, si tienes conocimientos técnicos avanzados, trabajas como profesional de la informática o tienes necesidades de alojamiento específicas, esta guía te explica el proceso.
+
+</SummarySection>
+
+<PrerequisitesSection>
+
+Esta guía está pensada para personas con conocimientos técnicos avanzados que ya están familiarizadas con Docker y con la implementación de aplicaciones en contenedores. Ofrece una visión general de los pasos necesarios para implementar Fresco con Docker, pero no da instrucciones detalladas para cada paso.
+
+Si aún no conoces bien estas tecnologías, te recomendamos seguir nuestra [guía de implementación predeterminada](./guide).
+
+</PrerequisitesSection>
+</SummaryCard>
+
+Para ayudar a quienes tienen necesidades de alojamiento especializadas, hemos creado un contenedor Docker que permite implementar Fresco en contextos muy diversos, como la infraestructura informática de una institución, un VPS privado o una red interna. Este tutorial te explica los requisitos para implementar Fresco con nuestra imagen de Docker y describe los pasos necesarios.
+
+<TipBox danger>
+  Por la naturaleza del alojamiento propio de aplicaciones en Docker sobre
+  infraestructura en la nube, ¡eres responsable de la seguridad y el
+  mantenimiento de tu propia implementación! Por diseño, el equipo del proyecto
+  Network Canvas no tiene acceso a tus datos ni a tu infraestructura, y las
+  actualizaciones no se aplican automáticamente. Esto puede poner tus datos en
+  riesgo.
+</TipBox>
+
+## Requisitos para implementar Fresco {#requirements-for-deploying-fresco}
+
+Fresco es una aplicación Next.js que almacena los datos de las entrevistas y de la aplicación en **PostgreSQL** y los recursos de los protocolos en un **almacenamiento de objetos compatible con S3**.
+
+La forma admitida de alojar Fresco por tu cuenta es con los archivos Docker Compose oficiales que se describen más abajo. Cada uno incluye un proxy inverso [Traefik](https://traefik.io/) (en inglés), que obtiene y renueva automáticamente certificados TLS de **Let's Encrypt**, junto con una base de datos PostgreSQL y la aplicación Fresco, así que no necesitas obtener certificados ni crear una base de datos por separado.
+
+Para implementar Fresco, necesitarás:
+
+- Una máquina anfitriona que ejecute Docker (con Docker Compose v2, es decir, el comando `docker compose`), al menos 1 GB de RAM y espacio en disco suficiente para los datos de tus entrevistas (y para los recursos de los protocolos si usas el almacenamiento Garage incluido). La configuración de Garage incluida necesita Docker Engine 25 o posterior y Docker Compose v2.23.1 o posterior.
+- Un nombre de dominio registrado, con el DNS apuntando a tu máquina anfitriona, y los puertos **80 y 443** accesibles desde internet para las conexiones entrantes. Traefik usa el puerto 80 para el desafío HTTP de Let's Encrypt y el puerto 443 para servir la aplicación por HTTPS.
+- Un sistema de almacenamiento: el almacenamiento Garage incluido, un bucket externo compatible con S3 o UploadThing. Consulta [Elegir una configuración de implementación](#choose-a-deployment-configuration).
+- _(Opcional)_ una base de datos PostgreSQL externa, si prefieres no usar la incluida.
+
+## Elegir una configuración de implementación {#choose-a-deployment-configuration}
+
+Fresco ofrece tres archivos Docker Compose listos para usar, uno por cada opción de almacenamiento. Cada uno incluye Traefik (TLS), PostgreSQL 17 y la aplicación Fresco:
+
+| Archivo Compose                                                                                                              | Almacenamiento                                                                                                               | Cuándo usarlo                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml)               | **Garage** incluido, alojado en esta misma máquina                                                                           | Quieres que todo esté dentro de tu propia infraestructura, sin depender de un almacenamiento externo.             |
+| [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml) | Un **servicio externo compatible con S3** (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, un MinIO gestionado, …) | Ya tienes un bucket de S3 gestionado o quieres usar uno.                                                          |
+| [`docker-compose.uploadthing.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.uploadthing.yml) | **UploadThing** (en la nube)                                                                                                 | Quieres el almacenamiento gestionado más sencillo y no te importa que los recursos se guarden fuera del servidor. |
+
+Descarga el que corresponda a tu elección; en el apartado [Ejecutar Fresco](#running-fresco), más abajo, se explica cómo.
+
+## Variables de entorno {#environment-variables}
+
+Cada configuración lee sus ajustes de un archivo `.env` situado junto al archivo Compose. Las variables comunes a las tres son:
+
+| **Variable**              | **Detalles**                                                                                                                                                                                                      |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DATABASE_URL**          | Una URL de conexión con agrupación de conexiones para Prisma. Con el servicio `postgres` incluido, haz que apunte a `postgres:5432`.                                                                              |
+| **DATABASE_URL_UNPOOLED** | Una URL de conexión sin agrupación para Prisma, que se usa para las migraciones de la base de datos durante las actualizaciones. Si no usas un agrupador de conexiones, pon el mismo valor que en `DATABASE_URL`. |
+| **FRESCO_DOMAIN**         | El dominio público de esta implementación (por ejemplo, `study.example.com`). Es la única fuente de referencia para el dominio de la implementación.                                                              |
+| **ACME_EMAIL**            | El correo electrónico de contacto para los avisos sobre certificados de Let's Encrypt.                                                                                                                            |
+
+<TipBox>
+
+**No** tienes que definir `PUBLIC_URL`. Los archivos Compose lo obtienen automáticamente de `FRESCO_DOMAIN` (el servicio `fresco` establece `PUBLIC_URL=https://${FRESCO_DOMAIN}`).
+
+</TipBox>
+
+Si usas el **servicio `postgres` incluido**, este también lee el archivo `.env`. Como mínimo, define `POSTGRES_PASSWORD`: la imagen de PostgreSQL no se inicia sin ella. `POSTGRES_USER` y `POSTGRES_DB` son opcionales y ambas tienen `postgres` como valor predeterminado; deja `POSTGRES_USER` como `postgres` para que la comprobación de estado del servicio (`pg_isready -U postgres`) se supere. Asegúrate de que `DATABASE_URL` y `DATABASE_URL_UNPOOLED` apunten a `postgres:5432` con las credenciales correspondientes. Si, en cambio, usas una base de datos PostgreSQL **externa** (como Neon), usa las cadenas de conexión que te proporcione ese servicio; en ese caso, puedes quitar el servicio `postgres` del archivo Compose.
+
+Un archivo `.env` inicial para una implementación que usa el PostgreSQL incluido tiene este aspecto; añade las variables de almacenamiento del apartado siguiente:
+
+```bash
+# Required for every deployment
+FRESCO_DOMAIN=study.example.com
+ACME_EMAIL=you@example.com
+
+DATABASE_URL=postgres://postgres:CHANGE_ME@postgres:5432/postgres
+DATABASE_URL_UNPOOLED=postgres://postgres:CHANGE_ME@postgres:5432/postgres
+
+# Required when using the bundled `postgres` service
+POSTGRES_PASSWORD=CHANGE_ME
+
+# Storage: add the variables for your chosen provider (see "Storage configuration").
+
+# Optional
+#DISABLE_ANALYTICS=true
+#REQUIRE_TWO_FACTOR=true
+```
+
+<TipBox>
+
+Recopilamos datos analíticos anónimos sobre el uso y los errores de las instancias de Fresco para solucionar problemas. Los eventos propios de Fresco no contienen datos de participantes ni identificadores de entrevistas. Lo único que puede llegarnos es un término de búsqueda del panel de administración: al buscar en la tabla de participantes, de entrevistas o del registro de actividad, lo que escribes se añade a la dirección de la página, y los eventos de visita de página que envía la biblioteca que recopila los datos analíticos incluyen esa dirección. Consulta [¿Envía Fresco datos a terceros?](/es/collect-data/fresco/it-faq#does-fresco-send-data-to-third-parties) para ver la información completa, y desactiva los datos analíticos en **Configuración → Privacidad** o con `DISABLE_ANALYTICS` si eso supone un problema para tu implementación. Para desactivar todos los datos analíticos, define `DISABLE_ANALYTICS=true` en tu archivo `.env`; así también se bloquea el ajuste **Deshabilitar análisis de uso** en la página de configuración. Si lo dejas en el valor predeterminado (`false`), nos ayudarás a detectar errores y a mejorar la aplicación.
+
+</TipBox>
+
+<TipBox>
+
+Si tu institución exige la autenticación multifactor a todas las personas con cuenta de administración, define `REQUIRE_TWO_FACTOR=true`. A partir de ese momento, cada cuenta que inicie sesión con contraseña tendrá que configurar la autenticación de dos factores antes de poder usar el panel, y no podrá desactivarla; las cuentas que inician sesión con una llave de acceso no se ven afectadas. Es una variable de entorno y no un ajuste del panel porque todas las cuentas de Fresco tienen los mismos permisos de administración. Consulta [Cuentas y seguridad](/es/collect-data/fresco/accounts#requiring-two-factor-authentication-for-everyone) para ver qué exige exactamente.
+
+</TipBox>
+
+## Configuración del almacenamiento {#storage-configuration}
+
+La forma de configurar el almacenamiento depende del archivo Compose que hayas elegido. Con el almacenamiento Garage incluido, el archivo Compose configura por ti el almacenamiento de Fresco a partir de dos valores de tu archivo `.env`. Con un servicio externo compatible con S3 o con UploadThing, defines tú las variables de almacenamiento en `.env`. **Las variables de entorno tienen prioridad** sobre cualquier valor introducido en el panel y bloquean los ajustes de almacenamiento correspondientes, así que, cuando las usas, tu archivo `.env` es la única fuente de referencia para el almacenamiento.
+
+### Almacenamiento de alojamiento propio con Garage {#self-hosted-storage-with-garage}
+
+Lo usa [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). [Garage](https://garagehq.deuxfleurs.fr) (en inglés) es un almacenamiento de objetos ligero y compatible con S3. Se ejecuta como un contenedor **privado** sin puertos publicados. Los navegadores acceden a él a través del proxy Traefik incluido, mediante una ruta (`/assets/*` → `garage:3900`) en tu dominio de Fresco: las URL de S3 con estilo de ruta incluyen el nombre del bucket en la ruta. Garage se configura solo al iniciarse: crea tu clave de acceso y el bucket `assets` si aún no existen. Fresco recibe la misma clave, así que no tienes que introducir ningún ajuste de almacenamiento, y la clave permanece en `.env` en lugar de guardarse en la base de datos de Fresco.
+
+<TipBox>
+
+Las versiones anteriores de este archivo Compose incluían MinIO; ahora incluye Garage. **Si tu implementación ya ejecuta el MinIO incluido, no sustituyas tu archivo Compose por este.** Tus archivos no se trasladan a Garage: permanecen en el volumen de Docker `minio`, y los protocolos que los usan dejan de funcionar. Conserva tu archivo Compose actual, o traslada por tu cuenta tus archivos a otro servicio compatible con S3 y cambia a [`docker-compose.external-s3.yml`](#external-s3-compatible-storage).
+
+</TipBox>
+
+Esta configuración necesita **Docker Engine 25 o posterior** y **Docker Compose v2.23.1 o posterior**, porque la configuración de Garage está escrita directamente dentro del archivo Compose, y las versiones anteriores no pueden leerla.
+
+#### 1. Generar los secretos del almacenamiento {#1-generate-the-storage-secrets}
+
+Tanto Garage como Fresco usan dos valores de tu archivo `.env`. No tienen valores predeterminados, y el conjunto de contenedores no se inicia sin ellos. Genera cada uno en tu máquina anfitriona:
+
+```bash
+echo "GK$(openssl rand -hex 12)"   # GARAGE_ACCESS_KEY_ID
+openssl rand -hex 32               # GARAGE_SECRET_ACCESS_KEY
+```
+
+Después, añade los resultados a `.env`:
+
+```bash
+GARAGE_ACCESS_KEY_ID=GK...       # GK followed by 24 hex characters
+GARAGE_SECRET_ACCESS_KEY=...     # 64 hex characters
+```
+
+Trata ambos valores como contraseñas: juntos dan acceso completo a los archivos almacenados.
+
+#### 2. Completar el paso de almacenamiento {#2-continue-through-the-storage-step}
+
+Cuando el [asistente de configuración](#access-fresco) llega al paso de almacenamiento, **S3 / compatible con S3** ya está seleccionado y sus ajustes aparecen rellenados y bloqueados:
+
+| **Campo**                   | **Valor**                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| **URL del endpoint**        | `http://garage:3900`: la dirección interna de Docker, que solo usan los contenedores |
+| **URL pública**             | `https://<your Fresco domain>`: el mismo dominio que `FRESCO_DOMAIN`                 |
+| **Nombre del bucket**       | `assets`                                                                             |
+| **Región**                  | `us-east-1`                                                                          |
+| **ID de clave de acceso**   | Tu valor de `GARAGE_ACCESS_KEY_ID`                                                   |
+| **Clave de acceso secreta** | Tu valor de `GARAGE_SECRET_ACCESS_KEY`, oculto                                       |
+
+Selecciona **Continuar**. Estos ajustes proceden del servicio `fresco` de `docker-compose.prod.yml`, que tiene prioridad sobre `.env`, así que definir `STORAGE_PROVIDER` o las variables `S3_*` en `.env` no tiene ningún efecto con esta configuración.
+
+<TipBox>
+
+El nombre del bucket es fijo: `assets`. Ocupa la ruta `/assets/` de tu dominio de Fresco, y se sabe que `assets` no coincide con ninguna de las rutas propias de Fresco.
+
+Garage no ofrece cifrado del lado del servidor. Los recursos de los protocolos se almacenan en el volumen de Docker `garage-data`, así que, para cifrarlos en reposo, guarda ese volumen en un disco cifrado. Inclúyelo en tus copias de seguridad junto con la base de datos.
+
+</TipBox>
+
+#### Sustituir la clave de acceso al almacenamiento {#replacing-the-storage-access-key}
+
+Si la clave de acceso puede haber quedado expuesta, sustitúyela. Garage solo añade claves y nunca las elimina, así que la clave antigua conserva el acceso completo a tus archivos hasta que la elimines tú. La clave nueva necesita tanto un ID nuevo como un secreto nuevo: el ID de una clave eliminada no se puede volver a usar, y si cambias solo el secreto de un ID de clave existente, Garage no se inicia. Fresco espera a que Garage indique que está en buen estado antes de iniciarse, así que, en ese caso, `docker compose up` se detiene con un error que indica que el contenedor `garage` no está en buen estado, y `docker compose -f docker-compose.prod.yml logs garage` indica de qué clave se trata.
+
+1. Genera un nuevo `GARAGE_ACCESS_KEY_ID` y un nuevo `GARAGE_SECRET_ACCESS_KEY` con los comandos anteriores, y anota el ID de la clave antigua.
+2. En `.env`, sustituye `GARAGE_ACCESS_KEY_ID` y `GARAGE_SECRET_ACCESS_KEY` por los valores nuevos.
+3. Ejecuta `docker compose -f docker-compose.prod.yml up -d`. Garage añade la clave nueva al iniciarse y le da acceso al bucket `assets`, y Fresco se reinicia usándola.
+4. Elimina la clave antigua:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml exec garage /garage key delete --yes <old key ID>
+   ```
+
+### Almacenamiento externo compatible con S3 {#external-s3-compatible-storage}
+
+Lo usa [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml). En la máquina anfitriona no se ejecuta ningún almacenamiento: los navegadores suben los recursos directamente a tu servicio S3 mediante URL prefirmadas, y los descargan mediante redirecciones prefirmadas.
+
+Define estas variables en `.env`:
+
+```bash
+STORAGE_PROVIDER=s3
+S3_ENDPOINT=https://s3.us-east-1.amazonaws.com    # or https://<account-id>.r2.cloudflarestorage.com
+S3_PUBLIC_URL=https://s3.us-east-1.amazonaws.com   # for external services, usually THE SAME as S3_ENDPOINT
+S3_BUCKET=your-existing-bucket                      # create the bucket first
+S3_REGION=us-east-1                                 # use 'auto' for Cloudflare R2
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+```
+
+| **Variable**                                    | **Detalles**                                                                                                                                                                                                                        |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **STORAGE_PROVIDER**                            | Pon `s3` para usar un bucket compatible con S3. Cuando se define, el proveedor queda fijado y los ajustes de almacenamiento de la aplicación quedan bloqueados.                                                                     |
+| **S3_ENDPOINT**                                 | El endpoint de la API de S3 de tu servicio.                                                                                                                                                                                         |
+| **S3_PUBLIC_URL**                               | La URL que usan los navegadores para acceder al almacenamiento. En un servicio externo suele ser la misma que `S3_ENDPOINT`. (La configuración de Garage incluida que se describe más arriba la establece en tu dominio de Fresco). |
+| **S3_BUCKET**                                   | El nombre de un bucket existente.                                                                                                                                                                                                   |
+| **S3_REGION**                                   | La región del bucket (por ejemplo, `us-east-1`; usa `auto` para Cloudflare R2).                                                                                                                                                     |
+| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credenciales con acceso de lectura y escritura al bucket.                                                                                                                                                                           |
+
+Requisitos del bucket en tu servicio S3:
+
+- El bucket puede (y debe) seguir siendo **privado**. Fresco nunca necesita acceso público de lectura; las descargas usan URL prefirmadas de corta duración.
+- La política **CORS** debe permitir el origen de tu instancia de Fresco (`https://<FRESCO_DOMAIN>`) para `PUT` (las subidas de recursos desde el navegador) y `GET` (las descargas de recursos prefirmadas), con las cabeceras habituales (`Content-Type`, `Content-Length`) expuestas.
+
+### UploadThing {#uploadthing}
+
+Lo usa [`docker-compose.uploadthing.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.uploadthing.yml). Esta biblioteca ofrece una capa sobre Amazon S3 y necesita una clave de API gratuita de UploadThing.
+
+Define:
+
+```bash
+STORAGE_PROVIDER=uploadthing
+UPLOADTHING_TOKEN=    # from https://uploadthing.com/dashboard (API Keys)
+```
+
+Si piensas ejecutar tu instancia en una red local o privada, al menos el endpoint `api/uploadthing` debe ser accesible desde internet. Se usa como devolución de llamada (callback) para las subidas a Amazon S3.
+
+## Ejecutar Fresco {#running-fresco}
+
+1. Descarga en tu máquina anfitriona el archivo Compose de la opción de almacenamiento que hayas elegido. Por ejemplo, para S3 externo:
+
+   ```bash
+   curl -O https://raw.githubusercontent.com/complexdatacollective/Fresco/next/docker-compose.external-s3.yml
+   ```
+
+2. Crea un archivo `.env` en el mismo directorio, con las variables descritas más arriba.
+
+3. Inicia el conjunto de contenedores (sustituye el nombre por el del archivo Compose que hayas descargado):
+
+   ```bash
+   docker compose -f docker-compose.external-s3.yml up -d
+   ```
+
+En el primer inicio, Traefik solicitará un certificado de Let's Encrypt para `FRESCO_DOMAIN`. Para ello, el DNS ya debe apuntar a la máquina anfitriona y los puertos 80 y 443 deben ser accesibles desde internet.
+
+### Fijar una versión {#pinning-a-version}
+
+Los archivos Compose usan la imagen `ghcr.io/complexdatacollective/fresco:latest`, que siempre corresponde a la versión más reciente. Para fijar una versión concreta, cambia en el archivo Compose la etiqueta de la imagen por el número de versión, por ejemplo `:4.1.4` (las etiquetas no llevan el prefijo `v`). Puedes consultar las imágenes publicadas en el [registro de contenedores de Fresco](https://github.com/complexdatacollective/Fresco/pkgs/container/fresco/versions) (en inglés).
+
+### Comprobaciones de estado {#health-checks}
+
+Fresco ofrece un endpoint de comprobación de actividad en `/api/health` para balanceadores de carga, orquestadores de contenedores y servicios de monitorización de disponibilidad. No requiere autenticación. Mientras el servicio está en funcionamiento, responde con HTTP `200` y un cuerpo JSON cuyo `status` es `healthy` (o `degraded`); cuando no lo está, responde con `503` y `unhealthy`. Además de `status`, el cuerpo solo incluye una marca de tiempo (`timestamp`), la lista de comprobaciones concretas (`checks`) en las que se basa el estado general y cuánto ha tardado la comprobación. No indica la versión de Fresco en ejecución ni el tiempo de actividad del proceso, porque, juntos, permitirían a un escáner saber qué vulnerabilidades publicadas afectan a una instancia y si ya se ha implementado una corrección. Las personas del equipo de investigación que han iniciado sesión pueden ver la versión en ejecución en **Detalles de la aplicación**, en la página **Configuración**.
+
+## Acceder a Fresco {#access-fresco}
+
+Cuando el conjunto de contenedores esté en funcionamiento, visita `https://<FRESCO_DOMAIN>`. Deberías ver el asistente de configuración inicial, que te guía en la puesta en marcha de Fresco, incluida la configuración del almacenamiento, salvo que ya hayas definido tu proveedor de almacenamiento mediante variables de entorno.
+
+Para ver los detalles de este proceso, consulta el apartado de [configuración inicial](./guide#configuration-and-setup) de la guía de implementación básica.
+
+## Actualizar Fresco {#updating-fresco}
+
+Para actualizar, descarga la imagen más reciente y vuelve a crear el conjunto de contenedores (sustituye el nombre por el del archivo Compose que hayas implementado):
+
+```bash
+docker compose -f docker-compose.external-s3.yml pull
+docker compose -f docker-compose.external-s3.yml up -d
+```
+
+Así se actualiza la imagen de Fresco, pero tu archivo Compose no se modifica. Si tu implementación ejecuta el MinIO incluido, lee [Almacenamiento de alojamiento propio con Garage](#self-hosted-storage-with-garage) antes de sustituir ese archivo.

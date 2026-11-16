@@ -1,0 +1,143 @@
+---
+title: Geoespacial
+navOrder: 20
+translatedFrom: 40516bb531b1c3e7cc0810b8c6a6418a7b991ac2
+---
+
+<InterfaceSummary type="Geospatial">
+
+<InterfaceMeta type="Intérprete de nombres" creates="Datos de atributos geoespaciales, a partir de las áreas que se seleccionan en un mapa" usesprompts="true" requires="Internet, cuenta de Mapbox">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+La interfaz geoespacial es una interfaz de tipo intérprete de nombres que recoge datos geoespaciales sobre los álteres (cada persona a la que se nombra durante la entrevista) de la red de una persona participante.
+Al usar la interfaz geoespacial, quienes participan pueden seleccionar en un mapa un área delimitada, definida por un archivo GeoJSON.
+
+<TipBox danger>
+
+Como esta interfaz carga los mapas desde Mapbox, **necesita conexión a internet durante la entrevista**. Si tu estudio tiene que funcionar completamente sin conexión, evita esta interfaz.
+
+</TipBox>
+
+## Configuración de Mapbox {#mapbox-configuration}
+
+Esta interfaz usa un servicio de terceros llamado [Mapbox](https://www.mapbox.com/) (en inglés) para ofrecer las funciones de mapa.
+Para usar este servicio, tienes que crear una cuenta en Mapbox y obtener una clave de API que Architect, Interviewer y Fresco usan para comunicarse con Mapbox.
+
+<TipBox>
+
+Mapbox ofrece un plan gratuito con funciones y límites de uso suficientes para proyectos a pequeña escala. Encontrarás más información sobre los precios en la [página de precios de Mapbox](https://www.mapbox.com/pricing) (en inglés).
+
+</TipBox>
+
+Para crear una cuenta de Mapbox y obtener una clave de API:
+
+1. [Crea una cuenta](https://account.mapbox.com/auth/signup/) (en inglés) en Mapbox.
+
+2. Ve a la [vista general de la cuenta](https://console.mapbox.com/) (en inglés).
+
+3. En la sección de tokens, haz clic en el botón de copiar para copiar el token.
+
+![Token de Mapbox](/assets/img/interface-documentation/geospatial/mapbox-token.png)
+
+Cuando hayas copiado tu token de API de Mapbox, puedes añadirlo a tu protocolo en el campo **Clave de API de Mapbox**, en la sección **Acceso al mapa** del editor de la etapa.
+Los tokens se pueden reutilizar en distintas interfaces. Puedes acceder a ellos desde la «Biblioteca de recursos», donde se pueden copiar, eliminar o sustituir si es necesario.
+
+![Introduce tu clave de API y selecciónala](/assets/img/interface-documentation/geospatial/upload-api-key.png)
+
+<TipBox danger>
+
+Transnational Networks, una plantilla de inicio que usa la interfaz geoespacial, incluye un **token de prueba compartido de Mapbox, proporcionado por Network Canvas**, para que el mapa se muestre desde el primer momento mientras exploras la plantilla. Este token tiene un límite de uso y solo está pensado para evaluar la interfaz. Antes de poner en marcha un estudio sobre el terreno, **debes** sustituirlo por tu propio token en la «Biblioteca de recursos». Cuando un protocolo todavía usa el token de prueba compartido, Architect muestra una advertencia destacada en la línea de tiempo del protocolo para recordarte que lo cambies.
+
+</TipBox>
+
+## Definir una fuente de datos {#defining-a-data-source}
+
+Esta interfaz necesita una fuente [GeoJSON](https://geojson.org/) (en inglés) para configurar las capas del mapa, que proporcionan las áreas seleccionables para las preguntas. GeoJSON es un formato de archivo estándar para representar entidades geográficas, incluidas áreas o límites, junto con sus propiedades asociadas (como nombres o categorías).
+
+Por ejemplo, un archivo GeoJSON podría contener áreas que representan secciones censales, y cada área podría contener propiedades adicionales, como `zipcode` o `neighborhood`.
+
+![Sube un archivo GeoJSON](/assets/img/interface-documentation/geospatial/geojson.png)
+
+Después de elegir un archivo GeoJSON en el campo **Fuente de datos de la capa** de la sección **Capas del mapa**, selecciona una propiedad (por ejemplo, la sección censal o el código postal) en **Propiedad de selección del mapa** para definir las áreas seleccionables del mapa. Los valores de esta propiedad se usarán para asignar valores a los atributos de las preguntas.
+
+Por ejemplo, si tu archivo GeoJSON contiene una propiedad `TRACTID`, al seleccionar un área en el mapa se asignará el valor de `TRACTID` al atributo de la pregunta.
+
+![Selecciona una propiedad para la selección en el mapa](/assets/img/interface-documentation/geospatial/selection-property.png)
+
+## Estilo del mapa {#map-style}
+
+Puedes personalizar el aspecto del mapa eligiendo entre distintos [estilos de Mapbox](https://docs.mapbox.com/api/maps/styles/) (en inglés), estándar o clásicos, y seleccionando el color de los contornos y de las selecciones del mapa.
+
+Además, puedes activar las siguientes opciones:
+
+- **Mostrar transporte público**: muestra rutas y estaciones de transporte público en el mapa, lo que puede ayudar a quienes participan a orientarse al seleccionar áreas.
+- **Permitir la búsqueda de ubicaciones**: activa un cuadro de búsqueda que permite a quienes participan buscar direcciones, barrios y puntos de interés. Así pueden desplazarse rápidamente a lugares conocidos del mapa. Ten en cuenta que activar esta función usa la Mapbox Search API, lo que puede suponer costes adicionales según tu uso. Consulta la [página de precios de Mapbox](https://www.mapbox.com/pricing#search) (en inglés) para ver los detalles.
+
+## Configurar la vista inicial del mapa {#configuring-initial-map-view}
+
+Configura la vista inicial del mapa desplazándolo y ajustando el zoom en Architect. El mapa se centrará según las coordenadas iniciales y el nivel de zoom que establezcas aquí. Al restablecer el mapa, volverá a esta vista.
+
+![Configura la vista inicial del mapa](/assets/img/interface-documentation/geospatial/initial-map-view.png)
+
+<TipBox danger>
+
+Asegúrate de que las áreas seleccionables de tu archivo GeoJSON se ven dentro de la vista inicial del mapa.
+
+</TipBox>
+
+<AppOnly app="current">
+
+## Personalizar la redacción predeterminada {#customize-built-in-wording}
+
+La sección **Personalizar la redacción predeterminada** del editor de la etapa contiene las palabras que quienes participan leen en el mapa. Cada una empieza con la redacción de Network Canvas, en todos los idiomas para los que Network Canvas la tiene, y puedes cambiarla y traducirla como cualquier otro texto. Tu protocolo solo conserva la redacción que cambias (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+**Fuera de las áreas seleccionables**, la etiqueta del botón que marca un lugar fuera de las áreas que permite el mapa, está en **Textos exclusivos de esta etapa**.
+
+Los mensajes que se muestran cuando el mapa no se puede usar con normalidad son los mismos en todas las etapas geoespaciales. Están en **Textos comunes a todas las etapas de este tipo**, en la misma sección. Un cambio en ellos se aplica a todas esas etapas, y se guarda en cuanto sales del campo.
+
+- **Mensaje de dispositivo sin conexión** se muestra mientras el dispositivo de la persona participante no tiene conexión, porque el mapa no se puede cargar sin ella.
+- **Mensaje de mapa no disponible** se muestra en lugar del mapa cuando el dispositivo de la persona participante no puede dibujarlo, y explica qué se puede intentar.
+- **Mensaje de búsqueda fallida** se muestra cuando no se ha podido realizar una búsqueda. El protocolo solo lo contiene mientras alguna etapa geoespacial tiene activado **Permitir la búsqueda de ubicaciones**. El texto de ejemplo del cuadro de búsqueda y el mensaje que se muestra cuando una búsqueda no encuentra nada son [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text), en **Búsqueda**.
+
+</AppOnly>
+
+## Preguntas {#prompts}
+
+La interfaz geoespacial puede incluir varias [preguntas](/es/design-protocols/key-concepts/prompts), cada una asociada a un único atributo de ubicación.
+El valor de cada atributo lo determina la propiedad del área del mapa seleccionada en el archivo GeoJSON.
+
+Si se da una respuesta fuera de las áreas seleccionables del mapa, se asignará al atributo el valor `outside-selectable-areas`.
+
+### Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Plantéate usar el [filtrado de la red](/es/design-protocols/key-concepts/network-filtering) para limitar los nodos a los que se encuentran dentro de las
+áreas seleccionables del mapa. Se pueden usar intérpretes de nombres anteriores, como [«Clasificación por categorías»](/es/design-protocols/interface-documentation/categorical-bin) o [«Formulario por álter»](/es/design-protocols/interface-documentation/per-alter-form) (un formulario para cada álter), para
+recoger atributos adicionales con los que filtrar los nodos que quedan fuera del área del mapa. Así, solo se pide a quienes participan que seleccionen un área en el mapa para los nodos pertinentes,
+lo que reduce las probabilidades de que se asigne `outside-selectable-areas` y minimiza la carga de respuesta.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Elige una propiedad única (por ejemplo, `zipcode` o `census_tract`) para la selección en el mapa, de modo que cada área se pueda distinguir con claridad.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Si quieres, puedes combinar todas las propiedades del GeoJSON con los datos de tus álteres durante la limpieza y el análisis de los datos. Por ejemplo, puedes relacionar el `zipcode` con otros atributos, como `population`, u otros datos que contenga el archivo GeoJSON.
+
+</GoodPractice>
+
+### Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+Evita usar archivos GeoJSON excesivamente grandes que contengan capas o áreas muy alejadas de las áreas de selección previstas. Esto puede hacer que el mapa tarde más en cargarse.
+
+</BadPractice>

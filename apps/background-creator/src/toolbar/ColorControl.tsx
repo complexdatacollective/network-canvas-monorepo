@@ -118,9 +118,8 @@ function ColorSwatchInput({
     !THEME_SWATCHES.some((swatch) => swatch.value === value);
 
   return (
-    <div
+    <fieldset
       id={id}
-      role="group"
       aria-label={groupLabel}
       aria-describedby={ariaDescribedBy}
       className={swatchContainer}
@@ -207,7 +206,7 @@ function ColorSwatchInput({
           className="absolute -inset-1 size-8 cursor-pointer border-0 bg-transparent p-0"
         />
       </label>
-    </div>
+    </fieldset>
   );
 }
 

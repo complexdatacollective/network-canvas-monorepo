@@ -236,7 +236,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                           interfaceMessages.submit,
                         )}
                         type="submit"
-                        icon={<ArrowRight />}
+                        icon={<ArrowRight className="rtl:rotate-180" />}
                         iconPosition="right"
                       >
                         <AppMessage message={commonMessages.continue} />

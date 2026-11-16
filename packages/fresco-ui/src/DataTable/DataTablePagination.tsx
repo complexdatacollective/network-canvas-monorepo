@@ -99,14 +99,16 @@ export function DataTablePagination<TData extends RowData>({
           placeholder={intl.formatNumber(pagination.pageSize)}
         />
       </div>
-      {showPageCount && (
-        <div className="flex items-center justify-center text-sm font-medium">
-          {intl.formatMessage(messages.pageOf, {
+      {/* Always mounted, so that a change to its text is announced: a live
+          region added to the page together with its text is not. Empty, it
+          leaves the layout rather than adding a gap. */}
+      <output className="flex items-center justify-center text-sm font-medium empty:sr-only">
+        {showPageCount &&
+          intl.formatMessage(messages.pageOf, {
             page: pagination.pageIndex + 1,
             pageCount,
           })}
-        </div>
-      )}
+      </output>
       {/* These arrows point along the reading order, not at a fixed edge:
           "previous" is back towards the start of the table, which is the
           right-hand side in an RTL locale. The row itself reverses on its

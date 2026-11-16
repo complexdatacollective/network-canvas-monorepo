@@ -872,7 +872,7 @@ export function formatPersonLabel(
     case 'name':
       return label.name;
     case 'you':
-      return words.text(words.wording.you);
+      return words.you;
     case 'term':
       return formatRelativeTerm(label.term, words);
     case 'relativeOf': {

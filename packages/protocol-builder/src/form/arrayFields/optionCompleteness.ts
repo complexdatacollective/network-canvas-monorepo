@@ -1,20 +1,11 @@
-import type { LocaleTag } from '@codaco/protocol-validation';
-import {
-  hasDuplicateOptionLabels,
-  normalizeCodebookName,
-} from '@codaco/shared-consts';
+import { findDuplicateOptionLabels } from '@codaco/protocol-validation';
+import { normalizeCodebookName } from '@codaco/shared-consts';
 
 import {
   asLocalizedString,
   type ProtocolLocalization,
-  resolveTranslation,
   translationText,
 } from '../../localization/localizedText.ts';
-
-const readLabel = (option: unknown) =>
-  typeof option === 'object' && option !== null
-    ? Reflect.get(option, 'label')
-    : undefined;
 
 /**
  * What counts as a missing half of an option, shared by the row that shows the
@@ -54,73 +45,14 @@ export const isOptionComplete = (option: unknown) => {
   return !isOptionLabelEmpty(label) && !isOptionValueEmpty(value);
 };
 
-/** Every language at least one of `options` has a label in. */
-const optionLabelLocales = (options: readonly unknown[]): LocaleTag[] => [
-  ...new Set(
-    options.flatMap((option) =>
-      Object.keys(asLocalizedString(readLabel(option)) ?? {}),
-    ),
-  ),
-];
-
 /**
- * The languages labels are compared in: the protocol's own when known, else
- * every language a label is written in.
- */
-export const optionLabelComparisonLocales = (
-  options: readonly unknown[],
-  localization: ProtocolLocalization | undefined,
-): readonly LocaleTag[] =>
-  localization === undefined
-    ? optionLabelLocales(options)
-    : localization.locales;
-
-/**
- * A label's text as a participant reading `locale` sees it. Given the
- * protocol's languages, that is the translation the interview falls back to
- * where the label has none in `locale` (`resolveTranslation`), so an option
- * left untranslated is compared with what it shows rather than with nothing.
- * Without them, only the label's own translation in `locale`, or `''`.
- */
-export const optionLabelTextIn = (
-  label: unknown,
-  locale: LocaleTag,
-  localization: ProtocolLocalization | undefined,
-): string =>
-  localization === undefined
-    ? translationText(label, locale)
-    : resolveTranslation(label, localization, locale).text;
-
-/**
- * `options` with each label replaced by its plain text in `locale`
- * (`optionLabelTextIn`): the shape shared-consts' label rules compare.
- */
-export const optionsWithLabelText = (
-  options: readonly unknown[],
-  locale: LocaleTag,
-  localization?: ProtocolLocalization,
-) =>
-  options.map((option) => ({
-    label: optionLabelTextIn(readLabel(option), locale, localization),
-  }));
-
-/**
- * Whether two options read the same way to a participant in any one language.
- *
- * Each language is its own question, asked of shared-consts'
- * `hasDuplicateOptionLabels` so case and Unicode canonical equivalence are
- * settled the way every other label rule settles them. Given the protocol's
- * languages, each label is read as the interview shows it there, falling back
- * where it has no translation, so one option translated to the text another
- * falls back to is caught. Without them, an option with no translation in a
- * language has nothing to collide with there.
+ * Whether two options read the same way to a participant in any one language:
+ * the rule `@codaco/protocol-validation`'s `findDuplicateOptionLabels` defines
+ * for every place an option label is edited, Architect's translation table
+ * included. Given the protocol's languages, each label is read as the
+ * interview shows it there, falling back where it has no translation.
  */
 export const hasDuplicateLocalizedOptionLabels = (
   options: unknown,
   localization?: ProtocolLocalization,
-): boolean => {
-  const rows: readonly unknown[] = Array.isArray(options) ? options : [];
-  return optionLabelComparisonLocales(rows, localization).some((locale) =>
-    hasDuplicateOptionLabels(optionsWithLabelText(rows, locale, localization)),
-  );
-};
+): boolean => findDuplicateOptionLabels(options, localization).length > 0;

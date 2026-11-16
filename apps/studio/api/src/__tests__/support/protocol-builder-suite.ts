@@ -68,8 +68,8 @@ import {
 import { createRpcClient, type RpcTestClient } from './rpc.ts';
 import { testCipher, testKeyringEntry } from './secrets.ts';
 
-// The sample protocol declares en-US as its only language.
-export const enUS = (text: string) => ({ 'en-US': text });
+// The sample protocol declares English as its only language.
+export const inEnglish = (text: string) => ({ en: text });
 
 export const TEAM_ID = 'protocol-builder-team';
 
@@ -416,8 +416,8 @@ export function setupProtocolBuilderSuite() {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS(label),
-          title: enUS(label),
+          label: inEnglish(label),
+          title: inEnglish(label),
           items: [],
         }),
       }),
@@ -857,8 +857,8 @@ export function setupProtocolBuilderSuite() {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS(label),
-          title: enUS(label),
+          label: inEnglish(label),
+          title: inEnglish(label),
           items: [],
         }),
       }),

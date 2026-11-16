@@ -26,7 +26,7 @@ const iconMap = {
   download: <Download className="size-4" />,
   upload: <Upload className="size-4" />,
   trash: <Trash className="size-4" />,
-  chevronRight: <ChevronRight className="size-4" />,
+  chevronRight: <ChevronRight className="size-4 rtl:-scale-x-100" />,
 };
 
 type ButtonStoryArgs = ComponentProps<typeof Button> & {
@@ -78,7 +78,6 @@ The story controls map these states to their native or ARIA props while allowing
         'default',
         'default-inverted',
         'raised',
-        'outline',
         'text',
         'dashed',
         'link',
@@ -173,9 +172,6 @@ export const Variants: Story = {
         </Button>
         <Button {...args} variant="raised">
           Raised
-        </Button>
-        <Button {...args} variant="outline">
-          Outline
         </Button>
         <Button {...args} variant="text">
           Text
@@ -289,7 +285,10 @@ export const Icons: Story = {
         <div className="flex flex-col gap-2">
           <span className="text-text/70 text-xs">Right</span>
           <div className="flex gap-2">
-            <Button icon={<ChevronRight />} iconPosition="right">
+            <Button
+              icon={<ChevronRight className="rtl:-scale-x-100" />}
+              iconPosition="right"
+            >
               Next
             </Button>
           </div>
@@ -325,9 +324,6 @@ export const Icons: Story = {
         <div className="flex gap-2">
           <Button icon={<Check />} variant="default">
             Default
-          </Button>
-          <Button icon={<Check />} variant="outline">
-            Outline
           </Button>
           <Button icon={<Check />} variant="text">
             Text
@@ -397,13 +393,10 @@ export const States: Story = {
 
 export const DisabledStates: Story = {
   render: () => (
-    <div className="grid grid-cols-[auto_repeat(5,1fr)] gap-4">
+    <div className="grid grid-cols-[auto_repeat(4,1fr)] gap-4">
       <span className="text-sm font-medium" />
       <span className="text-center text-xs font-medium text-current/70">
         Default
-      </span>
-      <span className="text-center text-xs font-medium text-current/70">
-        Outline
       </span>
       <span className="text-center text-xs font-medium text-current/70">
         Text
@@ -419,9 +412,6 @@ export const DisabledStates: Story = {
           <span className="text-sm font-medium capitalize">{color}:</span>
           <Button variant="default" color={color} disabled>
             Default
-          </Button>
-          <Button variant="outline" color={color} disabled>
-            Outline
           </Button>
           <Button variant="text" color={color} disabled>
             Text
@@ -443,7 +433,6 @@ export const LoadingSkeleton: Story = {
     <div className="flex flex-col gap-4">
       <div className="flex gap-4">
         <ButtonSkeleton />
-        <ButtonSkeleton variant="outline" />
         <ButtonSkeleton size="lg" />
       </div>
     </div>
@@ -461,7 +450,6 @@ export const MotionVariant: Story = {
         Animated Button
       </MotionButton>
       <MotionButton
-        variant="outline"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
@@ -474,16 +462,13 @@ export const MotionVariant: Story = {
 
 export const ColorVariantCombinations: Story = {
   render: () => (
-    <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-4">
+    <div className="grid grid-cols-[auto_repeat(6,1fr)] gap-4">
       <span className="text-sm font-medium" />
       <span className="text-center text-xs font-medium text-current/70">
         Default
       </span>
       <span className="text-center text-xs font-medium text-current/70">
         Default inverted
-      </span>
-      <span className="text-center text-xs font-medium text-current/70">
-        Outline
       </span>
       <span className="text-center text-xs font-medium text-current/70">
         Text
@@ -505,9 +490,6 @@ export const ColorVariantCombinations: Story = {
           </Button>
           <Button variant="default-inverted" color={color}>
             Inverted
-          </Button>
-          <Button variant="outline" color={color}>
-            Outline
           </Button>
           <Button variant="text" color={color}>
             Text
@@ -594,7 +576,11 @@ export const LinkVariant: Story = {
             <Button variant="link" icon={<Download />}>
               Download
             </Button>
-            <Button variant="link" icon={<ChevronRight />} iconPosition="right">
+            <Button
+              variant="link"
+              icon={<ChevronRight className="rtl:-scale-x-100" />}
+              iconPosition="right"
+            >
               Learn more
             </Button>
           </div>
@@ -659,9 +645,6 @@ export const AdaptiveToContext: Story = {
           <Button variant="dashed" color="dynamic">
             Dashed
           </Button>
-          <Button variant="outline" color="dynamic">
-            Outline
-          </Button>
           <Button variant="text" color="dynamic">
             Text
           </Button>
@@ -680,9 +663,6 @@ export const AdaptiveToContext: Story = {
           </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
-          </Button>
-          <Button variant="outline" color="dynamic">
-            Outline
           </Button>
           <Button variant="text" color="dynamic">
             Text
@@ -703,9 +683,6 @@ export const AdaptiveToContext: Story = {
           <Button variant="dashed" color="dynamic">
             Dashed
           </Button>
-          <Button variant="outline" color="dynamic">
-            Outline
-          </Button>
           <Button variant="text" color="dynamic">
             Text
           </Button>
@@ -724,9 +701,6 @@ export const AdaptiveToContext: Story = {
           </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
-          </Button>
-          <Button variant="outline" color="dynamic">
-            Outline
           </Button>
           <Button variant="text" color="dynamic">
             Text
@@ -747,9 +721,6 @@ export const AdaptiveToContext: Story = {
           <Button variant="dashed" color="dynamic">
             Dashed
           </Button>
-          <Button variant="outline" color="dynamic">
-            Outline
-          </Button>
           <Button variant="text" color="dynamic">
             Text
           </Button>
@@ -769,9 +740,6 @@ export const AdaptiveToContext: Story = {
           <Button variant="dashed" color="dynamic">
             Dashed
           </Button>
-          <Button variant="outline" color="dynamic">
-            Outline
-          </Button>
           <Button variant="text" color="dynamic">
             Text
           </Button>
@@ -790,9 +758,6 @@ export const AdaptiveToContext: Story = {
           </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
-          </Button>
-          <Button variant="outline" color="dynamic">
-            Outline
           </Button>
           <Button variant="text" color="dynamic">
             Text

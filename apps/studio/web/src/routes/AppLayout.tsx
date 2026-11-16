@@ -48,7 +48,7 @@ function TeamSwitchFailure({ failure }: { failure: ActiveTeamFailure }) {
     <Alert variant="destructive" density="compact" className="m-0 rounded-none">
       <div className="flex flex-wrap items-center gap-3">
         <span>{intl.formatMessage(messages.teamSwitchFailure)}</span>
-        <Button size="sm" variant="outline" onClick={failure.retry}>
+        <Button size="sm" onClick={failure.retry}>
           {intl.formatMessage(commonMessages.retry)}
         </Button>
       </div>

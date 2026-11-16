@@ -1,4 +1,5 @@
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { interfaceTextAsShown } from '@codaco/interview/supplied-wording';
 import {
   type Asset,
   assetSchema,
@@ -8,6 +9,7 @@ import {
   type EdgeDefinition,
   EgoDefinitionSchema,
   type EgoDefinition,
+  type InterfaceText,
   NodeDefinitionSchema,
   type NodeDefinition,
   type Stage,
@@ -130,6 +132,16 @@ export type ProtocolBuilderProtocolContext = Readonly<{
    * section has been read, or while its declaration is not valid.
    */
   localization?: ProtocolLocalization;
+  /**
+   * The words the interview itself shows for the protocol as it is saved, in
+   * the protocol's languages: for each entry the protocol shows, its own
+   * translation where it holds one and Network Canvas's wording where it
+   * does not (see `interfaceTextAsShown`). So an entry is here whether or not
+   * the protocol holds any wording for it, and one it does not show is not.
+   * Absent until the settings section has been read, or while it is not
+   * valid.
+   */
+  interfaceText?: InterfaceText;
   issues: readonly ProtocolContextIssue[];
 }>;
 
@@ -212,6 +224,10 @@ export function protocolContextFromSections(
   const entityNameOwners = new Map<string, string>();
   let ego: EgoDefinition | undefined;
   let localization: ProtocolLocalization | undefined;
+  let interfaceText: InterfaceText | undefined;
+  // Whether the settings section was read with valid interface text, which
+  // a protocol holding none of its own has too.
+  let interfaceTextRead = false;
   let stageOrder: string[] | null = null;
 
   const recordVariableIds = (
@@ -359,6 +375,20 @@ export function protocolContextFromSections(
             })),
           );
         }
+        const text = CurrentProtocolSchema.shape.interfaceText.safeParse(
+          document.interfaceText,
+        );
+        if (text.success) {
+          interfaceTextRead = true;
+          interfaceText = text.data;
+        } else {
+          issues.push(
+            ...sectionIssues(id, text.error.issues).map((issue) => ({
+              ...issue,
+              path: ['interfaceText', ...issue.path],
+            })),
+          );
+        }
         break;
       }
     }
@@ -413,6 +443,16 @@ export function protocolContextFromSections(
     assets: Object.freeze(Object.fromEntries(assets)),
     orderedStages: Object.freeze(orderedStages),
     ...(localization === undefined ? {} : { localization }),
+    ...(localization === undefined || !interfaceTextRead
+      ? {}
+      : {
+          interfaceText: interfaceTextAsShown({
+            localization,
+            codebook,
+            stages: orderedStages,
+            interfaceText,
+          }),
+        }),
     issues: Object.freeze(issues),
   });
 }

@@ -11,8 +11,19 @@ import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup
 
 const here = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * The stories also run in Firefox, where input handling differs from
+ * Chromium. That second pass doubles the suite, so CI runs it on generated
+ * release PRs only and sets `STORYBOOK_FIREFOX=false` everywhere else; a
+ * local run keeps both engines unless asked not to.
+ */
+const storybookBrowsers =
+  process.env.STORYBOOK_FIREFOX === 'false'
+    ? [{ browser: 'chromium' as const }]
+    : [{ browser: 'chromium' as const }, { browser: 'firefox' as const }];
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({ compiler: true })],
   // `fuse.js` is imported lazily by the inlined search worker, so Vite's static
   // scanner doesn't see it before the first browser test starts. Pre-bundling it
   // here keeps Playwright's connection from being torn down by a mid-test
@@ -63,7 +74,7 @@ export default defineConfig({
           browser: {
             provider: playwright(),
             enabled: true,
-            instances: [{ browser: 'chromium' }, { browser: 'firefox' }],
+            instances: storybookBrowsers,
             headless: true,
             viewport: BROWSER_VIEWPORT,
           },

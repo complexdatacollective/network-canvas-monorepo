@@ -21,7 +21,7 @@ export const Default: Story = {};
 
 export const CustomButtonVariant: Story = {
   args: {
-    buttonVariant: 'outline',
+    buttonVariant: 'text',
     buttonSize: 'sm',
   },
 };

@@ -25,7 +25,7 @@ export const getFrescoI18nInitialization = cache(async () => {
     account: session
       ? { userId: session.user.userId, locale: session.user.locale }
       : null,
-    mirror: cookieStore.get(localeMirrorCookie)?.value ?? null,
+    mirror: cookieStore.get(localeMirrorCookie.name)?.value ?? null,
     requested,
   });
 });

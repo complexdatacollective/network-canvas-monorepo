@@ -89,7 +89,7 @@ describe('the editor for the screen that ends the interview', () => {
     renderStageEditor(openStage());
 
     expect(
-      screen.getByRole('heading', { name: 'Finishing the interview' }),
+      screen.getByRole('heading', { name: 'Customize built-in wording' }),
     ).toBeInTheDocument();
     for (const [name, value] of [
       [/Finish button/, 'Finish'],

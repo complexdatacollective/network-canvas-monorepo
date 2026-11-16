@@ -39,6 +39,10 @@ export default defineConfig({
   },
   ssr: {
     noExternal: [
+      // Only their React-free message modules: the resource host refuses in
+      // the protocol builder's words, encoded for the editor to format.
+      '@codaco/app-i18n',
+      '@codaco/protocol-builder',
       '@codaco/protocol-validation',
       '@codaco/shared-consts',
       '@codaco/studio-contract',

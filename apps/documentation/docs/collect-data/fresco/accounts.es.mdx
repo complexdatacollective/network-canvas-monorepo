@@ -1,0 +1,177 @@
+---
+title: Cuentas y seguridad
+date: 8th September 2026
+navOrder: 3
+translatedFrom: de35ff5b788110adfda13988b3d1b430a130bea3
+---
+
+Fresco protege el panel de administración del equipo de investigación con una o varias cuentas. Esta guía explica cómo iniciar sesión, cómo añadir a otras personas del equipo y
+cómo proteger las cuentas con llaves de acceso (passkeys) y autenticación de dos factores.
+
+<TipBox>
+
+Las cuentas múltiples, las llaves de acceso y la autenticación de dos factores requieren **Fresco v4 o posterior**.
+Las versiones anteriores solo admitían una única cuenta protegida con contraseña.
+
+</TipBox>
+
+## Cómo se protege una cuenta {#how-an-account-is-secured}
+
+Cada cuenta usa uno de dos métodos principales de inicio de sesión, **mutuamente excluyentes**:
+
+- **Modo de contraseña**: inicias sesión con un nombre de usuario y una contraseña. Si quieres, puedes añadir
+  además la **autenticación de dos factores (2FA)**, con una contraseña de un solo uso basada en el tiempo (TOTP)
+  que genera una aplicación de autenticación. Es el _único_ segundo factor que admite Fresco.
+- **Modo de llave de acceso**: inicias sesión con una o varias llaves de acceso registradas (la biometría del dispositivo,
+  como Touch ID o Windows Hello, o una llave de seguridad física) y **no tienes contraseña**.
+  El modo de llave de acceso no usa la autenticación de dos factores: la llave de acceso sustituye a la contraseña
+  en lugar de añadirse a ella, y Fresco exige que el autenticador verifique tu identidad con
+  biometría o un PIN cada vez, de modo que un inicio de sesión con llave de acceso siempre demuestra tanto la posesión del
+  dispositivo como tu identidad.
+
+Una cuenta siempre está exactamente en uno de estos modos. Por tanto, una llave de acceso nunca es un _segundo_
+factor que acompaña a una contraseña, sino un método de inicio de sesión completo y sin contraseña por sí
+mismo. Todo esto se gestiona desde una única tarjeta, **Administración de usuarios**, en **Configuración**.
+
+## Iniciar sesión {#signing-in}
+
+Inicia sesión desde la pantalla de inicio de sesión del panel. Si tu cuenta está en modo de contraseña, introduce tu
+nombre de usuario y tu contraseña; si la 2FA está activada, a continuación se te pedirá el código de 6 dígitos de
+tu aplicación de autenticación (con la opción de usar un código de recuperación en su lugar). Si tu cuenta está
+en modo de llave de acceso, elige **Iniciar sesión con una llave de acceso** y autentícate con tu dispositivo.
+Se limita la frecuencia de los intentos fallidos repetidos.
+
+## Cambiar la contraseña {#changing-your-password}
+
+Si tu cuenta está en modo de contraseña, abre **Configuración → Administración de usuarios**, haz clic en **Cambiar
+contraseña**, introduce tu contraseña actual y, después, define y confirma una nueva. Las contraseñas nuevas deben
+tener al menos 8 caracteres e incluir una letra minúscula, una letra mayúscula, un número y
+un símbolo.
+
+Si tu cuenta está en modo de llave de acceso, no hay ninguna contraseña que cambiar. Para definir una contraseña,
+debes [cambiar al modo de contraseña](#choosing-between-passwords-and-passkeys).
+
+## Añadir a otras personas del equipo {#adding-team-members}
+
+<TipBox danger>
+
+**Todas las cuentas de Fresco son iguales.** No hay roles ni niveles de permisos: cada cuenta
+es una cuenta de administración completa, con acceso total a todos los datos, y puede crear o eliminar otras
+cuentas. Crea cuentas solo para personas a las que confiarías el estudio completo.
+
+</TipBox>
+
+Da a cada persona su propia cuenta en lugar de compartir credenciales. Abre **Configuración → Administración
+de usuarios**, haz clic en **Añadir usuario** y define un nombre de usuario y una contraseña inicial (quien reciba la cuenta podrá
+cambiar después a una llave de acceso). Para dar de baja a alguien, selecciona su cuenta y elimínala.
+
+No puedes eliminar tu propia cuenta mientras tienes la sesión iniciada con ella, y siempre tiene que quedar
+al menos una cuenta.
+
+![La pantalla Administración de usuarios, con las llaves de acceso de la cuenta que tiene la sesión iniciada y la tabla Todos los usuarios.](/assets/img/fresco-images/user-management.png)
+
+## Autenticación de dos factores {#two-factor-authentication}
+
+Cuando tu cuenta está en modo de contraseña, puedes añadir la autenticación de dos factores para reforzar
+la seguridad. Fresco usa el estándar TOTP, compatible con aplicaciones como Google Authenticator,
+1Password y Authy. (Los controles de la 2FA solo aparecen en las cuentas en modo de contraseña; el modo de llave
+de acceso no los usa).
+
+En la tarjeta **Administración de usuarios** de **Configuración**, activa **Autenticación de dos factores**,
+escanea el código QR con tu aplicación de autenticación e introduce el código actual para confirmar. A partir de
+entonces se te pedirá un código cada vez que inicies sesión. Al activarla, Fresco genera **10
+códigos de recuperación de un solo uso** para iniciar sesión si pierdes el dispositivo con la aplicación de autenticación.
+
+<TipBox danger>
+
+Guarda tus códigos de recuperación en un lugar seguro y separado del dispositivo con la aplicación de autenticación, como
+un gestor de contraseñas institucional. Puedes generar un juego nuevo en cualquier momento, lo que
+invalida los anteriores.
+
+</TipBox>
+
+### Exigir la autenticación de dos factores a todas las cuentas {#requiring-two-factor-authentication-for-everyone}
+
+Si tu institución exige la autenticación multifactor para todas las cuentas de administración, asigna el valor `true` a la
+variable de entorno `REQUIRE_TWO_FACTOR` en el archivo `.env` de tu implementación (consulta la
+referencia de [variables de entorno](/es/collect-data/fresco/advanced#environment-variables)).
+Es una variable de entorno, y no un ajuste del panel, a propósito: todas las cuentas de Fresco
+tienen los mismos privilegios de administración, así que un requisito que se pudiera desactivar desde el
+panel podría desactivarlo cualquiera de ellas. La fila **Exigir la autenticación de dos factores**
+de la tarjeta **Administración de usuarios** muestra si está en vigor. Mientras lo esté:
+
+- A una cuenta que inicia sesión con contraseña pero no tiene autenticación de dos factores se le pide que la
+  configure inmediatamente después de iniciar sesión, antes de poder acceder al panel. La configuración funciona
+  exactamente como se ha descrito más arriba, incluidos los códigos de recuperación. En una implementación nueva, a la primera
+  persona administradora se le pide que configure la autenticación de dos factores en cuanto termina el asistente de configuración.
+- No se puede desactivar la autenticación de dos factores en una cuenta en modo de contraseña. Otra persona
+  administradora puede seguir usando **Restablecer autenticación** en la cuenta de alguien del equipo que se haya quedado sin acceso (consulta
+  [Recuperar el acceso](#recovering-access)); esa cuenta vuelve a configurar la autenticación de dos factores
+  la próxima vez que inicie sesión.
+
+Las cuentas en modo de llave de acceso no se ven afectadas: una llave de acceso sustituye por completo a la contraseña, y Fresco
+considera que cumple el requisito. Fresco exige que cada llave de acceso verifique tu identidad con un
+PIN o biometría (consulta [Llaves de acceso](#passkeys), más abajo), así que ya combina dos
+factores distintos, la posesión del autenticador y esa comprobación, sin un paso de TOTP aparte.
+
+## Llaves de acceso {#passkeys}
+
+Una llave de acceso te permite iniciar sesión con la biometría de tu dispositivo (Touch ID, Windows Hello) o con una
+llave de seguridad física, sin ninguna contraseña. Las llaves de acceso son el método de inicio de sesión _principal_
+de una cuenta, no un segundo factor que se añade a una contraseña.
+
+Fresco exige que cada llave de acceso verifique tu identidad con biometría o un PIN (la _verificación de
+usuario_ de WebAuthn), tanto al registrarla como cada vez que inicias sesión, y rechaza una
+respuesta en la que el autenticador se haya saltado esa comprobación. Por eso, una llave de seguridad física
+necesita un PIN (tu navegador te pedirá que definas uno si la llave lo admite), y no se puede registrar
+una llave de seguridad que no pueda verificar tu identidad. Una llave de acceso que una versión anterior de Fresco
+registró en una llave de seguridad de ese tipo ya no permite iniciar sesión; Fresco te indica qué debes comprobar en lugar de
+mostrar un error genérico. Si te ocurre, inicia sesión con otra de tus llaves de acceso o
+pide a otra persona administradora que use **Restablecer autenticación** en tu cuenta (consulta
+[Recuperar el acceso](#recovering-access)). Si todavía tienes la sesión iniciada, usa **Añadir llave de acceso**
+para registrar una que sí verifique tu identidad antes de cerrar la sesión.
+
+En la tarjeta **Administración de usuarios** de **Configuración**, una cuenta en modo de llave de acceso puede usar **Añadir
+llave de acceso** para registrar más llaves de acceso (puedes registrar más de una, y cada una recibe
+un nombre) o **Eliminar** para borrar una. No puedes eliminar tu única llave de acceso sin antes
+definir una contraseña (de lo contrario, te quedarías sin acceso), así que, para abandonar por completo el modo de llave de acceso,
+usa **Cambiar a autenticación con contraseña**.
+
+## Elegir entre contraseñas y llaves de acceso {#choosing-between-passwords-and-passkeys}
+
+Una cuenta puede pasar de un modo a otro en cualquier momento desde la tarjeta **Administración de usuarios**, pero
+**el cambio es destructivo**: Fresco nunca conserva a la vez los dos tipos de credenciales.
+
+- **Cambiar a autenticación con llave de acceso** te pide tu contraseña actual, registra una llave de acceso
+  y, después, elimina tu contraseña junto con la autenticación de dos factores y los códigos de recuperación que tuvieras.
+- **Cambiar a autenticación con contraseña** verifica tu identidad con una llave de acceso existente y, después, elimina
+  **todas** tus llaves de acceso registradas y las sustituye por una contraseña.
+
+<TipBox danger>
+
+Como el cambio elimina tus credenciales anteriores, asegúrate de que puedes usar el nuevo
+método (es decir, de que funciona la aplicación de autenticación o el dispositivo con llave de acceso que necesites) antes de empezar, y mantén dada de alta
+a una segunda persona administradora para que nunca seas la única persona que pueda iniciar sesión.
+
+</TipBox>
+
+## Recuperar el acceso {#recovering-access}
+
+Fresco **no tiene ningún proceso de «¿Has olvidado tu contraseña?» por correo electrónico**. Solo puedes [cambiar tu
+contraseña](#changing-your-password) cuando tienes la sesión iniciada. Si te quedas sin acceso, tus opciones, por
+orden de preferencia, son:
+
+1. **Usar un código de recuperación** para iniciar sesión (si la autenticación de dos factores estaba activada).
+2. **Pedir a otra persona administradora** que use **Restablecer autenticación** en tu cuenta desde Administración de usuarios.
+   Esto borra las credenciales de la cuenta afectada (las llaves de acceso, la autenticación de dos factores
+   y los códigos de recuperación) y genera una contraseña temporal. La persona administradora te comunica esa
+   contraseña temporal, y tú la usas para volver a iniciar sesión y configurar credenciales nuevas.
+3. Como último recurso, si no se puede acceder a ninguna cuenta y no quedan códigos de recuperación,
+   [restablecer tu base de datos](/es/collect-data/fresco/deployment-troubleshooting#reset-your-database).
+   **Esto destruye todos los datos, así como las entrevistas que no hayas exportado.**
+
+Por eso, guarda tus credenciales y tus códigos de recuperación en un lugar seguro y da de alta más de una
+cuenta de administración, para que siempre haya una segunda persona que pueda restablecer el acceso.
+
+Para saber cómo funciona la autenticación desde el punto de vista de la infraestructura (cookies de sesión, cifrado, limitación de
+la frecuencia de los intentos), consulta las [preguntas frecuentes para departamentos de informática](/es/collect-data/fresco/it-faq).

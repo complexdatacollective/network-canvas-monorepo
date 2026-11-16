@@ -6,17 +6,20 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { outline, TAU, useIllustrationClock } from './illustrationMotion';
 
-// A greeting for each of the site's languages. The viewer's own greeting
-// starts at the front of the orbit.
+// A greeting for each of the site's languages, marked with its own language
+// so it is set in that language's typeface whatever the page's language is
+// (Arabic is drawn in Readex Pro only inside text marked as Arabic). The
+// viewer's own greeting starts at the front of the orbit.
 const greetings = [
-  { text: 'Hello', locales: ['en-US', 'en-GB'], width: 104 },
-  { text: 'Hola', locales: ['es'], width: 96 },
-  { text: 'Bonjour', locales: ['fr'], width: 128 },
-  { text: '你好', locales: ['zh-Hans', 'zh-Hant'], width: 92 },
-  { text: 'Hallo', locales: ['de'], width: 104 },
-  { text: 'Olá', locales: ['pt-BR'], width: 84 },
-  { text: 'Ciao', locales: ['it'], width: 92 },
-  { text: 'Hoi', locales: ['nl'], width: 80 },
+  { text: 'Hello', lang: 'en', locales: ['en-US', 'en-GB'], width: 104 },
+  { text: 'Hola', lang: 'es', locales: ['es'], width: 96 },
+  { text: 'Bonjour', lang: 'fr', locales: ['fr'], width: 128 },
+  { text: '你好', lang: 'zh', locales: ['zh-Hans', 'zh-Hant'], width: 92 },
+  { text: 'Hallo', lang: 'de', locales: ['de'], width: 104 },
+  { text: 'Olá', lang: 'pt', locales: ['pt-BR'], width: 84 },
+  { text: 'Ciao', lang: 'it', locales: ['it'], width: 92 },
+  { text: 'Hoi', lang: 'nl', locales: ['nl'], width: 80 },
+  { text: 'مرحبًا', lang: 'ar', locales: ['ar'], width: 104 },
 ] as const;
 
 const LOOP = 16;
@@ -43,6 +46,7 @@ const sparkles = [
 
 type Bubble = {
   text: string;
+  lang: string;
   width: number;
   depth: number;
   opacity: number;
@@ -67,6 +71,7 @@ function GreetingBubble({ bubble }: { bubble: Bubble }) {
         strokeLinejoin="round"
       />
       <text
+        lang={bubble.lang}
         x={bubble.width / 2}
         y={32}
         textAnchor="middle"
@@ -160,6 +165,7 @@ export function LanguageIllustration() {
     const scale = 0.78 + 0.11 * (depth + 1);
     return {
       text: greeting.text,
+      lang: greeting.lang,
       width: greeting.width,
       depth,
       opacity: 0.6 + 0.2 * (depth + 1),

@@ -1,0 +1,108 @@
+// Colours and line weights for the landing page's drawings
+// (javascripts/discourse/components/landing/illustrations.gjs). Outlines are
+// the text colour and fills come from the Network Canvas palette, so a drawing
+// reads on the light and the dark palette alike.
+
+.nc-illustration {
+  display: block;
+  overflow: visible;
+
+  // Nothing is filled or stroked unless a class below says so.
+  :where(*) {
+    fill: none;
+    stroke: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .ln {
+    stroke: var(--nc-text);
+    stroke-width: 4;
+  }
+
+  .ln-thin {
+    stroke: var(--nc-text);
+    stroke-width: 2.5;
+  }
+
+  .ln-case {
+    stroke: var(--nc-text);
+    stroke-width: 7;
+  }
+
+  .ln-bold {
+    stroke-width: 5;
+  }
+
+  .ln-core {
+    stroke-width: 3;
+  }
+
+  .ln-mid {
+    stroke-width: 5;
+  }
+
+  .ln-heavy {
+    stroke-width: 6;
+  }
+
+  .ln-thick {
+    stroke-width: 7;
+  }
+
+  .f-wash {
+    fill: color-mix(in oklab, oklch(var(--nc-sea-serpent)) 14%, transparent);
+  }
+
+  .f-surface {
+    fill: var(--nc-surface);
+  }
+
+  .f-shine {
+    fill: oklch(var(--nc-platinum));
+  }
+
+  .f-line {
+    fill: var(--nc-text);
+  }
+
+  .s-line {
+    stroke: var(--nc-text);
+  }
+
+  .f-coral {
+    fill: oklch(var(--nc-neon-coral));
+  }
+
+  .s-coral {
+    stroke: oklch(var(--nc-neon-coral));
+  }
+
+  .f-mustard {
+    fill: oklch(var(--nc-mustard));
+  }
+
+  .s-mustard {
+    stroke: oklch(var(--nc-mustard));
+  }
+
+  .f-mint {
+    fill: oklch(var(--nc-sea-green));
+  }
+
+  .s-mint {
+    stroke: oklch(var(--nc-sea-green));
+  }
+
+  .f-sky {
+    fill: oklch(var(--nc-sea-serpent));
+  }
+
+  .s-sky {
+    stroke: oklch(var(--nc-sea-serpent));
+  }
+
+  .f-purple {
+    fill: oklch(var(--nc-purple-pizazz));
+  }
+}

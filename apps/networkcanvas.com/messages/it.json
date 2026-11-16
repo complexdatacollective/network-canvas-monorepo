@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "Progetti finanziati che usano Network Canvas",
-    "introduction": "È per noi motivo di orgoglio che Network Canvas venga usato attivamente in numerosi progetti finanziati a livello federale negli Stati Uniti, in contesti di ricerca, istituzioni ed enti finanziatori molto diversi tra loro.",
-    "previous": "Progetto precedente",
-    "next": "Progetto successivo",
-    "show": "Mostra il progetto {number}"
+    "introduction": "È per noi motivo di orgoglio che Network Canvas venga usato attivamente in numerosi progetti finanziati a livello federale negli Stati Uniti, in contesti di ricerca, istituzioni ed enti finanziatori molto diversi tra loro."
   },
   "Publications": {
     "heading": "Pubblicazioni recenti che usano Network Canvas",
-    "carouselLabel": "Carosello delle pubblicazioni recenti",
-    "introduction": "Ecco le 16 pubblicazioni più recenti che usano Network Canvas. Consulta <all>l’elenco completo delle pubblicazioni</all>.",
-    "submission": "Se vuoi segnalare una tua pubblicazione, faccelo sapere scrivendo nella <thread>discussione</thread> del nostro sito della comunità.",
-    "thread": "discussione"
+    "introduction": "Network Canvas ha facilitato ricerche in un’ampia varietà di discipline, all’interno di una rete emergente di persone autrici. Qui sono mostrate le <strong>{count}</strong> pubblicazioni più recenti. Questo elenco si aggiorna automaticamente quando troviamo nuove pubblicazioni che usano il software.",
+    "viewAll": "Vedi tutte le {count, plural, one {# pubblicazione} other {# pubblicazioni}}, con {authors, plural, one {# persona autrice} other {# persone autrici}}",
+    "legendPublication": "Pubblicazione",
+    "legendAuthor": "Persona autrice",
+    "relatedLabel": "Pubblicazioni che hanno almeno una persona autrice in comune con questa pubblicazione"
   },
   "PublicationsPage": {
     "metadata": {
@@ -336,7 +334,7 @@
       "bestFor": "Ideale per",
       "downloadVersion": "Scarica la versione {version}",
       "platformAccessibleName": "{platform} per {app}",
-      "schemaVersionInfo": "Architect Classic e Interviewer Classic supportano i protocolli con lo Schema 7. Le versioni di Architect, Interviewer e Fresco basate sul browser usano lo Schema 9, che include le funzionalità più recenti. L’aggiornamento di un protocollo è irreversibile, quindi conserva il file originale con lo Schema 7 se ti servono ancora le app Classic.",
+      "schemaVersionInfo": "Architect Classic e Interviewer Classic supportano i protocolli che usano uno schema meno recente. Le app per browser Architect, Interviewer e Fresco usano lo schema più recente, che include tutte le ultime funzionalità. La migrazione di un protocollo allo schema più recente è irreversibile, quindi conserva una copia del file originale se ti servono ancora le app Classic.",
       "schemaVersionLink": "Scopri le versioni dello schema"
     },
     "platforms": {
@@ -389,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · Modalità manutenzione",
-        "description": "Da usare solo se il tuo studio deve restare compatibile con Interviewer Classic e con lo Schema 7.",
+        "description": "Da usare solo se il tuo studio deve restare compatibile con Interviewer Classic e con il suo schema meno recente.",
         "bestFor": {
           "classicCompatibility": "Uno studio esistente che deve restare compatibile con Interviewer Classic",
-          "editWithoutMigration": "Un protocollo con lo Schema 7 che deve continuare a essere modificato senza migrazione"
+          "editWithoutMigration": "Un protocollo con uno schema meno recente che deve continuare a essere modificato senza migrazione"
         }
       },
       "interviewerClassic": {
         "status": "Classic · Studi esistenti",
-        "description": "Per studi già avviati con lo Schema 7 e per flussi di lavoro offline su computer desktop o tablet. Mantenuto per compatibilità e correzioni di bug.",
+        "description": "Per studi già avviati con uno schema meno recente e per flussi di lavoro offline su computer desktop o tablet. Viene mantenuta per la compatibilità e riceve correzioni di bug.",
         "bestFor": {
-          "schema7Study": "Uno studio già avviato che dipende dallo Schema 7",
+          "schema7Study": "Uno studio già avviato che dipende da uno schema meno recente",
           "desktopTablet": "Mantenere un flusso di lavoro esistente su desktop o tablet",
           "offlineCollection": "Studi che richiedono il precedente flusso di lavoro per la raccolta offline"
         }

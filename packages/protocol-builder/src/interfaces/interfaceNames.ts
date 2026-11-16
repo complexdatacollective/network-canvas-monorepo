@@ -139,9 +139,11 @@ export const interfaceNameMessages = defineMessages({
 const englishIntl = createAppIntl({ locale: 'en' });
 
 /**
- * The existing English names are also used when generating initial protocol
- * labels. Keep those independent of the app's presentation preference.
- * Display surfaces use interfaceDisplayName(type, intl) instead.
+ * The English names, independent of the app's presentation preference.
+ * Display surfaces use interfaceDisplayName(type, intl) instead. The names
+ * proposed for a stage are not these: they follow the protocol's default
+ * language and live with the wording Network Canvas supplies, in
+ * `@codaco/protocol-validation` (`stage-wording/stage-names.ts`).
  */
 export const INTERFACE_NAMES: Record<StageType, string> = mapValues(
   interfaceNameMessages,

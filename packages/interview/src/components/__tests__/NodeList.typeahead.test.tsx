@@ -118,7 +118,7 @@ function renderList(store: EncryptionStore, nodes: NcNode[]) {
   render(
     <Provider store={store}>
       <TestProtocolLocalization>
-        <InterviewI18nProvider requestedLocale="en">
+        <InterviewI18nProvider>
           <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
             <DndStoreProvider>
               <motion.div initial="initial" animate="animate">

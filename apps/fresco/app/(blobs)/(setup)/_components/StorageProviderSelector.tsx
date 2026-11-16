@@ -21,7 +21,7 @@ const messages = defineMessages({
     defaultMessage:
       'Self-hosted or cloud object storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2).',
     description:
-      'Researcher-facing StorageProviderSelector: Self-hosted or cloud object storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2).',
+      "Short description under the S3-compatible storage option in the setup wizard's storage provider choice. The product names in brackets are not translated.",
   },
 
   uploadThingDescription: {
@@ -29,7 +29,7 @@ const messages = defineMessages({
     defaultMessage:
       'Third-party managed storage. Easy to set up \u2014 just paste your API token.',
     description:
-      'Researcher-facing StorageProviderSelector: Third-party managed storage. Easy to set up \u2014 just paste your API token.',
+      "Short description under the UploadThing option in the setup wizard's storage provider choice. The API token is the UploadThing token the researcher pastes into the form below.",
   },
 
   theStorageProviderIsSetToVia: {
@@ -37,7 +37,7 @@ const messages = defineMessages({
     defaultMessage:
       'The storage provider is set to {value1} via the STORAGE_PROVIDER environment variable.',
     description:
-      'Researcher-facing StorageProviderSelector: The storage provider is set to value via the STORAGE_PROVIDER environment variable.',
+      "Info notice in the setup wizard's storage step when the host has fixed the storage provider with an environment variable, so the choice is locked. value1 is the provider name; STORAGE_PROVIDER is a variable name and is not translated.",
   },
 });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { datePickerWindows } from '@codaco/shared-consts';
 
@@ -300,13 +300,23 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   };
 
   const interactionDisabled = Boolean(disabled) || Boolean(readOnly);
-  const yearPartLabelId = id ? `${id}-year-part` : undefined;
-  const monthPartLabelId = id ? `${id}-month-part` : undefined;
+  // The two month-mode controls share one field name, so each also needs a name
+  // of its own ("Year", "Month") or a screen reader cannot tell them apart.
+  // These are derived from a generated id, not the caller's `id`, so a picker
+  // rendered without one is still named.
+  const partIdBase = useId();
+  const yearPartLabelId = `${partIdBase}-year-part`;
+  const monthPartLabelId = `${partIdBase}-month-part`;
+  const ariaLabel = rest['aria-label'];
+  const ariaLabelId = ariaLabel ? `${partIdBase}-name` : undefined;
   const labelledBy = rest['aria-labelledby'];
-  const yearLabelledBy = [labelledBy, yearPartLabelId]
+  // `aria-labelledby` overrides `aria-label`, so a caller's `aria-label` is
+  // referenced from the controls as an element, like the field's own label.
+  const monthFieldNames = [labelledBy, ariaLabelId].filter(Boolean).join(' ');
+  const yearLabelledBy = [monthFieldNames, yearPartLabelId]
     .filter(Boolean)
     .join(' ');
-  const monthLabelledBy = [labelledBy, monthPartLabelId]
+  const monthLabelledBy = [monthFieldNames, monthPartLabelId]
     .filter(Boolean)
     .join(' ');
   const controlAriaProps = {
@@ -320,16 +330,17 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   if (resolutionType === 'month') {
     return (
       <div className={cx('flex gap-2', className)}>
-        {yearPartLabelId && (
-          <span id={yearPartLabelId} className="sr-only">
-            {yearLabel}
+        {ariaLabelId && (
+          <span id={ariaLabelId} className="sr-only">
+            {ariaLabel}
           </span>
         )}
-        {monthPartLabelId && (
-          <span id={monthPartLabelId} className="sr-only">
-            {monthLabel}
-          </span>
-        )}
+        <span id={yearPartLabelId} className="sr-only">
+          {yearLabel}
+        </span>
+        <span id={monthPartLabelId} className="sr-only">
+          {monthLabel}
+        </span>
         <SelectField
           id={id}
           size={size}
@@ -344,7 +355,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           onBlur={onBlur}
           onFocus={onFocus}
           {...controlAriaProps}
-          aria-labelledby={yearLabelledBy || undefined}
+          aria-labelledby={yearLabelledBy}
           className="w-fit"
         />
         <SelectField
@@ -361,7 +372,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           onBlur={onBlur}
           onFocus={onFocus}
           {...controlAriaProps}
-          aria-labelledby={monthLabelledBy || undefined}
+          aria-labelledby={monthLabelledBy}
           className="w-fit"
         />
       </div>

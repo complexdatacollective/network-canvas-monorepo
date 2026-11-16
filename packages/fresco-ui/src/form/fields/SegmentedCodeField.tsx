@@ -321,6 +321,10 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
 
   return (
     <fieldset
+      // A code is read left to right in every language this accepts — digits
+      // and Latin letters — so its first character belongs in the leftmost
+      // box. Following a right-to-left page would show the code backwards.
+      dir="ltr"
       className={cx(segmentGroupVariants({ size }), className)}
       aria-label={
         rest['aria-describedby']

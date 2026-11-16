@@ -15,27 +15,28 @@ const messages = defineMessages({
   installationExpired: {
     id: 'fresco.expired.page.installationExpired',
     defaultMessage: 'Installation expired',
-    description: 'Researcher-facing expired / page: Installation expired',
+    description:
+      'Heading of the page shown to anyone who opens an installation of Fresco that was not set up within the allowed time and has been locked.',
   },
   youDidNotConfigureThisDeploymentOf: {
     id: 'fresco.expired.page.youDidNotConfigureThisDeploymentOf',
     defaultMessage:
       'You did not configure this deployment of Fresco in time, and it has now been locked down for your security.',
     description:
-      'Researcher-facing expired / page: You did not configure this deployment of Fresco in time, and it has now been locked down for your security.',
+      'Lead paragraph on the installation expired page explaining why the installation is locked: setup was not completed in time.',
   },
   pleaseRedeployANewInstanceOfFresco: {
     id: 'fresco.expired.page.pleaseRedeployANewInstanceOfFresco',
     defaultMessage:
       'Please redeploy a new instance of Fresco to continue using the software.',
     description:
-      'Researcher-facing expired / page: Please redeploy a new instance of Fresco to continue using the software.',
+      'Paragraph on the installation expired page telling the person hosting Fresco to deploy a fresh copy of the software.',
   },
   devModeResetConfiguration: {
     id: 'fresco.expired.page.devModeResetConfiguration',
     defaultMessage: 'Dev mode: Reset Configuration',
     description:
-      'Researcher-facing expired / page: Dev mode: Reset Configuration',
+      'Button on the installation expired page, shown only in development builds, that resets the installation settings so setup can start again.',
   },
 });
 

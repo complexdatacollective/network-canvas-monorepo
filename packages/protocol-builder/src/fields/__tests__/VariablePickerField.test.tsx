@@ -1500,13 +1500,13 @@ describe('the picker’s blur boundary', () => {
       ),
     );
     return (
-      <p
-        role="status"
+      <output
+        aria-live="polite"
         aria-label="Left the attribute field"
         data-blurred={blurred}
       >
         {blurred ? 'left' : 'in it'}
-      </p>
+      </output>
     );
   }
 

@@ -21,7 +21,8 @@ import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
-import type { Codebook, StageType } from '@codaco/protocol-validation';
+import { stageWithoutSuppliedText } from '@codaco/interview/supplied-wording';
+import { type Codebook, type StageType } from '@codaco/protocol-validation';
 import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -910,8 +911,19 @@ export function renderStageEditor<T extends StageType = StageType>(
       // `id` and `type` are the section's, never the editor's: `seeded.fields`
       // is the document without them.
       const { id: _id, type: _type, ...savedFields } = written.stageDocument;
+      // A protocol stores a stage without the wording Network Canvas supplies,
+      // so the stage it would have stored is what a save is compared with.
+      const {
+        id: _seededId,
+        type: _seededType,
+        ...storedFields
+      } = stageWithoutSuppliedText({
+        ...seeded.fields,
+        id: seeded.id,
+        type: seeded.type,
+      });
       const { dropped, added, changed } = stageDocumentDiff(
-        seeded.fields,
+        storedFields,
         savedFields,
       );
       if (dropped.length > 0 || added.length > 0 || changed.length > 0) {
@@ -1305,8 +1317,13 @@ function collectDifferences(
 function readOwnedKeys(harness: HTMLElement | null): string[] {
   if (harness === null) return [];
   const keys = new Set<string>();
-  for (const field of harness.querySelectorAll('[data-field-path]')) {
-    const registeredName = field.getAttribute('data-field-path');
+  // A switched-off optional section names the fields it shows when on.
+  for (const field of harness.querySelectorAll(
+    '[data-field-path], [data-owned-field-path]',
+  )) {
+    const registeredName =
+      field.getAttribute('data-field-path') ??
+      field.getAttribute('data-owned-field-path');
     if (registeredName === null || registeredName === '') continue;
     // Parsed rather than split on a dot: a protocol-authored key may contain
     // one, and `["prompt text"]` is a single name with a space in it.

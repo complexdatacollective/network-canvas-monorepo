@@ -16,7 +16,6 @@ import {
   Shell,
   type SyncHandler,
 } from '@codaco/interview';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { currentProtocolToPayload } from '@codaco/interview/contract';
 import {
   type ConstraintConflict,
@@ -28,7 +27,7 @@ import {
   type CurrentProtocol,
   getLocaleMetadata,
   type LocaleTag,
-  selectProtocolLocale,
+  resolveProtocolLocale,
   type Stage,
 } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
@@ -58,73 +57,86 @@ const messages = defineMessages({
   thisPreviewHasEnded: {
     id: 'architect.previewHost.previewHost.thisPreviewHasEnded',
     defaultMessage: 'This preview has ended',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Heading of the page in the preview browser tab shown when the tab has lost the Architect tab that opened it, so the preview cannot run.',
   },
   returnToArchitectAndClickPreview: {
     id: 'architect.previewHost.previewHost.returnToArchitectAndClickPreview',
     defaultMessage:
       'Return to Architect and click Preview again to start a new one.',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Instruction under the preview-ended heading; Preview is the button in Architect that opens the interview preview in a new tab.',
   },
   closeTab: {
     id: 'architect.previewHost.previewHost.closeTab',
     defaultMessage: 'Close tab',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Button on the error and ended screens of the preview page that closes the preview browser tab.',
   },
   startThePreviewAgain: {
     id: 'architect.previewHost.previewHost.startThePreviewAgain',
     defaultMessage: 'Start the preview again',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Button shown when the previewed interview is finished; restarts the preview from the beginning. Shown in the language of the interview, not the language of Architect.',
   },
   couldnTReachTheArchitectTab: {
     id: 'architect.previewHost.previewHost.couldnTReachTheArchitectTab',
     defaultMessage: "Couldn't reach the Architect tab",
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Heading of the preview page error shown when the Architect tab that opened the preview did not send the protocol in time.',
   },
   thePreviewCouldnTBeLoadedThe: {
     id: 'architect.previewHost.previewHost.thePreviewCouldnTBeLoadedThe',
     defaultMessage:
       "The preview couldn't be loaded. The Architect tab may be closed or no longer responding.",
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Explanation under the heading of the preview page error shown when the Architect tab did not respond; a Retry button follows.',
   },
   thisProtocolCanTBePreviewed: {
     id: 'architect.previewHost.previewHost.thisProtocolCanTBePreviewed',
     defaultMessage: "This protocol can't be previewed",
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Heading of the preview page error shown when fake interview data cannot be generated because the validation rules of the protocol contradict each other.',
   },
   syntheticDataCouldnTBeGeneratedBecause: {
     id: 'architect.previewHost.previewHost.syntheticDataCouldnTBeGeneratedBecause',
     defaultMessage:
       "Synthetic data couldn't be generated because these validation rules can't all be satisfied. Return to Architect, update the protocol, and preview it again.",
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Explanation under the heading of the preview page error; synthetic data is the made-up answers used to fill the preview. A list of the conflicting rules follows.',
   },
   ego: {
     id: 'architect.previewHost.previewHost.ego',
     defaultMessage: 'Ego',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Name of the subject in a conflict list item on the preview error page when the conflicting variables belong to ego (the participant), not to a node type.',
   },
   couldnTBuildThePreview: {
     id: 'architect.previewHost.previewHost.couldnTBuildThePreview',
     defaultMessage: "Couldn't build the preview",
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Heading of the preview page error shown when an unexpected failure occurred while preparing the protocol for preview.',
   },
   somethingWentWrongPreparingThisProtocol: {
     id: 'architect.previewHost.previewHost.somethingWentWrongPreparingThisProtocol',
     defaultMessage:
       'Something went wrong preparing this protocol for preview. Return to Architect, check the protocol, and try again.',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Explanation under the heading of the preview page error shown after an unexpected failure preparing the protocol; a Retry button follows.',
   },
   loadingPreview: {
     id: 'architect.previewHost.previewHost.loadingPreview',
     defaultMessage: 'Loading preview…',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
+    description:
+      'Status text centred on the preview page while it waits for the protocol from the Architect tab and prepares the interview.',
   },
 });
 const extraMessages = defineMessages({
   thisType: {
     id: 'architect.preview.constraints.thisType',
     defaultMessage: 'This type',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Fallback subject in a conflict list item on the preview error page, standing in for the node type name when it cannot be found.',
   },
 });
 
@@ -240,13 +252,6 @@ export function PreviewHost() {
   // by a language chooser stage. Requested languages cannot override one, so
   // from then on the toolbar's choice is stated to the interview instead.
   const [preferenceHeld, setPreferenceHeld] = useState(false);
-  // The interview's messages load during the handshake and the synthetic
-  // network build, rather than once the Shell mounts, in the language the
-  // Shell will negotiate from the same inputs. A failure here is retried by
-  // the Shell itself.
-  useEffect(() => {
-    loadInterviewCatalog(browserLanguages, statedLocale).catch(() => undefined);
-  }, [browserLanguages, statedLocale]);
   useEffect(() => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- lib.dom types window.opener as any; it is a WindowProxy or null, possibly cross-origin, so instanceof Window cannot check it
     const opener = window.opener as Window | null;
@@ -429,7 +434,7 @@ export function PreviewHost() {
         <Paragraph margin="none" className="max-w-xl">
           {intl.formatMessage(messages.syntheticDataCouldnTBeGeneratedBecause)}
         </Paragraph>
-        <div className="flex w-full max-w-xl flex-col gap-3 text-left">
+        <div className="flex w-full max-w-xl flex-col gap-3 text-start">
           {failure.conflicts.map((conflict, index) => (
             <Alert
               key={`${conflict.entity}-${conflict.variableIds.join(',')}-${index}`}
@@ -492,8 +497,9 @@ export function PreviewHost() {
     );
   }
   // The language the interview shows, chosen as the interview chooses it.
-  const shownLocale = selectProtocolLocale(
-    statedLocale === null ? browserLanguages : [statedLocale],
+  const shownLocale = resolveProtocolLocale(
+    statedLocale,
+    browserLanguages,
     interviewPayload.protocol.localization,
   );
   return (

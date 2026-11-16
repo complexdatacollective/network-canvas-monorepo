@@ -86,6 +86,9 @@ describe('LocalizedStringField', () => {
     expect(input).toHaveValue("Who's {here}?");
     expect(input.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(input.closest('[dir]')).toHaveAttribute('dir', 'ltr');
+    // Its language is known, so what is typed takes that language's
+    // direction rather than its first letter's.
+    expect(input.closest('[lang]')).toHaveAttribute('data-typed-language');
   });
 
   it('edits the initial language first when the protocol declares it', () => {
@@ -128,6 +131,24 @@ describe('LocalizedStringField', () => {
       expect(saved.current).toEqual({
         title: { en: 'Hello', es: escapeMessageText('Hola {amigo}') },
       }),
+    );
+  });
+
+  it('keeps plain text on one line, whatever separator is pasted into it', async () => {
+    const user = userEvent.setup();
+    const saved = renderTitle({ initialValue: { en: 'Hello' } });
+    const lineSeparator = String.fromCodePoint(0x2028);
+    const paragraphSeparator = String.fromCodePoint(0x2029);
+
+    await user.click(screen.getByRole('textbox', { name: 'Title' }));
+    await user.paste(`${lineSeparator}there${paragraphSeparator}`);
+    // The space the trailing separator leaves stays while the text is being
+    // typed, so the next word typed is a word of its own.
+    await user.keyboard('again');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(saved.current).toEqual({ title: { en: 'Hello there again' } }),
     );
   });
 
@@ -317,6 +338,7 @@ describe('LocalizedStringField', () => {
             name="body"
             label="Body"
             component={LocalizedRichTextField}
+            shape={{ format: 'markdown', lines: 'multiple' }}
             initialValue={{ en: 'Welcome', es: 'Bienvenido' }}
           />
         </Form>

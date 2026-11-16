@@ -16,14 +16,14 @@ const messages = defineMessages({
     defaultMessage:
       '{count, plural, one {# unused attribute} other {# unused attributes}}',
     description:
-      'Visible text in components / Codebook / UnusedVariablesAlert.',
+      'Title of the warning at the top of the Codebook page when some codebook variables (attributes) are not used anywhere. count is the number of unused variables.',
   },
   notReferencedAnywhereInYour: {
     id: 'architect.codebook.unusedVariablesAlert.notReferencedAnywhereInYour',
     defaultMessage:
       '{count, plural, one {This attribute is not referenced anywhere in your protocol and is tagged <strong>not in use</strong> below. Use the <strong2>Show unused only</strong2> filter to find it, then reference it in a stage or delete it.} other {These attributes are not referenced anywhere in your protocol and are tagged <strong>not in use</strong> below. Use the <strong2>Show unused only</strong2> filter to find them, then reference them in a stage or delete them.}}',
     description:
-      'Visible text in components / Codebook / UnusedVariablesAlert.',
+      'Body of the warning at the top of the Codebook page about unused variables (attributes). count is the number of unused variables; strong marks the badge text not in use and strong2 marks the name of the Show unused only checkbox, so both must match those labels.',
   },
 });
 

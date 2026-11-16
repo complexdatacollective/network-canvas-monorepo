@@ -56,13 +56,13 @@ export const Positions: Story = {
       <div />
 
       <Tooltip>
-        <TooltipTrigger render={<Button className="w-full">Left</Button>} />
-        <TooltipContent side="left">Left tooltip</TooltipContent>
+        <TooltipTrigger render={<Button className="w-full">Start</Button>} />
+        <TooltipContent side="inline-start">Start tooltip</TooltipContent>
       </Tooltip>
       <div />
       <Tooltip>
-        <TooltipTrigger render={<Button className="w-full">Right</Button>} />
-        <TooltipContent side="right">Right tooltip</TooltipContent>
+        <TooltipTrigger render={<Button className="w-full">End</Button>} />
+        <TooltipContent side="inline-end">End tooltip</TooltipContent>
       </Tooltip>
 
       <div />

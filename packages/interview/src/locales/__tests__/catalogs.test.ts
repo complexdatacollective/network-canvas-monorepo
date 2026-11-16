@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -6,47 +6,71 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
-  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
-  readTranslationSources,
   type ExtractedCatalog,
+  readTranslationSources,
 } from '@codaco/app-i18n/catalog-guards';
-import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
+import {
+  SUPPLIED_LANGUAGES,
+  SUPPLIED_TEXTS,
+} from '@codaco/protocol-validation';
 
-import { interviewLocales } from '../../i18n/locales';
-import { interviewCatalogLoaders } from '../catalogs';
-import de from '../de.json';
-import fr from '../fr.json';
-import ptBR from '../pt-BR.json';
+import { interfaceTextMessages } from '../../i18n/interfaceTextMessages';
+import { stageWordingMessages } from '../../i18n/stageWordingMessages';
+import { ADDED_TEXT } from '../../wording/addedText';
+import { isAddedTextId } from '../../wording/addedTextIds';
+import { SUPPLIED_WORDING } from '../../wording/suppliedWording';
 
 const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const committedEn = JSON.parse(
   readFileSync(join(localesDir, 'en.json'), 'utf8'),
 ) as ExtractedCatalog;
-const esSources = readTranslationSources(localesDir, 'es');
-const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
-const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
-const deSources = readTranslationSources(localesDir, 'de');
-const nlSources = readTranslationSources(localesDir, 'nl');
-const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
-const italianSources = readTranslationSources(localesDir, 'it');
-const frSources = readTranslationSources(localesDir, 'fr');
-const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
-/**
- * Every catalog this package ships, loaded through its own loaders — the path a
- * host takes — so what a locale actually serves is what gets inspected.
- */
-const loadedCatalogs = await Promise.all(
-  Object.keys(interviewCatalogLoaders).map((locale) =>
-    loadCatalog(locale, interviewCatalogLoaders),
-  ),
+/** The locale the messages are written in, so its catalogue is no translation. */
+const SOURCE_LOCALE = 'en';
+
+/** Where the catalogues of the wording a protocol may reword are kept. */
+const wordingDir = join(localesDir, 'wording');
+
+const readCatalogue = (locale: string) =>
+  JSON.parse(
+    readFileSync(join(wordingDir, `${locale}.json`), 'utf8'),
+  ) as Record<string, string>;
+
+/** The catalogues committed, by language. */
+const committedLocales = readdirSync(wordingDir)
+  .filter((file) => file.endsWith('.json') && !file.endsWith('.source.json'))
+  .map((file) => file.replace(/\.json$/, ''));
+
+/** The message that words each text a protocol may reword. */
+const wordingIds = [...new Set(SUPPLIED_TEXTS.map(({ wording }) => wording))];
+
+/** The English of the messages a protocol may reword: what is translated. */
+const wordingEnglish: ExtractedCatalog = Object.fromEntries(
+  wordingIds.flatMap((id) => {
+    const message = committedEn[id];
+    return message === undefined ? [] : [[id, message]];
+  }),
 );
 
-describe('the interview package built-in message catalogs', () => {
+/** The texts also worded in a regional variant, by variant. */
+const variantIds = (variant: string) =>
+  [
+    ...new Set(
+      SUPPLIED_TEXTS.filter(({ variants }) => variants?.includes(variant)).map(
+        ({ wording }) => wording,
+      ),
+    ),
+  ].toSorted();
+
+const variants = [
+  ...new Set(SUPPLIED_TEXTS.flatMap(({ variants: also }) => also ?? [])),
+];
+
+describe('the interview package built-in messages', () => {
   it('keeps the English extraction fresh, with unique explicit IDs and translator descriptions', async () => {
     const extracted = await extractMessages(
       collectSourceFiles(dirname(localesDir)),
@@ -54,98 +78,162 @@ describe('the interview package built-in message catalogs', () => {
     expect(checkCatalogFreshness(committedEn, extracted)).toEqual([]);
   }, 120_000);
 
+  // A file directly inside `locales` is one a build may take for an app's own
+  // interface (`@codaco/app-i18n`'s convention): a translation is compiled
+  // into parsed messages. The wording a protocol may reword has to stay text,
+  // so its catalogues are one folder down.
+  it('keeps no translation where a build would compile it', () => {
+    expect(
+      readdirSync(localesDir).filter((file) => file.endsWith('.json')),
+    ).toEqual(['en.json']);
+  });
+
   it('owns only interview.* messages and leaves universal verbs to common.*', () => {
     expect(Object.keys(committedEn).length).toBeGreaterThan(0);
-    for (const id of [
-      ...Object.keys(committedEn),
-      ...loadedCatalogs.flatMap(Object.keys),
-    ]) {
+    for (const id of Object.keys(committedEn)) {
       expect(id).toMatch(/^interview\./);
     }
   });
+});
 
-  it('ships every ecosystem language without assuming the host registry', () => {
-    const declared = interviewLocales.map(({ locale }) => locale);
-    expect(declared).toEqual([
-      'en',
-      'en-GB',
-      'es',
-      'zh-Hans',
-      'zh-Hant',
-      'de',
-      'nl',
-      'pt-BR',
-      'it',
-      'fr',
-    ]);
-    expect(ecosystemLocales.map(({ locale }) => locale).toSorted()).toEqual(
-      declared.toSorted(),
-    );
-    expect(Object.keys(interviewCatalogLoaders).toSorted()).toEqual(
-      declared.filter((locale) => locale !== 'en').toSorted(),
+// The interview's messages are written in English. Those a protocol may
+// reword are Network Canvas's wording for a schema 9 protocol, so they are
+// translated into every language the schema says Network Canvas supplies.
+// The rest is text only screen readers read, which stays English.
+describe('the catalogues of the wording Network Canvas supplies', () => {
+  it('has a message, in English, for every text the schema says it words', () => {
+    expect(wordingIds.length).toBeGreaterThan(200);
+    expect(wordingIds.filter((id) => committedEn[id] === undefined)).toEqual(
+      [],
     );
   });
 
-  it('provides complete nonblank Spanish with ICU and rich-text token parity', () => {
-    const es = JSON.parse(
-      readFileSync(join(localesDir, 'es.json'), 'utf8'),
-    ) as Record<string, string>;
-    expect(checkFullLocale(committedEn, es, esSources)).toEqual([]);
+  it('has a catalogue for each supplied language and each variant a text is worded in, and no other', () => {
+    const expected = [...SUPPLIED_LANGUAGES, ...variants].toSorted();
+    expect(committedLocales.toSorted()).toEqual(expected);
+    expect(Object.keys(SUPPLIED_WORDING).toSorted()).toEqual(expected);
   });
 
-  it('provides complete nonblank Simplified Chinese with ICU and rich-text token parity', () => {
-    const zhHans = JSON.parse(
-      readFileSync(join(localesDir, 'zh-Hans.json'), 'utf8'),
-    ) as Record<string, string>;
-    expect(checkFullLocale(committedEn, zhHans, zhHansSources)).toEqual([]);
-  });
-
-  it('provides complete nonblank Traditional Chinese with ICU and rich-text token parity', () => {
-    const zhHant = JSON.parse(
-      readFileSync(join(localesDir, 'zh-Hant.json'), 'utf8'),
-    ) as Record<string, string>;
-    expect(checkFullLocale(committedEn, zhHant, zhHantSources)).toEqual([]);
-  });
-
-  it('provides complete nonblank German with ICU and rich-text token parity', () => {
-    expect(checkFullLocale(committedEn, de, deSources)).toEqual([]);
-  });
-
-  it('provides complete nonblank Dutch with ICU and rich-text token parity', () => {
-    const nl = JSON.parse(
-      readFileSync(join(localesDir, 'nl.json'), 'utf8'),
-    ) as Record<string, string>;
-    expect(checkFullLocale(committedEn, nl, nlSources)).toEqual([]);
-  });
-
-  it('provides complete nonblank Brazilian Portuguese with ICU and rich-text token parity', () => {
-    expect(checkFullLocale(committedEn, ptBR, ptBRSources)).toEqual([]);
-  });
-
-  it('provides complete nonblank Italian with ICU and rich-text token parity', () => {
-    const italian = JSON.parse(
-      readFileSync(join(localesDir, 'it.json'), 'utf8'),
-    ) as Record<string, string>;
-    expect(checkFullLocale(committedEn, italian, italianSources)).toEqual([]);
-  });
-
-  it('provides complete nonblank French with ICU and rich-text token parity', () => {
-    expect(checkFullLocale(committedEn, fr, frSources)).toEqual([]);
-  });
-
-  it('keeps British English a valid sparse override', () => {
-    const enGb = JSON.parse(
-      readFileSync(join(localesDir, 'en-GB.json'), 'utf8'),
-    ) as Record<string, string>;
-    expect(checkOverrideLocale(committedEn, enGb, enGbSources)).toEqual([]);
-    expect(Object.keys(enGb).length).toBeLessThan(
-      Object.keys(committedEn).length,
+  // The interview reads the English from a catalogue of its own, which
+  // `pnpm --filter @codaco/interview i18n:extract` writes from the messages.
+  // A difference here means that command has not been run since an edit.
+  it('words every such text in English as its message is written, and nothing else', () => {
+    expect(readCatalogue(SOURCE_LOCALE)).toEqual(
+      Object.fromEntries(
+        Object.entries(wordingEnglish).map(([id, { defaultMessage }]) => [
+          id,
+          defaultMessage,
+        ]),
+      ),
     );
   });
 
-  it('loads each locale from its own committed catalog', async () => {
-    expect(
-      await checkCatalogLoaders(localesDir, interviewCatalogLoaders),
-    ).toEqual([]);
+  it.each(SUPPLIED_LANGUAGES.filter((locale) => locale !== SOURCE_LOCALE))(
+    'translates every such text into %s and nothing else, from today’s English',
+    (locale) => {
+      expect(
+        checkFullLocale(
+          wordingEnglish,
+          readCatalogue(locale),
+          readTranslationSources(wordingDir, locale),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it.each(variants)(
+    'words in %s exactly the texts the schema says have that variant',
+    (variant) => {
+      const catalogue = readCatalogue(variant);
+      expect(Object.keys(catalogue).toSorted()).toEqual(variantIds(variant));
+      expect(
+        checkOverrideLocale(
+          wordingEnglish,
+          catalogue,
+          readTranslationSources(wordingDir, variant),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it('serves each catalogue as it is committed', () => {
+    expect(committedLocales).toContain(SOURCE_LOCALE);
+    for (const locale of committedLocales) {
+      expect(SUPPLIED_WORDING[locale]).toEqual(readCatalogue(locale));
+    }
+  });
+
+  it('declares no wording message the schema does not name', () => {
+    const declared = [
+      ...Object.values(interfaceTextMessages),
+      ...Object.values(stageWordingMessages),
+    ].map(({ id }) => id);
+    expect(declared.filter((id) => !wordingIds.includes(id))).toEqual([]);
+  });
+});
+
+// Text a correction adds within a schema version is the interview's own: no
+// protocol of that version can hold it, so it is shown as Network Canvas
+// words it, and it must be worded in every language Network Canvas supplies.
+// Its messages are those whose id begins `interview.added.` (see
+// `wording/addedTextIds.ts`). None exists until a correction needs one.
+describe('the catalogues of the text corrections have added', () => {
+  const addedDir = join(localesDir, 'added');
+
+  const readAdded = (locale: string) =>
+    JSON.parse(
+      readFileSync(join(addedDir, `${locale}.json`), 'utf8'),
+    ) as Record<string, string>;
+
+  const addedLocales = readdirSync(addedDir)
+    .filter((file) => file.endsWith('.json') && !file.endsWith('.source.json'))
+    .map((file) => file.replace(/\.json$/, ''));
+
+  /** The English of the messages corrections have added: what is translated. */
+  const addedEnglish: ExtractedCatalog = Object.fromEntries(
+    Object.entries(committedEn).filter(([id]) => isAddedTextId(id)),
+  );
+
+  it('has a catalogue for each supplied language, and no other', () => {
+    const expected = SUPPLIED_LANGUAGES.toSorted();
+    expect(addedLocales.toSorted()).toEqual(expected);
+    expect(Object.keys(ADDED_TEXT).toSorted()).toEqual(expected);
+  });
+
+  // A text the schema names is one a protocol may hold, and is read from the
+  // protocol first. A message cannot be both.
+  it('holds no text a protocol may hold', () => {
+    expect(wordingIds.filter(isAddedTextId)).toEqual([]);
+  });
+
+  // `pnpm --filter @codaco/interview i18n:extract` writes the English.
+  it('words every such text in English as its message is written, and nothing else', () => {
+    expect(readAdded(SOURCE_LOCALE)).toEqual(
+      Object.fromEntries(
+        Object.entries(addedEnglish).map(([id, { defaultMessage }]) => [
+          id,
+          defaultMessage,
+        ]),
+      ),
+    );
+  });
+
+  it.each(SUPPLIED_LANGUAGES.filter((locale) => locale !== SOURCE_LOCALE))(
+    'translates every such text into %s and nothing else, from today’s English',
+    (locale) => {
+      expect(
+        checkFullLocale(
+          addedEnglish,
+          readAdded(locale),
+          readTranslationSources(addedDir, locale),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it('serves each catalogue as it is committed', () => {
+    for (const locale of addedLocales) {
+      expect(ADDED_TEXT[locale]).toEqual(readAdded(locale));
+    }
   });
 });

@@ -88,7 +88,7 @@ const messages = defineMessages({
     id: 'fresco.validation.uploadThing.minimumToken',
     defaultMessage: 'UPLOADTHING_TOKEN must have at least 10 characters.',
     description:
-      'Researcher-facing validation.uploadThing: UPLOADTHING_TOKEN must have at least 10 characters.',
+      'Validation error under the UploadThing token field, in the setup wizard and in Settings, Storage, when the pasted token is shorter than 10 characters. UPLOADTHING_TOKEN is a literal name; keep it as is.',
   },
 });
 

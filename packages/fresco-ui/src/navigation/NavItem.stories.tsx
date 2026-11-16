@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
+  ArrowLeft,
   CreditCard,
   Download,
   FolderOpen,
@@ -170,6 +171,14 @@ export const ZeroCountIsOmitted: Story = {
 /** Not every destination has an icon, and the row is laid out for both. */
 export const WithoutIcon: Story = {
   args: { icon: undefined, label: 'Study settings', count: undefined },
+};
+
+/**
+ * A way back. The arrow points along the line of text, so NavItem turns it
+ * (`inlineIconClass`): in a right-to-left language back is to the right.
+ */
+export const BackLink: Story = {
+  args: { icon: ArrowLeft, label: 'Back to study', count: undefined },
 };
 
 /**

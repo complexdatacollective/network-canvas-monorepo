@@ -6,7 +6,9 @@ import {
   ecosystemLocales,
   loadCatalog,
   mergeCatalogs,
+  isPseudoLocale,
   pseudoAppLocale,
+  pseudoAppLocales,
 } from '../locales.ts';
 import type { CatalogMessages } from '../locales.ts';
 
@@ -37,6 +39,39 @@ describe('ecosystemLocales', () => {
     expect(ecosystemLocales.map((entry) => entry.locale)).not.toContain(
       pseudoAppLocale.locale,
     );
+  });
+
+  it('includes no pseudo-locale at all', () => {
+    expect(
+      ecosystemLocales.filter((entry) => isPseudoLocale(entry.locale)),
+    ).toEqual([]);
+  });
+});
+
+describe('the pseudo-locales', () => {
+  it('are the accented one and the right-to-left one', () => {
+    expect(
+      pseudoAppLocales.map(({ locale, direction }) => [locale, direction]),
+    ).toEqual([
+      ['en-XA', 'ltr'],
+      ['ar-XB', 'rtl'],
+    ]);
+  });
+
+  it('are recognised by tag, and nothing else is', () => {
+    expect(isPseudoLocale('en-XA')).toBe(true);
+    expect(isPseudoLocale('ar-XB')).toBe(true);
+    expect(isPseudoLocale('ar')).toBe(false);
+    expect(isPseudoLocale('en')).toBe(false);
+    expect(isPseudoLocale(null)).toBe(false);
+    expect(isPseudoLocale(undefined)).toBe(false);
+  });
+
+  it('carry tags the runtime accepts as written', () => {
+    // A tag Intl rewrote would be stored and compared under two spellings.
+    for (const { locale } of pseudoAppLocales) {
+      expect(Intl.getCanonicalLocales(locale)).toEqual([locale]);
+    }
   });
 });
 

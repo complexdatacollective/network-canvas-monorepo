@@ -1058,8 +1058,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
     ((): ScenarioDefinition => {
       let friendVarId = '';
       return {
-        id: 'duplicate-labels-and-ten-bins',
-        covers: ['duplicate-option-labels-index-keyed'],
+        id: 'similar-labels-and-ten-bins',
+        covers: ['similar-option-labels-value-keyed'],
         visual: true,
         seedNetwork: true,
         build: () => {
@@ -1069,13 +1069,14 @@ export const categoricalBinScenarios: InterfaceScenarios = {
             name: 'name',
             type: 'text',
           });
-          // Two options share the label 'Friend' but differ in value.
+          // Two options whose labels both start with 'Friend' (an attribute's
+          // labels must differ, so they cannot be identical) and differ in value.
           const friendVar = personType.addVariable({
             name: 'FriendCat',
             type: 'categorical',
             options: [
               { label: 'Friend', value: 10 },
-              { label: 'Friend', value: 20 },
+              { label: 'Friend (school)', value: 20 },
             ],
           });
           const manyVar = personType.addVariable({
@@ -1103,13 +1104,13 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           return synth;
         },
         run: async ({ page, interview, stage, protocol }) => {
-          // Both same-label bins render.
+          // Both 'Friend' bins render.
           await expect(
             page.getByRole('button', { name: /Category Friend/ }),
           ).toHaveCount(2);
 
           // Drop onto the SECOND 'Friend' bin (drop target 2). Bins are keyed
-          // by index/value, not label, so this must write value 20 not 10.
+          // by value, not by label, so this must write value 20 not 10.
           await keyboardDropNode(
             page,
             stage.categoricalBin.getNodeInDrawer('Alex'),

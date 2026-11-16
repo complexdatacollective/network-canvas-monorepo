@@ -31,7 +31,6 @@ import type { RegisterBeforeNext, StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import AddNodeInput from '../AddNodeInput';
 import NetworkComposer from '../NetworkComposer';
-import { composerWords } from './composerWords';
 
 beforeAll(() => {
   if (typeof window.ResizeObserver === 'undefined') {
@@ -51,7 +50,6 @@ function buildStage() {
   return {
     id: 'nc1',
     type: 'NetworkComposer' as const,
-    ...composerWords(),
     label: { en: 'Network Composer' },
     subject: { entity: 'node' as const, type: NODE_TYPE },
     layoutVariable: asEntityAttributeReference(LAYOUT_VAR),

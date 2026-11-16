@@ -1746,7 +1746,7 @@ Verdict rules: "blocked" if a stack or the build never came up (nothing meaningf
   } else {
     teardown = await agent(
       `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: bash ${HARNESS}/down.sh
-Then verify nothing remains: docker ps -a and docker volume ls filtered for "fresco-release-test" must be empty. Return ok:true, or ok:false with what remained in "error".`,
+Then verify nothing of this harness remains: docker ps -a --filter name=fresco-release-test --format '{{.Names}}' and docker volume ls --filter name=fresco-release-test --format '{{.Name}}' must both print nothing. Other containers and volumes on this machine belong to other projects: ignore them. Return ok:true, or ok:false with what remained in "error".`,
       {
         label: 'teardown',
         phase: 'Teardown',

@@ -58,8 +58,8 @@ export const CustomTrigger: Story = {
     <InfoTooltip
       {...args}
       trigger={
-        <Button variant="outline" size="sm">
-          <HelpCircle className="mr-2 size-4" />
+        <Button size="sm">
+          <HelpCircle className="me-2 size-4" />
           Help
         </Button>
       }

@@ -31,8 +31,22 @@
     --theme-root-size: var(--theme-root-size-fluid);
   }
 
+  /* Every scroll that does not name its own behaviour (anchor jumps, focus
+     following) glides, except under reduced motion. Reduced motion follows
+     AnimationProvider's `data-reduced-motion` override before the system
+     preference, as tooling/tailwind/fresco/reduced-motion.css does. */
   html {
     scroll-behavior: smooth;
+  }
+
+  :root[data-reduced-motion='always'] {
+    scroll-behavior: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-reduced-motion='never']) {
+      scroll-behavior: auto;
+    }
   }
 
   html[data-entrance-motion='enabled']
@@ -56,13 +70,18 @@
   font-size: var(--theme-root-size);
 }
 
-/* Continuous horizontal marquee used by the desktop news ticker. */
+/*
+ * Continuous horizontal marquee used by the desktop news ticker. The strip
+ * holds its items twice and travels half its own width towards the start
+ * edge: to the left, or to the right in a right-to-left language, where the
+ * strip overflows the other way.
+ */
 @keyframes marquee-x {
   from {
     transform: translateX(0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(var(--marquee-travel, -50%));
   }
 }
 

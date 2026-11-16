@@ -1,13 +1,16 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { motion, type Variants } from 'motion/react';
 import { Children, type ComponentProps } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { headingWordUnits } from '~/lib/headingWords';
 
 // FancyHeading is a component that animates the words in a heading.
 const FancyHeading = (props: ComponentProps<typeof Heading>) => {
   const words = Children.toArray(props.children);
+  const direction = useDirection();
 
   const variants: Variants = {
     hidden: { y: '100%' },
@@ -27,26 +30,28 @@ const FancyHeading = (props: ComponentProps<typeof Heading>) => {
 
   const renderText = (text: string, outerIndex: number) =>
     text.split('\n').flatMap((line, lineIndex, lines) => {
-      const lineWords = line.split(' ').map((word, wordIndex) => {
-        const custom = animationIndex++;
+      const lineWords = headingWordUnits(line, direction).map(
+        (word, wordIndex) => {
+          const custom = animationIndex++;
 
-        return (
-          <span
-            key={`${outerIndex}-${lineIndex}-${wordIndex}`}
-            className="relative top-[-0.75em] mb-[-1em] inline-block overflow-hidden"
-          >
-            <motion.span
-              custom={custom}
-              variants={variants}
-              initial="hidden"
-              animate="visible"
-              className="inline-block"
+          return (
+            <span
+              key={`${outerIndex}-${lineIndex}-${wordIndex}`}
+              className="relative top-[-0.75em] mb-[-1em] inline-block overflow-hidden"
             >
-              {word}&nbsp;
-            </motion.span>
-          </span>
-        );
-      });
+              <motion.span
+                custom={custom}
+                variants={variants}
+                initial="hidden"
+                animate="visible"
+                className="inline-block"
+              >
+                {word}&nbsp;
+              </motion.span>
+            </span>
+          );
+        },
+      );
 
       if (lineIndex === lines.length - 1) return lineWords;
 

@@ -5,7 +5,12 @@ import { expect, waitFor } from 'storybook/test';
 import { Button } from './Button';
 import ComboboxField from './form/fields/Combobox/Combobox';
 import type { ComboboxOption } from './form/fields/Combobox/shared';
-import { Popover, PopoverContent, PopoverTrigger } from './Popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from './Popover';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -92,9 +97,13 @@ export const LayeredSurfaces: Story = {
         <PopoverContent className="w-[28rem]">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-1">
-              <Heading level="h3" margin="none" className="text-lg">
+              <PopoverTitle
+                render={
+                  <Heading level="h3" margin="none" className="text-lg" />
+                }
+              >
                 Filter sessions
-              </Heading>
+              </PopoverTitle>
               <Paragraph margin="none" className="text-sm opacity-70">
                 Narrow the session list by any combination of attributes below.
                 Filters are combined with AND.
@@ -103,10 +112,15 @@ export const LayeredSurfaces: Story = {
 
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-participants-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Participants
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-participants-label"
                   name="participants"
                   options={participantOptions}
                   placeholder="Select participants..."
@@ -118,10 +132,15 @@ export const LayeredSurfaces: Story = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-countries-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Countries
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-countries-label"
                   name="countries"
                   options={countryOptions}
                   placeholder="Select countries..."
@@ -134,10 +153,15 @@ export const LayeredSurfaces: Story = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-languages-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Languages
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-languages-label"
                   name="languages"
                   options={languageOptions}
                   placeholder="Select languages..."
@@ -149,10 +173,15 @@ export const LayeredSurfaces: Story = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-tags-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Tags
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-tags-label"
                   name="tags"
                   options={tagOptions}
                   placeholder="Select tags..."
@@ -164,10 +193,15 @@ export const LayeredSurfaces: Story = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-statuses-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Status
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-statuses-label"
                   name="statuses"
                   options={statusOptions}
                   placeholder="Select statuses..."
@@ -204,6 +238,9 @@ export const LayeredSurfaces: Story = {
 const ARROW_SIDES = ['top', 'right', 'bottom', 'left'] as const;
 
 export const ArrowAlignment: Story = {
+  // One popup on each physical side, on purpose: the right-to-left mirror
+  // check does not apply.
+  tags: ['!mirror'],
   args: {
     children: null,
   },
@@ -221,7 +258,12 @@ export const ArrowAlignment: Story = {
       {ARROW_SIDES.map((side) => (
         <Popover defaultOpen key={side}>
           <PopoverTrigger render={<Button>{side}</Button>} />
-          <PopoverContent side={side} className="w-40">
+          {/* No heading to name the popup after, so it is named directly. */}
+          <PopoverContent
+            side={side}
+            className="w-40"
+            aria-label={`Anchored ${side}`}
+          >
             Anchored {side}
           </PopoverContent>
         </Popover>
@@ -259,13 +301,19 @@ export const ArrowAlignment: Story = {
         );
         expect(popup.contains(over)).toBe(true);
         expect(box.contains(over)).toBe(false);
-        const popupRect = popup.getBoundingClientRect();
+        // The arrow sits beside the bordered surface, not inside it.
+        const surface = Array.from(popup.children).find(
+          (child) => child !== box,
+        );
+        expect(surface).toBeDefined();
+        const popupRect = surface!.getBoundingClientRect();
         const triggerRect = trigger.getBoundingClientRect();
-        const border = parseFloat(getComputedStyle(popup).borderTopWidth);
+        const border = parseFloat(getComputedStyle(surface!).borderTopWidth);
+        expect(border).toBeGreaterThan(0);
         const ctm = arrow.getScreenCTM()!;
-        // 30px of arrow across 20 viewBox units, and nothing else scaling it —
-        // so a popup caught mid-entrance fails rather than being measured.
-        expect(Math.hypot(ctm.a, ctm.b)).toBeCloseTo(1.5, 5);
+        // The arrow is drawn at 1:1 and nothing else may scale it, so a popup
+        // caught mid-entrance fails rather than being measured.
+        expect(Math.hypot(ctm.a, ctm.b)).toBeCloseTo(1, 5);
 
         const horizontal = side === 'top' || side === 'bottom';
         const at = (x: number, y: number) => {
@@ -284,12 +332,13 @@ export const ArrowAlignment: Story = {
           ? triggerRect.left + triggerRect.width / 2
           : triggerRect.top + triggerRect.height / 2;
 
-        // y=8 is the shoulder the border runs through — both ends, so a shoulder
-        // that isn't parallel to it is caught too. x=10 is the drawing's centre.
+        // The feet sit on y=8, the border's centre line — both of them, so an
+        // arrow tilted against the border is caught too. x=8 is the drawing's
+        // centre.
         return [
-          { side, what: 'shoulder start', offBy: at(0, 8).y - borderCentre },
-          { side, what: 'shoulder end', offBy: at(20, 8).y - borderCentre },
-          { side, what: 'aim', offBy: at(10, 8).x - triggerCentre },
+          { side, what: 'start foot', offBy: at(1, 8).y - borderCentre },
+          { side, what: 'end foot', offBy: at(15, 8).y - borderCentre },
+          { side, what: 'aim', offBy: at(8, 8).x - triggerCentre },
         ];
       });
 

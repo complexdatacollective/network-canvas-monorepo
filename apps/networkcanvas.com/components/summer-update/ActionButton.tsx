@@ -21,7 +21,7 @@ export function ActionButton({
       color={secondary ? 'dynamic' : 'success'}
       size={compact ? 'md' : 'lg'}
       textStyle={secondary ? 'uppercase' : undefined}
-      variant={secondary ? 'outline' : 'raised'}
+      variant={secondary ? 'default' : 'raised'}
     >
       <a href={href} target={target} rel="noreferrer">
         {children}

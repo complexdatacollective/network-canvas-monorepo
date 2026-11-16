@@ -18,7 +18,7 @@ const metadataMessages = vi.hoisted(() => ({
     title:
       'Presentamos la próxima generación de aplicaciones de Network Canvas',
     description:
-      'Conozca las aplicaciones rediseñadas Architect e Interviewer, Fresco 4.0.0 y el nuevo formato de protocolos del esquema 8.',
+      'Conoce las aplicaciones rediseñadas Architect e Interviewer, Fresco 4.0.0 y el nuevo formato de protocolos del esquema 8.',
   },
 }));
 
@@ -67,7 +67,7 @@ describe('localized Summer 2026 update route', () => {
       title:
         'Presentamos la próxima generación de aplicaciones de Network Canvas',
       description:
-        'Conozca las aplicaciones rediseñadas Architect e Interviewer, Fresco 4.0.0 y el nuevo formato de protocolos del esquema 8.',
+        'Conoce las aplicaciones rediseñadas Architect e Interviewer, Fresco 4.0.0 y el nuevo formato de protocolos del esquema 8.',
       alternates: {
         canonical: 'https://networkcanvas.com/es/summer-2026-update',
         languages: {

@@ -12,9 +12,6 @@
     }
   ],
   "quickAdd": "id-3",
-  "quickAddHint": {
-    "en": "Press Enter when you are finished."
-  },
   "subject": {
     "entity": "node",
     "type": "id-4"

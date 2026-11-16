@@ -17,7 +17,7 @@ const SELECT_VARIABLE_MESSAGE = defineMessages({
     defaultMessage:
       'Select an attribute to map to a shape, or turn off shape mapping.',
     description:
-      'Researcher-facing status or validation message. Context: components/TypeEditor/validateEntityType.ts.',
+      'Validation error on the shape mapping setting of the node type editor when shape mapping is on but no attribute (codebook variable) has been chosen to drive the node shape.',
   },
 }).message;
 const THRESHOLDS_MIN_MESSAGE = defineMessages({
@@ -25,7 +25,7 @@ const THRESHOLDS_MIN_MESSAGE = defineMessages({
     id: 'architect.constants.components.typeeditor.validateentitytype.thresholdsMinMessage',
     defaultMessage: 'Add at least one threshold, or turn off shape mapping.',
     description:
-      'Researcher-facing status or validation message. Context: components/TypeEditor/validateEntityType.ts.',
+      'Validation error on the shape mapping setting of the node type editor when breakpoint mapping is chosen but no thresholds (numeric cut-off values that select a shape) have been added.',
   },
 }).message;
 const THRESHOLDS_ASCENDING_MESSAGE = defineMessages({
@@ -33,7 +33,7 @@ const THRESHOLDS_ASCENDING_MESSAGE = defineMessages({
     id: 'architect.constants.components.typeeditor.validateentitytype.thresholdsAscendingMessage',
     defaultMessage: 'Thresholds must increase in value, with no duplicates.',
     description:
-      'Researcher-facing status or validation message. Context: components/TypeEditor/validateEntityType.ts.',
+      'Validation error on the shape mapping setting of the node type editor when the thresholds (numeric cut-off values that select a shape) are not in strictly increasing order or contain a duplicate.',
   },
 }).message;
 

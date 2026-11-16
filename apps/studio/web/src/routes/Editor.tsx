@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useBlocker } from '@tanstack/react-router';
 import { Redacted } from 'effect';
-import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -20,9 +20,12 @@ import type { RpcAdapter } from '@codaco/effect-query/types';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
@@ -30,9 +33,13 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract';
 import StageNameField from '@codaco/protocol-builder/fields/StageNameField';
+import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import { useStageName } from '@codaco/protocol-builder/naming/useStageName';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
-import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
+import type {
+  StageEditorAccess,
+  StageEditorActionContext,
+} from '@codaco/protocol-builder/stage-editor-contract';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
 import {
   useProtocolRevision,
@@ -57,6 +64,11 @@ import {
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import LockAnnouncer from '../editor/LockAnnouncer.tsx';
+import OutlineStageRow from '../editor/OutlineStageRow.tsx';
+import { locateProblem, type ProblemTarget } from '../editor/problemTarget.ts';
+import { useFieldFocus } from '../editor/useFieldFocus.ts';
+import ValidationAnnouncer from '../editor/ValidationAnnouncer.tsx';
 import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
 import { teamScope } from '../runtime/browserLogs.ts';
@@ -131,17 +143,31 @@ type EditorTarget =
   | { status: 'noDraft' }
   | { status: 'found'; address: DraftAddress };
 
+/** Every code the protocol schema's validator can put on an issue. */
+type SchemaIssueCode = NonNullable<
+  Awaited<ReturnType<typeof CurrentProtocolSchema.safeParseAsync>>['error']
+>['issues'][number]['code'];
+
+/** One thing wrong with the draft, as the Validation card needs to say it. */
+type DraftValidationIssue =
+  | Readonly<{
+      kind: 'schema';
+      path: readonly (string | number)[];
+      /** The validator's code, kept a plain string: the copy below is read by it. */
+      code: string;
+      /** The validator's own words, shown only where they were written for a researcher. */
+      message: string;
+      /** The draft holds nothing at this path, so the fault is that it is missing. */
+      absent: boolean;
+    }>
+  /** The sections could not be put together into one document to check. */
+  | Readonly<{ kind: 'unassembled'; path: readonly [] }>;
+
 type DraftValidation =
   | Readonly<{ status: 'pending'; issues: readonly [] }>
   | Readonly<{ status: 'unreadable'; issues: readonly [] }>
   | Readonly<{ status: 'valid'; issues: readonly [] }>
-  | Readonly<{
-      status: 'invalid';
-      issues: readonly Readonly<{
-        path: readonly (string | number)[];
-        message: string;
-      }>[];
-    }>;
+  | Readonly<{ status: 'invalid'; issues: readonly DraftValidationIssue[] }>;
 
 const messages = defineMessages({
   openingEditor: {
@@ -326,19 +352,21 @@ const messages = defineMessages({
     id: 'studio.editor.unknownScreenType',
     defaultMessage: 'Unknown screen',
     description:
-      'Supporting line of an outline entry whose screen carries no recognisable type.',
+      'Supporting line of an outline entry whose screen carries no type, or one this version of Studio does not recognise.',
   },
-  moveScreenUp: {
-    id: 'studio.editor.moveScreenUp',
-    defaultMessage: 'Move {name} up',
+  screenMoved: {
+    id: 'studio.editor.screenMoved',
+    defaultMessage:
+      'Moved {name} to position {position, number} of {total, number}.',
     description:
-      'Accessible name of the control that moves an interview screen one place earlier; {name} is the screen name.',
+      'Screen-reader announcement after an interview screen has been moved in the outline; {name} is the screen name, {position} its new place counting from one, and {total} how many screens the interview has.',
   },
-  moveScreenDown: {
-    id: 'studio.editor.moveScreenDown',
-    defaultMessage: 'Move {name} down',
+  screenMoveRefused: {
+    id: 'studio.editor.screenMoveRefused',
+    defaultMessage:
+      '{name} cannot move there, because the interview has to end with its finish screen.',
     description:
-      'Accessible name of the control that moves an interview screen one place later; {name} is the screen name.',
+      'Screen-reader announcement when a requested move of an interview screen is refused because it would leave a screen after the finish screen or the interview ending somewhere else; {name} is the screen name.',
   },
   codebook: {
     id: 'studio.editor.codebook',
@@ -387,6 +415,78 @@ const messages = defineMessages({
     defaultMessage: 'The protocol document could not be assembled.',
     description:
       'Validation problem shown when the draft could not be turned into a protocol document to check.',
+  },
+  problemMissing: {
+    id: 'studio.editor.problemMissing',
+    defaultMessage: 'Something required is missing.',
+    description:
+      'Validation problem: the protocol needs a value that is not there. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidType: {
+    id: 'studio.editor.problemInvalidType',
+    defaultMessage: 'A value is the wrong kind.',
+    description:
+      'Validation problem: a value is of the wrong kind, for example text where a number belongs. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidValue: {
+    id: 'studio.editor.problemInvalidValue',
+    defaultMessage: 'A value is not one of the choices allowed here.',
+    description:
+      'Validation problem: a value is not one of a fixed set of choices. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidFormat: {
+    id: 'studio.editor.problemInvalidFormat',
+    defaultMessage: 'A value is not written the way it needs to be.',
+    description:
+      'Validation problem: text of the right kind in the wrong shape, such as a date, an identifier or a pattern. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidUnion: {
+    id: 'studio.editor.problemInvalidUnion',
+    defaultMessage: 'A value fits none of the forms allowed here.',
+    description:
+      'Validation problem: a value matches none of the several shapes allowed in that place. The screen or section it is in is named on the line below.',
+  },
+  problemTooBig: {
+    id: 'studio.editor.problemTooBig',
+    defaultMessage: 'A value is more than is allowed here.',
+    description:
+      'Validation problem: too many items, too much text, or a number above the limit. The screen or section it is in is named on the line below.',
+  },
+  problemTooSmall: {
+    id: 'studio.editor.problemTooSmall',
+    defaultMessage: 'A value is less than is needed here.',
+    description:
+      'Validation problem: too few items, too little text, or a number below the limit. The screen or section it is in is named on the line below.',
+  },
+  problemNotMultipleOf: {
+    id: 'studio.editor.problemNotMultipleOf',
+    defaultMessage: 'A number is not one of the steps allowed here.',
+    description:
+      'Validation problem: a number has to be a multiple of some step and is not. The screen or section it is in is named on the line below.',
+  },
+  problemUnrecognizedKeys: {
+    id: 'studio.editor.problemUnrecognizedKeys',
+    defaultMessage: 'There are settings here that do not belong.',
+    description:
+      'Validation problem: the protocol holds settings that this place does not have, usually from an older or newer protocol. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidKey: {
+    id: 'studio.editor.problemInvalidKey',
+    defaultMessage: 'An entry here is named in a way that is not allowed.',
+    description:
+      'Validation problem: one entry of a keyed collection has a name that is refused. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidElement: {
+    id: 'studio.editor.problemInvalidElement',
+    defaultMessage: 'An entry here is not allowed.',
+    description:
+      'Validation problem: one entry of a collection is not something allowed there. The screen or section it is in is named on the line below.',
+  },
+  problemUnrecognised: {
+    id: 'studio.editor.problemUnrecognised',
+    defaultMessage: 'Something here is not valid.',
+    description:
+      'Validation problem of a kind this version of Studio has no words for. The screen or section it is in is named on the line below.',
   },
   saveScreen: {
     id: 'studio.editor.saveScreen',
@@ -570,6 +670,7 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
   );
   useEffect(
     () => editorVisits.open(),
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the address is the re-run trigger: a visit to another draft closes the last one's and opens its own.
     [address.teamId, address.protocolId, address.draftId],
   );
 
@@ -625,14 +726,19 @@ function EditorWorkspace({
   const intl = useAppIntl();
   const params = address;
   const { confirm } = useDialog();
-  const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
+  const [selection, setSelectionState] = useState<Selection>({
+    kind: 'settings',
+  });
   const [stageFormDirty, setStageFormDirty] = useState(false);
   const [reconcilingAdd, setReconcilingAdd] = useState(false);
   const [addRecoveryFailed, setAddRecoveryFailed] = useState(false);
   const [reconcilingMove, setReconcilingMove] = useState(false);
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
-  const selectionInitialized = useRef(false);
+  const [selectionInitialized, setSelectionInitialized] = useState(false);
   const discardRequestPending = useRef(false);
+  // Where focus goes once an outline the researcher refreshed has been read
+  // back: the Refresh button they pressed is in an alert that goes with it.
+  const addButtonRef = useRef<HTMLButtonElement>(null);
   // The outline, the position a reorder points at and the validation all read
   // the protocol as a WHOLE, so all three wait for the whole of it. A stage
   // whose section has not arrived is one `useStageIndex` leaves out, and an
@@ -644,7 +750,32 @@ function EditorWorkspace({
   const stages = useStageIndex();
   const revision = useProtocolRevision();
   const rereadProtocol = useRereadProtocol();
+  const { announce } = useAccessibilityAnnouncements();
   const draftValidation = useDraftValidation(reading);
+  // What the open screen's editor last said about the editing lock, with the
+  // screen it said it for: the report outlives the editor that made it (a lost
+  // lock remounts the editor's form), so which screen it was about is kept
+  // beside it.
+  const [stageAccess, setStageAccess] = useState<
+    { stageId: string; access: StageEditorAccess } | undefined
+  >();
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLElement>(null);
+  const { focusField, cancelFieldFocus } = useFieldFocus(canvasRef);
+
+  // Opening something starts it afresh. What was said about the lock before
+  // is forgotten: a screen reopened is asked for its lock again, and what it
+  // said last time (held by somebody who has since let it go) is not true of
+  // this opening. A field still being waited for, for a problem on whatever
+  // was open, is no longer wanted.
+  const setSelection = useCallback(
+    (next: Selection) => {
+      setSelectionState(next);
+      setStageAccess(undefined);
+      cancelFieldFocus();
+    },
+    [cancelFieldFocus],
+  );
 
   const confirmDiscardStageChanges = useCallback(
     // `confirm` takes plain strings, so the descriptors are formatted here
@@ -667,6 +798,7 @@ function EditorWorkspace({
         discardRequestPending.current = false;
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- `confirm` and `intl` are used in the `try/finally`, which the rule cannot follow.
     [confirm, intl],
   );
 
@@ -677,18 +809,19 @@ function EditorWorkspace({
         (nextSelection.kind !== 'stage' ||
           (selection.kind === 'stage' &&
             nextSelection.stageId === selection.stageId));
-      if (unchanged) return;
+      if (unchanged) return true;
 
       if (
         stageFormDirty &&
         !(await confirmDiscardStageChanges(messages.discardForSection))
       ) {
-        return;
+        return false;
       }
 
       setSelection(nextSelection);
+      return true;
     },
-    [confirmDiscardStageChanges, selection, stageFormDirty],
+    [confirmDiscardStageChanges, selection, setSelection, stageFormDirty],
   );
 
   const shouldBlockNavigation = useCallback(async () => {
@@ -711,16 +844,36 @@ function EditorWorkspace({
   // collaborator adds minutes later is theirs rather than something this
   // editor is moved to. A reading still missing sections would open on
   // whichever screen happened to arrive first.
-  useEffect(() => {
-    if (reading.status !== 'read' || selectionInitialized.current) return;
-    selectionInitialized.current = true;
+  if (reading.status === 'read' && !selectionInitialized) {
+    setSelectionInitialized(true);
     const firstStage = stages[0];
     if (firstStage !== undefined) {
       setSelection({ kind: 'stage', stageId: firstStage.id });
     }
-  }, [reading, stages]);
+  }
 
   const selectedStageId = selection.kind === 'stage' ? selection.stageId : null;
+  const selectedStageIndex = stages.findIndex(
+    (stage) => stage.id === selectedStageId,
+  );
+  const selectedStage = stages[selectedStageIndex];
+  const selectedStageAccess =
+    stageAccess?.stageId === selectedStageId ? stageAccess?.access : undefined;
+
+  // Stable between renders for the screen that is open, and built outside the
+  // render of the slot: the editor calls these as functions in its slots, but
+  // a function that returns elements and is made during render reads as a
+  // component made during render, which would remount its subtree each time
+  // if it were used as one.
+  const renderStageActions = useMemo(
+    () =>
+      stageActionsRenderer(setStageFormDirty, (access) => {
+        if (selectedStageId !== null) {
+          setStageAccess({ stageId: selectedStageId, access });
+        }
+      }),
+    [selectedStageId],
+  );
 
   const addStage = useMutation({
     mutationFn: async () => {
@@ -740,6 +893,8 @@ function EditorWorkspace({
       stageId: string;
       toIndex: number;
       expectedRevision: bigint;
+      /** What the move is announced as once it has landed. */
+      announcement: string;
     }) =>
       rpcCall('protocols.moveStage', {
         ...params,
@@ -747,18 +902,125 @@ function EditorWorkspace({
         toIndex: input.toIndex,
         expectedRevision: String(input.expectedRevision),
       }),
-    onSuccess: rereadProtocol,
+    onSuccess: async (_, input) => {
+      await rereadProtocol();
+      // Said once the outline shows the new order, however the move was made,
+      // and not before the server has kept it: a move the server refused must
+      // not have been announced as done.
+      announce(input.announcement);
+    },
   });
+  const moveBlocked = moveStage.isError || reconcilingMove;
+  // The screen whose move is with the server, and whether it landed.
+  const moveInFlight = useRef<
+    { stageId: string; landed: Promise<boolean> } | undefined
+  >(undefined);
+
+  // Whether a screen may be moved to `toIndex` right now, for the outline's
+  // controls. A move in flight counts as unavailable, but is not a reason to
+  // take the control out of the tab order (see `OutlineStageRow`).
+  const canMoveStage = (fromIndex: number, toIndex: number) =>
+    toIndex >= 0 &&
+    toIndex < stages.length &&
+    !moveStage.isPending &&
+    !moveBlocked &&
+    !moveAddsTimelineProblems(stages, fromIndex, toIndex);
 
   // The order this move is expressed against is the one on screen, so the
   // revision it is fenced on has to be the one that drew it — the newest the
   // channel has delivered. Quoting a revision from a reading of the draft made
   // somewhere else is how a move computed from THIS order was accepted against
   // another one.
-  const requestMoveStage = (stageId: string, toIndex: number) => {
-    if (revision === undefined) return;
-    moveStage.mutate({ stageId, toIndex, expectedRevision: revision });
+  //
+  // Answers `false` for a move refused on the spot, and otherwise a promise of
+  // whether the server kept it, so a control waiting to take focus back after
+  // the list reorders stops waiting for a move that never landed. A second
+  // press on the screen whose move is in flight is not repeated; it is given
+  // that move's answer, since its control is waiting on the same reorder.
+  const requestMoveStage = (
+    stageId: string,
+    toIndex: number,
+  ): false | Promise<boolean> => {
+    const fromIndex = stages.findIndex((stage) => stage.id === stageId);
+    const stage = stages[fromIndex];
+    if (revision === undefined || stage === undefined || moveBlocked) {
+      return false;
+    }
+    if (moveStage.isPending) {
+      const inFlight = moveInFlight.current;
+      return inFlight?.stageId === stageId ? inFlight.landed : false;
+    }
+    const name = stageLabel(intl, stage, fromIndex);
+    if (moveAddsTimelineProblems(stages, fromIndex, toIndex)) {
+      announce(intl.formatMessage(messages.screenMoveRefused, { name }));
+      return false;
+    }
+    const landed = moveStage
+      .mutateAsync({
+        stageId,
+        toIndex,
+        expectedRevision: revision,
+        announcement: intl.formatMessage(messages.screenMoved, {
+          name,
+          position: toIndex + 1,
+          total: stages.length,
+        }),
+      })
+      .then(
+        () => true,
+        () => false,
+      );
+    moveInFlight.current = { stageId, landed };
+    return landed;
   };
+
+  // Takes the researcher to what a validation problem is about: opens the
+  // section that holds it, then moves focus to the field. A problem that names
+  // no field this editor has (the interview as a whole, a section not built
+  // yet) lands on the nearest thing that does exist, never on the page body.
+  //
+  // Focus moves once the selection that opens the problem has been DRAWN, not
+  // when it has been asked for. After a discard prompt the selection is set
+  // outside any event, and React draws it after the code that asked has
+  // already carried on, which would then search the canvas it is leaving and
+  // land on a field of the screen being closed. Each request is a fresh object
+  // so that asking twice for the same problem moves focus twice.
+  const [problemToReach, setProblemToReach] = useState<{
+    target: Exclude<ProblemTarget, { kind: 'outline' }>;
+  }>();
+  const goToProblem = async (target: ProblemTarget) => {
+    if (target.kind === 'outline') {
+      cancelFieldFocus();
+      outlineRef.current?.focus();
+      return;
+    }
+    const opened = await requestSelection(
+      target.kind === 'stage'
+        ? { kind: 'stage', stageId: target.stageId }
+        : { kind: target.section },
+    );
+    if (opened) setProblemToReach({ target });
+  };
+  useEffect(() => {
+    if (problemToReach === undefined) return;
+    const { target } = problemToReach;
+    if (target.kind === 'section') {
+      // The section's heading is the only thing its canvas has to land on.
+      canvasRef.current
+        ?.querySelector<HTMLElement>('[data-canvas-heading]')
+        ?.focus();
+      return;
+    }
+    // The canvas now holds the target screen's editor, which is keyed by the
+    // screen and draws nothing until that screen has been read, so no field
+    // found here belongs to the screen that was open before. The screen's own
+    // entry in the outline names it, and is the selected one.
+    focusField(target.fieldNames, () =>
+      outlineRef.current
+        ?.querySelector<HTMLElement>('[aria-current="page"]')
+        ?.focus(),
+    );
+  }, [problemToReach, focusField]);
 
   // The reading is what reports a failure, so a retry that fails again has
   // nothing to add: it puts the same message back on screen.
@@ -767,10 +1029,12 @@ function EditorWorkspace({
   };
 
   const reconcileAddStage = async () => {
+    if (reconcilingAdd) return;
     setReconcilingAdd(true);
     setAddRecoveryFailed(false);
     try {
       await rereadProtocol();
+      addButtonRef.current?.focus();
       addStage.reset();
     } catch {
       setAddRecoveryFailed(true);
@@ -780,10 +1044,14 @@ function EditorWorkspace({
   };
 
   const reconcileMoveStage = async () => {
+    if (reconcilingMove) return;
     setReconcilingMove(true);
     setMoveRecoveryFailed(false);
     try {
       await rereadProtocol();
+      // Which screen the lost move was about is not known any more, so focus
+      // lands on the control that heads the list it reread.
+      addButtonRef.current?.focus();
       moveStage.reset();
     } catch {
       setMoveRecoveryFailed(true);
@@ -792,7 +1060,14 @@ function EditorWorkspace({
     }
   };
 
+  // A button whose action is unavailable for now stays focusable
+  // (`aria-disabled`, not `disabled`): a `disabled` button drops the focus of
+  // the researcher who just pressed it.
+  const addUnavailable =
+    addStage.isPending || addStage.isError || reconcilingAdd;
+
   const requestAddStage = async () => {
+    if (addUnavailable) return;
     if (
       stageFormDirty &&
       !(await confirmDiscardStageChanges(messages.discardForNewScreen))
@@ -814,7 +1089,10 @@ function EditorWorkspace({
           */}
         <div className="min-w-0">
           <Heading
-            className="truncate"
+            // The protocol name the researcher typed takes its own direction,
+            // on the interface side, and is cut at its end.
+            dir="auto"
+            className="text-match-parent truncate"
             level="h1"
             margin="none"
             {...routeFocusTargetProps}
@@ -826,6 +1104,24 @@ function EditorWorkspace({
           </Paragraph>
         </div>
         <ValidationButton validation={draftValidation} />
+        <LockAnnouncer
+          key={selectedStageId ?? 'none'}
+          name={
+            selectedStage === undefined
+              ? ''
+              : stageLabel(intl, selectedStage, selectedStageIndex)
+          }
+          access={selectedStageAccess}
+        />
+        <ValidationAnnouncer
+          problemCount={
+            draftValidation.status === 'invalid'
+              ? draftValidation.issues.length
+              : draftValidation.status === 'valid'
+                ? 0
+                : undefined
+          }
+        />
       </div>
 
       <div className="laptop:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)] grid min-h-0 flex-1 grid-cols-1 gap-4 p-4">
@@ -842,8 +1138,12 @@ function EditorWorkspace({
               {intl.formatMessage(messages.protocolSections)}
             </Heading>
             <nav
+              ref={outlineRef}
+              // Where focus goes for a validation problem about the interview
+              // as a whole, which no field or section holds.
+              tabIndex={-1}
               aria-label={intl.formatMessage(messages.protocolSections)}
-              className="min-h-0 overflow-y-auto"
+              className="focusable min-h-0 overflow-y-auto"
             >
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 <OutlineButton
@@ -858,12 +1158,11 @@ function EditorWorkspace({
                       {intl.formatMessage(messages.screens)}
                     </span>
                     <Button
+                      ref={addButtonRef}
                       size="sm"
                       variant="text"
                       icon={<Plus aria-hidden="true" />}
-                      disabled={
-                        addStage.isPending || addStage.isError || reconcilingAdd
-                      }
+                      aria-disabled={addUnavailable}
                       onClick={() => void requestAddStage()}
                     >
                       {intl.formatMessage(messages.addScreen)}
@@ -877,8 +1176,7 @@ function EditorWorkspace({
                       <Button
                         className="mt-3"
                         size="sm"
-                        variant="outline"
-                        disabled={reconcilingAdd}
+                        aria-disabled={reconcilingAdd}
                         onClick={() => void reconcileAddStage()}
                       >
                         {intl.formatMessage(messages.refreshOutline)}
@@ -900,8 +1198,7 @@ function EditorWorkspace({
                       <Button
                         className="mt-3"
                         size="sm"
-                        variant="outline"
-                        disabled={reconcilingMove}
+                        aria-disabled={reconcilingMove}
                         onClick={() => void reconcileMoveStage()}
                       >
                         {intl.formatMessage(messages.refreshOrder)}
@@ -926,11 +1223,7 @@ function EditorWorkspace({
                         <span>
                           {intl.formatMessage(messages.screensUnreadable)}
                         </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={retryReadingProtocol}
-                        >
+                        <Button size="sm" onClick={retryReadingProtocol}>
                           {intl.formatMessage(commonMessages.retry)}
                         </Button>
                       </div>
@@ -943,91 +1236,29 @@ function EditorWorkspace({
                   )}
                   {reading.status === 'read' && stages.length > 0 && (
                     <ol className="m-0 flex list-none flex-col gap-2 p-0 ps-3">
-                      {stages.map((stage, index) => {
-                        return (
-                          <li
-                            key={stage.id}
-                            className="flex min-w-0 items-center gap-1"
-                          >
-                            <button
-                              type="button"
-                              className="focusable aria-current:bg-selected aria-current:text-selected-contrast min-w-0 flex-1 rounded px-3 py-2 text-start"
-                              aria-current={
-                                selectedStageId === stage.id
-                                  ? 'page'
-                                  : undefined
-                              }
-                              onClick={() =>
-                                void requestSelection({
-                                  kind: 'stage',
-                                  stageId: stage.id,
-                                })
-                              }
-                            >
-                              <span className="block truncate">
-                                {stageLabel(intl, stage, index)}
-                              </span>
-                              <span className="block truncate text-xs opacity-70">
-                                {stage.type === ''
-                                  ? intl.formatMessage(
-                                      messages.unknownScreenType,
-                                    )
-                                  : stage.type}
-                              </span>
-                            </button>
-                            <div className="flex shrink-0 flex-col">
-                              <button
-                                type="button"
-                                className="focusable rounded p-1 disabled:opacity-30"
-                                aria-label={intl.formatMessage(
-                                  messages.moveScreenUp,
-                                  { name: stageLabel(intl, stage, index) },
-                                )}
-                                disabled={
-                                  index === 0 ||
-                                  moveAddsTimelineProblems(
-                                    stages,
-                                    index,
-                                    index - 1,
-                                  ) ||
-                                  moveStage.isPending ||
-                                  moveStage.isError ||
-                                  reconcilingMove
-                                }
-                                onClick={() =>
-                                  requestMoveStage(stage.id, index - 1)
-                                }
-                              >
-                                <ArrowUp aria-hidden="true" size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                className="focusable rounded p-1 disabled:opacity-30"
-                                aria-label={intl.formatMessage(
-                                  messages.moveScreenDown,
-                                  { name: stageLabel(intl, stage, index) },
-                                )}
-                                disabled={
-                                  index === stages.length - 1 ||
-                                  moveAddsTimelineProblems(
-                                    stages,
-                                    index,
-                                    index + 1,
-                                  ) ||
-                                  moveStage.isPending ||
-                                  moveStage.isError ||
-                                  reconcilingMove
-                                }
-                                onClick={() =>
-                                  requestMoveStage(stage.id, index + 1)
-                                }
-                              >
-                                <ArrowDown aria-hidden="true" size={16} />
-                              </button>
-                            </div>
-                          </li>
-                        );
-                      })}
+                      {stages.map((stage, index) => (
+                        <OutlineStageRow
+                          key={stage.id}
+                          stageId={stage.id}
+                          name={stageLabel(intl, stage, index)}
+                          typeLabel={
+                            interfaceDisplayName(stage.type, intl) ??
+                            intl.formatMessage(messages.unknownScreenType)
+                          }
+                          index={index}
+                          stageCount={stages.length}
+                          selected={selectedStageId === stage.id}
+                          canMoveUp={canMoveStage(index, index - 1)}
+                          canMoveDown={canMoveStage(index, index + 1)}
+                          onSelect={() =>
+                            void requestSelection({
+                              kind: 'stage',
+                              stageId: stage.id,
+                            })
+                          }
+                          onMove={requestMoveStage}
+                        />
+                      ))}
                     </ol>
                   )}
                 </li>
@@ -1056,7 +1287,7 @@ function EditorWorkspace({
           </Surface>
         </aside>
 
-        <div className="min-h-[24rem]">
+        <div ref={canvasRef} className="min-h-[24rem]">
           <Surface className="h-full" spacing="lg">
             {selection.kind === 'stage' ? (
               <StageEditor
@@ -1066,13 +1297,8 @@ function EditorWorkspace({
                     stageId: selection.stageId,
                   }),
                 }}
-                header={() => <ScreenTitle />}
-                actions={(context) => (
-                  <StageActions
-                    context={context}
-                    onDirtyChange={setStageFormDirty}
-                  />
-                )}
+                header={renderScreenTitle}
+                actions={renderStageActions}
               />
             ) : (
               <SectionPlaceholder kind={selection.kind} />
@@ -1090,7 +1316,11 @@ function EditorWorkspace({
             <Heading id="inspector-heading" level="h2">
               {intl.formatMessage(messages.inspector)}
             </Heading>
-            <ProtocolProblems validation={draftValidation} />
+            <ProtocolProblems
+              validation={draftValidation}
+              stages={stages}
+              onSelectProblem={(target) => void goToProblem(target)}
+            />
           </Surface>
         </aside>
       </div>
@@ -1146,6 +1376,21 @@ function ScreenTitle() {
   );
 }
 
+const renderScreenTitle = () => <ScreenTitle />;
+
+const stageActionsRenderer =
+  (
+    onDirtyChange: (dirty: boolean) => void,
+    onAccessChange: (access: StageEditorAccess) => void,
+  ) =>
+  (context: StageEditorActionContext) => (
+    <StageActions
+      context={context}
+      onDirtyChange={onDirtyChange}
+      onAccessChange={onAccessChange}
+    />
+  );
+
 /**
  * Studio's own chrome for the stage the package is editing.
  *
@@ -1157,10 +1402,20 @@ function ScreenTitle() {
 function StageActions(props: {
   context: StageEditorActionContext;
   onDirtyChange: (dirty: boolean) => void;
+  onAccessChange: (access: StageEditorAccess) => void;
 }) {
   const intl = useAppIntl();
   const dirty = useFormStore(selectIsFormDirty);
-  const { onDirtyChange } = props;
+  const { onDirtyChange, onAccessChange } = props;
+  const { access } = props.context;
+
+  // Reported upward rather than spoken from here: this chrome is rebuilt when
+  // the lock is lost (the editor starts again from what the protocol holds),
+  // and a live region that is rebuilt with its text already inside is often
+  // not announced. The route keeps the one that is always there.
+  useLayoutEffect(() => {
+    onAccessChange(access);
+  }, [access, onAccessChange]);
 
   useLayoutEffect(() => {
     onDirtyChange(dirty);
@@ -1185,7 +1440,6 @@ function ValidationButton(props: { validation: DraftValidation }) {
   return (
     <Button
       size="sm"
-      variant="outline"
       onClick={() => document.getElementById('protocol-problems')?.focus()}
     >
       {validation.status === 'invalid' &&
@@ -1202,81 +1456,158 @@ function ValidationButton(props: { validation: DraftValidation }) {
   );
 }
 
+const PENDING_VALIDATION: DraftValidation = { status: 'pending', issues: [] };
+const UNREADABLE_VALIDATION: DraftValidation = {
+  status: 'unreadable',
+  issues: [],
+};
+
 function useDraftValidation(reading: ProtocolReading): DraftValidation {
-  const intl = useAppIntl();
-  const [validation, setValidation] = useState<DraftValidation>({
-    status: 'pending',
-    issues: [],
-  });
+  // The outcome of checking one reading, kept with the reading it is for. A
+  // reading that has changed since has no outcome yet, so what is shown is
+  // derived from the pair rather than reset by the effect that checks.
+  const [checked, setChecked] = useState<
+    { reading: ProtocolReading; validation: DraftValidation } | undefined
+  >();
 
   useEffect(() => {
+    if (reading.status !== 'read') return undefined;
     let active = true;
-    if (reading.status !== 'read') {
-      // "Could not be read" and "not yet" are different things to leave on
-      // screen: the first is an answer, and reporting it as the second is a
-      // check that never finishes.
-      setValidation(
-        reading.status === 'unreadable'
-          ? { status: 'unreadable', issues: [] }
-          : { status: 'pending', issues: [] },
-      );
-      return () => {
-        active = false;
-      };
-    }
-
     const { sections } = reading;
-    setValidation({ status: 'pending', issues: [] });
+    const settle = (validation: DraftValidation) => {
+      if (active) setChecked({ reading, validation });
+    };
     void (async () => {
       try {
-        const result = await CurrentProtocolSchema.safeParseAsync(
-          assembleProtocolSections(sections),
-        );
-        if (!active) return;
-        setValidation(
+        const protocol = assembleProtocolSections(sections);
+        const result = await CurrentProtocolSchema.safeParseAsync(protocol);
+        settle(
           result.success
             ? { status: 'valid', issues: [] }
             : {
                 status: 'invalid',
-                issues: result.error.issues.map(toDraftValidationIssue),
+                issues: result.error.issues.map((issue) =>
+                  toDraftValidationIssue(issue, protocol),
+                ),
               },
         );
-      } catch (error) {
-        if (!active) return;
-        setValidation({
+      } catch {
+        // Why the sections do not fit together is about the document's
+        // structure, which nothing in the editor lets a researcher change; the
+        // card says that it happened, in their language.
+        settle({
           status: 'invalid',
-          issues: [
-            {
-              path: [],
-              message:
-                error instanceof Error
-                  ? error.message
-                  : intl.formatMessage(messages.assemblyFailed),
-            },
-          ],
+          issues: [{ kind: 'unassembled', path: [] }],
         });
       }
     })();
     return () => {
       active = false;
     };
-  }, [intl, reading]);
+  }, [reading]);
 
-  return validation;
+  // "Could not be read" and "not yet" are different things to leave on
+  // screen: the first is an answer, and reporting it as the second is a
+  // check that never finishes.
+  if (reading.status === 'unreadable') return UNREADABLE_VALIDATION;
+  if (reading.status !== 'read' || checked?.reading !== reading) {
+    return PENDING_VALIDATION;
+  }
+  return checked.validation;
 }
 
 function toDraftValidationIssue(
-  issue: Readonly<{ path: readonly PropertyKey[]; message: string }>,
-): Readonly<{ path: readonly (string | number)[]; message: string }> {
+  issue: Readonly<{
+    path: readonly PropertyKey[];
+    code: string;
+    message: string;
+  }>,
+  protocol: Record<string, unknown>,
+): DraftValidationIssue {
+  const path = issue.path.map((segment) =>
+    typeof segment === 'symbol' ? String(segment) : segment,
+  );
   return {
-    path: issue.path.map((segment) =>
-      typeof segment === 'symbol' ? String(segment) : segment,
-    ),
+    kind: 'schema',
+    path,
+    code: issue.code,
     message: issue.message,
+    absent: path.length > 0 && isUnanswered(getValue(protocol, path)),
   };
 }
 
-function ProtocolProblems(props: { validation: DraftValidation }) {
+/**
+ * What the Validation card says about each kind of refusal, one entry per
+ * code. The validator's own words describe a shape — "expected string,
+ * received undefined" — and are in English whatever the reader's language;
+ * none of that is a sentence a researcher can act on. Where the problem is
+ * goes on the line below, and choosing it opens that place.
+ *
+ * `custom` is the code every cross-reference rule in the protocol schema
+ * raises, and those messages are already written about this protocol, naming
+ * the thing that is wrong, so they are kept whole.
+ */
+const PROBLEM_SENTENCES: Readonly<
+  Record<SchemaIssueCode, MessageDescriptor | 'theValidatorsOwn'>
+> = {
+  invalid_type: messages.problemInvalidType,
+  invalid_value: messages.problemInvalidValue,
+  invalid_format: messages.problemInvalidFormat,
+  invalid_union: messages.problemInvalidUnion,
+  too_big: messages.problemTooBig,
+  too_small: messages.problemTooSmall,
+  not_multiple_of: messages.problemNotMultipleOf,
+  unrecognized_keys: messages.problemUnrecognizedKeys,
+  invalid_key: messages.problemInvalidKey,
+  invalid_element: messages.problemInvalidElement,
+  custom: 'theValidatorsOwn',
+};
+
+// Read by a code the type system cannot vouch for, so an unknown one finds
+// nothing rather than reading an entry that is not there.
+const SENTENCE_BY_CODE: ReadonlyMap<
+  string,
+  MessageDescriptor | 'theValidatorsOwn'
+> = new Map(Object.entries(PROBLEM_SENTENCES));
+
+/**
+ * The sentence for one problem. A message written about this protocol
+ * outranks the fact that its value is missing: the cross-reference rules that
+ * report at an absent key do so by construction, and that is what they explain.
+ */
+function problemSentence(intl: IntlShape, issue: DraftValidationIssue): string {
+  if (issue.kind === 'unassembled') {
+    return intl.formatMessage(messages.assemblyFailed);
+  }
+  const sentence = SENTENCE_BY_CODE.get(issue.code);
+  if (sentence === 'theValidatorsOwn') return issue.message;
+  if (issue.absent) return intl.formatMessage(messages.problemMissing);
+  return intl.formatMessage(sentence ?? messages.problemUnrecognised);
+}
+
+/**
+ * Names where a problem is, for the line under it: the screen, or the section
+ * of the protocol. A problem about the interview as a whole has no one place.
+ */
+function problemLocation(
+  intl: IntlShape,
+  target: ProblemTarget,
+  stages: readonly StageSummary[],
+): string | undefined {
+  if (target.kind === 'section') {
+    return intl.formatMessage(messages[target.section]);
+  }
+  if (target.kind !== 'stage') return undefined;
+  const index = stages.findIndex((stage) => stage.id === target.stageId);
+  const stage = stages[index];
+  return stage === undefined ? undefined : stageLabel(intl, stage, index);
+}
+
+function ProtocolProblems(props: {
+  validation: DraftValidation;
+  stages: readonly StageSummary[];
+  onSelectProblem: (target: ProblemTarget) => void;
+}) {
   const intl = useAppIntl();
   return (
     <section aria-labelledby="validation-heading">
@@ -1297,10 +1628,27 @@ function ProtocolProblems(props: { validation: DraftValidation }) {
         </Paragraph>
       )}
       {props.validation.status === 'invalid' && (
-        <ul className="list-disc space-y-2 ps-5">
-          {props.validation.issues.map((issue, index) => (
-            <li key={`${issue.path.join('.')}-${index}`}>{issue.message}</li>
-          ))}
+        <ul className="m-0 flex list-none flex-col gap-1 p-0">
+          {props.validation.issues.map((issue, index) => {
+            const target = locateProblem(issue.path, props.stages);
+            const location = problemLocation(intl, target, props.stages);
+            return (
+              <li key={`${issue.path.join('.')}-${index}`}>
+                {/* Each problem is a control: it opens the section and moves
+                    focus to the field it is about. */}
+                <button
+                  type="button"
+                  className="focusable w-full rounded px-2 py-1 text-start"
+                  onClick={() => props.onSelectProblem(target)}
+                >
+                  <span className="block">{problemSentence(intl, issue)}</span>
+                  {location !== undefined && (
+                    <span className="block text-xs opacity-70">{location}</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
@@ -1334,7 +1682,10 @@ function SectionPlaceholder(props: {
   }[props.kind];
   return (
     <>
-      <Heading level="h2">{intl.formatMessage(content.heading)}</Heading>
+      {/* tabIndex: where focus lands for a validation problem in this section. */}
+      <Heading level="h2" tabIndex={-1} data-canvas-heading="">
+        {intl.formatMessage(content.heading)}
+      </Heading>
       <Paragraph>{intl.formatMessage(content.body)}</Paragraph>
     </>
   );

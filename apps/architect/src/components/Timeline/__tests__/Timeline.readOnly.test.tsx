@@ -324,7 +324,7 @@ describe('Timeline when another tab takes the protocol during a drag', () => {
       .map((heading) => heading.textContent);
   // The timeline shows each stage's name in the protocol's default language.
   const protocolLabels = (store: ReturnType<typeof makeStore>) =>
-    getProtocol(store.getState())?.stages.map((stage) => stage.label['en-US']);
+    getProtocol(store.getState())?.stages.map((stage) => stage.label.en);
   const announcements = () =>
     screen
       .queryAllByRole('status')

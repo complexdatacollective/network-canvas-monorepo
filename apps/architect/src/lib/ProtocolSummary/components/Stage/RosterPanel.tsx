@@ -11,7 +11,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.rosterPanel.rosterPanel',
     defaultMessage: 'Roster panel',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / RosterPanel: the panel listing the people a roster name generator offers.',
+      'Section heading in the printable protocol summary, above the title of the panel listing the people a roster name generator offers.',
   },
 });
 

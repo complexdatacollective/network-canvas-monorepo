@@ -58,7 +58,9 @@ const DropOverlay = ({
       exit="hidden"
     >
       <motion.div variants={iconVariants} animate={isOver ? 'over' : 'initial'}>
-        <UINode label="" color={nodeColor} shape={nodeShape} />
+        {/* A picture of the person being dropped, not a control: the message
+            below says what dropping does. */}
+        <UINode label="" color={nodeColor} shape={nodeShape} presentational />
       </motion.div>
       <ArrowDownToLine aria-hidden className="mt-4 size-8" />
       <span className="sr-only">{message}</span>

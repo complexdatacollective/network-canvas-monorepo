@@ -87,8 +87,6 @@ type DraggableItemProps = {
   'onKeyDown': (e: React.KeyboardEvent) => void;
   'role'?: string;
   'tabIndex'?: number;
-  'aria-grabbed'?: boolean;
-  'aria-dropeffect'?: 'none' | 'copy' | 'execute' | 'link' | 'move' | 'popup';
   'aria-label'?: string;
   'style'?: React.CSSProperties;
   'data-dragging'?: true;
@@ -103,7 +101,6 @@ type DroppableItemProps = {
   'isOver': boolean;
   'willAccept': boolean;
   'dropPosition': DropPosition | null;
-  'aria-dropeffect'?: 'none' | 'copy' | 'execute' | 'link' | 'move' | 'popup';
   'aria-label'?: string;
   'data-zone-id'?: string;
   'tabIndex'?: number;

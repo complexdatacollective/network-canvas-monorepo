@@ -1,3 +1,4 @@
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -53,5 +54,37 @@ describe('Fresco mobile navigation locale changes', () => {
       screen.getByRole('button', { name: 'Cerrar menú de navegación' }),
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('the side Fresco’s mobile navigation slides in from', () => {
+  // Motion writes where an element starts from into its style before the
+  // first frame, which is where the menu is caught here.
+  const openMenu = (direction: 'ltr' | 'rtl') => {
+    render(
+      <AppI18nProvider
+        locale="en"
+        locales={frescoLocales}
+        messages={frescoCatalogSource.peek('en')}
+      >
+        {/* Nearer the menu than the language's own direction, which it
+            stands in for: no language Fresco offers is right-to-left. */}
+        <DirectionProvider direction={direction}>
+          <MobileNavDrawer />
+        </DirectionProvider>
+      </AppI18nProvider>,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open navigation menu' }),
+    );
+    return screen.getByRole('dialog', { name: 'Mobile navigation' });
+  };
+
+  it('is beyond the right edge the menu is drawn against', () => {
+    expect(openMenu('ltr').style.transform).toContain('translateX(100%)');
+  });
+
+  it('is beyond the left edge in a right-to-left language', () => {
+    expect(openMenu('rtl').style.transform).toContain('translateX(-100%)');
   });
 });

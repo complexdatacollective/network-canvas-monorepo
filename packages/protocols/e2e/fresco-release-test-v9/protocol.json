@@ -465,9 +465,9 @@
         }
       ],
       "quickAdd": "var-9009-4",
-      "quickAddHint": {
-        "en": "Press Enter when you are finished.",
-        "es": "Pulsa Intro cuando hayas terminado."
+      "addNamePlaceholder": {
+        "en": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
       }
     },
     {
@@ -687,10 +687,6 @@
           "en": "{isYou, select, true {A child you carried as a surrogate} other {A child they carried as a surrogate}}",
           "es": "{isYou, select, true {Un hijo o hija que gestaste como gestante subrogada} other {Un hijo o hija que gestaron como gestante subrogada}}"
         },
-        "connectHint": {
-          "en": "Select a person, then select another to connect them.",
-          "es": "Selecciona una persona y luego otra para conectarlas."
-        },
         "connectParent": {
           "en": "{parentIsYou, select, true {You are a parent of {child}} other {{childIsYou, select, true {{parent} is your parent} other {{parent} is a parent of {child}}}}}",
           "es": "{parentIsYou, select, true {Eres progenitor de {child}} other {{childIsYou, select, true {{parent} es tu progenitor} other {{parent} es progenitor de {child}}}}}"
@@ -710,10 +706,6 @@
         "disconnectConfirmTitle": {
           "en": "{firstIsYou, select, true {Remove the connection between you and {second}?} other {Remove the connection between {first} and {second}?}}",
           "es": "{firstIsYou, select, true {¿Quitar la conexión entre tú y {second}?} other {¿Quitar la conexión entre {first} y {second}?}}"
-        },
-        "disconnectHint": {
-          "en": "Select a person, then select someone they are connected to, to remove that connection.",
-          "es": "Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión."
         },
         "disconnectWouldCutOff": {
           "en": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}",
@@ -930,18 +922,6 @@
         "you": {
           "en": "You",
           "es": "Tú"
-        },
-        "connectTool": {
-          "en": "Connect",
-          "es": "Conectar"
-        },
-        "disconnectTool": {
-          "en": "Disconnect",
-          "es": "Desconectar"
-        },
-        "pointerTool": {
-          "en": "Add and edit",
-          "es": "Añadir y editar"
         }
       }
     },
@@ -1023,16 +1003,54 @@
       "continue": {
         "en": "Continue",
         "es": "Continuar"
+      },
+      "exitFailed": {
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudieron guardar tus respuestas, así que la entrevista no se ha cerrado. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en": "Exit review",
+        "es": "Salir de la revisión"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?",
+        "es": "¿Salir de esta revisión?"
+      },
+      "exitReviewDescription": {
+        "en": "Changes made during this review will not be saved.",
+        "es": "Los cambios realizados durante esta revisión no se guardarán."
+      },
+      "hiddenScreen": {
+        "en": "Hidden by answers",
+        "es": "Oculta por las respuestas"
+      },
+      "outsidePath": {
+        "en": "Outside current path",
+        "es": "Fuera del recorrido actual"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?",
+        "es": "¿Mostrar esta pantalla?"
+      },
+      "hiddenScreenDescription": {
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?",
+        "es": "Esta pantalla está oculta según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+      },
+      "outsidePathDescription": {
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?",
+        "es": "Esta pantalla queda fuera del recorrido actual de la entrevista según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+      },
+      "showScreen": {
+        "en": "Show screen",
+        "es": "Mostrar pantalla"
       }
     },
     "buttons": {
       "cancel": {
         "en": "Cancel",
         "es": "Cancelar"
-      },
-      "done": {
-        "en": "Done",
-        "es": "Listo"
       },
       "delete": {
         "en": "Delete",
@@ -1053,6 +1071,34 @@
       "dontKnow": {
         "en": "Don’t know",
         "es": "No lo sé"
+      },
+      "copy": {
+        "en": "Copy",
+        "es": "Copiar"
+      },
+      "copied": {
+        "en": "Copied",
+        "es": "Copiado"
+      },
+      "zoomOut": {
+        "en": "Zoom out",
+        "es": "Alejar"
+      },
+      "zoomIn": {
+        "en": "Zoom in",
+        "es": "Acercar"
+      },
+      "undo": {
+        "en": "Undo",
+        "es": "Deshacer"
+      },
+      "redo": {
+        "en": "Redo",
+        "es": "Rehacer"
+      },
+      "skip": {
+        "en": "Skip",
+        "es": "Omitir"
       }
     },
     "messages": {
@@ -1060,13 +1106,23 @@
         "en": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
         "es": "Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
       },
-      "itemUnavailable": {
-        "en": "This item could not be displayed.",
-        "es": "No se pudo mostrar este elemento."
-      },
       "error": {
         "en": "An error occurred.",
         "es": "Se ha producido un error."
+      },
+      "unnamed": {
+        "en": "Unnamed",
+        "es": "Sin nombre"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
       }
     },
     "passphrase": {
@@ -1090,10 +1146,6 @@
         "en": "Your answers have not been saved. Enter your passphrase, then try again.",
         "es": "Tus respuestas no se han guardado. Introduce tu frase de contraseña y vuelve a intentarlo."
       },
-      "protectedAnswersUnavailable": {
-        "en": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.",
-        "es": "Las respuestas protegidas por una frase de contraseña no se pueden mostrar ni guardar en esta entrevista. Avisa a la persona que te invitó a participar en este estudio."
-      },
       "answerUnavailable": {
         "en": "Answer unavailable",
         "es": "Respuesta no disponible"
@@ -1109,6 +1161,10 @@
       "passphraseAccepted": {
         "en": "Passphrase accepted! Click \"Next\" to continue.",
         "es": "¡Frase de contraseña aceptada! Pulsa la flecha de avance para continuar."
+      },
+      "passwordPlaceholder": {
+        "en": "Enter password",
+        "es": "Introduce la contraseña"
       }
     },
     "forms": {
@@ -1133,6 +1189,78 @@
       "sameAs": {
         "en": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
         "es": "{hasLabel, select, true {Tu respuesta debe ser igual a tu respuesta a {label}.} other {Tu respuesta debe ser igual a la anterior.}}"
+      }
+    },
+    "familyTreeView": {
+      "zoomOutDescription": {
+        "en": "Make your family tree smaller, to see more of it at once.",
+        "es": "Aleja la vista para ver más de tu árbol familiar a la vez."
+      },
+      "zoomInDescription": {
+        "en": "Make your family tree bigger, to see part of it more closely.",
+        "es": "Acerca la vista para ver una parte de tu árbol familiar con más detalle."
+      },
+      "showWholeFamily": {
+        "en": "Show the whole family",
+        "es": "Mostrar toda la familia"
+      },
+      "showWholeFamilyDescription": {
+        "en": "Fit your whole family tree on the screen.",
+        "es": "Ajusta la vista para que todo tu árbol familiar quepa en la pantalla."
+      }
+    },
+    "familyPedigree": {
+      "pointerTool": {
+        "en": "Add and edit",
+        "es": "Añadir y editar"
+      },
+      "pointerToolDescription": {
+        "en": "Select a family member to edit their details or add their relatives.",
+        "es": "Selecciona a un familiar para editar sus datos o añadirle familiares."
+      },
+      "connectTool": {
+        "en": "Connect",
+        "es": "Conectar"
+      },
+      "connectToolDescription": {
+        "en": "Select two family members to connect them and say how they are related.",
+        "es": "Selecciona a dos familiares para conectarlos e indicar qué relación hay entre ellos."
+      },
+      "connectHint": {
+        "en": "Select a person, then select another to connect them.",
+        "es": "Selecciona una persona y luego otra para conectarlas."
+      },
+      "disconnectTool": {
+        "en": "Disconnect",
+        "es": "Desconectar"
+      },
+      "disconnectToolDescription": {
+        "en": "Select two connected family members to remove the connection between them.",
+        "es": "Selecciona a dos familiares conectados para eliminar la conexión entre ellos."
+      },
+      "disconnectHint": {
+        "en": "Select a person, then select someone they are connected to, to remove that connection.",
+        "es": "Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión."
+      },
+      "undoDescription": {
+        "en": "Undo your last change to your family tree.",
+        "es": "Deshaz el último cambio que hiciste en tu árbol familiar."
+      },
+      "redoDescription": {
+        "en": "Bring back the change you undid.",
+        "es": "Vuelve a hacer el cambio que deshiciste."
+      }
+    },
+    "categoricalBin": {
+      "placeHere": {
+        "en": "Place here",
+        "es": "Colocar aquí"
+      }
+    },
+    "quickAdd": {
+      "quickAddHint": {
+        "en": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
       }
     }
   },

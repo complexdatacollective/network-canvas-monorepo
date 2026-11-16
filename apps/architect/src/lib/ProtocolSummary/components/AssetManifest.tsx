@@ -13,7 +13,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.assetManifest.resourceLibrary',
     defaultMessage: 'Resource Library',
     description:
-      'Visible text in lib / ProtocolSummary / components / AssetManifest.',
+      'Heading of the section of the printable protocol summary that lists every uploaded resource (images, video, audio, data files, API keys) in the protocol.',
   },
 });
 

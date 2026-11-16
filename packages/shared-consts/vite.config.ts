@@ -15,7 +15,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rolldownOptions: {
-      external: ['zod'],
+      external: ['@formatjs/intl-localematcher', 'zod'],
       output: {
         globals: {
           zod: 'zod',

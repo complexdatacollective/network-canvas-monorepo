@@ -15,6 +15,7 @@ import { PageIntro } from '~/components/ui/PageIntro';
 import { externalLinks } from '~/lib/content';
 import { routing } from '~/lib/i18n/routing';
 import { loadSiteContent } from '~/lib/siteContent';
+import { websiteLocaleAlternates } from '~/lib/siteUrls';
 
 type PublicationsPageProps = {
   params: Promise<{ locale: string }>;
@@ -33,18 +34,7 @@ export async function generateMetadata({
     description: t('metadata.description'),
     alternates: {
       canonical: `https://networkcanvas.com/${locale}/publications`,
-      languages: {
-        'en-US': 'https://networkcanvas.com/en-US/publications',
-        'en-GB': 'https://networkcanvas.com/en-GB/publications',
-        'es': 'https://networkcanvas.com/es/publications',
-        'zh-Hans': 'https://networkcanvas.com/zh-Hans/publications',
-        'zh-Hant': 'https://networkcanvas.com/zh-Hant/publications',
-        'de': 'https://networkcanvas.com/de/publications',
-        'nl': 'https://networkcanvas.com/nl/publications',
-        'pt-BR': 'https://networkcanvas.com/pt-BR/publications',
-        'it': 'https://networkcanvas.com/it/publications',
-        'fr': 'https://networkcanvas.com/fr/publications',
-      },
+      languages: websiteLocaleAlternates('/publications'),
     },
   };
 }
@@ -110,7 +100,12 @@ export default async function PublicationsPage({
           <ul className="divide-text/10 mx-auto max-w-4xl divide-y">
             {sorted.map((publication) => (
               <li key={publication.id} className="py-6">
-                <Heading level="h3" margin="none">
+                <Heading
+                  level="h3"
+                  margin="none"
+                  dir="auto"
+                  className="text-match-parent"
+                >
                   <NativeLink
                     href={publication.href}
                     target="_blank"
@@ -119,14 +114,20 @@ export default async function PublicationsPage({
                     {publication.title}
                   </NativeLink>
                 </Heading>
-                <Paragraph intent="smallText" margin="none" className="mt-2">
+                <Paragraph
+                  intent="smallText"
+                  margin="none"
+                  dir="auto"
+                  className="text-match-parent mt-2"
+                >
                   {publication.authors}
                 </Paragraph>
                 <Paragraph
                   intent="smallText"
                   emphasis="muted"
                   margin="none"
-                  className="mt-1"
+                  dir="auto"
+                  className="text-match-parent mt-1"
                 >
                   {publication.source}
                   <span aria-hidden="true"> · </span>

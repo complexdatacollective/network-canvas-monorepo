@@ -3,7 +3,6 @@ import { Schema } from 'effect';
 import type { ComponentType, StageType } from '@codaco/protocol-validation';
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 
-import type { interviewLocales } from '../i18n/locales';
 import { MAX_ELAPSED_MS } from './elapsed.ts';
 
 export { ENTITY_ID_PROPERTIES } from './entityIdProperties.ts';
@@ -60,27 +59,6 @@ export const ANALYTICS_COMPONENT_TYPES: [
 ] extends [never]
   ? typeof DECLARED_COMPONENT_TYPES
   : never = DECLARED_COMPONENT_TYPES;
-
-type InterviewLocale = (typeof interviewLocales)[number]['locale'];
-
-const DECLARED_LOCALES = [
-  'en',
-  'en-GB',
-  'es',
-  'zh-Hans',
-  'zh-Hant',
-  'de',
-  'nl',
-  'pt-BR',
-  'it',
-  'fr',
-] as const satisfies readonly InterviewLocale[];
-
-export const ANALYTICS_LOCALES: [
-  Exclude<InterviewLocale, (typeof DECLARED_LOCALES)[number]>,
-] extends [never]
-  ? typeof DECLARED_LOCALES
-  : never = DECLARED_LOCALES;
 
 export const STAGE_VALIDATION_KINDS = [
   'unknown',
@@ -250,10 +228,6 @@ export type InterviewAnalyticsEventProperties<
 > = (typeof InterviewAnalyticsEvents)[Name]['Type'];
 
 export const InterviewExceptionProperties = Schema.Union([
-  Schema.Struct({
-    feature: Schema.Literal('locale-load'),
-    locale: Schema.optionalKey(Schema.Literals(ANALYTICS_LOCALES)),
-  }),
   Schema.Struct({
     feature: Schema.Literal('information-media'),
     media_kind: Schema.Literal('video'),

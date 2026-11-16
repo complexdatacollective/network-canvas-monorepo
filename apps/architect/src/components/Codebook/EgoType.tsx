@@ -16,17 +16,20 @@ const messages = defineMessages({
   addAttribute: {
     id: 'architect.codebook.egoType.addAttribute',
     defaultMessage: 'Add attribute',
-    description: 'Visible text in components / Codebook / EgoType.',
+    description:
+      'Button in the Ego attributes section of the Codebook page that opens a window for adding a new variable (attribute) recorded about the participant.',
   },
   noEgoAttributesYet: {
     id: 'architect.codebook.egoType.noEgoAttributesYet',
     defaultMessage: 'No ego attributes yet.',
-    description: 'Visible text in components / Codebook / EgoType.',
+    description:
+      'Message in the Ego attributes section of the Codebook page when no ego attributes (variables about the participant) have been defined.',
   },
   noEgoAttributesMatchTheCurrent: {
     id: 'architect.codebook.egoType.noEgoAttributesMatchTheCurrent',
     defaultMessage: 'No ego attributes match the current filter.',
-    description: 'Visible text in components / Codebook / EgoType.',
+    description:
+      'Message in the Ego attributes section of the Codebook page when ego attributes exist but none match the current search text or the Show unused only checkbox.',
   },
 });
 

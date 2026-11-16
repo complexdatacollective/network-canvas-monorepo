@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { interfaceTextShownBy } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
@@ -11,7 +12,7 @@ import {
   bundleLegacyProtocol,
   bundleProtocol,
   downloadProtocolAsNetcanvas,
-  MissingFinishStageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '../bundleProtocol';
 import type { LegacyStoredProtocolRow } from '../legacyProtocolLibrary';
@@ -227,13 +228,22 @@ describe('the finish stage text guard', () => {
   const japanese = { defaultLocale: 'ja', locales: ['ja'] };
   // As Architect creates a protocol in a language Network Canvas supplies no
   // closing text for.
-  const japaneseProtocol = (): CurrentProtocol => ({
-    ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
-    localization: japanese,
-    stages: [
-      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
-    ],
-  });
+  // The interview's shared words are written in Japanese, as a researcher
+  // would write them: Network Canvas has no wording there.
+  const japaneseProtocol = (): CurrentProtocol => {
+    const protocol = {
+      ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
+      localization: japanese,
+      stages: [
+        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+      ],
+    };
+    const interfaceText: Record<string, Record<string, { ja: string }>> = {};
+    for (const { group, key } of interfaceTextShownBy(protocol)) {
+      (interfaceText[group] ??= {})[key] = { ja: '日本語' };
+    }
+    return { ...protocol, interfaceText };
+  };
 
   beforeEach(() => {
     getAssetById.mockReset();
@@ -242,7 +252,7 @@ describe('the finish stage text guard', () => {
 
   it('refuses to bundle a protocol whose finish stage has no closing or finished text in the default language', async () => {
     const refusal = bundleProtocol(japaneseProtocol());
-    await expect(refusal).rejects.toBeInstanceOf(MissingFinishStageTextError);
+    await expect(refusal).rejects.toBeInstanceOf(DownloadRefusedError);
     await expect(refusal).rejects.toMatchObject({
       problem: {
         stageId: 'end',
@@ -284,28 +294,77 @@ describe('the finish stage text guard', () => {
     ).rejects.toMatchObject({ problem: { missing: ['finishedContent'] } });
   });
 
-  it('bundles it once both are written in the default language', async () => {
+  it('then refuses it while its built-in wording has none in the default language', async () => {
     const protocol = japaneseProtocol();
     const [finish] = protocol.stages;
     if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
-    const blob = await bundleProtocol({
+    await expect(
+      bundleProtocol({
+        ...protocol,
+        stages: [
+          {
+            ...finish,
+            content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
+            finishedContent: { ja: '# 終了しました' },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      problem: { kind: 'builtInWording', locale: 'ja', count: 3 },
+    });
+  });
+
+  // Every text written in Japanese, as a researcher would write it.
+  const writtenInJapanese = (): CurrentProtocol => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    return {
       ...protocol,
       stages: [
         {
           ...finish,
           content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
           finishedContent: { ja: '# 終了しました' },
+          finishLabel: { ja: '終了' },
+          finishConfirmation: { ja: 'インタビューを終了しますか?' },
+          finishFailed: { ja: 'インタビューを終了できませんでした。' },
         },
       ],
+    };
+  };
+
+  // Network Canvas has no wording in Japanese, so the protocol names the
+  // language the interview shows its own later text in.
+  it('then refuses it while it names no fallback language', async () => {
+    const refusal = bundleProtocol(writtenInJapanese());
+    await expect(refusal).rejects.toBeInstanceOf(DownloadRefusedError);
+    await expect(refusal).rejects.toMatchObject({
+      problem: { kind: 'fallbackLanguage', locale: 'ja' },
+    });
+    expect(getAssetById).not.toHaveBeenCalled();
+  });
+
+  it('bundles it once its closing, finished and built-in text are written in the default language and it names a fallback language', async () => {
+    const protocol = writtenInJapanese();
+    const blob = await bundleProtocol({
+      ...protocol,
+      localization: { ...protocol.localization, fallbackLocale: 'en' },
     });
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-    expect(zip.file('protocol.json')).not.toBeNull();
+    const exported = JSON.parse(
+      (await zip.file('protocol.json')?.async('string')) ?? '{}',
+    ) as CurrentProtocol;
+    expect(exported.localization).toEqual({
+      ...japanese,
+      fallbackLocale: 'en',
+    });
   });
 
   it('passes the refusal through a download unwrapped, so its caller can describe it', async () => {
     await expect(
       downloadProtocolAsNetcanvas(japaneseProtocol(), 'Japanese'),
-    ).rejects.toBeInstanceOf(MissingFinishStageTextError);
+    ).rejects.toBeInstanceOf(DownloadRefusedError);
   });
 });
 

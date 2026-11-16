@@ -1,0 +1,162 @@
+---
+title: Pantalla de finalización
+navOrder: 24
+date: 8th October 2026
+translatedFrom: c38f739aa2a73d879429cca8e7ff062b61fee4a4
+---
+
+<InterfaceSummary type="FinishSession">
+
+<InterfaceMeta type="Utilidad" creates="No crea entidades" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+La etapa «Pantalla de finalización» es la última pantalla de una entrevista. Finaliza la entrevista y deja fijadas las respuestas de la persona participante, ya sea cuando confirma que ha terminado o en cuanto llega a ella. Todos los protocolos terminan con una, que además registra cómo terminó la entrevista, para que puedas distinguir las entrevistas en tus datos. Un protocolo puede terminar con más de una etapa «Pantalla de finalización», por ejemplo, para dar un final distinto a quienes no cumplen los requisitos para participar (consulta [Más de una etapa «Pantalla de finalización»](#more-than-one-finish-screen)).
+
+Un protocolo nuevo empieza con una etapa «Pantalla de finalización» ya incluida. Los protocolos creados antes de que existiera esta etapa reciben una cuando se actualizan al esquema 9 (consulta [Versión 9 del esquema](/es/get-started/protocol-schema-information#schema-version-9)).
+
+## Qué ve cada participante {#what-participants-see}
+
+Lo que ve cada participante depende de cómo elijas que finalice la entrevista (consulta [Cómo finalizan los participantes](#how-participants-finish)).
+
+Cuando **cada participante confirma**, ve la pantalla de cierre: el texto de cierre que has escrito y un botón **Finalizar**. Tras pulsar **Finalizar**, se pide a la persona participante que lo confirme, porque sus respuestas no se pueden cambiar una vez finalizada la entrevista. Hasta que lo confirma, puede volver atrás y cambiar sus respuestas. Si la entrevista no se puede finalizar, la persona participante se queda en la pantalla de cierre, ve un mensaje que lo indica y puede volver a intentarlo.
+
+Cuando la entrevista **finaliza automáticamente**, termina en cuanto la persona participante llega a la etapa «Pantalla de finalización». No hay pantalla de cierre, ni botón, ni pregunta, y la persona participante no puede volver atrás desde ella. Si la entrevista no se puede finalizar, ve un mensaje que lo indica y un botón **Finalizar** para volver a intentarlo.
+
+Una vez finalizada la entrevista, se muestra su **pantalla de entrevista finalizada**:
+
+- el texto de entrevista finalizada que has escrito.
+- ninguna forma de moverse por la entrevista. No hay botones de navegación ni forma de volver a una pantalla anterior.
+
+Si se vuelve a abrir una entrevista finalizada, se muestra de nuevo la pantalla de entrevista finalizada, en lugar de la entrevista desde el principio.
+
+La aplicación que ejecuta la entrevista puede añadir una acción a la pantalla de entrevista finalizada:
+
+| Aplicación               | Acción que se añade a la pantalla de entrevista finalizada |
+| ------------------------ | ---------------------------------------------------------- |
+| Interviewer              | **Salir**, que vuelve al panel de administración           |
+| Architect (vista previa) | **Reiniciar la vista previa**                              |
+| Fresco                   | Ninguna. Cada participante cierra la ventana               |
+
+En Interviewer, cuando revisas una entrevista que se ha finalizado, sus etapas se muestran en modo de solo lectura. La etapa «Pantalla de finalización» no forma parte de la revisión y no aparece en el menú de etapas.
+
+## Configurar la etapa «Pantalla de finalización» {#configuring-the-finish-screen}
+
+El editor de la etapa tiene estas secciones:
+
+- **Nombre de la etapa** es el nombre que ves en la línea de tiempo y en el menú de etapas. No se muestra a quienes participan como encabezado de la pantalla.
+- **Cómo finalizan los participantes** decide si cada participante ve una pantalla de cierre (consulta [Cómo finalizan los participantes](#how-participants-finish)).
+- **Pantalla de cierre** contiene lo que lee cada participante antes de finalizar. Solo se muestra cuando cada participante confirma. **Texto de cierre** es un único campo de texto cuya primera línea es el encabezado de la pantalla. Puedes darle formato con Markdown, como encabezados, párrafos, listas y enlaces.
+- **Pantalla de entrevista finalizada** contiene lo que lee cada participante una vez finalizada la entrevista. **Texto de entrevista finalizada** funciona como el texto de cierre: su primera línea es el encabezado, y puedes dar formato al resto con Markdown.
+- **Personalizar la redacción predeterminada** contiene las palabras que lee cada participante mientras finaliza (consulta [Finalizar la entrevista](#finishing-the-interview)).
+- **Resultado** tiene el campo **Cómo terminó la entrevista**. Quienes participan nunca la ven. Se guarda con la entrevista y se incluye en los datos que exportas (consulta [Datos](#data)). Las opciones son:
+  - **Completada**: la persona participante llegó al final normal de la entrevista.
+  - **No elegible**: la persona participante no cumplía los requisitos del estudio.
+  - **Finalizada antes de tiempo**: la entrevista terminó antes de tiempo por otro motivo, como una interrupción por malestar emocional o por motivos de seguridad.
+- La guía para la persona entrevistadora funciona igual que en las demás etapas.
+
+Una etapa «Pantalla de finalización» no puede tener lógica de salto, porque todos los recorridos de la entrevista terminan en una de ellas.
+
+### Cómo finalizan los participantes {#how-participants-finish}
+
+**Cómo finalizan los participantes** tiene dos opciones:
+
+- **Los participantes confirman** muestra la pantalla de cierre. Cada participante pulsa **Finalizar** y confirma cuando se le pregunta. Hasta entonces, puede volver atrás y cambiar sus respuestas. Es la opción que viene seleccionada en una etapa «Pantalla de finalización» nueva y en la etapa que se añade cuando un protocolo se actualiza al esquema 9.
+- **Finalizar automáticamente** finaliza la entrevista en cuanto la persona participante llega a la etapa «Pantalla de finalización», y ya no puede volver atrás. No hay pantalla de cierre, así que el editor de la etapa oculta la sección **Pantalla de cierre** y la pregunta de confirmación.
+
+Elijas la opción que elijas, cada participante ve la pantalla de entrevista finalizada una vez finalizada la entrevista.
+
+### Finalizar la entrevista {#finishing-the-interview}
+
+La sección **Personalizar la redacción predeterminada** contiene las palabras que lee cada participante mientras finaliza, aparte del texto de cierre y del texto de entrevista finalizada:
+
+- **Botón para finalizar** es el texto del botón que finaliza la entrevista. Cuando la entrevista finaliza automáticamente, la persona participante solo ve el botón si no se puede finalizar, para volver a intentarlo.
+- **Pregunta de confirmación** es la pregunta que se hace a la persona participante después de pulsar el botón, antes de que termine la entrevista. Solo se hace cuando la entrevista termina con la confirmación de cada participante, así que el editor de la etapa solo la muestra en ese caso.
+- **Si no se puede finalizar** es el mensaje que ve la persona participante cuando no se ha podido finalizar la entrevista.
+
+Network Canvas aporta cada uno de ellos en cada idioma para el que tiene redacción, así que una etapa «Pantalla de finalización» nueva está lista para usarse. Como el resto de tu protocolo, son textos que puedes cambiar. Cuando tu protocolo tiene más de un idioma, tradúcelos junto con el texto de cierre y el texto de entrevista finalizada (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+### Texto inicial {#starting-text}
+
+Un protocolo nuevo empieza con una etapa «Pantalla de finalización» cuyo nombre de etapa es «Finish Interview». Su texto de cierre tiene el encabezado «Finish Interview» y dice «You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now». Su texto de entrevista finalizada tiene el encabezado «Interview Finished» y dice «Thank you for participating!». Una etapa «Pantalla de finalización» que añadas tú empieza con el mismo texto de cierre y el mismo texto de entrevista finalizada. Network Canvas aporta este texto en cada idioma de tu protocolo para el que lo tiene. Puedes cambiarlo todo. Lo mismo ocurre con las palabras de **Personalizar la redacción predeterminada**.
+
+Cuando añades un idioma a tu protocolo, Architect también añade el texto aportado en ese idioma: el texto de cierre y el de entrevista finalizada, el nombre de la etapa y cada uno de los textos para finalizar reciben la redacción de Network Canvas en el idioma nuevo siempre que no tengan una traducción en él, aunque los hayas cambiado en tus otros idiomas, así que comprueba que el idioma nuevo dice lo mismo que tu propio texto. Consulta [Añadir idiomas](/es/design-protocols/translating-your-protocol#adding-languages). Cuando [cambias el idioma en el que está registrado tu texto](/es/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as), el texto aportado que no has cambiado pasa a ser el texto aportado en el idioma que has elegido, o se elimina si Network Canvas no lo tiene en ese idioma, y el texto que has cambiado conserva tu redacción. Traduce tu propio texto como el resto de tu protocolo (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol)).
+
+### Texto necesario antes de descargar {#text-needed-before-downloading}
+
+Network Canvas no aporta texto de cierre ni texto de entrevista finalizada en todos los idiomas. Si el idioma predeterminado de tu protocolo es uno para el que no tiene texto, o si borras el texto, una etapa «Pantalla de finalización» puede quedarse sin un texto que necesita. En ese caso, Architect no descarga el protocolo hasta que añadas el texto en tu idioma predeterminado:
+
+- una etapa «Pantalla de finalización» en la que cada participante confirma necesita texto de cierre y texto de entrevista finalizada.
+- una etapa «Pantalla de finalización» que finaliza automáticamente necesita texto de entrevista finalizada.
+
+Mientras falte texto, la lista de etapas muestra una advertencia con un enlace a la etapa «Pantalla de finalización» que lo necesita. Aun así, puedes editar, guardar y previsualizar el protocolo.
+
+### Más de una etapa «Pantalla de finalización» {#more-than-one-finish-screen}
+
+Un protocolo puede terminar con varias etapas «Pantalla de finalización», cada una de las cuales finaliza la entrevista a su manera. Por ejemplo, podrías añadir una segunda etapa «Pantalla de finalización» para quienes no cumplen los requisitos para participar, con su propio texto de cierre y su propio texto de entrevista finalizada, y con el resultado **No elegible**. Elige un resultado distinto para cada etapa «Pantalla de finalización», para poder saber en tus datos dónde terminó cada entrevista.
+
+Para añadir una etapa «Pantalla de finalización», elige **Pantalla de finalización** en **Utilidades**, en la pantalla **Nueva etapa**.
+
+Las etapas «Pantalla de finalización» se mantienen juntas al final del protocolo:
+
+- El protocolo debe terminar con una etapa «Pantalla de finalización». No puedes eliminar la última que quede. Si lo intentas, la línea de tiempo explica por qué y la mantiene en su sitio.
+- Puedes reordenar las etapas «Pantalla de finalización» entre sí, pero la línea de tiempo no te permite mover otra etapa detrás de ellas ni mover una etapa «Pantalla de finalización» por encima de otro tipo de etapa.
+- **Añadir nueva etapa** coloca las demás etapas antes de las etapas «Pantalla de finalización».
+
+De forma predeterminada, la entrevista llega a la primera etapa «Pantalla de finalización». Quienes participan llegan a cualquiera de las posteriores mediante la lógica de salto (consulta [Lógica de salto que finaliza la entrevista](#skip-logic-that-ends-the-interview)). Ninguna etapa «Pantalla de finalización» lleva a otra.
+
+### Vista previa {#previewing}
+
+En Architect, la vista previa termina en la pantalla de entrevista finalizada de la etapa «Pantalla de finalización», con la acción **Reiniciar la vista previa**, para que puedas ver lo que ve cada participante después de finalizar. La vista previa no guarda nada, y el resultado no se registra.
+
+### Lógica de salto que finaliza la entrevista {#skip-logic-that-ends-the-interview}
+
+En cualquier otra etapa, puedes elegir **Finalizar la entrevista** como el lugar donde continuar cuando se omita esa etapa. Así se pasa a la primera etapa «Pantalla de finalización» posterior a la etapa a la que pertenece la regla. Para terminar la entrevista en una etapa «Pantalla de finalización» posterior, como una para quienes no cumplen los requisitos para participar, elige en su lugar esa etapa por su nombre. Consulta [Elegir dónde continuar](/es/design-protocols/key-concepts/skip-logic#choosing-where-to-continue).
+
+## Datos {#data}
+
+La etapa «Pantalla de finalización» no crea nodos ni vínculos, y no añade nada a la red de la persona participante. El resultado que has elegido se registra con cada entrevista que se finaliza en ella y se incluye en los datos que exportas: el archivo de ego en CSV tiene una columna `networkCanvasFinishOutcome`, y los archivos GraphML tienen un atributo `nc:finishOutcome`. El valor es `completed`, `ineligible` o `terminated`. Consulta [Cómo terminó la entrevista](/es/analyze-data/data-export#how-the-interview-ended).
+
+El resultado queda vacío en las entrevistas que se finalizaron antes de que tu aplicación lo registrara y en las entrevistas que no se han finalizado.
+
+### Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Escribe un texto de entrevista finalizada que explique a quienes participan qué ocurre a continuación: que sus respuestas se han guardado, si pueden cerrar la ventana y, si corresponde, cómo recibirán la compensación o el seguimiento previstos.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Revisa el texto de cierre, el texto de entrevista finalizada y las palabras de **Personalizar la redacción predeterminada** en todos los idiomas de tu protocolo. Si has añadido idiomas después de cambiar el texto, tradúcelo en cada uno de ellos (consulta [Encontrar las traducciones que faltan](/es/design-protocols/translating-your-protocol#finding-missing-translations)).
+
+</GoodPractice>
+
+<GoodPractice>
+
+Deja como **Completada** el resultado de la etapa «Pantalla de finalización» con la que termina una entrevista normal. Todas las entrevistas que se finalizan en una etapa «Pantalla de finalización» se registran con el resultado que elijas en ella, así que elige **No elegible** o **Finalizada antes de tiempo** para otra etapa «Pantalla de finalización» a la que solo lleguen las entrevistas que terminan de esa forma, como una a la que la lógica de salto envía a quienes no cumplían los requisitos.
+
+</GoodPractice>
+
+### Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+En la etapa «Pantalla de finalización», evita pedir más información a quienes participan. Al finalizar, sus respuestas quedan fijadas, y la pantalla de entrevista finalizada no admite más datos, así que cualquier pregunta tiene que ir en una etapa anterior.
+
+</BadPractice>
+
+<BadPractice>
+
+Evita escribir un texto de entrevista finalizada que pida a quienes participan que vuelvan atrás para revisar sus respuestas. Una vez finalizada la entrevista, ya no pueden volver atrás, así que pídeselo en el texto de cierre, antes de que finalicen, o no lo incluyas. Cuando la entrevista finaliza automáticamente, no hay texto de cierre, así que pídeselo en una etapa anterior.
+
+</BadPractice>
+
+<BadPractice>
+
+Evita indicar en el texto que se pulse un botón **Salir** o **Cerrar**. La acción que ofrece la pantalla de entrevista finalizada, si ofrece alguna, depende de la aplicación que ejecuta la entrevista (consulta [Qué ve cada participante](#what-participants-see)), y Fresco no ofrece ninguna.
+
+</BadPractice>

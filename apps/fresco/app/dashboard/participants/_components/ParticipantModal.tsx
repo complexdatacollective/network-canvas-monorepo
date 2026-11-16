@@ -34,103 +34,108 @@ const messages = defineMessages({
   error: {
     id: 'fresco.ParticipantModal.error',
     defaultMessage: 'Error',
-    description: 'Researcher-facing ParticipantModal: Error',
+    description:
+      'Title of the red error box at the top of the add/edit participant dialog, shown above the message when saving the participant failed. A noun.',
   },
 
   copyEditParticipant: {
     id: 'fresco.participants.ParticipantModal.copyEditParticipant',
     defaultMessage: 'Edit Participant',
     description:
-      'Researcher-facing participants / ParticipantModal: Edit Participant',
+      "Title of the dialog for changing an existing study participant's identifier and label, opened from the participants table. Edit is a verb.",
   },
   copyAddParticipant: {
     id: 'fresco.participants.ParticipantModal.copyAddParticipant',
     defaultMessage: 'Add Participant',
     description:
-      'Researcher-facing participants / ParticipantModal: Add Participant',
+      'Title of the dialog for adding one new study participant, opened from the participants page. Add is a verb.',
   },
   copyUpdate: {
     id: 'fresco.participants.ParticipantModal.copyUpdate',
     defaultMessage: 'Update',
-    description: 'Researcher-facing participants / ParticipantModal: Update',
+    description:
+      'Label of the submit button of the participant dialog when editing an existing participant; saves the changes. A verb.',
   },
   copySubmit: {
     id: 'fresco.participants.ParticipantModal.copySubmit',
     defaultMessage: 'Submit',
-    description: 'Researcher-facing participants / ParticipantModal: Submit',
+    description:
+      'Label of the submit button of the participant dialog when adding a new participant; creates the participant. A verb.',
   },
   label: {
     id: 'fresco.participants.ParticipantModal.label',
     defaultMessage: 'Label',
-    description: 'Researcher-facing participants / ParticipantModal: Label',
+    description:
+      'Label of the optional field in the participant dialog for a human-readable name or project label for the participant. A noun.',
   },
   thisOptionalFieldAllowsYouToProvide: {
     id: 'fresco.participants.ParticipantModal.thisOptionalFieldAllowsYouToProvide',
     defaultMessage:
       'This optional field allows you to provide a human readable label. This could be a name, or an internal project label for this participant. It does not need to be unique, and will not be exposed to participants.',
     description:
-      'Researcher-facing participants / ParticipantModal: This optional field allows you to provide a human readable label. This could be a name, or an internal project label for',
+      "Hint under the Label field in the participant dialog. Explains that the label is optional, only for the researcher's use, and not shown to the participant.",
   },
   enterOptionalLabel: {
     id: 'fresco.participants.ParticipantModal.enterOptionalLabel',
     defaultMessage: 'Enter optional label...',
     description:
-      'Researcher-facing participants / ParticipantModal: Enter optional label...',
+      'Placeholder inside the empty Label field of the participant dialog. Enter is a verb.',
   },
   optionalHumanReadableLabel: {
     id: 'fresco.participants.ParticipantModal.optionalHumanReadableLabel',
     defaultMessage: 'Optional human-readable label',
     description:
-      'Researcher-facing participants / ParticipantModal: Optional human-readable label',
+      'Short hint passed to the Label field of the participant dialog describing what to enter in it.',
   },
   thisIdentifierIsAlreadyInUse: {
     id: 'fresco.participants.ParticipantModal.thisIdentifierIsAlreadyInUse',
     defaultMessage: 'This identifier is already in use.',
     description:
-      'Researcher-facing participants / ParticipantModal: This identifier is already in use.',
+      'Validation error under the Participant Identifier field of the participant dialog when another participant already has the same identifier.',
   },
   thisCouldBeAStudyIDA: {
     id: 'fresco.participants.ParticipantModal.thisCouldBeAStudyIDA',
     defaultMessage:
       'This could be a study ID, a number, or any other unique identifier. It should be unique for each participant, and should not be easy to guess',
     description:
-      'Researcher-facing participants / ParticipantModal: This could be a study ID, a number, or any other unique identifier. It should be unique for each participant, and should',
+      'Hint under the Participant Identifier field of the participant dialog, followed by a help icon that opens an explanation. Says what to use as identifier and that it must be unique and hard to guess.',
   },
   participantIdentifiers: {
     id: 'fresco.participants.ParticipantModal.participantIdentifiers',
     defaultMessage: 'Participant Identifiers',
     description:
-      'Researcher-facing participants / ParticipantModal: Participant Identifiers',
+      'Title of the help popover opened from the help icon beside the Participant Identifier field in the participant dialog. Plural noun.',
   },
   participantIdentifiersAreUsedByFrescoTo: {
     id: 'fresco.participants.ParticipantModal.participantIdentifiersAreUsedByFrescoTo',
     defaultMessage:
       'Participant identifiers are used by Fresco to onboard participants. They might be exposed to the participant during this process via the participation URL, and so must <tag1>not</tag1> contain any sensitive information, and must not be easy for other participants to guess (e.g. sequential numbers, or easily guessable strings).',
     description:
-      'Researcher-facing participants / ParticipantModal: Participant identifiers are used by Fresco to onboard participants. They might be exposed to the participant during this',
+      'Body of the help popover for the Participant Identifier field in the participant dialog. Warns that identifiers can appear in the participation URL. The tag1 element makes the word "not" bold; keep it.',
   },
   participantIdentifier: {
     id: 'fresco.participants.ParticipantModal.participantIdentifier',
     defaultMessage: 'Participant Identifier',
     description:
-      'Researcher-facing participants / ParticipantModal: Participant Identifier',
+      'Label of the required field in the participant dialog for the unique identifier of the study participant.',
   },
   enterAnIdentifier: {
     id: 'fresco.participants.ParticipantModal.enterAnIdentifier',
     defaultMessage: 'Enter an identifier...',
     description:
-      'Researcher-facing participants / ParticipantModal: Enter an identifier...',
+      'Placeholder inside the empty Participant Identifier field of the participant dialog. Enter is a verb.',
   },
   uniqueIdentifierForThisParticipant: {
     id: 'fresco.participants.ParticipantModal.uniqueIdentifierForThisParticipant',
     defaultMessage: 'Unique identifier for this participant',
     description:
-      'Researcher-facing participants / ParticipantModal: Unique identifier for this participant',
+      'Short hint passed to the Participant Identifier field of the participant dialog describing what to enter in it.',
   },
   generate: {
     id: 'fresco.participants.ParticipantModal.generate',
     defaultMessage: 'Generate',
-    description: 'Researcher-facing participants / ParticipantModal: Generate',
+    description:
+      'Button inside the Participant Identifier field of the participant dialog that fills the field with a randomly generated identifier. A verb.',
   },
 });
 

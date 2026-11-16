@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 
 import type { VariableOption, VariableType } from '@codaco/protocol-validation';
 
@@ -12,6 +12,7 @@ import type { VariableNameScope } from '../../fields/variableNameRules.ts';
 import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
+import { useLatest } from '../../state/useLatest.ts';
 import { useSubjectVariableScope } from '../canvas/codebookChoices.ts';
 import { needsCodebookEditorToCreate } from '../collectableTypes.ts';
 import { useCreateVariableEditor } from './useCreateVariableEditor.tsx';
@@ -145,8 +146,7 @@ export function useCreateAttributeForSlot({
    * stopped accepting edits. The escalation path asks the same two questions
    * of its own open editor (`useCreateVariableEditor`'s `writable`).
    */
-  const liveTarget = useRef({ subject: chosenSubject, writable: !readOnly });
-  liveTarget.current = { subject: chosenSubject, writable: !readOnly };
+  const liveTarget = useLatest({ subject: chosenSubject, writable: !readOnly });
 
   const escalates =
     lockedOptions !== undefined ||
@@ -155,7 +155,7 @@ export function useCreateAttributeForSlot({
 
   const createDirectly = useCallback(
     async (variableName: string): Promise<CreateOptionOutcome> => {
-      const asked = liveTarget.current.subject;
+      const asked = liveTarget().subject;
       if (asked === undefined) return { status: 'refused' };
       const outcome = await createVariable({
         name: variableName,
@@ -167,7 +167,7 @@ export function useCreateAttributeForSlot({
           ? { status: 'refused' }
           : { status: 'refused', message: outcome.message };
       }
-      const now = liveTarget.current;
+      const now = liveTarget();
       // The codebook holds it either way; what is left is whether this slot is
       // still the one that asked for it, and whether it may still be written.
       if (
@@ -181,7 +181,7 @@ export function useCreateAttributeForSlot({
       onCreated(outcome.variableId);
       return { status: 'created' };
     },
-    [createVariable, onCreated, seedValidation, variableType],
+    [createVariable, liveTarget, onCreated, seedValidation, variableType],
   );
 
   const offered = escalates

@@ -13,45 +13,50 @@ const messages = defineMessages({
   copyInvalidFormData: {
     id: 'fresco.actions.users.copyInvalidFormData',
     defaultMessage: 'Invalid form data',
-    description: 'Researcher-facing actions / users: Invalid form data',
+    description:
+      'Error shown in the form for adding a researcher account in Settings, User Management, when the submitted username and password fail the server-side checks.',
   },
   copyFailedToCreateUserUsernameMayAlready: {
     id: 'fresco.actions.users.copyFailedToCreateUserUsernameMayAlready',
     defaultMessage: 'Failed to create user. Username may already exist.',
     description:
-      'Researcher-facing actions / users: Failed to create user. Username may already exist.',
+      'Error shown in the form for adding a researcher account in Settings, User Management, when saving the new account failed, most likely because the username is already taken.',
   },
   copyInvalidData: {
     id: 'fresco.actions.users.copyInvalidData',
     defaultMessage: 'Invalid data',
-    description: 'Researcher-facing actions / users: Invalid data',
+    description:
+      'Generic error shown in Settings, User Management, when the data sent to delete researcher accounts or to change a password is not valid. Appears as an error message in the page or in the change-password form.',
   },
   copyNoValidUsersToDelete: {
     id: 'fresco.actions.users.copyNoValidUsersToDelete',
     defaultMessage: 'No valid users to delete',
-    description: 'Researcher-facing actions / users: No valid users to delete',
+    description:
+      'Error shown in Settings, User Management, when deleting researcher accounts and none of the selected accounts can be deleted (a researcher cannot delete their own account).',
   },
   copyCannotDeleteAllUsersAtLeastOne: {
     id: 'fresco.actions.users.copyCannotDeleteAllUsersAtLeastOne',
     defaultMessage: 'Cannot delete all users. At least one user must remain.',
     description:
-      'Researcher-facing actions / users: Cannot delete all users. At least one user must remain.',
+      'Error shown in Settings, User Management, when deleting the selected researcher accounts would leave the installation with no account at all. User means researcher account.',
   },
   copyFailedToDeleteUsers: {
     id: 'fresco.actions.users.copyFailedToDeleteUsers',
     defaultMessage: 'Failed to delete users',
-    description: 'Researcher-facing actions / users: Failed to delete users',
+    description:
+      'Error shown in Settings, User Management, when deleting researcher accounts failed unexpectedly. Users means researcher accounts.',
   },
   copyCurrentPasswordIsIncorrect: {
     id: 'fresco.actions.users.copyCurrentPasswordIsIncorrect',
     defaultMessage: 'Current password is incorrect',
     description:
-      'Researcher-facing actions / users: Current password is incorrect',
+      'Error shown in the change-password dialog in Settings when the current password the researcher entered does not match their account password.',
   },
   copyFailedToUpdatePassword: {
     id: 'fresco.actions.users.copyFailedToUpdatePassword',
     defaultMessage: 'Failed to update password',
-    description: 'Researcher-facing actions / users: Failed to update password',
+    description:
+      'Error shown in the change-password dialog in Settings when saving the new password failed unexpectedly.',
   },
 });
 

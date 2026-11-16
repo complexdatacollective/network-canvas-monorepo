@@ -76,12 +76,12 @@ const messages = defineMessages({
     defaultMessage: 'Sign in',
     description: 'Submit button of the password sign-in form.',
   },
-  useMagicLink: {
+  magicLinkInstead: {
     id: 'studio.signIn.useMagicLink',
     defaultMessage: 'Sign in with a magic link instead',
     description: 'Toggle from the password form to the magic-link form.',
   },
-  usePassword: {
+  passwordInstead: {
     id: 'studio.signIn.usePassword',
     defaultMessage: 'Sign in with a password instead',
     description: 'Toggle from the magic-link form to the password form.',
@@ -275,8 +275,8 @@ export default function SignIn() {
               >
                 {intl.formatMessage(
                   showPasswordForm
-                    ? messages.useMagicLink
-                    : messages.usePassword,
+                    ? messages.magicLinkInstead
+                    : messages.passwordInstead,
                 )}
               </Button>
             )}

@@ -1478,7 +1478,7 @@ export const egoFormScenarios: InterfaceScenarios = {
 
         await page.getByTestId('previous-button').click();
         await expect(dialog.getByText('Discard changes?')).toBeVisible();
-        await page.getByTestId('dialog-primary').click(); // "Discard changes"
+        await page.getByTestId('dialog-primary').click(); // "Yes"
         await expect(dialog).toBeHidden();
         // moved back to the Information stage; discarded value never persisted
         await expect(

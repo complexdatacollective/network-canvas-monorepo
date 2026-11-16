@@ -4,7 +4,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -17,6 +16,7 @@ import {
   type ProtocolBuilderAdapter,
 } from '../state/context.ts';
 import type { ResourcePromotion } from '../state/hooks.ts';
+import { useLatest } from '../state/useLatest.ts';
 import { withRosterCharacterMessage } from './components/rosterCharacters.ts';
 import { resourceFailureMessages } from './resourceMessages.ts';
 import {
@@ -186,8 +186,10 @@ export function ResourceClientProvider({
   const [minted] = useState(() => uuid());
   const editId = named ?? minted;
   const [staged, setStaged] = useState<readonly ResourceDescriptor[]>([]);
-  const leaving = useRef(new Set<string>());
-  const discarded = useRef(new Set<string>());
+  // Held in state rather than refs: they are never replaced, only mutated by
+  // the client, and the client is built from them while rendering.
+  const [leaving] = useState(() => new Set<string>());
+  const [discarded] = useState(() => new Set<string>());
 
   const editorClient = useMemo(
     () =>
@@ -196,10 +198,10 @@ export function ResourceClientProvider({
         protocolId,
         editId,
         setStaged,
-        leaving: leaving.current,
-        discarded: discarded.current,
+        leaving,
+        discarded,
       }),
-    [adapter, protocolId, editId],
+    [adapter, protocolId, editId, leaving, discarded],
   );
 
   const stagedResources = useMemo(
@@ -215,11 +217,11 @@ export function ResourceClientProvider({
   );
 
   // Whatever is still staged when the edit goes is what nothing saved: the
-  // researcher cancelled, or navigated away. Read through a ref so the effect
-  // runs once, at the end, over the resources staged by then.
-  const discardOnClose = useRef(stagedResources.discardAll);
-  discardOnClose.current = stagedResources.discardAll;
-  useEffect(() => () => void discardOnClose.current(), []);
+  // researcher cancelled, or navigated away. Read through a getter of the
+  // latest value so the effect runs once, at the end, over the resources
+  // staged by then.
+  const discardOnClose = useLatest(stagedResources.discardAll);
+  useEffect(() => () => void discardOnClose()(), [discardOnClose]);
 
   return (
     <ResourceClientContext value={editorClient}>

@@ -21,27 +21,27 @@ const messages = defineMessages({
     id: 'fresco.actions.protocols.copyFailedToDeleteProtocols',
     defaultMessage: 'Failed to delete protocols',
     description:
-      'Researcher-facing actions / protocols: Failed to delete protocols',
+      'Error message returned by the server action that deletes protocols from the Protocols page, when deleting the selected protocols failed.',
   },
   copyFailedToCleanUpUploadedFiles: {
     id: 'fresco.actions.protocols.copyFailedToCleanUpUploadedFiles',
     defaultMessage: 'Failed to clean up uploaded files',
     description:
-      'Researcher-facing actions / protocols: Failed to clean up uploaded files',
+      'Error message returned when removing the files already uploaded to storage failed, after a protocol import was abandoned. The import has already failed; this concerns the leftover files.',
   },
   copyTheProtocolYouAttemptedToAddAlready: {
     id: 'fresco.actions.protocols.copyTheProtocolYouAttemptedToAddAlready',
     defaultMessage:
       'The protocol you attempted to add already exists in the database. Please remove it and try again.',
     description:
-      'Researcher-facing actions / protocols: The protocol you attempted to add already exists in the database. Please remove it and try again.',
+      'Error shown in the protocol import progress toast when the researcher imports a protocol file whose protocol is already installed. Tells them to delete the existing protocol first.',
   },
   copyThereWasAnErrorAddingYourProtocol: {
     id: 'fresco.actions.protocols.copyThereWasAnErrorAddingYourProtocol',
     defaultMessage:
       'There was an error adding your protocol to the database. See the error details for more information.',
     description:
-      'Researcher-facing actions / protocols: There was an error adding your protocol to the database. See the error details for more information.',
+      'Error shown in the protocol import progress toast when saving the imported protocol to the database failed for a reason other than it already existing.',
   },
 });
 

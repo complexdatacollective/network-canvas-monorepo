@@ -258,7 +258,10 @@ export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
                   className="bg-surface-1 text-surface-1-contrast elevation-low flex flex-col gap-1 rounded p-4"
                 >
                   <Link
-                    className="focusable font-heading rounded font-bold no-underline"
+                    // The study name the researcher typed takes its own
+                    // direction, on the interface side.
+                    dir="auto"
+                    className="focusable font-heading text-match-parent rounded font-bold no-underline"
                     to="/study/$studyId"
                     params={{ studyId: study.id }}
                   >

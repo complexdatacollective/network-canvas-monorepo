@@ -1,7 +1,11 @@
 import { cacheLife } from 'next/cache';
 import 'server-only';
 
-import { createAppIntl, type IntlShape } from '@codaco/app-i18n/messages';
+import {
+  createAppIntl,
+  type IntlShape,
+  withoutIsolates,
+} from '@codaco/app-i18n/messages';
 import { formatActivityType } from '~/app/dashboard/_components/ActivityFeed/messages';
 import { type SearchParams } from '~/app/dashboard/_components/ActivityFeed/types';
 import { formatActivityDetails } from '~/i18n/activityDetails';
@@ -125,7 +129,7 @@ export async function fetchActivities(
         for (const event of batch) {
           if (
             !event.message.includes(q) &&
-            !formatActivityDetails(intl, event).includes(q)
+            !withoutIsolates(formatActivityDetails(intl, event)).includes(q)
           )
             continue;
           if (count >= offset && events.length < perPage) events.push(event);

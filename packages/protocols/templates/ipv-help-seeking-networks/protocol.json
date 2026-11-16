@@ -3,8 +3,8 @@
   "description": "An example template for studying the people and services a survivor of intimate partner violence can turn to for help. The names and private notes the participant records about the people they mention are encrypted with the participant's own passphrase before they are saved, so they cannot be read from the study's data, while relationship types, disclosure, reactions, and the services they use stay readable for analysis.",
   "schemaVersion": 9,
   "localization": {
-    "defaultLocale": "en-US",
-    "locales": ["en-US"]
+    "defaultLocale": "en",
+    "locales": ["en"]
   },
   "lastModified": "2026-10-13T00:00:00.000Z",
   "experiments": {},
@@ -52,43 +52,43 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Family member"
+                  "en": "Family member"
                 },
                 "value": "family"
               },
               {
                 "label": {
-                  "en-US": "Friend"
+                  "en": "Friend"
                 },
                 "value": "friend"
               },
               {
                 "label": {
-                  "en-US": "Family or friend of the person who harmed you"
+                  "en": "Family or friend of the person who harmed you"
                 },
                 "value": "partner_network"
               },
               {
                 "label": {
-                  "en-US": "Neighbour"
+                  "en": "Neighbour"
                 },
                 "value": "neighbour"
               },
               {
                 "label": {
-                  "en-US": "Colleague or classmate"
+                  "en": "Colleague or classmate"
                 },
                 "value": "colleague"
               },
               {
                 "label": {
-                  "en-US": "Member of a faith or community group"
+                  "en": "Member of a faith or community group"
                 },
                 "value": "community"
               },
               {
                 "label": {
-                  "en-US": "Someone else"
+                  "en": "Someone else"
                 },
                 "value": "other"
               }
@@ -104,25 +104,25 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Less than once a month"
+                  "en": "Less than once a month"
                 },
                 "value": 1
               },
               {
                 "label": {
-                  "en-US": "About once a month"
+                  "en": "About once a month"
                 },
                 "value": 2
               },
               {
                 "label": {
-                  "en-US": "About once a week"
+                  "en": "About once a week"
                 },
                 "value": 3
               },
               {
                 "label": {
-                  "en-US": "Most days"
+                  "en": "Most days"
                 },
                 "value": 4
               }
@@ -135,13 +135,13 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Yes"
+                  "en": "Yes"
                 },
                 "value": true
               },
               {
                 "label": {
-                  "en-US": "No, or I'm not sure"
+                  "en": "No, or I'm not sure"
                 },
                 "value": false
               }
@@ -154,19 +154,19 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Not at all safe"
+                  "en": "Not at all safe"
                 },
                 "value": 1
               },
               {
                 "label": {
-                  "en-US": "Somewhat safe"
+                  "en": "Somewhat safe"
                 },
                 "value": 2
               },
               {
                 "label": {
-                  "en-US": "Completely safe"
+                  "en": "Completely safe"
                 },
                 "value": 3
               }
@@ -179,31 +179,31 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Believed me and supported my choices"
+                  "en": "Believed me and supported my choices"
                 },
                 "value": "supportive"
               },
               {
                 "label": {
-                  "en-US": "Gave me practical help"
+                  "en": "Gave me practical help"
                 },
                 "value": "practical"
               },
               {
                 "label": {
-                  "en-US": "Pressured me to do something I wasn't ready for"
+                  "en": "Pressured me to do something I wasn't ready for"
                 },
                 "value": "pressured"
               },
               {
                 "label": {
-                  "en-US": "Didn't believe me or blamed me"
+                  "en": "Didn't believe me or blamed me"
                 },
                 "value": "blamed"
               },
               {
                 "label": {
-                  "en-US": "Told the person who harmed me"
+                  "en": "Told the person who harmed me"
                 },
                 "value": "told_partner"
               }
@@ -249,49 +249,49 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Helpline or hotline"
+                  "en": "Helpline or hotline"
                 },
                 "value": "helpline"
               },
               {
                 "label": {
-                  "en-US": "Shelter or refuge"
+                  "en": "Shelter or refuge"
                 },
                 "value": "shelter"
               },
               {
                 "label": {
-                  "en-US": "Police"
+                  "en": "Police"
                 },
                 "value": "police"
               },
               {
                 "label": {
-                  "en-US": "Legal help or advocacy"
+                  "en": "Legal help or advocacy"
                 },
                 "value": "legal_advocacy"
               },
               {
                 "label": {
-                  "en-US": "Doctor, nurse, or hospital"
+                  "en": "Doctor, nurse, or hospital"
                 },
                 "value": "health"
               },
               {
                 "label": {
-                  "en-US": "Counselling or therapy"
+                  "en": "Counselling or therapy"
                 },
                 "value": "counselling"
               },
               {
                 "label": {
-                  "en-US": "Faith or community organisation"
+                  "en": "Faith or community organisation"
                 },
                 "value": "community"
               },
               {
                 "label": {
-                  "en-US": "Something else"
+                  "en": "Something else"
                 },
                 "value": "other"
               }
@@ -311,25 +311,25 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Not at all helpful"
+                  "en": "Not at all helpful"
                 },
                 "value": 1
               },
               {
                 "label": {
-                  "en-US": "A little helpful"
+                  "en": "A little helpful"
                 },
                 "value": 2
               },
               {
                 "label": {
-                  "en-US": "Quite helpful"
+                  "en": "Quite helpful"
                 },
                 "value": 3
               },
               {
                 "label": {
-                  "en-US": "Very helpful"
+                  "en": "Very helpful"
                 },
                 "value": 4
               }
@@ -361,14 +361,14 @@
           "options": [
             {
               "label": {
-                "en-US": "Yes. I agree to take part."
+                "en": "Yes. I agree to take part."
               },
               "value": true,
               "negative": false
             },
             {
               "label": {
-                "en-US": "No. I do not agree to take part."
+                "en": "No. I do not agree to take part."
               },
               "value": false,
               "negative": true
@@ -391,31 +391,31 @@
           "options": [
             {
               "label": {
-                "en-US": "We are still together and live together"
+                "en": "We are still together and live together"
               },
               "value": "together_cohabiting"
             },
             {
               "label": {
-                "en-US": "We are still together but do not live together"
+                "en": "We are still together but do not live together"
               },
               "value": "together_apart"
             },
             {
               "label": {
-                "en-US": "We are on and off"
+                "en": "We are on and off"
               },
               "value": "on_off"
             },
             {
               "label": {
-                "en-US": "We have separated"
+                "en": "We have separated"
               },
               "value": "separated"
             },
             {
               "label": {
-                "en-US": "Prefer not to say"
+                "en": "Prefer not to say"
               },
               "value": "declined"
             }
@@ -431,13 +431,13 @@
           "options": [
             {
               "label": {
-                "en-US": "Yes"
+                "en": "Yes"
               },
               "value": true
             },
             {
               "label": {
-                "en-US": "No"
+                "en": "No"
               },
               "value": false
             }
@@ -450,18 +450,18 @@
     {
       "id": "information-researcher-notes",
       "label": {
-        "en-US": "Template notes (delete before fielding)"
+        "en": "Template notes (delete before fielding)"
       },
       "type": "Information",
       "title": {
-        "en-US": "Template notes"
+        "en": "Template notes"
       },
       "items": [
         {
           "id": "researcher-notes",
           "type": "text",
           "content": {
-            "en-US": "## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThe **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted is encrypted with it before it is saved. To change which attributes are encrypted, open that stage and use its **Encrypted attributes** section. Only text attributes on nodes can be encrypted.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\n### What encryption does and does not protect\n\nEncryption protects **saved and exported data**. CSV and GraphML exports replace every encrypted value with the word `ENCRYPTED` and leave out the encrypted value itself, so these answers cannot be recovered from an export by anyone, including your team. If a participant forgets their passphrase, their encrypted answers cannot be recovered at all.\n\nEncryption does **not** hide anything on screen. While the passphrase is in use, names and notes are shown as the participant types them and on later screens, so anyone who can see the screen, including the interviewer, can read them. The participant-facing text in this template says so; keep it accurate if you edit it.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names in your data; it does not protect a participant who is overheard or whose screen is seen during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
+            "en": "## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThe **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted is encrypted with it before it is saved. To change which attributes are encrypted, open that stage and use its **Encrypted attributes** section. Only text attributes on nodes can be encrypted.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\n### What encryption does and does not protect\n\nEncryption protects **saved and exported data**. CSV and GraphML exports replace every encrypted value with the word `ENCRYPTED` and leave out the encrypted value itself, so these answers cannot be recovered from an export by anyone, including your team. If a participant forgets their passphrase, their encrypted answers cannot be recovered at all.\n\nEncryption does **not** hide anything on screen. While the passphrase is in use, names and notes are shown as the participant types them and on later screens, so anyone who can see the screen, including the interviewer, can read them. The participant-facing text in this template says so; keep it accurate if you edit it.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names in your data; it does not protect a participant who is overheard or whose screen is seen during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
           }
         }
       ]
@@ -470,15 +470,15 @@
       "id": "information-intro",
       "interviewScript": "Before starting, confirm that the participant is somewhere safe and private, and agree with them what you will both do if someone comes in — for example, switching to an agreed neutral topic. Do not continue if they cannot talk privately.",
       "label": {
-        "en-US": "Welcome and consent"
+        "en": "Welcome and consent"
       },
       "type": "EgoForm",
       "introductionPanel": {
         "title": {
-          "en-US": "About this interview"
+          "en": "About this interview"
         },
         "text": {
-          "en-US": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it before they are saved. In the study's data they cannot be read by anyone, including the researchers, and they cannot be recovered without your passphrase.\n\nThey do appear on screen while you take part, so anyone who can see the screen can read them.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
+          "en": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it before they are saved. In the study's data they cannot be read by anyone, including the researchers, and they cannot be recovered without your passphrase.\n\nThey do appear on screen while you take part, so anyone who can see the screen can read them.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
         }
       },
       "form": {
@@ -486,7 +486,7 @@
           {
             "variable": "participant_consent",
             "prompt": {
-              "en-US": "Do you consent to participate in this study?"
+              "en": "Do you consent to participate in this study?"
             }
           }
         ]
@@ -496,7 +496,7 @@
       "id": "anonymisation",
       "interviewScript": "Turn the device towards the participant, or look away, while they type their passphrase. Do not ask what it is or write it down.",
       "label": {
-        "en-US": "Create your private passphrase"
+        "en": "Create your private passphrase"
       },
       "skipLogic": {
         "action": "SKIP",
@@ -513,11 +513,14 @@
             }
           ]
         },
-        "destination": { "type": "stage", "stageId": "finish-declined" }
+        "destination": {
+          "type": "stage",
+          "stageId": "finish-declined"
+        }
       },
       "type": "Anonymisation",
       "explanationText": {
-        "en-US": "# Keep the people you mention private\n\nChoose a passphrase that only you know. The **names** you give and any **private notes** you write will be encrypted with it before they are saved, so that nobody can read them in the study's data — including the researchers.\n\nThey will still appear on screen during this interview, so anyone who can see the screen can read them.\n\nPick something you will remember: you will need the same passphrase if you return to this interview, and it **cannot be recovered** if it is forgotten. Please do not tell it to the interviewer."
+        "en": "# Keep the people you mention private\n\nChoose a passphrase that only you know. The **names** you give and any **private notes** you write will be encrypted with it before they are saved, so that nobody can read them in the study's data — including the researchers.\n\nThey will still appear on screen during this interview, so anyone who can see the screen can read them.\n\nPick something you will remember: you will need the same passphrase if you return to this interview, and it **cannot be recovered** if it is forgotten. Please do not tell it to the interviewer."
       },
       "validation": {
         "minLength": 8,
@@ -527,15 +530,15 @@
     {
       "id": "ego-form-background",
       "label": {
-        "en-US": "About you"
+        "en": "About you"
       },
       "type": "EgoForm",
       "introductionPanel": {
         "title": {
-          "en-US": "A few questions about you"
+          "en": "A few questions about you"
         },
         "text": {
-          "en-US": "Before we talk about the people around you, we would like to ask a few questions about **you**. These are not encrypted, so they do not include anyone's name. You may skip any question."
+          "en": "Before we talk about the people around you, we would like to ask a few questions about **you**. These are not encrypted, so they do not include anyone's name. You may skip any question."
         }
       },
       "form": {
@@ -543,19 +546,19 @@
           {
             "variable": "ego_age",
             "prompt": {
-              "en-US": "How old are you, in years?"
+              "en": "How old are you, in years?"
             }
           },
           {
             "variable": "relationship_status",
             "prompt": {
-              "en-US": "Which of these best describes your relationship with the person who harmed you **now**?"
+              "en": "Which of these best describes your relationship with the person who harmed you **now**?"
             }
           },
           {
             "variable": "children_in_home",
             "prompt": {
-              "en-US": "Do any children live with you?"
+              "en": "Do any children live with you?"
             }
           }
         ]
@@ -565,30 +568,30 @@
       "id": "ng-people",
       "interviewScript": "Names and notes on this screen are saved encrypted with the participant's passphrase, but they are shown on screen as they are typed. Remind the participant they can use a nickname or initials, and offer to look away while they type. The same person can be added under more than one question by dragging them from the 'Already mentioned' panel.",
       "label": {
-        "en-US": "People you could turn to"
+        "en": "People you could turn to"
       },
       "type": "NameGenerator",
       "form": {
         "title": {
-          "en-US": "Add Person"
+          "en": "Add Person"
         },
         "fields": [
           {
             "variable": "person_name",
             "prompt": {
-              "en-US": "What is this person's name, nickname, or initials?"
+              "en": "What is this person's name, nickname, or initials?"
             },
             "hint": {
-              "en-US": "This is saved encrypted with your passphrase. A nickname or initials is fine."
+              "en": "This is saved encrypted with your passphrase. A nickname or initials is fine."
             }
           },
           {
             "variable": "private_note",
             "prompt": {
-              "en-US": "Is there anything you want to remember about this person?"
+              "en": "Is there anything you want to remember about this person?"
             },
             "hint": {
-              "en-US": "Optional. This note is saved encrypted too."
+              "en": "Optional. This note is saved encrypted too."
             }
           }
         ]
@@ -601,7 +604,7 @@
         {
           "id": "ng-people-existing",
           "title": {
-            "en-US": "Already mentioned"
+            "en": "Already mentioned"
           },
           "dataSource": "existing"
         }
@@ -610,7 +613,7 @@
         {
           "id": "ng-people-confidant",
           "text": {
-            "en-US": "Who are the people you could **talk to** about what has been happening in your relationship — whether or not you have told them yet?"
+            "en": "Who are the people you could **talk to** about what has been happening in your relationship — whether or not you have told them yet?"
           },
           "additionalAttributes": [
             {
@@ -622,7 +625,7 @@
         {
           "id": "ng-people-practical",
           "text": {
-            "en-US": "Who could help you in **practical ways** if you needed it — for example a place to stay, money, a lift, or looking after children or pets?"
+            "en": "Who could help you in **practical ways** if you needed it — for example a place to stay, money, a lift, or looking after children or pets?"
           },
           "additionalAttributes": [
             {
@@ -634,7 +637,7 @@
         {
           "id": "ng-people-unhelpful",
           "text": {
-            "en-US": "Is there anyone who has **reacted badly**, made things harder for you, or who you would **avoid telling**?"
+            "en": "Is there anyone who has **reacted badly**, made things harder for you, or who you would **avoid telling**?"
           },
           "additionalAttributes": [
             {
@@ -652,27 +655,27 @@
       "id": "ng-services",
       "interviewScript": "Service names are not encrypted. If the participant mentions a person who works at a service (for example, a named advocate), record the service here, not the person's name.",
       "label": {
-        "en-US": "Services"
+        "en": "Services"
       },
       "type": "NameGenerator",
       "form": {
         "title": {
-          "en-US": "Add Service"
+          "en": "Add Service"
         },
         "fields": [
           {
             "variable": "service_name",
             "prompt": {
-              "en-US": "What is the name of this service or organisation?"
+              "en": "What is the name of this service or organisation?"
             },
             "hint": {
-              "en-US": "Please give the organisation's name, not the name of anyone who works there."
+              "en": "Please give the organisation's name, not the name of anyone who works there."
             }
           },
           {
             "variable": "service_type",
             "prompt": {
-              "en-US": "What kind of service is it?"
+              "en": "What kind of service is it?"
             }
           }
         ]
@@ -685,7 +688,7 @@
         {
           "id": "ng-services-contacted",
           "text": {
-            "en-US": "Which **services or organisations** have you contacted for help with what has been happening — for example a helpline, a shelter, the police, a doctor, or a legal advocate?"
+            "en": "Which **services or organisations** have you contacted for help with what has been happening — for example a helpline, a shelter, the police, a doctor, or a legal advocate?"
           },
           "additionalAttributes": [
             {
@@ -697,7 +700,7 @@
         {
           "id": "ng-services-known",
           "text": {
-            "en-US": "Are there any other services you **know about** but have **not contacted**?"
+            "en": "Are there any other services you **know about** but have **not contacted**?"
           },
           "additionalAttributes": [
             {
@@ -715,26 +718,30 @@
       "id": "alter-form-people-introduction",
       "type": "Information",
       "label": {
-        "en-US": "Tell us a little about each person"
+        "en": "Tell us a little about each person"
       },
       "title": {
-        "en-US": "Tell us a little about each person"
+        "en": "Tell us a little about each person"
       },
       "items": [
         {
           "id": "introduction-text",
           "type": "text",
           "content": {
-            "en-US": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
+            "en": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
           }
         }
       ]
     },
     {
       "id": "alter-form-people",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "label": {
-        "en-US": "About each person"
+        "en": "About each person"
       },
       "type": "AlterForm",
       "subject": {
@@ -746,22 +753,22 @@
           {
             "variable": "relationship",
             "prompt": {
-              "en-US": "How do you know {nodeLabel}?"
+              "en": "How do you know {nodeLabel}?"
             }
           },
           {
             "variable": "contact_frequency",
             "prompt": {
-              "en-US": "How often are you usually in touch with {nodeLabel}?"
+              "en": "How often are you usually in touch with {nodeLabel}?"
             }
           },
           {
             "variable": "knows_about_abuse",
             "prompt": {
-              "en-US": "Does {nodeLabel} **know** about what has been happening in your relationship?"
+              "en": "Does {nodeLabel} **know** about what has been happening in your relationship?"
             },
             "hint": {
-              "en-US": "Whether you told them or they found out another way."
+              "en": "Whether you told them or they found out another way."
             }
           }
         ]
@@ -771,26 +778,30 @@
       "id": "alter-form-services-introduction",
       "type": "Information",
       "label": {
-        "en-US": "Services you contacted"
+        "en": "Services you contacted"
       },
       "title": {
-        "en-US": "Services you contacted"
+        "en": "Services you contacted"
       },
       "items": [
         {
           "id": "introduction-text",
           "type": "text",
           "content": {
-            "en-US": "For each service you contacted, please tell us how helpful it was."
+            "en": "For each service you contacted, please tell us how helpful it was."
           }
         }
       ]
     },
     {
       "id": "alter-form-services",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "label": {
-        "en-US": "Services you contacted"
+        "en": "Services you contacted"
       },
       "type": "AlterForm",
       "filter": {
@@ -817,7 +828,7 @@
           {
             "variable": "service_helpful",
             "prompt": {
-              "en-US": "Overall, how helpful was {nodeLabel}?"
+              "en": "Overall, how helpful was {nodeLabel}?"
             }
           }
         ]
@@ -826,7 +837,7 @@
     {
       "id": "ordinal-bin-safe-to-tell",
       "label": {
-        "en-US": "How safe it would feel to tell each person"
+        "en": "How safe it would feel to tell each person"
       },
       "type": "OrdinalBin",
       "subject": {
@@ -837,7 +848,7 @@
         {
           "id": "bin-safe-to-tell",
           "text": {
-            "en-US": "Drag each person into the band that best describes **how safe it would feel** to talk to them about what has been happening."
+            "en": "Drag each person into the band that best describes **how safe it would feel** to talk to them about what has been happening."
           },
           "variable": "safe_to_tell",
           "color": "ord-color-seq-1"
@@ -846,10 +857,14 @@
     },
     {
       "id": "categorical-bin-reaction",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "interviewScript": "Only people the participant said know about the abuse appear here. Anything typed into the 'Something else' box is saved encrypted with the participant's passphrase, because a free-text description is where identifying details tend to appear.",
       "label": {
-        "en-US": "How people reacted"
+        "en": "How people reacted"
       },
       "type": "CategoricalBin",
       "subject": {
@@ -875,15 +890,15 @@
         {
           "id": "bin-reaction",
           "text": {
-            "en-US": "These are the people who know about what has been happening. Drag each person into the box that best describes **how they reacted** when they found out."
+            "en": "These are the people who know about what has been happening. Drag each person into the box that best describes **how they reacted** when they found out."
           },
           "variable": "reaction",
           "otherVariable": "reaction_other",
           "otherVariablePrompt": {
-            "en-US": "In your own words, how did {nodeLabel} react? (This is saved encrypted.)"
+            "en": "In your own words, how did {nodeLabel} react? (This is saved encrypted.)"
           },
           "otherOptionLabel": {
-            "en-US": "Something else"
+            "en": "Something else"
           }
         }
       ]
@@ -892,7 +907,7 @@
       "id": "sociogram-network",
       "interviewScript": "The second prompt identifies supporters who are close to the person who harmed the participant. Researchers use this to see whether help might reach that person. Do not ask the participant to name the person who harmed them.",
       "label": {
-        "en-US": "Who knows whom"
+        "en": "Who knows whom"
       },
       "type": "Sociogram",
       "subject": {
@@ -910,7 +925,7 @@
         {
           "id": "sociogram-knows",
           "text": {
-            "en-US": "The people you mentioned are arranged for you below. Draw a line between any **two people who know each other**."
+            "en": "The people you mentioned are arranged for you below. Draw a line between any **two people who know each other**."
           },
           "layout": {
             "layoutVariable": "layout"
@@ -923,7 +938,7 @@
         {
           "id": "sociogram-close-to-partner",
           "text": {
-            "en-US": "Now tap anyone who is **close to, or regularly in touch with, the person who harmed you**."
+            "en": "Now tap anyone who is **close to, or regularly in touch with, the person who harmed you**."
           },
           "layout": {
             "layoutVariable": "layout"
@@ -941,39 +956,43 @@
     {
       "id": "information-support",
       "label": {
-        "en-US": "Thank you and support services"
+        "en": "Thank you and support services"
       },
       "type": "Information",
       "title": {
-        "en-US": "Thank you — and where to find support"
+        "en": "Thank you — and where to find support"
       },
       "items": [
         {
           "id": "support-thanks",
           "type": "text",
           "content": {
-            "en-US": "## Thank you for sharing\n\nTalking about these experiences takes courage, and we are grateful for your time.\n\nThe names and notes you entered are encrypted with your passphrase. If you return to this interview, you will need the same passphrase to see them.\n\n### If you would like support\n\n- **Talk to the interviewer now** if you would like to take a moment or talk about how you are feeling.\n- **If you are in immediate danger, contact your local emergency services.**\n- _The researcher will insert local and national domestic violence helplines for your study site here._\n\nYou do not have to face this alone."
+            "en": "## Thank you for sharing\n\nTalking about these experiences takes courage, and we are grateful for your time.\n\nThe names and notes you entered are encrypted with your passphrase. If you return to this interview, you will need the same passphrase to see them.\n\n### If you would like support\n\n- **Talk to the interviewer now** if you would like to take a moment or talk about how you are feeling.\n- **If you are in immediate danger, contact your local emergency services.**\n- _The researcher will insert local and national domestic violence helplines for your study site here._\n\nYou do not have to face this alone."
           }
         }
       ]
     },
     {
       "id": "finish",
-      "label": { "en-US": "Finish Interview" },
+      "label": {
+        "en": "Finish Interview"
+      },
       "type": "FinishSession",
       "mode": "confirmation",
       "content": {
-        "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
       "finishedContent": {
-        "en-US": "# Interview Finished\n\nThank you for participating!"
+        "en": "# Interview Finished\n\nThank you for participating!"
       },
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": {
+        "en": "Finish"
+      },
       "finishConfirmation": {
-        "en-US": "Are you sure you want to finish the interview?"
+        "en": "Are you sure you want to finish the interview?"
       },
       "finishFailed": {
-        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
       },
       "outcome": "completed"
     },
@@ -982,22 +1001,22 @@
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
-        "en-US": "Not Taking Part"
+        "en": "Not Taking Part"
       },
       "content": {
-        "en-US": "# You Chose Not to Take Part\n\nThank you for your time. Because you chose not to take part in this study, the interview ends here. If you chose this by mistake, go back and change your answer. Otherwise, press Finish."
+        "en": "# You Chose Not to Take Part\n\nThank you for your time. Because you chose not to take part in this study, the interview ends here. If you chose this by mistake, go back and change your answer. Otherwise, press Finish."
       },
       "finishedContent": {
-        "en-US": "# Interview Finished\n\nThank you for your time."
+        "en": "# Interview Finished\n\nThank you for your time."
       },
       "finishLabel": {
-        "en-US": "Finish"
+        "en": "Finish"
       },
       "finishConfirmation": {
-        "en-US": "Are you sure you want to finish the interview?"
+        "en": "Are you sure you want to finish the interview?"
       },
       "finishFailed": {
-        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
       },
       "outcome": "terminated"
     }
@@ -1005,116 +1024,162 @@
   "interfaceText": {
     "navigation": {
       "exitInterview": {
-        "en-US": "Exit interview"
+        "en": "Exit interview"
       },
       "exitInterviewDescription": {
-        "en-US": "Your answers so far will be saved and you can continue later."
+        "en": "Your answers so far will be saved and you can continue later."
       },
       "back": {
-        "en-US": "Back"
+        "en": "Back"
       },
       "continue": {
-        "en-US": "Continue"
+        "en": "Continue"
+      },
+      "exitFailed": {
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en": "Show screen"
       }
     },
     "buttons": {
       "cancel": {
-        "en-US": "Cancel"
+        "en": "Cancel"
       },
       "done": {
-        "en-US": "Done"
-      },
-      "delete": {
-        "en-US": "Delete"
+        "en": "Done"
       },
       "yes": {
-        "en-US": "Yes"
+        "en": "Yes"
       },
       "no": {
-        "en-US": "No"
+        "en": "No"
+      },
+      "save": {
+        "en": "Save"
       },
       "pauseLayout": {
-        "en-US": "Pause automatic layout"
+        "en": "Pause automatic layout"
       },
       "resumeLayout": {
-        "en-US": "Resume automatic layout"
+        "en": "Resume automatic layout"
+      },
+      "copy": {
+        "en": "Copy"
+      },
+      "copied": {
+        "en": "Copied"
       }
     },
     "messages": {
       "stageError": {
-        "en-US": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
-      },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
+        "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
       "error": {
-        "en-US": "An error occurred."
+        "en": "An error occurred."
+      },
+      "unnamed": {
+        "en": "Unnamed"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
       }
     },
     "passphrase": {
       "passphrase": {
-        "en-US": "Passphrase"
+        "en": "Passphrase"
       },
       "choosePassphraseHelp": {
-        "en-US": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten."
+        "en": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten."
       },
       "passphraseIncorrect": {
-        "en-US": "This passphrase does not match the one used earlier in this interview. Check it and try again."
+        "en": "This passphrase does not match the one used earlier in this interview. Check it and try again."
       },
       "protectedAnswersLocked": {
-        "en-US": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
+        "en": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
       },
       "protectedAnswersNotSaved": {
-        "en-US": "Your answers have not been saved. Enter your passphrase, then try again."
-      },
-      "protectedAnswersUnavailable": {
-        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know."
+        "en": "Your answers have not been saved. Enter your passphrase, then try again."
       },
       "answerUnavailable": {
-        "en-US": "Answer unavailable"
+        "en": "Answer unavailable"
       },
       "answerUnavailableKept": {
-        "en-US": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer."
+        "en": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer."
       },
       "confirmPassphrase": {
-        "en-US": "Confirm Passphrase"
+        "en": "Confirm Passphrase"
       },
       "passphraseAccepted": {
-        "en-US": "Passphrase accepted! Click \"Next\" to continue."
+        "en": "Passphrase accepted! Click \"Next\" to continue."
+      },
+      "passwordPlaceholder": {
+        "en": "Enter password"
       }
     },
     "forms": {
       "discardChangesTitle": {
-        "en-US": "Discard changes?"
+        "en": "Discard changes?"
       },
       "discardChangesDescription": {
-        "en-US": "Do you want to discard your changes?"
+        "en": "Do you want to discard your changes?"
       }
     },
     "validation": {
       "required": {
-        "en-US": "You must answer this question before continuing."
+        "en": "You must answer this question before continuing."
       },
       "minLength": {
-        "en-US": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}"
+        "en": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}"
       },
       "maxLength": {
-        "en-US": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}"
+        "en": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}"
       },
       "minValue": {
-        "en-US": "Enter a value greater than or equal to {min}."
+        "en": "Enter a value greater than or equal to {min}."
       },
       "maxValue": {
-        "en-US": "Enter a value less than or equal to {max}."
+        "en": "Enter a value less than or equal to {max}."
       },
       "maxSelected": {
-        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
+        "en": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
       },
       "unique": {
-        "en-US": "Must be unique."
+        "en": "Must be unique."
       },
       "sameAs": {
-        "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
+        "en": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
       }
     }
   }

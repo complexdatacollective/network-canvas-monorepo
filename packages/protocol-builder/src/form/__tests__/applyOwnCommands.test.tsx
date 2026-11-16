@@ -1,4 +1,5 @@
 import { act, screen, waitFor } from '@testing-library/react';
+import { useLayoutEffect } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -67,7 +68,10 @@ function renderEditor(readOnly = false) {
   const held: { apply?: ApplyOwnCommands } = {};
 
   function Probe() {
-    held.apply = useStageEditorForm().applyOwnCommands;
+    const { applyOwnCommands } = useStageEditorForm();
+    useLayoutEffect(() => {
+      held.apply = applyOwnCommands;
+    });
     return null;
   }
 

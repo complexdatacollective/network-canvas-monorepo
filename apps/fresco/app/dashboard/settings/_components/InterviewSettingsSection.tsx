@@ -25,60 +25,60 @@ const messages = defineMessages({
     id: 'fresco.settings.InterviewSettingsSection.interviewSettings',
     defaultMessage: 'Interview Settings',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: Interview Settings',
+      'Title of the card in Settings that groups options controlling how participants take interviews.',
   },
   anonymousRecruitment: {
     id: 'fresco.settings.InterviewSettingsSection.anonymousRecruitment',
     defaultMessage: 'Anonymous Recruitment',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: Anonymous Recruitment',
+      "Label of the toggle in Interview Settings that allows anonymous recruitment, where study participants join through a shared link. Also the toggle's accessible name.",
   },
   ifAnonymousRecruitmentIsEnabledYouMay: {
     id: 'fresco.settings.InterviewSettingsSection.ifAnonymousRecruitmentIsEnabledYouMay',
     defaultMessage:
       'If anonymous recruitment is enabled, you may generate an anonymous participation URL. This URL can be shared with participants to allow them to self-enroll in your study.',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: If anonymous recruitment is enabled, you may generate an anonymous participation URL. This URL can be shared with partic',
+      'Hint under the anonymous recruitment toggle in Interview Settings, explaining that enabling it lets the researcher generate one shared link that participants use to enrol themselves.',
   },
   limitInterviews: {
     id: 'fresco.settings.InterviewSettingsSection.limitInterviews',
     defaultMessage: 'Limit Interviews',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: Limit Interviews',
+      "Label of the toggle in Interview Settings that limits each participant to one completed interview per protocol. Also the toggle's accessible name.",
   },
 
   freezeCompletedInterviews: {
     id: 'fresco.settings.InterviewSettingsSection.freezeCompletedInterviews',
     defaultMessage: 'Freeze Completed Interviews',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: Freeze Completed Interviews',
+      "Label of the toggle in Interview Settings that stops completed interviews from accepting further changes. Freeze means lock. Also the toggle's accessible name.",
   },
   whenEnabledCompletedInterviewsWillSilentlyReject: {
     id: 'fresco.settings.InterviewSettingsSection.whenEnabledCompletedInterviewsWillSilentlyReject',
     defaultMessage:
       'When enabled, completed interviews will silently reject any further data sync updates. This prevents modifications to submitted data if an interview is re-opened.',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: When enabled, completed interviews will silently reject any further data sync updates. This prevents modifications to su',
+      'Hint under the freeze completed interviews toggle in Interview Settings. Data sync updates are the automatic saves a browser sends while an interview is open.',
   },
   disableSmallScreenWarning: {
     id: 'fresco.settings.InterviewSettingsSection.disableSmallScreenWarning',
     defaultMessage: 'Disable Small Screen Warning',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: Disable Small Screen Warning',
+      "Label of the toggle in Interview Settings that hides the warning participants get when they open an interview on a small screen. Also the toggle's accessible name.",
   },
   ifThisOptionIsEnabledTheWarning: {
     id: 'fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledTheWarning',
     defaultMessage:
       'If this option is enabled, the warning about using Fresco on a small screen will be disabled.',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: If this option is enabled, the warning about using Fresco on a small screen will be disabled.',
+      'Hint under the disable small screen warning toggle in Interview Settings. Fresco is the product name and is not translated.',
   },
   ensureThatYouTestYourInterviewThoroughly: {
     id: 'fresco.settings.InterviewSettingsSection.ensureThatYouTestYourInterviewThoroughly',
     defaultMessage:
       'Ensure that you test your interview thoroughly on a small screen when disabling this warning. Fresco is designed to work best on larger screens, and using it on a small screen may lead to a poor user experience for participants.',
     description:
-      'Researcher-facing settings / InterviewSettingsSection: Ensure that you test your interview thoroughly on a small screen when disabling this warning. Fresco is designed to work',
+      'Warning alert shown in Interview Settings once the small screen warning is switched off, advising the researcher to test on small screens. Fresco is the product name.',
   },
 });
 

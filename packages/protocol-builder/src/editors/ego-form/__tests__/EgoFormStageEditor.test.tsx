@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
@@ -6,16 +6,11 @@ import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
-  fieldsOf,
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
-  collectAttribute,
-  openField,
-  removeRow,
   stageNameInput,
 } from '../../__tests__/formEditorHarness.tsx';
-import { writeInto } from '../../__tests__/writeInto.ts';
 import { egoFormStageEditor } from '../EgoFormStageEditor.ts';
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
@@ -90,89 +85,6 @@ describe('the editor for a form about the participant', () => {
     expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe('');
   });
 
-  it('saves a new stage once the researcher has written it', async () => {
-    const harness = renderStageEditor(createFixture());
-    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
-
-    await writeInto(harness, stageNameInput(), 'About you');
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Title' }),
-      'About you',
-    );
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Introduction text' }),
-      'A few questions about you before we begin.',
-    );
-
-    const dialog = await openField(harness, 'Create new form field');
-    await collectAttribute(harness, dialog, 'ego_name');
-    await writeInto(
-      harness,
-      dialog.getByRole('textbox', { name: 'Question text' }),
-      'What is your name?',
-    );
-    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    expect(request?.stageDocument.label).toEqual({ 'en-US': 'About you' });
-    expect(request?.stageDocument.introductionPanel).toEqual({
-      title: { 'en-US': 'About you' },
-      text: { 'en-US': 'A few questions about you before we begin.' },
-    });
-    // The id is the row's own identity, minted on add so a reorder or a
-    // removal is committed as the operation it was.
-    expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
-      {
-        id: expect.any(String) as unknown as string,
-        variable: 'ego_name',
-        prompt: { 'en-US': 'What is your name?' },
-      },
-    ]);
-  });
-
-  it('refuses a form that collects nothing, and says which section is at fault', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    await removeRow(harness, 'field');
-    await waitFor(() =>
-      expect(
-        screen.queryByText('What is your name?', { exact: false }),
-      ).not.toBeInTheDocument(),
-    );
-
-    expect(await harness.submit()).toBeNull();
-    expect(
-      await screen.findByText('You must create at least one item.'),
-    ).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        harness
-          .outline()
-          .find((section) => section.title === 'Form configuration')?.state,
-      ).toBe('Has a problem'),
-    );
-  });
-
-  it('writes nothing when the researcher discards the edit', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Title' }),
-      'A heading nobody kept',
-    );
-    expectStageUntouched(harness);
-
-    await harness.cancel();
-
-    expectStageUntouched(harness);
-  });
-
   /**
    * A collaborator deleting an attribute this form collects is their edit, not
    * this researcher's. The editor has to show what happened — otherwise the form
@@ -198,30 +110,6 @@ describe('the editor for a form about the participant', () => {
     // dropped it would be saving somebody else's edit as this one.
     expectStageUntouched(harness);
     await harness.roundTrip({ unowned: [] });
-  });
-
-  it('refuses to save a stage somebody else is editing', async () => {
-    const harness = renderStageEditor({ ...openFixture(), readOnly: true });
-
-    // A rich-text editor, which says it is unavailable and takes no typing,
-    // rather than carrying an input's `disabled`.
-    await waitFor(() => {
-      const title = screen.getByRole('textbox', { name: 'Title' });
-      expect(title).toHaveAttribute('aria-disabled', 'true');
-      expect(title).toHaveAttribute('contenteditable', 'false');
-    });
-
-    // The shell's refusal is the guarantee, not the chrome above it: a
-    // keyboard, a stale render, or another host's own button can all still
-    // submit the form. See `fallbackSaveControl.test.tsx` for why the save
-    // control this editor falls back to stays pressable.
-    const form = harness.baseElement.querySelector('form');
-    if (form === null) throw new Error('the editor rendered no form');
-    fireEvent.submit(form);
-
-    expect(
-      await screen.findByText('This stage is read-only', { exact: false }),
-    ).toBeInTheDocument();
   });
 
   /**

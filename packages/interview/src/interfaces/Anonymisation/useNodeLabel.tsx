@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useReducer } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -64,8 +64,7 @@ export function useNodeLabel(node: NcNode | undefined) {
   );
   const encrypted = source?.status === 'encrypted' ? source.value : undefined;
 
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
-
+  // Runs again when the outcome is recorded, since that replaces the scope.
   useEffect(() => {
     if (source?.status === 'unreadable') {
       reportUnreadable(source.reason);
@@ -84,16 +83,8 @@ export function useNodeLabel(node: NcNode | undefined) {
       return undefined;
     }
 
-    let current = true;
-    const settle = async () => {
-      const result = await decryptInScope(scope, encrypted);
-      if (!result.readable) reportUnreadable('decryption-failed');
-      if (current) rerender();
-    };
-    void settle();
-    return () => {
-      current = false;
-    };
+    void decryptInScope(scope, encrypted);
+    return undefined;
   }, [source, encrypted, scope, requirePassphrase, reportUnreadable]);
 
   // Plaintext is read from the key's decryption scope on every render rather

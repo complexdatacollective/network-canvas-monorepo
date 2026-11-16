@@ -208,14 +208,31 @@ describe('option labels read through language fallback', () => {
   it('finds two options a participant reading French would see the same way', () => {
     expect(hasDuplicateLocalizedOptionLabels(options, localization)).toBe(true);
     expect(
-      optionLabelIssues(options[1]!.label, options, localization).map((text) =>
+      optionLabelIssues(1, options, localization).map((text) =>
         readMessage(text),
       ),
     ).toEqual(['Labels must be unique']);
   });
 
+  it('finds two options that read the same in a language other than the default, and names both', () => {
+    const translated = [
+      { value: 'a', label: { en: 'Yes', fr: 'Oui' } },
+      { value: 'b', label: { en: 'No', fr: ' oui' } },
+    ];
+    expect(hasDuplicateLocalizedOptionLabels(translated, localization)).toBe(
+      true,
+    );
+    for (const index of [0, 1]) {
+      expect(
+        optionLabelIssues(index, translated, localization).map((text) =>
+          readMessage(text),
+        ),
+      ).toEqual(['Labels must be unique']);
+    }
+  });
+
   it('compares only written translations when the languages are not known', () => {
     expect(hasDuplicateLocalizedOptionLabels(options)).toBe(false);
-    expect(optionLabelIssues(options[1]!.label, options)).toEqual([]);
+    expect(optionLabelIssues(1, options)).toEqual([]);
   });
 });

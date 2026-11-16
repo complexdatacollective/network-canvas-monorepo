@@ -182,6 +182,13 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
             // fills the runtime image cache, and the first offline launch
             // would show a broken image.
             '**/NC-Flat-*.png',
+            // Every bundled font face. A browser fetches a face only when
+            // text on the page needs it, and the installing page's requests
+            // never fill a runtime cache, so a device that had not yet shown
+            // a script (Arabic, Cyrillic, the accented Latin letters) would
+            // run its first offline interview in that script in a system
+            // font.
+            '**/*.woff2',
           ],
           // Nothing of this app is left out. The Sample protocol's chunk
           // (bundledSampleProtocol.ts) is lazy but must stay precached so the
@@ -331,7 +338,9 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
               },
             },
             {
-              // Self-hosted fonts. A function rather than a RegExp so it can
+              // Fonts this build does not precache: the faces of an older
+              // bundle a tab still runs, when the font files have changed
+              // since. A function rather than a RegExp so it can
               // leave Interviewer 8's fonts to its own worker; `sameOrigin`
               // keeps what the RegExp matched, since Workbox matches a RegExp
               // route cross-origin only from the start of the URL, which a
@@ -389,12 +398,10 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
     // "@codaco/interview" — match the workspace path segment instead.
     //
     // Message catalogs are loaded one language at a time, so each language
-    // gets its own chunk, checked before the engine rule so the interview
-    // package's catalogs stay out of the engine chunk. The app's catalog
-    // source loads every package's catalog for a language at once, and the
-    // interview runtime loads its own separately, so those are the two
-    // groups: `locale-<tag>` and `interview-locale-<tag>`.
-    // assert-pwa-build.mjs checks that every one of them is precached.
+    // gets its own chunk: `locale-<tag>`, for the app's catalog source, which
+    // loads every package's catalog for a language at once. The interview has
+    // no catalogs of its own: what it shows in another language comes from
+    // its protocol. assert-pwa-build.mjs checks that every one is precached.
     build: {
       rollupOptions: {
         input: { main: resolve(here, 'index.html') },
@@ -402,11 +409,7 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
           manualChunks(id: string) {
             const isInterview = id.includes('/packages/interview/');
             const locale = /\/src\/locales\/([A-Za-z-]+)\.json$/.exec(id)?.[1];
-            if (locale !== undefined) {
-              return isInterview
-                ? `interview-locale-${locale}`
-                : `locale-${locale}`;
-            }
+            if (locale !== undefined && !isInterview) return `locale-${locale}`;
             if (isInterview) return 'interview-engine';
             return undefined;
           },

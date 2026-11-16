@@ -142,6 +142,9 @@ export default function PedigreeLayout({
 
   return (
     <div
+      // A family is drawn the same way round in every language, so the
+      // right-to-left mirror check leaves the drawing out.
+      data-direction-exempt
       className="relative"
       style={{ width: totalWidth, height: totalHeight }}
     >

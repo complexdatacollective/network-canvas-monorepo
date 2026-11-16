@@ -20,19 +20,19 @@ const utilityMessages = defineMessages({
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToStagesTo',
     defaultMessage: 'Change undone. Moved to Stages to show the result.',
     description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+      'Screen-reader announcement after undo moved the researcher to the Stages page to show the result. "Stages" is the name of that page in the project navigation.',
   },
   changeUndoneMovedToResourcesTo: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToResourcesTo',
     defaultMessage: 'Change undone. Moved to Resources to show the result.',
     description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+      'Screen-reader announcement after undo moved the researcher to the Resources page to show the result. "Resources" is the name of that page in the project navigation.',
   },
   changeUndoneMovedToCodebookTo: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToCodebookTo',
     defaultMessage: 'Change undone. Moved to Codebook to show the result.',
     description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+      'Screen-reader announcement after undo moved the researcher to the Codebook page to show the result. "Codebook" is the name of that page in the project navigation.',
   },
   changeUndoneMovedToLanguages: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToLanguages',
@@ -44,25 +44,25 @@ const utilityMessages = defineMessages({
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndone',
     defaultMessage: 'Change undone.',
     description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+      'Screen-reader announcement after undo changed the protocol without moving the researcher to another page.',
   },
   changeRedoneMovedToStagesTo: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToStagesTo',
     defaultMessage: 'Change redone. Moved to Stages to show the result.',
     description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+      'Screen-reader announcement after redo moved the researcher to the Stages page to show the result. "Stages" is the name of that page in the project navigation.',
   },
   changeRedoneMovedToResourcesTo: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToResourcesTo',
     defaultMessage: 'Change redone. Moved to Resources to show the result.',
     description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+      'Screen-reader announcement after redo moved the researcher to the Resources page to show the result. "Resources" is the name of that page in the project navigation.',
   },
   changeRedoneMovedToCodebookTo: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToCodebookTo',
     defaultMessage: 'Change redone. Moved to Codebook to show the result.',
     description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+      'Screen-reader announcement after redo moved the researcher to the Codebook page to show the result. "Codebook" is the name of that page in the project navigation.',
   },
   changeRedoneMovedToLanguages: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToLanguages',
@@ -74,7 +74,7 @@ const utilityMessages = defineMessages({
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedone',
     defaultMessage: 'Change redone.',
     description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+      'Screen-reader announcement after redo changed the protocol without moving the researcher to another page.',
   },
 });
 

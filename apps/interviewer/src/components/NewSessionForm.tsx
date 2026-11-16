@@ -33,45 +33,53 @@ const messages = defineMessages({
   caseID: {
     id: 'interviewer.newSessionForm.caseID',
     defaultMessage: 'Case ID',
-    description: 'The label label in Interviewer New Session Form.',
+    description:
+      "Field label in the start-interview form for the case ID, the identifier the researcher gives this participant's interview.",
   },
   thisWillBeShownOnTheResume: {
     id: 'interviewer.newSessionForm.thisWillBeShownOnTheResume',
     defaultMessage:
       'This will be shown on the resume interview screen to help you quickly identify this session.',
-    description: 'The hint label in Interviewer New Session Form.',
+    description:
+      'Hint under the case ID field: the ID appears on the screen for resuming interviews so the researcher can recognise this one. "Session" means the interview.',
   },
   startInterview: {
     id: 'interviewer.newSessionForm.startInterview',
     defaultMessage: 'Start interview',
-    description: 'Visible copy in Interviewer New Session Form.',
+    description:
+      'Submit button of the start-interview form; begins a new interview using the case ID entered. Verb phrase.',
   },
   thisProtocolCouldNotBeUpdatedTo: {
     id: 'interviewer.newSessionForm.thisProtocolCouldNotBeUpdatedTo',
     defaultMessage:
       'This protocol could not be updated to work with this version of the app, so new interviews cannot be started from it. Responses already collected remain available on the data screen. Repair the protocol in Architect and import it again.',
-    description: 'Visible copy in Interviewer New Session Form.',
+    description:
+      'Message shown in place of the start-interview form when the chosen protocol could not be migrated to this app version, so no new interview can start. Architect is the protocol design app.',
   },
   caseIDIsRequired: {
     id: 'interviewer.newSessionForm.caseIDIsRequired',
     defaultMessage: 'Case ID is required',
-    description: 'User-facing message in Interviewer New Session Form.',
+    description:
+      'Error under the case ID field, also its required message, shown when the researcher tries to start an interview with an empty case ID.',
   },
   youAppearToBeOffline: {
     id: 'interviewer.newSessionForm.youAppearToBeOffline',
     defaultMessage: 'You appear to be offline',
-    description: 'User-facing message in Interviewer New Session Form.',
+    description:
+      'Title of the warning dialog shown when starting an interview whose protocol has a map stage while the device has no internet connection.',
   },
   thisProtocolIncludesAMapStageThat: {
     id: 'interviewer.newSessionForm.thisProtocolIncludesAMapStageThat',
     defaultMessage:
       'This protocol includes a map stage that needs an internet connection. The map will not load until you reconnect. You can still start the interview and complete the other stages.',
-    description: 'User-facing message in Interviewer New Session Form.',
+    description:
+      'Body of the offline warning dialog: the map needs internet, other stages still work. Shown when starting an interview with a map stage while offline.',
   },
   startAnyway: {
     id: 'interviewer.newSessionForm.startAnyway',
     defaultMessage: 'Start anyway',
-    description: 'User-facing message in Interviewer New Session Form.',
+    description:
+      'Confirm button of the offline warning dialog; starts the interview even though the map stage cannot load. Verb phrase.',
   },
 });
 

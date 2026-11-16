@@ -836,9 +836,9 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           >
             {dialog.actions.primary.label}
           </Button>
-          <span role="status" className="sr-only">
+          <output aria-live="polite" className="sr-only">
             {isLoading ? intl.formatMessage(messages.pleaseWait) : null}
-          </span>
+          </output>
         </>
       );
     }

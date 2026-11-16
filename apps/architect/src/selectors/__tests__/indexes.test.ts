@@ -513,12 +513,6 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'Geospatial',
-          offlineNotice: {
-            en: 'You are offline — the map will not load until you reconnect.',
-          },
-          mapUnavailable: {
-            en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
-          },
           outsideAreasLabel: { en: 'Outside Selectable Areas' },
           label: 'Map',
           subject: { entity: 'node', type: 'person' },
@@ -530,12 +524,6 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'Geospatial',
-          offlineNotice: {
-            en: 'You are offline — the map will not load until you reconnect.',
-          },
-          mapUnavailable: {
-            en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
-          },
           outsideAreasLabel: { en: 'Outside Selectable Areas' },
           label: 'Map',
           subject: { entity: 'node', type: 'person' },

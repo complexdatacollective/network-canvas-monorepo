@@ -245,7 +245,7 @@ function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
   let dndStore: StoreApi<DndStore> | null = null;
 
   const view = render(
-    <InterviewI18nProvider requestedLocale="en">
+    <InterviewI18nProvider>
       <TestProtocolLocalization>
         <Provider store={store}>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
@@ -390,7 +390,10 @@ describe('OrdinalBin in select mode (#1652)', () => {
       const { getDndStore } = renderStage(mode);
       await screen.findByText('Close');
 
-      expect(document.querySelector('[aria-grabbed]') !== null).toBe(present);
+      // A drag source announces itself with the grab cursor at rest.
+      expect(document.querySelector('[style*="cursor: grab"]') !== null).toBe(
+        present,
+      );
 
       startDragOf(getDndStore, person('a', 'Ann'));
       const canDrop = () =>
@@ -517,7 +520,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     });
     const focal = person('a', 'Ann');
     const focus = (promptId: string) => (
-      <InterviewI18nProvider requestedLocale="en">
+      <InterviewI18nProvider>
         <TestProtocolLocalization>
           <Provider store={store}>
             <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
@@ -532,7 +535,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     // one inside the status element.
     const spoken = async () =>
       (await announcement('Ann')).find((element) =>
-        element.closest('[role="status"]'),
+        element.closest('[aria-live]'),
       );
 
     const { rerender } = render(focus('first'));

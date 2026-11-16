@@ -181,4 +181,19 @@ describe('device administration language', () => {
     expect(adminLocale()).toHaveTextContent('en-XA');
     expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
   });
+
+  it('lays the app out right to left under the right-to-left pseudo locale, without persisting it', async () => {
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'es');
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.selectOptions(screen.getByRole('combobox'), 'ar-XB');
+    expect(adminLocale()).toHaveTextContent('ar-XB');
+    expect(
+      within(
+        screen.getByRole('region', { name: 'Administration' }),
+      ).getByLabelText('Direction'),
+    ).toHaveTextContent('rtl');
+    expect(document.documentElement).toHaveAttribute('dir', 'rtl');
+    expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
+  });
 });

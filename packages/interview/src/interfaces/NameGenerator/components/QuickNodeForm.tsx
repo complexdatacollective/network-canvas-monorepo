@@ -25,6 +25,8 @@ import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { useStageSubjectName } from '../../../hooks/useStageSubjectName';
+import { useResolveLocalizedMessage } from '../../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -34,6 +36,7 @@ import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol'
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import { useTrackWrite } from '../../../store/WritesInFlightContext';
 import { interfaceMessages } from '../../messages';
+import AddCornerShade from './AddCornerShade';
 import QuickAddField from './QuickAddField';
 
 const containerVariants: Variants = {
@@ -92,7 +95,9 @@ function TrackSubmissions({ added }: { added: RefObject<boolean> }) {
 type QuickNodeFormProps = {
   disabled: boolean;
   targetVariable: string;
-  hint: LocalizedString;
+  /** What the field shows before anything is typed in it, as the stage
+   * words it: it may name the stage's node type. */
+  placeholder: LocalizedString;
   onShowForm?: () => void;
   addNode: (
     attributes: NcNode[EntityAttributesProperty],
@@ -102,11 +107,13 @@ type QuickNodeFormProps = {
 const QuickNodeForm = ({
   disabled,
   targetVariable,
-  hint,
+  placeholder,
   onShowForm,
   addNode,
 }: QuickNodeFormProps) => {
   const intl = useAppIntl();
+  const resolveMessage = useResolveLocalizedMessage();
+  const subjectName = useStageSubjectName();
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
   const added = useRef(false);
@@ -193,9 +200,9 @@ const QuickNodeForm = ({
 
   return (
     <>
-      <div className="pointer-events-none absolute right-0 bottom-0 z-10 h-48 w-xl bg-[radial-gradient(ellipse_at_bottom_right,oklch(from_var(--background)_calc(l-0.1)_c_h),transparent_70%)]" />
+      <AddCornerShade />
       <motion.div
-        className="absolute right-12 bottom-4 z-20"
+        className="absolute inset-e-12 bottom-4 z-20"
         variants={containerVariants}
         initial="initial"
         animate="animate"
@@ -207,10 +214,10 @@ const QuickNodeForm = ({
           <QuickAddField
             name={targetVariable}
             disabled={disabled}
-            placeholder={intl.formatMessage(
-              interfaceMessages.addNamePlaceholder,
-            )}
-            hint={hint}
+            placeholder={
+              resolveMessage(placeholder, { subject: subjectName }).text
+            }
+            hint={intl.formatMessage(interfaceMessages.quickAddHint)}
             onShowInput={onShowForm ?? undefined}
             successfulSubmissionCount={successfulSubmissionCount}
             {...validationProps}

@@ -447,4 +447,50 @@ export const siteNavigationMessages = {
       },
     },
   },
+  'ar': {
+    home: 'الصفحة الرئيسية لـ Network Canvas',
+    navigationLabel: 'التنقل الرئيسي',
+    skipToContent: 'الانتقال إلى المحتوى الرئيسي',
+    community: 'المجتمع',
+    documentation: 'الوثائق',
+    protocolGallery: 'معرض البروتوكولات',
+    updates: 'المستجدات',
+    resources: 'الموارد',
+    software: 'البرمجيات',
+    getStarted: 'البدء',
+    openMenu: 'فتح قائمة التنقل في الموقع',
+    closeMenu: 'إغلاق قائمة التنقل في الموقع',
+    softwareLinks: {
+      architect: {
+        name: 'Architect',
+        action: 'فتح Architect',
+        description:
+          'تصميم بروتوكولات متقنة لمقابلات Network Canvas في المتصفح، عبر سير عمل مرئي مُعدّ للباحثين.',
+      },
+      architectClassic: {
+        name: 'Architect Classic',
+        action: 'الحصول على Architect Classic',
+        description:
+          'لا يُستخدم إلا حين يجب أن تظل الدراسة متوافقة مع Interviewer Classic وإصدار مخطط البروتوكول 7.',
+      },
+      interviewer: {
+        name: 'Interviewer',
+        action: 'فتح Interviewer',
+        description:
+          'إجراء مقابلات شبكية جذّابة يقودها القائم بالمقابلة في الميدان، من أي متصفح مدعوم.',
+      },
+      interviewerClassic: {
+        name: 'Interviewer Classic',
+        action: 'الحصول على Interviewer Classic',
+        description:
+          'للدراسات القائمة المبنية على إصدار مخطط البروتوكول 7، ولسير العمل دون اتصال بالإنترنت على أجهزة الكمبيوتر المكتبية أو الأجهزة اللوحية. تقتصر صيانته على ضمان التوافق وإصلاح الأخطاء.',
+      },
+      fresco: {
+        name: 'Fresco',
+        action: 'استكشاف البيئة التجريبية لـ Fresco',
+        description:
+          'تنسيق المقابلات الشبكية عن بُعد وإدارة بيانات الدراسة من لوحة تحكم واحدة مشتركة تعمل في المتصفح.',
+      },
+    },
+  },
 } satisfies Record<SiteLocale, SiteNavigationMessages>;

@@ -62,10 +62,12 @@ export function LanguageSettings({ compact = false }: { compact?: boolean }) {
         className="max-w-full"
       />
       <Paragraph
-        role="status"
+        render={<output />}
         aria-live="polite"
         margin="none"
-        className={compact && saveState !== 'failed' ? 'sr-only' : 'min-h-lh'}
+        className={
+          compact && saveState !== 'failed' ? 'sr-only' : 'block min-h-lh'
+        }
       >
         {saveState === 'saved'
           ? intl.formatMessage(languageMessages.saved)

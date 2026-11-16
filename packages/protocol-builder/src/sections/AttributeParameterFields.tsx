@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -21,6 +21,7 @@ import {
   type CodebookSubject,
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 import { useDraftThatFollowsTheAttribute } from './AttributeValueFields.tsx';
 
 export const ATTRIBUTE_PARAMETERS_FIELD = '_parameters';
@@ -78,13 +79,12 @@ export default function AttributeParameterFields({
         : parameterShapeFor(picked.type, rowComponent)
       : parameterShapeFor(invented, rowComponent);
 
-  const judgedShape = useRef(shape);
-  judgedShape.current = shape;
+  const judgedShape = useLatest(shape);
   const validation = useMemo(
     () => ({
       custom: messageRuleValidation([
         (value: unknown) => {
-          const liveShape = judgedShape.current;
+          const liveShape = judgedShape();
           if (liveShape === null) return undefined;
           const issues = validateParameters(liveShape, readParameters(value));
           return hasParameterIssues(issues)
@@ -93,7 +93,7 @@ export default function AttributeParameterFields({
         },
       ]),
     }),
-    [],
+    [judgedShape],
   );
 
   if (shape === null) return null;

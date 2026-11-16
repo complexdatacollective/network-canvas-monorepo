@@ -19,6 +19,7 @@ import manifest, {
 } from '@codaco/interface-images/manifest';
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
+import { interfaceTextMessages } from '../i18n/interfaceTextMessages';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import {
@@ -370,8 +371,11 @@ export default function StagesMenu({
         custom={custom}
         initial={animate}
         animate={animate}
+        // A stage name may be one long word: `wrap-anywhere` breaks it inside
+        // the card, where `break-word` lets it widen a centred flex item and
+        // run across the cards beside it.
         className={cx(
-          'flex flex-col gap-1 text-sm leading-tight font-bold wrap-break-word',
+          'flex flex-col gap-1 text-sm leading-tight font-bold wrap-anywhere',
           isHorizontal ? 'items-center text-center' : 'min-w-0 flex-1',
         )}
       >
@@ -553,7 +557,11 @@ export default function StagesMenu({
           {CollectionElements}
           <div className="border-text/10 shrink-0 border-t p-4">
             <CollectionFilterInput
-              placeholder={intl.formatMessage(messages.filter)}
+              placeholder={intl.formatMessage(
+                interfaceTextMessages['search.searchLabel'],
+              )}
+              loadingText={intl.formatMessage(messages.loadingStatus)}
+              indexingText={intl.formatMessage(messages.loadingStatus)}
               size="sm"
               showResultCount={false}
             />

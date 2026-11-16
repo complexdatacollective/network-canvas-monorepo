@@ -1,10 +1,13 @@
 'use client';
 
+import { motion } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { PageBackground } from '@codaco/art';
 import type { NetworkWeaveConvergence } from '@codaco/art/NetworkWeaveBackground';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+
+import { usePageBackgroundOpacity } from './pageBackgroundVisibility';
 
 // The hero video is the weave's only focal anchor. On load the weave knits
 // inward to it; then, as the hero scrolls away, the focus follows a longer path
@@ -79,6 +82,7 @@ export function HomepagePageBackground({
 }: HomepagePageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
   const reduceMotion = usePrefersReducedMotion();
+  const opacity = usePageBackgroundOpacity();
   const [background, setBackground] = useState<BackgroundState>({
     convergence: CENTER,
     intensity: HERO_INTENSITY,
@@ -191,7 +195,7 @@ export function HomepagePageBackground({
     };
   }, [reduceMotion, target]);
 
-  return (
+  const weave = (
     <PageBackground
       convergence={background.convergence}
       complexity={COMPLEXITY}
@@ -202,5 +206,21 @@ export function HomepagePageBackground({
       motionMode="direct"
       resolved={background.resolved && reveal}
     />
+  );
+
+  if (!opacity) return weave;
+
+  // Sections can hide the weave while they are in view (see
+  // pageBackgroundVisibility). The wrapper sits at the weave's own depth, so
+  // fading it never lifts the weave above the page's content.
+  return (
+    <motion.div
+      aria-hidden
+      data-testid="page-background-visibility"
+      className="pointer-events-none fixed inset-0 -z-1"
+      style={{ opacity }}
+    >
+      {weave}
+    </motion.div>
   );
 }

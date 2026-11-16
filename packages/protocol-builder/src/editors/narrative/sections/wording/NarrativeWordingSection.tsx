@@ -1,4 +1,3 @@
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { suppliedStageSettingApplies } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
@@ -7,7 +6,7 @@ import {
   WordingRow,
   type WordingSetting,
 } from '../../../../form/WordingRow.tsx';
-import BuilderSection from '../../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -35,73 +34,42 @@ const HEADINGS: readonly WordingSetting[] = [
   },
 ];
 
-/** The drawing tools' words, asked while drawing is on. */
-const DRAWING_TOOLTIPS: readonly WordingSetting[] = [
-  {
-    path: 'tooltips.enableDrawing',
-    label: messages.enableDrawingTooltipLabel,
-    hint: messages.drawingTooltipHint,
-  },
-  {
-    path: 'tooltips.disableDrawing',
-    label: messages.disableDrawingTooltipLabel,
-    hint: messages.drawingTooltipHint,
-  },
-  {
-    path: 'tooltips.freezeAnnotations',
-    label: messages.freezeAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
-  },
-  {
-    path: 'tooltips.unfreezeAnnotations',
-    label: messages.unfreezeAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
-  },
-  {
-    path: 'tooltips.resetAnnotations',
-    label: messages.resetAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
-  },
-];
-
 /**
  * The words a participant reads on the narrative canvas. Each heading is asked
- * while a preset makes the panel it names appear, and each tool's words while
- * the behaviour that tool belongs to is on. Each starts with Network Canvas's
- * wording, and the same configurations that make the protocol require it
- * decide which are asked.
+ * while a preset makes the panel it names appear, and starts with Network
+ * Canvas's wording; the same configurations that make the protocol require it
+ * decide which are asked. The drawing tools' words are the same on every
+ * Narrative stage, so the protocol holds them once (see `SharedStageWording`).
  */
 export default function NarrativeWordingSection() {
-  const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
   const supplied = useSuppliedStageWording(STAGE_TYPE);
   const stage = {
     type: STAGE_TYPE,
     presets: useStageValue('presets'),
-    behaviours: useStageValue('behaviours'),
   };
 
+  const shown = HEADINGS.filter((setting) =>
+    suppliedStageSettingApplies(stage, setting.path.split('.')),
+  );
+
   return (
-    <BuilderSection
-      title={intl.formatMessage(messages.wordingTitle)}
-      description={intl.formatMessage(messages.wordingDescription)}
+    <StageWordingSection
+      stageType={STAGE_TYPE}
+      paths={shown.map((setting) => setting.path)}
     >
       {supplied !== undefined &&
-        [...HEADINGS, ...DRAWING_TOOLTIPS]
-          .filter((setting) =>
-            suppliedStageSettingApplies(stage, setting.path.split('.')),
-          )
-          .map((setting) => (
-            <WordingRow
-              key={setting.path}
-              setting={setting}
-              initialValue={startingWording(
-                committedFields,
-                setting.path,
-                supplied,
-              )}
-            />
-          ))}
-    </BuilderSection>
+        shown.map((setting) => (
+          <WordingRow
+            key={setting.path}
+            setting={setting}
+            initialValue={startingWording(
+              committedFields,
+              setting.path,
+              supplied,
+            )}
+          />
+        ))}
+    </StageWordingSection>
   );
 }

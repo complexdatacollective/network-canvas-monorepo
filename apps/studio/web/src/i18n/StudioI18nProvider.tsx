@@ -4,14 +4,16 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
 
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { isPseudoLocale } from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 import type { SupportedStudioLocale } from '@codaco/studio-contract/locales';
 import type { Me } from '@codaco/studio-contract/schema/account';
@@ -108,14 +110,18 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   // explicit preference the language page should show.
   const [preference, setPreference] = useState<string | null>(() => {
     const resolved = resolveMirroredLocale();
-    return resolved.source === 'stored' ? resolved.locale : null;
+    return resolved.source === 'chosen' ? resolved.locale : null;
   });
   const [saveState, setSaveState] = useState<LocaleSaveState>('idle');
 
   // The preference as of this render, for callbacks that must compare
   // against the current value rather than the one they closed over.
+  // Updated after commit rather than during render, and before any passive
+  // effect (such as `LocaleSync`'s) can read it.
   const preferenceRef = useRef(preference);
-  preferenceRef.current = preference;
+  useLayoutEffect(() => {
+    preferenceRef.current = preference;
+  }, [preference]);
 
   // A local choice the server has not yet reflected back through `me`. While
   // one is outstanding — in flight, or kept after a failed write — a stale
@@ -197,13 +203,15 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
       // acknowledge somebody else's locale.
       const generation = ++writeGeneration.current;
 
-      // The pseudo-locale is a development aid, never a stored preference
-      // (design §4.7); and with no session there is no account to store to —
-      // the mirror alone carries a signed-out device's choice. Neither leaves
+      // A pseudo-locale is a development aid, never a stored preference
+      // (design §4.7): the mirror write above skipped it, and it is not sent
+      // to the account either. And with no session there is no account to
+      // store to — the mirror alone carries a signed-out device's choice.
+      // Neither leaves
       // a pending marker: nothing will ever acknowledge one, and a permanent
       // marker means the account's own preference never applies at sign-in.
       const storable =
-        locale !== PSEUDO_LOCALE &&
+        !isPseudoLocale(locale) &&
         (locale === null || isSupportedStudioLocale(locale));
       const signedIn =
         queryClient.getQueryData(sessionQueryOptions.queryKey) === 'signedIn';
@@ -276,7 +284,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
       // A development aid outranks the account: the pseudo-locale is never
       // stored, so the server can only ever disagree with it, and letting that
       // disagreement win would end the session it was turned on for.
-      if (preferenceRef.current === PSEUDO_LOCALE) return;
+      if (isPseudoLocale(preferenceRef.current)) return;
 
       const pending = pendingServerAck.current;
       if (pending !== null) {
@@ -340,7 +348,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
         messages={catalog.messages}
         onLocaleChange={setLocale}
       >
-        {children}
+        <LocaleDirectionProvider>{children}</LocaleDirectionProvider>
       </AppI18nProvider>
     </StudioLocaleContext.Provider>
   );

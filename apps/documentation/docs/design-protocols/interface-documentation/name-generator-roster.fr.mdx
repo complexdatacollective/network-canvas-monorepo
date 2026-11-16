@@ -1,0 +1,122 @@
+---
+title: Générateur de noms à partir d’une liste
+navOrder: 4
+translatedFrom: bb269888babd43ac394ab7278ee899bba8d8427e
+---
+
+<InterfaceSummary type="NameGeneratorRoster">
+
+<InterfaceMeta type="Générateur de noms" creates="Des nœuds d’un seul type, à partir des données d’une liste" usesprompts="true" requires="Données de liste">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+Les générateurs de noms sont l’un des éléments fondamentaux d’un entretien de réseau. Ils permettent à la personne participante de créer des alters (chaque personne qu’elle cite pendant l’entretien), et donc de décrire l’une des deux entités principales des réseaux de votre étude.
+
+Network Canvas propose plusieurs [interfaces](../key-concepts/interfaces) de type générateur de noms que vous pouvez ajouter à votre étude, et qui se configurent toutes dans Architect.
+
+Chacune de ces interfaces est conçue pour une manière particulière de faire citer des alters, avec ses avantages et ses inconvénients. Bien qu’elles aient certaines options de configuration [communes à toutes les autres interfaces de Network Canvas](./shared), cet article porte sur les options propres à l’interface « Générateur de noms à partir d’une liste ».
+
+L’interface « Générateur de noms à partir d’une liste » est utile lorsque vous disposez d’un ensemble connu de membres du réseau parmi lesquels vous voulez que la personne participante puisse désigner des alters. L’interface accepte des listes de tailles variées (une liste étant un ensemble prédéfini, importé comme fichier de données, dans lequel la personne participante choisit), mais la manière de désigner un membre de la liste diffère selon la taille de celle-ci, afin que la personne participante puisse facilement y faire des recherches.
+
+## Définir une liste {#defining-a-roster}
+
+Cette interface nécessite un fichier de données qui représente votre liste. Consultez notre article sur l’[utilisation des données de liste](/fr/design-protocols/tutorials/working-with-rosters) pour savoir comment créer un tel fichier. Ayez ce fichier, ou un fichier fictif adapté, à portée de main avant de configurer cette interface.
+
+<KeyConcept title="Limites de taille des listes">
+
+Nous avons testé avec succès une liste de 60 000 nœuds, mais les listes de
+cette taille ne sont pas sans poser de problèmes. Si votre étude nécessite une telle liste,
+attendez-vous à ce que le chargement et la recherche ralentissent considérablement. La
+limite supérieure de cette interface dépend largement à la fois de l’appareil utilisé
+et de votre seuil d’utilisabilité : un ordinateur portable puissant peut donc être nécessaire,
+en particulier pour les jeux de données les plus volumineux. Pour en savoir plus sur les appareils, consultez notre
+article sur le [choix d’un appareil pour votre
+étude](/fr/collect-data/interviewer/choosing-hardware).
+
+</KeyConcept>
+
+## Désigner des alters {#alter-nomination}
+
+L’interface de liste est divisée en deux panneaux. Un panneau affiche des « cartes » qui représentent chaque élément de votre liste. L’autre panneau représente les nœuds de l’entretien et est vide au départ. Pour désigner un alter, la personne participante doit faire glisser une carte du premier panneau, à gauche, vers le second panneau, à droite. La carte est alors retirée de la liste des cartes, et un nœud représentant ce membre de la liste est créé dans le réseau de l’entretien.
+
+Le panneau des cartes a un titre, que vous définissez dans la section **Panneau de la liste** de l’éditeur d’étape. Le titre reprend la formulation de Network Canvas (« Éléments disponibles » en français) dans chacune des langues de votre protocole pour lesquelles Network Canvas dispose de formulations, jusqu’à ce que vous le modifiiez ou le traduisiez comme n’importe quel autre texte. L’entretien affiche toujours un titre de panneau : si Network Canvas ne dispose d’aucune formulation dans votre langue par défaut, rédigez donc le titre dans cette langue avant de télécharger le protocole. Lorsque vous ajoutez une langue pour laquelle Network Canvas dispose de formulations, le titre reprend la formulation de Network Canvas dans cette langue, même si vous avez modifié le titre dans vos autres langues (consultez [Ajouter des langues](/fr/design-protocols/translating-your-protocol#adding-languages)).
+
+Avec une petite liste de moins de 100 nœuds, les cartes de tous les membres de la liste s’affichent dans l’interface selon les options d’affichage et de tri que vous avez configurées. Vous pouvez définir à la fois l’ordre de tri par défaut des cartes et les propriétés que les personnes participantes peuvent utiliser pour trier elles-mêmes la liste. Les personnes participantes peuvent parcourir la liste affichée et sélectionner la ou les cartes à ajouter à leur réseau.
+
+Avec une grande liste de plus de 100 nœuds, les personnes participantes doivent utiliser la recherche pour que des cartes s’affichent. Pour désigner un alter dans une grande liste, on procède comme suit :
+
+1. La personne participante saisit du texte dans le champ de recherche pour rechercher des membres de la liste, selon les options de recherche que vous avez configurées.
+2. Dès que la personne participante commence à saisir du texte, toutes les données de nœuds qui répondent aux critères s’affichent sous forme de cartes au-dessus du champ de recherche.
+3. La personne participante fait glisser une carte correspondante dans le panneau des nœuds pour désigner ce membre de la liste.
+4. La personne participante peut ensuite lancer une nouvelle recherche, et répéter l’opération jusqu’à avoir désigné tous les membres de la liste sur lesquels porte la consigne.
+
+Par défaut, les cartes affichent l’attribut **name** des données de la liste comme titre de la carte. Les options d’affichage de ces cartes sont entièrement configurables. Vous devriez afficher tous les attributs dont une personne participante pourrait avoir besoin pour distinguer des nœuds de la liste portant des noms similaires.
+
+La recherche est elle aussi très configurable : vous pouvez choisir les attributs de la liste qui sont indexés, ainsi que la précision (ou le degré de « flou ») de la correspondance. Ces options sont puissantes et doivent être configurées avec soin. Chaque attribut ajouté aux **Attributs de recherche** réduit les performances de la recherche et peut rendre les correspondances moins exactes. De même, une précision de recherche trop stricte ou trop souple nuira à la capacité des personnes participantes à retrouver des nœuds dans la liste.
+
+En règle générale, la précision de la recherche doit augmenter avec la taille de la liste, et seuls les attributs contenant des termes que les personnes participantes sont susceptibles de rechercher doivent être indexés.
+
+![](/assets/img/interface-documentation/name-generators/architect-search.png)
+
+<AppOnly app="current">
+
+### Personnaliser la formulation intégrée {#customize-built-in-wording}
+
+La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les textes que les personnes participantes lisent dans cette étape. Chacun d’eux reprend au départ la formulation de Network Canvas, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un message ne figure dans la section que tant que la partie de l’étape à laquelle il se rapporte est configurée.
+
+Chaque message peut afficher le nom du type de nœud de l’étape, tel que le nomme le livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête), et les messages de limite peuvent aussi afficher la valeur de la limite (le nombre minimum ou maximum). Insérez l’un ou l’autre sous forme de pastille à l’aide du bouton de texte dynamique du champ (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte).
+
+- **Minimum non atteint** s’affiche lorsque les personnes participantes essaient de continuer avant d’avoir ajouté le nombre minimum de nœuds demandé par l’étape. Il n’apparaît que lorsque l’étape a un minimum.
+- **Maximum atteint** s’affiche dès que les personnes participantes ont ajouté le nombre maximum de nœuds autorisé par l’étape. Il n’apparaît que lorsque l’étape a un maximum.
+- **Tout a été ajouté** s’affiche dans la liste lorsque toutes ses entrées ont déjà été ajoutées, ou lorsque la liste ne contient aucune entrée.
+- **Libellé des entrées sans nom** est le libellé donné à une entrée ajoutée sans nom. Il affiche un numéro, pour que les entrées sans nom puissent être distinguées.
+
+Le message affiché lorsque le fichier de données de la liste n’a pas pu être chargé, ainsi que le texte indicatif et le message d’absence de résultat de sa recherche, font partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text), sous **Messages** et **Recherche**.
+
+</AppOnly>
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Assurez-vous que le fichier de données de la liste comporte un attribut `name`, pour éviter de voir « No
+name variable! » sur vos cartes. Consultez notre article sur les [libellés des
+nœuds](/fr/design-protocols/key-concepts/node-labelling) pour en savoir plus à ce sujet.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Configurez les options d’affichage et de tri des cartes pour aider les
+personnes participantes à retrouver des nœuds dans la liste.
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Évitez d’utiliser cette interface avec une grande liste (plus de 100 nœuds) sur des appareils dotés
+d’un clavier virtuel, en particulier s’ils ont aussi un petit écran (moins de 9 pouces).
+Le clavier virtuel recouvrira une grande partie de l’écran
+et rendra la recherche et la désignation plus fastidieuses.
+
+</BadPractice>
+
+<BadPractice>
+
+Avec une grande liste, évitez de rendre toutes les propriétés interrogeables par la recherche. Cela
+ralentira la recherche et rendra ses résultats moins exacts. Veillez à
+tester soigneusement votre fonction de recherche.
+
+</BadPractice>
+
+<BadPractice>
+
+Évitez d’ajouter des attributs inutiles aux options de tri. Cela déroutera les
+personnes participantes et pourra causer des problèmes d’affichage sur les petits écrans. Visez
+3 propriétés de tri au maximum.
+
+</BadPractice>

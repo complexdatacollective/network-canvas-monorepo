@@ -29,46 +29,52 @@ const messages = defineMessages({
   dashboard: {
     id: 'fresco.page.dashboard',
     defaultMessage: 'Dashboard',
-    description: 'Researcher-facing page: Dashboard',
+    description:
+      'Heading of the dashboard home page that the researcher sees after signing in.',
   },
   welcomeToFrescoThisPageProvidesAn: {
     id: 'fresco.page.welcomeToFrescoThisPageProvidesAn',
     defaultMessage:
       'Welcome to Fresco! This page provides an overview of your recent activity and key metrics.',
     description:
-      'Researcher-facing page: Welcome to Fresco! This page provides an overview of your recent activity and key metrics.',
+      'Subheading under the heading of the dashboard home page. Fresco is the product name and is not translated.',
   },
   protocols: {
     id: 'fresco.page.protocols',
     defaultMessage: 'Protocols',
-    description: 'Researcher-facing page: Protocols',
+    description:
+      'Title of the dashboard summary card that counts the protocols uploaded to this installation, shown while it loads. Protocols are interview designs.',
   },
   participants: {
     id: 'fresco.page.participants',
     defaultMessage: 'Participants',
-    description: 'Researcher-facing page: Participants',
+    description:
+      'Title of the dashboard summary card that counts study participants, shown while it loads.',
   },
   participantIcon: {
     id: 'fresco.page.participantIcon',
     defaultMessage: 'Participant icon',
-    description: 'Researcher-facing page: Participant icon',
+    description:
+      'Alternative text of the participant picture on the dashboard participants summary card; read only by screen readers.',
   },
   interviews: {
     id: 'fresco.page.interviews',
     defaultMessage: 'Interviews',
-    description: 'Researcher-facing page: Interviews',
+    description:
+      'Title of the dashboard summary card that counts the interviews recorded on this installation, shown while it loads.',
   },
   recentActivity: {
     id: 'fresco.page.recentActivity',
     defaultMessage: 'Recent Activity',
-    description: 'Researcher-facing page: Recent Activity',
+    description:
+      'Section heading on the dashboard above the activity feed, the table of recent events on this installation.',
   },
   thisTableSummarizesTheMostRecentActivity: {
     id: 'fresco.page.thisTableSummarizesTheMostRecentActivity',
     defaultMessage:
       'This table summarizes the most recent activity within Fresco. Use it to keep track of new protocols, interviews, and participants.',
     description:
-      'Researcher-facing page: This table summarizes the most recent activity within Fresco. Use it to keep track of new protocols, interviews, and par',
+      'Explanatory paragraph under the Recent Activity heading on the dashboard, describing the activity feed table below it. Fresco is the product name.',
   },
 });
 

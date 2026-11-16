@@ -3,7 +3,6 @@ import { useCallback, useContext, useMemo } from 'react';
 import { findStageManagedOptionBindings } from '@codaco/protocol-validation';
 
 import { StageEditorFormContext } from '../form/stageEditorContext.ts';
-import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { stageDocument } from '../stageDocument.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
@@ -37,7 +36,6 @@ export function useStageManagedOptionsLock(): (
 ) => readonly string[] | undefined {
   const protocolContext = useProtocolContext();
   const editor = useContext(StageEditorFormContext);
-  const localization = useProtocolLocalization();
   const map = useMemo(
     () => buildStageManagedOptionMap(protocolContext),
     [protocolContext],
@@ -51,9 +49,7 @@ export function useStageManagedOptionsLock(): (
       const draftBindings = new Set<string>();
       for (const binding of findStageManagedOptionBindings({
         codebook: protocolContext.codebook,
-        stages: [
-          stageDocument(editor.identity, editor.liveDraft(), localization),
-        ],
+        stages: [stageDocument(editor.identity, editor.liveDraft())],
       })) {
         const entity = binding.subject.entity;
         if (entity === 'ego') {
@@ -74,6 +70,6 @@ export function useStageManagedOptionsLock(): (
         draftBindings,
       });
     },
-    [editor, localization, map, protocolContext.codebook],
+    [editor, map, protocolContext.codebook],
   );
 }

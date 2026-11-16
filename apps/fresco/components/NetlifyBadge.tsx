@@ -7,7 +7,8 @@ const messages = defineMessages({
   deploysByNetlify: {
     id: 'fresco.NetlifyBadge.deploysByNetlify',
     defaultMessage: 'Deploys by Netlify',
-    description: 'Researcher-facing NetlifyBadge: Deploys by Netlify',
+    description:
+      'Alternative text of the Netlify badge image in the footer of sandbox deployments, which links to netlify.com. Netlify is a company name and is not translated.',
   },
 });
 

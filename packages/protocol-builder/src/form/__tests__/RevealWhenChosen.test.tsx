@@ -30,7 +30,9 @@ function Form({
       <div data-field-name="picked">
         <button type="button" aria-label="Pick" aria-controls="pick-popup" />
       </div>
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a custom combobox popup: the fixture stands in for the one a Base UI picker renders, which is not a native select */}
       <div id="pick-popup" role="listbox" aria-label="Picks">
+        {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an option of that custom popup */}
         <div role="option" aria-selected="false" tabIndex={-1}>
           Pick
         </div>

@@ -1,177 +1,172 @@
+import { useLocale, useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
 import Link from '~/components/Link';
 
+/** A key in the `WorkflowsOverview` messages. */
+type MessageKey = string;
+
 type Step = {
-  /** The tool used in this phase, e.g. "Architect". */
-  tool: string;
-  /** Optional internal link to the tool's documentation. */
-  href?: string;
-  /** One-line description of what happens in this phase. */
-  detail: ReactNode;
+  /** The tool used in this phase, e.g. "Architect". Product names are not
+   * translated; other tools name a message. */
+  tool: { name: string } | { message: MessageKey };
+  /** Optional link to the tool's documentation, without the locale. */
+  path?: string;
+  /** Message describing what happens in this phase. */
+  detail: MessageKey;
 };
 
-const DocLink = ({ href, children }: { href: string; children: ReactNode }) => (
-  <Link href={{ pathname: href }} className="font-medium">
-    {children}
-  </Link>
-);
-
 type Workflow = {
-  name: string;
+  name: MessageKey;
   /** When this workflow is the right fit. */
-  summary: string;
+  summary: MessageKey;
   /** One step per phase, in column order. */
   steps: [Step, Step, Step];
 };
 
 const PHASES = [
-  { number: 'Phase 1', label: 'Design a protocol' },
-  { number: 'Phase 2', label: 'Collect data' },
-  { number: 'Phase 3', label: 'Export data' },
-] as const;
+  { number: 'phase1', label: 'design' },
+  { number: 'phase2', label: 'collect' },
+  { number: 'phase3', label: 'export' },
+] as const satisfies { number: MessageKey; label: MessageKey }[];
 
 const WORKFLOWS: Workflow[] = [
   {
-    name: 'Desktop, online',
-    summary: 'In-person interviews on internet-connected devices.',
+    name: 'desktopOnline',
+    summary: 'desktopOnlineSummary',
     steps: [
+      { tool: { name: 'Architect' }, detail: 'designDesktop' },
       {
-        tool: 'Architect',
-        detail:
-          'Design a protocol in Architect for Interviewer (new studies); Architect Classic for Interviewer Classic.',
+        tool: { name: 'Interviewer' },
+        path: '/collect-data/interviewer',
+        detail: 'deployCloud',
       },
-      {
-        tool: 'Interviewer',
-        href: '/en/collect-data/interviewer',
-        detail: 'Deploy to each device via a cloud file service.',
-      },
-      {
-        tool: 'Cloud service',
-        detail: 'Upload exports to the same cloud service to consolidate them.',
-      },
+      { tool: { message: 'cloudService' }, detail: 'uploadCloud' },
     ],
   },
   {
-    name: 'Desktop, offline',
-    summary: 'The same desktop flow when devices have no internet.',
+    name: 'desktopOffline',
+    summary: 'desktopOfflineSummary',
     steps: [
+      { tool: { name: 'Architect' }, detail: 'designDesktop' },
       {
-        tool: 'Architect',
-        detail:
-          'Design a protocol in Architect for Interviewer (new studies); Architect Classic for Interviewer Classic.',
+        tool: { name: 'Interviewer' },
+        path: '/collect-data/interviewer',
+        detail: 'deployUsb',
       },
-      {
-        tool: 'Interviewer',
-        href: '/en/collect-data/interviewer',
-        detail: 'Carry the protocol to devices on a USB drive.',
-      },
-      { tool: 'USB drive', detail: 'Move collected data back off via USB.' },
+      { tool: { message: 'usbDrive' }, detail: 'returnUsb' },
     ],
   },
   {
-    name: 'Web-based',
-    summary: 'Remote interviews completed in the browser.',
+    name: 'web',
+    summary: 'webSummary',
     steps: [
       {
-        tool: 'Architect',
-        href: '/en/design-protocols/getting-started',
-        detail: 'Design the protocol in the browser.',
+        tool: { name: 'Architect' },
+        path: '/design-protocols/getting-started',
+        detail: 'designWeb',
       },
       {
-        tool: 'Fresco',
-        href: '/en/collect-data/fresco/about',
-        detail: 'Upload once; participants interview in their browser.',
+        tool: { name: 'Fresco' },
+        path: '/collect-data/fresco/about',
+        detail: 'deployFresco',
       },
-      {
-        tool: 'Fresco dashboard',
-        detail: (
-          <>
-            Manage centrally; export from the dashboard or pull via the{' '}
-            <DocLink href="/en/analyze-data/fresco-api">Fresco API</DocLink>.
-          </>
-        ),
-      },
+      { tool: { message: 'frescoDashboard' }, detail: 'exportFresco' },
     ],
   },
 ];
 
-const ToolLabel = ({ tool, href }: Pick<Step, 'tool' | 'href'>) => {
+// The Fresco API link inside the Fresco export step's description.
+const frescoApiLink = (locale: string) => (children: ReactNode) => (
+  <Link
+    href={{ pathname: `/${locale}/analyze-data/fresco-api` }}
+    className="font-medium"
+  >
+    {children}
+  </Link>
+);
+
+const StepCell = ({ step, locale }: { step: Step; locale: string }) => {
+  const t = useTranslations('WorkflowsOverview');
   const className = 'text-accent text-xs font-semibold tracking-wide uppercase';
+  const tool = 'name' in step.tool ? step.tool.name : t(step.tool.message);
 
-  if (href) {
-    return (
-      <Link href={{ pathname: href }} className={className}>
-        {tool}
-      </Link>
-    );
-  }
-
-  return <span className={className}>{tool}</span>;
+  return (
+    <td className="px-4 py-3 align-top">
+      <div className="flex flex-col gap-1">
+        {step.path ? (
+          <Link
+            href={{ pathname: `/${locale}${step.path}` }}
+            className={className}
+          >
+            {tool}
+          </Link>
+        ) : (
+          <span className={className}>{tool}</span>
+        )}
+        <span className="text-text/70">
+          {t.rich(step.detail, { link: frescoApiLink(locale) })}
+        </span>
+      </div>
+    </td>
+  );
 };
 
-const StepCell = ({ step }: { step: Step }) => (
-  <td className="px-4 py-3 align-top">
-    <div className="flex flex-col gap-1">
-      <ToolLabel tool={step.tool} href={step.href} />
-      <span className="text-text/70">{step.detail}</span>
-    </div>
-  </td>
-);
+const WorkflowsOverview = () => {
+  const t = useTranslations('WorkflowsOverview');
+  const locale = useLocale();
 
-const WorkflowsOverview = () => (
-  <div className="my-8">
-    <div className="border-outline overflow-x-auto rounded border">
-      <table className="w-full min-w-[44rem] border-collapse text-sm">
-        <caption className="sr-only">
-          The three ways to run a Network Canvas study, across the design,
-          collect, and export phases.
-        </caption>
-        <colgroup>
-          <col className="w-[22%]" />
-          <col className="w-[26%]" />
-          <col className="w-[26%]" />
-          <col className="w-[26%]" />
-        </colgroup>
-        <thead>
-          <tr className="bg-text text-background text-left">
-            <th scope="col" className="px-4 py-3 font-semibold">
-              Workflow
-            </th>
-            {PHASES.map((phase) => (
-              <th key={phase.number} scope="col" className="px-4 py-3">
-                <span className="block text-xs font-semibold uppercase opacity-70">
-                  {phase.number}
-                </span>
-                <span className="font-semibold">{phase.label}</span>
+  return (
+    <div className="my-8">
+      <div className="border-outline overflow-x-auto rounded border">
+        <table className="w-full min-w-[44rem] border-collapse text-sm">
+          <caption className="sr-only">{t('caption')}</caption>
+          <colgroup>
+            <col className="w-[22%]" />
+            <col className="w-[26%]" />
+            <col className="w-[26%]" />
+            <col className="w-[26%]" />
+          </colgroup>
+          <thead>
+            <tr className="bg-text text-background text-start">
+              <th scope="col" className="px-4 py-3 font-semibold">
+                {t('workflow')}
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {WORKFLOWS.map((workflow) => (
-            <tr
-              key={workflow.name}
-              className="border-outline/70 border-t odd:bg-current/5"
-            >
-              <th
-                scope="row"
-                className="px-4 py-3 text-left align-top font-bold"
-              >
-                <span className="text-text block">{workflow.name}</span>
-                <span className="text-text/60 mt-1 block text-xs font-normal">
-                  {workflow.summary}
-                </span>
-              </th>
-              {workflow.steps.map((step) => (
-                <StepCell key={step.tool} step={step} />
+              {PHASES.map((phase) => (
+                <th key={phase.number} scope="col" className="px-4 py-3">
+                  <span className="block text-xs font-semibold uppercase opacity-70">
+                    {t(phase.number)}
+                  </span>
+                  <span className="font-semibold">{t(phase.label)}</span>
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {WORKFLOWS.map((workflow) => (
+              <tr
+                key={workflow.name}
+                className="border-outline/70 border-t odd:bg-current/5"
+              >
+                <th
+                  scope="row"
+                  className="px-4 py-3 text-start align-top font-bold"
+                >
+                  <span className="text-text block">{t(workflow.name)}</span>
+                  <span className="text-text/60 mt-1 block text-xs font-normal">
+                    {t(workflow.summary)}
+                  </span>
+                </th>
+                {workflow.steps.map((step) => (
+                  <StepCell key={step.detail} step={step} locale={locale} />
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default WorkflowsOverview;

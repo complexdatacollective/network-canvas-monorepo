@@ -20,52 +20,56 @@ const messages = defineMessages({
   copyInvalidSubmission: {
     id: 'fresco.actions.twoFactor.copyInvalidSubmission',
     defaultMessage: 'Invalid submission',
-    description: 'Researcher-facing actions / twoFactor: Invalid submission',
+    description:
+      'Error shown on the two-factor step of signing in when the submitted form data is malformed.',
   },
   copyServerConfigurationErrorPleaseContactAnAdmin: {
     id: 'fresco.actions.twoFactor.copyServerConfigurationErrorPleaseContactAnAdmin',
     defaultMessage: 'Server configuration error. Please contact an admin.',
     description:
-      'Researcher-facing actions / twoFactor: Server configuration error. Please contact an admin.',
+      'Error shown on the two-factor step of signing in when the installation has no installation ID, so the sign-in cannot be checked. Tells the researcher to contact whoever administers the installation.',
   },
   copyTwoFactorSessionExpiredPleaseSignIn: {
     id: 'fresco.actions.twoFactor.copyTwoFactorSessionExpiredPleaseSignIn',
     defaultMessage: 'Two-factor session expired. Please sign in again.',
     description:
-      'Researcher-facing actions / twoFactor: Two-factor session expired. Please sign in again.',
+      'Error shown on the two-factor step of signing in when the short-lived token issued after the password step has expired or is invalid, so the researcher must start sign-in again.',
   },
   copyUserNotFound: {
     id: 'fresco.actions.twoFactor.copyUserNotFound',
     defaultMessage: 'User not found',
-    description: 'Researcher-facing actions / twoFactor: User not found',
+    description:
+      'Error shown on the two-factor step of signing in when the researcher account named by the sign-in session no longer exists.',
   },
   copyTooManyAttemptsPleaseSignInAgain: {
     id: 'fresco.actions.twoFactor.copyTooManyAttemptsPleaseSignInAgain',
     defaultMessage: 'Too many attempts. Please sign in again.',
     description:
-      'Researcher-facing actions / twoFactor: Too many attempts. Please sign in again.',
+      'Error shown on the two-factor step of signing in when the account or network address has made too many failed sign-in attempts and is temporarily rate limited.',
   },
   copyTwoFactorAuthenticationIsNotConfigured: {
     id: 'fresco.actions.twoFactor.copyTwoFactorAuthenticationIsNotConfigured',
     defaultMessage: 'Two-factor authentication is not configured',
     description:
-      'Researcher-facing actions / twoFactor: Two-factor authentication is not configured',
+      'Error shown on the two-factor step of signing in when the account has no verified authenticator app set up for two-factor authentication.',
   },
   copyInvalidVerificationCode: {
     id: 'fresco.actions.twoFactor.copyInvalidVerificationCode',
     defaultMessage: 'Invalid verification code',
     description:
-      'Researcher-facing actions / twoFactor: Invalid verification code',
+      'Error shown on the two-factor step of signing in when the 6-digit code from the authenticator app is wrong or expired.',
   },
   copyInvalidRecoveryCode: {
     id: 'fresco.actions.twoFactor.copyInvalidRecoveryCode',
     defaultMessage: 'Invalid recovery code',
-    description: 'Researcher-facing actions / twoFactor: Invalid recovery code',
+    description:
+      'Error shown on the two-factor step of signing in when the recovery code entered is wrong or has already been used.',
   },
   copyInvalidCodeFormat: {
     id: 'fresco.actions.twoFactor.copyInvalidCodeFormat',
     defaultMessage: 'Invalid code format',
-    description: 'Researcher-facing actions / twoFactor: Invalid code format',
+    description:
+      'Error shown on the two-factor step of signing in when the text entered is neither a 6-digit authenticator code nor a 20-character recovery code.',
   },
 });
 

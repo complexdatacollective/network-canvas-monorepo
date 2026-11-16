@@ -297,6 +297,31 @@ describe('DatePickerField accessibility and native events', () => {
     },
   );
 
+  it('tells the month-mode controls apart when rendered without an id', () => {
+    render(<DatePickerField type="month" name="date" value="2020-05" />);
+
+    expect(screen.getByRole('combobox', { name: 'Year' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Month' })).toBeInTheDocument();
+  });
+
+  it('adds a caller’s aria-label to both month-mode control names', () => {
+    render(
+      <DatePickerField
+        type="month"
+        name="date"
+        aria-label="Date of birth"
+        value="2020-05"
+      />,
+    );
+
+    expect(
+      screen.getByRole('combobox', { name: 'Date of birth Year' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Date of birth Month' }),
+    ).toBeInTheDocument();
+  });
+
   it('names both operative controls in month mode and forwards focus/blur', () => {
     const onFocus = vi.fn();
     const onBlur = vi.fn();

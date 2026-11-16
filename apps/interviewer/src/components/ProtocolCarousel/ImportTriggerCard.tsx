@@ -14,12 +14,14 @@ const messages = defineMessages({
   chooseANetcanvasProtocolFile: {
     id: 'interviewer.importTriggerCard.chooseANetcanvasProtocolFile',
     defaultMessage: 'Choose a .netcanvas protocol file',
-    description: 'User-facing message in Interviewer Import Trigger Card.',
+    description:
+      'Accessible name of the hidden file input behind the import card, read only by screen readers; it picks a .netcanvas protocol file (an Architect export).',
   },
   importAProtocol: {
     id: 'interviewer.importTriggerCard.importAProtocol',
     defaultMessage: 'Import a protocol',
-    description: 'The aria-label label in Interviewer Import Trigger Card.',
+    description:
+      'Accessible name of the whole import card button on the home screen; pressing it opens the file picker to install a protocol. Verb phrase.',
   },
   drop: {
     id: 'interviewer.importTriggerCard.drop',
@@ -37,9 +39,12 @@ const messages = defineMessages({
 });
 
 // Rich-text chunk formatters for the two messages above, at module scope so
-// they keep one identity across renders.
+// they keep one identity across renders. The extension is marked left to
+// right so that its dot stays in front of it inside a right-to-left sentence.
 const renderExtension = (chunks: ReactNode[]) => (
-  <span className="font-monospace text-text">{chunks}</span>
+  <span dir="ltr" className="font-monospace text-text">
+    {chunks}
+  </span>
 );
 
 const renderArchitectLink = (chunks: ReactNode[]) => (

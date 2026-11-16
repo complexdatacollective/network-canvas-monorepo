@@ -1,0 +1,27 @@
+{
+  "name": "@codaco/community-theme",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Discourse theme for the Network Canvas community forum, built from the shared design tokens.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@codaco/app-i18n": "workspace:^",
+    "@codaco/fresco-ui": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
+    "@codaco/tailwind-config": "workspace:^",
+    "@codaco/tsconfig": "workspace:^",
+    "@formatjs/icu-messageformat-parser": "catalog:",
+    "@types/node": "catalog:",
+    "jszip": "catalog:",
+    "postcss": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

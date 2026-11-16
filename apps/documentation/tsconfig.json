@@ -1,6 +1,7 @@
 {
   "extends": "@codaco/tsconfig/web.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "composite": true,
     "paths": {
       "~/*": ["./*"]

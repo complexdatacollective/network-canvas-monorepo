@@ -105,6 +105,7 @@ const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
   id: 'roster-stage',
   type: 'NameGeneratorRoster',
   allAddedNotice: { en: 'There is nothing left to add from this list.' },
+  unnamedLabel: { en: 'Unnamed {count}' },
   panelTitle: { en: 'Available to add' },
   label: { en: 'Roster' },
   subject: { entity: 'node', type: NODE_TYPE },
@@ -128,7 +129,7 @@ async function renderRoster(
   }
 
   render(
-    <InterviewI18nProvider requestedLocale="en">
+    <InterviewI18nProvider>
       <Provider store={store}>
         <TestProtocolLocalization>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>

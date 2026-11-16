@@ -162,7 +162,12 @@ export function StageEditorStoryHost({
             story asking for "the status" would otherwise get whichever one the
             tree happened to render first.
           */}
-          <Paragraph role="status" aria-label="Save status" margin="none">
+          <Paragraph
+            render={<output aria-live="polite" />}
+            aria-label="Save status"
+            margin="none"
+            className="block"
+          >
             {saved === null
               ? 'Nothing saved yet.'
               : `Saved “${stageLabel(saved)}”.`}
@@ -187,20 +192,19 @@ export function StageEditorStoryHost({
           )}
           {saved !== null && (
             // A named region rather than a heading, so a document whose real
-            // headings are the editor's own sections keeps its outline — and
-            // the region is the box itself rather than a `<section>` around
-            // it, because the box is what scrolls. A stage holding a long line
-            // makes it scroll sideways, and its end is then reachable only by
-            // scrolling: a reader who cannot use a pointer needs to put focus
-            // here and use the arrow keys.
-            <pre
+            // headings are the editor's own sections keep its outline — and
+            // the region is the scrolling box itself, with the text inside it.
+            // A stage holding a long line makes it scroll sideways, and its end
+            // is then reachable only by scrolling: a reader who cannot use a
+            // pointer needs to put focus here and use the arrow keys.
+            <section
+              // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region has to take focus for a keyboard to scroll it (WCAG 2.1.1)
               tabIndex={0}
-              role="region"
               aria-label="What the host was asked to commit"
-              className="focusable overflow-x-auto text-xs"
+              className="focusable overflow-x-auto"
             >
-              {JSON.stringify(saved, null, 2)}
-            </pre>
+              <pre className="text-xs">{JSON.stringify(saved, null, 2)}</pre>
+            </section>
           )}
           {renderEditor({
             target: { sectionId: stage },

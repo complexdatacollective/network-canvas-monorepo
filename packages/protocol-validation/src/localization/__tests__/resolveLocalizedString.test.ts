@@ -124,7 +124,7 @@ describe('resolveLocalizedString', () => {
 
     // Best fit over the whole list would let the later exact 'en' beat the
     // earlier related 'es'.
-    it('are matched one at a time, so an earlier relative beats a later exact match', () => {
+    it('let an earlier regional relative beat a later exact match', () => {
       expect(
         resolveLocalizedString(
           { en: 'Hello', es: 'Hola' },
@@ -139,6 +139,23 @@ describe('resolveLocalizedString', () => {
           ['de', 'pt-PT', 'fr'],
         ),
       ).toMatchObject({ locale: 'pt-BR', matchedBy: 'requested' });
+    });
+
+    it('let a later exact match beat an earlier fit in another language', () => {
+      expect(
+        resolveLocalizedString(
+          { en: 'Hello', nl: 'Hallo', fr: 'Bonjour' },
+          { defaultLocale: 'fr', locales: ['en', 'nl', 'fr'] },
+          ['fr-CA', 'af', 'en'],
+        ),
+      ).toMatchObject({ locale: 'fr', matchedBy: 'selected' });
+      expect(
+        resolveLocalizedString(
+          { en: 'Hello', nl: 'Hallo', fr: 'Bonjour' },
+          { defaultLocale: 'fr', locales: ['en', 'nl', 'fr'] },
+          ['de', 'af', 'en'],
+        ),
+      ).toMatchObject({ locale: 'en', matchedBy: 'requested' });
     });
 
     it('skip malformed and unmatched preferences', () => {

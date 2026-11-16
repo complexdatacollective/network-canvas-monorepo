@@ -17,25 +17,25 @@ const messages = defineMessages({
     id: 'fresco.ProtocolImport.ProtocolImportDropzone.copyDropFilesHere',
     defaultMessage: 'Drop files here',
     description:
-      'Researcher-facing ProtocolImport / ProtocolImportDropzone: Drop files here',
+      'Heading of the protocol upload area while the researcher is dragging a file over it, telling them to release it to upload.',
   },
   copyImportProtocols: {
     id: 'fresco.ProtocolImport.ProtocolImportDropzone.copyImportProtocols',
     defaultMessage: 'Import protocols',
     description:
-      'Researcher-facing ProtocolImport / ProtocolImportDropzone: Import protocols',
+      'Heading of the protocol upload area on the Protocols page when nothing is being dragged. Import is a verb: it uploads protocol files into this installation.',
   },
   dragDropFilesHere: {
     id: 'fresco.ProtocolImport.ProtocolImportDropzone.dragDropFilesHere',
     defaultMessage: 'Drag & drop <tag1>{value1}</tag1> files here',
     description:
-      'Researcher-facing ProtocolImport / ProtocolImportDropzone: Drag & drop value files here',
+      'Hint under the heading of the protocol upload area. value1 is the protocol file extension, shown in code style and not translated; tag1 wraps it.',
   },
   browseFiles: {
     id: 'fresco.ProtocolImport.ProtocolImportDropzone.browseFiles',
     defaultMessage: 'Browse files',
     description:
-      'Researcher-facing ProtocolImport / ProtocolImportDropzone: Browse files',
+      "Button in the protocol upload area that opens the computer's file picker so the researcher can choose protocol files instead of dragging them.",
   },
 });
 

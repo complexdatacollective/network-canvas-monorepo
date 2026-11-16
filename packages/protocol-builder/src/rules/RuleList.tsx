@@ -1,13 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, useContext, useId, useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -62,13 +54,32 @@ const asRule = (item: Record<string, unknown> | undefined): RuleDraft => {
   return { ...rule, type: typeof rule.type === 'string' ? rule.type : '' };
 };
 
-type RuleListItemProps = ArrayFieldItemProps<RuleDraft> &
-  Readonly<{
-    codebook: Readonly<Codebook>;
-    allowedTargets: readonly RuleTargetType[];
-    allowEncryptedAttributes: boolean;
-    duplicateIds: ReadonlySet<string>;
-  }>;
+/**
+ * What a rule list binds into its rows and its editor.
+ *
+ * The item and editor components are handed to `ArrayField` by reference, and a
+ * new reference is a new component type that React unmounts and mounts afresh.
+ * They are therefore defined once, at module level, and read these bindings
+ * through a context: a revised codebook or a changed set of duplicate ids
+ * re-renders the rows, where closing over them would have remounted every row
+ * and discarded an open editor's unsaved rule.
+ */
+type RuleListBinding = Readonly<{
+  codebook: Readonly<Codebook>;
+  allowedTargets: readonly RuleTargetType[];
+  allowEncryptedAttributes: boolean;
+  duplicateIds: ReadonlySet<string>;
+}>;
+
+const RuleListBindingContext = createContext<RuleListBinding | null>(null);
+
+function useRuleListBinding(): RuleListBinding {
+  const binding = useContext(RuleListBindingContext);
+  if (binding === null) {
+    throw new Error('A rule list row rendered outside its RuleList.');
+  }
+  return binding;
+}
 
 function RuleListItem({
   item,
@@ -83,11 +94,9 @@ function RuleListItem({
   editTriggerRef,
   disabled,
   readOnly,
-  codebook,
-  allowedTargets,
-  allowEncryptedAttributes,
-  duplicateIds,
-}: RuleListItemProps) {
+}: ArrayFieldItemProps<RuleDraft>) {
+  const { codebook, allowedTargets, allowEncryptedAttributes, duplicateIds } =
+    useRuleListBinding();
   const rule = asRule(item);
   const intl = useAppIntl();
   const { localization, locale } = useEditingLanguage();
@@ -235,12 +244,34 @@ type RuleEditorSession = Readonly<{
  */
 const RuleTypesContext = createContext<readonly RuleTypeOption[]>([]);
 
-type RuleListEditorProps = ArrayFieldEditorProps<RuleDraft> &
-  Readonly<{
-    allowedTargets: readonly RuleTargetType[];
-    allowEncryptedAttributes: boolean;
-    duplicateIds: ReadonlySet<string>;
-  }>;
+/**
+ * The session an item opens, given the one currently held.
+ *
+ * Answers the very same session when nothing has changed, so it can be applied
+ * during render without looping.
+ */
+function nextEditorSession(
+  previous: RuleEditorSession | null,
+  item: ArrayFieldEditorProps<RuleDraft>['item'],
+  isNewItem: boolean,
+  duplicateIds: ReadonlySet<string>,
+): RuleEditorSession | null {
+  if (!item) {
+    return previous && previous.open ? { ...previous, open: false } : previous;
+  }
+  if (previous?.open === true && previous.sourceId === item._internalId) {
+    return previous;
+  }
+  const seed = asRule(item);
+  return {
+    id: (previous?.id ?? 0) + 1,
+    sourceId: item._internalId,
+    isNewItem,
+    seed,
+    idIsShared: typeof seed.id === 'string' && duplicateIds.has(seed.id),
+    open: true,
+  };
+}
 
 function RuleListEditor({
   item,
@@ -248,10 +279,9 @@ function RuleListEditor({
   onSave,
   onCancel,
   getEditorTrigger,
-  allowedTargets,
-  allowEncryptedAttributes,
-  duplicateIds,
-}: RuleListEditorProps) {
+}: ArrayFieldEditorProps<RuleDraft>) {
+  const { allowedTargets, allowEncryptedAttributes, duplicateIds } =
+    useRuleListBinding();
   const ruleTypes = useContext(RuleTypesContext);
   const [session, setSession] = useState<RuleEditorSession | null>(null);
 
@@ -259,30 +289,10 @@ function RuleListEditor({
   // opened row — including reopening the same row after a cancelled edit —
   // gets its own session id, and so its own field store: Fresco has no
   // whole-form reinitialise, and a reused store would resurrect work the
-  // researcher explicitly discarded.
-  useEffect(() => {
-    if (!item) {
-      setSession((previous) =>
-        previous ? { ...previous, open: false } : previous,
-      );
-      return;
-    }
-
-    setSession((previous) => {
-      if (previous?.open === true && previous.sourceId === item._internalId) {
-        return previous;
-      }
-      const seed = asRule(item);
-      return {
-        id: (previous?.id ?? 0) + 1,
-        sourceId: item._internalId,
-        isNewItem,
-        seed,
-        idIsShared: typeof seed.id === 'string' && duplicateIds.has(seed.id),
-        open: true,
-      };
-    });
-  }, [duplicateIds, isNewItem, item]);
+  // researcher explicitly discarded. Worked out during render, so the dialog
+  // never paints for a row with the previous row's session.
+  const nextSession = nextEditorSession(session, item, isNewItem, duplicateIds);
+  if (nextSession !== session) setSession(nextSession);
 
   // `ArrayField` withdraws its save handler while the list is not accepting
   // changes, and there is no editor to render then: a disabled or read-only
@@ -369,20 +379,18 @@ const NO_DUPLICATE_IDS: ReadonlySet<string> = new Set<string>();
  * for as long as the answer itself does not change.
  *
  * The field above rebuilds its `rules` array on every render, so a set derived
- * straight from it would be a new object every time — and the item and editor
- * components below are identified by reference, so a new object in their
- * closure would remount every row on every keystroke elsewhere in the stage.
- * Recomputed during render and kept when nothing changed, which is the same
- * shape `ArrayField`'s own external-value sync uses.
+ * straight from it would be a new object every time, and every row would
+ * re-render on every keystroke elsewhere in the stage. Recomputed during render
+ * and kept when nothing changed, which is the same shape `ArrayField`'s own
+ * external-value sync uses.
  */
 function useDuplicateRuleIds(rules: readonly RuleDraft[]): ReadonlySet<string> {
-  const held = useRef<ReadonlySet<string>>(NO_DUPLICATE_IDS);
   const current = duplicateRuleIds(rules);
+  const [held, setHeld] = useState<ReadonlySet<string>>(NO_DUPLICATE_IDS);
   const unchanged =
-    current.size === held.current.size &&
-    [...current].every((id) => held.current.has(id));
-  if (!unchanged) held.current = current;
-  return held.current;
+    current.size === held.size && [...current].every((id) => held.has(id));
+  if (!unchanged) setHeld(current);
+  return unchanged ? held : current;
 }
 
 /**
@@ -408,62 +416,40 @@ export default function RuleList({
   const intl = useAppIntl();
   const duplicateIds = useDuplicateRuleIds(rules);
 
-  // Bound here rather than through a context: the item and editor components
-  // are identified by reference, so rebuilding them every render would remount
-  // every row. Memoised on exactly what they close over.
-  const itemComponent = useMemo(
-    () =>
-      function BoundRuleListItem(props: ArrayFieldItemProps<RuleDraft>) {
-        return (
-          <RuleListItem
-            {...props}
-            codebook={codebook}
-            allowedTargets={allowedTargets}
-            allowEncryptedAttributes={allowEncryptedAttributes}
-            duplicateIds={duplicateIds}
-          />
-        );
-      },
+  // Bound through a context rather than closed over: the item and editor
+  // components are identified by reference, so rebuilding them with the
+  // bindings would remount every row. Memoised on exactly what they read.
+  const binding = useMemo<RuleListBinding>(
+    () => ({
+      codebook,
+      allowedTargets,
+      allowEncryptedAttributes,
+      duplicateIds,
+    }),
     [allowEncryptedAttributes, allowedTargets, codebook, duplicateIds],
-  );
-
-  // Deliberately not memoised on `ruleTypes`: see `RuleTypesContext`. Its
-  // labels change with the active language, and a new component type here
-  // would unmount the open editor and discard the researcher's unsaved rule.
-  const editorComponent = useMemo(
-    () =>
-      function BoundRuleListEditor(props: ArrayFieldEditorProps<RuleDraft>) {
-        return (
-          <RuleListEditor
-            {...props}
-            allowedTargets={allowedTargets}
-            allowEncryptedAttributes={allowEncryptedAttributes}
-            duplicateIds={duplicateIds}
-          />
-        );
-      },
-    [allowEncryptedAttributes, allowedTargets, duplicateIds],
   );
 
   const getId = useMemo(() => ruleRowId(duplicateIds), [duplicateIds]);
 
   return (
     <RuleTypesContext value={ruleTypes}>
-      <ArrayField<RuleDraft>
-        value={[...rules]}
-        onChange={(nextRules) => onChange(nextRules ?? [])}
-        getId={getId}
-        itemTemplate={createEmptyRule}
-        itemComponent={itemComponent}
-        editorComponent={editorComponent}
-        addButtonLabel={addButtonLabel}
-        emptyStateMessage={intl.formatMessage(messages.emptyState)}
-        itemClasses="elevation-low"
-        sortable
-        disabled={disabled}
-        readOnly={readOnly}
-        aria-invalid={hasError}
-      />
+      <RuleListBindingContext value={binding}>
+        <ArrayField<RuleDraft>
+          value={[...rules]}
+          onChange={(nextRules) => onChange(nextRules ?? [])}
+          getId={getId}
+          itemTemplate={createEmptyRule}
+          itemComponent={RuleListItem}
+          editorComponent={RuleListEditor}
+          addButtonLabel={addButtonLabel}
+          emptyStateMessage={intl.formatMessage(messages.emptyState)}
+          itemClasses="elevation-low"
+          sortable
+          disabled={disabled}
+          readOnly={readOnly}
+          aria-invalid={hasError}
+        />
+      </RuleListBindingContext>
     </RuleTypesContext>
   );
 }

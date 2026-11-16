@@ -6,10 +6,9 @@ import { ENTITY_ID_PROPERTIES } from './entityIdProperties';
  * Entity identifiers reported to analytics are session-scoped pseudonyms, never
  * the interview's own `_uid`s.
  *
- * The analytics design admits `node_id`/`edge_id` on the stated premise that
+ * The analytics contract admits `node_id`/`edge_id` on the stated premise that
  * they are "random UUIDs generated at creation time, no derivation from
- * participant input" (`docs/superpowers/specs/2026-05-05-interview-analytics-design.md`
- * §8). Roster nodes break that premise: `makeVariableUUIDReplacer` keys an
+ * participant input". Roster nodes break that premise: `makeVariableUUIDReplacer` keys an
  * external-data row as `${subjectType}_${hash({ node, index })}`, a
  * deterministic, unkeyed digest of the row's own content, and
  * `NameGeneratorRoster` adds the node under exactly that key. A raw `_uid`

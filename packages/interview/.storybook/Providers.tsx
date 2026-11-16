@@ -1,6 +1,5 @@
 'use client';
 
-import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import type { ReactNode } from 'react';
 
@@ -54,6 +53,11 @@ const noopFinish = () => Promise.resolve();
  * - AnimationProvider: follows the toolbar's Motion control, so a story can
  *   be seen with reduced motion without changing the system setting.
  *
+ * Base UI's `DirectionProvider` is deliberately absent: the toolbar's
+ * direction control owns it, in the `withAppI18n` decorator around this. A
+ * second provider here would be nearer the story and pin every Base UI
+ * component to one direction while the CSS around it mirrored.
+ *
  * Interview-specific toasts (validation errors, etc.) are rendered by
  * Shell's own internal Toast.Provider + InterviewToastViewport, so this
  * decorator only needs to provide the default toast surface.
@@ -71,26 +75,24 @@ export default function Providers({
       disableAnimationsForAutomation
       reducedMotion={reducedMotion}
     >
-      <DirectionProvider direction="ltr">
-        <Toast.Provider limit={7}>
-          <TooltipProvider>
-            <DndStoreProvider>
-              <DialogProvider>
-                <ContractProvider
-                  onFinish={noopFinish}
-                  onRequestAsset={noopAssetUrl}
-                  flags={{ isDevelopment: true }}
-                >
-                  <TestProtocolLocalization>
-                    <CurrentStepProvider>{children}</CurrentStepProvider>
-                  </TestProtocolLocalization>
-                </ContractProvider>
-              </DialogProvider>
-            </DndStoreProvider>
-          </TooltipProvider>
-          <Toaster />
-        </Toast.Provider>
-      </DirectionProvider>
+      <Toast.Provider limit={7}>
+        <TooltipProvider>
+          <DndStoreProvider>
+            <DialogProvider>
+              <ContractProvider
+                onFinish={noopFinish}
+                onRequestAsset={noopAssetUrl}
+                flags={{ isDevelopment: true }}
+              >
+                <TestProtocolLocalization>
+                  <CurrentStepProvider>{children}</CurrentStepProvider>
+                </TestProtocolLocalization>
+              </ContractProvider>
+            </DialogProvider>
+          </DndStoreProvider>
+        </TooltipProvider>
+        <Toaster />
+      </Toast.Provider>
     </AnimationProvider>
   );
 }

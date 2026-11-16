@@ -18,7 +18,7 @@ const messages = defineMessages({
     id: 'fresco.InterviewsTable.NetworkSummary.noNodesOrEdges',
     defaultMessage: 'No nodes or edges',
     description:
-      'Researcher-facing InterviewsTable / NetworkSummary: No nodes or edges',
+      'Shown in the network column of a row of the Interviews table when the interview has recorded no nodes (people or other entities) and no edges (relationships) yet.',
   },
 });
 

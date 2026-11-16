@@ -18,7 +18,7 @@
   "protocolUtilities.constraint.negativeTextMaximum": "Una longitud máxima de texto negativa no permite ninguna respuesta. Establece un máximo de cero o más.",
   "protocolUtilities.constraint.negativeSelectionMaximum": "Una selección máxima negativa no permite ninguna respuesta. Establece un máximo de cero o más.",
   "protocolUtilities.constraint.emptyDateRange": "La fecha mínima permitida es posterior a la fecha máxima permitida. Corrige el intervalo de fechas.",
-  "protocolUtilities.constraint.uniqueEgo": "Los valores únicos no se admiten en los atributos del participante. Elimina esta regla de validación.",
+  "protocolUtilities.constraint.uniqueEgo": "La regla de valores únicos no se admite en los atributos de la persona participante. Elimina esta regla de validación.",
   "protocolUtilities.constraint.insufficientUniqueValues": "No hay suficientes valores distintos para todos los nodos o vínculos que puede crear este protocolo. Permite más valores o cambia la regla de unicidad.",
   "protocolUtilities.constraint.duplicateFixedValues": "Se asigna el mismo valor a varios nodos o vínculos, pero el valor debe ser único. Cambia los valores fijos o la regla de unicidad.",
   "protocolUtilities.constraint.numberDateComparison": "Se está comparando un número con una fecha. Usa atributos de tipos compatibles para esta comparación.",

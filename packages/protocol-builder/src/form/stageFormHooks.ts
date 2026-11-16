@@ -1,4 +1,4 @@
-import { useCallback, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 import {
   type FieldNameMode,
@@ -387,25 +387,20 @@ export function useStageValue(path: string | undefined): unknown {
  */
 export function useStageHasAnyValue(paths: readonly string[]): boolean {
   const { storeApi, committedFields } = useStageEditorForm();
-  // The paths themselves are the dependency, not the array carrying them: a
-  // section that spells its list inline hands over a new array every render.
-  // Serialised as JSON rather than joined, because a path may legally contain
-  // whatever separator a join would pick — `["prompt text"]` contains a space.
-  const key = JSON.stringify(paths);
-  const latestPaths = useRef(paths);
-  latestPaths.current = paths;
 
   const subscribe = useCallback(
     (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
     [storeApi],
   );
 
-  const getSnapshot = useCallback(() => {
+  // Not memoised: the answer is a boolean, so a new function each render costs
+  // nothing, and React reads the snapshot with the latest one. That is what
+  // lets a section spell its path list inline — a new array every render —
+  // without the hook caring which array it was handed.
+  const getSnapshot = () => {
     const state = storeApi.getState();
-    return latestPaths.current.some((path) =>
-      pathHasAnswer(state, committedFields, path),
-    );
-  }, [committedFields, key, storeApi]);
+    return paths.some((path) => pathHasAnswer(state, committedFields, path));
+  };
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

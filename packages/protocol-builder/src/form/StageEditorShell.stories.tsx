@@ -38,6 +38,23 @@ const CONFIGURED: SectionDoc = {
   interviewScript: 'Read the welcome text aloud before continuing.',
 };
 
+/** Slots are called as functions, so each is declared once at module scope. */
+const renderHostTitle = () => <HostStageTitle />;
+
+const renderSubmitButton = ({
+  formId,
+  readOnly: locked,
+}: {
+  formId: string;
+  readOnly: boolean;
+}) => (
+  <div className="flex justify-end">
+    <SubmitButton form={formId} disabled={locked}>
+      Finished editing
+    </SubmitButton>
+  </div>
+);
+
 /**
  * A host with no Redux, no router and no store of its own: it serves the
  * protocol over the package's own contract, renders the editor, and puts its
@@ -77,14 +94,8 @@ function StageEditorHost({
                 <StageEditorShell
                   // The header slot: above the form element and inside the
                   // form's provider, which is what a title needs.
-                  header={() => <HostStageTitle />}
-                  actions={({ formId, readOnly: locked }) => (
-                    <div className="flex justify-end">
-                      <SubmitButton form={formId} disabled={locked}>
-                        Finished editing
-                      </SubmitButton>
-                    </div>
-                  )}
+                  header={renderHostTitle}
+                  actions={renderSubmitButton}
                 >
                   <BuilderSection
                     title="Page content"

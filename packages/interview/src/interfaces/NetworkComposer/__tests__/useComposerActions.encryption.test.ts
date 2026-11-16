@@ -25,7 +25,6 @@ import { decryptValue } from '../../Anonymisation/encryptionFormat';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import { useComposerActions } from '../useComposerActions';
 import { createUndoStore } from '../useUndoStore';
-import { composerWords } from './composerWords';
 
 const QUICK_ADD_VAR = 'var-quick-add';
 const LAYOUT_VAR = 'var-layout';
@@ -45,7 +44,6 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'NetworkComposer'>['stage'] = {
   id: 'nc1',
   type: 'NetworkComposer',
-  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node', type: NODE_TYPE },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
@@ -91,6 +89,7 @@ function renderActions(store: Store) {
         quickAdd: QUICK_ADD_VAR,
         layoutVariable: LAYOUT_VAR,
         useEncryption: true,
+        automaticLayoutDefault: false,
         currentStep: 0,
         undoStore,
         dispatch: store.dispatch,

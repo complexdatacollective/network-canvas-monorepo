@@ -427,6 +427,11 @@ describe('the team studies list', () => {
     expect(
       await screen.findByRole('link', { name: 'Alpha study' }),
     ).toHaveAttribute('href', `/study/${STUDY_A}`);
+    // The study name takes its own direction (a name someone typed).
+    expect(screen.getByRole('link', { name: 'Alpha study' })).toHaveAttribute(
+      'dir',
+      'auto',
+    );
     expect(screen.queryByText('Beta study')).toBeNull();
 
     // Where each study is in its lifecycle, and who takes part, on the row
@@ -729,6 +734,15 @@ describe('the team members screen', () => {
     );
     expect(screen.getByText('pending@example.com')).toBeInTheDocument();
     expect(screen.queryByText('expired@example.com')).toBeNull();
+    // Names and addresses people typed take their own direction.
+    expect(screen.getByText('Team Collaborator')).toHaveAttribute(
+      'dir',
+      'auto',
+    );
+    expect(screen.getByText('pending@example.com')).toHaveAttribute(
+      'dir',
+      'auto',
+    );
   });
 
   it('waits for the reconciler to make the URL team the active one', async () => {

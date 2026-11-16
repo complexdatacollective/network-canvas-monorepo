@@ -53,7 +53,6 @@ const meta = {
   title: 'Design System/Elevation',
   parameters: {
     layout: 'padded',
-    a11y: { disable: true },
     docs: {
       description: {
         component:

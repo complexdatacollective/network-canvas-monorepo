@@ -177,7 +177,7 @@ for (const f of [
 // generateSW inlines the precache manifest as an array of { url, revision }
 // entries; collect every precached critical-asset URL.
 const precached = new Set(
-  [...sw.matchAll(/["']([^"']+\.(?:js|webp))["']/g)].map((m) =>
+  [...sw.matchAll(/["']([^"']+\.(?:js|webp|woff2))["']/g)].map((m) =>
     m[1].replace(/^\/+/, ''),
   ),
 );
@@ -205,6 +205,22 @@ const missingStagePreviewAssets = stagePreviewAssets.filter(
 if (missingStagePreviewAssets.length > 0) {
   fail(
     `stage-preview asset(s) excluded from precache: ${missingStagePreviewAssets.join(', ')}`,
+  );
+}
+
+// The bundled font faces are precached: the installing page is not controlled
+// by the worker, so a runtime cache never sees them before the first offline
+// launch, and a face is not even requested until text needs it.
+const fontAssets = assetFiles
+  .filter((f) => f.endsWith('.woff2'))
+  .map((f) => `assets/${f}`);
+if (fontAssets.length === 0) {
+  fail('no .woff2 fonts emitted to dist/assets');
+}
+const missingFonts = fontAssets.filter((url) => !precached.has(url));
+if (missingFonts.length > 0) {
+  fail(
+    `font face(s) excluded from precache, so text that needs them falls back to a system font offline: ${missingFonts.join(', ')}`,
   );
 }
 
@@ -409,5 +425,5 @@ if (excluded.length > 0) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyArchitectV8.bundled ? `Architect ${legacyArchitectV8.pin.version} bundled at /v8/ outside the precache` : `no Architect 8 bundled (${legacyArchitectV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyArchitectV8.bundled ? `Architect ${legacyArchitectV8.pin.version} bundled at /v8/ outside the precache` : `no Architect 8 bundled (${legacyArchitectV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets and ${fontAssets.length} font faces precached`,
 );

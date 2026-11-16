@@ -1,0 +1,61 @@
+{
+  "extends": [
+    "../../../.oxlintrc.json",
+    "../../../tooling/oxlint/react.json",
+    "../../../tooling/oxlint/direction.json"
+  ],
+  "jsPlugins": ["eslint-plugin-formatjs", "oxlint-tailwindcss"],
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": "apps/studio/web/src/styles/globals.css",
+      "variablePatterns": [
+        "[a-z](?:Class|ClassNames?|Classes)$",
+        "_CLASS(?:ES|_NAMES?)?$"
+      ],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
+    }
+  },
+  "rules": {
+    // Right-to-left layouts, as in every other app: a class naming a physical
+    // side stays on that side when the page mirrors, so spacing, corners and
+    // alignment are written against the reading direction. Where a physical
+    // side is meant, the line carries a disable comment saying which.
+    "tailwindcss/enforce-logical": [
+      "error",
+      {
+        "direction": "inline",
+        // Half-way from the left is half-way from the right: `left-1/2` with
+        // `-translate-x-1/2` centres in either direction.
+        "allowlist": ["(^|:)left-1/2$"]
+      }
+    ],
+    // Descriptor hygiene and untranslated-copy detection for Studio's
+    // messages. The root config's overrides name `apps/studio/web/src/**`, but
+    // an override's `files` are matched against the config that declares it,
+    // so they cannot reach a package with a config of its own: they are
+    // repeated here.
+    "formatjs/enforce-description": "error",
+    "formatjs/enforce-default-message": "error",
+    "formatjs/no-invalid-icu": "error",
+    "formatjs/enforce-placeholders": "error",
+    "formatjs/no-multiple-whitespaces": "error",
+    // The Studio client is converted end to end, so a bare literal in its JSX
+    // is a string somebody forgot.
+    "formatjs/no-literal-string-in-jsx": "error"
+  },
+  "overrides": [
+    {
+      // Test and story fixtures render throwaway copy on purpose, and nobody
+      // translates a fixture (mirrors the root's override).
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.stories.ts",
+        "**/*.stories.tsx",
+        "**/__tests__/**",
+        "**/__mocks__/**"
+      ],
+      "rules": { "formatjs/no-literal-string-in-jsx": "off" }
+    }
+  ]
+}

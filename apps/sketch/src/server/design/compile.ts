@@ -8,13 +8,11 @@ import {
   createDefaultFinishSessionStage,
   type CurrentProtocolSchema,
   defaultFinishSessionText,
-  missingSuppliedStageText,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   suppliedOptionLabels,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
 
@@ -39,11 +37,7 @@ import { worldCountriesGeojson } from './world-countries.ts';
 
 type Json = Record<string, unknown>;
 
-/** Arrays count: setAt walks paths that index into them. */
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null;
-
-const hasStageType = (s: Json): s is Json & { type: string } =>
-  typeof s.type === 'string';
 
 /**
  * What compile() emits: the INPUT side of the schema 9 protocol schema (before
@@ -181,21 +175,6 @@ const INHERITANCE_NAMES: Record<string, string> = {
 
 export const DECLINED_TEXT =
   '# Thank you\n\nYou chose not to take part, so the interview has ended. Nothing more will be asked.';
-
-/** Sets `value` at `path` in `target`, creating the records on the way. */
-const setAt = (target: Json, path: readonly string[], value: unknown) => {
-  let at = target;
-  path.slice(0, -1).forEach((k) => {
-    const next = at[k];
-    if (isObject(next)) at = next;
-    else {
-      const fresh: Json = {};
-      at[k] = fresh;
-      at = fresh;
-    }
-  });
-  at[path.at(-1)!] = value;
-};
 
 const INFO_TITLES = {
   welcome: 'Welcome',
@@ -1533,12 +1512,6 @@ export const compile = (
     Object.assign(codebook, relabel(codebook, SKETCH_LOCALE, lang));
   }
 
-  // The wording Network Canvas supplies for each stage's own controls and
-  // notices, as Architect writes it into a new stage.
-  for (const stage of stages.filter(hasStageType))
-    for (const { path, value } of missingSuppliedStageText(stage, L))
-      setAt(stage, path, value);
-
   const protocol: Json = {
     name: graphemes(
       pick(
@@ -1568,8 +1541,7 @@ export const compile = (
     edgeTypes: d.relationships.map((r) => r.name),
     rosterCount: assets.filter((a) => a.mimeType === 'text/csv').length,
   };
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SketchProtocol
-  let finished: Json = withInterfaceText(protocol as SketchProtocol);
+  let finished: Json = protocol;
   // Network Canvas has no interface text in this language: the protocol is
   // declared in it, and the text Network Canvas supplied stays in English
   // for the researcher to translate (the researcher notes say so).
@@ -1579,7 +1551,8 @@ export const compile = (
     finished.localization = { defaultLocale: lang, locales: [lang] };
   }
   return {
-    // The interview's shared words for what the protocol uses.
+    // None of the wording Network Canvas supplies is written in: the
+    // interview shows it for a protocol that does not hold it.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SketchProtocol
     protocol: finished as SketchProtocol,
     assets,

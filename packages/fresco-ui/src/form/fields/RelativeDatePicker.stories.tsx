@@ -103,6 +103,7 @@ export const Default: Story = {
     return (
       <div className="w-full max-w-md space-y-2">
         <RelativeDatePickerField
+          aria-label="Relative date"
           before={30}
           after={30}
           value={value}
@@ -139,6 +140,7 @@ export const AllSizes: Story = {
             Small
           </Heading>
           <RelativeDatePickerField
+            aria-label="Small date"
             size="sm"
             before={30}
             after={30}
@@ -152,6 +154,7 @@ export const AllSizes: Story = {
             Medium (default)
           </Heading>
           <RelativeDatePickerField
+            aria-label="Medium date"
             size="md"
             before={30}
             after={30}
@@ -165,6 +168,7 @@ export const AllSizes: Story = {
             Large
           </Heading>
           <RelativeDatePickerField
+            aria-label="Large date"
             size="lg"
             before={30}
             after={30}
@@ -191,6 +195,7 @@ export const AllStates: Story = {
             Normal
           </Paragraph>
           <RelativeDatePickerField
+            aria-label="Normal"
             before={30}
             after={30}
             value="2024-06-15"
@@ -208,6 +213,7 @@ export const AllStates: Story = {
             Disabled
           </Paragraph>
           <RelativeDatePickerField
+            aria-label="Disabled"
             before={30}
             after={30}
             disabled
@@ -226,6 +232,7 @@ export const AllStates: Story = {
             Read-Only
           </Paragraph>
           <RelativeDatePickerField
+            aria-label="Readonly"
             before={30}
             after={30}
             readOnly
@@ -244,6 +251,7 @@ export const AllStates: Story = {
             Invalid
           </Paragraph>
           <RelativeDatePickerField
+            aria-label="Invalid"
             before={30}
             after={30}
             aria-invalid
@@ -275,6 +283,7 @@ export const PastOnly: Story = {
     return (
       <div className="w-full max-w-md space-y-2">
         <RelativeDatePickerField
+          aria-label="Past date"
           before={365}
           after={0}
           value={value}
@@ -305,6 +314,7 @@ export const FutureOnly: Story = {
     return (
       <div className="w-full max-w-md space-y-2">
         <RelativeDatePickerField
+          aria-label="Future date"
           before={0}
           after={90}
           value={value}
@@ -336,6 +346,7 @@ export const WithCustomAnchor: Story = {
     return (
       <div className="w-full max-w-md space-y-2">
         <RelativeDatePickerField
+          aria-label="Anchor date"
           anchor={anchor}
           before={7}
           after={7}
@@ -369,6 +380,7 @@ export const AtTheEdgeOfTheCalendar: Story = {
       <div className="flex w-full max-w-md flex-col gap-6">
         <div className="space-y-2">
           <RelativeDatePickerField
+            aria-label="Latest date"
             anchor="9999-12-31"
             before={30}
             after={30}
@@ -383,6 +395,7 @@ export const AtTheEdgeOfTheCalendar: Story = {
         </div>
         <div className="space-y-2">
           <RelativeDatePickerField
+            aria-label="Earliest date"
             anchor="0001-01-01"
             before={400}
             after={30}
@@ -410,9 +423,10 @@ export const AtTheEdgeOfTheCalendar: Story = {
 
 export const Playground: Story = {
   args: {
-    before: 30,
-    after: 30,
-    size: 'md',
+    'before': 30,
+    'after': 30,
+    'size': 'md',
+    'aria-label': 'Relative date',
   },
   parameters: {
     docs: {

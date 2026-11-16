@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Redacted } from 'effect';
-import { useRef, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { useProtocolBuilderContext } from '../state/context.ts';
 import type { CachedSection } from '../state/hooks.ts';
@@ -29,10 +29,10 @@ export type SeedProtocolCacheProps = Readonly<{
 export function SeedProtocolCache({ store, children }: SeedProtocolCacheProps) {
   const queryClient = useQueryClient();
   const { protocolId, adapter } = useProtocolBuilderContext();
-  const seeded = useRef(false);
 
-  if (!seeded.current) {
-    seeded.current = true;
+  // Once, when this component first renders; the initialiser is idempotent, so
+  // a render React repeats seeds the same answers again.
+  useState(() => {
     const sectionIds = store.sectionIds();
     queryClient.setQueryData(adapter.rpcKey('ListSections', { protocolId }), {
       sectionIds,
@@ -44,7 +44,8 @@ export function SeedProtocolCache({ store, children }: SeedProtocolCacheProps) {
         { document: Redacted.make(document), revision },
       );
     }
-  }
+    return true;
+  });
 
   return children;
 }

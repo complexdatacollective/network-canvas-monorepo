@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, fireEvent, userEvent, within } from 'storybook/test';
 
+import { withPointerCaptureStubbed } from './form/fields/sliderTestHelpers';
 import { ResizableFlexPanel } from './ResizableFlexPanel';
 import Paragraph from './typography/Paragraph';
 import { UnorderedList } from './typography/UnorderedList';
@@ -145,7 +147,7 @@ export const KeyboardAccessible: Story = {
         <Paragraph margin="none" className="font-semibold">
           Keyboard controls:
         </Paragraph>
-        <UnorderedList className="list-inside text-left text-xs">
+        <UnorderedList className="list-inside text-start text-xs">
           <li>Arrow keys: resize by step</li>
           <li>Home/End: jump to min/max</li>
           <li>PageUp/PageDown: jump between breakpoints</li>
@@ -194,5 +196,72 @@ export const NameGeneratorMockup: Story = {
         ))}
       </div>,
     ],
+  },
+};
+
+/**
+ * A row runs from the right in a right-to-left language, so the resized panel
+ * sits against the right edge and grows towards the left. The handle follows:
+ * the left arrow widens the panel, and a drag is measured from the right.
+ */
+export const RightToLeft: Story = {
+  globals: { appDirection: 'rtl' },
+  args: {
+    storageKey: 'story-right-to-left',
+    defaultBasis: 50,
+    min: 10,
+    max: 90,
+    breakpoints: [{ value: 25 }, { value: 50 }, { value: 75 }],
+    className: 'h-full',
+    children: [
+      <Panel key="a" label="First panel" color="#6366f1" />,
+      <Panel key="b" label="Second panel" color="#0ea5e9" />,
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Assert the global landed, so a story that silently lost it fails here
+    // rather than passing on an LTR layout.
+    await expect(document.documentElement.dir).toBe('rtl');
+
+    const handle = canvas.getByRole('slider');
+    // The split is remembered between visits; start from the default. The
+    // handle captures the pointer on press, which Firefox refuses for a
+    // pointer no device produced, so capture is stubbed around each press.
+    await withPointerCaptureStubbed(() => userEvent.dblClick(handle));
+    await expect(handle).toHaveAttribute('aria-valuenow', '50');
+
+    const first = canvas.getByText('First panel');
+    const second = canvas.getByText('Second panel');
+    await expect(first.getBoundingClientRect().left).toBeGreaterThan(
+      second.getBoundingClientRect().left,
+    );
+
+    handle.focus();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect(handle).toHaveAttribute('aria-valuenow', '75');
+    const widened = first.getBoundingClientRect().width;
+    await userEvent.keyboard('{ArrowRight}');
+    await expect(handle).toHaveAttribute('aria-valuenow', '50');
+    await expect(first.getBoundingClientRect().width).toBeLessThan(widened);
+
+    // A quarter of the way in from the left leaves three quarters of the row
+    // to the pointer's right, which is where the first panel is.
+    const row = handle.parentElement!.getBoundingClientRect();
+    const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(handle, { ...pointer, buttons: 1 });
+      await fireEvent.pointerMove(handle, {
+        ...pointer,
+        buttons: 1,
+        clientX: row.left + row.width * 0.25,
+        clientY: row.top + row.height / 2,
+      });
+      await fireEvent.pointerUp(handle, pointer);
+    });
+    await expect(handle).toHaveAttribute('aria-valuenow', '75');
+
+    await withPointerCaptureStubbed(() => userEvent.dblClick(handle));
   },
 };

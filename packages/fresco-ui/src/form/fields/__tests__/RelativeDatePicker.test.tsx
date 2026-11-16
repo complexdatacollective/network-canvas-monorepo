@@ -134,4 +134,39 @@ describe('RelativeDatePickerField accessibility', () => {
     const control = screen.getByLabelText('Interview date');
     expect(control).toHaveAccessibleDescription('Choose carefully');
   });
+
+  it('names the control from a caller’s aria-label', () => {
+    render(
+      <RelativeDatePickerField
+        name="date"
+        aria-label="Interview date"
+        value=""
+        onChange={() => undefined}
+      />,
+    );
+
+    expect(screen.getByLabelText('Interview date')).toHaveAttribute(
+      'type',
+      'date',
+    );
+  });
+
+  it('names the control from a caller’s aria-labelledby', () => {
+    render(
+      <>
+        <span id="heading">Interview date</span>
+        <RelativeDatePickerField
+          name="date"
+          aria-labelledby="heading"
+          value=""
+          onChange={() => undefined}
+        />
+      </>,
+    );
+
+    expect(screen.getByLabelText('Interview date')).toHaveAttribute(
+      'type',
+      'date',
+    );
+  });
 });

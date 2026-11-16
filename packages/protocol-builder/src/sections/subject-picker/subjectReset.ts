@@ -11,8 +11,8 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
  * the stage's identity and name, the notes for the interviewer, and a
  * roster's panel title, which is prose about the task
  * rather than about the type. The words a stage shows participants
- * (`minNodesNotice`, `searchFailed`, a Family Pedigree's `wording` and the
- * rest) are prose the same way, and Network Canvas seeds them on every new
+ * (`minNodesNotice`, `outsideAreasLabel`, a Family Pedigree's `wording` and
+ * the rest) are prose the same way, and Network Canvas seeds them on every new
  * stage: a seeded message is not configuration, so choosing a type must not
  * ask to discard it.
  */
@@ -26,21 +26,16 @@ export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'allAddedNotice',
   'maxNodesNotice',
   'minNodesNotice',
-  'quickAddHint',
-  'searchFailed',
-  'offlineNotice',
-  'mapUnavailable',
-  'outsideAreasLabel',
-  // The words a canvas shows its participant: its name box and tooltips, and
-  // the headings of its panels. Prose about the canvas, which a subject change
-  // keeps, the same as a roster's panel title.
+  'unnamedLabel',
   'addNamePlaceholder',
-  'overtakenEditNotice',
+  'unplacedNodesNotice',
+  'outsideAreasLabel',
+  // The words a canvas shows its participant: the headings of its panels.
+  // Prose about the canvas, which a subject change keeps, the same as a
+  // roster's panel title.
   'groupsHeading',
   'attributesHeading',
   'linksHeading',
-  'tooltips',
-  'keyHeading',
   'conditionText',
   'wording',
 ]);

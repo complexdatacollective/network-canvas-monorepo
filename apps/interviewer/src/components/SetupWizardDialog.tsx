@@ -29,17 +29,20 @@ const messages = defineMessages({
   setupCouldNotBeOpened: {
     id: 'interviewer.setupWizardDialog.setupCouldNotBeOpened',
     defaultMessage: 'Setup could not be opened',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Error toast title shown when the security setup wizard cannot be opened from Settings because stored settings could not be read.',
   },
   storedSettingsCouldNotBeReadPlease: {
     id: 'interviewer.setupWizardDialog.storedSettingsCouldNotBeReadPlease',
     defaultMessage: 'Stored settings could not be read. Please try again.',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Error toast body under "Setup could not be opened"; stored app settings could not be read, so the researcher can try again.',
   },
   secureThisDevice: {
     id: 'interviewer.setupWizardDialog.secureThisDevice',
     defaultMessage: '🔑 Secure this device',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of the setup wizard dialog that guides the researcher through app security (device lock) and preferences. The key emoji is part of the title.',
   },
   exitSetup: {
     id: 'interviewer.setupWizardDialog.exitSetup',
@@ -50,19 +53,22 @@ const messages = defineMessages({
   skipTheWizard: {
     id: 'interviewer.setupWizardDialog.skipTheWizard',
     defaultMessage: 'Skip the wizard?',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of the confirmation dialog shown when the researcher tries to close the first-run setup wizard before finishing; asks whether to skip setup.',
   },
   ifYouHaveAlreadyConfiguredADevice: {
     id: 'interviewer.setupWizardDialog.ifYouHaveAlreadyConfiguredADevice',
     defaultMessage:
       'If you have already configured a device lock, it will remain active. Otherwise, Interviewer will continue without app security.',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Body of the confirmation shown when leaving setup opened from Settings; reassures that an existing device lock stays active, otherwise the app runs without security.',
   },
   yourDeviceWillBeLeftUnsecuredAnd: {
     id: 'interviewer.setupWizardDialog.yourDeviceWillBeLeftUnsecuredAnd',
     defaultMessage:
       'Your device will be left unsecured, and default preferences will be assumed. Are you sure you want to skip the setup wizard?',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Body of the confirmation shown when skipping first-run setup; warns the device will have no app lock and default preferences. Ends with a yes/no question.',
   },
   exitSetup2: {
     id: 'interviewer.setupWizardDialog.exitSetup2',
@@ -73,12 +79,14 @@ const messages = defineMessages({
   useAppWithoutSecurity: {
     id: 'interviewer.setupWizardDialog.useAppWithoutSecurity',
     defaultMessage: 'Use app without security',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Confirm button in the skip-setup dialog; leaves the wizard and continues with no app security.',
   },
   goBackToWizard: {
     id: 'interviewer.setupWizardDialog.goBackToWizard',
     defaultMessage: 'Go back to wizard',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Cancel button in the skip-setup and exit-setup dialogs; closes the dialog and returns to the setup wizard.',
   },
   skipWizard: {
     id: 'interviewer.setupWizardDialog.skipWizard',
@@ -89,106 +97,125 @@ const messages = defineMessages({
   settingUpYourDevice: {
     id: 'interviewer.setupWizardDialog.settingUpYourDevice',
     defaultMessage: 'Setting up your device',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of the first wizard step, a welcome that introduces device setup.',
   },
   settingUpYourDeviceIsQuickAnd: {
     id: 'interviewer.setupWizardDialog.settingUpYourDeviceIsQuickAnd',
     defaultMessage:
       'Setting up your device is quick and easy, and will take no more than a few minutes.',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Lead paragraph on the first wizard step reassuring the researcher that setup is quick.',
   },
   thereAreTwoSimpleStepsSettingUp: {
     id: 'interviewer.setupWizardDialog.thereAreTwoSimpleStepsSettingUp',
     defaultMessage:
       'There are two simple steps: setting up app security, and confirming your app preferences. This wizard will guide you through both. You can change all of these settings later from the Settings screen.',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Paragraph on the first wizard step explaining the two parts of setup: app security and app preferences. Settings is the Settings screen of the app.',
   },
   ifYouNeedHelpOrHaveQuestions: {
     id: 'interviewer.setupWizardDialog.ifYouNeedHelpOrHaveQuestions',
     defaultMessage:
       'If you need help or have questions, please reach out to the Network Canvas team at <link>info@networkcanvas.com</link>, or visit our <link1>community forum</link1>.',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Help paragraph on the first wizard step. link is the email address info@networkcanvas.com and link1 wraps the words for the community forum link; keep both tags around the matching text.',
   },
   securingYourData: {
     id: 'interviewer.setupWizardDialog.securingYourData',
     defaultMessage: 'Securing your data',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of the second wizard step, which explains how Interviewer protects research data.',
   },
   securingYourResearchDataIsVitalInterviewer: {
     id: 'interviewer.setupWizardDialog.securingYourResearchDataIsVitalInterviewer',
     defaultMessage:
       'Securing your research data is vital. Interviewer implements two layers of protection: secure data storage, and app authorization checks.',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Lead paragraph on the "Securing your data" step introducing the two layers of protection, data storage encryption and app authorization.',
   },
   secureDataStorage: {
     id: 'interviewer.setupWizardDialog.secureDataStorage',
     defaultMessage: 'Secure Data Storage',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Heading of a card on the "Securing your data" step describing encryption of stored interview data.',
   },
   secureDataStorageProtectsYourInterviewData: {
     id: 'interviewer.setupWizardDialog.secureDataStorageProtectsYourInterviewData',
     defaultMessage:
       "Secure data storage protects your interview data by encrypting it, so that even if someone gains access to your device or its files, they won't be able to read your data.",
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Description under the "Secure Data Storage" heading: stored interview data is encrypted so it is unreadable even if someone accesses the device or its files.',
   },
   goodNews: {
     id: 'interviewer.setupWizardDialog.goodNews',
     defaultMessage: 'Good news!',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of an informational callout on the "Securing your data" step, introducing the reassurance that follows about the encryption key.',
   },
   ifYouSetUpAPINPassphrase: {
     id: 'interviewer.setupWizardDialog.ifYouSetUpAPINPassphrase',
     defaultMessage:
       'If you set up a PIN, passphrase, or biometric lock next, your data is encrypted on this device with a key derived from it. The key never leaves your device, so your data stays unreadable without it.',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Body of the "Good news!" callout: if a PIN, passphrase or biometric lock is set up next, data is encrypted with a key derived from it that never leaves the device.',
   },
   appAuthorization: {
     id: 'interviewer.setupWizardDialog.appAuthorization',
     defaultMessage: 'App Authorization',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Heading of a card on the "Securing your data" step describing access checks (the device lock).',
   },
   appAuthorizationEnsuresThatOnlyAuthorizedUsers: {
     id: 'interviewer.setupWizardDialog.appAuthorizationEnsuresThatOnlyAuthorizedUsers',
     defaultMessage:
       'App authorization ensures that only authorized users can access the app, and perform certain sensitive actions (such as exporting data, and entering/leaving interviews). It also requires re-authentication after a specific configurable period of inactivity.',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Description under the "App Authorization" heading: only authorized users can open the app or do sensitive actions, and must re-authenticate after inactivity.',
   },
   pleaseNoteThatTheseSecurityFeaturesShould: {
     id: 'interviewer.setupWizardDialog.pleaseNoteThatTheseSecurityFeaturesShould',
     defaultMessage:
       'Please note that these security features should be used <em>in addition</em> to general device security best practices, such as enabling device-level storage encryption, using a strong device password, keeping your operating system up to date, and being cautious about installing untrusted apps or files.',
-    description: 'Visible copy in Interviewer Setup Wizard Dialog.',
+    description:
+      'Closing note on the "Securing your data" step. em wraps the words "in addition", rendered in italics; keep the tags around the matching words.',
   },
   chooseAnAuthenticationMethod: {
     id: 'interviewer.setupWizardDialog.chooseAnAuthenticationMethod',
     defaultMessage: 'Choose an authentication method',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of the wizard step where the researcher picks how the app is unlocked: biometric, PIN, passphrase or none.',
   },
   chooseBetweenTheOptionsBelowToDetermine: {
     id: 'interviewer.setupWizardDialog.chooseBetweenTheOptionsBelowToDetermine',
     defaultMessage:
       'Choose between the options below to determine how you will be prompted to unlock the app.',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Subtitle under the "Choose an authentication method" step title; "unlock" is the action of opening the locked app.',
   },
   setUpYourMethod: {
     id: 'interviewer.setupWizardDialog.setUpYourMethod',
     defaultMessage: 'Set up your method',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of the wizard step where the researcher configures the chosen unlock method (PIN, passphrase or biometric).',
   },
   lockBehavior: {
     id: 'interviewer.setupWizardDialog.lockBehavior',
     defaultMessage: 'Lock behavior',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of the wizard step with the settings for when the app locks (inactivity timeout, locking on entering or leaving interviews, exporting).',
   },
   decideWhenTheAppReLocks: {
     id: 'interviewer.setupWizardDialog.decideWhenTheAppReLocks',
     defaultMessage: 'Decide when the app re-locks.',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Subtitle under the "Lock behavior" step title; "re-locks" means the app asks for the device lock again.',
   },
   helpImproveTheApp: {
     id: 'interviewer.setupWizardDialog.helpImproveTheApp',
     defaultMessage: 'Help improve the app',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Title of the final wizard step, which asks whether to send anonymous usage and error data.',
   },
   finish: {
     id: 'interviewer.setupWizardDialog.finish',
@@ -199,24 +226,28 @@ const messages = defineMessages({
   setupCouldNotBeCompleted: {
     id: 'interviewer.setupWizardDialog.setupCouldNotBeCompleted',
     defaultMessage: 'Setup could not be completed',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Error toast title shown when the final wizard action fails to apply the chosen security and preferences.',
   },
   somethingWentWrongWhileSettingUpThis: {
     id: 'interviewer.setupWizardDialog.somethingWentWrongWhileSettingUpThis',
     defaultMessage:
       'Something went wrong while setting up this device. Please try again.',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Error toast body under "Setup could not be completed"; setup of the device failed and the researcher can try again.',
   },
   securityStatusCouldNotBeRefreshed: {
     id: 'interviewer.setupWizardDialog.securityStatusCouldNotBeRefreshed',
     defaultMessage: 'Security status could not be refreshed',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Error toast title shown after setup from Settings when the app cannot re-read the device security status.',
   },
   reloadInterviewerToRefreshThisDeviceS: {
     id: 'interviewer.setupWizardDialog.reloadInterviewerToRefreshThisDeviceS',
     defaultMessage:
       'Reload Interviewer to refresh this device’s security status.',
-    description: 'User-facing message in Interviewer Setup Wizard Dialog.',
+    description:
+      'Error toast body under "Security status could not be refreshed"; tells the researcher to reload the app. "Device security status" means whether a lock is set.',
   },
 });
 

@@ -112,9 +112,9 @@ describe('ProjectLayout', () => {
 
     expect(screen.queryByRole('button', { name: /undo/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
-    // Download is still offered: it is how the work gets out.
+    // Export is still offered: it is how the work gets out.
     expect(
-      screen.getByRole('button', { name: /^download$/i }),
+      screen.getByRole('button', { name: /^export$/i }),
     ).toBeInTheDocument();
   });
 

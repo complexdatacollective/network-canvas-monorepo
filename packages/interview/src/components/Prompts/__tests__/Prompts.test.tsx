@@ -22,7 +22,7 @@ const prompts = [
 ];
 
 const view = (currentPromptId: string, className?: string) => (
-  <InterviewI18nProvider requestedLocale="en">
+  <InterviewI18nProvider>
     <Prompts
       prompts={prompts}
       currentPromptId={currentPromptId}

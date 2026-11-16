@@ -13,6 +13,7 @@ import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useBinSelection } from '../../hooks/useBinSelection';
 import useCompletePlacement from '../../hooks/useCompletePlacement';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { useStageWording } from '../../localization/useStageWording';
 import {
   getCurrentStageId,
   getNetworkNodesForType,
@@ -62,7 +63,7 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
   useCompletePlacement({
     unplacedCount: unplacedNodes.length,
     required: stage.behaviours?.requireCompletePlacement,
-    notice: stage.unplacedNodesNotice,
+    notice: useStageWording(stage).shown('unplacedNodesNotice'),
   });
 
   return (

@@ -7,7 +7,6 @@ import {
   asEntityAttributeReference,
   type PedigreeRelationshipKind,
   type PedigreeSexAssignedAtBirth,
-  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -113,7 +112,6 @@ const edges: NcEdge[] = [
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
-  wording: familyPedigreeWordingIn(),
   label: { en: 'Family Pedigree' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   prompt: { en: 'Build your pedigree.' },

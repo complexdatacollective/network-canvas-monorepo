@@ -205,8 +205,8 @@ vi.mock('@codaco/interview', async (importOriginal) => {
     Shell: (props: CapturedShellProps) => {
       shellMock(props);
       // A queued confirmation retains its original node. The provider stands
-      // in for the Shell's own one, which carries the interview's interface
-      // language rather than Interviewer's.
+      // in for the Shell's own ones, which carry the language the interview
+      // shows rather than Interviewer's.
       const [queuedDescription] = useState(props.finishConfirmationDescription);
       return (
         <AppI18nProvider

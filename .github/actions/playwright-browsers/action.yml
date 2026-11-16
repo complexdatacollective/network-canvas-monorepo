@@ -1,0 +1,70 @@
+name: Install Playwright browsers
+description: >-
+  Restores main's shared browser cache, then installs the pinned Playwright
+  browsers and their system packages, with a time limit on each attempt and
+  up to three attempts.
+
+inputs:
+  browsers:
+    description: Space-separated browsers to install (chromium, firefox, webkit).
+    required: true
+  package:
+    description: >-
+      The workspace package whose Playwright CLI runs the install. Every
+      package resolves the same pinned version; this only picks whose
+      node_modules/.bin the CLI comes from.
+    required: true
+  restore-cache:
+    description: >-
+      'true' to restore main's shared browser cache before installing. The one
+      job that writes that cache (`warm-playwright-cache`) passes 'false' and
+      manages the key itself.
+    default: 'true'
+
+outputs:
+  version:
+    description: The @playwright/test version resolved from pnpm-lock.yaml.
+    value: ${{ steps.pw.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve the pinned Playwright version
+      id: pw
+      shell: bash
+      # The same lockfile-derived pin the Docker image tag is built from: the
+      # browser build is fixed by the resolved @playwright/test version either
+      # way, so the native lanes are no less deterministic about the browsers.
+      run: |
+        version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+          | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+        if [ -z "$version" ]; then
+          echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+          exit 1
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+    # Restore-only, from the one union key `warm-playwright-cache` writes on
+    # pushes to main. A PR-scoped copy is readable by exactly one pull request,
+    # and on 2026-09-10 fourteen of those copies held 5.17 GB, 53% of the
+    # repository's 10 GB cache ceiling, which evicted the turbo cache entries
+    # `test` depends on to stay fast. `actions/cache/restore` (not
+    # `actions/cache`) makes that one-way: a consumer reads main's warm entry
+    # but never writes a competing copy of its own. The trade: a job that needs
+    # fewer than all three browsers still restores the full union, a few
+    # hundred MB and one to three seconds, in exchange for never holding a
+    # second key against the ceiling.
+    - if: inputs.restore-cache == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+    # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
+    # postinstall browser download never runs. With the cache restored the
+    # browser download is a no-op, but `--with-deps` still runs apt, which is
+    # what hangs; see install.sh.
+    - name: Install the browsers and their system packages
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+        PACKAGE: ${{ inputs.package }}
+      run: bash "$GITHUB_ACTION_PATH/install.sh"

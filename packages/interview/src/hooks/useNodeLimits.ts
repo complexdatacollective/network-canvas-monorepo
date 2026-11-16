@@ -4,11 +4,9 @@ import { useEffect, useRef } from 'react';
 
 import type { LocalizedString } from '@codaco/protocol-validation';
 
-import {
-  useResolveLocalizedMessage,
-  useResolveLocalizedString,
-} from '../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedMessage } from '../localization/ProtocolLocalizationProvider';
 import useReadyForNextStage from './useReadyForNextStage';
+import { useStageSubjectName } from './useStageSubjectName';
 import useStageValidation from './useStageValidation';
 
 type UseNodeLimitsOptions = {
@@ -30,7 +28,7 @@ function useNodeLimits({
   isLastPrompt,
 }: UseNodeLimitsOptions) {
   const resolveMessage = useResolveLocalizedMessage();
-  const resolveString = useResolveLocalizedString();
+  const subject = useStageSubjectName();
 
   const maxNodesReached = stageNodeCount >= maxNodes;
   const minNodesMet = !minNodes || !isLastPrompt || stageNodeCount >= minNodes;
@@ -40,7 +38,7 @@ function useNodeLimits({
   // A stage that sets no minimum has no notice to show, and the schema makes
   // the notice required whenever it does set one.
   const minNodesMessage = minNodesNotice
-    ? resolveMessage(minNodesNotice, { count: minNodes }).text
+    ? resolveMessage(minNodesNotice, { count: minNodes, subject }).text
     : undefined;
 
   const { showToast, closeToast } = useStageValidation({
@@ -61,7 +59,7 @@ function useNodeLimits({
   // Resolved on every render, so a change of interview language replaces the
   // maximum's notice, which stays up until the participant moves on.
   const maxNodesMessage = maxNodesNotice
-    ? resolveString(maxNodesNotice).text
+    ? resolveMessage(maxNodesNotice, { count: maxNodes, subject }).text
     : undefined;
 
   const maxToastRef = useRef<string | null>(null);

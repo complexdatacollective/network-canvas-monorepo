@@ -24,6 +24,7 @@
   "interviewer.dataView.noInterviewsMatchThisFilter": "Geen interviews die aan dit filter voldoen.",
   "interviewer.dataView.noInterviewsRecordedYet": "Er zijn nog geen interviews vastgelegd.",
   "interviewer.dataView.selectAllTotalCountMatching": "{totalCount, plural, one {# overeenkomend resultaat selecteren →} other {Alle # overeenkomende resultaten selecteren →}}",
+  "interviewer.dataView.tableLabel": "Interviews",
   "interviewer.dataViewColumns.caseID": "Case-ID",
   "interviewer.dataViewColumns.exportStatus": "Exportstatus",
   "interviewer.dataViewColumns.interviewActions": "Interviewacties",

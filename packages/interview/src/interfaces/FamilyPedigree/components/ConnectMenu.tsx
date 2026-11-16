@@ -516,7 +516,7 @@ export default function ConnectMenu({
     >
       <DropdownMenuContent
         anchor={anchor}
-        side="right"
+        side="inline-end"
         align="center"
         finalFocus={() => anchor}
         data-testid="pedigree-connect-menu"

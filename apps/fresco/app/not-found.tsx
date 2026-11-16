@@ -11,7 +11,8 @@ const messages = defineMessages({
   pageNotFound: {
     id: 'fresco.notfound.pageNotFound',
     defaultMessage: 'Page not found.',
-    description: 'Researcher-facing notfound: Page not found.',
+    description:
+      'Text shown under the large 404 number on the page displayed when the address does not match any page of the app. May be seen by anyone, including a participant.',
   },
 });
 

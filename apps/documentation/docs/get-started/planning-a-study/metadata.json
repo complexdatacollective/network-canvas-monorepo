@@ -2,10 +2,14 @@
   "type": "folder",
   "slug": "planning-a-study",
   "localeLabels": {
-    "en": "Planning a Study"
+    "en": "Planning a Study",
+    "es": "Planificar un estudio",
+    "fr": "Planifier une étude"
   },
   "localeIndexFiles": {
-    "en": "workflows.en.mdx"
+    "en": "workflows.en.mdx",
+    "es": "workflows.es.mdx",
+    "fr": "workflows.fr.mdx"
   },
   "isExpanded": true,
   "navOrder": 1

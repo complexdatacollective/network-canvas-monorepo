@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -30,6 +30,7 @@ import {
 } from '../../../localization/ProtocolLocalization.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import { useLatest } from '../../../state/useLatest.ts';
 import {
   DiseaseEditor,
   DiseasePreview,
@@ -64,6 +65,35 @@ const NOTHING_UNRECORDED = JSON.stringify([]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The rows nothing would ever mark, by the name the researcher gave them in
+ * the editing language.
+ *
+ * A row with no name of its own is named by the same stand-in its collapsed
+ * row shows, carried as a nested message error so the whole refusal is
+ * resolved in the reader's language where it is finally rendered.
+ */
+const unrecordedNames = (
+  value: unknown,
+  recorded: ReadonlySet<string>,
+  localize: (value: unknown) => { text: string },
+): (string | Readonly<{ messageError: string }>)[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((row: unknown) => {
+    if (!diseaseMarksNobody(row, recorded)) return [];
+    const name = isRecord(row) ? localize(row.label).text : '';
+    return [
+      name === ''
+        ? {
+            messageError: createMessageError(
+              narrativePedigreeMessages.diseaseUnnamed,
+            ),
+          }
+        : name,
+    ];
+  });
+};
 
 /** A row's label, where it holds one, in the shape the schema compares. */
 const labelled = (row: unknown): { label: LocalizedString }[] => {
@@ -211,7 +241,7 @@ export default function DiseasesSection() {
   );
 
   /**
-   * The recorded set as it is NOW, read through a ref.
+   * The recorded set as it is NOW, for the rule below to read when it runs.
    *
    * `useField` memoises a field's validation on a JSON of its props, which
    * drops functions: a rule rebuilt each render serialises identically and
@@ -219,39 +249,9 @@ export default function DiseasesSection() {
    * the field's lifetime, reading the current set, keeps the rule live without
    * ever re-registering the field.
    */
-  const recordedRef = useRef(recorded);
-  recordedRef.current = recorded;
+  const latestRecorded = useLatest(recorded);
   // The editing language, read the same way and for the same reason.
-  const localizeRef = useRef(localize);
-  localizeRef.current = localize;
-
-  /**
-   * The rows nothing would ever mark, by the name the researcher gave them in
-   * the editing language.
-   *
-   * A row with no name of its own is named by the same stand-in its collapsed
-   * row shows, carried as a nested message error so the whole refusal is
-   * resolved in the reader's language where it is finally rendered.
-   */
-  const unrecordedNames = useCallback(
-    (value: unknown): (string | Readonly<{ messageError: string }>)[] => {
-      if (!Array.isArray(value)) return [];
-      return value.flatMap((row: unknown) => {
-        if (!diseaseMarksNobody(row, recordedRef.current)) return [];
-        const name = isRecord(row) ? localizeRef.current(row.label).text : '';
-        return [
-          name === ''
-            ? {
-                messageError: createMessageError(
-                  narrativePedigreeMessages.diseaseUnnamed,
-                ),
-              }
-            : name,
-        ];
-      });
-    },
-    [],
-  );
+  const latestLocalize = useLatest(localize);
 
   /**
    * What the LIST refuses.
@@ -269,7 +269,11 @@ export default function DiseasesSection() {
     () => ({
       custom: messageRuleValidation([
         (value: unknown) => {
-          const names = unrecordedNames(value);
+          const names = unrecordedNames(
+            value,
+            latestRecorded(),
+            latestLocalize(),
+          );
           return names.length === 0
             ? undefined
             : createMessageError(narrativePedigreeMessages.diseasesMarkNobody, {
@@ -279,7 +283,7 @@ export default function DiseasesSection() {
         },
       ]),
     }),
-    [unrecordedNames],
+    [latestLocalize, latestRecorded],
   );
 
   // Field validation runs when the researcher touches a control, and on
@@ -292,7 +296,9 @@ export default function DiseasesSection() {
   // prompt moved from one condition to the other leaves the count exactly as
   // it was, and the standing sentence would go on naming the row that had just
   // been repaired.
-  const unrecordedSignature = JSON.stringify(unrecordedNames(rows));
+  const unrecordedSignature = JSON.stringify(
+    unrecordedNames(rows, recorded, localize),
+  );
   useEffect(() => {
     const state = storeApi.getState();
     if (

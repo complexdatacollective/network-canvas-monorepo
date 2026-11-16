@@ -1,8 +1,16 @@
+import { useMemo } from 'react';
+
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import type { LocalizedString } from '@codaco/protocol-validation';
+import type {
+  LocalizedString,
+  MessageArguments,
+} from '@codaco/protocol-validation';
 
+import LocalizedMessageField, {
+  localizedMessageValidation,
+} from '../fields/LocalizedMessageField.tsx';
 import { LocalizedInputField } from '../fields/LocalizedStringField.tsx';
 import { REQUIRED } from './requiredField.ts';
 
@@ -14,6 +22,12 @@ export type WordingSetting = Readonly<{
   hint?: MessageDescriptor;
   /** Set for a setting worded as a sentence or more: its field wraps. */
   wraps?: boolean;
+  /**
+   * Set for a setting that may show values the interview fills in, such as
+   * the name of the stage's node type (see `localizedMessage`): its field
+   * offers them as piped text.
+   */
+  arguments?: MessageArguments;
 }>;
 
 /**
@@ -29,16 +43,39 @@ export function WordingRow({
   initialValue: LocalizedString | undefined;
 }>) {
   const intl = useAppIntl();
+  const label = intl.formatMessage(setting.label);
+  const hint =
+    setting.hint === undefined ? undefined : intl.formatMessage(setting.hint);
+  const declaration = setting.arguments;
+  const validation = useMemo(
+    () =>
+      declaration === undefined
+        ? undefined
+        : localizedMessageValidation(declaration, intl),
+    [declaration, intl],
+  );
+
+  if (declaration !== undefined) {
+    return (
+      <Field<typeof LocalizedMessageField>
+        name={setting.path}
+        component={LocalizedMessageField}
+        label={label}
+        hint={hint}
+        arguments={declaration}
+        initialValue={initialValue}
+        required={REQUIRED}
+        custom={validation}
+      />
+    );
+  }
+
   return (
     <Field<typeof LocalizedInputField>
       name={setting.path}
       component={LocalizedInputField}
-      label={intl.formatMessage(setting.label)}
-      hint={
-        setting.hint === undefined
-          ? undefined
-          : intl.formatMessage(setting.hint)
-      }
+      label={label}
+      hint={hint}
       initialValue={initialValue}
       required={REQUIRED}
       wraps={setting.wraps}

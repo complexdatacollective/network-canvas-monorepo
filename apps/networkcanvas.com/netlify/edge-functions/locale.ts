@@ -1,24 +1,18 @@
 import type { Config, Context } from '@netlify/edge-functions';
 
 import {
-  isSiteLocale,
+  parseAcceptLanguage,
   siteLocales,
   type SiteLocale,
 } from '@codaco/shared-consts';
 
 import { CLASSIC_DOWNLOAD_PATH_PREFIX } from '../../lib/classicDownloads.ts';
 import { localeCookie } from '../../lib/i18n/locales.ts';
-import { negotiateLocale } from '../../lib/i18n/negotiate.ts';
+import { resolveSiteLocale } from '../../lib/i18n/negotiate.ts';
 import {
   protocolGalleryHost,
   protocolGalleryPathPrefix,
 } from '../../lib/protocolGalleryHosting.ts';
-
-type RequestedLocale = {
-  locale: string;
-  quality: number;
-  order: number;
-};
 
 const legacyDownloadPaths = new Set([
   '/download',
@@ -54,33 +48,6 @@ const sharedRootPathPrefixes = [
   '/videos/',
   `${CLASSIC_DOWNLOAD_PATH_PREFIX}/`,
 ];
-
-function parseQuality(parameters: string[]) {
-  const qualityParameter = parameters.find((parameter) =>
-    parameter.trim().toLowerCase().startsWith('q='),
-  );
-  if (!qualityParameter) return 1;
-
-  const quality = Number(qualityParameter.split('=')[1]);
-  return Number.isFinite(quality) && quality >= 0 && quality <= 1 ? quality : 0;
-}
-
-function getRequestedLocales(header: string) {
-  return header
-    .split(',')
-    .map<RequestedLocale | undefined>((entry, order) => {
-      const [language, ...parameters] = entry.split(';');
-      const locale = language?.trim() ?? '';
-      const quality = parseQuality(parameters);
-
-      return locale && quality > 0 ? { locale, quality, order } : undefined;
-    })
-    .filter((entry): entry is RequestedLocale => entry !== undefined)
-    .toSorted(
-      (left, right) => right.quality - left.quality || left.order - right.order,
-    )
-    .map(({ locale }) => locale);
-}
 
 function getPathLocale(pathname: string) {
   // Netlify normalizes static URL paths to lowercase before serving them.
@@ -123,10 +90,9 @@ export function detectLocale(
   request: Request,
   savedLocale?: string,
 ): SiteLocale {
-  if (savedLocale && isSiteLocale(savedLocale)) return savedLocale;
-
-  return negotiateLocale(
-    getRequestedLocales(request.headers.get('accept-language') ?? ''),
+  return resolveSiteLocale(
+    savedLocale,
+    parseAcceptLanguage(request.headers.get('accept-language')),
   );
 }
 

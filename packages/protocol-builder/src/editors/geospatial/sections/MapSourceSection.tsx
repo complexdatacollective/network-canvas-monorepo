@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -17,6 +17,7 @@ import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { interfaceDocumentationUrl } from '../../../interfaces/documentation.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import { useLatest } from '../../../state/useLatest.ts';
 import {
   LAYER_FIELD,
   PROPERTY_FIELD,
@@ -84,28 +85,27 @@ const DOCUMENTATION_LINK = Object.freeze({
  * Absence of the property itself is left to the field's own `required`, which
  * is the same division `centerIssue` keeps.
  *
- * The rule is built once and reads the layer through a ref, as
+ * The rule is built once and reads the layer through a getter of the latest one, as
  * `usePanelsValidation` does: a rule rebuilt whenever the read settles is a
  * new validator on a mounted field, and the form re-runs its rules on the
  * submit anyway — which is the moment this answer has to be current.
  */
 function usePropertyValidation(properties: GeoJsonPropertiesState) {
-  const read = useRef<GeoJsonPropertiesState>(properties);
-  read.current = properties;
+  const read = useLatest(properties);
 
   return useMemo(
     () => ({
       custom: messageRuleValidation([
         (value: unknown) => {
           if (typeof value !== 'string' || value === '') return undefined;
-          const { names, busy } = read.current;
+          const { names, busy } = read();
           if (busy) return LAYER_STILL_READING;
           if (names === undefined) return undefined;
           return names.includes(value) ? undefined : PROPERTY_MISSING;
         },
       ]),
     }),
-    [],
+    [read],
   );
 }
 

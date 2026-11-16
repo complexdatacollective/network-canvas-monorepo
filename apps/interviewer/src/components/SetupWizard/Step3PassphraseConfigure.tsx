@@ -17,33 +17,38 @@ const messages = defineMessages({
     id: 'interviewer.step3PassphraseConfigure.passphraseSetupFailed',
     defaultMessage: 'Passphrase setup failed.',
     description:
-      'User-facing message in Interviewer Step3Passphrase Configure.',
+      'Error message shown in the passphrase setup step when enrolling the passphrase fails and no more specific reason is available.',
   },
   enterPassphrase: {
     id: 'interviewer.step3PassphraseConfigure.enterPassphrase',
     defaultMessage: 'Enter passphrase',
-    description: 'The label label in Interviewer Step3Passphrase Configure.',
+    description:
+      'Field label, and also its placeholder, for typing the new passphrase in the passphrase setup step.',
   },
   aPasswordOfAtLeast12Characters: {
     id: 'interviewer.step3PassphraseConfigure.aPasswordOfAtLeast12Characters',
     defaultMessage:
       'A password of at least 12 characters that combines uppercase, lowercase, numbers, and symbols.',
-    description: 'The hint label in Interviewer Step3Passphrase Configure.',
+    description:
+      'Hint under the passphrase field stating the length and character-mix requirements.',
   },
   confirmPassphrase: {
     id: 'interviewer.step3PassphraseConfigure.confirmPassphrase',
     defaultMessage: 'Confirm passphrase',
-    description: 'The label label in Interviewer Step3Passphrase Configure.',
+    description:
+      'Field label, and also its placeholder, for re-typing the passphrase to confirm it.',
   },
   passphrasesDoNotMatch: {
     id: 'interviewer.step3PassphraseConfigure.passphrasesDoNotMatch',
     defaultMessage: 'Passphrases do not match.',
-    description: 'Visible copy in Interviewer Step3Passphrase Configure.',
+    description:
+      'Inline error under the passphrase fields when the confirmation differs from the first entry.',
   },
   iUnderstandThereIsNoRecovery: {
     id: 'interviewer.step3PassphraseConfigure.iUnderstandThereIsNoRecovery',
     defaultMessage: 'I understand there is no recovery.',
-    description: 'The label label in Interviewer Step3Passphrase Configure.',
+    description:
+      'Label of a checkbox the researcher must tick to continue, acknowledging a forgotten passphrase cannot be recovered.',
   },
 });
 

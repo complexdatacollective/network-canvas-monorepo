@@ -25,46 +25,50 @@ const messages = defineMessages({
   copySetupIsAlreadyComplete: {
     id: 'fresco.actions.auth.copySetupIsAlreadyComplete',
     defaultMessage: 'Setup is already complete.',
-    description: 'Researcher-facing actions / auth: Setup is already complete.',
+    description:
+      'Error shown in the first-account form of the setup wizard when someone submits it after the installation has already been set up.',
   },
   copyInvalidFormSubmission: {
     id: 'fresco.actions.auth.copyInvalidFormSubmission',
     defaultMessage: 'Invalid form submission',
-    description: 'Researcher-facing actions / auth: Invalid form submission',
+    description:
+      'Error shown in the first-account form of the setup wizard when the server rejects the submitted username or password as invalid.',
   },
   copyUsernameAlreadyTaken: {
     id: 'fresco.actions.auth.copyUsernameAlreadyTaken',
     defaultMessage: 'Username already taken',
-    description: 'Researcher-facing actions / auth: Username already taken',
+    description:
+      'Error shown in the first-account form of the setup wizard when the chosen username could not be saved, because it is already used.',
   },
   copyIncorrectUsernameOrPassword: {
     id: 'fresco.actions.auth.copyIncorrectUsernameOrPassword',
     defaultMessage: 'Incorrect username or password',
     description:
-      'Researcher-facing actions / auth: Incorrect username or password',
+      'Error shown above the sign-in form when the username does not exist or the password is wrong. Deliberately does not say which.',
   },
   copyServerConfigurationErrorPleaseContactAnAdmin: {
     id: 'fresco.actions.auth.copyServerConfigurationErrorPleaseContactAnAdmin',
     defaultMessage: 'Server configuration error. Please contact an admin.',
     description:
-      'Researcher-facing actions / auth: Server configuration error. Please contact an admin.',
+      'Error shown above the sign-in form when the password was right but two-factor sign-in cannot continue because the installation has no installation ID. The administrator must fix the server.',
   },
   copyTooManyAttemptsPleaseTryAgainLater: {
     id: 'fresco.actions.auth.copyTooManyAttemptsPleaseTryAgainLater',
     defaultMessage: 'Too many attempts. Please try again later.',
     description:
-      'Researcher-facing actions / auth: Too many attempts. Please try again later.',
+      'Error shown above the recovery-code sign-in form when too many sign-in attempts were made recently and the researcher is temporarily blocked.',
   },
   copyInvalidUsernameOrRecoveryCode: {
     id: 'fresco.actions.auth.copyInvalidUsernameOrRecoveryCode',
     defaultMessage: 'Invalid username or recovery code',
     description:
-      'Researcher-facing actions / auth: Invalid username or recovery code',
+      'Error shown above the recovery-code sign-in form when the username does not exist or the two-factor recovery code is wrong or already used.',
   },
   copyUnauthorized: {
     id: 'fresco.actions.auth.copyUnauthorized',
     defaultMessage: 'Unauthorized',
-    description: 'Researcher-facing actions / auth: Unauthorized',
+    description:
+      'Error returned when a researcher tries to sign out but there is no signed-in session, for example because it already expired.',
   },
 });
 

@@ -4,13 +4,9 @@ import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
+import { saveBlob } from '@codaco/fresco-ui/utils/saveBlob';
+import { PYTHON_FILETYPE, R_FILETYPE, SVG_FILETYPE } from '~/files/filetypes';
 import { isSvgFile, readSvgFile, SvgFileTooLargeError } from '~/files/open';
-import {
-  PYTHON_FILETYPE,
-  R_FILETYPE,
-  saveBlob,
-  SVG_FILETYPE,
-} from '~/files/save';
 import { generatePythonScript } from '~/scripts/python';
 import { generateRScript } from '~/scripts/r';
 import { useEditorStore } from '~/state/editorStore';

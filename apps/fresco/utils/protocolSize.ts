@@ -39,6 +39,6 @@ const messages = defineMessages({
     defaultMessage:
       'This protocol is {size, number} MB. Protocols must be {limit, number} MB or smaller to import.',
     description:
-      'Researcher-facing protocolSize: This protocol is size, number MB. Protocols must be limit, number MB or smaller to import.',
+      'Error shown in a toast, titled with the file name, when a protocol file chosen for import is over the size limit. size is the file size and limit the maximum allowed, both in megabytes.',
   },
 });

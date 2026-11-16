@@ -2,7 +2,7 @@ import { Printer } from 'lucide-react';
 import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, withoutIsolates } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   defineToolbarChild,
@@ -15,17 +15,20 @@ const messages = defineMessages({
     id: 'architect.projectNav.printProtocolAction.print',
     defaultMessage: 'Print',
     description:
-      'Visible text in components / ProjectNav / PrintProtocolAction.',
+      'Label of the toolbar button on the Summary page that prints the protocol summary or saves it as a PDF. Print is a verb.',
   },
 });
 
 const dateWithSafeChars = (date: string, replaceWith = '-') =>
   date.replace(/[^a-zA-Z\d\s]/gi, replaceWith).toLowerCase();
 
-// Strip characters that are invalid in filenames on common platforms, keeping
-// the name otherwise readable (case and spacing preserved).
+// Strip characters that are invalid in filenames on common platforms, and the
+// invisible isolates a right-to-left interface puts around the protocol's
+// name, keeping the name otherwise readable (case and spacing preserved).
 const fileNameWithSafeChars = (name: string) =>
-  name.replace(/[/\\:*?"<>|]/g, '-').trim();
+  withoutIsolates(name)
+    .replace(/[/\\:*?"<>|]/g, '-')
+    .trim();
 
 type PrintProtocolActionProps = {
   ref?: ToolbarButtonProps['ref'];
@@ -78,6 +81,7 @@ const extraMessages = defineMessages({
   filename: {
     id: 'architect.summary.print.filename',
     defaultMessage: '{name} Protocol Summary (Created {date})',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'File name suggested when the protocol summary is saved as a PDF. name is the protocol name; date is the current date and time with punctuation replaced by hyphens. The extension is added separately.',
   },
 });

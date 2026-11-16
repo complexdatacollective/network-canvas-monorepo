@@ -57,7 +57,16 @@ export default defineConfig({
   },
 
   projects: [
-    { name: 'chromium', use: devices['Desktop Chrome'] },
+    {
+      name: 'chromium',
+      use: devices['Desktop Chrome'],
+      // visual-viewport.spec.ts replaces window.visualViewport with a script
+      // stub (addInitScript), so it feeds every engine the same viewport
+      // values whatever the browser does itself. It guards against iOS
+      // Safari's chrome, so the WebKit project below runs it and a second
+      // run here would repeat it.
+      testIgnore: /visual-viewport\.spec\.ts/,
+    },
     {
       name: 'webkit-visual-viewport',
       use: devices['Desktop Safari'],

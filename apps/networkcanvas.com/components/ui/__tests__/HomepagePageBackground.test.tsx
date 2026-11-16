@@ -1,8 +1,12 @@
-import { act, cleanup, render, waitFor } from '@testing-library/react';
-import type { RefObject } from 'react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { type RefObject, useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HomepagePageBackground } from '../HomepagePageBackground';
+import {
+  PageBackgroundVisibilityProvider,
+  useHidePageBackground,
+} from '../pageBackgroundVisibility';
 
 type MockPageBackgroundProps = {
   convergence: { x: number; y: number };
@@ -35,6 +39,12 @@ vi.mock('@codaco/art', () => ({
     return <div ref={props.layerRef} data-testid="page-background-layer" />;
   },
 }));
+
+function HidingSection() {
+  const ref = useRef<HTMLElement>(null);
+  useHidePageBackground(ref);
+  return <section ref={ref} data-hides-background />;
+}
 
 function getLatestBackgroundProps() {
   const props = pageBackgroundRender.mock.calls.at(-1)?.[0];
@@ -304,5 +314,39 @@ describe('HomepagePageBackground', () => {
     render(<HomepagePageBackground />);
 
     expect(getLatestBackgroundProps().resolved).toBe(true);
+  });
+
+  it('fades out while a section asks the page background to step aside', async () => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function getBoundingClientRect(this: Element) {
+        if (this.hasAttribute('data-hides-background')) {
+          // Filling the viewport.
+          return new DOMRect(0, -500, 1000, 4000);
+        }
+        return new DOMRect(0, 0, 1000, 1000);
+      },
+    );
+
+    render(
+      <PageBackgroundVisibilityProvider>
+        <HomepagePageBackground />
+        <HidingSection />
+      </PageBackgroundVisibilityProvider>,
+    );
+
+    const visibility = screen.getByTestId('page-background-visibility');
+    expect(visibility).toContainElement(
+      screen.getByTestId('page-background-layer'),
+    );
+    await waitFor(() => expect(visibility).toHaveStyle({ opacity: '0' }));
+  });
+
+  it('draws the weave unwrapped where nothing can hide it', () => {
+    render(<HomepagePageBackground />);
+
+    expect(screen.getByTestId('page-background-layer')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('page-background-visibility'),
+    ).not.toBeInTheDocument();
   });
 });

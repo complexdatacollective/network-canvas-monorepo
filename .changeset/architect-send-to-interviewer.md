@@ -8,9 +8,12 @@ Architect can now send a protocol straight to Interviewer.
 
 **Architect**
 
-- A new **Send to Interviewer** button sits beside **Download**. It opens
-  Interviewer in a new tab and passes it the protocol, bundled exactly as
-  Download would save it. The production site sends to
+- The toolbar's **Download** button is now an **Export** button. It opens a
+  menu with **Download** and a new **Send to Interviewer**. While either runs,
+  and for a moment after, the Export button says how it is going
+  (Downloading..., Downloaded, Sending..., Sent).
+- **Send to Interviewer** opens Interviewer in a new tab and passes it the
+  protocol, bundled exactly as Download would save it. The production site sends to
   interviewer.networkcanvas.com; the development site and its previews send to
   interviewer.networkcanvas.dev.
 - If the protocol cannot be bundled (a resource cannot be read, or the finish

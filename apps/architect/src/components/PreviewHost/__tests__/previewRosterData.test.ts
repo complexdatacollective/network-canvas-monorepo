@@ -58,6 +58,7 @@ const rosterStage = {
   label: 'Roster',
   type: 'NameGeneratorRoster',
   allAddedNotice: { en: 'There is nothing left to add from this list.' },
+  unnamedLabel: { en: 'Unnamed {count}' },
   subject: { entity: 'node', type: 'person' },
   dataSource: 'roster',
   prompts: [{ id: 'p1', text: 'Pick people' }],

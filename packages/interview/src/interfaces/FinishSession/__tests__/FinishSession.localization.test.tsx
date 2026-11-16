@@ -10,13 +10,14 @@ import { getLocaleMetadata } from '@codaco/protocol-validation';
 
 import { ContractProvider } from '../../../contract/context';
 import type { FinishHandler, InterviewPayload } from '../../../contract/types';
-import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { InterfaceTextOverlay } from '../../../localization/InterfaceTextOverlay';
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalizationProvider';
 import { store as createStore } from '../../../store/store';
 import { SyncFlushProvider } from '../../../store/SyncFlushContext';
 import { InterviewToastViewport } from '../../../toast/InterviewToast';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
+import { suppliedInterfaceText } from '../../__tests__/TestProtocolLocalization';
 import FinishSession from '../FinishSession';
 
 const finishStage = {
@@ -68,6 +69,12 @@ const payload = {
   },
 } satisfies InterviewPayload;
 
+// The interview's built-in text, such as the dialog's Cancel, as the
+// protocol words it.
+const interfaceText = suppliedInterfaceText(payload.protocol.localization, [
+  finishStage,
+]);
+
 const english =
   'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.';
 const spanish =
@@ -96,7 +103,7 @@ function makeView(
   });
   return (locale: string) => (
     <AnimationProvider disableAnimations reducedMotion="always">
-      <InterviewI18nProvider requestedLocale={locale}>
+      <InterviewI18nProvider>
         <ProtocolLocalizationProvider
           localization={payload.protocol.localization}
           localeOptions={payload.session.localeOptions}
@@ -104,40 +111,34 @@ function makeView(
           localePreference={null}
           onLocalePreferenceChange={() => undefined}
         >
-          <Provider store={store}>
-            <ContractProvider
-              onFinish={onFinish}
-              onRequestAsset={() => Promise.resolve('')}
-            >
-              <SyncFlushProvider flush={flush}>
-                <DialogProvider>
-                  <FinishSession
-                    stage={stage}
-                    getNavigationHelpers={() => ({
-                      moveForward: () => undefined,
-                      moveBackward: () => undefined,
-                    })}
-                  />
-                  <Toast.Provider toastManager={interviewToastManager}>
-                    <InterviewToastViewport />
-                  </Toast.Provider>
-                </DialogProvider>
-              </SyncFlushProvider>
-            </ContractProvider>
-          </Provider>
+          <InterfaceTextOverlay interfaceText={interfaceText}>
+            <Provider store={store}>
+              <ContractProvider
+                onFinish={onFinish}
+                onRequestAsset={() => Promise.resolve('')}
+              >
+                <SyncFlushProvider flush={flush}>
+                  <DialogProvider>
+                    <FinishSession
+                      stage={stage}
+                      getNavigationHelpers={() => ({
+                        moveForward: () => undefined,
+                        moveBackward: () => undefined,
+                      })}
+                    />
+                    <Toast.Provider toastManager={interviewToastManager}>
+                      <InterviewToastViewport />
+                    </Toast.Provider>
+                  </DialogProvider>
+                </SyncFlushProvider>
+              </ContractProvider>
+            </Provider>
+          </InterfaceTextOverlay>
         </ProtocolLocalizationProvider>
       </InterviewI18nProvider>
     </AnimationProvider>
   );
 }
-
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
 
 describe('FinishSession localized recoverable failures', () => {
   it.each(['flush', 'refused', 'finish'] as const)(
@@ -346,5 +347,51 @@ describe('FinishSession localized recoverable failures', () => {
     );
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
+  });
+
+  // The stage's own words are Network Canvas's wherever the stage holds
+  // none, in each language Network Canvas words them in.
+  describe('a stage that holds none of its own words', () => {
+    const {
+      finishLabel: _finishLabel,
+      finishConfirmation: _finishConfirmation,
+      finishFailed: _finishFailed,
+      ...unworded
+    } = finishStage;
+
+    it('shows Network Canvas’s wording in the interview’s language', async () => {
+      const user = userEvent.setup();
+      render(
+        makeView(
+          () => Promise.resolve(true),
+          () => Promise.resolve(),
+          unworded,
+        )('es'),
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Finalizar' }));
+
+      expect(
+        await screen.findByRole('dialog', {
+          name: '¿Seguro que quieres finalizar la entrevista?',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('keeps a word the stage holds in one language, and shows Network Canvas’s in the others', () => {
+      const reworded = { ...unworded, finishLabel: { es: 'Terminar ya' } };
+      const view = makeView(
+        () => Promise.resolve(true),
+        () => Promise.resolve(),
+        reworded,
+      );
+
+      const { unmount } = render(view('es'));
+      expect(screen.getByRole('button', { name: 'Terminar ya' })).toBeEnabled();
+      unmount();
+
+      render(view('en'));
+      expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
+    });
   });
 });

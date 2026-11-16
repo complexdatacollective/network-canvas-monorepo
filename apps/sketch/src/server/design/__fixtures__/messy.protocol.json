@@ -345,12 +345,6 @@
             }
           }
         ]
-      },
-      "minNodesNotice": {
-        "en": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
-      },
-      "maxNodesNotice": {
-        "en": "You have completed this task. Click the next arrow to continue."
       }
     },
     {
@@ -489,15 +483,6 @@
       "finishedContent": {
         "en": "# Interview Finished\n\nThank you for participating!"
       },
-      "finishLabel": {
-        "en": "Finish"
-      },
-      "finishConfirmation": {
-        "en": "Are you sure you want to finish the interview?"
-      },
-      "finishFailed": {
-        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
-      },
       "outcome": "completed"
     },
     {
@@ -524,77 +509,5 @@
       },
       "outcome": "ineligible"
     }
-  ],
-  "interfaceText": {
-    "navigation": {
-      "exitInterview": {
-        "en": "Exit interview"
-      },
-      "exitInterviewDescription": {
-        "en": "Your answers so far will be saved and you can continue later."
-      },
-      "back": {
-        "en": "Back"
-      },
-      "continue": {
-        "en": "Continue"
-      }
-    },
-    "buttons": {
-      "cancel": {
-        "en": "Cancel"
-      },
-      "done": {
-        "en": "Done"
-      },
-      "delete": {
-        "en": "Delete"
-      },
-      "yes": {
-        "en": "Yes"
-      },
-      "no": {
-        "en": "No"
-      },
-      "pauseLayout": {
-        "en": "Pause automatic layout"
-      },
-      "resumeLayout": {
-        "en": "Resume automatic layout"
-      }
-    },
-    "messages": {
-      "stageError": {
-        "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
-      },
-      "itemUnavailable": {
-        "en": "This item could not be displayed."
-      },
-      "error": {
-        "en": "An error occurred."
-      }
-    },
-    "forms": {
-      "discardChangesTitle": {
-        "en": "Discard changes?"
-      },
-      "discardChangesDescription": {
-        "en": "Do you want to discard your changes?"
-      }
-    },
-    "validation": {
-      "required": {
-        "en": "You must answer this question before continuing."
-      },
-      "minValue": {
-        "en": "Enter a value greater than or equal to {min}."
-      },
-      "maxValue": {
-        "en": "Enter a value less than or equal to {max}."
-      },
-      "unique": {
-        "en": "Must be unique."
-      }
-    }
-  }
+  ]
 }

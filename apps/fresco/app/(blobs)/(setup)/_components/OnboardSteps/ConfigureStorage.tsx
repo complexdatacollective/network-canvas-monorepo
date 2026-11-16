@@ -14,14 +14,14 @@ const messages = defineMessages({
     id: 'fresco.OnboardSteps.ConfigureStorage.configureStorage',
     defaultMessage: 'Configure Storage',
     description:
-      'Researcher-facing OnboardSteps / ConfigureStorage: Configure Storage',
+      'Heading of the storage step of the first-time setup wizard, where the researcher chooses where uploaded protocol files and exported data are kept.',
   },
   frescoNeedsAStorageProviderForProtocol: {
     id: 'fresco.OnboardSteps.ConfigureStorage.frescoNeedsAStorageProviderForProtocol',
     defaultMessage:
       'Fresco needs a storage provider for protocol assets and data exports. Choose between UploadThing (managed service) or an S3-compatible bucket (self-hosted or cloud).',
     description:
-      'Researcher-facing OnboardSteps / ConfigureStorage: Fresco needs a storage provider for protocol assets and data exports. Choose between UploadThing (managed service) or an',
+      'Explanatory paragraph under the heading of the storage step of the first-time setup wizard, introducing the choice between the two storage providers shown below it.',
   },
 });
 

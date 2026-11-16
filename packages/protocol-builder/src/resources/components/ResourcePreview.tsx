@@ -67,6 +67,11 @@ const MAX_TIMER_DELAY_MS = 2_147_483_647;
 /** One armed timer, however far away the moment it is armed for. */
 type PreviewTimer = Readonly<{ cancel: () => void }>;
 
+type PreviewOutcome = Readonly<{
+  preview: ResolvedPreview | undefined;
+  failure: ResourceGatewayFailure | undefined;
+}>;
+
 /**
  * Runs `wake` in `delayMs`, for any delay `expiresAt` can describe.
  *
@@ -186,20 +191,43 @@ export default function ResourcePreview({
 }: ResourcePreviewProps) {
   const resources = useResourceClient();
   const intl = useAppIntl();
-  const [preview, setPreview] = useState<ResolvedPreview | undefined>(
-    undefined,
-  );
-  const [failure, setFailure] = useState<ResourceGatewayFailure | undefined>(
-    undefined,
-  );
   const [attempt, setAttempt] = useState(0);
+  // What the effect below has put on screen. It belongs to one selection: a
+  // different resource, retry or client, or the selection passing through
+  // another resource and coming back, drops it during the render that sees the
+  // change. Nothing has to be reset from inside the effect, the previous
+  // resource's content is never drawn under the new one's name, and a URL
+  // kept from before the selection was left, whose expiry timer was cancelled
+  // on the way out, does not return when the same resource is chosen again.
+  const [outcome, setOutcome] = useState<PreviewOutcome | undefined>(undefined);
+  const [asked, setAsked] = useState({ resourceId, attempt, resources });
+  if (
+    asked.resourceId !== resourceId ||
+    asked.attempt !== attempt ||
+    asked.resources !== resources
+  ) {
+    setAsked({ resourceId, attempt, resources });
+    setOutcome(undefined);
+  }
+  const preview = outcome?.preview;
+  const failure = outcome?.failure;
 
   useEffect(() => {
     let state: PreviewState = { name: 'resolving' };
     let renewal: PreviewTimer | undefined;
     let expiry: PreviewTimer | undefined;
-    setPreview(undefined);
-    setFailure(undefined);
+    const publish = (
+      patch: Partial<Pick<PreviewOutcome, 'preview' | 'failure'>>,
+    ): void =>
+      setOutcome((previous) => ({
+        preview: previous?.preview,
+        failure: previous?.failure,
+        ...patch,
+      }));
+    const setPreview = (next: ResolvedPreview | undefined): void =>
+      publish({ preview: next });
+    const setFailure = (next: ResourceGatewayFailure | undefined): void =>
+      publish({ failure: next });
 
     const clearTimers = (): void => {
       renewal?.cancel();
@@ -377,6 +405,7 @@ export default function ResourcePreview({
       clearTimers();
       state = { name: 'ended' };
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `attempt` is the re-run trigger (a retry resolves again) and is read in render, not in this effect
   }, [attempt, resourceId, resources]);
 
   if (failure !== undefined) {
@@ -406,6 +435,7 @@ export default function ResourcePreview({
     return (
       // The researcher's own imported media, which carries no caption track;
       // its accessible name is the name the manifest records for it.
+      // oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol media carries no caption file and the asset schema has no field for one
       <video
         src={Redacted.value(preview.url)}
         controls={!presentational}
@@ -418,6 +448,7 @@ export default function ResourcePreview({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol media carries no caption file and the asset schema has no field for one
     <audio
       src={Redacted.value(preview.url)}
       controls

@@ -45,7 +45,7 @@ export class InterviewFixture {
 
   /**
    * Set the capture function for automatic screenshots.
-   * Called by the interview-test fixture to wire up captureInterview.
+   * Called by the matrix fixture to wire up captureInterview.
    */
   setCaptureFn(fn: CaptureInterviewFn): void {
     this.captureFn = fn;

@@ -1,0 +1,70 @@
+---
+title: Previsualizar tu protocolo
+navOrder: 3
+toc: false
+date: 7th October 2026
+translatedFrom: 7f094322550f8fd87a33d4e8fee1037ae01dc35a
+---
+
+Mientras creas tu protocolo, puedes previsualizar cualquier etapa para ver cómo la verá cada participante durante una entrevista. Esto resulta útil en todas las fases del diseño de un protocolo, porque te permite comprobar los cambios al momento en lugar de esperar a publicar o distribuir el protocolo. La forma de abrir una vista previa, y lo que ofrece, varía ligeramente entre las dos aplicaciones.
+
+Previsualizar las etapas es una parte de un ensayo completo de tu estudio: consulta [Realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study) para saber cómo ensayar toda la entrevista y tu proceso de exportación antes de empezar.
+
+<AppSwitch>
+<AppOption label="Architect" icon="globe">
+
+## Previsualizar una etapa {#previewing-a-stage}
+
+Abre una etapa en el editor y haz clic en **Vista previa**. La etapa se abre en una nueva pestaña del navegador y funciona igual que durante una entrevista real. Puedes recorrer las preguntas de la etapa y completar las actividades propias de esa etapa, exactamente como lo haría una persona participante.
+
+Cuando llegas al final de la entrevista, la etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen) finaliza la vista previa igual que finalizaría una entrevista: pulsa **Finalizar** y confirma o, si la etapa finaliza automáticamente, la vista previa termina en cuanto llegas a ella. A continuación, la vista previa muestra el texto de entrevista finalizada de la etapa «Pantalla de finalización» y la acción **Reiniciar la vista previa**, para volver a ejecutarla desde el principio.
+
+No se guarda nada de lo que introduzcas en la vista previa. Cierra la pestaña cuando hayas terminado.
+
+![El botón Vista previa y el menú de ajustes en el editor de etapas.](/assets/img/architect/preview-settings.png)
+
+## Ajustes de la vista previa {#preview-settings}
+
+Junto al botón **Vista previa**, un menú de ajustes controla el comportamiento de las vistas previas:
+
+- **Iniciar la vista previa con datos de ejemplo**: activado de forma predeterminada. Architect llena la vista previa con nodos y vínculos de ejemplo generados automáticamente, para que las interfaces que dependen de una red (como «Sociograma», «Clasificación por categorías» o «Clasificación ordinal») tengan algo que mostrar. Los datos se generan al azar, así que cambian cada vez que inicias una vista previa y son meramente ilustrativos: no representan respuestas reales de participantes. La etapa que previsualizas se deja a medio completar a propósito, para que puedas seguir probando su interacción: por ejemplo, clasificar nodos en contenedores (las zonas a las que se arrastran los nodos para clasificarlos) o colocarlos en un sociograma. Desactívalo para previsualizar con una red vacía.
+- **Respetar la lógica de salto**: desactivado de forma predeterminada. Mientras está desactivado, la lógica de salto no se aplica en ningún momento de la vista previa, de modo que todas las etapas que has creado siguen disponibles a medida que avanzas por la entrevista. Actívalo para probar los recorridos que define tu protocolo. Architect sigue abriendo la etapa en cuyo botón **Vista previa** has hecho clic, aunque los datos de ejemplo actuales harían que normalmente se omitiera; en cuanto pasas a otra etapa, la lógica de salto se aplica con normalidad.
+
+## Elegir el idioma de la vista previa {#choosing-the-preview-language}
+
+Si tu protocolo está escrito en más de un idioma, usa el menú **Idioma de la vista previa**, situado encima de la vista previa, para verlo en cada uno de ellos. El menú enumera los idiomas de tu protocolo por orden alfabético, cada uno escrito en su propio idioma. Inicialmente muestra el idioma que vería una persona participante con la configuración de idioma de tu navegador: el idioma del protocolo que mejor coincide con los idiomas de tu navegador (una variante regional cercana también cuenta) o, si no hay ninguno, el idioma predeterminado del protocolo. Si tu protocolo solo tiene un idioma, el menú lo muestra, pero no se puede cambiar.
+
+Al elegir un idioma, la vista previa se muestra en ese idioma inmediatamente. Un texto que no está traducido a ese idioma aparece tal como lo vería una persona participante que lo usa (consulta [El idioma predeterminado y qué traducción ve cada participante](/es/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see)). Si la vista previa llega a una etapa [«Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser) y eliges un idioma en ella, el menú cambia según lo que hayas elegido. La elección solo se mantiene mientras la pestaña de la vista previa está abierta y no se guarda.
+
+Los botones y mensajes que tu protocolo guarda como [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text), como «Volver», «Continuar» y los mensajes de validación, siguen el idioma de la vista previa, igual que el resto del texto de tu protocolo. Nada de ello sigue el idioma que hayas elegido para el propio Architect.
+
+![Vista previa de una etapa «Selector de idioma» con «español» seleccionado en el menú «Idioma de la vista previa».](/assets/img/architect/localization/preview-language.png)
+
+Para escribir y gestionar los idiomas de tu protocolo, consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol).
+
+## Cómo funciona la vista previa en el navegador {#how-preview-works-in-the-browser}
+
+Architect previsualiza tu etapa en una pestaña del navegador con el tamaño actual de tu ventana, en lugar de emular dispositivos concretos, así que no hay ajustes predefinidos de tamaño de dispositivo ni de orientación entre los que elegir. Para ver cómo queda una etapa con un tamaño determinado, cambia el tamaño de la ventana del navegador.
+
+## Advertencias {#caveats}
+
+- **No se guarda nada.** La vista previa es una sesión desechable. Los datos que introduzcas se descartan en cuanto cierras la pestaña.
+- **Las etapas que dependen de una red necesitan datos que mostrar.** Interfaces como «Sociograma», «Clasificación por categorías» y «Clasificación ordinal» no tienen nada que mostrar sin una red. Mantén activado **Iniciar la vista previa con datos de ejemplo** para que estas etapas tengan nodos y vínculos de ejemplo que mostrar.
+
+</AppOption>
+<AppOption label="Architect Classic" icon="desktop">
+
+## Previsualizar una etapa {#previewing-a-stage-1}
+
+Para usar el modo de vista previa, haz clic en la tarjeta de la etapa que quieras previsualizar. En la pantalla de configuración de la etapa, haz clic en el botón rosa grande de la esquina inferior izquierda. Se abrirá una ventana que muestra la etapa tal como aparecería en la aplicación Interviewer. Desde ahí, puedes recorrer las preguntas de la etapa y completar las actividades propias de esa etapa. Si quieres previsualizar más de una etapa, sigue avanzando a las etapas siguientes hasta llegar al final de tu protocolo.
+
+![](/assets/img/key-concepts/preview-mode/Preview-Mode.png)
+
+Puedes salir del modo de vista previa en cualquier momento cerrando la ventana. Los datos que introduzcas pasarán a las etapas siguientes mientras mantengas abierta la ventana de la vista previa. En cuanto se cierre la ventana, se perderán todos los datos introducidos, ya que el modo de vista previa no almacena datos de forma permanente.
+
+## Advertencias {#caveats-1}
+
+Ten en cuenta que, para previsualizar bien algunas pantallas, como el sociograma, tendrás que empezar la vista previa en una etapa «Generador de nombres» e introducir algunos datos de prueba que sirvan para previsualizar las pantallas siguientes. Si no generas nodos primero, las pantallas siguientes que previsualices aparecerán vacías, porque no habrá datos con los que mostrar elementos.
+
+</AppOption>
+</AppSwitch>

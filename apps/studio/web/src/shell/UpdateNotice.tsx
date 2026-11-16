@@ -1,5 +1,5 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -69,18 +69,21 @@ export default function UpdateNotice({
   const update = useQuery(rpcQuery('status.updateAvailable', undefined));
   const failure = update.error;
   const team = useScreenTeam();
-  const teamAtError = useRef(team);
-  teamAtError.current = team;
-  useEffect(() => {
-    if (failure === null) return;
+  // The team is context for the log line, not a reason to log again when it
+  // changes: read it as of the moment the failure is reported.
+  const reportFailure = useEffectEvent((error: unknown) => {
     logResearcher(
       {
         message: 'Update check failed',
         level: 'Warn',
-        attributes: { error_code: faultCodeOf(failure) },
+        attributes: { error_code: faultCodeOf(error) },
       },
-      teamAtError.current,
+      team,
     );
+  });
+  useEffect(() => {
+    if (failure === null) return;
+    reportFailure(failure);
   }, [failure]);
   const available = update.data ?? null;
   // The mode is asked only once there is a notice to show, so a shell with no

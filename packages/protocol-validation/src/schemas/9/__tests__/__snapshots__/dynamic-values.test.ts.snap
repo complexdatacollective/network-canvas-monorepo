@@ -19,6 +19,7 @@ exports[`dynamic values in stage text > tags exactly the inventoried stage sites
   "FamilyPedigree form.fields.#.prompt formField",
   "FamilyPedigree nominationPrompts.#.text prompt",
   "FamilyPedigree prompt prompt",
+  "FamilyPedigree wording.you stageText",
   "FinishSession content stageText",
   "FinishSession finishedContent stageText",
   "Geospatial prompts.#.text prompt",

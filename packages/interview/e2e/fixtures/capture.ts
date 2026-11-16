@@ -17,9 +17,12 @@ const VISUAL_STYLES = `
      outline:none covers them on the focused element and on focusable-within
      ancestors. box-shadow:none is scoped to the focused element only — NOT
      :has(:focus-visible) ancestors — because a focused field's ancestor (e.g.
-     a slider track) carries a real inset-surface box-shadow that must survive. */
+     a slider track) carries a real inset-surface box-shadow that must survive.
+     WebKit never matches :focus-visible on a date or time input, so the box
+     around one is ringed on :focus and has to be named here the same way. */
   *:focus-visible,
-  *:has(:focus-visible) {
+  *:has(:focus-visible),
+  *:has(input:is([type=date],[type=time],[type=datetime-local],[type=month],[type=week]):focus) {
     outline: none !important;
   }
   *:focus-visible {
@@ -188,8 +191,8 @@ function assertNotNativeLane(name: string): void {
 }
 
 /**
- * Shared pixel-capture pipeline used by both the legacy interview-test
- * fixture and the matrix fixture. Captures are CI-only (`enabled`).
+ * The pixel-capture pipeline the matrix fixture wires into `InterviewFixture`.
+ * Captures are CI-only (`enabled`).
  */
 export function createCaptureInterview(
   page: Page,

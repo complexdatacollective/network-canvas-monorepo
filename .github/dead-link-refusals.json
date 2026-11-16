@@ -1,10 +1,20 @@
 {
-  "note": "External links that answer 401/403 to CI because they refuse automation, not because they are broken. Verified 2026-09-11: every DOI here resolves (doi.org 302) and none returned 404. A refusal from a URL NOT listed here fails the run, so adding an entry is a deliberate, reviewed act. Remove an entry when the publisher stops refusing us.",
+  "note": "External links that answer 401/403 to CI because they refuse automation, not because they are broken. Verified 2026-09-11, and again for the entries added 2026-11-05: every DOI here resolves (doi.org 302), none returned 404, and each non-DOI page has a recent 200 capture in the Wayback Machine. A refusal from a URL NOT listed here fails the run, so adding an entry is a deliberate, reviewed act. Remove an entry when the publisher stops refusing us.",
   "refusable": [
+    {
+      "host": "ccsg.isr.umich.edu",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://ccsg.isr.umich.edu/chapters/translation/overview/"
+    },
     {
       "host": "onlinelibrary.wiley.com",
       "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
       "url": "https://doi.org/10.1002/ejsp.3140"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1002/jgc4.1621"
     },
     {
       "host": "shmpublications.onlinelibrary.wiley.com",
@@ -19,12 +29,27 @@
     {
       "host": "onlinelibrary.wiley.com",
       "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1007/s10897-008-9169-9"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
       "url": "https://doi.org/10.1007/s10897-011-9370-0"
     },
     {
       "host": "onlinelibrary.wiley.com",
       "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
       "url": "https://doi.org/10.1007/s10897-015-9905-x"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/S0378-8733(98)00004-5"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/S0378-8733(99)00013-1"
     },
     {
       "host": "www.sciencedirect.com",
@@ -132,6 +157,11 @@
       "url": "https://doi.org/10.1111/ejed.70822"
     },
     {
+      "host": "www.valueinhealthjournal.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to valueinhealthjournal.com refuses automation",
+      "url": "https://doi.org/10.1111/j.1524-4733.2005.04054.x"
+    },
+    {
       "host": "dl.acm.org",
       "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
       "url": "https://doi.org/10.1145/2858036.2858368"
@@ -149,6 +179,11 @@
     {
       "host": "journals.sagepub.com",
       "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1177/135910457000100301"
+    },
+    {
+      "host": "journals.sagepub.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
       "url": "https://doi.org/10.1177/13670069221133305"
     },
     {
@@ -162,6 +197,11 @@
       "url": "https://doi.org/10.1177/21676968221111316"
     },
     {
+      "host": "journals.sagepub.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1177/29768357261502225"
+    },
+    {
       "host": "ajph.aphapublications.org",
       "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
       "url": "https://doi.org/10.2105/AJPH.2008.154096"
@@ -170,6 +210,11 @@
       "host": "ora.ox.ac.uk",
       "reason": "Refuses datacenter automation; answers 200 to an ordinary request from a residential IP",
       "url": "https://doi.org/10.5287/ora-wxkvadvbg"
+    },
+    {
+      "host": "ico.org.uk",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/"
     },
     {
       "host": "x.com",

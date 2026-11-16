@@ -16,13 +16,14 @@ import { TenantScope } from '../db/tenant.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { testDb } from './support/database.ts';
+import { asTheEditorShowsIt } from './support/messages.ts';
 import { memoryObjectStore } from './support/object-store.ts';
 import {
   ADA,
   ASSETS,
   callerOf,
   EDIT,
-  enUS,
+  inEnglish,
   GRACE,
   holdingEvents,
   holdingStaging,
@@ -100,7 +101,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Names a secret'),
+          label: inEnglish('Names a secret'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
@@ -148,7 +149,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: enUS('Renamed'),
+            label: inEnglish('Renamed'),
           }),
           revision: held.revision,
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -166,7 +167,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
     );
     expect(Redacted.value(after.document).label).toEqual(
-      enUS('Renamed beside a bad promotion'),
+      inEnglish('Renamed beside a bad promotion'),
     );
     expect(after.revision).toEqual(held.revision);
     const assets = await call(
@@ -222,7 +223,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Reads its key back'),
+          label: inEnglish('Reads its key back'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -277,7 +278,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Seals its key'),
+          label: inEnglish('Seals its key'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -372,7 +373,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Keeps its key'),
+          label: inEnglish('Keeps its key'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -471,11 +472,15 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: {
         reason: 'not-found',
-        message: 'no such staged resource',
+        message: expect.any(String),
         retryable: false,
         resourceId: staged.data.descriptor.id,
       },
     });
+    if (again.status !== 'failed') return;
+    expect(asTheEditorShowsIt(again.failure.message)).toBe(
+      'That import is no longer waiting to be added. Import the file again.',
+    );
   });
 
   it('promotes a staged resource with the stage being created', async () => {
@@ -502,8 +507,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS('Carries a secret'),
-          title: enUS('Carries a secret'),
+          label: inEnglish('Carries a secret'),
+          title: inEnglish('Carries a secret'),
           items: [],
         }),
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
@@ -547,8 +552,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           kind: 'stage',
           document: Redacted.make({
             type: 'Information',
-            label: enUS('Never made'),
-            title: enUS('Never made'),
+            label: inEnglish('Never made'),
+            title: inEnglish('Never made'),
             items: [],
           }),
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -604,7 +609,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Saved once'),
+          label: inEnglish('Saved once'),
         }),
         revision: held.revision,
         promote,
@@ -623,7 +628,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Saved once'),
+          label: inEnglish('Saved once'),
         }),
         revision: held.revision,
         promote,
@@ -1130,6 +1135,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: { reason: 'unavailable', retryable: true },
     });
+    if (refused.status === 'failed') {
+      expect(asTheEditorShowsIt(refused.failure.message)).toBe(
+        'The resource could not be reached. Try again in a moment.',
+      );
+    }
     expect(await stagedIds(edit)).toEqual([]);
   });
 
@@ -1148,6 +1158,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         status: 'failed',
         failure: { reason: 'unsupported-kind', retryable: false },
       });
+      if (refused.status === 'failed') {
+        expect(asTheEditorShowsIt(refused.failure.message)).toBe(
+          'This Studio has no file storage set up, so files cannot be added or opened. Ask whoever runs it to set up storage.',
+        );
+      }
     } finally {
       await storeless.dispose();
     }
@@ -1245,7 +1260,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: enUS('Renamed'),
+            label: inEnglish('Renamed'),
           }),
           revision: held.revision,
           promote: { editId: edit, resourceIds: [resourceId] },
@@ -1305,6 +1320,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: { reason: 'invalid-content' },
     });
+    if (empty.status === 'failed') {
+      expect(asTheEditorShowsIt(empty.failure.message)).toBe(
+        'That file is empty. Choose a file with something in it.',
+      );
+    }
     const listed = await call(
       ADA,
       host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
@@ -1336,6 +1356,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: { reason: 'too-large' },
     });
+    if (oversized.status === 'failed') {
+      expect(asTheEditorShowsIt(oversized.failure.message)).toBe(
+        'That file is too large to import. Files can be up to 100.0 MB.',
+      );
+    }
     const listed = await call(
       ADA,
       host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
@@ -1415,13 +1440,13 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // where the interview would fill one variable from both columns.
     expect(refused).toMatchObject({
       status: 'failed',
-      failure: {
-        reason: 'invalid-content',
-        retryable: false,
-        message:
-          'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
-      },
+      failure: { reason: 'invalid-content', retryable: false },
     });
+    if (refused.status === 'failed') {
+      expect(asTheEditorShowsIt(refused.failure.message)).toBe(
+        'the "caf\u00e9" and "cafe\u0301" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other',
+      );
+    }
     const listed = await call(
       ADA,
       host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
@@ -1470,7 +1495,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: enUS('Renamed with a file'),
+            label: inEnglish('Renamed with a file'),
           }),
           revision: held.revision,
           promote,
@@ -1497,7 +1522,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Renamed with a file'),
+          label: inEnglish('Renamed with a file'),
         }),
         revision: held.revision,
         promote,

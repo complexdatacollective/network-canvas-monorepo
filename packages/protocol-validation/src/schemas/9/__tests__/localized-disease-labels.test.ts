@@ -17,7 +17,15 @@ describe('findDuplicateDiseaseLabels', () => {
         diseases({ en: 'Breast cancer', fr: 'Cancer' }, { en: 'Cancer' }),
         bilingual,
       ),
-    ).toEqual([{ index: 1, locale: 'fr', text: 'Cancer' }]);
+    ).toEqual([
+      {
+        index: 1,
+        firstIndex: 0,
+        locale: 'fr',
+        text: 'Cancer',
+        firstText: 'Cancer',
+      },
+    ]);
   });
 
   it('reports a collision in every locale that shows it', () => {
@@ -27,8 +35,20 @@ describe('findDuplicateDiseaseLabels', () => {
         bilingual,
       ),
     ).toEqual([
-      { index: 1, locale: 'en', text: 'cancer ' },
-      { index: 1, locale: 'fr', text: 'cancer ' },
+      {
+        index: 1,
+        firstIndex: 0,
+        locale: 'en',
+        text: 'cancer ',
+        firstText: 'Cancer',
+      },
+      {
+        index: 1,
+        firstIndex: 0,
+        locale: 'fr',
+        text: 'cancer ',
+        firstText: 'Cancer',
+      },
     ]);
   });
 
@@ -53,7 +73,15 @@ describe('findDuplicateDiseaseLabels', () => {
         ),
         { defaultLocale: 'en', locales: ['en'] },
       ),
-    ).toEqual([{ index: 1, locale: 'en', text: 'type {a}' }]);
+    ).toEqual([
+      {
+        index: 1,
+        firstIndex: 0,
+        locale: 'en',
+        text: 'type {a}',
+        firstText: 'Type {A}',
+      },
+    ]);
   });
 
   it('skips a label with no translation in a declared language', () => {

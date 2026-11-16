@@ -248,6 +248,40 @@ export const Default: Story = {
 };
 
 /**
+ * The button that adds a person sits in the bottom corner at the end of the
+ * line, which is the left in a right-to-left interview, and the shading
+ * behind it darkens the same corner.
+ */
+export const AddButtonInARightToLeftInterview: Story = {
+  globals: { appDirection: 'rtl' },
+  render: (args) => <NameGeneratorStoryWrapper {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const add = await canvas.findByRole(
+      'button',
+      { name: 'Add a person' },
+      { timeout: 10_000 },
+    );
+    await expect(getComputedStyle(add).direction).toBe('rtl');
+
+    const stage = canvasElement.getBoundingClientRect();
+    const button = add.getBoundingClientRect();
+    await expect(button.left + button.width / 2).toBeLessThan(
+      stage.left + stage.width / 4,
+    );
+
+    const shading = canvas.getByTestId('add-corner-shade');
+    await expect(shading.getBoundingClientRect().left).toBeCloseTo(
+      stage.left,
+      0,
+    );
+    await expect(getComputedStyle(shading).backgroundImage).toMatch(
+      /radial-gradient\([^,]*at (left bottom|0% 100%)/,
+    );
+  },
+};
+
+/**
  * Two stacked side panels with *unequal* content (12 nodes vs 2). When both
  * panels are open they should each take ~50% of the column regardless of how
  * much content each holds. This is the regression guard for the lopsided-split

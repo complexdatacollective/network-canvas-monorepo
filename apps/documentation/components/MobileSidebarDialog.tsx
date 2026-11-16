@@ -1,3 +1,4 @@
+import { useDirection } from '@base-ui/react/direction-provider';
 import { Drawer } from '@base-ui/react/drawer';
 import { X as CloseMenu } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -5,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, type RefObject } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { hasDocumentationSection } from '~/app/types';
 import WorkflowNav from '~/components/WorkflowNav';
 import { Link } from '~/navigation';
@@ -25,6 +27,8 @@ export default function MobileSidebarDialog({
 }: MobileSidebarDialogProps) {
   const pathname = usePathname();
   const t = useTranslations('SharedNavigation');
+  // The drawer opens from the start edge, so it is swiped away towards it.
+  const isRtl = useDirection() === 'rtl';
 
   useEffect(() => {
     setOpen(false);
@@ -40,14 +44,22 @@ export default function MobileSidebarDialog({
     <Drawer.Root
       open={open}
       onOpenChange={(nextOpen) => setOpen(nextOpen)}
-      swipeDirection="left"
+      swipeDirection={isRtl ? 'right' : 'left'}
     >
       <Drawer.Portal>
         <Drawer.Backdrop className="bg-overlay publish-colors fixed inset-0 z-40 backdrop-blur-xs transition-opacity duration-300 ease-out data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
-        <Drawer.Viewport className="phone-landscape:max-w-sm fixed inset-y-0 left-0 z-50 w-full">
+        <Drawer.Viewport className="phone-landscape:max-w-sm fixed inset-y-0 inset-s-0 z-50 w-full">
           <Drawer.Popup
             finalFocus={openerRef}
-            className="bg-background elevation-medium flex h-dvh w-full transform-[translateX(var(--drawer-swipe-movement-x,0px))] flex-col overflow-y-auto px-4 py-0 transition-transform duration-300 ease-out data-ending-style:transform-[translateX(-100%)] data-starting-style:transform-[translateX(-100%)] data-swiping:duration-0 motion-reduce:transition-none"
+            className={cx(
+              'bg-background elevation-medium flex h-dvh w-full flex-col overflow-y-auto px-4 py-0',
+              'transform-[translateX(var(--drawer-swipe-movement-x,0px))] transition-transform duration-300 ease-out data-swiping:duration-0 motion-reduce:transition-none',
+              // A transform has no logical form: the panel leaves towards the
+              // start edge it opens from, which is the right in a
+              // right-to-left page.
+              'data-ending-style:transform-[translateX(-100%)] data-starting-style:transform-[translateX(-100%)]',
+              'rtl:data-ending-style:transform-[translateX(100%)] rtl:data-starting-style:transform-[translateX(100%)]',
+            )}
           >
             <Drawer.Title className="sr-only">
               {t('documentationNavigation')}

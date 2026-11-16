@@ -3,25 +3,37 @@
 // language-negotiation journey, against a DEPLOYED Interviewer origin.
 //
 // Interviewer shows each person the best language it has for them until they
-// say otherwise, and keeps two choices apart:
+// say otherwise, and keeps two choices apart. Both use Network Canvas's one
+// locale negotiation (packages/shared-consts/src/locale-negotiation.ts): CLDR
+// best fit over the whole list of the browser's languages, with no rules of
+// its own.
 // - the researcher-facing app (home, data, settings, onboarding) follows the
-//   browser's languages, best fit one preference at a time, until a language
-//   is chosen in Settings → Language; "Automatic" hands it back to the
-//   browser;
-// - an interview follows the browser's languages for both the protocol's
-//   translation and its own built-in text, whatever the app's language, until
-//   the participant chooses a language on a language chooser stage. That
-//   choice belongs to that interview, in that tab: it survives a reload and
-//   never reaches the next interview or the stored session.
+//   browser's languages until a language is chosen in Settings → Language;
+//   "Automatic" hands it back to the browser;
+// - an interview follows the browser's languages, whatever the app's
+//   language, until the participant chooses a language on a language chooser
+//   stage. It negotiates once, over the protocol's languages: every word it
+//   shows, its own included, comes from the protocol in that language, and
+//   the accessible names of its icon controls are English whatever the
+//   language. A text the protocol has no translation for in that language
+//   is shown in its closest related language the protocol has: a protocol
+//   that declares Mexican Spanish beside Spanish shows its Spanish built-in
+//   wording wherever its Mexican Spanish has none. That choice belongs to
+//   that interview, in that tab: it survives a reload and never reaches the
+//   next interview or the stored session.
 // Each browser-language case runs in its own fresh profile with
 // navigator.languages set before any page loads, so the deployment's own
 // negotiation decides — the walker asserts the outcome, never drives it.
-// Expected words are read from the app's and the interview's own catalogs,
-// so a retranslation never breaks the walk and a wrong language always does.
+// Expected words are read from the app's own catalogs and the interview's
+// English source, so a retranslation never breaks the walk and a wrong
+// language always does.
 //
 // The interview cases conduct the release-smoke fixture
 // (packages/protocols/e2e/release-smoke, declaring en-US and es); its archive
-// is built from the reviewable protocol.json at run time. Interactions are
+// is built from the reviewable protocol.json at run time. The regional
+// variant cases conduct the same protocol declaring Mexican Spanish too, with
+// no text of its own (as Architect leaves a variant whose base language was
+// also added), built the same way. Interactions are
 // lifted from apps/interviewer/e2e/specs/i18n.spec.ts. Change interactions
 // HERE — never let a release-test agent rebuild this from scratch.
 //
@@ -72,6 +84,8 @@ const FIXTURE = path.join(
 // in the tab's sessionStorage
 // (packages/interview/src/localization/localePreferenceStorage.ts).
 const CHOICE_KEY_PREFIX = 'network-canvas:interview-locale-preference:';
+// The regional variant the variant fixture declares beside Spanish.
+const VARIANT = 'es-MX';
 const APP_CHOICE_KEY = 'interviewer.locale';
 
 // The researcher-facing app. `label` is the language's own name, as the
@@ -118,6 +132,18 @@ const DASHBOARD_CASES = [
     locale: 'en-GB',
     label: 'English (UK)',
     rule: 'the closest English variant',
+  },
+  {
+    languages: ['es-MX', 'en'],
+    locale: 'es',
+    label: 'Español',
+    rule: 'an earlier regional fit beats a later exact match',
+  },
+  {
+    languages: ['ca'],
+    locale: 'es',
+    label: 'Español',
+    rule: 'a fit in another language is taken when nothing is closer (CLDR best fit, no rules of our own)',
   },
 ];
 const DASHBOARD_FALLBACK = {
@@ -179,20 +205,33 @@ function message(dir, locale, id) {
 }
 const appMessage = (locale, id) =>
   message('apps/interviewer/src/locales', locale, id);
-const interviewMessage = (locale, id) =>
-  message('packages/interview/src/locales', locale, id);
+// The interview ships only its English source: what it shows comes from the
+// protocol, and the accessible names of its icon controls are English.
+const interviewMessage = (id) =>
+  message('packages/interview/src/locales', 'en', id);
 
 // The archive is BUILT from the reviewable fixture at run time — a committed
 // binary could silently drift from the JSON reviewers inspect.
 let protocolPath;
+let variantPath;
 try {
   const JSZip = require('jszip');
-  const zip = new JSZip();
-  zip.file('protocol.json', fs.readFileSync(FIXTURE, 'utf8'));
-  protocolPath = path.join(artifactsDir, 'release-smoke.netcanvas');
-  fs.writeFileSync(
-    protocolPath,
-    await zip.generateAsync({ type: 'nodebuffer' }),
+  const archiveOf = async (protocol, file) => {
+    const zip = new JSZip();
+    zip.file('protocol.json', protocol);
+    const target = path.join(artifactsDir, file);
+    fs.writeFileSync(target, await zip.generateAsync({ type: 'nodebuffer' }));
+    return target;
+  };
+  const fixture = fs.readFileSync(FIXTURE, 'utf8');
+  protocolPath = await archiveOf(fixture, 'release-smoke.netcanvas');
+  // The same protocol declaring Mexican Spanish, with no Mexican Spanish text.
+  const variant = JSON.parse(fixture);
+  variant.name = `${variant.name} (Mexican Spanish)`;
+  variant.localization.locales.push(VARIANT);
+  variantPath = await archiveOf(
+    JSON.stringify(variant, null, 2),
+    'release-smoke-variant.netcanvas',
   );
   // Fail at setup, not mid-walk, if a catalog the walk reads has moved.
   for (const { locale } of [...DASHBOARD_CASES, DASHBOARD_FALLBACK]) {
@@ -200,7 +239,7 @@ try {
     appMessage(locale, 'interviewer.settingsDialog.language');
     appMessage(locale, 'interviewer.language.label');
   }
-  interviewMessage('es', 'interview.navigation.nextStep');
+  interviewMessage('interview.navigation.nextStep');
 } catch (err) {
   setupFailure(
     `setup failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -346,9 +385,9 @@ async function readDashboard(expected) {
   };
 }
 
-// Import the fixture and wait for the toast, in the app's language.
-async function importFixture(appLocale) {
-  await page.getByTestId('protocol-import-input').setInputFiles(protocolPath);
+// Import a fixture and wait for the toast, in the app's language.
+async function importFixture(appLocale, archive = protocolPath) {
+  await page.getByTestId('protocol-import-input').setInputFiles(archive);
   await expect(
     page
       .getByText(
@@ -431,7 +470,7 @@ function readSession(sessionId) {
       if (!listed) return { missingDatabase: dbName };
       const db = await new Promise((res, rej) => {
         const req = indexedDB.open(dbName);
-        req.onsuccess = () => res(req.result);
+        req.addEventListener('success', () => res(req.result));
         req.addEventListener('error', () => rej(req.error));
       });
       const row = await new Promise((res, rej) => {
@@ -439,7 +478,7 @@ function readSession(sessionId) {
           .transaction('sessions', 'readonly')
           .objectStore('sessions')
           .get(id);
-        rq.onsuccess = () => res(rq.result ?? null);
+        rq.addEventListener('success', () => res(rq.result ?? null));
         rq.addEventListener('error', () => rej(rq.error));
       });
       db.close();
@@ -453,27 +492,47 @@ function readSession(sessionId) {
   );
 }
 
-const nextStepName = (locale) =>
-  interviewMessage(locale, 'interview.navigation.nextStep');
+// The Next arrow's accessible name, English in every interview: a browser's
+// French or German never reaches the interview.
+const nextStepName = () => interviewMessage('interview.navigation.nextStep');
+
+// A language's own name as the deployed browser gives it, which is what the
+// language chooser lists it as.
+const ownName = (locale) =>
+  page.evaluate(
+    (tag) => new Intl.DisplayNames([tag], { type: 'language' }).of(tag),
+    locale,
+  );
 
 // One fresh profile per browser: import the fixture, start an interview and
-// read it on the language chooser before anyone chooses.
-async function interviewCase(step, languages, expected, appLocale) {
+// read it on the language chooser before anyone chooses. `expected.selected`
+// is the option's name, or the language whose own name it is.
+async function interviewCase(
+  step,
+  languages,
+  expected,
+  appLocale,
+  archive = protocolPath,
+) {
   const context = await openProfile(languages);
   await page.goto(url);
-  await importFixture(appLocale);
+  await importFixture(appLocale, archive);
   await startInterview(appLocale, `lang-${languages.join('-')}`);
   const seen = await readInterview();
+  const selected =
+    expected.selectedLocale === undefined
+      ? expected.selected
+      : await ownName(expected.selectedLocale);
   await shot(step);
   record(
     step,
     seen.lang === expected.lang &&
       seen.chooser === expected.chooser &&
       seen.selected.length === 1 &&
-      seen.selected[0] === expected.selected &&
-      seen.next === nextStepName(expected.builtIn) &&
+      seen.selected[0] === selected &&
+      seen.next === nextStepName() &&
       seen.app === appLocale,
-    `${JSON.stringify(languages)} → interview lang=${seen.lang} chooser=${JSON.stringify(seen.chooser)} selected=${JSON.stringify(seen.selected)} Next=${JSON.stringify(seen.next)} app lang=${seen.app} (expected interview ${expected.lang}, built-in text ${expected.builtIn}, app ${appLocale}: ${expected.rule})`,
+    `${JSON.stringify(languages)} → interview lang=${seen.lang} chooser=${JSON.stringify(seen.chooser)} selected=${JSON.stringify(seen.selected)} Next=${JSON.stringify(seen.next)} app lang=${seen.app} (expected interview ${expected.lang}, ${JSON.stringify(selected)} selected, Next named in English, app ${appLocale}: ${expected.rule})`,
   );
   await context.close();
 }
@@ -566,9 +625,9 @@ try {
       first.chooser === 'Elige un idioma' &&
       first.selected.length === 1 &&
       first.selected[0] === 'español' &&
-      first.next === nextStepName('es') &&
+      first.next === nextStepName() &&
       first.app === 'en',
-    `app chosen English, browser es-MX → interview lang=${first.lang} chooser=${JSON.stringify(first.chooser)} selected=${JSON.stringify(first.selected)} Next=${JSON.stringify(first.next)} app lang=${first.app} (expected Spanish throughout the interview, the app still English)`,
+    `app chosen English, browser es-MX → interview lang=${first.lang} chooser=${JSON.stringify(first.chooser)} selected=${JSON.stringify(first.selected)} Next=${JSON.stringify(first.next)} app lang=${first.app} (expected the interview in Spanish with its accessible names in English, the app still English)`,
   );
 
   await page
@@ -582,7 +641,7 @@ try {
   ).toBeVisible();
   await expect(page.getByTestId('next-button')).toHaveAttribute(
     'aria-label',
-    nextStepName('en'),
+    nextStepName(),
   );
   await page.getByTestId('next-button').click();
   await expect(stageStep()).toHaveAttribute('data-stage-step', '1', {
@@ -637,7 +696,7 @@ try {
     second.lang === 'es' &&
       second.selected.length === 1 &&
       second.selected[0] === 'español' &&
-      second.next === nextStepName('es'),
+      second.next === nextStepName(),
     `the next interview in the same tab opens on the browser's language again: lang=${second.lang} selected=${JSON.stringify(second.selected)} Next=${JSON.stringify(second.next)} (the first participant's English choice stays with that interview)`,
   );
 
@@ -666,8 +725,8 @@ try {
   );
   await context.close();
 
-  // Phase 3: an interview negotiates the protocol's translation and its own
-  // built-in text separately, each the best it has for this browser.
+  // Phase 3: an interview negotiates once, over the protocol's languages, and
+  // its own words follow: the browser's French or German never reaches it.
   await interviewCase(
     'interview-second-preference',
     ['fr-FR', 'es'],
@@ -675,20 +734,18 @@ try {
       lang: 'es',
       chooser: 'Elige un idioma',
       selected: 'español',
-      builtIn: 'fr',
-      rule: 'the protocol has no French, so its Spanish (the second preference) is used; the built-in text has French',
+      rule: 'the protocol has no French, so its Spanish (the second preference) is used, its own words included; no French appears',
     },
     'fr',
   );
   await interviewCase(
-    'interview-builtins-follow-browser',
+    'interview-builtins-follow-protocol',
     ['de-AT'],
     {
       lang: 'en-US',
       chooser: 'Choose a language',
       selected: 'American English',
-      builtIn: 'de',
-      rule: 'the protocol has no German, so its default English is used; the built-in text has German',
+      rule: 'the protocol has no German, so its default English is used, its own words included; no German appears',
     },
     'de',
   );
@@ -699,10 +756,37 @@ try {
       lang: 'en-US',
       chooser: 'Choose a language',
       selected: 'American English',
-      builtIn: 'en',
-      rule: 'nothing matches Japanese, so both fall back to English',
+      rule: 'nothing matches Japanese, so the interview falls back to the protocol’s default English',
     },
     'en',
+  );
+
+  // Phase 4: a protocol that declares a regional variant beside its base
+  // language. The variant is chosen exactly, and every text it has no
+  // translation for (here all of them) is shown in Spanish, never English.
+  await interviewCase(
+    'interview-regional-variant',
+    [VARIANT],
+    {
+      lang: VARIANT,
+      chooser: 'Elige un idioma',
+      selectedLocale: VARIANT,
+      rule: 'the protocol declares Mexican Spanish, so it is used; it has no text of its own, so its Spanish is shown in its place',
+    },
+    'es',
+    variantPath,
+  );
+  await interviewCase(
+    'interview-closest-variant',
+    ['es-AR'],
+    {
+      lang: VARIANT,
+      chooser: 'Elige un idioma',
+      selectedLocale: VARIANT,
+      rule: 'the protocol has no Argentinian Spanish; CLDR best fit takes its Mexican Spanish (both Latin American Spanish) over its Spanish',
+    },
+    'es',
+    variantPath,
   );
 
   record(

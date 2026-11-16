@@ -47,7 +47,6 @@ const meta = {
   title: 'Design System/Colors',
   parameters: {
     layout: 'padded',
-    a11y: { disable: true },
   },
   tags: ['autodocs'],
 } satisfies Meta;

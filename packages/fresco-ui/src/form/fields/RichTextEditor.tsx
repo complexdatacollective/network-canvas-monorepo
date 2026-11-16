@@ -65,6 +65,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
@@ -83,6 +84,7 @@ import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
 import { isRecord } from '../../utils/isRecord';
 import type { CreateFormFieldProps } from '../Field/types';
+import { textEntryDirection } from '../textEntryDirection';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
 import { documentInSchema, marksInSchema } from './richText/fitToSchema';
@@ -92,6 +94,7 @@ import {
   type RichTextInsertMenuItem,
 } from './richText/InsertMenu';
 import {
+  hasVersionRowBeside,
   NestedEditingContext,
   VERSIONS_NODE,
   VersionsNode,
@@ -528,11 +531,11 @@ const addAtom = (run: OneLineRun, atom: JSONContent) => {
   run.collected.push(atom);
 };
 
-/** A run of newlines, however the platform that wrote them spells one. */
-const LINE_BREAKS = /(?:\r\n|[\n\r])+/;
-
 /**
- * Adds a text node, treating the newlines INSIDE it as breaks like any other.
+ * Adds a text node, treating the line breaks INSIDE it as breaks like any
+ * other: newlines however a platform spells them, and Unicode's line and
+ * paragraph separators, which the schema refuses in one-line text just the
+ * same (`linesOf`, the one definition of a line break).
  *
  * A line break can live inside the text itself, where no schema was ever going
  * to refuse it: markdown's own soft break parses to one text node with the
@@ -545,7 +548,7 @@ const addTextLines = (
   text: string,
   marks: JSONContent['marks'],
 ) => {
-  for (const [index, line] of text.split(LINE_BREAKS).entries()) {
+  for (const [index, line] of linesOf(text).entries()) {
     if (index > 0) {
       run.breakPending = true;
     }
@@ -680,7 +683,7 @@ export type {
   RichTextVersion,
   RichTextVersionsAttributes,
 } from './richText/versionsNode';
-export { VERSIONS_NODE };
+export { hasVersionRowBeside, VERSIONS_NODE };
 
 const swallowKeystroke = () => true;
 
@@ -1017,8 +1020,12 @@ function createCustomExtensions({
   return extensions;
 }
 
+// The text is a contenteditable element rather than an input, which the
+// shared ring (`interactiveStateVariants`) looks for, so the field's own text
+// is named here. Only its own: the editors of its versions draw a ring of
+// their own, and the toolbar's buttons have theirs.
 const editorContainerOwnVariants = cva({
-  base: 'flex h-auto w-full min-w-0 flex-col',
+  base: 'has-[>div>.tiptap:focus-visible]:focus-styles flex h-auto w-full min-w-0 flex-col outline-(--focus-color,currentColor)',
 });
 
 const editorContainerVariants = cva({
@@ -1084,31 +1091,36 @@ const selectInsertedVersions = (
 
 const editorContentVariants = cva({
   base: cx(
-    'order-2 flex-1',
+    // Named for the rows of versions inside it, which stack when it is narrow.
+    // Not the field itself: a container is a containing block for fixed
+    // elements, and the field holds the insert menu's caret anchor.
+    '@container/rich-text order-2 flex-1',
     'outline-none',
     '[&_.tiptap]:outline-none',
     // Placeholder styles
     '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
-    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-start',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
   ),
   variants: {
-    compact: {
-      // The text area is at least as tall as the toolbar above it, so the
-      // editor reads as two equal rows. The toolbar is a 40px icon button
+    singleLine: {
+      // A field Enter cannot add a line to opens one line tall, not as a box
+      // for paragraphs: the text area is as tall as the toolbar above it, so
+      // the editor reads as two equal rows. The toolbar is a 40px icon button
       // (`h-10`) between 8px of padding (`py-2`) on each side, and a 1px
       // bottom border; the variable states those same terms. The single line
       // sits in the middle of the row, and the whole row is the `.tiptap`
       // element, so a click anywhere in it focuses the editor. Text that
-      // wraps still grows the row.
+      // wraps grows the row, and the row's padding keeps the wrapped lines
+      // off the toolbar's border and the field's edge.
       true: cx(
         'w-full px-6',
         '[--editable-min-h:calc(var(--spacing)*10+var(--spacing)*2*2+1px)]',
         'min-h-(--editable-min-h)',
-        '[&>.tiptap]:grid [&>.tiptap]:min-h-(--editable-min-h) [&>.tiptap]:content-center',
+        '[&>.tiptap]:grid [&>.tiptap]:min-h-(--editable-min-h) [&>.tiptap]:grid-cols-1 [&>.tiptap]:content-center [&>.tiptap]:py-3.5',
       ),
       false: cx(multilineContentVariants(), '[&>.tiptap]:min-h-[120px]'),
     },
@@ -1144,6 +1156,14 @@ type EditorSelectionRange = {
   to: number;
 };
 
+/**
+ * The editor's blocks, each laid out by its own first letter. The utility
+ * goes on every block, not on the editor: `unicode-bidi` is not inherited,
+ * so a paragraph inside an element that has it still takes the interface's
+ * direction.
+ */
+const OWN_DIRECTION_BLOCKS = '[&_:is(p,h1,h2,h3,h4,h5,h6)]:text-own-direction';
+
 type RichTextEditorFieldProps = CreateFormFieldProps<
   JSONContent,
   'div',
@@ -1157,16 +1177,13 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * and Shift-Enter do nothing, and pasted lines arrive joined by spaces.
      * The block controls go with it — a heading, a list or a rule cannot be
      * made in this schema, so the toolbar does not offer one.
+     *
+     * The height follows: the text area opens one line tall, as tall as the
+     * toolbar above it, and grows as the text wraps, rather than opening as
+     * the 120px box a multi-line editor does. A tall box would say the field
+     * takes paragraphs, which it does not.
      */
     'singleLine'?: boolean;
-    /**
-     * For a field that holds a short label, not a prompt or a passage: the
-     * text area is one line tall, as tall as the toolbar above it, rather than
-     * the 120px box a multi-line editor opens at. Implies `singleLine`, since
-     * a compact multi-line editor makes no sense. `singleLine` alone changes
-     * only the value, never the height.
-     */
-    'compact'?: boolean;
     /**
      * Placeholders the text can hold, such as a person's name filled in
      * later. Each shows as a chip in the text, and the toolbar offers a
@@ -1181,11 +1198,19 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * the insert menu.
      */
     'versions'?: boolean;
+    /**
+     * Shows the versions permanently open, one labelled row each, when the
+     * whole text is one set of versions and nothing else: a message that is
+     * a plural or a choice and no more. A pill that opens would hide every
+     * word of such a field at rest. Versions inside a sentence, or inside
+     * another version, still fold to a pill. Needs `versions`.
+     */
+    'openWholeMessageVersions'?: boolean;
     /** A searchable menu of things to insert at the caret. */
     'insertMenu'?: RichTextInsertMenu;
     'id': string;
     'name': string;
-    'aria-describedby': string;
+    'aria-describedby'?: string;
   }
 >;
 
@@ -1235,17 +1260,16 @@ export default function RichTextEditorField({
   changeMode = 'blur',
   autoFocus = false,
   placeholder,
-  singleLine: singleLineProp = false,
-  compact = false,
+  singleLine = false,
   tokens: tokensProp,
   versions = false,
+  openWholeMessageVersions = false,
   insertMenu,
   className,
   onFocus,
   onBlur,
   ...props
 }: RichTextEditorFieldProps) {
-  const singleLine = singleLineProp || compact;
   const intl = useAppIntl();
   const onChangeRef = useRef(onChange);
   // Where the insert menu was opened by typing its trigger: the editor, and
@@ -1346,6 +1370,7 @@ export default function RichTextEditorField({
   const ariaLabel = props['aria-label'];
   const ariaLabelledBy = props['aria-labelledby'];
   const ariaRequired = props['aria-required'];
+  const knownDirection = props.dir;
 
   // Read by the editor's handlers when they run.
   useLayoutEffect(() => {
@@ -1404,8 +1429,19 @@ export default function RichTextEditorField({
       attributes['data-placeholder'] = placeholder;
     }
 
+    // A caller that knows the text's language gives its direction. Otherwise
+    // each paragraph and heading reads in the direction of its own first
+    // letter, as a text box's lines do (`textEntryDirection`).
+    const direction = textEntryDirection({ dir: knownDirection });
+    if (direction.dir !== undefined) {
+      attributes.dir = direction.dir;
+    } else if (direction.className !== undefined) {
+      attributes.class = OWN_DIRECTION_BLOCKS;
+    }
+
     return attributes;
   }, [
+    knownDirection,
     ariaDescribedBy,
     ariaInvalid,
     ariaLabel,
@@ -1519,8 +1555,16 @@ export default function RichTextEditorField({
       editable: !disabled && !readOnly,
       onFocusEditor: setVersionEditor,
       active: isActive,
+      openWholeMessage: openWholeMessageVersions,
     }),
-    [versionExtensions, disabled, readOnly, setVersionEditor, isActive],
+    [
+      versionExtensions,
+      disabled,
+      readOnly,
+      setVersionEditor,
+      isActive,
+      openWholeMessageVersions,
+    ],
   );
   // The schema these extensions make, worked out before there is an editor to
   // ask. A value has to be flattened against the marks the field will actually
@@ -1965,7 +2009,7 @@ export default function RichTextEditorField({
       <NestedEditingContext.Provider value={nestedEditing}>
         <EditorContent
           editor={editor}
-          className={editorContentVariants({ compact })}
+          className={editorContentVariants({ singleLine })}
         />
       </NestedEditingContext.Provider>
       {triggered !== null && (
@@ -2068,7 +2112,15 @@ export default function RichTextEditorField({
                     <Link />
                   </ToolbarButton>
                 </PopoverTrigger>
-                <PopoverContent align="start" side="bottom" className="w-80">
+                <PopoverContent
+                  align="start"
+                  side="bottom"
+                  className="w-80"
+                  // Named as its toolbar button is: "Add link" or "Edit link".
+                  aria-label={intl.formatMessage(messages.linkButton, {
+                    hasLink: String(editorState.isLink),
+                  })}
+                >
                   <form
                     className="flex flex-col gap-3"
                     onSubmit={(event) => {
@@ -2361,6 +2413,9 @@ export default function RichTextEditorField({
                     <PopoverContent
                       align="start"
                       side="bottom"
+                      aria-label={insertMenu.label}
+                      // A list of options, padded as menus and comboboxes are.
+                      spacing="xs"
                       anchor={triggered === null ? undefined : caretAnchorRef}
                       // Closed by a pick, the menu hands the caret to the text
                       // the item went into; opened by typing, back to the

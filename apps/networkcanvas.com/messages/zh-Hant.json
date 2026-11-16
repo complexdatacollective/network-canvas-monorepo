@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "使用 Network Canvas 的研究計畫",
-    "introduction": "我們很自豪地說，Network Canvas 正積極應用於多項美國聯邦政府補助的研究計畫，橫跨多元的研究情境、機構與資助單位。",
-    "previous": "上一個計畫",
-    "next": "下一個計畫",
-    "show": "顯示第 {number} 個計畫"
+    "introduction": "我們很自豪地說，Network Canvas 正積極應用於多項美國聯邦政府補助的研究計畫，橫跨多元的研究情境、機構與資助單位。"
   },
   "Publications": {
     "heading": "使用 Network Canvas 的近期著作",
-    "carouselLabel": "近期著作輪播",
-    "introduction": "以下是最近 16 篇使用 Network Canvas 的著作。您也可以瀏覽<all>完整的著作清單</all>。",
-    "submission": "如果您希望在此展示您的著作，請在我們社群論壇的<thread>討論串</thread>中留言告訴我們。",
-    "thread": "討論串"
+    "introduction": "Network Canvas 支持了不同學科的研究，這些研究的作者之間正在形成一個網絡。此處展示最近的 <strong>{count}</strong> 篇著作。每當我們發現使用此軟體的新著作，此清單都會自動更新。",
+    "viewAll": "查看全部 {count, plural, other {# 篇著作}}，共 {authors, plural, other {# 位作者}}",
+    "legendPublication": "著作",
+    "legendAuthor": "作者",
+    "relatedLabel": "與此著作有共同作者的其他著作"
   },
   "PublicationsPage": {
     "metadata": {
@@ -336,7 +334,7 @@
       "bestFor": "最適合",
       "downloadVersion": "下載 {version} 版",
       "platformAccessibleName": "{app}（{platform}）",
-      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援架構 7 協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用架構 9，並包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始的架構 7 檔案。",
+      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援使用舊版架構的協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用最新架構，其中包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始檔案的副本。",
       "schemaVersionLink": "瞭解架構版本"
     },
     "platforms": {
@@ -389,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · 維護模式",
-        "description": "僅在您的研究必須與 Interviewer Classic 及架構 7 保持相容時使用。",
+        "description": "僅在您的研究必須與 Interviewer Classic 及其舊版架構保持相容時使用。",
         "bestFor": {
           "classicCompatibility": "必須與 Interviewer Classic 保持相容的既有研究",
-          "editWithoutMigration": "必須在不移轉的情況下繼續編輯的架構 7 協定"
+          "editWithoutMigration": "使用舊版架構、須繼續編輯但不移轉至最新架構的協定"
         }
       },
       "interviewerClassic": {
         "status": "Classic · 既有研究",
-        "description": "適用於既有的架構 7 研究，以及離線的桌上型電腦或平板電腦工作流程。持續維護以確保相容性並修正錯誤。",
+        "description": "適用於使用舊版架構的既有研究，以及離線的桌上型電腦或平板電腦工作流程。持續維護以確保相容性並修正錯誤。",
         "bestFor": {
-          "schema7Study": "仰賴架構 7 的既有研究",
+          "schema7Study": "仰賴舊版架構的既有研究",
           "desktopTablet": "延續既有的桌上型電腦或平板電腦工作流程",
           "offlineCollection": "需要舊版離線蒐集工作流程的研究"
         }

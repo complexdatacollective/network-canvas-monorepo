@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 
 /**
  * Reading a row the way a stage editor has to read one: tolerantly.
@@ -60,13 +60,17 @@ export const asNestedIdList = (
 export function useStableIdList(
   value: readonly string[] | undefined,
 ): string[] | undefined {
-  const held = useRef<string[] | undefined>(undefined);
-  const current = held.current;
+  const [held, setHeld] = useState<string[] | undefined>(undefined);
   const unchanged =
     value !== undefined &&
-    current !== undefined &&
-    current.length === value.length &&
-    current.every((entry, index) => entry === value[index]);
-  if (!unchanged) held.current = value === undefined ? undefined : [...value];
-  return held.current;
+    held !== undefined &&
+    held.length === value.length &&
+    held.every((entry, index) => entry === value[index]);
+  if (unchanged) return held;
+  // Stored during render, which React allows for state the component owns:
+  // it discards this pass and renders again at once with the new array held,
+  // so no render ever returns an array that is not the held one.
+  const next = value === undefined ? undefined : [...value];
+  if (next !== held) setHeld(next);
+  return next;
 }

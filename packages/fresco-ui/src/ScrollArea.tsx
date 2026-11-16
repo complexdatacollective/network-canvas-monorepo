@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -129,6 +130,28 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
       [enclosingAxes, scrollAxes],
     );
 
+    // Which axes scroll right now, read straight from the viewport. This is
+    // the measurement the tab stop is derived from, so it is taken
+    // SYNCHRONOUSLY (on mount, after layout and whenever the content or the
+    // viewport changes) rather than in the animation frame the fade variables
+    // wait for. A region that waited for the frame was a scrollable region with
+    // no keyboard access until it ran — for a frame in the browser, and for
+    // however long a frame took to arrive in anything that checked sooner (a
+    // background tab, an accessibility audit straight after render).
+    const measureScrollAxes = useCallback(() => {
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+      // A horizontal region clips its vertical overflow (`overflow-y: hidden`)
+      // rather than scrolling it.
+      const x = viewport.scrollWidth > viewport.clientWidth;
+      const y =
+        viewport.scrollHeight > viewport.clientHeight &&
+        orientation !== 'horizontal';
+      setScrollAxes((previous) =>
+        previous.x === x && previous.y === y ? previous : { x, y },
+      );
+    }, [orientation]);
+
     const updateScrollVariables = useCallback(() => {
       const viewport = viewportRef.current;
       if (!viewport) return;
@@ -144,13 +167,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
         // Verify viewport still exists after async callbacks
         if (!viewportRef.current) return;
 
-        const {
-          scrollTop,
-          scrollHeight,
-          clientHeight,
-          scrollWidth,
-          clientWidth,
-        } = viewportRef.current;
+        const { scrollTop, scrollHeight, clientHeight } = viewportRef.current;
 
         const styles = getComputedStyle(viewportRef.current);
         const padTop = Number.parseFloat(styles.paddingBlockStart);
@@ -183,20 +200,10 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
           `${scrollbarWidth}px`,
         );
 
-        // Horizontal overflow
-        const hasHorizontalOverflow = scrollWidth > clientWidth;
-
-        // Drives the tab stop and what touch gestures inside the region are
-        // left to the browser. Set from the same measurement that drives the
-        // fades, but deliberately OUTSIDE the `fade` gate below — a region with
-        // `fade={false}` still scrolls, and would otherwise never be reachable
-        // by keyboard. A horizontal region clips its vertical overflow
-        // (`overflow-y: hidden`) rather than scrolling it.
-        const x = hasHorizontalOverflow;
-        const y = hasVerticalOverflow && orientation !== 'horizontal';
-        setScrollAxes((previous) =>
-          previous.x === x && previous.y === y ? previous : { x, y },
-        );
+        // The tab stop and the touch gestures left to the browser are driven by
+        // `measureScrollAxes`, not by this frame: it also runs outside the
+        // `fade` gate, because a region with `fade={false}` still scrolls and
+        // must be reachable by keyboard.
         setHorizontalOverflowVariables(
           viewportRef.current,
           measureHorizontalOverflow(viewportRef.current, {
@@ -211,7 +218,21 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
           `${scrollbarHeight}px`,
         );
       });
-    }, [orientation]);
+    }, []);
+
+    // Re-measure everything but a scroll position: the axes (so the tab stop
+    // follows the content) and the fade variables. A scroll changes only the
+    // fade, so it skips the axes.
+    const refresh = useCallback(() => {
+      measureScrollAxes();
+      updateScrollVariables();
+    }, [measureScrollAxes, updateScrollVariables]);
+
+    // Take the first axes measurement before the browser paints, so a region
+    // that overflows on arrival is never rendered as an unreachable one.
+    useLayoutEffect(() => {
+      measureScrollAxes();
+    }, [measureScrollAxes]);
 
     // Runs whether or not `fade` is on: it is the only source of the overflow
     // measurement that decides the tab stop, and `fade={false}` regions
@@ -221,7 +242,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
       if (!viewport) return undefined;
 
       // Initial update
-      updateScrollVariables();
+      refresh();
 
       // Update on scroll
       viewport.addEventListener('scroll', updateScrollVariables, {
@@ -229,7 +250,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
       });
 
       // Update on resize (content or viewport size changes)
-      const resizeObserver = new ResizeObserver(updateScrollVariables);
+      const resizeObserver = new ResizeObserver(refresh);
       resizeObserver.observe(viewport);
 
       // …and on the CONTENT's own boxes, not just the viewport's. Content can
@@ -270,7 +291,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
       // derived from, so it has to be watched directly.
       const mutationObserver = new MutationObserver(() => {
         syncChildObservers();
-        updateScrollVariables();
+        refresh();
       });
       mutationObserver.observe(viewport, {
         childList: true,
@@ -287,10 +308,10 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
           cancelAnimationFrame(rafIdRef.current);
         }
       };
-    }, [updateScrollVariables]);
+    }, [refresh, updateScrollVariables]);
 
     useEffect(() => {
-      updateScrollVariables();
+      refresh();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [remeasureKey]);
 

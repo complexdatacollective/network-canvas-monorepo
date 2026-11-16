@@ -36,68 +36,69 @@ const messages = defineMessages({
     id: 'fresco.actions.interviews.copyFailedToDeleteInterviews',
     defaultMessage: 'Failed to delete interviews',
     description:
-      'Researcher-facing actions / interviews: Failed to delete interviews',
+      'Error returned when deleting the selected interviews from the database fails. The delete confirmation dialog on the Interviews page does not currently display it.',
   },
   copyFailedToCommitExport: {
     id: 'fresco.actions.interviews.copyFailedToCommitExport',
     defaultMessage: 'Failed to commit export',
     description:
-      'Researcher-facing actions / interviews: Failed to commit export',
+      'Error returned when marking interviews as exported fails after their data export has been downloaded. The researcher is not shown this wording; it is only the internal error text.',
   },
   copyFailedToResolveInterviews: {
     id: 'fresco.actions.interviews.copyFailedToResolveInterviews',
     defaultMessage: 'Failed to resolve interviews',
     description:
-      'Researcher-facing actions / interviews: Failed to resolve interviews',
+      'Error shown in a toast on the Interviews page when the list of interviews matching the current filter, or the details of the selected interviews, could not be loaded before an export, selection or deletion.',
   },
   copyFailedToLoadIncompleteInterviews: {
     id: 'fresco.actions.interviews.copyFailedToLoadIncompleteInterviews',
     defaultMessage: 'Failed to load incomplete interviews',
     description:
-      'Researcher-facing actions / interviews: Failed to load incomplete interviews',
+      'Error shown in a toast when the unfinished interviews of a protocol could not be loaded while generating their interview links for export.',
   },
   copyProtocolNotFound: {
     id: 'fresco.actions.interviews.copyProtocolNotFound',
     defaultMessage: 'Protocol not found',
-    description: 'Researcher-facing actions / interviews: Protocol not found',
+    description:
+      'Error returned when an interview cannot be started because the protocol no longer exists. Triggered by a participant opening an interview link; used internally, the participant sees a separate invalid-link page.',
   },
   copyProtocolIsStoredUnderASchemaVersion: {
     id: 'fresco.actions.interviews.copyProtocolIsStoredUnderASchemaVersion',
     defaultMessage:
       'Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.',
     description:
-      'Researcher-facing actions / interviews: Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.',
+      'Error returned when an interview cannot be started because the stored protocol uses a schema version this installation cannot run. Architect is the protocol design app. Recorded internally; the participant sees a generic error page.',
   },
   copyProtocolCouldNotBeRead: {
     id: 'fresco.actions.interviews.copyProtocolCouldNotBeRead',
     defaultMessage:
       'This protocol could not be read, so interviews cannot be started with it.',
     description:
-      "Researcher-facing actions / interviews: the protocol's stored stages, codebook or experiments do not parse, so no interview was created.",
+      'Error returned when an interview cannot be started because the stored protocol (its stages, codebook or experiments) is damaged and cannot be read. Recorded internally; the participant sees a generic error page.',
   },
   copyInvalidParticipantIdentifier: {
     id: 'fresco.actions.interviews.copyInvalidParticipantIdentifier',
     defaultMessage: 'Invalid participant identifier',
     description:
-      'Researcher-facing actions / interviews: Invalid participant identifier',
+      'Error returned when an interview cannot be started because the participant identifier in the interview link is not valid (for example too long or only whitespace). Recorded internally; the participant sees a generic error page.',
   },
   copyAnonymousRecruitmentIsNotEnabled: {
     id: 'fresco.actions.interviews.copyAnonymousRecruitmentIsNotEnabled',
     defaultMessage: 'Anonymous recruitment is not enabled',
     description:
-      'Researcher-facing actions / interviews: Anonymous recruitment is not enabled',
+      'Error returned when an interview link carries no participant identifier but the installation does not allow anonymous recruitment. Recorded internally; the participant sees a separate page explaining this.',
   },
   copyAnonymousParticipant: {
     id: 'fresco.actions.interviews.copyAnonymousParticipant',
     defaultMessage: 'Anonymous Participant',
     description:
-      'Researcher-facing actions / interviews: Anonymous Participant',
+      'Label stored on the participant record created automatically when someone starts an interview without a participant identifier. The researcher sees it in the participants list and interview table.',
   },
   copyFailedToCreateInterview: {
     id: 'fresco.actions.interviews.copyFailedToCreateInterview',
     defaultMessage: 'Failed to create interview',
     description:
-      'Researcher-facing actions / interviews: Failed to create interview',
+      'Error returned when an interview could not be created because of an unexpected failure. Recorded internally; the participant who opened the link sees a generic error page.',
   },
 });
 

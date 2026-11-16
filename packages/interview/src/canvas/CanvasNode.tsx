@@ -136,7 +136,7 @@ export default function CanvasNode({
       size="sm"
       onClick={onSelect ? handleClick : undefined}
       // Declaring drag handlers makes Node the drag's gesture owner — cursor,
-      // pointer capture, aria-grabbed, and never-also-a-tap all follow.
+      // pointer capture, data-node-dragging, and never-also-a-tap all follow.
       {...(canReposition ? dragHandlers : null)}
       // The keyboard handler is the node's claim to a tab stop, so it is only
       // passed while its actions (nudging, Delete) can actually run.

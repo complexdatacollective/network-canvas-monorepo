@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
+import { useLatest } from '../state/useLatest.ts';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
 import {
   forgetStageNameOwnership,
+  generatedProposal,
+  releaseSupersededProposal,
   stageNameOwnership,
   useLiveStageLabel,
   useProposedStageLabel,
@@ -37,17 +40,15 @@ export type AutoStageName = Readonly<{
 export function useAutoStageName(): AutoStageName {
   const { storeApi, creation, readOnly } = useStageEditorForm();
   const isNewStage = creation !== undefined;
-  const languagesKnown = useProtocolLocalization() !== undefined;
+  const defaultLocale = useProtocolLocalization()?.defaultLocale;
   const liveLabel = useLiveStageLabel();
   const proposal = useProposedStageLabel();
   const write = useStageNameWriter();
 
   // The stable blur handler reads the latest values, not the ones it closed
   // over.
-  const liveLabelRef = useRef(liveLabel);
-  liveLabelRef.current = liveLabel;
-  const proposalRef = useRef(proposal);
-  proposalRef.current = proposal;
+  const latestLiveLabel = useLatest(liveLabel);
+  const latestProposal = useLatest(proposal);
 
   // StrictMode tears the editor down and mounts it again at once, and the form
   // empties its values in between. A record kept across that would read the
@@ -60,14 +61,23 @@ export function useAutoStageName(): AutoStageName {
     // waiting on its acquire would meet a banner about a name nobody typed.
     // The effect re-runs when the acquire settles. Likewise before the
     // protocol's languages are known: there is no default language to name
-    // the stage in yet.
-    if (readOnly || !languagesKnown) return;
+    // the stage in yet. And when there is no proposal because Network Canvas
+    // supplies no wording in the default language: nothing is written, and the
+    // name is the researcher's to enter.
+    if (readOnly || defaultLocale === undefined) return;
+    // A proposal made in a language that is no longer the default is taken
+    // back first, whether or not there is a new one to make: the name then
+    // reads as empty and is proposed afresh (or left to the researcher) below.
+    if (isNewStage && releaseSupersededProposal(storeApi, defaultLocale)) {
+      return;
+    }
+    if (proposal === undefined) return;
     const ownership = stageNameOwnership(storeApi);
     const update = computeAutoNameUpdate({
       isNewStage,
       isCustom: ownership.isCustom,
       liveLabel,
-      lastGenerated: ownership.lastGenerated,
+      lastGenerated: generatedProposal(ownership, defaultLocale),
       generatedLabel: proposal,
     });
     ownership.isCustom = update.nextIsCustom;
@@ -75,8 +85,8 @@ export function useAutoStageName(): AutoStageName {
       write(update.label, 'proposed');
     }
   }, [
+    defaultLocale,
     isNewStage,
-    languagesKnown,
     liveLabel,
     proposal,
     readOnly,
@@ -86,10 +96,11 @@ export function useAutoStageName(): AutoStageName {
 
   const onBlur = useCallback(() => {
     if (!isNewStage || readOnly) return;
-    if (liveLabelRef.current.trim() === '' && proposalRef.current) {
-      write(proposalRef.current, 'proposed');
+    const proposed = latestProposal();
+    if (latestLiveLabel().trim() === '' && proposed !== undefined) {
+      write(proposed, 'proposed');
     }
-  }, [isNewStage, readOnly, write]);
+  }, [isNewStage, latestLiveLabel, latestProposal, readOnly, write]);
 
   return { onBlur };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -23,6 +23,7 @@ import {
   useProtocolContext,
   useProtocolSections,
 } from '../../state/protocolContext.ts';
+import { useLatest } from '../../state/useLatest.ts';
 
 export type CreateVariableEditorOptions = Readonly<{
   /** The type the attribute is created on. `null` while none is chosen. */
@@ -177,21 +178,6 @@ export function useCreateVariableEditor({
    * set during the dialog's render does not re-render the editor beside it.
    */
   const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
-  /**
-   * Whether the open editor may be written, readable when an ANSWER lands
-   * rather than as it stood when the request left.
-   *
-   * The editor's submit handler awaits the host and then calls the
-   * `onComplete` it captured before the await, so the completion below is a
-   * closure from an earlier render. Read from that closure, `editorReadOnly`
-   * says what was true when the researcher pressed Create — and a slot
-   * repointed at another type in the meantime, by this researcher or by a
-   * collaborator, would be bound to an attribute of the type the editor opened
-   * against: a cross-type reference nothing on screen explains and the stage
-   * save then refuses.
-   */
-  const writable = useRef(false);
-
   const authoritativeDocument =
     subject === null
       ? undefined
@@ -209,43 +195,7 @@ export function useCreateVariableEditor({
     readOnly || subject === null || authoritativeDocument === undefined
       ? undefined
       : { subject, openedDocument: authoritativeDocument };
-  const launchableRef = useRef(launchable);
-  launchableRef.current = launchable;
-
-  const createOption = useCallback(
-    (variableName: string) =>
-      new Promise<CreateOptionOutcome>((resolve) => {
-        const target = launchableRef.current;
-        // Nothing to add an attribute to, or nothing this researcher may
-        // write: no editor opens and nothing was created, so the name they
-        // typed is still theirs. The control that asked says why — it is the
-        // one that knows what is missing.
-        if (target === undefined) {
-          resolve({ status: 'refused' });
-          return;
-        }
-        openSession({
-          key: uuid(),
-          variableId: uuid(),
-          name: variableName,
-          settle: resolve,
-          ...target,
-        });
-      }),
-    [],
-  );
-
-  /*
-    An editor ALREADY OPEN is a different question, and the answer is that it
-    stays. The draft inside it — the name the researcher is typing, the values
-    they are entering — exists nowhere else, and unmounting it to say the stage
-    is read-only would throw that away to report something the editor says for
-    itself with its own save refused. The same rule the row dialog around
-    `AttributeCodebookControls` follows when the same thing happens.
-  */
-  if (launchable === undefined && session === null) {
-    return { launchable: false, createOption, editor: null };
-  }
+  const launchableNow = useLatest(launchable);
 
   // The section the OPEN editor is reading, resolved live so a collaborator's
   // changes to it still reach the editor, and falling back to the copy taken
@@ -271,7 +221,55 @@ export function useCreateVariableEditor({
     session === null ||
     sectionIdForCodebookSubject(subject) !==
       sectionIdForCodebookSubject(session.subject);
-  writable.current = !editorReadOnly;
+  /**
+   * Whether the open editor may be written, readable when an ANSWER lands
+   * rather than as it stood when the request left.
+   *
+   * The editor's submit handler awaits the host and then calls the
+   * `onComplete` it captured before the await, so the completion below is a
+   * closure from an earlier render. Read from that closure, `editorReadOnly`
+   * says what was true when the researcher pressed Create — and a slot
+   * repointed at another type in the meantime, by this researcher or by a
+   * collaborator, would be bound to an attribute of the type the editor opened
+   * against: a cross-type reference nothing on screen explains and the stage
+   * save then refuses.
+   */
+  const writable = useLatest(!editorReadOnly);
+
+  const createOption = useCallback(
+    (variableName: string) =>
+      new Promise<CreateOptionOutcome>((resolve) => {
+        const target = launchableNow();
+        // Nothing to add an attribute to, or nothing this researcher may
+        // write: no editor opens and nothing was created, so the name they
+        // typed is still theirs. The control that asked says why — it is the
+        // one that knows what is missing.
+        if (target === undefined) {
+          resolve({ status: 'refused' });
+          return;
+        }
+        openSession({
+          key: uuid(),
+          variableId: uuid(),
+          name: variableName,
+          settle: resolve,
+          ...target,
+        });
+      }),
+    [launchableNow, openSession],
+  );
+
+  /*
+    An editor ALREADY OPEN is a different question, and the answer is that it
+    stays. The draft inside it — the name the researcher is typing, the values
+    they are entering — exists nowhere else, and unmounting it to say the stage
+    is read-only would throw that away to report something the editor says for
+    itself with its own save refused. The same rule the row dialog around
+    `AttributeCodebookControls` follows when the same thing happens.
+  */
+  if (launchable === undefined && session === null) {
+    return { launchable: false, createOption, editor: null };
+  }
 
   /**
    * The codebook write the editor asks for, with the dialog held shut while it
@@ -383,7 +381,7 @@ export function useCreateVariableEditor({
             // `editorReadOnly`: the editor calls the callback it captured
             // before it awaited the host, so a closure read would answer for
             // the render that started the request. See `writable`.
-            if (writable.current) {
+            if (writable()) {
               onCreated(variableId, optionRowChoices);
               session.settle({ status: 'created' });
             } else {

@@ -1,5 +1,5 @@
 import {
-  matchLocalePreference,
+  matchLocalePreferences,
   normalizeLocalePreferences,
 } from './localePreferences.ts';
 import {
@@ -39,18 +39,16 @@ type Step = Readonly<{
   preferences: readonly LocaleTag[];
 }>;
 
-/** The first translation a step's preferences reach, matched one at a time. */
+/** The translation the first step whose preferences fit one reaches. */
 const findInSteps = (
   available: readonly Translation[],
   steps: readonly Step[],
 ): Resolved | undefined => {
   const tags = available.map(({ locale }) => locale);
   for (const { matchedBy, preferences } of steps) {
-    for (const preference of preferences) {
-      const matched = matchLocalePreference(preference, tags);
-      const translation = available.find(({ locale }) => locale === matched);
-      if (translation !== undefined) return { ...translation, matchedBy };
-    }
+    const matched = matchLocalePreferences(preferences, tags);
+    const translation = available.find(({ locale }) => locale === matched);
+    if (translation !== undefined) return { ...translation, matchedBy };
   }
   return undefined;
 };
@@ -63,9 +61,9 @@ const findInSteps = (
  * language, by tag, that has it.
  *
  * Each step takes the language itself or else its closest related language
- * that has the text. Preferences are matched one at a time, so a later exact
- * match never beats an earlier related one; malformed ones are skipped. The
- * order the protocol declares its languages in plays no part.
+ * that has the text, best fit over the step's preferences (see
+ * `matchLocalePreferences`); malformed ones are skipped. The order the
+ * protocol declares its languages in plays no part.
  */
 export function resolveLocalizedString(
   value: LocaleKeyedText,

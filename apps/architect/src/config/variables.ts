@@ -18,55 +18,55 @@ const configMessages = defineMessages({
     id: 'architect.config.variables.config.number',
     defaultMessage: 'Number',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the number attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   text: {
     id: 'architect.config.variables.config.text',
     defaultMessage: 'Text',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the text attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   boolean: {
     id: 'architect.config.variables.config.boolean',
     defaultMessage: 'Boolean',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the boolean attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   ordinal: {
     id: 'architect.config.variables.config.ordinal',
     defaultMessage: 'Ordinal',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the ordinal attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   categorical: {
     id: 'architect.config.variables.config.categorical',
     defaultMessage: 'Categorical',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the categorical attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   scalar: {
     id: 'architect.config.variables.config.scalar',
     defaultMessage: 'Scalar',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the scalar attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   date: {
     id: 'architect.config.variables.config.date',
     defaultMessage: 'Date',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the date attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   layout: {
     id: 'architect.config.variables.config.layout',
     defaultMessage: 'Layout',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the layout attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   location: {
     id: 'architect.config.variables.config.location',
     defaultMessage: 'Location',
     description:
-      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+      'Name of the location attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
 });
 

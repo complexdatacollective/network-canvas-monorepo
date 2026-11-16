@@ -1,0 +1,117 @@
+---
+title: Ressources
+navOrder: 12
+translatedFrom: 2c6c39cfc45d44315c3338e282c10cf406d037f7
+---
+
+<Definition>
+  Les ressources sont des fichiers externes et des identifiants d’accès, comme
+  de l’audio, des images, des vidéos, des données de réseau servant de liste (une liste prédéfinie, importée comme fichier de données,
+  dans laquelle la personne participante choisit), ou des clés d’API, que vous pouvez utiliser dans votre protocole d’entretien.
+</Definition>
+
+## Détails {#details}
+
+Dans Architect, les ressources sont tous les fichiers externes que vous utilisez dans votre entretien. Il peut s’agir de fichiers multimédias, comme de l’audio, des images ou des vidéos. Il peut aussi s’agir de fichiers de données de réseau que vous pouvez utiliser comme liste, ou de clés d’API qui permettent à une interface de communiquer avec un service tiers. Une utilisation réfléchie des ressources peut améliorer l’expérience d’entretien des personnes participantes ou rendre possibles différents types de déroulement d’entretien.
+
+Une fois que vous avez ajouté des ressources à votre protocole, elles sont stockées dans le protocole lui-même : vous devez donc les mettre à jour ou les supprimer depuis Architect. L’endroit où le protocole, et donc ses ressources, est stocké dépend de la version d’Architect que vous utilisez :
+
+- Dans **Architect Classic**, votre protocole est un fichier `.netcanvas` sur votre ordinateur, et les ressources sont stockées dans ce fichier.
+- Dans **Architect**, votre protocole et ses ressources sont enregistrés dans la [bibliothèque de protocoles](/fr/design-protocols/saving-and-backing-up) (dans le navigateur) au fil de votre travail, et sont intégrés à un fichier `.netcanvas` lorsque vous le téléchargez. Comme cette bibliothèque se trouve dans votre navigateur et non dans un fichier que vous maîtrisez, téléchargez une copie de tout protocole qui contient des ressources et que vous ne pourriez pas vous permettre de perdre ; consultez [Enregistrement et sauvegarde](/fr/design-protocols/saving-and-backing-up).
+
+<TipBox danger>
+
+Utiliser un grand nombre de ressources, ou des ressources mal optimisées, dans votre protocole peut fortement dégrader les performances. Les protocoles mettent alors plus de temps à s’installer sur les appareils, et certaines étapes peuvent être beaucoup plus longues à charger. Veillez tout particulièrement à redimensionner et à compresser correctement vos ressources avant de les importer, et testez votre protocole sur les appareils de terrain que vous prévoyez d’utiliser pour vérifier ses performances.
+
+À titre indicatif, essayez de maintenir la taille totale de votre fichier de protocole sous 10 Mo.
+
+</TipBox>
+
+## Ajouter des ressources à une étape {#adding-resources-to-a-stage}
+
+De nombreuses étapes vous permettent d’ajouter des ressources directement pendant leur configuration. Cela vise à rendre la création de votre protocole d’entretien plus fluide. C’est le cas, par exemple, des images d’arrière-plan de l’interface « Sociogramme », des fichiers de liste dans les générateurs de noms basés sur une liste (comme l’interface « Générateur de noms à partir d’une liste »), et des fichiers multimédias de l’interface « Information ».
+
+Si l’étape que vous configurez utilise une ressource, elle vous propose un espace pour l’ajouter directement et indique quel type de ressource est requis.
+
+![](/assets/img/key-concepts/assets/bg-asset.png)
+
+## Ajouter et supprimer des ressources dans la bibliothèque de ressources {#adding-and-removing-resources-from-the-resource-library}
+
+<AppOnly app="current">
+
+Pour avoir une vue d’ensemble de toutes les ressources de votre protocole actuel, ouvrez la page **Ressources** depuis la barre de navigation en haut de l’éditeur. C’est la bibliothèque de ressources.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Pour avoir une vue d’ensemble de toutes les ressources de votre protocole actuel, cliquez sur le bouton **Resource Library** (bibliothèque de ressources), dans le coin supérieur droit de la carte de vue d’ensemble du protocole, lorsque vous consultez la chronologie. La bibliothèque de ressources s’ouvre alors.
+
+![](/assets/img/key-concepts/assets/manage-assets-button.png)
+
+</AppOnly>
+
+Dans l’écran de la bibliothèque de ressources, vous pouvez parcourir, filtrer et supprimer toutes les ressources existantes, ainsi qu’en ajouter de nouvelles. Pour ajouter une nouvelle ressource à la bibliothèque de ressources, glissez-déposez un fichier dans la zone prévue à cet effet, ou parcourez vos dossiers pour trouver le fichier que vous souhaitez importer.
+
+![](/assets/img/key-concepts/assets/asset-library.png)
+
+Vous remarquerez que les ressources existantes qui ne sont pas utilisées portent une pastille rouge **Inutilisée**. Cela indique que vous pouvez les supprimer. Toute tentative de suppression d’une ressource utilisée dans votre entretien est bloquée. Vous devez d’abord mettre à jour ou supprimer toutes les utilisations d’une ressource avant de pouvoir la supprimer.
+
+<AppOnly app="current">
+
+## Ressources manquantes {#missing-resources}
+
+Un fichier `.netcanvas` stocke ses ressources à l’intérieur. Si un fichier de protocole fait référence à une ressource qu’il ne contient pas réellement, Architect ouvre tout de même le protocole, et affiche le message **Certaines ressources sont manquantes**, qui nomme chaque fichier manquant. Toutes les étapes, consignes et variables du protocole sont conservées exactement telles qu’elles étaient.
+
+Pour réparer le protocole, ouvrez la page **Ressources**, où chaque ressource manquante est signalée par **Fichier manquant**, et ajoutez de nouveau le fichier. Tant que tous les fichiers manquants n’ont pas été restaurés :
+
+- **Le protocole ne peut pas être téléchargé.** Architect refuse de le faire plutôt que de produire un fichier sans les ressources, et le message indique les fichiers que vous devez ajouter de nouveau. Rien n’est perdu : le protocole reste tel quel dans votre bibliothèque.
+- **Interviewer et Fresco ne l’acceptent pas.** Ils refusent tout protocole dont des ressources sont manquantes, car une ressource qui ne se charge jamais semblerait défectueuse à une personne participante en plein entretien. Restaurez les fichiers dans Architect, puis téléchargez de nouveau le protocole avant de le déployer.
+
+Un fichier de protocole dont le contenu est endommagé est signalé comme endommagé au lieu d’être ouvert. Essayez d’ouvrir une sauvegarde, ou la copie que vous aviez téléchargée à l’origine.
+
+</AppOnly>
+
+## Types de ressources pris en charge {#supported-resource-types}
+
+### Image {#image}
+
+Interviewer prend en charge les formats d’image JPEG, GIF, PNG et SVG. Pour un
+arrière-plan qui s’adapte aux canevas en mode portrait et en mode paysage, consultez
+[Arrière-plans SVG adaptatifs](/fr/design-protocols/responsive-svg-backgrounds).
+
+### Audio {#audio}
+
+Interviewer prend en charge les formats audio MP3, AIFF, M4A et MP4.
+
+### Vidéo {#video}
+
+Interviewer prend en charge les formats vidéo MP4 et MOV. Lorsque vous utilisez de la vidéo, veillez tout particulièrement à ce que vos fichiers soient aussi légers que possible.
+
+<AppOnly app="current">
+
+Lorsque vous ajoutez une vidéo à une étape [« Information »](/fr/design-protocols/interface-documentation/information), renseignez la **Description** de l’élément. Une personne participante qui utilise un lecteur d’écran l’entend comme le nom de la vidéo, de la même façon que la description d’une image est lue comme son texte alternatif et que la description d’un élément audio sert de nom à son lecteur audio. Si vous la laissez vide, le lecteur d’écran lit à la place le nom du fichier de la vidéo : rédigez donc une courte description pour chaque vidéo, comme vous le feriez pour les images et l’audio.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Interviewer Classic ne transmet pas la **Description** d’un élément à ses lecteurs vidéo ou audio : une personne participante qui utilise un lecteur d’écran n’entend donc aucun nom pour ces lecteurs vidéo ou audio. Lorsque cela compte, décrivez ou annoncez la vidéo dans un élément de texte sur le même écran.
+
+</AppOnly>
+
+### Réseau {#network}
+
+Interviewer prend en charge les données de réseau au format CSV. La ligne d’en-tête sert à définir les noms des [variables](/fr/design-protocols/key-concepts/variables) de tous les nœuds introduits dans l’entretien. Veillez à avoir une colonne appelée `name` pour profiter des [libellés de nœuds](/fr/design-protocols/key-concepts/node-labelling) automatiques. Les en-têtes peuvent être rédigés dans n’importe quelle langue et contenir des espaces, mais ne peuvent pas contenir de sauts de ligne ni d’autres caractères de contrôle ; consultez [Utiliser des données de liste](/fr/design-protocols/tutorials/working-with-rosters#column-headings) pour connaître toutes les règles et savoir quoi faire si Architect refuse un fichier. Téléchargez un exemple simple de fichier CSV <DownloadLink href="/assets/previousInterview.csv">ici</DownloadLink>.
+
+### Clés d’API {#api-keys}
+
+L’interface [géospatiale](/fr/design-protocols/interface-documentation/geospatial) communique avec un service tiers qui exige une clé d’API : un jeton Mapbox utilisé pour charger les cartes. Contrairement aux autres types de ressources, une clé d’API est un identifiant d’accès que vous collez, et non un fichier que vous importez, mais elle est stockée dans la bibliothèque de ressources avec vos autres ressources, où vous pouvez la copier, la supprimer ou la remplacer au besoin.
+
+## Concepts associés {#related-concepts}
+
+- [Interfaces](/fr/design-protocols/key-concepts/interfaces) : découvrir quelles interfaces utilisent des ressources
+- [Arrière-plans SVG adaptatifs](/fr/design-protocols/responsive-svg-backgrounds) : créer un arrière-plan qui s’adapte aux canevas en mode portrait et en mode paysage
+- [Livre de codes](/fr/design-protocols/key-concepts/codebook) : consulter les résumés des ressources de réseau dans le livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête)
+- [Filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering) : filtrer les données de liste dans les étapes
+- [Variables](/fr/design-protocols/key-concepts/variables) : comprendre comment les colonnes d’une liste deviennent des variables

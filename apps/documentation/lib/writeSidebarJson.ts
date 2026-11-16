@@ -4,12 +4,8 @@ import { join } from 'node:path';
 
 import matter from 'gray-matter';
 
-import {
-  locales,
-  type SidebarLocaleDefinition,
-  toLocale,
-  type TSideBar,
-} from '~/app/types';
+import { type SidebarLocaleDefinition, type TSideBar } from '~/app/types';
+import { locales, toLocale } from '~/lib/i18n/locales';
 
 import {
   createFolderEntry,
@@ -43,7 +39,11 @@ function generateSidebarData() {
   );
 
   // Set up initial structure for sidebar data.
-  const sidebarData: TSideBar = { en: emptyLocaleDefinition() };
+  const sidebarData: TSideBar = {
+    en: emptyLocaleDefinition(),
+    es: emptyLocaleDefinition(),
+    fr: emptyLocaleDefinition(),
+  };
 
   const sortedFiles = sortDirectoryListing(files);
 

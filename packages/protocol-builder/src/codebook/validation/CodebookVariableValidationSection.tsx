@@ -247,7 +247,7 @@ function VariableValidationSection({
    * moment they took the last rule off — mid-edit, over a section they still
    * have open.
    */
-  const asked = useRef<ValidationMap | undefined>(undefined);
+  const [asked, setAsked] = useState<ValidationMap | undefined>(undefined);
   /**
    * One write at a time, in the order the edits were made.
    *
@@ -261,6 +261,13 @@ function VariableValidationSection({
   const writes = useRef<Promise<unknown>>(Promise.resolve());
   /** How many edits are waiting or in flight, which the switch has to know. */
   const pending = useRef(0);
+  /**
+   * The same count, as state: the render that adopts a collaborator's change
+   * has to know whether an edit of this section's own is still settling, and a
+   * ref cannot be read while rendering. `pending` stays for the handlers,
+   * which must see an edit made a moment ago before any render has run.
+   */
+  const [writing, setWriting] = useState(0);
   /**
    * The rules the writes already asked for will leave in the codebook.
    *
@@ -279,7 +286,7 @@ function VariableValidationSection({
   // Adjusted during render rather than in an effect: a change a collaborator
   // made is the codebook moving under the editor, and showing the rules it
   // replaced for a frame first is showing the researcher something untrue.
-  const seen = useRef(committed);
+  const [seen, setSeen] = useState(committed);
   /**
    * The kind of answer the rules on screen were chosen for.
    *
@@ -293,21 +300,20 @@ function VariableValidationSection({
    * reading of which rules survive one that the codebook's own type control
    * and a form-field row use.
    */
-  const seenType = useRef(variableType);
-  if (!isEqual(seen.current, committed)) {
-    const ours =
-      asked.current !== undefined && isEqual(asked.current, committed);
-    asked.current = undefined;
-    seen.current = committed;
-    seenType.current = variableType;
+  const [seenType, setSeenType] = useState(variableType);
+  if (!isEqual(seen, committed)) {
+    const ours = asked !== undefined && isEqual(asked, committed);
+    setAsked(undefined);
+    setSeen(committed);
+    setSeenType(variableType);
     setDraft(committed);
     // Not while this researcher's own edits are still settling: re-seeding the
     // switch under a gesture in progress takes the panel away mid-edit.
-    if (!ours && pending.current === 0) {
+    if (!ours && writing === 0) {
       setSwitchGeneration((generation) => generation + 1);
     }
-  } else if (seenType.current !== variableType) {
-    seenType.current = variableType;
+  } else if (seenType !== variableType) {
+    setSeenType(variableType);
     setDraft((held) => rulesSurvivingTypeChange(held, variableType).kept);
   }
 
@@ -330,8 +336,10 @@ function VariableValidationSection({
   /** Runs one write after every write asked for before it. */
   const enqueue = (work: () => Promise<boolean>): Promise<boolean> => {
     pending.current += 1;
+    setWriting((count) => count + 1);
     const settled = writes.current.then(work).finally(() => {
       pending.current -= 1;
+      setWriting((count) => count - 1);
     });
     // The chain must survive a rejection, or one failed write drops every
     // edit made after it.
@@ -367,7 +375,7 @@ function VariableValidationSection({
         rebasedIssue = ruleMapRefusal(next);
         if (rebasedIssue !== undefined) throw new Error(rebasedIssue);
         askedFor = next;
-        asked.current = next;
+        setAsked(next);
         return documentWithUpdatedVariable({
           subject,
           authoritativeDocument,
@@ -385,8 +393,10 @@ function VariableValidationSection({
         // a refused write moved nothing. Left standing, a collaborator who
         // later makes the very change that was refused is taken for this
         // section's own echo, and the panel is not re-seeded over their rules.
-        if (askedFor !== undefined && asked.current === askedFor) {
-          asked.current = undefined;
+        if (askedFor !== undefined) {
+          setAsked((standing) =>
+            standing === askedFor ? undefined : standing,
+          );
         }
         setRefusal({
           message: rebasedIssue ?? outcome.message,

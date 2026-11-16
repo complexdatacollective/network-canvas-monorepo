@@ -1,25 +1,28 @@
-import { match } from '@formatjs/intl-localematcher';
+import {
+  negotiateLocale as negotiate,
+  resolveLocale,
+} from '@codaco/shared-consts';
 
-import { toScriptMatchingTag } from '@codaco/shared-consts';
+import { defaultLocale, locales, type Locale } from './locales.ts';
 
-import { defaultLocale, isLocale, locales, type Locale } from './locales.ts';
-
-function canonicalizeLocale(value: string) {
-  try {
-    return Intl.getCanonicalLocales(value)[0];
-  } catch {
-    return undefined;
-  }
+/** The site language for a visitor's preferences (see `negotiateLocale`). */
+export function negotiateLocale(requested: readonly string[]): Locale {
+  return negotiate(requested, locales, defaultLocale);
 }
 
-export function negotiateLocale(requested: readonly string[]): Locale {
-  const canonical = requested
-    .map((entry) => canonicalizeLocale(entry.trim()))
-    .filter((entry): entry is string => entry !== undefined)
-    .map(toScriptMatchingTag);
-  const matched = match(canonical, locales, defaultLocale, {
-    algorithm: 'best fit',
-  });
-
-  return isLocale(matched) ? matched : defaultLocale;
+/**
+ * The site language for a visitor: the one they chose in the site's language
+ * switcher, then the best fit for their browser's languages (see
+ * `resolveLocale`).
+ */
+export function resolveSiteLocale(
+  chosen: string | null | undefined,
+  requested: readonly string[],
+): Locale {
+  return resolveLocale({
+    chosen,
+    requested,
+    available: locales,
+    fallback: defaultLocale,
+  }).locale;
 }

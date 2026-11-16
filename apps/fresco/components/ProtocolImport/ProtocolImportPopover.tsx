@@ -19,7 +19,7 @@ const messages = defineMessages({
     id: 'fresco.ProtocolImport.ProtocolImportPopover.importProtocols',
     defaultMessage: 'Import protocols',
     description:
-      'Researcher-facing ProtocolImport / ProtocolImportPopover: Import protocols',
+      'Button on the Protocols page that opens a popover with a drop area for protocol files, and the accessible name of that popover. Verb: imports protocol files into this installation.',
   },
 });
 

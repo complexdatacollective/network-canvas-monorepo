@@ -1,0 +1,82 @@
+---
+title: Interfaces
+navOrder: 2
+date: 5th October 2026
+translatedFrom: 1868d477bd3728469bb995e5c1e72b797770a763
+---
+
+<Definition>
+  Instrumentos de recogida de datos diseñados para una tarea concreta. Las
+  interfaces se configuran en Architect y se añaden al protocolo de la
+  entrevista, donde se convierten en etapas.
+</Definition>
+
+## Detalles {#details}
+
+Las entrevistas de Network Canvas constan de una o varias etapas, que pueden entenderse como cada una de las pantallas que ve una persona participante. Cada etapa es una _instancia_ de una interfaz configurada para recoger [variables](/es/design-protocols/key-concepts/variables) concretas o para crear nodos y vínculos. Por eso, las interfaces son los componentes más fundamentales de una entrevista de Network Canvas.
+
+Cada interfaz está diseñada para llevar a cabo una única tarea concreta de la entrevista de redes. Algunas tareas, como la generación de vínculos, se pueden realizar con interfaces diferentes. Al diseñar tu entrevista en Architect, eliges qué interfaz usar según las necesidades de tu investigación.
+
+## Tipos de interfaces {#types-of-interfaces}
+
+A grandes rasgos, las interfaces se pueden clasificar en generadores de nombres, sociogramas, intérpretes de nombres y utilidades.
+
+### Interfaces de generador de nombres {#name-generator-interfaces}
+
+Los generadores de nombres permiten a quienes participan crear álteres (cada persona a la que se nombra durante la entrevista) a lo largo de la entrevista, y describen así una de las dos entidades principales de las redes de tu estudio. Están disponibles las siguientes interfaces de generador de nombres, cada una pensada para situaciones concretas:
+
+- [Generador de nombres (con formularios)](/es/design-protocols/interface-documentation/name-generator-using-forms): recoge información detallada sobre cada álter a medida que se nombra
+- [Generador de nombres (adición rápida)](/es/design-protocols/interface-documentation/name-generator-using-quick-add): nombra rápidamente varios álteres antes de recoger sus atributos
+- [Generador de nombres a partir de una lista](/es/design-protocols/interface-documentation/name-generator-roster): selecciona álteres de una lista predefinida (una lista que se importa como archivo de datos) y adapta su presentación al tamaño de la lista
+- [Genealogía familiar](/es/design-protocols/interface-documentation/family-pedigree): construye una genealogía familiar creando a los miembros de la familia y las relaciones entre ellos y, después, recoge atributos de cada uno. (Esta interfaz también genera vínculos e interpreta álteres).
+- [Compositor de redes](/es/design-protocols/interface-documentation/network-composer): crea nodos y vínculos rápidamente en un único lienzo de formato libre, pensado para que lo maneje quien investiga o la persona entrevistadora. (Esta interfaz también genera vínculos e interpreta álteres).
+
+![Interfaces de generador de nombres disponibles en Architect](/assets/img/key-concepts/interfaces/name-generators.png)
+
+### Interfaces de sociograma {#sociogram-interfaces}
+
+Los sociogramas son el componente de representación visual de una entrevista de redes. En el sociograma, quienes participan trazan vínculos entre los álteres para indicar las relaciones entre las personas de su red personal, y describen así la otra entidad principal de las redes de tu estudio.
+
+En Network Canvas están disponibles las siguientes interfaces de sociograma:
+
+- [Sociograma](/es/design-protocols/interface-documentation/sociogram): interfaz interactiva para recoger datos de vínculos, en la que quienes participan trazan conexiones entre los álteres
+- [Narrativa](/es/design-protocols/interface-documentation/narrative): interfaz de solo visualización que muestra la red de la persona participante sin recoger datos
+- [Genealogía narrativa](/es/design-protocols/interface-documentation/narrative-pedigree): interfaz de solo visualización que dibuja una genealogía familiar creada previamente con la notación genealógica estándar y superpone la información sobre la herencia de una o varias afecciones
+
+![Interfaces de sociograma disponibles en Architect](/assets/img/key-concepts/interfaces/sociograms.png)
+
+### Interfaces de intérprete de nombres {#name-interpreter-interfaces}
+
+Una vez que un protocolo contiene entidades, se pueden usar interfaces de tipo intérprete de nombres para recoger información adicional y ampliar los datos de los álteres o vínculos existentes. Estas interfaces son:
+
+- [Clasificación ordinal](/es/design-protocols/interface-documentation/ordinal-bin): clasifica los álteres en categorías ordenadas mediante contenedores visuales (cada una de las zonas a las que se arrastran los nodos para clasificarlos)
+- [Clasificación por categorías](/es/design-protocols/interface-documentation/categorical-bin): clasifica los álteres en categorías no ordenadas mediante contenedores visuales
+- [Formulario por álter](/es/design-protocols/interface-documentation/per-alter-form): recoge datos detallados de atributos sobre cada álter mediante [formularios](/es/design-protocols/key-concepts/forms), con un formulario para cada álter
+- [Formulario de vínculos por álter](/es/design-protocols/interface-documentation/per-alter-edge-form): recoge datos de atributos sobre los vínculos mediante formularios, con un formulario para cada vínculo entre dos álteres
+- [Formulario del ego](/es/design-protocols/interface-documentation/ego-form): recoge datos sobre la propia persona participante
+- [Censo de díadas](/es/design-protocols/interface-documentation/dyad-census): pregunta de forma sistemática por las relaciones entre todos los pares de álteres
+- [Censo de fuerza de vínculos](/es/design-protocols/interface-documentation/tie-strength-census): una variante de la interfaz «Censo de díadas» que, además, registra la fuerza de cada vínculo en una variable ordinal
+- [Censo de díadas de uno a muchos](/es/design-protocols/interface-documentation/one-to-many-dyad-census): una variante de la interfaz «Censo de díadas» que vincula un álter con varios otros a la vez
+- [Interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial): recoge datos geoespaciales pidiendo a quienes participan que seleccionen zonas en un mapa (requiere conexión a internet y una cuenta de Mapbox)
+
+![Interfaces de intérprete de nombres disponibles en Architect](/assets/img/key-concepts/interfaces/name-interpreters.png)
+
+### Interfaces de utilidad {#utility-interfaces}
+
+La [interfaz «Información»](/es/design-protocols/interface-documentation/information) es una etapa de uso general que sirve para presentar información a quienes participan mediante diversos [recursos](/es/design-protocols/key-concepts/resources) de texto y multimedia. Resulta útil para explicar cómo funcionan las etapas y para que quienes participan las comprendan mejor.
+
+La [interfaz de anonimización](/es/design-protocols/interface-documentation/anonymisation) es una etapa que permite a quienes participan cifrar en el dispositivo los atributos sensibles o identificativos, de modo que quien investiga no pueda leerlos.
+
+La [interfaz «Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser) permite a quienes participan elegir en cuál de los idiomas de tu protocolo se muestra el resto de la entrevista. Es útil cuando tu protocolo está escrito en más de un idioma (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol)).
+
+La [interfaz «Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen) es la última pantalla de todas las entrevistas. Quienes participan leen tu mensaje de cierre y pulsan **Finalizar**, o bien la entrevista finaliza en cuanto llegan a ella. Después ven tu mensaje de entrevista finalizada, y la pantalla registra cómo terminó la entrevista. Todos los protocolos terminan con una, y Architect la añade por ti. Puedes añadir más; por ejemplo, para dar un final distinto a quienes no cumplen los requisitos para participar.
+
+![Interfaces de utilidad disponibles en Architect](/assets/img/key-concepts/interfaces/utilities.png)
+
+## Conceptos relacionados {#related-concepts}
+
+- [Preguntas](/es/design-protocols/key-concepts/prompts): configura las preguntas de las etapas dirigidas a quienes participan
+- [Formularios](/es/design-protocols/key-concepts/forms): crea los formularios que usan las interfaces basadas en formularios
+- [Variables](/es/design-protocols/key-concepts/variables): define los campos de datos que se recogen en las interfaces
+- [Lógica de salto](/es/design-protocols/key-concepts/skip-logic): muestra u omite etapas de forma condicional según los datos
+- [Filtrado de la red](/es/design-protocols/key-concepts/network-filtering): controla qué nodos o vínculos aparecen en una etapa

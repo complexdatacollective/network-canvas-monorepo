@@ -12,13 +12,15 @@ const messages = defineMessages({
     id: 'interviewer.biometric.unsupported',
     defaultMessage:
       'This browser or device does not support biometric unlock. Use a PIN or passphrase instead.',
-    description: 'Administration text in Interviewer useBiometric.',
+    description:
+      'Reason shown in the security setup method picker for why the biometric option is disabled: this browser or device lacks support. The PIN and passphrase options remain.',
   },
   limitedWindow: {
     id: 'interviewer.biometric.limitedWindow',
     defaultMessage:
       "Biometric unlock isn't available in the installed app on macOS, because Chrome can't reach your Mac's saved passkeys from an app window. Use a PIN or passphrase instead.",
-    description: 'Administration text in Interviewer useBiometric.',
+    description:
+      'Reason shown in the security setup method picker for why the biometric option is disabled: the installed app window on macOS cannot reach saved passkeys.',
   },
 });
 

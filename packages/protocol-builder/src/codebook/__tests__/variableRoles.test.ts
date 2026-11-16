@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
-  familyPedigreeWordingIn,
-} from '@codaco/protocol-validation';
+import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
+import { PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 

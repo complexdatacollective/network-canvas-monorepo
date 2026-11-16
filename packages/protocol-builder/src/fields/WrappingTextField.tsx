@@ -1,6 +1,7 @@
 import type { ChangeEvent, KeyboardEvent } from 'react';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import { textEntryDirection } from '@codaco/fresco-ui/form/textEntryDirection';
 import { getInputState } from '@codaco/fresco-ui/form/utils/getInputState';
 import {
   controlVariants,
@@ -11,6 +12,7 @@ import {
   textSizeVariants,
 } from '@codaco/fresco-ui/styles/controlVariants';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 
 // `controlVariants` lays a control out on one line it truncates; this one
 // wraps, so its box follows the text. One line is as tall as `InputField`:
@@ -51,8 +53,9 @@ const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
  *
  * Like `StageNameInput`, it is a `<textarea>` sized by a hidden copy of its
  * text laid out behind it in the same grid cell, and the value stays one
- * paragraph: Enter adds nothing and pasted line breaks become spaces, because
- * the interview shows these texts as a single run of words.
+ * paragraph: Enter adds nothing and pasted line breaks become spaces
+ * (`lineBreaksAsSpaces`), because the interview shows
+ * these texts as a single run of words and the schema refuses a line break.
  */
 export default function WrappingTextField({
   value,
@@ -62,16 +65,25 @@ export default function WrappingTextField({
   ...props
 }: WrappingTextFieldProps) {
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    onChange?.(event.target.value.replace(/\r\n|[\r\n]/g, ' '));
+    onChange?.(lineBreaksAsSpaces(event.target.value));
   };
 
   const text = value ?? '';
+  const direction = textEntryDirection({ dir: props.dir });
 
   return (
     <div
       className={wrapperVariants({ className, state: getInputState(props) })}
     >
-      <div aria-hidden="true" className={cx(sharedTextLayout, 'invisible')}>
+      {/*
+       * The copy that sizes the box takes the box's direction, so the two
+       * wrap alike (`textEntryDirection`).
+       */}
+      <div
+        aria-hidden="true"
+        dir={direction.dir}
+        className={cx(sharedTextLayout, direction.className, 'invisible')}
+      >
         {/*
          * The trailing space holds the height of a line ending in whitespace,
          * which a block collapses away and the textarea shows a caret on.
@@ -80,6 +92,7 @@ export default function WrappingTextField({
       </div>
       <textarea
         {...props}
+        dir={direction.dir}
         value={text}
         placeholder={placeholder}
         onChange={handleChange}
@@ -89,6 +102,7 @@ export default function WrappingTextField({
         aria-multiline={false}
         className={cx(
           sharedTextLayout,
+          direction.className,
           placeholderVariants(),
           'h-full cursor-[inherit] resize-none overflow-hidden bg-transparent outline-none focus:ring-0',
         )}

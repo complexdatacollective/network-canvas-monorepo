@@ -252,6 +252,9 @@ export async function seedLegacyProtocols(
 // `codebook`'s `node`/`edge`/`ego` are all optional) rather than asserting, so
 // a schema drift here is a real type error instead of a silently-stale cast.
 // A stage created in it goes before the finish stage, so it is stage 0.
+// It holds no interface text, which Architect writes when it opens the
+// protocol: a spec that builds a protocol on it and parses it adds the text
+// for the protocol it ends with (`withInterfaceText`), in its languages.
 export function emptyProtocol(
   localization: CurrentProtocol['localization'] = {
     defaultLocale: 'en',

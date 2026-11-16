@@ -297,6 +297,7 @@ export default function BooleanField(props: BooleanFieldProps) {
                 optionRefs.current[index] = el;
               }}
               type="button"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a card in a roving-focus radio group, the element Base UI's Radio also renders; a native radio input cannot be the card.
               role="radio"
               aria-checked={isSelected}
               data-value={String(option.value)}

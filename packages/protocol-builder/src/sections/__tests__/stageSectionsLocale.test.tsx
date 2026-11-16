@@ -111,7 +111,7 @@ describe('the shared stage sections, read in Spanish', () => {
     expect(screen.getByRole('textbox', { name: 'Título' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Presenta la tarea antes de que los participantes completen sus formularios.',
+        'Presenta la tarea antes de que quienes participan completen sus formularios.',
       ),
     ).toBeInTheDocument();
   });
@@ -222,7 +222,7 @@ describe('the content-block dialog, read in Spanish', () => {
     // inside it.
     expect(dialog).toHaveAccessibleName('Crear elemento');
     expect(dialog).toHaveAccessibleDescription(
-      'Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.',
+      'Elige el tipo de contenido, proporciona lo que verán quienes participan y ajusta su presentación cuando sea posible.',
     );
     expect(within(dialog).getByText('Tipo de contenido')).toBeInTheDocument();
     expect(
@@ -274,7 +274,7 @@ describe('the content-block dialog, read in Spanish', () => {
     await chooseKind('Imagen');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de imagen para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de imagen para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     await commit();
@@ -287,7 +287,7 @@ describe('the content-block dialog, read in Spanish', () => {
     await chooseKind('Audio');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de audio para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de audio para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     await commit();
@@ -300,7 +300,7 @@ describe('the content-block dialog, read in Spanish', () => {
     await chooseKind('Vídeo');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de vídeo para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de vídeo para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     await commit();
@@ -313,7 +313,7 @@ describe('the content-block dialog, read in Spanish', () => {
     await chooseKind('Texto');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de texto para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de texto para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     // The prose control carries its placeholder as `aria-placeholder`, which
@@ -544,7 +544,7 @@ describe('the page-content list, read in Spanish', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        'Añade al menos un bloque. Una página sin contenido no muestra nada al participante.',
+        'Añade al menos un bloque. Una página sin contenido no muestra nada a la persona participante.',
       ),
     ).toBeInTheDocument();
   });
@@ -612,7 +612,7 @@ describe('the prompts section, read in Spanish', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        'Crea al menos una pregunta. Una etapa sin preguntas no le pregunta nada al participante.',
+        'Crea al menos una pregunta. Una etapa sin preguntas no le pregunta nada a la persona participante.',
       ),
     ).toBeInTheDocument();
   });

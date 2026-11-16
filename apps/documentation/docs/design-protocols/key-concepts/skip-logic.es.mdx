@@ -1,0 +1,132 @@
+---
+title: Lógica de salto
+navOrder: 10
+translatedFrom: 83ec6d783466689c459929d1e9c00f19a8f1b8cb
+---
+
+<Definition>
+  La lógica de salto permite omitir o mostrar etapas de la entrevista según una
+  condición, en función de la información que contenga en ese momento la red de
+  la entrevista.
+</Definition>
+
+## Detalles {#details}
+
+La lógica de salto es una función de Interviewer que permite omitir o mostrar etapas de la entrevista según una condición, en función de la información que contenga en ese momento la red de la entrevista. Al omitir o mostrar determinadas etapas, puedes dirigir el recorrido que sigue cada participante por tu protocolo.
+
+Por ejemplo, si una persona participante indica en una etapa «Formulario del ego» que nunca ha consumido drogas, puedes configurar tu protocolo con lógica de salto para omitir las etapas posteriores de tipo intérprete de nombres que preguntan por el consumo de drogas con sus álteres (cada persona a la que se nombra durante la entrevista).
+
+<TipBox>
+
+¡La lógica de salto no es lo mismo que el [filtrado de la red](/es/design-protocols/key-concepts/network-filtering)! La lógica de salto determina si se debe mostrar una etapa completa, mientras que el filtrado de la red determina qué nodos o vínculos aparecen dentro de una etapa. Usa la lógica de salto para crear recorridos de entrevista adaptativos, y el filtrado de la red para reducir la carga de respuesta de cada participante mostrando solo a los miembros relevantes de la red.
+
+</TipBox>
+
+A continuación se ofrece un resumen general de cómo funciona la lógica de salto:
+
+- Crea una o varias **reglas** basadas en los atributos del ego (la persona entrevistada), de los álteres o de los vínculos.
+- Estas reglas dan como resultado **verdadero** o **falso** cuando la etapa está a punto de mostrarse.
+- El valor de cada regla se **agrega** después en un único valor global, verdadero o falso, mediante lógica `AND` u `OR`.
+- A continuación, el resultado agregado se evalúa según si la intención es describir cuándo **mostrar** la etapa o cuándo **omitirla**.
+- En función de esto, la etapa se mostrará o se omitirá.
+
+## Añadir lógica de salto a una etapa {#adding-skip-logic-to-a-stage}
+
+Para añadir lógica de salto a una etapa, ábrela desde la vista de la línea de tiempo y activa el interruptor que hay junto al título de la sección **Lógica de salto** para desplegar la sección.
+
+![](/assets/img/key-concepts/skip-logic/skip-logic-section.png)
+
+Para quitar la lógica de salto de una etapa, desactiva el interruptor. Architect te pide que lo confirmes antes, porque así se eliminan las reglas de la etapa.
+
+Puedes ver qué etapas tienen la lógica de salto activada gracias al distintivo que
+aparece junto a cada etapa en la línea de tiempo. El distintivo también muestra
+dónde continúa la entrevista cuando se omite esa etapa.
+
+## Reglas de lógica de salto {#skip-logic-rules}
+
+Construir las reglas es la parte más fundamental de la creación de la lógica de salto. Hay varios tipos de reglas, según la entidad de la red a la que se apliquen:
+
+- **Reglas de «presencia»**: permiten consultar si existe en la red una entidad de un tipo determinado, con el operador `exists` o `not exists`. Este tipo de regla está disponible para las reglas de álter y de vínculo.
+- **Reglas de «atributo»**: permiten consultar el valor de una variable en un tipo de entidad determinado. Por ejemplo, puedes consultar el valor de una variable llamada `age` en un tipo de álter llamado «Person» (persona). Puedes evaluar el resultado con uno de varios operadores lógicos, que varían según el tipo de variable. Por ejemplo, las variables numéricas permiten hacer consultas con operadores como «mayor que» y «menor que». Este tipo de regla solo se aplica a las reglas de álter y de ego.
+
+Los operadores disponibles para una regla de atributo dependen del tipo de la variable, igual que en el [filtrado de la red](/es/design-protocols/key-concepts/network-filtering). Las variables de texto se pueden comparar con _es exactamente_, _no es_ y, en los protocolos del esquema 8 y posteriores, _contiene_ y _no contiene_. En las variables ordinales y categóricas, los operadores _incluye_ y _excluye_ admiten **varios** valores seleccionados, de modo que una sola regla puede coincidir con cualquiera de varias opciones.
+
+## El operador de unión {#the-join-operator}
+
+Las reglas se encadenan (o se «unen») mediante lógica `AND` u `OR`, que se establece en la sección de configuración de la lógica de salto, en las opciones de **Cumplimiento de reglas**: **Deben cumplirse todas las reglas** (`AND`) o **Basta con que se cumpla alguna regla** (`OR`). Los operadores de unión determinan cómo se evalúan conjuntamente varias reglas para obtener el valor booleano general que devuelve la consulta.
+
+Si las reglas se unen con `AND` y todas ellas dan como resultado `true`, la condición de nivel superior también será verdadera (por ejemplo: `true && true === true`). En cambio, si alguna de las reglas da como resultado falso, la condición de nivel superior también será falsa (`true && false === false`). Si las reglas se unen con `OR`, basta con que una sola regla resulte verdadera para que la condición de nivel superior también resulte verdadera (`true || false || false === true`).
+
+![](/assets/img/key-concepts/skip-logic/must-match.png)
+
+Por tanto, el operador de unión que elijas puede influir enormemente en cómo se evalúan tus reglas en conjunto. Una forma de ver la diferencia es que la opción «Deben cumplirse todas las reglas» conviene cuando solo hay _un_ escenario en el que deba mostrarse una etapa. Después, puedes añadir tantas reglas como necesites para que ese escenario sea lo más específico posible.
+
+En cambio, usa la opción «Basta con que se cumpla alguna regla» cuando haya muchos motivos por los que deba mostrarse una etapa. Por ejemplo, puedes mostrar una pantalla de información con un vídeo de intervención integrado si una persona participante ha mostrado cualquiera de varias conductas de riesgo.
+
+## Omitir o mostrar {#skip-or-show}
+
+Antes de conocer el resultado final de la regla de lógica de salto, hay que tener en cuenta una última propiedad configurable: el ajuste **Acción**, que puede ser **Mostrar esta etapa** u **Omitir esta etapa**. Esta opción te permite decidir si un resultado «verdadero» al evaluar tus reglas debe hacer que la etapa se omita o que se muestre. En la práctica, esto te permite escribir las reglas en términos _negativos_, es decir, escribir reglas que definan cuándo debe **mostrarse** una etapa en lugar de cuándo debe omitirse. Esto puede ser más útil si tienes muchos valores que incluir o excluir.
+
+Por ejemplo, si quisieras omitir una etapa en función de si una variable categórica con muchas opciones tiene asignado cualquier valor posible salvo uno, normalmente tendrías que escribir una regla para cada valor y usar el operador `OR`. Sin embargo, si eligieras la acción **Mostrar esta etapa**, te bastaría con definir una única regla que incluya el único valor con el que debe mostrarse la etapa.
+
+<TipBox>
+
+Piensa con detenimiento en las implicaciones lógicas de tu operador de unión al cambiar esta propiedad, porque el resultado puede ser poco intuitivo. ¡Es muy fácil hacer que tu regla sea demasiado específica con el operador `AND`!
+
+</TipBox>
+
+## Elegir dónde continuar {#choosing-where-to-continue}
+
+De forma predeterminada, cuando se oculta una etapa, la entrevista continúa en la siguiente
+etapa cuya propia lógica de salto permita mostrarla. En el campo **Cuando se omita esta etapa** puedes elegir, en su lugar, una etapa posterior concreta
+o la etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen) que termina la entrevista.
+
+El destino pertenece a la etapa que puede ocultarse. Por ejemplo, supongamos
+que una etapa «Formulario del ego» registra el consentimiento y que el resto de la entrevista debe saltarse
+cuando no se da el consentimiento. Añade la regla de consentimiento a la primera etapa posterior al
+formulario de consentimiento y, después, elige **Finalizar la entrevista** como destino de esa etapa.
+Así se pasa a la etapa «Pantalla de finalización», donde la entrevista termina de la forma en
+que esté configurada esa etapa: o bien cada participante lo confirma, o bien la entrevista
+termina automáticamente. Todos los protocolos terminan con una etapa «Pantalla de finalización», y el
+destino lleva a la primera que haya después de la etapa a la que pertenece la regla. Si tu
+protocolo termina con más de una etapa «Pantalla de finalización», por ejemplo, un final distinto para
+quienes no cumplen los requisitos para participar, elige una posterior por su nombre para terminar la
+entrevista en ella. Una etapa «Pantalla de finalización» no puede tener lógica de salto propia, porque
+todos los recorridos de la entrevista terminan en una de ellas.
+
+Solo están disponibles los destinos posteriores. Cuando se usa un destino, se saltan todas las
+etapas que hay entre la etapa oculta y el destino. El destino
+sigue evaluando su propia lógica de salto, así que la entrevista puede continuar más adelante si
+esa etapa también está oculta.
+
+La lógica de salto se vuelve a calcular a partir de los datos actuales de la entrevista. Por eso, volver a una
+etapa anterior y cambiar una respuesta puede volver a habilitar etapas que antes
+se habían saltado. Cuando la navegación entre etapas está activada, también se puede mostrar una etapa omitida o saltada
+tras una confirmación. Esta excepción abre solo la
+etapa seleccionada; al avanzar o retroceder, se vuelve al recorrido activo de la
+entrevista.
+
+## Ejemplo detallado {#extended-example}
+
+Como la lógica de salto puede resultar confusa cuando se empieza a usar, aquí tienes un ejemplo detallado de esta función.
+
+Imagina una entrevista en la que usas una interfaz [«Clasificación por categorías»](/es/design-protocols/interface-documentation/categorical-bin) para clasificar la relación de la persona participante con sus álteres. Defines opciones como «friend» (amistad), «spouse/partner» (cónyuge o pareja), «coworker» (colega de trabajo), «parent» (madre o padre), «sibling» (hermana o hermano), «child» (hija o hijo), «uncle/aunt» (tía o tío) o «grandparent» (abuela o abuelo), con los valores correspondientes 1, 2, 3, 4, 5, 6, 7 y 8.
+
+![](/assets/img/key-concepts/skip-logic/categorical-variable.png)
+
+En la etapa siguiente quieres usar otra etapa «Clasificación por categorías», pero esta vez para recoger el tipo de parentesco de los álteres con el ego (por ejemplo, «biological» [biológico], «step» [por familia reconstituida], «adoptive» [adoptivo], «through marriage» [político], etc.). Ahora imagina que una persona participante no ha nombrado a ningún álter con el que tenga parentesco (es decir, solo ha nombrado amistades, cónyuges o parejas, y colegas de trabajo). En ese caso, la etapa sobre el tipo de parentesco no tendría sentido. Aplicar lógica de salto para omitir por completo esta etapa para esa persona participante aumentaría la eficiencia y reduciría al mínimo su carga de respuesta.
+
+Para resolverlo, puedes aplicar una regla de lógica de salto sencilla, como esta:
+
+![](/assets/img/key-concepts/skip-logic/example.png)
+
+No puedes conseguir el mismo resultado con la versión inversa, es decir, **Omitir esta etapa** con una regla según la cual Relationship (relación) _excluye_ 4, 5, 6, 7 y 8. Una regla sobre álteres se cumple en cuanto cualquier álter encaja en ella, así que esa regla omitiría la etapa si la persona participante hubiera nombrado al menos a un álter con el valor 1, 2 o 3 (1 = amistad, 2 = cónyuge o pareja, 3 = colega de trabajo), aunque también hubiera nombrado a familiares.
+
+En cuanto creas más de una regla en la lógica de salto de una etapa, tienes que decidir si quieres que se cumplan todas las reglas o que baste con que se cumpla una de ellas. Siguiendo con los ejemplos anteriores, imagina que quieres crear una etapa posterior para recoger datos sobre la familia nuclear biológica de la persona participante. Quieres que esta etapa se muestre si la persona participante ha nombrado antes álteres cuyo valor de Relationship sea «parent», «sibling» o «child» y si alguno de esos álteres tiene además el valor «biological» en Relatedness (parentesco). En este caso usarías el operador `AND` (**Deben cumplirse todas las reglas**), ya que no querrías que la etapa se mostrara si la persona participante tiene en su red álteres cuyo valor de Relationship sea «parent», «sibling» o «child» pero ninguno de ellos tiene el valor «biological» en Relatedness. Con `AND`, un mismo álter tiene que cumplir todas las reglas sobre álteres, así que la etapa solo se muestra si al menos un álter tiene a la vez uno de esos valores en Relationship y el valor «biological» en Relatedness.
+
+## Conceptos relacionados {#related-concepts}
+
+- [Filtrado de la red](/es/design-protocols/key-concepts/network-filtering): controla qué nodos o vínculos aparecen dentro de una etapa
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): conoce los distintos tipos de etapa y cuándo usar cada uno
+- [Preguntas](/es/design-protocols/key-concepts/prompts): configura las preguntas que ven quienes participan en cada etapa
+- [Variables](/es/design-protocols/key-concepts/variables): crea variables para usarlas en las reglas de lógica de salto

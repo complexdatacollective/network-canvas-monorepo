@@ -1,0 +1,205 @@
+---
+navOrder: 2
+title: Flux de travail en ligne et hors ligne d’Interviewer
+wip: false
+toc: true
+translatedFrom: 5b5282cf78ad9899312cdae6a70956f479e25eff
+---
+
+<SummaryCard duration="20 minutes">
+<SummarySection>
+
+Ce tutoriel détaille les flux de travail en ligne et hors ligne d’Interviewer présentés dans [Flux de travail des protocoles et des données](/fr/collect-data/protocol-and-data-workflows) : comment installer votre protocole sur chaque appareil d’entretien, et comment récupérer les données que ces appareils recueillent.
+
+</SummarySection>
+<PrerequisitesSection>
+
+Pour suivre ce tutoriel, vous devez :
+
+- Connaître [Interviewer ou Interviewer Classic](/fr/collect-data/interviewer) et la manière dont se déroulent les entretiens.
+- Avoir créé ou obtenu le fichier de protocole `.netcanvas` que vous souhaitez distribuer (consultez [construire un protocole](/fr/design-protocols/tutorials/building-a-protocol)).
+- Avoir accès aux appareils que vous utiliserez pour mener les entretiens.
+- Pour le flux de travail en ligne, disposer d’un compte auprès d’un service de partage de fichiers dans le cloud — l’espace de stockage partagé de votre établissement, ou un fournisseur tiers — que toute votre équipe peut utiliser.
+- Pour le flux de travail hors ligne, disposer d’une clé USB ou d’un autre support de stockage externe lisible à la fois par votre ordinateur et par vos appareils d’entretien.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+## Introduction {#introduction}
+
+Interviewer conserve tout ce qu’il stocke — protocoles, entretiens et paramètres — sur l’appareil sur lequel il fonctionne. Deux choses sont donc à prévoir :
+
+- **La distribution du protocole** — installer le fichier de protocole sur chaque appareil d’entretien avant le début de la collecte des données.
+- **L’exportation des données** — sortir de chaque appareil les données qu’il contient et les rapatrier vers un emplacement que vous contrôlez.
+
+La manière d’assurer ces deux transferts dépend de la possibilité, pour vos appareils d’entretien, d’accéder à Internet. Ce tutoriel décrit les deux options :
+
+- **[Le flux de travail en ligne](#the-online-workflow)** — utilisez un service de partage de fichiers dans le cloud comme point central des échanges dans les deux sens.
+- **[Le flux de travail hors ligne](#the-offline-workflow)** — transportez les fichiers dans les deux sens sur une clé USB ou un autre support de stockage externe.
+
+<TipBox>
+
+Cette page concerne **Interviewer et Interviewer Classic**. Si vous menez votre étude dans [Fresco](/fr/collect-data/fresco/about), aucun de ces flux de travail ne s’applique : les protocoles sont téléversés (envoyés vers le serveur) une seule fois sur votre tableau de bord, et toutes les données sont exportées depuis celui-ci de façon centralisée. Consultez [Flux de travail des protocoles et des données](/fr/collect-data/protocol-and-data-workflows) pour une comparaison d’ensemble.
+
+</TipBox>
+
+La structure de chaque flux de travail est la même quelle que soit la version d’Interviewer que vous utilisez, mais les opérations d’importation et d’exportation dans l’application diffèrent. Choisissez votre version ci-dessous : les instructions propres à chaque version s’adaptent en conséquence tout au long de ce tutoriel.
+
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
+</AppSwitch>
+
+## Le flux de travail en ligne {#the-online-workflow}
+
+Si vos appareils d’entretien peuvent accéder à Internet — au moins au début et à la fin de chaque session de terrain —, utilisez un **service de partage de fichiers dans le cloud** comme point central des échanges dans les deux sens (protocoles vers les appareils, données vers vous). Vous disposez ainsi d’un seul endroit où mettre à jour le protocole, et d’un seul endroit où arrivent les données de toutes les personnes qui mènent les entretiens.
+
+<ImageFullWidth src="/assets/img/offline-data/online.png" alt="Diagramme du flux de travail en ligne"></ImageFullWidth>
+
+### Distribuer les protocoles avec un service de partage de fichiers dans le cloud {#deploying-protocols-with-a-cloud-file-sharing-service}
+
+C’est la méthode à privilégier pour distribuer les protocoles. Elle présente l’avantage important de fournir un emplacement unique pour le fichier de protocole, qui peut être mis à jour au besoin et auquel plusieurs personnes peuvent accéder en même temps.
+
+1. Placez votre fichier `.netcanvas` sur un service de stockage dans le cloud (p. ex. Box, Dropbox, Google Drive). En général, il suffit de glisser-déposer le fichier dans un dossier dédié sur l’ordinateur avec lequel vous créez le protocole. De nombreux fournisseurs permettent aussi d’envoyer des fichiers via une interface web.
+2. Installez l’application du service cloud sur chaque appareil d’entretien, ou ouvrez le service dans le navigateur web de l’appareil, puis connectez-vous.
+3. Importez le fichier de protocole sur l’appareil d’entretien. En général, il suffit d’accéder, dans l’explorateur de fichiers, à un emplacement particulier qui correspond au fournisseur de stockage dans le cloud (p. ex. « Dropbox » ou « Google Drive »). Si votre fournisseur n’apparaît pas dans l’explorateur de fichiers, essayez de copier le fichier de protocole dans le stockage de votre appareil depuis l’application du fournisseur.
+
+<AppOnly axis="interviewer" app="current">
+
+Utilisez la carte **Importer un protocole** de l’écran d’accueil pour ouvrir l’explorateur de fichiers, ou faites glisser le fichier `.netcanvas` sur cette carte. Le protocole est validé lors de l’importation. Les protocoles en schéma 8 s’exécutent en schéma 8, et les protocoles en schéma 7 des applications Classic sont automatiquement migrés vers le schéma 8.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Utilisez le bouton **Import from File** (importer depuis un fichier) de l’écran d’accueil.
+
+Interviewer Classic peut aussi importer un protocole directement depuis une adresse web, ce qui convient bien lorsque le protocole a peu de chances de changer souvent, ou lorsque vous souhaitez documenter par écrit la procédure d’installation. Générez un lien de partage dans votre service cloud — ou hébergez le fichier `.netcanvas` sur n’importe quel service d’hébergement de fichiers (p. ex. GitHub Pages, SharePoint) —, vérifiez que le lien est accessible publiquement en l’ouvrant dans un navigateur web, puis utilisez le bouton **Import from URL** (importer depuis une URL) de l’écran d’accueil et collez-y le lien. Nous recommandons cette méthode aux équipes qui distribuent des fichiers de protocole sur plusieurs appareils.
+
+</AppOnly>
+
+### Exporter les données vers un service de partage de fichiers dans le cloud {#exporting-data-to-a-cloud-file-sharing-service}
+
+Le même service peut regrouper vos données d’entretien : il suffit que chaque personne qui mène les entretiens y envoie directement ses exportations.
+
+1. Créez un dossier dédié sur votre service de stockage dans le cloud pour y stocker les données d’entretien. Choisissez un emplacement facile d’accès et bien organisé. Si vous travaillez au sein d’une grande équipe, envisagez de créer un dossier individuel pour chaque personne qui mène des entretiens, et de définir des autorisations en « écriture seule » (ou équivalent) afin que chacune ne puisse ajouter des fichiers que dans son propre dossier.
+2. Installez l’application du service cloud sur chaque appareil d’entretien et assurez-vous que la personne qui mène les entretiens est connectée et a accès au dossier créé au point 1.
+3. Exportez les sessions d’entretien depuis l’appareil, en enregistrant l’archive `.zip` obtenue dans ce dossier.
+
+<AppOnly axis="interviewer" app="current">
+
+Sélectionnez les sessions d’entretien voulues dans la vue **Données** et cliquez sur **Exporter la sélection (_n_)**. Interviewer crée l’archive, puis affiche un bouton pour l’enregistrer (**Enregistrer…**, **Partager…** ou **Télécharger**, selon ce que le navigateur prend en charge) : cliquez dessus pour enregistrer le fichier. Les formats de fichier et les options sont configurés à l’avance dans **Paramètres → Exportation des données** : rien n’est donc à choisir au moment de l’exportation. La destination du `.zip` dépend de l’appareil et du navigateur :
+
+- Dans un navigateur sur ordinateur, le navigateur vous demande généralement de choisir un emplacement — accédez au dossier synchronisé du service cloud sur l’appareil.
+- Sur une tablette, le menu de partage du système s’ouvre — choisissez l’application du service cloud, puis le dossier créé au point 1.
+- Sinon, l’archive est enregistrée dans le dossier des téléchargements du navigateur, et c’est à vous de l’envoyer sur le service cloud.
+
+Les sessions ne sont marquées comme exportées qu’une fois le fichier réellement enregistré : si vous annulez l’enregistrement, elles restent donc sélectionnables pour une nouvelle tentative.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Accédez à la carte **Manage or Export Sessions** (gérer ou exporter les sessions) de l’écran d’accueil d’Interviewer Classic, sélectionnez les fichiers que vous souhaitez exporter, puis choisissez vos types de fichiers et vos options d’exportation. Il vous est ensuite demandé de choisir un emplacement où enregistrer l’exportation.
+
+- Si vous utilisez une tablette, il vous est demandé de choisir une application pour traiter l’exportation. Choisissez l’application du service cloud. L’application s’ouvre alors, et il vous est demandé de choisir un emplacement où enregistrer l’exportation.
+- Si vous utilisez un PC ou un Mac, il vous est demandé de choisir un emplacement dans le système de fichiers de l’appareil pour enregistrer l’exportation. Accédez au dossier du service cloud créé au point 1.
+
+</AppOnly>
+
+### Autres méthodes de transfert {#other-transfer-methods}
+
+Il est possible de transmettre les fichiers zip créés par Interviewer par bien d’autres moyens que ceux décrits ci-dessus. Ces moyens sont toutefois généralement déconseillés comme flux de travail principal, car ils peuvent être moins sûrs et plus sujets aux erreurs qu’un service de partage de fichiers dans le cloud, et ne pas être compatibles avec les exigences du comité d’éthique (IRB) qui encadre votre étude.
+
+Si vous acceptez les risques éventuels, vous devriez pouvoir utiliser la même méthode que ci-dessus pour « partager » vos données exportées avec un certain nombre d’applications et de services, notamment par e-mail, Slack, SharePoint, etc.
+
+## Le flux de travail hors ligne {#the-offline-workflow}
+
+Si vos appareils d’entretien n’ont pas de connexion Internet, utilisez une clé USB ou un autre support de stockage externe pour transporter les fichiers dans les deux sens.
+
+<AppOnly axis="interviewer" app="current">
+
+<TipBox danger={true}>
+
+Interviewer fonctionne dans un navigateur web : chaque appareil a donc besoin d’une connexion **une fois, avant de passer hors ligne**. Ouvrez Interviewer sur l’appareil — ou installez-le comme application web progressive — tant qu’il est encore connecté. C’est ce premier chargement qui enregistre l’application sur l’appareil ; lorsque l’état affiché en bas de l’écran d’accueil indique **Utilisable hors ligne**, l’importation de protocoles, les entretiens et l’exportation fonctionnent sans aucune connexion. Cet état couvre tous les protocoles, y compris les protocoles en schéma 8, qui s’exécutent dans le moteur d’entretien du schéma 8 intégré à Interviewer. Toutes les langues de l’interface sont enregistrées avec l’application : le changement de langue fonctionne donc lui aussi hors ligne. Un appareil qui n’a jamais chargé Interviewer ne peut pas l’ouvrir sur le terrain.
+
+</TipBox>
+
+</AppOnly>
+
+<TipBox>
+
+Le flux de travail hors ligne suppose que toutes les interfaces de votre protocole fonctionnent hors ligne. Certaines interfaces du schéma 8 dans **Interviewer** — en particulier l’[interface géospatiale](/fr/design-protocols/interface-documentation/geospatial), qui charge les cartes via Internet — nécessitent une connexion _pendant l’entretien_ : un protocole qui les utilise ne peut donc pas s’exécuter entièrement hors ligne. Les protocoles qui ont besoin d’une connexion affichent l’indicateur **Connexion Internet requise** sur leur carte de protocole. Les protocoles en schéma 7 dans **Interviewer Classic** ne sont pas concernés.
+
+</TipBox>
+
+<ImageFullWidth src="/assets/img/offline-data/offline.png" alt="Diagramme du flux de travail hors ligne"></ImageFullWidth>
+
+### Distribuer les protocoles par USB {#deploying-protocols-via-usb}
+
+Hors ligne, la seule façon de distribuer les protocoles est de transférer physiquement le fichier de protocole de votre ordinateur vers chaque appareil d’entretien.
+
+1. Déterminez le chemin de votre fichier de protocole (l’endroit où il est enregistré sur votre ordinateur). Il suit généralement le format `C:\Folder\Subfolder\file.netcanvas` sous Windows ou `/Users/Username/Folder/Subfolder/file.netcanvas` sur Mac.
+2. Ouvrez l’explorateur de fichiers de votre ordinateur et accédez à l’emplacement du fichier de protocole.
+3. Insérez votre clé USB ou un autre périphérique de stockage externe dans votre ordinateur.
+4. Copiez le fichier de protocole sur le périphérique de stockage externe.
+5. Éjectez le périphérique de stockage externe de votre ordinateur.
+6. Insérez le périphérique de stockage externe dans l’appareil d’entretien.
+7. Importez le protocole depuis le périphérique de stockage externe.
+
+<AppOnly axis="interviewer" app="current">
+
+Ouvrez Interviewer et utilisez la carte **Importer un protocole** de l’écran d’accueil, puis accédez au périphérique de stockage externe et sélectionnez le fichier de protocole. Vous pouvez aussi faire glisser le fichier depuis le périphérique de stockage sur la carte.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Ouvrez Interviewer Classic et utilisez le bouton **Import from File** (importer depuis un fichier) de l’écran d’accueil, puis accédez au dossier du périphérique de stockage externe et sélectionnez le fichier de protocole.
+
+</AppOnly>
+
+<TipBox>
+
+Consultez la documentation de votre système d’exploitation ou du fabricant de l’appareil
+(ou faites simplement un essai à l’avance) pour vous assurer que le périphérique de stockage que vous utilisez
+pour transférer le fichier de protocole peut être lu par l’appareil d’entretien _et_ par
+l’ordinateur avec lequel vous avez créé le protocole.
+
+</TipBox>
+
+### Exporter les données par USB {#exporting-data-via-usb}
+
+Comme ci-dessus, la seule façon d’exporter les données hors ligne est d’utiliser un support de stockage externe pour rapporter les fichiers de données de l’appareil d’entretien vers un ordinateur.
+
+1. Créez un dossier dédié sur votre périphérique de stockage externe pour y stocker les données d’entretien. Choisissez un emplacement facile d’accès et bien organisé. Si vous travaillez au sein d’une grande équipe, envisagez de créer un dossier individuel pour chaque personne qui mène des entretiens.
+2. Une fois vos entretiens menés, exportez les sessions dans ce dossier.
+
+<AppOnly axis="interviewer" app="current">
+
+Sélectionnez les sessions d’entretien voulues dans la vue **Données**, cliquez sur **Exporter la sélection (_n_)**, puis sur **Enregistrer…**, **Partager…** ou **Télécharger** une fois l’archive prête.
+
+- Dans un navigateur sur ordinateur, le navigateur vous demande généralement de choisir un emplacement — accédez au dossier que vous avez créé sur le périphérique de stockage externe.
+- Sur une tablette, le menu de partage du système s’ouvre — choisissez une application de gestion de fichiers, puis accédez au périphérique de stockage externe.
+- Sinon, l’archive est enregistrée dans le dossier des téléchargements du navigateur, et c’est à vous de la copier sur le périphérique de stockage externe.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Accédez à la carte **Manage or Export Sessions** (gérer ou exporter les sessions) de l’écran d’accueil d’Interviewer Classic et sélectionnez les fichiers que vous souhaitez exporter. Il vous est demandé de choisir un emplacement où enregistrer l’exportation.
+
+- Si vous utilisez un PC ou un Mac, il vous est demandé de choisir un emplacement dans le système de fichiers de l’appareil pour enregistrer l’exportation. Accédez au dossier du périphérique de stockage externe créé au point 1.
+- Si vous utilisez une tablette, il vous est demandé de choisir une application pour traiter l’exportation. Sur les tablettes, l’exportation s’appuie sur la fonction de « partage » intégrée à Android et à iOS. Les possibilités d’enregistrement des données exportées dépendent donc des applications installées sur votre appareil. Vous devez par conséquent installer une application tierce de gestion de fichiers, comme « [CX File Explorer](https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer) ». Une fois celle-ci installée, choisissez l’application de gestion de fichiers dans le menu de partage. L’application s’ouvre alors, et il vous est demandé de choisir un emplacement où enregistrer l’exportation. Accédez au dossier du périphérique de stockage externe créé au point 1.
+
+</AppOnly>
+
+## Après le transfert {#after-the-transfer}
+
+Quel que soit le flux de travail que vous utilisez, une fois vos données sorties de l’appareil :
+
+- **Organisez et sauvegardez vos exportations.** Une seule copie dans un dossier cloud — ou sur une clé USB — ne constitue pas une sauvegarde. Consultez les [bonnes pratiques d’organisation et de sauvegarde des données](/fr/collect-data/protocol-and-data-workflows#data-organization-and-backup-best-practices).
+- **Exportez régulièrement, et videz les appareils une fois les données stockées en lieu sûr.** Les données d’entretien n’existent que sur l’appareil tant que vous ne les avez pas exportées. Consultez [Stockage et sécurité des données](/fr/collect-data/interviewer/data-storage) pour savoir ce qui peut les détruire.
+- **Testez l’ensemble du cycle avant de collecter de vraies données.** [Mener une étude pilote](/fr/get-started/planning-a-study/piloting-your-study) montre comment exécuter d’abord un protocole et sa procédure d’exportation de bout en bout.
+
+Pour une description complète du contenu des fichiers exportés et de l’effet de chaque option d’exportation, consultez le [guide d’exportation des données](/fr/analyze-data/data-export).

@@ -137,7 +137,7 @@ const meta: Meta<StoryArgs> = {
   args: {
     icon: 'add-a-person',
     maxNodes: 0,
-    hint: { en: 'Press Enter when you are finished.' },
+    hint: 'Press Enter when you are finished.',
   },
   argTypes: {
     icon: {

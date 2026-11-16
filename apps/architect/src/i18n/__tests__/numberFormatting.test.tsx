@@ -96,8 +96,9 @@ it('localizes option positions while leaving the authored option value and actio
           value={{
             arrayName: 'options',
             allValues: {},
-            labelValues: {},
             labelLocale: 'en',
+            duplicatedLabels: new Set(),
+            duplicatedLabelMessage: '',
             showArrayError: false,
           }}
         >

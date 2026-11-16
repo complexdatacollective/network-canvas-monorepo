@@ -228,6 +228,14 @@ function CollectionContent<T extends Record<string, unknown>>({
     }
   }, [scrollable, virtualized]);
 
+  // An empty listbox is allowed; one holding anything but options is not. The
+  // empty state is drawn where the items would be, so in a listbox it is
+  // hidden from assistive technology and given to the list as its
+  // description instead: "Added people, list box, No items".
+  const showEmptyState = collection.size === 0 && !!emptyState;
+  const emptyStateId = `${collectionId}-empty`;
+  const describesEmptyState = showEmptyState && !nativeItemSemantics;
+
   const regionProps = {
     'role': nativeItemSemantics ? undefined : 'listbox',
     'id': collectionId,
@@ -242,6 +250,7 @@ function CollectionContent<T extends Record<string, unknown>>({
         : undefined,
     ...(nativeItemSemantics ? {} : collectionProps),
     ...restDndProps,
+    'aria-describedby': describesEmptyState ? emptyStateId : undefined,
     'className': 'size-full',
   };
 
@@ -272,8 +281,14 @@ function CollectionContent<T extends Record<string, unknown>>({
           layoutGroupId={layoutGroupId}
         />
       )}
-      {collection.size === 0 && emptyState && (
-        <div className="text-center text-current/70">{emptyState}</div>
+      {showEmptyState && (
+        <div
+          id={emptyStateId}
+          aria-hidden={describesEmptyState || undefined}
+          className="text-center text-current/70"
+        >
+          {emptyState}
+        </div>
       )}
     </>
   );

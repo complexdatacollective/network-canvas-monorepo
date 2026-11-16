@@ -1,0 +1,10 @@
+{
+  "extends": "@codaco/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+  },
+  "include": ["*.ts", "src"],
+  "exclude": ["node_modules"]
+}

@@ -14,6 +14,7 @@ const protocol = {
       id: 'roster',
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
+      unnamedLabel: localized('Unnamed {count}'),
       subject: { entity: 'node', type: 'person' },
       dataSource: 'roster-asset',
     },

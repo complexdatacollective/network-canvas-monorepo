@@ -52,15 +52,22 @@ export function CollectionProvider<T>({
     createSeededCollectionStore(items, keyExtractor, textValueExtractor, seed),
   );
 
-  // Reads the latest extractors without making them effect dependencies.
-  const syncItems = useEffectEvent((nextItems: T[]) => {
-    store.getState().setItems(nextItems, keyExtractor, textValueExtractor);
-  });
+  // Reads the latest key extractor without making it an effect dependency: a
+  // key identifies its item, so it changes only with the items.
+  const syncItems = useEffectEvent(
+    (nextItems: T[], nextTextValueExtractor: TextValueExtractor<T>) => {
+      store
+        .getState()
+        .setItems(nextItems, keyExtractor, nextTextValueExtractor);
+    },
+  );
 
-  // Update items when they change
+  // The text an item is typed ahead by can change while the item does not
+  // (a name decrypting), so a new text extractor is read again. Pass a stable
+  // one: a new function on every render rebuilds the collection every time.
   useEffect(() => {
-    syncItems(items);
-  }, [items]);
+    syncItems(items, textValueExtractor);
+  }, [items, textValueExtractor]);
 
   return (
     <CollectionStoreContext.Provider

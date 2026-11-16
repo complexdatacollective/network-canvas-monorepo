@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import {
@@ -26,6 +26,7 @@ import type { CodebookSubject } from '../../../protocol-context.ts';
 import { isPresenceOperator } from '../../../rules/operators.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import { useLatest } from '../../../state/useLatest.ts';
 import { anonymisationMessages } from './anonymisationMessages.ts';
 
 /**
@@ -251,8 +252,7 @@ export default function EncryptedAttributesSection() {
    * downstream would refuse the write. A deferred create asks the same
    * question of its own slot (`useCreateAttributeForSlot`'s `liveTarget`).
    */
-  const writable = useRef(!readOnly);
-  writable.current = !readOnly;
+  const writable = useLatest(!readOnly);
 
   const nodeTypes = useMemo<readonly NodeTypeView[]>(() => {
     const definitions = protocolContext.codebook.node ?? {};
@@ -296,7 +296,9 @@ export default function EncryptedAttributesSection() {
     ReadonlyMap<string, number>
   >(() => new Map());
   /** What each type's switch was last seeded from. */
-  const seenProtection = useRef(new Map<string, boolean>());
+  const [seenProtection, setSeenProtection] = useState<
+    ReadonlyMap<string, boolean>
+  >(() => new Map());
   /**
    * What this section's own write will leave each type protecting.
    *
@@ -304,31 +306,41 @@ export default function EncryptedAttributesSection() {
    * researcher: re-seeding on it would close the panel the moment they untick
    * the last attribute, mid-edit, over a section they still have open.
    */
-  const askedProtection = useRef(new Map<string, boolean>());
+  const [askedProtection, setAskedProtection] = useState<
+    ReadonlyMap<string, boolean>
+  >(() => new Map());
   /** How many writes of this section's own are waiting or in flight. */
-  const pending = useRef(0);
+  const [pending, setPending] = useState(0);
 
   // Adjusted during render rather than in an effect: a collaborator's change
   // is the codebook moving under the editor, and showing the switch it
   // replaced for a frame first is showing the researcher something untrue.
   const reseeded: string[] = [];
+  let seenNow = seenProtection;
+  let askedNow = askedProtection;
   for (const view of nodeTypes) {
-    const seen = seenProtection.current.get(view.typeId);
+    const seen = seenNow.get(view.typeId);
     if (seen === view.hasEncrypted) continue;
-    const ours = askedProtection.current.get(view.typeId) === view.hasEncrypted;
+    const ours = askedNow.get(view.typeId) === view.hasEncrypted;
     // A move this section did not make, arriving while a write of its own is
     // in flight, has NOT been seeded: recording it as seen here is what would
     // lose it for the session, because the render that follows the write
     // settling could no longer tell this type from one already seeded. Left
     // unseen, the same move re-seeds on that render instead — which is the
     // only reason the switch can be deferred rather than dropped.
-    if (seen !== undefined && !ours && pending.current > 0) continue;
-    seenProtection.current.set(view.typeId, view.hasEncrypted);
-    askedProtection.current.delete(view.typeId);
+    if (seen !== undefined && !ours && pending > 0) continue;
+    seenNow = new Map(seenNow).set(view.typeId, view.hasEncrypted);
+    if (askedNow.has(view.typeId)) {
+      const withoutAsked = new Map(askedNow);
+      withoutAsked.delete(view.typeId);
+      askedNow = withoutAsked;
+    }
     // A type met for the first time is seeded by mounting, not by re-mounting.
     if (seen === undefined || ours) continue;
     reseeded.push(view.typeId);
   }
+  if (seenNow !== seenProtection) setSeenProtection(seenNow);
+  if (askedNow !== askedProtection) setAskedProtection(askedNow);
   if (reseeded.length > 0) {
     setSwitchGenerations((generations) => {
       const next = new Map(generations);
@@ -338,6 +350,15 @@ export default function EncryptedAttributesSection() {
       return next;
     });
   }
+
+  const markAsked = (typeId: string, protects: boolean) =>
+    setAskedProtection((asked) => new Map(asked).set(typeId, protects));
+  const clearAsked = (typeId: string) =>
+    setAskedProtection((asked) => {
+      const next = new Map(asked);
+      next.delete(typeId);
+      return next;
+    });
 
   const setEncrypted = async (
     view: NodeTypeView,
@@ -351,7 +372,7 @@ export default function EncryptedAttributesSection() {
 
     setFailure(undefined);
     setBusy(true);
-    pending.current += 1;
+    setPending((count) => count + 1);
     try {
       const outcome = await writeCodebookSection(subject, (authoritative) => {
         const next = documentWithUpdatedVariable({
@@ -368,16 +389,13 @@ export default function EncryptedAttributesSection() {
         // Read off the document being written rather than predicted from the
         // checkbox: unticking the last TEXT attribute leaves the type
         // protecting whatever a stranded flag elsewhere in it still protects.
-        askedProtection.current.set(
-          view.typeId,
-          encryptedVariableIds(next).length > 0,
-        );
+        markAsked(view.typeId, encryptedVariableIds(next).length > 0);
         return next;
       });
       if (outcome.status !== 'applied') {
         // Nothing landed, so the codebook has not moved and the marker would
         // otherwise swallow the next change a collaborator makes.
-        askedProtection.current.delete(view.typeId);
+        clearAsked(view.typeId);
         setFailure({
           message: outcome.message,
           held: outcome.refusal.kind === 'held',
@@ -393,7 +411,7 @@ export default function EncryptedAttributesSection() {
         ),
       );
     } finally {
-      pending.current -= 1;
+      setPending((count) => count - 1);
       setBusy(false);
     }
   };
@@ -410,10 +428,10 @@ export default function EncryptedAttributesSection() {
     const subject: CodebookSubject = { entity: 'node', type: view.typeId };
     setFailure(undefined);
     setBusy(true);
-    pending.current += 1;
+    setPending((count) => count + 1);
     try {
       const outcome = await writeCodebookSection(subject, (authoritative) => {
-        askedProtection.current.set(view.typeId, false);
+        markAsked(view.typeId, false);
         return encryptedVariableIds(authoritative).reduce(
           (document, variableId) =>
             documentWithUpdatedVariable({
@@ -427,7 +445,7 @@ export default function EncryptedAttributesSection() {
         );
       });
       if (outcome.status !== 'applied') {
-        askedProtection.current.delete(view.typeId);
+        clearAsked(view.typeId);
         setFailure({
           message: outcome.message,
           held: outcome.refusal.kind === 'held',
@@ -441,7 +459,7 @@ export default function EncryptedAttributesSection() {
       );
       return true;
     } finally {
-      pending.current -= 1;
+      setPending((count) => count - 1);
       setBusy(false);
     }
   };
@@ -474,7 +492,7 @@ export default function EncryptedAttributesSection() {
       onConfirm: () => undefined,
     });
     if (confirmed !== true) return false;
-    if (!writable.current) {
+    if (!writable()) {
       // Said rather than silently refused. Every other way this section
       // declines a change puts a sentence above it, and a switch that simply
       // sprang back would be the one refusal the researcher is left to guess
@@ -583,7 +601,11 @@ export default function EncryptedAttributesSection() {
           hold an announcement back until it clears, and this sentence is only
           ever on screen while it would not. */}
       {busy && (
-        <Paragraph role="status" margin="none" emphasis="muted">
+        <Paragraph
+          render={<output aria-live="polite" className="block" />}
+          margin="none"
+          emphasis="muted"
+        >
           {intl.formatMessage(codebookEditingMessages.saving)}
         </Paragraph>
       )}

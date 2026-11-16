@@ -1,11 +1,6 @@
 // Shared constants for Button and IconButton stories
 // TODO: these can all be extracted from the actual variants.
-export const BUTTON_VARIANTS = [
-  'default',
-  'outline',
-  'text',
-  'dashed',
-] as const;
+export const BUTTON_VARIANTS = ['default', 'text', 'dashed'] as const;
 
 export const BUTTON_COLORS = [
   'default',

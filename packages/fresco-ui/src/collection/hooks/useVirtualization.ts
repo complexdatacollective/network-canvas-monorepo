@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { rafThrottle } from '../../dnd/utils';
 import type { RowInfo } from '../layout/types';
@@ -46,17 +39,6 @@ export function useVirtualization({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
 
-  // Track the scroll element in state to trigger effects when ref becomes available
-  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
-
-  // Sync ref to state when it changes (runs every render to detect ref population)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => {
-    if (scrollRef.current !== scrollElement) {
-      setScrollElement(scrollRef.current);
-    }
-  });
-
   // Build a map of key -> row index for quick lookups
   const keyToRowIndex = useMemo(() => {
     const map = new Map<Key, number>();
@@ -79,7 +61,13 @@ export function useVirtualization({
   // Track scroll position with RAF throttling for performance
   const scrollTopRef = useRef(0);
 
+  // The viewport is read in passive effects. It is rendered by an ancestor,
+  // and React attaches an ancestor's ref only after the layout effects beneath
+  // it have run, so a layout effect here would find nothing on mount. The
+  // viewport is only ever replaced by remounting the collection inside it,
+  // which runs these effects again.
   useEffect(() => {
+    const scrollElement = scrollRef.current;
     if (!scrollElement) return undefined;
 
     // Throttle scroll updates to animation frames to prevent excessive re-renders
@@ -101,10 +89,11 @@ export function useVirtualization({
       scrollElement.removeEventListener('scroll', handleScroll);
       updateScrollTop.cancel();
     };
-  }, [scrollElement]);
+  }, [scrollRef]);
 
   // Track viewport height with ResizeObserver
-  useLayoutEffect(() => {
+  useEffect(() => {
+    const scrollElement = scrollRef.current;
     if (!scrollElement) return undefined;
 
     const observer = new ResizeObserver((entries) => {
@@ -118,7 +107,7 @@ export function useVirtualization({
 
     observer.observe(scrollElement);
     return () => observer.disconnect();
-  }, [scrollElement]);
+  }, [scrollRef]);
 
   // Binary search to find first visible row (row that intersects or is below scrollTop)
   const findFirstVisibleRow = useCallback(

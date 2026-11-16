@@ -18,7 +18,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./messages": "./src/messages.ts",
-    "./locales": "./src/locales/catalogs.ts"
+    "./locales": "./src/locales/catalogs.ts",
+    "./schema-version": "./src/schemaVersion.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -35,6 +36,10 @@
       "./locales": {
         "types": "./dist/locales.d.ts",
         "import": "./dist/locales.js"
+      },
+      "./schema-version": {
+        "types": "./dist/schema-version.d.ts",
+        "import": "./dist/schema-version.js"
       }
     },
     "access": "public"
@@ -50,7 +55,6 @@
   "dependencies": {
     "@codaco/shared-consts": "workspace:^",
     "@formatjs/icu-messageformat-parser": "catalog:",
-    "@formatjs/intl-localematcher": "catalog:",
     "csvtojson": "catalog:",
     "jszip": "catalog:",
     "ohash": "^2.0.12",

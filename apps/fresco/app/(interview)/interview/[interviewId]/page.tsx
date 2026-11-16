@@ -4,7 +4,6 @@ import { Suspense } from 'react';
 import { SuperJSON } from 'superjson';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { getRequestedLocales, getServerIntl } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
@@ -144,12 +143,6 @@ async function InterviewContent({
   // Negotiated from the request rather than in the browser so the server
   // render and hydration choose the same protocol language.
   const requestedLocales = await getRequestedLocales();
-  // The interview's own messages, in the language its Shell will negotiate
-  // from the same request, travel with the page: otherwise hydration waits on
-  // a separate download before the participant sees anything. A language the
-  // participant chose earlier in this tab is kept only in the browser, so the
-  // Shell loads that language's messages itself when it differs.
-  const catalog = await loadInterviewCatalog(requestedLocales);
 
   return (
     <InterviewClient
@@ -161,7 +154,6 @@ async function InterviewContent({
       installationId={installationId}
       disableAnalytics={disableAnalytics}
       view={view}
-      catalog={catalog}
     />
   );
 }

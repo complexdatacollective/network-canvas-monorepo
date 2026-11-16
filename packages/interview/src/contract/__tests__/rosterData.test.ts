@@ -66,6 +66,7 @@ function rosterStage(id: string, dataSource: string): Stage {
     label: { en: 'Roster' },
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     panelTitle: { en: 'Available to add' },
     subject: { entity: 'node', type: 'person' },
     dataSource,
@@ -475,6 +476,7 @@ describe('collectRosterExternalData', () => {
           allAddedNotice: {
             en: 'There is nothing left to add from this list.',
           },
+          unnamedLabel: { en: 'Unnamed {count}' },
           panelTitle: { en: 'Available to add' },
           subject: { entity: 'node', type: 'place' },
           dataSource: 'roster',
@@ -595,6 +597,7 @@ describe('collectRosterExternalData', () => {
       label: 'Roster',
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
+      unnamedLabel: localized('Unnamed {count}'),
       dataSource: 'draft-roster',
       prompts: [{ id: 'p1', text: 'Pick people' }],
     } as unknown as Stage;
@@ -603,6 +606,7 @@ describe('collectRosterExternalData', () => {
       label: 'Roster',
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
+      unnamedLabel: localized('Unnamed {count}'),
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'Pick people' }],
     } as unknown as Stage;

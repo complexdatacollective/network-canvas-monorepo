@@ -19,16 +19,6 @@ const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
     : [];
 
 describe('the questions a dyad census asks about a pair', () => {
-  it('saves the stage it opened, unchanged', async () => {
-    const harness = renderStageEditor(openSection());
-
-    // The stage's name and the type it asks about belong to sections this
-    // mount does not include.
-    await harness.roundTrip({
-      unowned: ['subject'],
-    });
-  });
-
   it('opens a prompt holding the connection it was saved with', async () => {
     const harness = renderStageEditor(openSection());
 

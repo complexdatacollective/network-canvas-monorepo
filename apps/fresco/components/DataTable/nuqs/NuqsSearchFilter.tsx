@@ -109,6 +109,7 @@ const messages = defineMessages({
   NuqsSearchFilterplaceholder: {
     id: 'fresco.tableFilters.NuqsSearchFilterplaceholder',
     defaultMessage: 'Filter...',
-    description: 'Researcher-facing tableFilters: Filter...',
+    description:
+      'Default placeholder of the search box above a data table (for example participants or interviews); typing narrows the rows shown. Filter is a verb.',
   },
 });

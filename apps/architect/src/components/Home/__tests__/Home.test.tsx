@@ -121,11 +121,55 @@ vi.mock('../ProtocolLoadingOverlay', () => ({
   default: ({ open }: { open: boolean }) =>
     open ? <div data-testid="protocol-loading-overlay" /> : null,
 }));
-vi.mock('../TransitMap', () => ({ default: () => null }));
+// The illustration itself is out of scope; what Home feeds it is recorded.
+const transitMapCounts = vi.hoisted((): number[] => []);
+vi.mock('../TransitMap', () => ({
+  default: ({ count }: { count: number }) => {
+    transitMapCounts.push(count);
+    return null;
+  },
+}));
 
 import Home from '../Home';
 
 describe('<Home />', () => {
+  it('grows the timeline illustration only while its window is focused', async () => {
+    vi.useFakeTimers();
+    let focused = true;
+    const hasFocus = vi
+      .spyOn(document, 'hasFocus')
+      .mockImplementation(() => focused);
+    const latestCount = () => transitMapCounts.at(-1);
+    const elapse = (ms: number) =>
+      act(async () => {
+        await vi.advanceTimersByTimeAsync(ms);
+      });
+    const emulateFocus = async (next: boolean) => {
+      focused = next;
+      window.dispatchEvent(new Event(next ? 'focus' : 'blur'));
+      // The blur check runs a task later.
+      await elapse(1);
+    };
+
+    try {
+      render(<Home />);
+      const atMount = latestCount() ?? 0;
+      await elapse(2400 * 2);
+      expect(latestCount()).toBe(atMount + 2);
+
+      await emulateFocus(false);
+      await elapse(2400 * 3);
+      expect(latestCount()).toBe(atMount + 2);
+
+      await emulateFocus(true);
+      await elapse(2400);
+      expect(latestCount()).toBe(atMount + 3);
+    } finally {
+      hasFocus.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it('uses medium call-to-action buttons colored by role', () => {
     render(<Home />);
 

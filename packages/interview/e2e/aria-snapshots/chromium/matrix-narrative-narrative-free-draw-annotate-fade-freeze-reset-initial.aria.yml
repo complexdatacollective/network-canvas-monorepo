@@ -12,7 +12,7 @@
   - status
   - toolbar "Layout and drawing tools":
     - group "Drawing controls":
-      - button "Start sketching - matrix check"
+      - button "Sketch - matrix check"
       - button "Hold the sketch - matrix check"
       - button "Wipe the sketch - matrix check"
   - navigation:

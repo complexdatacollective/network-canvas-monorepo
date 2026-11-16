@@ -10,7 +10,7 @@ const messages = defineMessages({
     id: 'fresco.OnboardSteps.CreateAccount.createAnAdminAccount',
     defaultMessage: 'Create an Admin Account',
     description:
-      'Researcher-facing OnboardSteps / CreateAccount: Create an Admin Account',
+      "Heading of the account step of the first-time setup wizard, above the form that creates the installation's first researcher account.",
   },
 });
 

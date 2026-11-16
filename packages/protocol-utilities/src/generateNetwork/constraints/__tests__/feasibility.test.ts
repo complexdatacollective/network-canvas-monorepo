@@ -1056,6 +1056,7 @@ describe('a unique group whose members a roster populates unevenly', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     maxNodesNotice: {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
@@ -1247,6 +1248,7 @@ describe('values a prompt fixes', () => {
       ...fixingGenerator(2, 'stage-roster'),
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
     } as unknown as Stage;
 
     expect(
@@ -1264,6 +1266,7 @@ describe('values a prompt fixes', () => {
       ...fixingGenerator(2, 'stage-roster'),
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
     } as unknown as Stage;
 
     const conflicts = analyseFeasibility(uniqueFlag, [stage], config, {
@@ -1279,6 +1282,7 @@ describe('values a prompt fixes', () => {
       ...fixingGenerator(8, 'stage-roster'),
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
     } as unknown as Stage;
 
     expect(
@@ -1364,6 +1368,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
     },
@@ -2961,6 +2966,7 @@ describe('roster rows the rules turn away, at the seam the counts feed', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     maxNodesNotice: {
       en: 'You have completed this task. Click the next arrow to continue.',
     },

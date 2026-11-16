@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 
 const hitsFor = (protocol: unknown) =>
   collectEntityAttributeReferences(protocol);

@@ -33,13 +33,13 @@ const chromeMessages = defineMessages({
     defaultMessage:
       'Edit stage {position, number}: {stageName}, {interfaceName}',
     description:
-      'Researcher-facing explanatory text in components / Timeline / TimelineStageRow.',
+      'Accessible name of the control on a timeline stage that opens the stage for editing; read only by screen readers. position is its number in the timeline, stageName its title, interfaceName the name of its interface type.',
   },
   editStage76e56: {
     id: 'architect.chrome.timeline.timelineStageRow.editStage76e56',
     defaultMessage: 'Edit stage {position, number}: {stageName}',
     description:
-      'Researcher-facing explanatory text in components / Timeline / TimelineStageRow.',
+      'Accessible name of the control on a timeline stage that opens the stage for editing, used when the stage type has no known name. position is its number in the timeline; stageName is its title.',
   },
   viewStage: {
     id: 'architect.chrome.timeline.timelineStageRow.viewStage',
@@ -59,25 +59,28 @@ const messages = defineMessages({
   hasFilter: {
     id: 'architect.timeline.timelineStageRow.hasFilter',
     defaultMessage: 'Has filter',
-    description: 'The alt text in components / Timeline / TimelineStageRow.',
+    description:
+      'Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has a filter set.',
   },
   hasSkipLogic: {
     id: 'architect.timeline.timelineStageRow.hasSkipLogic',
     defaultMessage: 'Has skip logic',
-    description: 'The alt text in components / Timeline / TimelineStageRow.',
+    description:
+      'Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has skip logic set.',
   },
   deleteStage: {
     id: 'architect.timeline.timelineStageRow.deleteStage',
     defaultMessage: 'Delete stage {position, number}: {stageName}',
     description:
-      'The aria-label text in components / Timeline / TimelineStageRow.',
+      'Accessible name of the trash button on a timeline stage that deletes the stage, after confirmation. position is its number in the timeline; stageName is its title.',
   },
 });
 const finalMessages = defineMessages({
   untitledStage: {
     id: 'architect.final.components.Timeline.TimelineStageRow.untitledStage',
     defaultMessage: 'Untitled stage',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Name used in a timeline stage's accessible labels when the stage has no title yet.",
   },
 });
 
@@ -394,7 +397,7 @@ const TimelineStageRow = ({
               }
             />
             {deleteBlockedReason !== undefined && (
-              <TooltipContent side="left" className="max-w-64">
+              <TooltipContent side="inline-start" className="max-w-64">
                 {deleteBlockedReason}
               </TooltipContent>
             )}

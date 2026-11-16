@@ -12,6 +12,11 @@
   // `vitest.config.ts` is in here because it was not, and a `browser.isolate`
   // that Vitest 5 no longer reads sat in it unnoticed — the same mistake in the
   // Interview config, which is typechecked, failed to compile.
-  "include": [".storybook/**/*", "src", "vitest.config.ts"],
+  "include": [
+    ".storybook/**/*",
+    "src",
+    "vitest.config.ts",
+    "vitest.sequencer.ts"
+  ],
   "exclude": ["node_modules", "storybook-static"]
 }

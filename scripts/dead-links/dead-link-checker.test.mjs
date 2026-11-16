@@ -76,6 +76,18 @@ function html(response, body, status = 200) {
   response.end(body);
 }
 
+// A stand-in for process.stdout/stderr when `run` is called in-process.
+function textSink() {
+  const stream = {
+    text: '',
+    write(chunk) {
+      stream.text += chunk;
+      return true;
+    },
+  };
+  return stream;
+}
+
 function jsonResult(result) {
   assert.equal(result.stderr, '');
   return JSON.parse(result.stdout);
@@ -189,14 +201,36 @@ test('a WAF refusal is reported unverified, never dead and never live', async ()
       ],
     }),
   );
+  // An unlisted refusal is a FAILURE, not a refusal: this is why the rule
+  // is a list of URLs and not a count. With only the interstitial listed,
+  // the block URL must still fail even though the total is unchanged.
+  const listPath = join(directory, 'refusable.json');
+  await writeFile(
+    listPath,
+    JSON.stringify({
+      refusable: [{ url: `${root.origin}/to-interstitial` }],
+    }),
+  );
 
-  try {
-    const result = await runChecker([
+  // A genuine 403 is only known to be one once the checker has waited out
+  // the verification timeout for a follow-up navigation that never comes, so
+  // each refusal costs the whole `--timeout`. Five seconds keeps that short
+  // while leaving room for Chrome's launch, which the first link's deadline
+  // also pays; the two crawls are independent and run side by side.
+  const crawlWith = (allowList) =>
+    runChecker([
       root.origin,
       '--format=json',
       '--delay=0',
       '--retries=0',
-      `--allow-refused=${allowAll}`,
+      '--timeout=5000',
+      `--allow-refused=${allowList}`,
+    ]);
+
+  try {
+    const [result, partial] = await Promise.all([
+      crawlWith(allowAll),
+      crawlWith(listPath),
     ]);
     // Both are refusals, not dead links: a 403 from someone else's host says
     // the client was turned away, and the run cannot tell a bot wall from a
@@ -220,23 +254,6 @@ test('a WAF refusal is reported unverified, never dead and never live', async ()
       assert.match(refusal.finalUrl, /\/(interstitial|blocked)$/);
     }
 
-    // An unlisted refusal is a FAILURE, not a refusal: this is why the rule
-    // is a list of URLs and not a count. With only the interstitial listed,
-    // the block URL must still fail even though the total is unchanged.
-    const listPath = join(directory, 'refusable.json');
-    await writeFile(
-      listPath,
-      JSON.stringify({
-        refusable: [{ url: `${root.origin}/to-interstitial` }],
-      }),
-    );
-    const partial = await runChecker([
-      root.origin,
-      '--format=json',
-      '--delay=0',
-      '--retries=0',
-      `--allow-refused=${listPath}`,
-    ]);
     assert.equal(partial.code, 1, 'the unlisted refusal fails the run');
     const partialReport = JSON.parse(partial.stdout);
     assert.equal(partialReport.summary.refused, 1);
@@ -415,59 +432,75 @@ test('a body timeout after headers becomes a reportable request failure', async 
 test('GitHub annotations are capped without truncating summaries or JSON reports', async () => {
   assert.equal(MAX_GITHUB_ERROR_ANNOTATIONS, 50);
   const failureCount = 53;
+  const origin = 'https://links.example.test';
   const failurePaths = Array.from(
     { length: failureCount },
     (_, index) => `/failure-${String(index).padStart(3, '0')}`,
   );
-  const server = await startServer((request, response) => {
-    if (request.url === '/') {
-      html(
-        response,
-        failurePaths.map((path) => `<a href="${path}">bad</a>`).join(''),
-      );
-      return;
-    }
-    response.statusCode = 404;
-    response.end('missing');
-  });
+  // Everything asserted here is about how a report of many failures is
+  // published, so the links are answered by a stub verifier in the shape
+  // BrowserVerifier returns, rather than by Chrome: 53 real navigations made
+  // this the slowest test in the file without exercising anything new.
+  const verifier = {
+    async verify(url, _timeout, { captureHTML = false } = {}) {
+      const isRoot = url === `${origin}/`;
+      return {
+        contentType: 'text/html',
+        finalUrl: url,
+        html:
+          isRoot && captureHTML
+            ? failurePaths.map((path) => `<a href="${path}">bad</a>`).join('')
+            : null,
+        redirects: [],
+        retryAfter: null,
+        status: isRoot ? 200 : 404,
+      };
+    },
+    async close() {},
+  };
+  const stderr = textSink();
   const directory = await mkdtemp(join(tmpdir(), 'dead-link-checker-cap-'));
   const reportPath = join(directory, 'report.json');
   const summaryPath = join(directory, 'summary.md');
 
   try {
-    const result = await runChecker(
+    const code = await run(
       [
-        server.origin,
+        origin,
         '--format=json',
         '--delay=0',
         '--retries=0',
         `--report=${reportPath}`,
         '--github-actions',
       ],
-      { env: { GITHUB_STEP_SUMMARY: summaryPath } },
+      {
+        environment: { GITHUB_STEP_SUMMARY: summaryPath },
+        stderr,
+        stdout: textSink(),
+        verifier,
+      },
     );
-    assert.equal(result.code, 1);
-    const annotations = result.stderr
+    assert.equal(code, 1);
+    const annotations = stderr.text
       .trim()
       .split('\n')
       .filter((line) => line.startsWith('::error'));
     assert.equal(annotations.length, 50);
     assert.match(
-      result.stderr,
+      stderr.text,
       /::warning title=Additional dead links omitted from annotations::3 additional failures/,
     );
 
     const report = JSON.parse(await readFile(reportPath, 'utf8'));
     assert.equal(report.failures.length, failureCount);
     assert.equal(report.summary.failed, failureCount);
-    const lastFailureURL = `${server.origin}${failurePaths.at(-1)}`;
+    const lastFailureURL = `${origin}${failurePaths.at(-1)}`;
     assert.equal(report.failures.at(-1).url, lastFailureURL);
     assert.match(
       await readFile(summaryPath, 'utf8'),
       new RegExp(lastFailureURL),
     );
   } finally {
-    await server.stop();
     await rm(directory, { force: true, recursive: true });
   }
 });
@@ -614,11 +647,17 @@ test('redirects use their final URL, recurse internally, and detect loops', asyn
   });
 
   try {
+    // The loop's failure is reported only once the verification timeout
+    // runs out, and a verification failure is retried once by default, so
+    // both are kept small: the assertions are about how a loop is reported,
+    // not about how long the checker waits for one.
     const result = await runChecker([
       server.origin,
       '--format=json',
       '--delay=0',
       '--max-redirects=1',
+      '--retries=0',
+      '--timeout=5000',
     ]);
     assert.equal(result.code, 1, result.stderr);
     const report = jsonResult(result);

@@ -15,6 +15,7 @@ import {
 } from 'nuqs';
 import { use, useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
@@ -26,6 +27,15 @@ import type { ActivitiesFeed } from '~/queries/activityFeed';
 import { fetchActivityFeedTableColumnDefs } from './ColumnDefinition';
 import { searchParamsUrlKeys } from './SearchParams';
 import { activityTypes, sortableFields, sortOrder } from './types';
+
+const messages = defineMessages({
+  tableLabel: {
+    id: 'fresco.ActivityFeed.ActivityFeedRows.tableLabel',
+    defaultMessage: 'Recent Activity',
+    description:
+      'Accessible name of the table listing recent activity, announced by screen readers when it is reached.',
+  },
+});
 
 export default function ActivityFeedRows({
   activitiesPromise,
@@ -122,5 +132,10 @@ export default function ActivityFeedRows({
     manualFiltering: true,
   });
 
-  return <DataTable table={table} />;
+  return (
+    <DataTable
+      table={table}
+      aria-label={intl.formatMessage(messages.tableLabel)}
+    />
+  );
 }

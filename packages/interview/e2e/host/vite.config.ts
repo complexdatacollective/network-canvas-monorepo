@@ -10,7 +10,9 @@ import pkg from '../../package.json' with { type: 'json' };
 
 export default defineConfig({
   root: __dirname,
-  plugins: [appI18n(), react(), tailwindcss()],
+  // The React Compiler, as Fresco runs it (see vitest.config.ts). Interviewer's
+  // own e2e suite covers the package uncompiled.
+  plugins: [appI18n(), react({ compiler: true }), tailwindcss()],
   server: { port: 4101, strictPort: true },
   preview: { port: 4101, strictPort: true },
   define: {

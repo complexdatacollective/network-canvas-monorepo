@@ -7,7 +7,7 @@ import { AppMessage } from '@codaco/app-i18n/react';
 
 export default function SetupLoading() {
   return (
-    <span role="status">
+    <output aria-live="polite">
       <Loader2
         aria-hidden="true"
         className="text-background size-10 animate-spin"
@@ -15,6 +15,6 @@ export default function SetupLoading() {
       <span className="sr-only">
         <AppMessage message={commonMessages.loading} />
       </span>
-    </span>
+    </output>
   );
 }

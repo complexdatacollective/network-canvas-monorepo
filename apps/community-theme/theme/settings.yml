@@ -1,0 +1,18 @@
+site_navigation_script_url:
+  type: string
+  default: 'https://cdn.jsdelivr.net/npm/@codaco/site-navigation-element@^1.3.0/dist/element.js'
+help_category:
+  type: string
+  default: 'help-support'
+ideas_category:
+  type: string
+  default: 'feedback-and-feature-requests'
+conversation_category:
+  type: string
+  default: 'general'
+news_category:
+  type: string
+  default: 'announcements'
+documentation_url:
+  type: string
+  default: 'https://documentation.networkcanvas.com'

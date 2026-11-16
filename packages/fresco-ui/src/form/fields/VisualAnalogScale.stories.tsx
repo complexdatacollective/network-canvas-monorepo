@@ -491,3 +491,43 @@ export const AllStates: Story = {
     </div>
   ),
 };
+
+/**
+ * End labels written in another direction than the scale. Each label's words
+ * run its own way, but the edge its lines align to is the track's: the label
+ * at the left end is flush with the left, whatever it is written in.
+ */
+export const EndLabelsWrittenInAnotherDirection: Story = {
+  args: {
+    value: 0.5,
+    // Words of very different lengths, so the wrapped lines differ in width
+    // and the edge they align to can be seen.
+    minLabel: { text: 'الاستقلالية الاستقلالية لا', lang: 'ar', dir: 'rtl' },
+    maxLabel: { text: 'الاستقلالية الاستقلالية لا', lang: 'ar', dir: 'rtl' },
+  },
+  render: (args) => <ControlledVAS {...args} initialValue={args.value} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(document.documentElement.dir).toBe('ltr');
+
+    const [minText, maxText] = canvas.getAllByText('الاستقلالية الاستقلالية لا');
+    const lineBoxes = (text: HTMLElement) => {
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      return [...range.getClientRects()];
+    };
+    const widths = lineBoxes(minText!).map((line) => line.width);
+    // Fail if the label stops wrapping into uneven lines: aligned to either
+    // edge, lines of one width look the same.
+    await expect(Math.max(...widths) - Math.min(...widths)).toBeGreaterThan(8);
+
+    const minBox = minText!.parentElement!.getBoundingClientRect();
+    for (const line of lineBoxes(minText!)) {
+      await expect(Math.abs(line.left - minBox.left)).toBeLessThan(1);
+    }
+    const maxBox = maxText!.parentElement!.getBoundingClientRect();
+    for (const line of lineBoxes(maxText!)) {
+      await expect(Math.abs(line.right - maxBox.right)).toBeLessThan(1);
+    }
+  },
+};

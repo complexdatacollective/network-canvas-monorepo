@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 
@@ -84,6 +90,72 @@ type AttemptState = Readonly<{
 
 const IDLE: AttemptState = Object.freeze({ busy: false });
 
+type AttemptContext = Readonly<{
+  /** False once the surface that asked has gone away. */
+  live: RefObject<boolean>;
+  /** The place in the order the latest call took. */
+  sequence: RefObject<number>;
+  setState: (next: AttemptState) => void;
+}>;
+
+/**
+ * Starts one call and settles the state with its answer.
+ *
+ * A function of its own rather than the body of the hook's `run`, so that the
+ * retry it hands back can start the same call again by name.
+ */
+function startAttempt<T>(
+  context: AttemptContext,
+  operation: () => Promise<ResourceResult<T>>,
+  onSuccess?: (data: T) => void,
+  onAbandoned?: (data: T) => void,
+): void {
+  context.sequence.current += 1;
+  const attempt = context.sequence.current;
+  context.setState({ busy: true });
+
+  const settle = async () => {
+    // The call happens INSIDE the `try`, not before it: an operation that
+    // throws synchronously throws before there is a promise to attach a
+    // `catch` to, and the exception would escape into a settling nothing
+    // observes — leaving the control busy, with no failure and no retry,
+    // for as long as the editor is open.
+    let result: ResourceResult<T>;
+    try {
+      result = await operation();
+    } catch {
+      result = resourceFailure<T>('unavailable', UNREACHABLE_MESSAGE, {
+        retryable: true,
+      });
+    }
+    // A result for a superseded call, or for a component that has since
+    // gone away, decides nothing — but a successful one may have left
+    // something at the host, and this is the last place that knows it
+    // exists.
+    if (!context.live.current || context.sequence.current !== attempt) {
+      if (result.status === 'ok') onAbandoned?.(result.data);
+      return;
+    }
+    if (result.status === 'failed') {
+      context.setState({
+        busy: false,
+        failure: result.failure,
+        ...(result.failure.retryable
+          ? {
+              retry: () =>
+                startAttempt(context, operation, onSuccess, onAbandoned),
+            }
+          : {}),
+      });
+      return;
+    }
+    context.setState(IDLE);
+    onSuccess?.(result.data);
+  };
+
+  void settle();
+}
+
 /**
  * One host call, its failure, and the retry that repeats it.
  *
@@ -109,49 +181,13 @@ export function useResourceAttempt(): ResourceAttempt {
       operation: () => Promise<ResourceResult<T>>,
       onSuccess?: (data: T) => void,
       onAbandoned?: (data: T) => void,
-    ): void => {
-      sequence.current += 1;
-      const attempt = sequence.current;
-      setState({ busy: true });
-
-      const settle = async () => {
-        // The call happens INSIDE the `try`, not before it: an operation that
-        // throws synchronously throws before there is a promise to attach a
-        // `catch` to, and the exception would escape into a settling nothing
-        // observes — leaving the control busy, with no failure and no retry,
-        // for as long as the editor is open.
-        let result: ResourceResult<T>;
-        try {
-          result = await operation();
-        } catch {
-          result = resourceFailure<T>('unavailable', UNREACHABLE_MESSAGE, {
-            retryable: true,
-          });
-        }
-        // A result for a superseded call, or for a component that has since
-        // gone away, decides nothing — but a successful one may have left
-        // something at the host, and this is the last place that knows it
-        // exists.
-        if (!live.current || sequence.current !== attempt) {
-          if (result.status === 'ok') onAbandoned?.(result.data);
-          return;
-        }
-        if (result.status === 'failed') {
-          setState({
-            busy: false,
-            failure: result.failure,
-            ...(result.failure.retryable
-              ? { retry: () => run(operation, onSuccess, onAbandoned) }
-              : {}),
-          });
-          return;
-        }
-        setState(IDLE);
-        onSuccess?.(result.data);
-      };
-
-      void settle();
-    },
+    ): void =>
+      startAttempt(
+        { live, sequence, setState },
+        operation,
+        onSuccess,
+        onAbandoned,
+      ),
     [],
   );
 

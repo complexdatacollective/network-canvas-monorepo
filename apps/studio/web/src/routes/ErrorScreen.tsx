@@ -1,5 +1,5 @@
 import type { ErrorComponentProps } from '@tanstack/react-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -53,23 +53,26 @@ export default function ErrorScreen({
 }: ErrorComponentProps & { readonly participant?: boolean }) {
   const intl = useAppIntl();
   const team = useScreenTeam();
-  const teamAtError = useRef(team);
-  teamAtError.current = team;
-  useEffect(() => {
-    if (participant) return;
+  // The team is context for the log line, not a reason to log again when it
+  // changes: read it as of the moment the error is reported.
+  const reportFailure = useEffectEvent((failure: unknown) => {
     logResearcher(
       {
         message: 'Screen failed to render',
         level: 'Error',
         attributes: {
           error_code:
-            error instanceof ServerUnreachableError
+            failure instanceof ServerUnreachableError
               ? 'transport'
-              : faultCodeOf(error),
+              : faultCodeOf(failure),
         },
       },
-      teamAtError.current,
+      team,
     );
+  });
+  useEffect(() => {
+    if (participant) return;
+    reportFailure(error);
   }, [error, participant]);
   const explanation =
     error instanceof ServerUnreachableError

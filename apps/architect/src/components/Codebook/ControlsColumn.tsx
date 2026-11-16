@@ -9,13 +9,13 @@ const chromeMessages = defineMessages({
     id: 'architect.chrome.codebook.controlsColumn.inUseCannotBeDeleted',
     defaultMessage: 'In use — cannot be deleted',
     description:
-      'Researcher-facing explanatory text in components / Codebook / ControlsColumn.',
+      'Tooltip and accessible name of the disabled delete button in a row of the codebook variables table, shown when a stage uses the variable so it cannot be deleted.',
   },
   deleteAttribute: {
     id: 'architect.chrome.codebook.controlsColumn.deleteAttribute',
     defaultMessage: 'Delete attribute',
     description:
-      'Researcher-facing explanatory text in components / Codebook / ControlsColumn.',
+      'Tooltip and accessible name of the button in a row of the codebook variables table that deletes the variable (attribute). Delete is a verb.',
   },
 });
 

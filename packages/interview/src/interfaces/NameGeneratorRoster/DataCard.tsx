@@ -134,7 +134,7 @@ const DataCard = ({
                 variant="all-caps"
                 margin="none"
                 render={<dt />}
-                className="text-right text-xs leading-tight font-extrabold wrap-break-word"
+                className="text-end text-xs leading-tight font-extrabold wrap-break-word"
               >
                 {detailLabel}
               </Heading>

@@ -1,5 +1,5 @@
 import { render, type RenderResult } from '@testing-library/react';
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
@@ -87,7 +87,10 @@ export function renderResourceClient(
   const seen: { current: ResourceClient | undefined } = { current: undefined };
 
   function Probe() {
-    seen.current = useResourceClient();
+    const client = useResourceClient();
+    useEffect(() => {
+      seen.current = client;
+    }, [client]);
     return null;
   }
 

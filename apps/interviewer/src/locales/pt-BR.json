@@ -24,6 +24,7 @@
   "interviewer.dataView.noInterviewsMatchThisFilter": "Nenhuma entrevista corresponde a este filtro.",
   "interviewer.dataView.noInterviewsRecordedYet": "Nenhuma entrevista registrada ainda.",
   "interviewer.dataView.selectAllTotalCountMatching": "{totalCount, plural, one {Selecionar # entrevista correspondente →} other {Selecionar todas as # entrevistas correspondentes →}}",
+  "interviewer.dataView.tableLabel": "Entrevistas",
   "interviewer.dataViewColumns.caseID": "ID do caso",
   "interviewer.dataViewColumns.exportStatus": "Status de exportação",
   "interviewer.dataViewColumns.interviewActions": "Ações da entrevista",

@@ -31,7 +31,7 @@ import type {
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import Inspector, { type InspectorProps } from '../Inspector';
 import NetworkComposer from '../NetworkComposer';
-import { composerWords, OVERTAKEN_EDIT_NOTICE } from './composerWords';
+import { OVERTAKEN_EDIT_NOTICE } from './composerWords';
 
 // What the drawer is asked to show on each render: the real drawer renders
 // it, and a test can read what it was given while it slides away.
@@ -132,7 +132,6 @@ const edgeForm = {
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: LAYOUT_VAR,
@@ -806,7 +805,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
       fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     });
     const discard = await screen.findByRole('button', {
-      name: 'Discard changes',
+      name: 'Yes',
     });
     act(() => {
       fireEvent.click(discard);
@@ -1163,7 +1162,7 @@ describe('NetworkComposer inspector — leaving an edit', () => {
       tapNode(screen.getByRole('button', { name: /bob/i }));
     });
     await screen.findByRole('dialog', discardDialog);
-    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
 
     expect(await screen.findByDisplayValue('Bob Jones')).toBeTruthy();
     expect(store.getState().session.network).toBe(before);

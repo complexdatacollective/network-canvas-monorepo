@@ -70,6 +70,7 @@ const rosterStage = (matchProperty: string) =>
       id: 's1',
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
+      unnamedLabel: localized('Unnamed {count}'),
       label: localized('Roster'),
       subject,
       dataSource: 'roster_data',

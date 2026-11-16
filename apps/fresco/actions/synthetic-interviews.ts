@@ -11,7 +11,7 @@ const messages = defineMessages({
     id: 'fresco.actions.syntheticinterviews.copyFailedToDeleteSyntheticData',
     defaultMessage: 'Failed to delete synthetic data',
     description:
-      'Researcher-facing actions / syntheticinterviews: Failed to delete synthetic data',
+      'Error returned when the researcher asked to delete all generated test (synthetic) interviews and participants in Settings and the deletion failed.',
   },
 });
 

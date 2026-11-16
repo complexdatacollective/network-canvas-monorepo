@@ -14,7 +14,7 @@ const messages = defineMessages({
     id: 'fresco.participants.AddParticipantButton.addParticipant',
     defaultMessage: 'Add Participant',
     description:
-      'Researcher-facing participants / AddParticipantButton: Add Participant',
+      'Button on the Participants page that opens a dialog for adding one study participant by hand. Participant means a person taking part in a study.',
   },
 });
 

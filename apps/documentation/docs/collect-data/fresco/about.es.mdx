@@ -1,0 +1,115 @@
+---
+title: Acerca de Fresco
+date: 7th October 2026
+navOrder: 1
+translatedFrom: 7b5b2f895279ae19ae792ed60a58d6986271f5e0
+---
+
+<Paragraph variant="lead">
+  Fresco es una plataforma web consolidada para realizar entrevistas de Network
+  Canvas en el navegador.
+</Paragraph>
+
+Te permite tomar cualquier archivo de protocolo de Network Canvas que ya tengas, subirlo a tu propia instancia privada de la aplicación y, después, compartir una URL con quienes participan para que completen la entrevista en su propio dispositivo.
+
+Para quienes participan, la experiencia de la entrevista es idéntica a la de las aplicaciones de escritorio, pero tú gestionas todos los protocolos, participantes y datos desde un panel de administración web seguro.
+
+Aunque Fresco no añade funciones nuevas a Network Canvas, ofrece una forma flexible de realizar entrevistas con
+los protocolos de Network Canvas que ya tienes.
+
+![El panel de administración de Fresco.](/assets/img/fresco-images/features/dashboard.png)
+
+## Empieza ya {#jump-straight-in}
+
+Si quieres empezar ya y probar Fresco, puedes visitar el [entorno de pruebas](/es/collect-data/fresco/sandbox) para explorar las funciones de Fresco sin necesidad de implementarlo por tu cuenta.
+
+También puedes leer la [guía de implementación](/es/collect-data/fresco/guide) para saber cómo implementar Fresco para tu propio estudio.
+
+Si no, sigue leyendo para conocer mejor las funciones de Fresco y en qué se diferencia de las aplicaciones de escritorio.
+
+## ¿Qué es Fresco? {#what-is-fresco}
+
+Para nosotros, Fresco es una forma de hacer más accesible la realización de entrevistas de Network Canvas y de ofrecer
+a quienes investigan más flexibilidad en la manera de llevar a cabo sus estudios. Durante todo el desarrollo
+de las aplicaciones de escritorio, quienes investigan nos repetían que querían poder realizar entrevistas a distancia, y estas
+peticiones no hicieron más que aumentar con la pandemia de COVID-19.
+
+También comprobamos que a muchas de las personas que investigan les costaba el flujo de trabajo de las aplicaciones de escritorio y,
+en particular, gestionar la distribución de los protocolos y la agregación de los datos.
+
+Fresco es nuestra respuesta a estas dificultades. Permite a quienes investigan realizar entrevistas a distancia y gestionar los protocolos, participantes y datos de las entrevistas desde un panel de administración web centralizado.
+
+Es importante recordar que Fresco no sustituye a las aplicaciones de escritorio, sino que ofrece una
+forma alternativa de realizar entrevistas. Seguiremos manteniendo las aplicaciones de escritorio y, según las necesidades concretas de tu estudio, pueden ser una opción mejor.
+
+<TipBox>
+
+La plataforma en la que se basa Fresco es también la base de la nueva aplicación **Interviewer**, que lleva la misma experiencia de entrevista renovada y la misma exportación de datos a una aplicación de navegador para entrevistas con ayuda de una persona entrevistadora, que puedes instalar en un dispositivo que controlas. Consulta [Realizar entrevistas](/es/collect-data) para ver una comparación de las aplicaciones de entrevista.
+
+</TipBox>
+
+Fresco es una parte del ecosistema de Network Canvas que mantenemos plenamente, y buscamos activamente la opinión de quienes lo usan para mejorarlo.
+
+## Funciones {#features-and-functionality}
+
+Fresco incluye funciones para la gestión de participantes, la gestión de protocolos y la exportación de datos. Además,
+es compatible con los protocolos de Network Canvas existentes: ejecuta los protocolos creados para versiones anteriores del esquema sin actualizarlos. A continuación encontrarás un
+breve resumen de las funciones de Fresco.
+
+<TipBox>
+
+Aunque no se han añadido funciones nuevas a la experiencia de entrevista, hay algunas [restricciones y omisiones](#known-limitations) respecto a las funciones existentes. Asegúrate de entender estas limitaciones antes de usar Fresco o de comparar los datos recopilados con Fresco con los recopilados con las aplicaciones de escritorio.
+
+</TipBox>
+
+### Gestión del estudio {#study-management}
+
+- **Panel de administración**: un área de la aplicación destinada al equipo de investigación que ofrece una visión general de tu estudio y te permite gestionar los protocolos, participantes y entrevistas. Está protegida con inicio de sesión.
+- **Registro de actividad**: un registro en tiempo real de toda la actividad relevante de tu estudio, como cuándo cada participante empieza y completa una entrevista y cuándo subes o eliminas protocolos.
+- **Compatibilidad de protocolos**: Fresco ejecuta protocolos del esquema 9 y sigue ejecutando los protocolos del esquema 8 como esquema 8. Los protocolos del esquema 7 de las aplicaciones Classic se migran automáticamente al esquema 8 al subirlos. Consulta [Información sobre el esquema de protocolo](/es/get-started/protocol-schema-information).
+- **Idiomas de la aplicación**: el panel está disponible en inglés, inglés (Reino Unido), español, alemán, francés, italiano, neerlandés, portugués de Brasil, chino simplificado y chino tradicional, y cada persona del equipo de investigación elige su propio idioma. Consulta [Cambiar el idioma de la aplicación](/es/collect-data/fresco/using-fresco#changing-the-interface-language).
+- **Protocolos en más de un idioma**: las entrevistas se realizan en el idioma del navegador de cada participante cuando tu protocolo lo incluye, o incluye uno estrechamente relacionado; el texto que no está traducido aparece en el mejor de los demás idiomas disponibles, y cada participante puede elegir otro de los idiomas de tu protocolo en una etapa «Selector de idioma». Consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol).
+
+### Reclutamiento {#recruitment}
+
+- **Modos de reclutamiento**: se admiten dos tipos de reclutamiento, que se pueden usar por separado o combinados:
+  - **Reclutamiento anónimo**: quienes participan pueden inscribirse en el estudio por su cuenta mediante una URL de incorporación anónima. La aplicación genera automáticamente un ID de participante único para cada participante.
+  - **Lista de personas participantes conocidas**: puedes proporcionar una lista de participantes, con una etiqueta y un identificador, que Fresco usa para generar una URL de participante única para cada participante. Puedes compartir esta URL con cada participante para que se inscriba en tu estudio por su cuenta.
+- **Importación y exportación masivas de participantes**: se pueden añadir participantes al estudio de forma masiva subiendo un archivo CSV, y se pueden exportar del mismo modo, lo que permite la interoperabilidad y la portabilidad entre sistemas.
+- **Integración con herramientas de encuestas externas**: Fresco permite pasar un identificador a la aplicación a través de la URL de incorporación, que se puede usar para vincular a cada participante con herramientas de encuestas externas. Consulta el artículo avanzado sobre la [integración con otras herramientas de encuestas](/es/collect-data/fresco/integration) para obtener más información.
+
+### Gestión de datos {#data-management}
+
+- **Exportación completa de los datos**: exporta los datos desde la página de entrevistas con diversas opciones de exportación que reproducen las de Interviewer.
+- **Exportación de entrevistas incompletas**: exporta desde la página de entrevistas un CSV de las entrevistas incompletas para enviar recordatorios a quienes aún no han completado su entrevista.
+
+## Diferencias clave entre Fresco y las aplicaciones de escritorio {#key-differences-between-fresco-and-the-desktop-apps}
+
+Debes tener en cuenta varias diferencias clave entre Fresco y las aplicaciones de escritorio:
+
+- Fresco es una plataforma web para administrar entrevistas de Network Canvas. Complementa las aplicaciones de escritorio al permitir realizar entrevistas en el navegador. Fresco funciona con todos los protocolos de Network Canvas existentes y no añade funciones nuevas a Network Canvas.
+- En Fresco, **quienes participan completan las entrevistas en un navegador** visitando una URL. Esto significa que puedes realizar entrevistas a distancia y que cada participante puede usar su propio dispositivo para completar la entrevista. **Ten en cuenta que los teléfonos móviles no son compatibles.**
+- **La gestión de las entrevistas también se hace en el navegador**, mediante un panel destinado al equipo de investigación. Desde la aplicación web puedes gestionar los protocolos, participantes, entrevistas y la configuración.
+- **Fresco almacena todos los datos en una base de datos**. Esto significa que los datos se guardan en un servidor de internet y no en un ordenador local. Esto tiene consecuencias para la seguridad y la privacidad de los datos, así que tendrás que valorar las implicaciones legales y éticas de usar Fresco.
+- Eres responsable de **alojar y mantener Fresco** en tus propios servidores. Esto significa que necesitarás ciertos conocimientos técnicos para implementar y mantener Fresco.
+- Por ahora, Fresco no admite todas las funciones de las aplicaciones de escritorio. Por ejemplo, los scripts personalizados de etiquetado de nodos (node label workers) no están disponibles, y los vídeos y el audio no pueden reproducirse automáticamente la primera vez que se cargan debido a limitaciones de los navegadores. Para ver la lista completa de problemas conocidos, consulta el apartado de [limitaciones conocidas](#known-limitations), más abajo.
+
+## Limitaciones conocidas {#known-limitations}
+
+Debido a la naturaleza de la plataforma web, no hemos podido incluir algunas funciones de Interviewer. Entre ellas:
+
+- Los [scripts personalizados de etiquetado de nodos](/es/design-protocols/key-concepts/node-labelling#custom-node-labeling-advanced) no están disponibles. Habrían supuesto un posible riesgo de seguridad, así que decidimos no incluirlos. Si usabas esta función y necesitas ayuda para encontrar una alternativa, ponte en contacto con nosotros.
+- Los vídeos y el audio de tus pantallas informativas no pueden reproducirse automáticamente la primera vez que se cargan debido a limitaciones de los navegadores. Cada participante debe haber interactuado con la entrevista antes de que el contenido multimedia pueda reproducirse automáticamente.
+- No se admite la preferencia visual «Use fullscreen forms» (usar formularios a pantalla completa). Esta preferencia era útil en dispositivos con teclados en pantalla grandes, como las tabletas. Sin embargo, Fresco está pensado para usarse en un ordenador de sobremesa o portátil, así que esta preferencia no es necesaria.
+- La función de sonidos de interacción que se introdujo en la última versión de Interviewer aún no se ha incorporado a Fresco.
+- Al exportar los datos, la función «Usar coordenadas de la pantalla» usa un tamaño de pantalla fijo de 1920 x 1080. Ten en cuenta que no corresponde al tamaño de pantalla que usa cada participante. Este cambio fue necesario porque ya no se puede suponer que el tamaño de la pantalla se mantiene igual durante toda la entrevista.
+
+## Próximos pasos {#next-steps}
+
+Para explorar Fresco y aprender a usarlo, te recomendamos empezar por los siguientes recursos:
+
+- [Guía de implementación](/es/collect-data/fresco/guide): aprende a implementar Fresco para tus propios estudios leyendo sobre el proceso de implementación y siguiendo la guía de implementación.
+- [Usar Fresco](/es/collect-data/fresco/using-fresco): aprende a usar Fresco en la práctica leyendo la guía Usar Fresco.
+- [Entorno de pruebas de Fresco](/es/collect-data/fresco/sandbox): una implementación de ejemplo compartida, alojada por el equipo del proyecto, en la que puedes explorar las funciones de Fresco sin necesidad de implementarlo por tu cuenta.
+
+Si tienes algún problema, te animamos a usar la función de búsqueda de la parte superior de cada página, a leer nuestras [preguntas frecuentes](/es/collect-data/fresco/faq) o a visitar nuestro [foro de la comunidad](https://community.networkcanvas.com) (en inglés) para obtener ayuda.

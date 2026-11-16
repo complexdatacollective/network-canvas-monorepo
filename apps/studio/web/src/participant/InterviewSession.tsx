@@ -71,8 +71,10 @@ function InterviewSessionView() {
   const loaded = route.useLoaderData();
   const [notice, setNotice] = useState<ParticipantNoticeKind>();
   const [currentStep, setCurrentStep] = useState(loaded.stageIndex);
-  const currentStepRef = useRef(currentStep);
-  currentStepRef.current = currentStep;
+  // The step the save handlers read when a save runs. `onStepChange` writes it
+  // the moment the step changes, before `saveStep()` reads it, so it is never
+  // behind `currentStep`.
+  const currentStepRef = useRef(loaded.stageIndex);
 
   const { payload } = loaded;
 
@@ -105,6 +107,9 @@ function InterviewSessionView() {
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
     () =>
+      // The handlers keep `getCurrentStep` and call it only when a save runs,
+      // never during render; the rule cannot see that the closure is stored.
+      // oxlint-disable-next-line react/refs
       createParticipantHandlers({
         holderEpoch: loaded.holderEpoch,
         revision: loaded.revision,
@@ -123,7 +128,7 @@ function InterviewSessionView() {
           }
         },
       }),
-    [loaded, payload, stageTypes, log],
+    [loaded, payload, stageTypes, log, currentStepRef],
   );
 
   useEffect(() => {
@@ -149,7 +154,7 @@ function InterviewSessionView() {
       setCurrentStep(step);
       saveStep();
     },
-    [saveStep],
+    [saveStep, currentStepRef],
   );
 
   const onRequestAsset = useMemo<AssetResolver>(

@@ -23,55 +23,58 @@ const messages = defineMessages({
     id: 'fresco.UploadThingTokenForm.copyAnUnexpectedErrorOccurred',
     defaultMessage: 'An unexpected error occurred',
     description:
-      'Researcher-facing UploadThingTokenForm: An unexpected error occurred',
+      'Generic error shown in the UploadThing storage step of the setup wizard when saving the token or continuing fails unexpectedly.',
   },
   copyFailedToSetStorageProvider: {
     id: 'fresco.UploadThingTokenForm.copyFailedToSetStorageProvider',
     defaultMessage: 'Failed to set storage provider.',
     description:
-      'Researcher-facing UploadThingTokenForm: Failed to set storage provider.',
+      'Error shown in the UploadThing storage step of the setup wizard when the token was saved but selecting UploadThing as the storage provider failed.',
   },
   copySaving: {
     id: 'fresco.UploadThingTokenForm.copySaving',
     defaultMessage: 'Saving...',
-    description: 'Researcher-facing UploadThingTokenForm: Saving...',
+    description:
+      'Label of the submit button in the UploadThing storage step of the setup wizard while the token is being saved.',
   },
   theUploadThingTokenIsConfiguredViaAn: {
     id: 'fresco.UploadThingTokenForm.theUploadThingTokenIsConfiguredViaAn',
     defaultMessage:
       'The UploadThing token is configured via an environment variable and cannot be changed here.',
     description:
-      'Researcher-facing UploadThingTokenForm: The UploadThing token is configured via an environment variable and cannot be changed here.',
+      'Information banner at the top of the UploadThing storage step of the setup wizard when the installation already supplies the UploadThing API token through an environment variable.',
   },
   uPLOADTHINGTOKEN: {
     id: 'fresco.UploadThingTokenForm.uPLOADTHINGTOKEN',
     defaultMessage: 'UPLOADTHING_TOKEN',
-    description: 'Researcher-facing UploadThingTokenForm: UPLOADTHING_TOKEN',
+    description:
+      'Label of the field for the UploadThing API token in the setup wizard. It is the name of the environment variable; do not translate it.',
   },
   uPLOADTHINGTOKEN2: {
     id: 'fresco.UploadThingTokenForm.uPLOADTHINGTOKEN2',
     defaultMessage: 'UPLOADTHING_TOKEN=******************',
     description:
-      'Researcher-facing UploadThingTokenForm: UPLOADTHING_TOKEN=******************',
+      'Placeholder inside the UploadThing API token field in the setup wizard, showing the shape of the value to paste. Do not translate.',
   },
   copyAndPasteTheFullTokenFrom: {
     id: 'fresco.UploadThingTokenForm.copyAndPasteTheFullTokenFrom',
     defaultMessage:
       'Copy and paste the full token from your UploadThing dashboard.',
     description:
-      'Researcher-facing UploadThingTokenForm: Copy and paste the full token from your UploadThing dashboard.',
+      'Hint under the UploadThing API token field in the setup wizard, telling the researcher where to get the token. Copy and paste are actions, not buttons.',
   },
   pasteTheFullTokenIncludingTheUPLOADTHING: {
     id: 'fresco.UploadThingTokenForm.pasteTheFullTokenIncludingTheUPLOADTHING',
     defaultMessage:
       'Paste the full token including the UPLOADTHING_TOKEN= prefix',
     description:
-      'Researcher-facing UploadThingTokenForm: Paste the full token including the UPLOADTHING_TOKEN= prefix',
+      "Hint for the UploadThing API token field in the setup wizard, passed to the field's validation. Tells the researcher to paste the whole value including the UPLOADTHING_TOKEN= prefix.",
   },
   saveAndContinue: {
     id: 'fresco.UploadThingTokenForm.saveAndContinue',
     defaultMessage: 'Save and continue',
-    description: 'Researcher-facing UploadThingTokenForm: Save and continue',
+    description:
+      'Label of the submit button in the UploadThing storage step of the setup wizard; saves the token and moves to the protocol upload step.',
   },
 });
 

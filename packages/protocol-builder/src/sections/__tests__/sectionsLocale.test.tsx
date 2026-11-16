@@ -112,7 +112,7 @@ describe('the shared stage-editor sections in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('switch', {
-        name: 'Guía para quien realiza la entrevista',
+        name: 'Guía para la persona entrevistadora',
       }),
     ).toBeInTheDocument();
   });
@@ -131,9 +131,7 @@ describe('the shared stage-editor sections in Spanish', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Crea notas o una guía para quien realiza la entrevista.',
-      ),
+      screen.getByText('Crea notas o una guía para la persona entrevistadora.'),
     ).toBeInTheDocument();
     // The assertions above name what these sections are supposed to say; the
     // sweep reports whatever else they said — including a sentence rebuilt out
@@ -169,7 +167,7 @@ describe('the shared stage-editor sections in Spanish', () => {
     const harness = renderInSpanish();
 
     const guidance = screen.getByRole('switch', {
-      name: 'Guía para quien realiza la entrevista',
+      name: 'Guía para la persona entrevistadora',
     });
     await harness.user.click(guidance);
     const field = await screen.findByRole('textbox', {
@@ -628,7 +626,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
 
     expect(
       await dialog.findByText(
-        'Elige cómo responde el participante a esta pregunta.',
+        'Elige cómo responde la persona participante a esta pregunta.',
       ),
     ).toBeInTheDocument();
   });
@@ -757,7 +755,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
 
     expect(
       await dialog.findByText(
-        'El atributo de este campo no ofrece al participante ninguna forma de responder. Elige otro atributo o elimina este campo.',
+        'El atributo de este campo no ofrece a la persona participante ninguna forma de responder. Elige otro atributo o elimina este campo.',
       ),
     ).toBeInTheDocument();
     expect(dialog.getByRole('button', { name: 'Guardar' })).toHaveAttribute(

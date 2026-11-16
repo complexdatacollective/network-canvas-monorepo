@@ -1,0 +1,120 @@
+---
+title: Preguntas frecuentes
+date: 7th October 2026
+navOrder: 12
+translatedFrom: afb7c19ebead0e567e3cc39876fce262e04df244
+---
+
+## ¿Cuánto cuesta Fresco? {#how-much-does-fresco-cost}
+
+Fresco es software libre y de código abierto. Siempre puedes
+descargar la última versión del código fuente de Fresco desde el [repositorio de GitHub](https://github.com/complexdatacollective/fresco) (en inglés).
+
+Hemos hecho todo lo posible para que puedas implementar Fresco en tu propio servidor (si tienes uno) o en una plataforma en la nube como Netlify
+sin costes adicionales. Sin embargo, según tus necesidades, puede que tengas que pagar por el alojamiento en un servidor.
+
+Nuestra [guía de implementación](./guide) explica cómo empezar a implementar Fresco
+con el plan gratuito de Netlify, que es suficiente para la mayoría de los proyectos de investigación a pequeña escala.
+
+Netlify también ofrece planes de pago con más funciones y mejor rendimiento. Encontrarás información sobre el coste de usar Netlify en su [página de precios](https://netlify.com/pricing) (en inglés).
+
+Nuestra [guía de implementación avanzada](./advanced) explica cómo implementar Fresco en tu propio servidor, lo que puede suponer costes adicionales según tu proveedor de servidores.
+
+## ¿Cómo obtengo soporte para Fresco? {#how-do-i-get-support-for-fresco}
+
+No ofrecemos soporte directo para Fresco ni tenemos un equipo de soporte específico. Sin embargo, siempre estaremos encantados de ayudarte con cualquier duda o problema que tengas. Puedes escribirnos en nuestra [comunidad de personas usuarias](https://community.networkcanvas.com/) (en inglés). También puedes usar el sistema de comentarios de Fresco para ponerte en contacto con nosotros.
+
+Si quieres trabajar más estrechamente con el equipo del proyecto en el marco de una colaboración de investigación, escríbenos a [info@networkcanvas.com](mailto:info@networkcanvas.com).
+
+## ¿Qué se necesita para implementar Fresco? {#what-are-the-requirements-for-deploying-fresco}
+
+Fresco es una aplicación web que necesita un servidor que la aloje. Puedes implementar Fresco en tu propio servidor o usar una plataforma en la nube como Netlify. La [guía de implementación](./guide) ofrece instrucciones detalladas para implementar Fresco en Netlify de forma gratuita.
+
+La pila tecnológica principal de Fresco es la siguiente:
+
+- Frontend: Next.js (React)
+- Backend:
+  - Node 24+: para ejecutar el servidor del backend
+  - Rutas de API de Next.js: para gestionar las solicitudes a la API
+  - tRPC: para definir y gestionar las rutas de la API
+  - PostgreSQL: para almacenar todos los datos
+  - Prisma: para interactuar con la base de datos
+  - UploadThing o un bucket compatible con S3 (AWS S3, MinIO, Cloudflare R2, Backblaze B2): para almacenar los recursos de los protocolos
+
+Para implementar Fresco, necesitarás tener acceso a uno o varios servidores que puedan ejecutar estas tecnologías. Por ejemplo, podrías tener un servidor que ejecute el frontend de Next.js y otro que ejecute la base de datos PostgreSQL.
+
+Si tienes conocimientos avanzados, puedes consultar la [guía de implementación avanzada](./advanced) para obtener más información sobre cómo implementar Fresco en tu propio servidor.
+
+## ¿Cómo configuro un dominio personalizado para mi implementación de Fresco? {#how-do-i-set-up-a-custom-domain-for-my-fresco-deployment}
+
+La forma de configurar un dominio personalizado para tu implementación de Fresco depende de cómo hayas implementado Fresco. Si usas Netlify, puedes seguir las instrucciones de la [documentación de Netlify](https://docs.netlify.com/manage/domains/get-started-with-domains/) (en inglés).
+
+Si usas otro método de implementación, tendrás que seguir las instrucciones de ese método en concreto.
+
+## ¿Cómo actualizo Fresco a la última versión? {#how-do-i-update-fresco-to-the-latest-version}
+
+Puedes actualizar Fresco a la última versión siguiendo las instrucciones de la [guía de actualización](./upgrading).
+
+## Mantengo una instancia de Fresco en la v3. ¿Debería actualizarla? {#i-maintain-a-fresco-instance-on-v3-should-i-upgrade}
+
+Sí, te recomendamos actualizar a la última versión. **Fresco 5.0** y las versiones posteriores ejecutan los protocolos creados en [Architect](/es/design-protocols/getting-started), que guarda los protocolos nuevos en el esquema 9, y la versión 4 añadió [varias cuentas de usuario](#can-i-create-more-than-one-user-account), las llaves de acceso (passkeys) y la autenticación de dos factores. La [guía de actualización](./upgrading) indica qué hay que comprobar en cada versión.
+
+Si estás recopilando datos en este momento, termina y exporta primero las entrevistas en curso, y evita actualizar a mitad del estudio.
+
+## ¿Cómo hago una copia de seguridad de mis datos? {#how-do-i-backup-my-data}
+
+Los pasos concretos para hacer una copia de seguridad de tus datos dependen de cómo hayas implementado Fresco. Si usas Neon, puedes seguir las instrucciones de la [documentación de Neon sobre copias de seguridad](https://neon.com/docs/manage/backups) (en inglés).
+
+Si usas otro proveedor de bases de datos, tendrás que seguir los procedimientos de copia de seguridad de las tecnologías concretas que uses.
+
+## ¿Cumple Fresco el RGPD? {#is-fresco-gdpr-compliant}
+
+Fresco se puede usar de forma que cumpla el Reglamento General de Protección de Datos (RGPD), pero el cumplimiento depende por completo de cómo implementes y configures tu instancia: alojas Fresco por tu cuenta, y ningún dato de participantes llega nunca al equipo de desarrollo de Network Canvas. Como institución que implementa Fresco, actúas como responsable del tratamiento y te corresponden decisiones como las regiones de alojamiento, las medidas de seguridad y la conservación de los datos. Para obtener una orientación completa, consulta la [guía de cumplimiento del RGPD](/es/get-started/planning-a-study/gdpr-compliance); para ver los detalles de infraestructura dirigidos a los equipos de informática y de seguridad, consulta las [preguntas frecuentes para departamentos de informática](/es/collect-data/fresco/it-faq).
+
+## ¿Puedo crear más de una cuenta de usuario? {#can-i-create-more-than-one-user-account}
+
+Sí, en **Fresco v4 y posteriores**. Fresco admite varias cuentas: la primera se crea al configurar tu instancia, y puedes añadir más cuentas en cualquier momento desde **Configuración → Administración de usuarios**, en el panel de administración. (Las versiones anteriores de Fresco solo admitían una única cuenta).
+
+Ten en cuenta que todas las cuentas son de administración con los mismos privilegios, sin roles ni niveles de permisos, así que cada cuenta tiene acceso completo a todos los protocolos, participantes y datos. Crea cuentas solo para personas a las que confiarías el estudio completo. Consulta [Cuentas y seguridad](/es/collect-data/fresco/accounts) para ver los detalles.
+
+## ¿Dónde se publicarán los anuncios de nuevas versiones? {#where-will-announcements-about-releases-be-posted}
+
+Las nuevas versiones de Fresco se anunciarán en nuestra <a href="https://community.networkcanvas.com/" target="_blank">comunidad de personas usuarias</a> (en inglés). Encontrarás más información sobre el proceso de actualización en la [guía de actualización](./upgrading).
+
+## ¿Qué navegadores son compatibles? {#which-browsers-are-supported}
+
+Fresco es compatible con la última versión de Chrome, Safari y Firefox. Esto se aplica tanto al panel de administración como a la experiencia de entrevista de quienes participan.
+
+En concreto, no son compatibles Internet Explorer ni Edge Legacy.
+
+Si tienes algún problema con un navegador compatible, o si necesitas que se admita una versión concreta de un navegador, usa el sistema de comentarios de Fresco para ponerte en contacto con nosotros.
+
+## ¿Qué idiomas admite Fresco? {#which-languages-does-fresco-support}
+
+El panel de administración de Fresco está disponible en inglés, inglés (Reino Unido), español, alemán, francés, italiano, neerlandés, portugués de Brasil, chino simplificado y chino tradicional. Cada persona del equipo de investigación elige un idioma con el botón del globo terráqueo del panel, y la elección se guarda en su cuenta.
+
+Las entrevistas no siguen el idioma del panel. Tu protocolo puede estar escrito en más de un idioma, y cada entrevista empieza en el primero de los idiomas del navegador de la persona participante que tenga tu protocolo (una variante regional cercana también cuenta) o, si no hay ninguno, en el idioma predeterminado de tu protocolo. Un texto que no está traducido a ese idioma se muestra en la mejor de las demás traducciones disponibles: en otro idioma que indique el navegador de la persona participante, si no, en el idioma predeterminado y, si no, en cualquier idioma que lo tenga. Cada participante puede elegir otro de los idiomas de tu protocolo en una etapa «[Selector de idioma](/es/design-protocols/interface-documentation/language-chooser)». Fresco no traduce el texto de tu protocolo por ti: las traducciones las escribes tú en Architect. Consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol) y [El idioma en las entrevistas](/es/collect-data/fresco/using-fresco#language-in-interviews).
+
+## ¿Qué dispositivos y plataformas pueden usar quienes participan? {#which-devices-and-platforms-are-supported-for-participants}
+
+Quienes participan pueden usar cualquier ordenador o tableta con un navegador compatible para las entrevistas. Los teléfonos inteligentes y los dispositivos de pantalla pequeña no son compatibles. Conviene usar las tabletas en orientación horizontal para que las entrevistas se vean de forma óptima.
+
+## ¿Cómo creo otra cuenta de usuario para una persona de mi equipo? {#how-do-i-create-another-user-account-for-my-colleague}
+
+En **Fresco v4 y posteriores**, abre **Configuración → Administración de usuarios** en el panel y haz clic en **Añadir usuario**. Da a cada persona del equipo su propia cuenta en lugar de compartir unas mismas credenciales. Ten en cuenta que todas las cuentas son de administración con los mismos privilegios y tienen acceso completo al estudio. Para ver una explicación completa paso a paso, que incluye las llaves de acceso y la autenticación de dos factores, consulta [Cuentas y seguridad](/es/collect-data/fresco/accounts).
+
+## ¿Cómo restablezco mi contraseña? {#how-do-i-reset-my-password}
+
+Tu propia contraseña se cambia desde una sesión iniciada, en **Configuración → Administración de usuarios → Cambiar contraseña**. Fresco no tiene ningún proceso de «¿Has olvidado tu contraseña?» por correo electrónico.
+
+Si te quedas sin acceso a una cuenta en **Fresco v4 o posterior**, tienes varias opciones:
+
+- Si activaste la autenticación de dos factores, inicia sesión con uno de tus **códigos de recuperación**.
+- Pide a **otra persona administradora** que use **Restablecer autenticación** en tu cuenta desde Administración de usuarios. Esto borra tus llaves de acceso, tu autenticación de dos factores y tus códigos de recuperación, y genera una contraseña temporal que la persona administradora debe hacerte llegar y con la que vuelves a iniciar sesión. (Por eso recomendamos crear más de una cuenta de administración).
+- Como último recurso, si no se puede acceder a ninguna cuenta y no quedan códigos de recuperación, puede que tengas que [restablecer tu base de datos](/es/collect-data/fresco/deployment-troubleshooting#reset-your-database). Esto supondrá la pérdida de todos los datos, así como de las entrevistas que no hayas exportado.
+
+Consulta [Cuentas y seguridad](/es/collect-data/fresco/accounts) para obtener más información sobre cómo recuperar el acceso.
+
+## Tengo varios estudios. ¿Debería crear una instancia de Fresco nueva para cada estudio? {#i-have-multiple-studies-should-i-create-a-new-fresco-instance-for-each-study}
+
+Fresco está pensado para usarse con un solo estudio a la vez. Si tienes varios estudios, puedes crear una instancia de Fresco nueva para cada uno. Así podrás mantener los datos separados y organizados. Ten en cuenta que, si creas varias instancias, puede que tengas que pagar por alojamiento adicional en servidores.

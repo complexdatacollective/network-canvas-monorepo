@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@codaco/shared-consts": "../../../packages/shared-consts/src/site-locales.ts"
+  }
+}

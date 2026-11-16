@@ -245,6 +245,25 @@ export const NarrowContainer: Story = {
 };
 
 /**
+ * In a right-to-left interview the label column sits on the right, and each
+ * label aligns toward its value rather than away from it.
+ */
+export const RightToLeft: Story = {
+  args: {
+    label: 'مريم حداد',
+    details: toDetails({
+      العمر: 34,
+      المدينة: 'القاهرة',
+    }),
+  },
+  render: (args) => (
+    <div dir="rtl" lang="ar" className="max-w-md">
+      <DataCard {...args} />
+    </div>
+  ),
+};
+
+/**
  * Accessibility demonstration. Each card is announced as a single
  * landmark with the title as its accessible name. The description list
  * exposes each label/value pair to assistive technology in semantic

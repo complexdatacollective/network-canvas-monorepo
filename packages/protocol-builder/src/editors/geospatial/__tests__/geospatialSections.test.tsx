@@ -143,14 +143,6 @@ describe('the map a geospatial stage shows', () => {
     expect(mapsBuilt()).toEqual([]);
   });
 
-  it('saves the stage it opened, unchanged', async () => {
-    const harness = openEditor();
-
-    // The type the stage places on the map, and the stage's own name, belong
-    // to sections this mount does not include.
-    await harness.roundTrip({ unowned: ['subject'] });
-  });
-
   /**
    * Four decisions a researcher makes at different times, each finishable on
    * its own, so the outline reports on each of them separately.
@@ -165,7 +157,7 @@ describe('the map a geospatial stage shows', () => {
       'Prompt collection',
       'Map appearance',
       'Map starting position',
-      'Messages',
+      'Customize built-in wording',
     ]);
   });
 

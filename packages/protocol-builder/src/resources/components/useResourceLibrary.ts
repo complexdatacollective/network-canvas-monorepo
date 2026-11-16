@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useResourceClient } from '../client.tsx';
 import {
@@ -52,10 +52,11 @@ export function useResourceLibrary(
     useState<readonly ResourceDescriptor[]>(NO_RESOURCES);
 
   // The kinds themselves are the dependency, not the array carrying them: a
-  // call site spelling its list inline hands over a new array every render.
-  const key = kinds.join(',');
-  const latestKinds = useRef(kinds);
-  latestKinds.current = kinds;
+  // call site spelling its list inline hands over a new array every render, so
+  // the array kept is replaced only when its contents differ.
+  const [heldKinds, setHeldKinds] = useState(kinds);
+  const kindsKey = kinds.join(',');
+  if (heldKinds.join(',') !== kindsKey) setHeldKinds(kinds);
 
   // Asked for, and then held to. `kinds` is a request a host serves; which
   // resources a field may hold is the editor's own rule, and a picker that
@@ -63,14 +64,14 @@ export function useResourceLibrary(
   // to refuse. One seam, so every caller — the list on screen and the name
   // check beside it — sees the same library.
   const list = useCallback(async () => {
-    const listed = await resources.list({ kinds: latestKinds.current });
+    const listed = await resources.list({ kinds: heldKinds });
     if (listed.status !== 'ok') return listed;
-    const accepted = new Set<ResourceKind>(latestKinds.current);
+    const accepted = new Set<ResourceKind>(heldKinds);
     const allowed = listed.data.filter((descriptor) =>
       accepted.has(descriptor.kind),
     );
     return allowed.length === listed.data.length ? listed : resourceOk(allowed);
-  }, [key, resources]);
+  }, [heldKinds, resources]);
 
   const reload = useCallback(() => {
     run(list, setOffered);

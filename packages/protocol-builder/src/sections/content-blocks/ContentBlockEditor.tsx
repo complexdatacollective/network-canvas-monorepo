@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { informationStage } from '@codaco/protocol-validation';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
 import {
@@ -16,6 +17,7 @@ import {
 import type { RowEditorProps } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../../localization/textShape.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import {
   CONTENT_BLOCK_SLOTS,
@@ -28,6 +30,12 @@ import {
   isContentBlockKind,
   pageBlocksCarrySize,
 } from './contentBlockTypes.ts';
+
+const TEXT_BLOCK_SHAPE = markdownTextShapeAt(informationStage, [
+  'items',
+  0,
+  'content',
+]);
 
 /**
  * The picker takes an open prop bag from the field wrapper, as every resource
@@ -260,11 +268,11 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
       {/* Mounted for the whole dialog rather than beside its first message: a
           live region that appears at the same moment as its text is not
           announced. */}
-      <span role="status" aria-live="polite" className="sr-only">
+      <output aria-live="polite" className="sr-only">
         {announced === undefined
           ? ''
           : contentKindAnnouncement(announced, intl)}
-      </span>
+      </output>
       <Field<typeof RadioGroupField>
         name="type"
         component={RadioGroupField}
@@ -285,6 +293,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={CONTENT_BLOCK_SLOTS.text}
           component={LocalizedRichTextField}
+          shape={TEXT_BLOCK_SHAPE}
           dynamicValues="stageText"
           label={intl.formatMessage(contentBlockMessages.contentLabel)}
           hint={intl.formatMessage(contentBlockMessages.contentHint, {

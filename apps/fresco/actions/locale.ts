@@ -22,12 +22,12 @@ export async function updateLocale(
     });
   }
   const cookieStore = await cookies();
-  if (locale === null) cookieStore.delete(localeMirrorCookie);
+  if (locale === null) cookieStore.delete(localeMirrorCookie.name);
   else
-    cookieStore.set(localeMirrorCookie, locale, {
+    cookieStore.set(localeMirrorCookie.name, locale, {
       path: '/',
       sameSite: 'lax',
-      maxAge: 31536000,
+      maxAge: localeMirrorCookie.maxAge,
     });
   return { success: true };
 }

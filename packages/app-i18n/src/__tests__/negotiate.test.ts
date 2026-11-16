@@ -32,14 +32,14 @@ describe('resolveAppLocale', () => {
   it('lets a stored declared locale win over browser preferences', () => {
     expect(resolve({ stored: 'en-GB', requested: ['ar'] })).toEqual({
       locale: 'en-GB',
-      source: 'stored',
+      source: 'chosen',
     });
   });
 
   it('matches a stored regional variant to its declared base', () => {
     expect(resolve({ stored: 'ar-EG', requested: ['en'] })).toEqual({
       locale: 'ar',
-      source: 'stored',
+      source: 'chosen',
     });
   });
 
@@ -53,7 +53,7 @@ describe('resolveAppLocale', () => {
       ]),
       defaultLocale: 'ar',
     });
-    expect(result).toEqual({ locale: 'en-GB', source: 'stored' });
+    expect(result).toEqual({ locale: 'en-GB', source: 'chosen' });
   });
 
   it('keeps a stored regional variant on the sibling variant the app ships', () => {
@@ -70,7 +70,7 @@ describe('resolveAppLocale', () => {
       ]),
       defaultLocale: 'ar',
     });
-    expect(result).toEqual({ locale: 'en-GB', source: 'stored' });
+    expect(result).toEqual({ locale: 'en-GB', source: 'chosen' });
   });
 
   it('ignores a stored locale that matches nothing and falls through to negotiation', () => {
@@ -132,7 +132,7 @@ describe('resolveAppLocale', () => {
           locales: ecosystemLocales,
           defaultLocale: 'en',
         }),
-      ).toEqual({ locale: 'de', source: 'stored' });
+      ).toEqual({ locale: 'de', source: 'chosen' });
     }
   });
 
@@ -171,8 +171,8 @@ describe('ordered preference negotiation', () => {
       defaultLocale: 'en',
     });
 
-  // Best fit over the whole list would hand back 'en' here: the later exact
-  // match beats the earlier regional one.
+  // Each later preference is demoted by a region difference (ICU's default),
+  // so the earlier regional fit wins.
   it('lets an earlier regional preference beat a later exact match', () => {
     expect(negotiate(['es-MX', 'en'])).toEqual({
       locale: 'es',
@@ -180,7 +180,21 @@ describe('ordered preference negotiation', () => {
     });
   });
 
-  it('gives an earlier regional preference its own single-tag best fit', () => {
+  // A fit in another language is far weaker than a region difference, so a
+  // later exact match beats it: Catalan readers who list English get English,
+  // not Spanish.
+  it('lets a later exact match beat an earlier fit in another language', () => {
+    expect(negotiate(['ca', 'en'])).toEqual({
+      locale: 'en',
+      source: 'negotiated',
+    });
+    expect(negotiate(['gl', 'en'])).toEqual({
+      locale: 'en',
+      source: 'negotiated',
+    });
+  });
+
+  it('keeps an earlier regional preference on its own best fit', () => {
     // 'en-AU' alone best-fits the declared 'en-GB' rather than plain 'en';
     // the later 'es' does not get to override that.
     expect(negotiate(['en-AU'])).toEqual({
@@ -252,8 +266,8 @@ describe('Chinese script negotiation across the ecosystem registry', () => {
     expect(resolveEcosystem({ requested: [requested] }).locale).toBe(expected);
   });
 
-  // A Hong Kong browser sends "zh-HK, zh". Best fit alone scores zh-HK as a
-  // regional miss against zh-Hant and lets the bare "zh" behind it win.
+  // A Hong Kong browser sends "zh-HK, zh": zh-HK reaches zh-Hant by script,
+  // and the bare "zh" behind it is demoted too far to win.
   it.each([
     [['zh-HK', 'zh'], 'zh-Hant'],
     [['zh-MO', 'zh', 'en'], 'zh-Hant'],
@@ -278,7 +292,7 @@ describe('Chinese script negotiation across the ecosystem registry', () => {
         locales: regional,
         defaultLocale: 'en',
       }),
-    ).toEqual({ locale: 'zh-TW', source: 'stored' });
+    ).toEqual({ locale: 'zh-TW', source: 'chosen' });
     expect(
       resolveAppLocale({
         requested: ['zh-TW', 'zh'],
@@ -290,10 +304,10 @@ describe('Chinese script negotiation across the ecosystem registry', () => {
 
   it('keeps a stored regional choice in its own script', () => {
     expect(resolveEcosystem({ stored: 'zh-TW', requested: ['zh-CN'] })).toEqual(
-      { locale: 'zh-Hant', source: 'stored' },
+      { locale: 'zh-Hant', source: 'chosen' },
     );
     expect(resolveEcosystem({ stored: 'zh-CN', requested: ['zh-TW'] })).toEqual(
-      { locale: 'zh-Hans', source: 'stored' },
+      { locale: 'zh-Hans', source: 'chosen' },
     );
   });
 });

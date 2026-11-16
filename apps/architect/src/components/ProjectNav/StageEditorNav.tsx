@@ -29,43 +29,46 @@ const chromeMessages = defineMessages({
   untitledProtocol: {
     id: 'architect.chrome.projectNav.stageEditorNav.untitledProtocol',
     defaultMessage: 'Untitled protocol',
-    description: 'The label text in components / ProjectNav / StageEditorNav.',
+    description:
+      'Name shown in the top bar breadcrumb of the stage editor when the open protocol has no name yet.',
   },
 });
 const messages = defineMessages({
   finishedEditing: {
     id: 'architect.projectNav.stageEditorNav.finishedEditing',
     defaultMessage: 'Finished Editing',
-    description: 'Visible text in components / ProjectNav / StageEditorNav.',
+    description:
+      'Button in the stage editor toolbar that saves the stage and returns to the timeline. Finished is the past tense: the researcher has finished editing.',
   },
   stageEditorActions: {
     id: 'architect.projectNav.stageEditorNav.stageEditorActions',
     defaultMessage: 'Stage editor actions',
     description:
-      "The 'aria-label' text in components / ProjectNav / StageEditorNav.",
+      'Accessible name of the toolbar at the bottom of the stage editor, which holds the editing and preview buttons; read only by screen readers.',
   },
   editingActions: {
     id: 'architect.projectNav.stageEditorNav.editingActions',
     defaultMessage: 'Editing actions',
     description:
-      'The aria-label text in components / ProjectNav / StageEditorNav.',
+      'Accessible name of the group of toolbar buttons that cancel or finish editing the stage; read only by screen readers.',
   },
   previewActions: {
     id: 'architect.projectNav.stageEditorNav.previewActions',
     defaultMessage: 'Preview actions',
     description:
-      'The aria-label text in components / ProjectNav / StageEditorNav.',
+      'Accessible name of the group of toolbar buttons that preview the stage and open the preview settings; read only by screen readers.',
   },
   preview: {
     id: 'architect.projectNav.stageEditorNav.preview',
     defaultMessage: 'Preview',
-    description: 'Visible text in components / ProjectNav / StageEditorNav.',
+    description:
+      'Label of the stage editor toolbar button that opens a preview of the interview at the stage being edited. Preview is the action here.',
   },
   previewSettings: {
     id: 'architect.projectNav.stageEditorNav.previewSettings',
     defaultMessage: 'Preview settings',
     description:
-      'The aria-label text in components / ProjectNav / StageEditorNav.',
+      'Accessible name of the icon button next to the Preview button that opens the preview settings; read only by screen readers.',
   },
 });
 
@@ -226,7 +229,7 @@ export const StageEditorToolbar = ({
           className="gap-[0.16em]"
         >
           <ToolbarButton
-            className={`${previewButtonClassName} relative rounded-r-none! focus-visible:z-10`}
+            className={`${previewButtonClassName} relative rounded-e-none! focus-visible:z-10`}
             disabled={isOpeningPreview || isStageInvalid}
             icon={
               isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
@@ -244,7 +247,7 @@ export const StageEditorToolbar = ({
             trigger={
               <ToolbarIconButton
                 aria-label={intl.formatMessage(messages.previewSettings)}
-                className={`${previewButtonClassName} relative rounded-l-none! focus-visible:z-10 [&>.lucide]:-translate-x-0.5`}
+                className={`${previewButtonClassName} relative rounded-s-none! focus-visible:z-10 [&>.lucide]:-translate-x-0.5 rtl:[&>.lucide]:translate-x-0.5`}
                 disabled={!previewOptionsContent}
                 icon={<Settings />}
               />

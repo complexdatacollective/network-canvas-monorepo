@@ -1,16 +1,8 @@
-import {
-  CHILDREN_ITEM,
-  CHILDREN_NONE,
-  CHILDREN_QUESTION,
-  DETAILS_ITEM,
-  NAME_HINT,
-  NAME_PROMPT,
-  PARENTS_ITEM,
-  RECOMMENDED_NOTE,
-  SIBLINGS_ITEM,
-  SIBLINGS_NONE,
-  SIBLINGS_QUESTION,
-} from '../family-pedigree-wording.ts';
+import { englishWording } from '../../../__tests__/suppliedWording.ts';
+
+/** Network Canvas's English for one of the Family Pedigree's settings. */
+const pedigreeText = (setting: string): string =>
+  englishWording(`interview.stageWording.familyPedigree.${setting}`);
 
 /**
  * The text a Family Pedigree stage's name question holds, in English under
@@ -18,8 +10,8 @@ import {
  * the supplied wording out again.
  */
 export const pedigreeNameField = (locale = 'en') => ({
-  prompt: { [locale]: NAME_PROMPT.en },
-  hint: { [locale]: NAME_HINT.en },
+  prompt: { [locale]: pedigreeText('nodeConfiguration.nameField.prompt') },
+  hint: { [locale]: pedigreeText('nodeConfiguration.nameField.hint') },
 });
 
 /**
@@ -28,18 +20,38 @@ export const pedigreeNameField = (locale = 'en') => ({
  */
 export const pedigreeCompletenessText = (locale = 'en') => ({
   itemText: {
-    parents: { listItem: { [locale]: PARENTS_ITEM.en } },
+    parents: {
+      listItem: {
+        [locale]: pedigreeText('completeness.itemText.parents.listItem'),
+      },
+    },
     siblings: {
-      listItem: { [locale]: SIBLINGS_ITEM.en },
-      noneButton: { [locale]: SIBLINGS_NONE.en },
-      question: { [locale]: SIBLINGS_QUESTION.en },
+      listItem: {
+        [locale]: pedigreeText('completeness.itemText.siblings.listItem'),
+      },
+      noneButton: {
+        [locale]: pedigreeText('completeness.itemText.siblings.noneButton'),
+      },
+      question: {
+        [locale]: pedigreeText('completeness.itemText.siblings.question'),
+      },
     },
     children: {
-      listItem: { [locale]: CHILDREN_ITEM.en },
-      noneButton: { [locale]: CHILDREN_NONE.en },
-      question: { [locale]: CHILDREN_QUESTION.en },
+      listItem: {
+        [locale]: pedigreeText('completeness.itemText.children.listItem'),
+      },
+      noneButton: {
+        [locale]: pedigreeText('completeness.itemText.children.noneButton'),
+      },
+      question: {
+        [locale]: pedigreeText('completeness.itemText.children.question'),
+      },
     },
-    details: { listItem: { [locale]: DETAILS_ITEM.en } },
+    details: {
+      listItem: {
+        [locale]: pedigreeText('completeness.itemText.details.listItem'),
+      },
+    },
   },
-  recommendedNote: { [locale]: RECOMMENDED_NOTE.en },
+  recommendedNote: { [locale]: pedigreeText('completeness.recommendedNote') },
 });

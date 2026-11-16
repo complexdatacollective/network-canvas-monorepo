@@ -5,6 +5,7 @@ import {
   finishOutcomeWords,
   finishSessionMessages,
 } from '@codaco/protocol-builder/editors/finish-session/finishSessionMessages';
+import { stageWordingMessages } from '@codaco/protocol-builder/sections/supplied-wording/stageWordingMessages';
 import type {
   FinishMode,
   FinishOutcome,
@@ -84,9 +85,7 @@ const FinishScreen = ({
         </SectionFrame>
       )}
       {finishingRows.length > 0 && (
-        <SectionFrame
-          title={intl.formatMessage(finishSessionMessages.finishingTitle)}
-        >
+        <SectionFrame title={intl.formatMessage(stageWordingMessages.title)}>
           <MiniTable rotated rows={finishingRows} />
         </SectionFrame>
       )}

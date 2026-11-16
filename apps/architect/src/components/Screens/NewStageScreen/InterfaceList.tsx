@@ -12,13 +12,13 @@ const messages = defineMessages({
     defaultMessage:
       'No interfaces match your filter and/or search results. Try a different combination of types, or clear your filters and search query to see all available interfaces.',
     description:
-      'Visible text in components / Screens / NewStageScreen / InterfaceList.',
+      'Message shown in the dialog for choosing a new stage type when no interface matches the search text and the selected capability filters. Types here means the capability filter tags.',
   },
   clearSearchAndFilter: {
     id: 'architect.screens.newStageScreen.interfaceList.clearSearchAndFilter',
     defaultMessage: 'Clear search and filter',
     description:
-      'Visible text in components / Screens / NewStageScreen / InterfaceList.',
+      'Button shown under the no-results message in the dialog for choosing a new stage type. Pressing it empties the search field and deselects all capability filters.',
   },
 });
 

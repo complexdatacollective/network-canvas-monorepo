@@ -36,8 +36,9 @@
   },
   "protocolBuilder.anonymisation.explanationDescription": {
     "en": "Explain the anonymisation process to participants before they enter their passphrase.",
-    "es": "Explica el proceso de anonimización a los participantes antes de que introduzcan su frase de contraseña.",
-    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.explainTheAnonymisationProcessToParticipants"
+    "es": "Explica el proceso de anonimización a quienes participan antes de que introduzcan su frase de contraseña.",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.explainTheAnonymisationProcessToParticipants",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.anonymisation.explanationTitle": {
     "en": "Task explanation",
@@ -86,8 +87,9 @@
   },
   "protocolBuilder.geospatial.colorHint": {
     "en": "Choose the color used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a color that remains easy to distinguish from the chosen Mapbox style.",
-    "es": "Elige el color para delinear las áreas GeoJSON seleccionables y resaltar el área que seleccione el participante. Usa un color que se distinga con facilidad del estilo de Mapbox elegido.",
-    "from": "74a07e626 architect.sections.mapOptions.chooseTheColorUsedToOutline"
+    "es": "Elige el color para delinear las áreas GeoJSON seleccionables y resaltar el área que seleccione la persona participante. Usa un color que se distinga con facilidad del estilo de Mapbox elegido.",
+    "from": "74a07e626 architect.sections.mapOptions.chooseTheColorUsedToOutline",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.geospatial.colorLabel": {
     "en": "Map outline and selection color",
@@ -111,8 +113,9 @@
   },
   "protocolBuilder.geospatial.layerHint": {
     "en": "Choose a GeoJSON resource containing the geographic areas participants can select. Each feature should include a property that identifies the area, such as a census tract, ZIP code, or neighborhood; after selecting the resource, choose which property value to record below. Avoid very large files or features outside the study area, as they can slow map loading.",
-    "es": "Elige un recurso GeoJSON que contenga las áreas geográficas que los participantes pueden seleccionar. Cada entidad geográfica debe incluir una propiedad que identifique el área, como una sección censal, un código postal o un barrio. Después de seleccionar el recurso, elige abajo qué valor de propiedad se registrará. Evita archivos muy grandes o entidades geográficas fuera del área de estudio, ya que pueden ralentizar la carga del mapa.",
-    "from": "74a07e626 architect.sections.mapOptions.chooseAGeoJSONResourceContainingThe; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Elige un recurso GeoJSON que contenga las áreas geográficas que pueden seleccionar quienes participan. Cada entidad geográfica debe incluir una propiedad que identifique el área, como una sección censal, un código postal o un barrio. Después de seleccionar el recurso, elige abajo qué valor de propiedad se registrará. Evita archivos muy grandes o entidades geográficas fuera del área de estudio, ya que pueden ralentizar la carga del mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.chooseAGeoJSONResourceContainingThe; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.geospatial.layerLabel": {
     "en": "Layer data source",
@@ -126,8 +129,9 @@
   },
   "protocolBuilder.geospatial.locationResponseDescription": {
     "en": "Choose the location attribute that stores the participant's selection.",
-    "es": "Elige el atributo de ubicación que guarda la selección del participante.",
-    "from": "74a07e626 architect.sections.geospatialPrompts.promptFields.chooseTheLocationAttributeThatStores"
+    "es": "Elige el atributo de ubicación que guarda la selección de la persona participante.",
+    "from": "74a07e626 architect.sections.geospatialPrompts.promptFields.chooseTheLocationAttributeThatStores",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.geospatial.locationResponseTitle": {
     "en": "Location response",
@@ -156,8 +160,9 @@
   },
   "protocolBuilder.geospatial.searchHint": {
     "en": "Allow participants to search the map for addresses, neighborhoods, and points of interest.",
-    "es": "Permite que los participantes busquen direcciones, barrios y puntos de interés en el mapa.",
-    "from": "74a07e626 architect.sections.mapOptions.allowParticipantsToSearchTheMap; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Permite que quienes participan busquen direcciones, barrios y puntos de interés en el mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.allowParticipantsToSearchTheMap; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.geospatial.searchLabel": {
     "en": "Allow location search",
@@ -166,8 +171,9 @@
   },
   "protocolBuilder.geospatial.styleHint": {
     "en": "Choose the Mapbox basemap displayed beneath the selectable GeoJSON areas. Consider the contrast between the basemap, the configured outline color, and any place labels participants need to read.",
-    "es": "Elige el mapa base de Mapbox que se muestra debajo de las áreas GeoJSON seleccionables. Considera el contraste entre el mapa base, el color de contorno configurado y las etiquetas de lugares que deban leer los participantes.",
-    "from": "74a07e626 architect.sections.mapOptions.chooseTheMapboxBasemapDisplayedBeneath"
+    "es": "Elige el mapa base de Mapbox que se muestra debajo de las áreas GeoJSON seleccionables. Considera el contraste entre el mapa base, el color de contorno configurado y las etiquetas de lugares que deban leer quienes participan.",
+    "from": "74a07e626 architect.sections.mapOptions.chooseTheMapboxBasemapDisplayedBeneath",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.geospatial.styleLabel": {
     "en": "Mapbox style",
@@ -206,8 +212,9 @@
   },
   "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
     "en": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
-    "es": "Al activar esta opción, los nodos se organizan mediante una disposición dirigida por fuerzas. Los participantes pueden cambiarla durante la entrevista; esta opción establece el estado inicial.",
-    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.whenOnNodesAreArrangedBy"
+    "es": "Al activar esta opción, los nodos se organizan mediante una disposición dirigida por fuerzas. Quienes participan pueden cambiarla durante la entrevista; esta opción establece el estado inicial.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.whenOnNodesAreArrangedBy",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.automaticLayoutSectionTitle": {
     "en": "Automatic layout",
@@ -231,8 +238,9 @@
   },
   "protocolBuilder.networkCanvas.composerEdgeDescription": {
     "en": "Define the connection types participants can draw and the attributes collected for each type.",
-    "es": "Define los tipos de vínculo que los participantes pueden dibujar y los atributos recogidos para cada tipo.",
-    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.defineTheConnectionTypesParticipantsCan; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Define los tipos de vínculo que quienes participan pueden dibujar y los atributos recogidos para cada tipo.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.defineTheConnectionTypesParticipantsCan; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.composerEdgeFieldLabel": {
     "en": "Edge types",
@@ -261,8 +269,9 @@
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
     "en": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
-    "es": "Selecciona los tipos de vínculo que los participantes pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.",
-    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.selectTheEdgeTypesParticipantsCan; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Selecciona los tipos de vínculo que quienes participan pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.selectTheEdgeTypesParticipantsCan; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionTitle": {
     "en": "Connection types",
@@ -306,8 +315,9 @@
   },
   "protocolBuilder.networkCanvas.groupHullsSectionDescription": {
     "en": "Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once.",
-    "es": "Dibuja contornos sombreados alrededor de grupos de nodos que compartan un valor de un atributo categórico. Elige o crea el atributo cuyos valores usarán los participantes para agrupar nodos, pulsándolos con la herramienta Grupos o seleccionando varios a la vez con el lazo.",
-    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.drawShadedOutlinesAroundGroupsOf"
+    "es": "Dibuja contornos sombreados alrededor de grupos de nodos que compartan un valor de un atributo categórico. Elige o crea el atributo cuyos valores usarán quienes participan para agrupar nodos, pulsándolos con la herramienta Grupos o seleccionando varios a la vez con el lazo.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.drawShadedOutlinesAroundGroupsOf",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.groupHullsSectionTitle": {
     "en": "Group hulls",
@@ -321,8 +331,9 @@
   },
   "protocolBuilder.networkCanvas.layoutModeAutomaticDescription": {
     "en": "Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.",
-    "es": "Coloca los nodos al abrir la etapa mediante una simulación de fuerzas físicas, como atracción y repulsión. El participante puede pausar y reanudar la simulación, y mover los nodos manualmente mientras está en pausa.",
-    "from": "74a07e626 architect.sections.automaticLayout.config.positionsNodesWhenTheStageFirst"
+    "es": "Coloca los nodos al abrir la etapa mediante una simulación de fuerzas físicas, como atracción y repulsión. La persona participante puede pausar y reanudar la simulación, y mover los nodos manualmente mientras está en pausa.",
+    "from": "74a07e626 architect.sections.automaticLayout.config.positionsNodesWhenTheStageFirst",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.layoutModeAutomaticLabel": {
     "en": "Automatic mode",
@@ -331,8 +342,9 @@
   },
   "protocolBuilder.networkCanvas.layoutModeManualDescription": {
     "en": "Places all nodes in a \"bucket\" at the bottom of the screen, from which the participant drags each one to where they want it.",
-    "es": "Coloca todos los nodos en una zona de reserva en la parte inferior de la pantalla, desde donde el participante arrastra cada uno hasta donde quiera colocarlo.",
-    "from": "74a07e626 architect.sections.automaticLayout.config.placesAllNodesInABucket"
+    "es": "Coloca todos los nodos en una zona de reserva en la parte inferior de la pantalla, desde donde la persona participante arrastra cada uno hasta donde quiera colocarlo.",
+    "from": "74a07e626 architect.sections.automaticLayout.config.placesAllNodesInABucket",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.layoutModeManualLabel": {
     "en": "Manual mode",
@@ -366,8 +378,9 @@
   },
   "protocolBuilder.networkCanvas.nodePositionsSectionDescription": {
     "en": "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
-    "es": "Guarda la posición de cada nodo en el lienzo. Reutilizar el mismo atributo en varias etapas conserva las posiciones cuando el participante pasa de una tarea a otra.",
-    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.storesEachNodeSPositionOnThe"
+    "es": "Guarda la posición de cada nodo en el lienzo. Reutilizar el mismo atributo en varias etapas conserva las posiciones cuando la persona participante pasa de una tarea a otra.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.storesEachNodeSPositionOnThe",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.nodePositionsSectionTitle": {
     "en": "Node positions",
@@ -441,8 +454,9 @@
   },
   "protocolBuilder.networkCanvas.presetNameHint": {
     "en": "The preset label will used to quickly identify the preset from within the narrative interface. It will be visible to the participant.",
-    "es": "La etiqueta permitirá identificar rápidamente la vista predefinida dentro de la interfaz narrativa. Será visible para el participante.",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.thePresetLabelWillUsedTo"
+    "es": "La etiqueta permitirá identificar rápidamente la vista predefinida dentro de la interfaz «Narrativa». Será visible para la persona participante.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.thePresetLabelWillUsedTo",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.presetNameLabel": {
     "en": "Preset label",
@@ -471,8 +485,9 @@
   },
   "protocolBuilder.networkCanvas.presetsDescription": {
     "en": "Create visualizations that researchers can switch between during the interview.",
-    "es": "Crea visualizaciones entre las que los investigadores puedan alternar durante la entrevista.",
-    "from": "74a07e626 architect.sections.narrativePresets.narrativePresets.createVisualizationsThatResearchersCanSwitch"
+    "es": "Crea visualizaciones para que quienes investigan puedan alternar entre ellas durante la entrevista.",
+    "from": "74a07e626 architect.sections.narrativePresets.narrativePresets.createVisualizationsThatResearchersCanSwitch",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.presetsEditTitle": {
     "en": "Edit preset",
@@ -516,8 +531,9 @@
   },
   "protocolBuilder.networkCanvas.promptHighlightHint": {
     "en": "Select the attribute toggled when a participant taps a node.",
-    "es": "Selecciona el atributo que cambia cuando un participante pulsa un nodo.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.selectTheAttributeToggledWhenA"
+    "es": "Selecciona el atributo que cambia cuando una persona participante pulsa un nodo.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.selectTheAttributeToggledWhenA",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.promptHighlightLabel": {
     "en": "Boolean attribute",
@@ -551,8 +567,9 @@
   },
   "protocolBuilder.networkCanvas.promptSortDescription": {
     "en": "Control the order of the stack participants use to position nodes.",
-    "es": "Controla el orden de la pila que usan los participantes para colocar nodos.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.controlTheOrderOfTheStack; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Controla el orden de la pila que usan quienes participan para colocar nodos.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.controlTheOrderOfTheStack; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.promptSortLabel": {
     "en": "Sort rules",
@@ -576,13 +593,15 @@
   },
   "protocolBuilder.networkCanvas.promptTextSectionDescription": {
     "en": "Write the instruction or question participants see for this task.",
-    "es": "Escribe la instrucción o pregunta que ven los participantes para esta tarea.",
-    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants"
+    "es": "Escribe, para esta tarea, la pregunta o instrucción que ven quienes participan.",
+    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.promptTextTitle": {
     "en": "Participant prompt",
-    "es": "Pregunta para el participante",
-    "from": "74a07e626 architect.sections.promptText.participantPrompt"
+    "es": "Pregunta para la persona participante",
+    "from": "74a07e626 architect.sections.promptText.participantPrompt",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.quickAddLabel": {
     "en": "Create or select an attribute for the quick-add form",
@@ -626,8 +645,9 @@
   },
   "protocolBuilder.networkCanvas.tapCreateEdgeDescription": {
     "en": "Clicking or tapping a node allows the participant to create an edge.",
-    "es": "Al pulsar un nodo, el participante puede crear un vínculo.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.clickingOrTappingANodeAllows"
+    "es": "Al pulsar un nodo, la persona participante puede crear un vínculo.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.clickingOrTappingANodeAllows",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.networkCanvas.tapCreateEdgeLabel": {
     "en": "Edge creation",

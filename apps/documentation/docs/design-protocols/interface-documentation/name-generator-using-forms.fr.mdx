@@ -1,0 +1,99 @@
+---
+title: Générateur de noms (avec formulaires)
+navOrder: 2
+translatedFrom: b60b5d249512c812affcb4fef25470e8f68682bf
+---
+
+<InterfaceSummary type="NameGenerator">
+
+<InterfaceMeta type="Générateur de noms" creates="Des nœuds d’un seul type" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+Les générateurs de noms sont l’un des éléments fondamentaux d’un entretien de réseau. Ils permettent à la personne participante de créer des alters (chaque personne qu’elle cite pendant l’entretien), et donc de décrire l’une des deux entités principales des réseaux de votre étude.
+
+Network Canvas propose plusieurs [interfaces](../key-concepts/interfaces) de type générateur de noms que vous pouvez ajouter à votre étude, et qui se configurent toutes dans Architect.
+
+![Interfaces de type générateur de noms disponibles dans Architect](/assets/img/interface-documentation/name-generators/add-screen.png)
+
+Chacune de ces interfaces est conçue pour une manière particulière de faire citer des alters, avec ses avantages et ses inconvénients. Bien qu’elles aient certaines options de configuration [communes à toutes les autres interfaces de Network Canvas](./shared), cet article porte sur les options propres à l’interface principale de générateur de noms, ainsi qu’à une variante de celle-ci qui utilise un mode d’« ajout rapide ».
+
+<TipBox>
+
+Vous utilisez des données de liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit) dans votre étude ? Consultez notre documentation sur l’interface [« Générateur
+de noms à partir d’une liste »](./name-generator-roster).
+
+</TipBox>
+
+## Éléments communs des interfaces {#shared-interface-elements}
+
+Les interfaces « Générateur de noms (avec formulaires) » et « Générateur de noms (ajout rapide) » partagent certains éléments visuels.
+
+![](/assets/img/interface-documentation/name-generators/preview.png)
+
+Il s’agit de la zone de **consigne**, où la tâche est expliquée à la personne participante (consultez la page [Consignes](/fr/design-protocols/key-concepts/prompts)), d’une zone de **liste des nœuds** où s’affichent les alters déjà cités, d’un **bouton d’action principal** qui lance la création d’un nœud et, éventuellement, d’un ou de plusieurs [panneaux latéraux](#side-panels).
+
+Au-delà de ces éléments, vous pouvez choisir la manière précise dont les alters sont créés : soit avec un formulaire complet, soit avec une méthode simple d’« ajout rapide ».
+
+### Panneaux latéraux {#side-panels}
+
+Ces deux générateurs de noms peuvent utiliser des panneaux latéraux. Les panneaux latéraux sont une fonction puissante qui vous permet d’utiliser des données de réseau, issues soit de l’entretien en cours, soit d’un fichier de données de réseau importé dans la bibliothèque de ressources d’Architect, pour faciliter la génération de noms.
+
+Par exemple, lorsque plusieurs consignes d’un générateur de noms peuvent se recouper dans le réseau social d’une personne participante, il peut être utile de reprendre sur un écran suivant les nœuds déjà cités, pour que la personne participante puisse facilement les citer à nouveau.
+
+![Configuration d’un panneau latéral](/assets/img/interface-documentation/name-generators/side-panel.png)
+
+Un panneau latéral peut aussi être créé à partir d’un fichier de données de réseau (une liste, par exemple) pour permettre à la personne participante de sélectionner et de désigner des alters dans une liste établie à l’avance. Notez que la même liste apparaîtra à l’identique dans les panneaux latéraux suivants du générateur de noms, sauf si une ou plusieurs règles sont créées pour filtrer les données à afficher dans le panneau (consultez la page [Filtrage du réseau](../key-concepts/network-filtering)).
+
+Pendant l’entretien, les panneaux latéraux peuvent être déployés ou réduits en cliquant sur leur titre.
+
+## Utiliser des formulaires {#using-forms}
+
+Avec l’interface « Générateur de noms (avec formulaires) », le bouton d’action principal ouvre un formulaire que les personnes participantes doivent remplir pour créer un alter. Ce formulaire peut comporter un ou plusieurs champs pour recueillir des données d’attributs précises sur chaque nœud (consultez notre [article de la section « Concepts clés » sur les formulaires](../key-concepts/forms) pour en savoir plus sur la création d’un formulaire). Cette interface combine donc la génération d’alters avec la possibilité d’effectuer quelques tâches simples de recueil d’attributs, c’est-à-dire d’interprétation de noms.
+
+![Un exemple de formulaire](/assets/img/interface-documentation/name-generators/ng-form.png)
+
+<AppOnly app="current">
+
+### Personnaliser la formulation intégrée {#customize-built-in-wording}
+
+La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les textes que les personnes participantes lisent à propos de cette étape. Chacun d’eux reprend au départ la formulation de Network Canvas, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un message ne figure dans la section que tant que la partie de l’étape à laquelle il se rapporte est configurée, et une étape qui n’en a aucun n’a pas cette section.
+
+Chaque message peut afficher le nom du type de nœud de l’étape, tel que le nomme le livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête), et les messages de limite peuvent aussi afficher la valeur de la limite (le nombre minimum ou maximum). Insérez l’un ou l’autre sous forme de pastille à l’aide du bouton de texte dynamique (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte) du champ.
+
+- **Minimum non atteint** s’affiche lorsque les personnes participantes essaient de continuer avant d’avoir ajouté le nombre minimum de nœuds demandé par l’étape. Il n’apparaît que lorsque l’étape a un minimum.
+- **Maximum atteint** s’affiche dès que les personnes participantes ont ajouté le nombre maximum de nœuds autorisé par l’étape. Il n’apparaît que lorsque l’étape a un maximum.
+
+Le message affiché lorsque le fichier de données de réseau d’un panneau latéral n’a pas pu être chargé fait partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text), sous **Messages**.
+
+</AppOnly>
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Utilisez cette interface lorsque vous voulez recueillir une petite quantité de données d’attributs au moment même où un nœud est cité. Cela peut être plus efficace que d’ajouter par la suite des interfaces [« Formulaire par alter »](../interface-documentation/per-alter-form) (un formulaire pour chaque alter) supplémentaires, ou des interfaces dédiées de type interpréteur de noms (une question posée sur chaque alter déjà cité).
+
+</GoodPractice>
+
+<GoodPractice>
+
+Veillez à recueillir dans votre formulaire une valeur pour un attribut appelé `name`, afin que les [libellés des nœuds](/fr/design-protocols/key-concepts/node-labelling) fonctionnent correctement.
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Résistez à la tentation de créer de longs formulaires comportant de nombreuses questions. Cela peut dissuader les personnes participantes de citer d’autres alters, car la désignation de chaque alter deviendra plus pesante.
+
+</BadPractice>
+
+<BadPractice>
+
+Évitez les attributs qu’il vaudrait mieux évaluer par rapport aux autres nœuds du réseau. Par exemple, les échelles de perception gagneront peut-être à utiliser l’interface [« Classement ordinal »](../interface-documentation/ordinal-bin).
+
+</BadPractice>

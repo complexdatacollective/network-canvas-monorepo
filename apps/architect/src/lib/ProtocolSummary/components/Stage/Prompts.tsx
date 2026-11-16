@@ -12,7 +12,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.prompts.prompts',
     defaultMessage: 'Prompts',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Prompts.',
+      'Section heading in the printable protocol summary, above the list of prompts (the questions or instructions participants see) of a stage.',
   },
 });
 

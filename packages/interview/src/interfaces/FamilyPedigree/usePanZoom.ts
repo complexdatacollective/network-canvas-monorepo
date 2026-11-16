@@ -240,11 +240,16 @@ export type PanZoom = {
   y: MotionValue<number>;
   scale: MotionValue<number>;
   /** Moves the middle of elements to the middle of the viewport, or of the
-   * part of it from its left edge to `visibleRight` (a client x), inside
-   * the given insets; zoomed out, if it has to be, so they all fit. */
+   * part of it between `visible.left` and `visible.right` (client x's, each
+   * the viewport's own edge when left out), inside the given insets; zoomed
+   * out, if it has to be, so they all fit. */
   centreOn: (
     elements: HTMLElement | HTMLElement[],
-    options?: { visibleRight?: number; animated?: boolean; insets?: Insets },
+    options?: {
+      visible?: { left?: number; right?: number };
+      animated?: boolean;
+      insets?: Insets;
+    },
   ) => void;
   /** Pans just enough to bring elements fully into view, inside the given
    * insets (24 pixels from each edge, without them): all of them when they
@@ -521,20 +526,24 @@ export function usePanZoom({
   );
 
   const centreOn = useCallback<PanZoom['centreOn']>(
-    (elements, { visibleRight, animated = true, insets = NO_INSETS } = {}) => {
+    (elements, { visible, animated = true, insets = NO_INSETS } = {}) => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       const box = viewport.getBoundingClientRect();
+      const left =
+        visible?.left === undefined
+          ? box.left
+          : clamp(visible.left, box.left, box.right);
       const right =
-        visibleRight === undefined
+        visible?.right === undefined
           ? box.right
-          : clamp(visibleRight, box.left, box.right);
+          : clamp(visible.right, box.left, box.right);
       const targets = Array.isArray(elements) ? elements : [elements];
       const next = viewCentredOn({
         view: { x: x.get(), y: y.get(), scale: scale.get() },
         boxes: targets.map(contentBoxOf),
         area: {
-          left: insets.left,
+          left: left - box.left + insets.left,
           top: insets.top,
           right: right - box.left - insets.right,
           bottom: box.height - insets.bottom,

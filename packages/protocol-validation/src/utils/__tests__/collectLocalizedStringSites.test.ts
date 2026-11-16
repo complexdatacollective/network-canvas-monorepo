@@ -5,11 +5,21 @@ import { localizedString } from '../../schemas/9/localized-string.ts';
 import {
   collectLocalizedStringSites,
   collectLocalizedStringsFromSchema,
+  localizedTextShapeAt,
 } from '../collectLocalizedStrings.ts';
 
-const title = localizedString(z.string().min(1), 'plain');
-const hint = localizedString(z.string(), 'markdown');
-const minLabel = localizedString(z.string(), 'plain');
+const title = localizedString(z.string().min(1), {
+  format: 'plain',
+  lines: 'single',
+});
+const hint = localizedString(z.string(), {
+  format: 'markdown',
+  lines: 'multiple',
+});
+const minLabel = localizedString(z.string(), {
+  format: 'plain',
+  lines: 'single',
+});
 
 const schema = z.object({
   title,
@@ -112,5 +122,46 @@ describe('collectLocalizedStringSites', () => {
     expect(
       collectLocalizedStringsFromSchema(schema, value).map(({ path }) => path),
     ).toEqual([['hint']]);
+  });
+});
+
+describe('localizedTextShapeAt', () => {
+  it('reads the shape a field declares, wherever the field sits', () => {
+    expect(localizedTextShapeAt(schema, ['title'])).toEqual({
+      format: 'plain',
+      lines: 'single',
+    });
+    expect(localizedTextShapeAt(schema, ['items', 0, 'hint'])).toEqual({
+      format: 'markdown',
+      lines: 'multiple',
+    });
+    expect(localizedTextShapeAt(schema, ['parameters', 'minLabel'])).toEqual({
+      format: 'plain',
+      lines: 'single',
+    });
+  });
+
+  it('reads through unions and pipes', () => {
+    const variant = z
+      .discriminatedUnion('kind', [
+        z.object({ kind: z.literal('a'), hint }),
+        z.object({ kind: z.literal('b'), other: title }),
+      ])
+      .transform((value) => value);
+    expect(localizedTextShapeAt(variant, ['hint'])).toEqual({
+      format: 'markdown',
+      lines: 'multiple',
+    });
+    expect(localizedTextShapeAt(variant, ['other'])).toEqual({
+      format: 'plain',
+      lines: 'single',
+    });
+  });
+
+  it('refuses a path where no localized text is declared', () => {
+    expect(() => localizedTextShapeAt(schema, ['subtitle'])).toThrow(
+      'No localized text is declared at subtitle.',
+    );
+    expect(() => localizedTextShapeAt(schema, ['items'])).toThrow();
   });
 });

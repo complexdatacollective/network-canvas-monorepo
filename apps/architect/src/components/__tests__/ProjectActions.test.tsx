@@ -151,6 +151,13 @@ const wrap = (store: TestStore) => {
   );
 };
 
+// Download and Send to Interviewer live in the Export menu, which renders its
+// items only while open.
+const chooseExportItem = async (name: RegExp) => {
+  fireEvent.click(screen.getByRole('button', { name: /^export$/i }));
+  fireEvent.click(await screen.findByRole('menuitem', { name }));
+};
+
 describe('<ProjectActions />', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
@@ -268,7 +275,7 @@ describe('<ProjectActions />', () => {
     expect(screen.queryByRole('button', { name: /undo/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
     expect(
-      screen.getByRole('button', { name: /^download$/i }),
+      screen.getByRole('button', { name: /^export$/i }),
     ).toBeInTheDocument();
   });
 
@@ -311,28 +318,36 @@ describe('<ProjectActions />', () => {
     ).toContainElement(screen.getByRole('button', { name: /undo/i }));
   });
 
-  it('keeps the Download action filled on hover', () => {
+  it('keeps the Export action filled on hover', () => {
     const store = createTestStore();
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    const downloadButton = screen.getByRole('button', { name: /^download$/i });
-    expect(downloadButton).toHaveClass('bg-sea-green');
-    expect(downloadButton).toHaveClass('text-white');
-    expect(downloadButton).not.toHaveClass(
-      'hover:enabled:bg-(--component-text)',
-    );
+    const exportButton = screen.getByRole('button', { name: /^export$/i });
+    expect(exportButton).toHaveClass('bg-sea-green');
+    expect(exportButton).toHaveClass('text-white');
+    expect(exportButton).not.toHaveClass('hover:enabled:bg-(--component-text)');
   });
 
-  it('transitions Download → Downloading... → Downloaded during export flow', async () => {
+  it('offers Download, then Send to Interviewer, from the Export menu', async () => {
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    fireEvent.click(screen.getByRole('button', { name: /^export$/i }));
+    const menu = await screen.findByRole('menu');
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Download', 'Send to Interviewer']);
+  });
+
+  it('shows Downloading... then Downloaded on the Export button during a download', async () => {
     const store = createTestStore();
     exportUnwrap.mockResolvedValueOnce({ skippedAssets: [] });
 
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    const downloadButton = screen.getByRole('button', { name: /^download$/i });
-    expect(downloadButton).toHaveTextContent(/download/i);
-
-    fireEvent.click(downloadButton);
+    await chooseExportItem(/^download$/i);
 
     await waitFor(() => {
       expect(
@@ -363,7 +378,7 @@ describe('<ProjectActions />', () => {
 
     render(<ProjectActions mode="locked" />, { wrapper: wrap(store) });
 
-    fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
+    await chooseExportItem(/^download$/i);
 
     await waitFor(() => {
       expect(exportNetcanvasMock).toHaveBeenCalledTimes(1);
@@ -392,7 +407,7 @@ describe('<ProjectActions />', () => {
 
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
+    await chooseExportItem(/^download$/i);
 
     await waitFor(() => {
       expect(exportNetcanvasMock).toHaveBeenCalledTimes(1);

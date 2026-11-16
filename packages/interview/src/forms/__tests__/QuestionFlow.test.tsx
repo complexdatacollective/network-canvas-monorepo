@@ -105,6 +105,7 @@ function Choice() {
         <button
           key={option}
           type="button"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- mirrors fresco-ui's RadioGroup, whose Base UI radios render as <button role="radio">.
           role="radio"
           aria-checked={value === option}
           onClick={() => setValue(option)}

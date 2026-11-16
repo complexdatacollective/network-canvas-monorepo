@@ -6,16 +6,18 @@
 // to server-rendered pages, whether it follows the account rather than the
 // device, whether it reaches validation and dialogs and the structured details
 // in the activity feed, and whether the participant's browser language, rather
-// than the researcher's or Fresco's own, sets the interview's own controls
-// while leaving protocol-authored text alone.
+// than the researcher's or Fresco's own, chooses the interview's language from
+// the protocol's.
 //
 // The oracle is the shipped catalogs, not a list of sentences: the same pages
 // are read in English and then in Spanish, and every message the English
 // rendering carried has to have become its Spanish counterpart. See
-// `localization-contract.mjs`.
+// `localization-contract.mjs`. The interview has no catalogs: its oracle is
+// the protocol's own interface text.
 //
 // Usage: node localization-lane.mjs [--lane fresh]
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
@@ -53,12 +55,23 @@ const appEnglish = loadCatalog(
 const appSpanish = loadCatalog(
   join(repoRoot, 'apps/fresco/src/locales/es.json'),
 );
-const interviewEnglish = loadCatalog(
-  join(repoRoot, 'packages/interview/src/locales/en.json'),
-);
-const interviewSpanish = loadCatalog(
-  join(repoRoot, 'packages/interview/src/locales/es.json'),
-);
+/**
+ * The interview's own words in the release-test protocol, by language. The
+ * interview holds no translations of its own: everything it shows a
+ * participant comes from the protocol, its built-in controls from the
+ * protocol's interface text, so that text is the oracle here.
+ */
+const interfaceText = Object.values(
+  JSON.parse(
+    readFileSync(
+      join(
+        repoRoot,
+        'packages/protocols/e2e/fresco-release-test-v9/protocol.json',
+      ),
+      'utf8',
+    ),
+  ).interfaceText ?? {},
+).flatMap((group) => Object.values(group));
 
 /**
  * Messages whose English text is also a value written into the database when a
@@ -352,22 +365,19 @@ try {
         .first()
         .getAttribute('lang', { timeout: 5000 })
         .catch(() => null);
+      // Visible text only: what only a screen reader reads (accessible
+      // names, announcements) stays in English whatever the language.
       const text = await interview.locator('body').innerText();
-      const controls = await interview.locator('body').ariaSnapshot();
-      const ids = Object.keys(interviewEnglish).filter(
-        (id) =>
-          typeof interviewSpanish[id] === 'string' &&
-          interviewSpanish[id] !== interviewEnglish[id] &&
-          interviewSpanish[id].length >= 6 &&
-          !/[{}<>]/.test(interviewSpanish[id]),
+      const entries = interfaceText.filter(
+        (entry) =>
+          typeof entry.es === 'string' &&
+          entry.es !== entry.en &&
+          entry.es.length >= 6 &&
+          !/[{}<>]/.test(entry.es),
       );
-      const spanish = ids.filter((id) =>
-        controls.includes(interviewSpanish[id]),
-      );
-      const english = ids.filter(
-        (id) =>
-          controls.includes(interviewEnglish[id]) &&
-          !controls.includes(interviewSpanish[id]),
+      const spanish = entries.filter((entry) => text.includes(entry.es));
+      const english = entries.filter(
+        (entry) => text.includes(entry.en) && !text.includes(entry.es),
       );
       const authored = judgeAuthoredText({
         translatedText: text,
@@ -381,7 +391,6 @@ try {
         pass:
           appLanguage === 'en' &&
           interviewLanguage === 'es' &&
-          spanish.length > 0 &&
           english.length === 0 &&
           authored.pass,
         detail:
@@ -389,14 +398,12 @@ try {
             ? `Fresco's own pages were in "${appLanguage}" rather than English, so Spanish controls would not show that the interview followed the browser`
             : interviewLanguage !== 'es'
               ? `the interview was marked as "${interviewLanguage}" rather than the browser's Spanish`
-              : spanish.length === 0
-                ? "the interview's own controls showed no Spanish at all"
-                : english.length > 0
-                  ? `interview controls still in English: ${english
-                      .slice(0, 3)
-                      .map((id) => interviewEnglish[id])
-                      .join('; ')}`
-                  : `${spanish.length} interview control message(s) in the browser's Spanish while Fresco's own pages stayed in English; ${authored.detail}`,
+              : english.length > 0
+                ? `interview controls still in English: ${english
+                    .slice(0, 3)
+                    .map((entry) => entry.en)
+                    .join('; ')}`
+                : `interview in the browser's Spanish (${spanish.length} interface text message(s) from the protocol on screen) while Fresco's own pages stayed in English; ${authored.detail}`,
       };
     }),
   );

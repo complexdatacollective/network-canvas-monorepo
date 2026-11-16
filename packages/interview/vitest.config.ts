@@ -15,7 +15,9 @@ const dirname =
     : path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [react()],
+  // Fresco compiles this package with the React Compiler, so the suites run
+  // the compiled code too (oxc-transform-react, the compiler's Rust port).
+  plugins: [react({ compiler: true })],
   test: {
     globals: true,
     exclude: [

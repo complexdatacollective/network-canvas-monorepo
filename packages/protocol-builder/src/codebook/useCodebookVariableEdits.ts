@@ -1,11 +1,12 @@
 import { isEqual } from 'es-toolkit';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
+  type Codebook,
   VARIABLE_TYPE_COMPONENTS,
   type VariableType,
 } from '@codaco/protocol-validation';
@@ -23,6 +24,7 @@ import {
   type ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 import { codebookRefusalMessage } from './compoundFailureCopy.ts';
 import {
   documentWithCreatedVariable,
@@ -815,21 +817,28 @@ export function useRenameCodebookVariable(
 export function useSubjectForVariable(
   variableId: string | undefined,
 ): CodebookSubject | undefined {
-  const protocolContext = useProtocolContext();
-  return useMemo(() => {
-    if (variableId === undefined) return undefined;
-    const { codebook } = protocolContext;
-    for (const entity of ['node', 'edge'] as const) {
-      for (const [type, definition] of Object.entries(codebook[entity] ?? {})) {
-        if (Object.hasOwn(definition.variables ?? {}, variableId)) {
-          return { entity, type };
-        }
+  const { codebook } = useProtocolContext();
+  return useMemo(
+    () => subjectHoldingVariable(codebook, variableId),
+    [codebook, variableId],
+  );
+}
+
+function subjectHoldingVariable(
+  codebook: Readonly<Codebook>,
+  variableId: string | undefined,
+): CodebookSubject | undefined {
+  if (variableId === undefined) return undefined;
+  for (const entity of ['node', 'edge'] as const) {
+    for (const [type, definition] of Object.entries(codebook[entity] ?? {})) {
+      if (Object.hasOwn(definition.variables ?? {}, variableId)) {
+        return { entity, type };
       }
     }
-    return Object.hasOwn(codebook.ego?.variables ?? {}, variableId)
-      ? { entity: 'ego' }
-      : undefined;
-  }, [protocolContext, variableId]);
+  }
+  return Object.hasOwn(codebook.ego?.variables ?? {}, variableId)
+    ? { entity: 'ego' }
+    : undefined;
 }
 
 /**
@@ -841,22 +850,24 @@ export function useSubjectForVariable(
  * into is now a row about something else, which can neither resolve it nor
  * save it. The write is not undone; only the assignment must not happen.
  *
- * A getter reading a ref rather than a value, because the answer is needed
+ * A getter of the latest value rather than a value, because the answer is needed
  * AFTER an await, in a closure made before it.
  */
 function useSubjectStillCollected(
   subject: CodebookSubject | undefined,
 ): (startedWith: CodebookSubject) => boolean {
-  const live = useRef(subject);
-  live.current = subject;
-  return useCallback((startedWith) => {
-    const now = live.current;
-    return (
-      now !== undefined &&
-      sectionIdForCodebookSubject(now) ===
-        sectionIdForCodebookSubject(startedWith)
-    );
-  }, []);
+  const live = useLatest(subject);
+  return useCallback(
+    (startedWith) => {
+      const now = live();
+      return (
+        now !== undefined &&
+        sectionIdForCodebookSubject(now) ===
+          sectionIdForCodebookSubject(startedWith)
+      );
+    },
+    [live],
+  );
 }
 
 /** Where a codebook round trip's answer belongs by the time it arrives. */
@@ -900,16 +911,13 @@ export function useWhereTheAnswerLands(
   fillsIn: () => string | undefined,
 ): (asked: CodebookAnswerTarget) => AnswerLands {
   const subjectStillCollected = useSubjectStillCollected(subject);
-  const live = useRef(fillsIn);
-  live.current = fillsIn;
+  const live = useLatest(fillsIn);
   return useCallback(
     (asked) => {
       if (!subjectStillCollected(asked.subject)) return 'onAnotherType';
-      return live.current() === asked.fillsIn
-        ? 'here'
-        : 'besideAnotherAttribute';
+      return live()() === asked.fillsIn ? 'here' : 'besideAnotherAttribute';
     },
-    [subjectStillCollected],
+    [live, subjectStillCollected],
   );
 }
 

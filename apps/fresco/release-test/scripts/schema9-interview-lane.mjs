@@ -239,8 +239,11 @@ try {
         .getByRole('option', { name: 'español' })
         .getAttribute('aria-selected')
         .catch(() => null);
-      const interfaceSpanish = await page
-        .getByRole('button', { name: 'Siguiente paso' })
+      // Every word the interview shows comes from the protocol in its
+      // language; the accessible names of its icon controls are English
+      // whatever the language.
+      const nextInEnglish = await page
+        .getByRole('button', { name: 'Next Step', exact: true })
         .isVisible()
         .catch(() => false);
       return {
@@ -248,8 +251,8 @@ try {
           at === STEP.language &&
           lang === 'es' &&
           selected === 'true' &&
-          interfaceSpanish,
-        detail: `interview ${result.interviewId} opened on step ${at} with lang="${lang}", español selected: ${selected}, interface in Spanish: ${interfaceSpanish}`,
+          nextInEnglish,
+        detail: `interview ${result.interviewId} opened on step ${at} with lang="${lang}", español selected: ${selected}, Next control named in English: ${nextInEnglish}`,
       };
     }),
   );
@@ -456,15 +459,18 @@ try {
       for (const name of [second, first]) {
         if ((await person(name).getAttribute('aria-pressed')) !== 'true')
           await person(name).click();
+        // Accessible names stay English whatever the interview language
+        // (#2468); the bins' visible labels are the protocol's Spanish.
         await page
           .getByRole('button', {
-            name: `Colocar a ${name} en «${TRANSCRIPT.context[name].label}»`,
+            name: `Place ${name} in ${TRANSCRIPT.context[name].label}`,
+            exact: true,
           })
           .click();
         await page.waitForTimeout(800);
       }
       const done = await page
-        .getByText('0 sin colocar')
+        .getByText('0 unplaced')
         .isVisible()
         .catch(() => false);
       // The stored answers, waited for: Fresco batches sync writes, so the

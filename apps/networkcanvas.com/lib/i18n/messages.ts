@@ -1,3 +1,4 @@
+import arabicMessages from '../../messages/ar.json';
 import germanMessages from '../../messages/de.json';
 import britishEnglishOverrides from '../../messages/en-GB.json';
 import englishMessages from '../../messages/en.json';
@@ -30,6 +31,7 @@ const messageSources = {
   'pt-BR': { base: brazilianPortugueseMessages },
   'it': { base: italianMessages },
   'fr': { base: frenchMessages },
+  'ar': { base: arabicMessages },
 } satisfies Record<Locale, MessageSource>;
 
 function isMessageCatalog(

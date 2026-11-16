@@ -91,9 +91,10 @@ export default defineConfig({
     // is for build and test tooling alone.
     lib: {
       entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        messages: resolve(__dirname, 'src/messages.ts'),
-        locales: resolve(__dirname, 'src/locales/catalogs.ts'),
+        'index': resolve(__dirname, 'src/index.ts'),
+        'messages': resolve(__dirname, 'src/messages.ts'),
+        'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
+        'schema-version': resolve(__dirname, 'src/schemaVersion.ts'),
       },
       name: 'ProtocolValidation',
       // the proper extensions will be added

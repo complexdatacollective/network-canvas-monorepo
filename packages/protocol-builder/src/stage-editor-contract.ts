@@ -75,6 +75,9 @@ export type StageProblemsStore = Readonly<{
   getServerSnapshot: () => readonly string[];
 }>;
 
+/** Whether the editor may write to the stage yet: see `StageEditorActionContext`. */
+export type StageEditorAccess = 'pending' | 'editing' | 'readOnly';
+
 /**
  * What a host needs to render its own action chrome for the editor.
  *
@@ -89,6 +92,16 @@ export type StageProblemsStore = Readonly<{
 export type StageEditorActionContext = Readonly<{
   formId: string;
   readOnly: boolean;
+  /**
+   * Why `readOnly` is what it is, for a host that has to say it aloud.
+   *
+   * `readOnly` is true both while the stage is still being opened (the editing
+   * lock has not been answered yet) and when somebody else holds it, or has
+   * taken it from this editor: a host that announced every transition to
+   * `readOnly` would announce each stage it opened. `pending` is the first of
+   * those, `readOnly` the second.
+   */
+  access: StageEditorAccess;
   /**
    * The sections of the stage on screen, resolved against the form.
    *

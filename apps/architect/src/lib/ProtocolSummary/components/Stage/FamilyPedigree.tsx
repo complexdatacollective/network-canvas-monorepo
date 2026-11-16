@@ -8,7 +8,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
 import { PARTICIPANT_WORDING_GROUPS } from '@codaco/protocol-builder/editors/family-pedigree/participantWordingSettings';
-import { familyPedigreeMessages as builderMessages } from '@codaco/protocol-builder/editors/family-pedigree/pedigreeMessages';
+import { stageWordingMessages } from '@codaco/protocol-builder/sections/supplied-wording/stageWordingMessages';
 import type {
   FramingSetting,
   LocalizedString,
@@ -713,7 +713,7 @@ const FamilyPedigree = ({
         <MiniTable rotated wide narrowLabels rows={rows} />
       </SectionFrame>
       {wordingRows.length > 0 && (
-        <SectionFrame title={intl.formatMessage(builderMessages.wordingTitle)}>
+        <SectionFrame title={intl.formatMessage(stageWordingMessages.title)}>
           <MiniTable rotated wide narrowLabels rows={wordingRows} />
         </SectionFrame>
       )}

@@ -408,7 +408,6 @@ export function useDropTarget(
     return {
       dropProps: {
         'ref': setRef,
-        'aria-dropeffect': canDrop ? 'move' : 'none',
         'aria-label': announcedName,
         'data-zone-id': dropIdRef.current,
         // Only make drop zones focusable when keyboard dragging is active

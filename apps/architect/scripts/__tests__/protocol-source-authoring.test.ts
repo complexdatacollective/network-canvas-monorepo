@@ -3,7 +3,8 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { type CurrentProtocol } from '@codaco/protocol-validation';
 
 import {
   createTempRepoRoot,
@@ -53,31 +54,32 @@ const manifest = {
 
 const makeProtocol = (
   assetManifest: CurrentProtocol['assetManifest'] = {},
-): CurrentProtocol => ({
-  name: 'Test Template',
-  schemaVersion: 9,
-  localization: { defaultLocale: 'en', locales: ['en'] },
-  stages: [
-    {
-      id: 'finish',
-      type: 'FinishSession',
-      label: { en: 'Finish' },
-      mode: 'confirmation',
-      content: { en: '# All done\n\nThank you.' },
-      finishedContent: { en: 'This interview is finished.' },
-      finishLabel: { en: 'Finish' },
-      finishConfirmation: { en: 'Finish this interview?' },
-      finishFailed: { en: 'The interview could not be finished.' },
-      outcome: 'completed',
+): CurrentProtocol =>
+  withInterfaceText({
+    name: 'Test Template',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    stages: [
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        label: { en: 'Finish' },
+        mode: 'confirmation',
+        content: { en: '# All done\n\nThank you.' },
+        finishedContent: { en: 'This interview is finished.' },
+        finishLabel: { en: 'Finish' },
+        finishConfirmation: { en: 'Finish this interview?' },
+        finishFailed: { en: 'The interview could not be finished.' },
+        outcome: 'completed',
+      },
+    ],
+    codebook: {
+      node: {},
+      edge: {},
+      ego: {},
     },
-  ],
-  codebook: {
-    node: {},
-    edge: {},
-    ego: {},
-  },
-  assetManifest,
-});
+    assetManifest,
+  });
 
 const makeRequest = (
   protocol: CurrentProtocol,

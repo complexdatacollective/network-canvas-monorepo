@@ -7,7 +7,6 @@ import {
   type SkipLogicDestination,
   type Stage,
   stageSchema,
-  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   NcNetworkSchema,
@@ -88,6 +87,7 @@ function makeRosterStage(overrides?: Record<string, unknown>): Stage {
     label: en('Roster'),
     type: 'NameGeneratorRoster',
     allAddedNotice: en('There is nothing left to add from this list.'),
+    unnamedLabel: en('Unnamed {count}'),
     minNodesNotice: en(
       '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
     ),
@@ -185,7 +185,6 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     id: 'stage-fp',
     label: en('Family'),
     type: 'FamilyPedigree',
-    wording: familyPedigreeWordingIn(),
     subject: { entity: 'node', type: 'node-type-1' },
     prompt: en('Tell us about your family'),
     nodeConfiguration: {

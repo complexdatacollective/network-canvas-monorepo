@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../__tests__/finishStage.ts';
+import { familyPedigreeWordingIn } from '../../__tests__/suppliedWording.ts';
 import { pedigreeNameField } from '../../schemas/9/__tests__/family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
@@ -11,7 +12,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../schemas/9/family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../../schemas/9/schema.ts';
-import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
 import {
   findExclusiveVariableConflicts,
   findStageManagedOptionBindings,

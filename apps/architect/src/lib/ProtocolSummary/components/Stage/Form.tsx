@@ -21,13 +21,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.form.form',
     defaultMessage: 'Form',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Form.',
+      "Section heading in the printable protocol summary, above the table of the fields of a stage's form.",
   },
   title: {
     id: 'architect.protocolSummary.stage.form.title',
     defaultMessage: 'Title: {value1}',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / Form.',
+      "Heading in the printable protocol summary giving the title of a stage's form. value1 is the title as written in the protocol.",
   },
 });
 

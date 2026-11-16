@@ -480,6 +480,7 @@ function rosterStage(overrides: Record<string, unknown> = {}): Stage {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     maxNodesNotice: {
       en: 'You have completed this task. Click the next arrow to continue.',
     },

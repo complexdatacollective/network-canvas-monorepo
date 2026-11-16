@@ -1,8 +1,10 @@
 import { permanentRedirect } from 'next/navigation';
 
+import { defaultLocale } from '~/lib/i18n/locales';
+
 export default function RootPage() {
-  // Redirect to en for now. This is a limitation of static site generation
-  // that we need to work around by creating a client component to read the
-  // navigator.language and redirect to the appropriate locale.
-  permanentRedirect('/en');
+  // On Netlify the locale edge function answers "/" before this page, choosing
+  // the reader's language with the locale system the websites share. This
+  // static fallback only serves hosts without it.
+  permanentRedirect(`/${defaultLocale}`);
 }

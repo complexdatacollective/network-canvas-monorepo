@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ContextType, useContext, useEffect } from 'react';
+import { type ContextType, type ReactNode, useContext, useEffect } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -8,8 +8,11 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
-import { interviewCatalogSource } from '../i18n/catalog';
 import { InterviewI18nProvider } from '../i18n/InterviewI18nProvider';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../interfaces/__tests__/TestProtocolLocalization';
 import { submitRegisteredForm } from './submitRegisteredForm';
 
 type FormStoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
@@ -27,13 +30,29 @@ beforeAll(() => {
   );
 });
 
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+const bilingual = { defaultLocale: 'en', locales: ['en', 'es'] };
+const interfaceText = suppliedInterfaceText(bilingual);
+
+// The interview in `locale`, its built-in text worded by the protocol.
+function InLanguage({
+  locale,
+  children,
+}: {
+  locale: string;
+  children: ReactNode;
+}) {
+  return (
+    <InterviewI18nProvider>
+      <TestProtocolLocalization
+        localization={bilingual}
+        locale={locale}
+        interfaceText={interfaceText}
+      >
+        {children}
+      </TestProtocolLocalization>
+    </InterviewI18nProvider>
   );
-});
+}
 
 describe('registered form failure language', () => {
   it('updates a retained submission failure without discarding its value or preventing retry', async () => {
@@ -60,11 +79,7 @@ describe('registered form failure language', () => {
         <Capture />
       </Form>
     );
-    const view = render(
-      <InterviewI18nProvider requestedLocale="es">
-        {form}
-      </InterviewI18nProvider>,
-    );
+    const view = render(<InLanguage locale="es">{form}</InLanguage>);
     await waitFor(() => expect(captured).toBeDefined());
     if (!captured) throw new Error('The real form did not expose its store');
     const store = captured;
@@ -73,18 +88,10 @@ describe('registered form failure language', () => {
     await act(async () => {
       expect(await submitRegisteredForm(store)).toBe(false);
     });
-    expect(
-      screen.getByText('Se ha producido un error al enviar el formulario.'),
-    ).toBeVisible();
+    expect(screen.getByText('Se ha producido un error.')).toBeVisible();
     const errors = store.getState().errors;
-    view.rerender(
-      <InterviewI18nProvider requestedLocale="en-GB">
-        {form}
-      </InterviewI18nProvider>,
-    );
-    expect(
-      screen.getByText('An error occurred while submitting the form.'),
-    ).toBeVisible();
+    view.rerender(<InLanguage locale="en">{form}</InLanguage>);
+    expect(screen.getByText('An error occurred.')).toBeVisible();
     expect(store.getState().errors).toBe(errors);
     expect(screen.getByRole('textbox', { name: 'Literal study label' })).toBe(
       input,

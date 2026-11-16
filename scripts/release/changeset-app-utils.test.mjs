@@ -340,6 +340,8 @@ test('UNRELEASED_PACKAGES holds every workspace with no release path at all', ()
     // main are the record of those deploys.
     'posthog-proxy-worker',
     'development-protocol-worker',
+    // Deployed by its own gated lane.
+    '@codaco/protocol-review-worker',
   ]) {
     assert.ok(workspaceNames.has(name), `${name} is not a workspace`);
     assert.ok(

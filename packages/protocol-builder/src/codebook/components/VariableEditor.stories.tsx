@@ -273,11 +273,11 @@ function VariableEditorDemo({
     <ProtocolLocalizationProvider localization={localization}>
       <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
         <div className="flex items-center justify-between gap-4">
-          <p role="status" className="text-muted">
+          <output aria-live="polite" className="text-muted">
             {completedId === null
               ? 'No accepted edit yet.'
               : `Accepted attribute id: ${completedId}`}
-          </p>
+          </output>
           <Button
             type="button"
             color="default"

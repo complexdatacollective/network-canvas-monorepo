@@ -2226,3 +2226,163 @@ describe("Architect's in-process protocol-builder host", () => {
     });
   });
 });
+
+describe('shared words saved with a stage', () => {
+  const MAP = sectionId({ kind: 'stage', stageId: 'geospatial-1' });
+
+  /** The researcher's wording for the message a failed map search shows. */
+  const REWORDED = { [FIXTURE_LANGUAGE]: 'No place matched that search' };
+
+  const searchFailed = (store: ArchitectStore): unknown =>
+    getProtocol(store.getState())?.interfaceText?.geospatial?.searchFailed;
+
+  const allowsSearch = (store: ArchitectStore, stageId: string): unknown => {
+    const stage = getProtocol(store.getState())?.stages.find(
+      ({ id }) => id === stageId,
+    );
+    return stage !== undefined && 'mapOptions' in stage
+      ? stage.mapOptions.allowSearch
+      : undefined;
+  };
+
+  /** The map stage as its editor holds it, with search turned on. */
+  const withSearch = (
+    document: Redacted.Redacted<Record<string, unknown>>,
+  ): Record<string, unknown> => {
+    const stage = Redacted.value(document);
+    const mapOptions =
+      typeof stage.mapOptions === 'object' && stage.mapOptions !== null
+        ? stage.mapOptions
+        : {};
+    return { ...stage, mapOptions: { ...mapOptions, allowSearch: true } };
+  };
+
+  it('writes the stage and its words in one revision, undone as one step', async () => {
+    const { store, client } = openProtocol();
+    expect(searchFailed(store)).toBeUndefined();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: MAP,
+    });
+
+    const { revision } = await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: MAP,
+      document: Redacted.make(withSearch(held.document)),
+      revision: held.revision,
+      interfaceText: [
+        { group: 'geospatial', key: 'searchFailed', value: REWORDED },
+      ],
+    });
+
+    expect(allowsSearch(store, 'geospatial-1')).toBe(true);
+    expect(searchFailed(store)).toEqual(REWORDED);
+    const settings = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: SETTINGS,
+    });
+    expect(settings.revision.sequence).toBe(revision.sequence);
+    expect(undoDepth(store)).toBe(1);
+
+    store.dispatch(timelineActions.undo());
+    expect(allowsSearch(store, 'geospatial-1')).not.toBe(true);
+    expect(searchFailed(store)).toBeUndefined();
+  });
+
+  it('writes a created stage and its words in one revision, undone as one step', async () => {
+    const { store, client } = openProtocol();
+    const template = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: MAP,
+    });
+    const { id: _id, ...withoutId } = withSearch(template.document);
+
+    const created = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: Redacted.make(withoutId),
+      position: 0,
+      interfaceText: [
+        { group: 'geospatial', key: 'searchFailed', value: REWORDED },
+      ],
+    });
+
+    const ref = parseSectionId(created.sectionId);
+    const stageId = ref.kind === 'stage' ? ref.stageId : '';
+    expect(allowsSearch(store, stageId)).toBe(true);
+    expect(searchFailed(store)).toEqual(REWORDED);
+    const settings = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: SETTINGS,
+    });
+    expect(settings.revision.sequence).toBe(created.revision.sequence);
+    expect(undoDepth(store)).toBe(1);
+
+    store.dispatch(timelineActions.undo());
+    expect(stageIds(store)).not.toContain(stageId);
+    expect(searchFailed(store)).toBeUndefined();
+  });
+
+  it('writes neither the stage nor its words when the words cannot be saved', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: MAP,
+    });
+
+    const { error } = await safe(
+      client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: MAP,
+        document: Redacted.make(withSearch(held.document)),
+        revision: held.revision,
+        interfaceText: [
+          {
+            group: 'geospatial',
+            key: 'searchFailed',
+            value: { [FIXTURE_LANGUAGE]: ' ' },
+          },
+        ],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error instanceof InvalidShape && error.sectionId).toBe(SETTINGS);
+    expect(allowsSearch(store, 'geospatial-1')).not.toBe(true);
+    expect(searchFailed(store)).toBeUndefined();
+    expect(undoDepth(store)).toBe(0);
+  });
+
+  it('refuses the words while an editor holds the settings', async () => {
+    const { store, client } = openProtocol();
+    await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: SETTINGS,
+    });
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: MAP,
+    });
+
+    const { error } = await safe(
+      client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: MAP,
+        document: Redacted.make(withSearch(held.document)),
+        revision: held.revision,
+        interfaceText: [
+          { group: 'geospatial', key: 'searchFailed', value: REWORDED },
+        ],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(SectionsLocked);
+    expect(error).toMatchObject({ blocked: [{ sectionId: SETTINGS }] });
+    expect(allowsSearch(store, 'geospatial-1')).not.toBe(true);
+    expect(searchFailed(store)).toBeUndefined();
+  });
+});

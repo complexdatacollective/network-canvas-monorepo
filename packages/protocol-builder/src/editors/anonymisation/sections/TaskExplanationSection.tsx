@@ -1,10 +1,16 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { anonymisationStage } from '@codaco/protocol-validation';
 
 import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
+import { markdownTextShapeAt } from '../../../localization/textShape.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { anonymisationMessages } from './anonymisationMessages.ts';
+
+const EXPLANATION_SHAPE = markdownTextShapeAt(anonymisationStage, [
+  'explanationText',
+]);
 
 const EXPLANATION_FIELD = 'explanationText';
 
@@ -29,6 +35,7 @@ export default function TaskExplanationSection() {
       <Field<typeof LocalizedRichTextField>
         name={EXPLANATION_FIELD}
         component={LocalizedRichTextField}
+        shape={EXPLANATION_SHAPE}
         dynamicValues="stageText"
         label={intl.formatMessage(anonymisationMessages.explanationTextLabel)}
         placeholder={intl.formatMessage(

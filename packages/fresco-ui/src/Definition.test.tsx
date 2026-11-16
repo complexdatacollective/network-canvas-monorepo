@@ -43,7 +43,9 @@ describe('Definition', () => {
       '[data-base-ui-portal] [data-open][aria-hidden="true"]',
     );
 
-    expect(popup).toHaveClass(
+    // The sizing is on the surface inside the popup, which holds the text.
+    const surface = popup?.firstElementChild;
+    expect(surface).toHaveClass(
       'w-max',
       'max-w-[min(var(--available-width),var(--container-sm))]',
       'text-pretty',

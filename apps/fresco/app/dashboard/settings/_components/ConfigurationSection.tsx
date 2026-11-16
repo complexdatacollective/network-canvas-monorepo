@@ -17,20 +17,20 @@ const messages = defineMessages({
     id: 'fresco.settings.ConfigurationSection.appDetails',
     defaultMessage: 'App Details',
     description:
-      'Researcher-facing settings / ConfigurationSection: App Details',
+      'Title of the settings card that shows the installed Fresco version and the installation ID. Also the name of this section in the Settings page.',
   },
   installationID: {
     id: 'fresco.settings.ConfigurationSection.installationID',
     defaultMessage: 'Installation ID',
     description:
-      'Researcher-facing settings / ConfigurationSection: Installation ID',
+      'Label of the field in Settings, App Details, that holds the unique identifier of this Fresco installation. Also its accessible name. ID is short for identifier.',
   },
   thisIsTheUniqueIdentifierForYour: {
     id: 'fresco.settings.ConfigurationSection.thisIsTheUniqueIdentifierForYour',
     defaultMessage:
       'This is the unique identifier for your installation of Fresco. This ID is used to track analytics data and for other internal purposes.',
     description:
-      'Researcher-facing settings / ConfigurationSection: This is the unique identifier for your installation of Fresco. This ID is used to track analytics data and for other int',
+      'Hint text under the Installation ID field in Settings, App Details, explaining what the identifier is used for.',
   },
 });
 

@@ -15,15 +15,23 @@ import {
 } from '@codaco/fresco-ui/DataTable/features';
 import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 const messages = defineMessages({
+  tableLabel: {
+    id: 'architect.codebook.variableList.tableLabel',
+    defaultMessage: 'Attributes',
+    description:
+      'Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached.',
+  },
   name: {
     id: 'architect.codebook.variableList.name',
     defaultMessage: 'Name',
-    description: 'The title text in components / Codebook / VariableList.',
+    description:
+      'Column header of the table that lists the attribute names found in a network resource file on the Codebook page. Clicking it sorts the table.',
   },
   noAttributes: {
     id: 'architect.codebook.variableList.noAttributes',
     defaultMessage: 'No attributes.',
-    description: 'The emptyText text in components / Codebook / VariableList.',
+    description:
+      'Message shown in place of the rows of the table of a network resource attributes when the resource file has none.',
   },
 });
 
@@ -88,6 +96,7 @@ const Variables = ({ variables = [] }: VariableListProps) => {
     <div className="mt-7">
       <DataTable
         table={table}
+        aria-label={intl.formatMessage(messages.tableLabel)}
         showPagination={false}
         emptyText={intl.formatMessage(messages.noAttributes)}
       />

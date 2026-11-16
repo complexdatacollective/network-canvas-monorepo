@@ -1,0 +1,230 @@
+// Discourse's header holds the shared site header, the one every Network
+// Canvas site shows (`<nc-site-navigation layout="embedded">`,
+// components/site-navigation.gjs): its logo, which goes to the website, and
+// its links, Community first. A rule follows, then the forum's search,
+// sign-in, notifications and account menu. The shared header decides how
+// much of itself fits beside them; where only its logo does, its links move
+// to the foot of the forum's menu (components/site-menu.gjs).
+//
+// Like the shared header it has no band of its own: it spans the window in
+// the page's colours. Discourse pins it, so once the page scrolls under it,
+// it takes the page's colour and a rule; a browser that cannot tie those to
+// the scroll position has them from the start.
+
+:root {
+  // The home page's gutter (layout.scss), so the logo lines up with the
+  // edge of its cards.
+  --d-header-padding-x: clamp(var(--space-4), 5vw, var(--space-12));
+  --nc-header-rule: color-mix(in oklab, var(--nc-text) 9%, transparent);
+}
+
+.d-header {
+  height: 4rem;
+  background-color: var(--nc-background);
+  box-shadow: 0 1px 0 var(--nc-header-rule);
+
+  @media (width >= 65rem) {
+    height: 5rem;
+  }
+
+  > .wrap {
+    max-width: none;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .d-header {
+    animation: nc-header-scrolled linear both;
+    animation-range: 0 var(--space-6);
+    animation-timeline: scroll(root);
+  }
+
+  @keyframes nc-header-scrolled {
+    from {
+      background-color: transparent;
+      box-shadow: 0 1px 0 transparent;
+    }
+
+    to {
+      background-color: var(--nc-background);
+      box-shadow: 0 1px 0 var(--nc-header-rule);
+    }
+  }
+}
+
+// The shared header takes the room between the start of the header and the
+// forum's controls, and measures what fits in it. It replaces Discourse's
+// logo once it renders its embedded layout (`:state(embedded)`). Until then,
+// on a page it never loads on, and with a version of it that predates that
+// layout, the logo and the forum's own menu stay.
+.d-header .home-logo-wrapper-outlet:has(nc-site-navigation) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  min-width: 0;
+  overflow: visible;
+
+  nc-site-navigation {
+    flex: 1 1 0;
+    min-width: 0;
+
+    &:not(:state(embedded)) {
+      display: none;
+    }
+  }
+
+  &:has(nc-site-navigation:state(embedded)) .title {
+    display: none;
+  }
+}
+
+// The forum's logo, beside a docked topic title: the mark the shared header
+// shows, in its own colours (components/site-brand.gjs). Discourse clips a
+// logo too wide for its header; this one never is, and clipping would cut
+// off its focus ring.
+.d-header {
+  .home-logo-wrapper-outlet,
+  .title:not(.title--minimized) {
+    overflow: visible;
+  }
+
+  .title a {
+    display: flex;
+    align-items: center;
+    border-radius: var(--nc-radius-xs);
+    color: var(--nc-text);
+    text-decoration: none;
+  }
+}
+
+.nc-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nc-brand__mark {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+
+  @media (width >= 65rem) {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+.nc-brand__name {
+  font-family: var(--nc-heading-font);
+  font-size: var(--nc-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+}
+
+// The forum's controls: search, the menu and notifications in the text
+// colour the shared header's controls use rather than Discourse's muted
+// grey.
+.d-header-icons .icon .d-icon {
+  color: var(--nc-text);
+  font-size: var(--font-up-1);
+}
+
+// While the shared header's links show, Discourse's menu button gives way to
+// Community, which opens the same menu under itself (site-navigation.gjs
+// sets where that is), and the forum's controls lead with search. The
+// button's place stays, holding a rule that sets the links off from the
+// controls: the shared header measures the room left beside the controls,
+// so if showing its links took room back, it would fold them away again
+// and the two would alternate at the width where they just fit.
+.d-header:has(nc-site-navigation:state(links)) {
+  .d-header-icons {
+    order: -1;
+  }
+
+  .hamburger-dropdown {
+    position: relative;
+    order: -1;
+    visibility: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: 50%;
+      width: 1px;
+      height: 1.75rem;
+      margin-block: auto;
+      background-color: color-mix(in oklab, var(--nc-text) 15%, transparent);
+      visibility: visible;
+    }
+  }
+
+  .nc-site-menu {
+    display: none;
+  }
+
+  .hamburger-panel .menu-panel.drop-down {
+    inset-inline: var(--nc-forum-menu-start, auto) auto;
+  }
+}
+
+// The shared header's links at the foot of the forum's menu, where the
+// header shows its logo alone; left out, like the header, by a version of
+// the element that predates its menu layout.
+.nc-site-menu {
+  margin-top: var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+  border-top: 1px solid var(--content-border-color);
+
+  &:not(:has(nc-site-navigation:state(menu))) {
+    display: none;
+  }
+}
+
+// Beside Sign up, Log in is a text button and comes first, with no icon
+// while it has room for its label.
+.d-header .auth-buttons:has(.sign-up-button) .login-button {
+  --d-button-primary-bg-color: transparent;
+  --d-button-primary-bg-color--hover: color-mix(
+    in oklab,
+    var(--nc-text) 8%,
+    transparent
+  );
+  --d-button-primary-text-color: var(--nc-text);
+  --d-button-primary-text-color--hover: var(--nc-text);
+  --d-button-primary-icon-color: var(--nc-text);
+  --d-button-primary-icon-color--hover: var(--nc-text);
+
+  order: -1;
+  padding-inline: var(--space-4);
+  box-shadow: none;
+
+  @media (width >= 40rem) {
+    .d-icon {
+      display: none;
+    }
+  }
+}
+
+// On a phone, "Log in" in some languages ("Iniciar sesión") leaves no room
+// for the logo, so the button shows only its icon, like search and the menu
+// beside it; its label stays as its accessible name.
+@media (width < 40rem) {
+  .d-header .auth-buttons .btn.login-button {
+    padding-inline: var(--space-2);
+
+    .d-button-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .d-icon {
+      font-size: var(--font-up-1);
+    }
+  }
+}

@@ -1,5 +1,11 @@
 declare module '@docsearch/css';
 
+// Turbopack resolves a .woff2 import to the emitted asset URL.
+declare module '*.woff2' {
+  const src: string;
+  export default src;
+}
+
 // declaring module for rehype-figure as it does not have types
 declare module '@microflash/rehype-figure' {
   import type { Root } from 'hast';

@@ -178,6 +178,10 @@ export default function Canvas({
   return (
     <div
       ref={mergedRef}
+      // Nodes, edges and hulls sit where the participant put them, by stored
+      // coordinates, in either reading direction: the right-to-left mirror
+      // check leaves the canvas out.
+      data-direction-exempt
       className="relative size-full"
       role="application"
       aria-label={dropProps['aria-label']}

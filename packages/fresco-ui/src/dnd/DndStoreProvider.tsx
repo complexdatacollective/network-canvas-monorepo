@@ -68,6 +68,7 @@ function DragPreview() {
   return createPortal(
     <div
       style={previewStyles}
+      // oxlint-disable-next-line tailwindcss/enforce-logical -- the transform above moves this to the pointer, whose coordinates are measured from the left
       className="pointer-events-none fixed top-0 left-0 z-9999 select-none"
     >
       {dragPreview}

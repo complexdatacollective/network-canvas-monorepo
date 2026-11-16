@@ -46,7 +46,9 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
             protocol.stages.map(({ id, label }) => ({
               id,
               label: defaultLanguageText(label) ? (
-                <DefaultLanguageText value={label} />
+                <span className="wrap-anywhere">
+                  <DefaultLanguageText value={label} />
+                </span>
               ) : (
                 ''
               ),

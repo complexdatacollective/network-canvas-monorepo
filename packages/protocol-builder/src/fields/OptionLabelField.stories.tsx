@@ -109,10 +109,10 @@ export const BoldAndItalicOnly: Story = {
 };
 
 /**
- * A label is a few words, so the box is the compact editor: the text row is as
- * tall as the toolbar above it, not the tall area a prompt is given.
+ * A label is one line, so the box is one line tall: the text row is as tall as
+ * the toolbar above it, not the tall area a multi-line field opens at.
  */
-export const CompactBox: Story = {
+export const OneLineBox: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();

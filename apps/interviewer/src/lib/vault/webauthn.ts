@@ -7,28 +7,33 @@ const messages = defineMessages({
   enrolmentCancelled: {
     id: 'interviewer.webauthn.enrolmentCancelled',
     defaultMessage: 'Biometric enrolment was cancelled',
-    description: 'Administration text in Interviewer webauthn.',
+    description:
+      'Error shown during security setup when the researcher dismisses the device\'s biometric prompt while registering it. "Enrolment" means registering the biometric credential.',
   },
   unusableCredential: {
     id: 'interviewer.webauthn.unusableCredential',
     defaultMessage: 'This device did not return a usable credential',
-    description: 'Administration text in Interviewer webauthn.',
+    description:
+      "Error shown during security setup when the device's biometric prompt finishes but returns no usable credential.",
   },
   unsupportedSecret: {
     id: 'interviewer.webauthn.unsupportedSecret',
     defaultMessage:
       "This device's authenticator can't create the biometric secret (PRF) needed to encrypt your data. Choose a PIN or passphrase instead.",
-    description: 'Administration text in Interviewer webauthn.',
+    description:
+      "Error shown during security setup when this device's authenticator cannot create the secret (PRF) needed to encrypt data; it suggests choosing a PIN or passphrase.",
   },
   verificationCancelled: {
     id: 'interviewer.webauthn.verificationCancelled',
     defaultMessage: 'Biometric verification was cancelled',
-    description: 'Administration text in Interviewer webauthn.',
+    description:
+      "Error shown when the researcher dismisses the device's biometric prompt while unlocking or confirming identity.",
   },
   missingSecret: {
     id: 'interviewer.webauthn.missingSecret',
     defaultMessage: 'This device did not return a biometric secret (PRF)',
-    description: 'Administration text in Interviewer webauthn.',
+    description:
+      'Error shown during biometric unlock when the authenticator did not return the secret (PRF) needed to decrypt data.',
   },
 });
 

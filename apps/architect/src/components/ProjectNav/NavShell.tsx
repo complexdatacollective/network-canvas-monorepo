@@ -1,3 +1,4 @@
+import { useDirection } from '@base-ui/react/direction-provider';
 import { NavigationMenu } from '@base-ui/react/navigation-menu';
 import { Menu, X } from 'lucide-react';
 import { LayoutGroup, motion, type Variants } from 'motion/react';
@@ -23,22 +24,26 @@ const messages = defineMessages({
   navigation: {
     id: 'architect.projectNav.navShell.navigation',
     defaultMessage: 'Main navigation',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
+    description:
+      'Accessible name of the main navigation bar at the top of the screen, which links to the protocol pages (Stages, Resources, Codebook and so on); read only by screen readers.',
   },
   openMenu: {
     id: 'architect.projectNav.navShell.openMenu',
     defaultMessage: 'Open menu',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
+    description:
+      'Accessible name of the icon button, shown on narrow screens, that opens the navigation drawer; read only by screen readers.',
   },
   mobileNavigation: {
     id: 'architect.projectNav.navShell.mobileNavigation',
     defaultMessage: 'Mobile navigation',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
+    description:
+      'Accessible name of the navigation list inside the drawer opened on narrow screens; read only by screen readers.',
   },
   closeMenu: {
     id: 'architect.projectNav.navShell.closeMenu',
     defaultMessage: 'Close menu',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
+    description:
+      'Accessible name of the icon button that closes the navigation drawer; read only by screen readers.',
   },
 });
 
@@ -111,6 +116,10 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
   );
   const inlineLayoutId = useId();
   const drawerLayoutId = useId();
+  // The menu is drawn against the end edge of the screen and slides in from
+  // beyond it: from the right, or from the left in a right-to-left language.
+  // Motion animates a physical distance, so its sign comes from the direction.
+  const beyondEndEdge = useDirection() === 'rtl' ? '-100%' : '100%';
 
   // The bar's height, published for everything that has to stay clear of it:
   // anything scrolled into view lands beneath it, and the stage editor's
@@ -131,7 +140,7 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
       <motion.div
         className={cx(
           NAV_SURFACE,
-          'phone-landscape:pr-10 phone-landscape:pl-6 @container mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 pr-6 pl-6',
+          'phone-landscape:pe-10 phone-landscape:ps-6 @container mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 ps-6 pe-6',
         )}
         variants={containerVariants}
         initial={animate ? 'hidden' : false}
@@ -161,10 +170,10 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
         />
         <Modal open={menuOpen} onOpenChange={setMenuOpen}>
           <ModalPopup
-            className="bg-surface-1 text-surface-1-contrast fixed top-0 right-0 z-3000 flex h-full w-80 max-w-[85vw] flex-col rounded shadow-xl"
-            initial={{ x: '100%', opacity: 0.99, pointerEvents: 'none' }}
+            className="bg-surface-1 text-surface-1-contrast fixed inset-e-0 top-0 z-3000 flex h-full w-80 max-w-[85vw] flex-col rounded shadow-xl"
+            initial={{ x: beyondEndEdge, opacity: 0.99, pointerEvents: 'none' }}
             animate={{ x: 0, opacity: 1, pointerEvents: 'auto' }}
-            exit={{ x: '100%', opacity: 0.99, pointerEvents: 'none' }}
+            exit={{ x: beyondEndEdge, opacity: 0.99, pointerEvents: 'none' }}
             transition={{ type: 'tween', duration: 0.3 }}
           >
             <NavigationMenu.Root

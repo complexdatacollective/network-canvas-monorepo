@@ -41,6 +41,9 @@
 @import './themes/interview.css';
 @import './themes/studio.css';
 
+/* Sets text marked as Arabic in the themes' Arabic stacks (Readex Pro). */
+@import './arabic-text.css';
+
 /* Custom Tailwind plugins, loaded from TypeScript source. Tailwind compiles
    `@plugin` modules through jiti, which handles TS directly and registers the
    files for watching — so plugin edits hot-reload in consumers without a

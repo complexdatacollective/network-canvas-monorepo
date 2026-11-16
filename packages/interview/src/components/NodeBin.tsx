@@ -33,6 +33,7 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
   return (
     <motion.div
       {...dropProps}
+      data-drop-target-valid={willAccept || undefined}
       className={cx(
         'pointer-events-auto absolute bottom-7 left-1/2 z-50',
         'h-28 w-20 -translate-x-1/2 overflow-hidden',

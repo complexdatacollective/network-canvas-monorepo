@@ -234,6 +234,7 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
       [sectionId({ kind: 'settings' })]: {
         name: 'Resource picker proof host',
         schemaVersion: 9,
+        localization: { defaultLocale: 'en-US', locales: ['en-US'] },
       },
       [sectionId({ kind: 'stageOrder' })]: { stages: [stage.stageId] },
       [stageSection]: { id: stage.stageId, type: stage.type, ...stage.fields },

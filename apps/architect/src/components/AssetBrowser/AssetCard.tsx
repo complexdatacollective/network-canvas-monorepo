@@ -31,73 +31,80 @@ const messages = defineMessages({
     id: 'architect.assetBrowser.assetCard.videoPreview',
     defaultMessage: '{name} video preview',
     description:
-      'The aria-label text in components / AssetBrowser / AssetCard.',
+      'Accessible name of the video thumbnail on a resource card; read only by screen readers. name is the researcher-given name of the video resource.',
   },
   preview: {
     id: 'architect.assetBrowser.assetCard.preview',
     defaultMessage: 'Preview {name}',
     description:
-      'The aria-label text in components / AssetBrowser / AssetCard.',
+      'Accessible name of the icon button on a resource card that opens a preview of the resource; read only by screen readers. name is the resource name.',
   },
   previewResource: {
     id: 'architect.assetBrowser.assetCard.previewResource',
     defaultMessage: 'Preview resource',
-    description: 'The title text in components / AssetBrowser / AssetCard.',
+    description:
+      'Tooltip of the icon button on a resource card that opens a preview of the resource. Preview here is a verb.',
   },
   download: {
     id: 'architect.assetBrowser.assetCard.download',
     defaultMessage: 'Download {name}',
     description:
-      'The aria-label text in components / AssetBrowser / AssetCard.',
+      'Accessible name of the icon button on a resource card that downloads the resource file; read only by screen readers. name is the resource name.',
   },
   downloadResource: {
     id: 'architect.assetBrowser.assetCard.downloadResource',
     defaultMessage: 'Download resource',
-    description: 'The title text in components / AssetBrowser / AssetCard.',
+    description:
+      'Tooltip of the icon button on a resource card that downloads the resource file. Download here is a verb.',
   },
   isInUseAndCannot: {
     id: 'architect.assetBrowser.assetCard.isInUseAndCannot',
     defaultMessage: '{name} is in use and cannot be deleted',
     description:
-      'The aria-label text in components / AssetBrowser / AssetCard.',
+      'Accessible name of the delete button on a resource card when a stage still uses the resource, so it cannot be deleted; read only by screen readers. name is the resource name.',
   },
   delete: {
     id: 'architect.assetBrowser.assetCard.delete',
     defaultMessage: 'Delete {name}',
     description:
-      'The aria-label text in components / AssetBrowser / AssetCard.',
+      'Accessible name of the icon button on a resource card that deletes the resource; read only by screen readers. name is the resource name.',
   },
   thisResourceIsInUseBy: {
     id: 'architect.assetBrowser.assetCard.thisResourceIsInUseBy',
     defaultMessage:
       'This resource is in use by the protocol and cannot be deleted',
-    description: 'The title text in components / AssetBrowser / AssetCard.',
+    description:
+      'Tooltip of the delete button on a resource card when the resource is used by a stage in the protocol and therefore cannot be deleted.',
   },
   deleteResource: {
     id: 'architect.assetBrowser.assetCard.deleteResource',
     defaultMessage: 'Delete resource',
-    description: 'The title text in components / AssetBrowser / AssetCard.',
+    description:
+      'Tooltip of the icon button on a resource card that deletes the resource. Delete here is a verb.',
   },
   unused: {
     id: 'architect.assetBrowser.assetCard.unused',
     defaultMessage: 'Unused',
-    description: 'Visible text in components / AssetBrowser / AssetCard.',
+    description:
+      'Badge on a resource card showing that no stage in the protocol uses this resource.',
   },
   missing: {
     id: 'architect.assetBrowser.assetCard.missing',
     defaultMessage: 'File missing',
-    description: 'Visible text in components / AssetBrowser / AssetCard.',
+    description:
+      'Badge on a resource card showing that the protocol lists this resource but its file is not stored, because the imported protocol file did not contain it.',
   },
   replace: {
     id: 'architect.assetBrowser.assetCard.replace',
     defaultMessage: 'Add the file for {name}',
     description:
-      'The aria-label text in components / AssetBrowser / AssetCard.',
+      'Accessible name of the icon button on a resource card that lets the researcher choose the missing file for the resource; read only by screen readers. name is the resource name.',
   },
   replaceResource: {
     id: 'architect.assetBrowser.assetCard.replaceResource',
     defaultMessage: 'Add the missing file',
-    description: 'The title text in components / AssetBrowser / AssetCard.',
+    description:
+      'Tooltip of the icon button on a resource card that opens a file picker so the researcher can supply the file missing for this resource.',
   },
 });
 
@@ -419,14 +426,17 @@ const AssetCard = ({
       <div className="bg-surface relative h-40 shrink-0 overflow-hidden rounded-t">
         <AssetPreview id={id} name={name} source={source} type={type} />
         {isUnresolved ? (
-          <Badge tone="destructive" className="absolute top-3 left-3 border-0">
+          <Badge
+            tone="destructive"
+            className="absolute inset-s-3 top-3 border-0"
+          >
             {intl.formatMessage(messages.missing)}
           </Badge>
         ) : (
           !isUsed && (
             <Badge
               tone="destructive"
-              className="absolute top-3 left-3 border-0"
+              className="absolute inset-s-3 top-3 border-0"
             >
               {intl.formatMessage(messages.unused)}
             </Badge>
@@ -439,7 +449,8 @@ const AssetCard = ({
           <Heading
             level="h4"
             margin="none"
-            className="line-clamp-2 text-lg leading-tight wrap-anywhere"
+            dir="auto"
+            className="text-match-parent line-clamp-2 text-lg leading-tight wrap-anywhere"
             title={name}
           >
             {name}

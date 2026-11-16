@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useEffect } from 'react';
 import { expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -181,9 +182,12 @@ const openEdit: {
 
 function EditProbe() {
   const staged = useStagedResources();
-  openEdit.client = useResourceClient();
-  openEdit.editId = staged.editId;
-  openEdit.staged = staged.staged;
+  const client = useResourceClient();
+  useEffect(() => {
+    openEdit.client = client;
+    openEdit.editId = staged.editId;
+    openEdit.staged = staged.staged;
+  }, [client, staged.editId, staged.staged]);
   return null;
 }
 

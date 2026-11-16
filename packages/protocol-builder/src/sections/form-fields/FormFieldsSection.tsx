@@ -3,10 +3,10 @@ import {
   type ComponentType,
   createContext,
   type ReactNode,
-  type RefObject,
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -27,6 +27,7 @@ import Section from '@codaco/fresco-ui/Section';
 import {
   duplicateFormFieldIndices,
   isBlankMessage,
+  FormFieldSchema,
 } from '@codaco/protocol-validation';
 
 import {
@@ -90,9 +91,11 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../../localization/textShape.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { useLatest } from '../../state/useLatest.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from '../AttributeCodebookControls.tsx';
@@ -119,6 +122,10 @@ import {
   NEW_VARIABLE_VALIDATION,
   useInventingAttribute,
 } from './inventedAttribute.ts';
+
+const PROMPT_SHAPE = markdownTextShapeAt(FormFieldSchema, ['prompt']);
+
+const HINT_SHAPE = markdownTextShapeAt(FormFieldSchema, ['hint']);
 
 /** Where every interface that holds a whole form keeps its fields. */
 const FIELDS_PATH = 'form.fields';
@@ -551,14 +558,14 @@ type FormFieldsScope = Readonly<{
    * That is the attribute every codebook write this row makes is ABOUT, and
    * the one `useWhereTheAnswerLands` reads when the write comes back.
    *
-   * A ref, and one for the whole section rather than one per row, because the
-   * save gate belongs to the LIST — it is the list's `beforeSave`, made once
-   * for every row it will ever open — while the live row is known only to the
-   * editor mounted inside the open dialog. One row's dialog is open at a time,
-   * so one cell is unambiguous; the editor fills it while it is mounted and
-   * empties it as it goes.
+   * Reported to one cell for the whole section rather than one per row,
+   * because the save gate belongs to the LIST — it is the list's
+   * `beforeSave`, made once for every row it will ever open — while the live
+   * row is known only to the editor mounted inside the open dialog. One row's
+   * dialog is open at a time, so one cell is unambiguous; the editor fills it
+   * while it is mounted and leaves what it last showed there as it goes.
    */
-  rowUnderEdit: RefObject<RowUnderEdit | undefined>;
+  reportRowUnderEdit: (row: RowUnderEdit) => void;
 }>;
 
 /**
@@ -726,7 +733,6 @@ export default function FormFieldsSection({
   emptyState = formFieldsMessages.emptyState,
 }: FormFieldsSectionProps) {
   const intl = useAppIntl();
-  const fieldsPath = FIELDS_PATH;
   const codebookSubject = useStageSubject(subject);
   const waiting = codebookSubject === undefined;
   const draftUnvalidated = useMemo(
@@ -740,15 +746,17 @@ export default function FormFieldsSection({
   /**
    * The reserved attributes as the LIST rule reads them.
    *
-   * Through a ref, because a validation object is part of what a field
+   * Through a getter of the latest value, because a validation object is part of what a field
    * registers with and is memoised on a JSON of its rules — which drops
    * functions, so a rebuilt closure would never replace the one registered on
    * the first render. Read this way, the rule judges the form against what the
    * interface reserves NOW, which is the half of this that changes while the
    * researcher is looking at it.
    */
-  const reservedNow = useRef({ reserved, refusal: reservedVariableRefusal });
-  reservedNow.current = { reserved, refusal: reservedVariableRefusal };
+  const reservedNow = useLatest({
+    reserved,
+    refusal: reservedVariableRefusal,
+  });
   /**
    * The rules that can refuse this save, as ONE stable object.
    *
@@ -765,12 +773,12 @@ export default function FormFieldsSection({
         (value: unknown) =>
           noReservedAttribute(
             value,
-            reservedNow.current.reserved,
-            reservedNow.current.refusal,
+            reservedNow().reserved,
+            reservedNow().refusal,
           ),
       ]),
     }),
-    [],
+    [reservedNow],
   );
   // The stage whose saved unvalidated writes the draft above replaces, where
   // there is a draft to replace them with. See `draftUnvalidatedVariables`.
@@ -780,15 +788,19 @@ export default function FormFieldsSection({
   // See `FormFieldsScope.rowUnderEdit`: the open row fills this in, and the
   // list's save handler reads it when a codebook write comes back.
   const rowUnderEdit = useRef<RowUnderEdit | undefined>(undefined);
+  const reportRowUnderEdit = useCallback((row: RowUnderEdit) => {
+    rowUnderEdit.current = row;
+  }, []);
+  const readRowUnderEdit = useCallback(() => rowUnderEdit.current, []);
   const commitCodebookHalf = useCommitFormField(
     codebookSubject,
-    rowUnderEdit,
+    readRowUnderEdit,
     intl,
   );
   const expandFormField = useExpandFormField(codebookSubject);
   const refuseRowIssue = useFormFieldValidate(
     codebookSubject,
-    fieldsPath,
+    FIELDS_PATH,
     draftUnvalidated,
     reserved,
     reservedVariableRefusal,
@@ -806,7 +818,7 @@ export default function FormFieldsSection({
       addTitle: formFieldsMessages.addTitle,
       editTitle: formFieldsMessages.editTitle,
       formId: 'form-field-editor',
-      name: fieldsPath,
+      name: FIELDS_PATH,
       // The answers the attribute already offers, so the save can tell a list
       // the researcher WROTE from the one the control was seeded with — see
       // `useCommitFormField`.
@@ -818,18 +830,24 @@ export default function FormFieldsSection({
       },
       normalize: normalizeFormField,
     }),
-    [commitCodebookHalf, expandFormField, fieldsPath, refuseRowIssue],
+    [commitCodebookHalf, expandFormField, refuseRowIssue],
   );
   const scope = useMemo(
     () => ({
-      fieldsPath,
+      fieldsPath: FIELDS_PATH,
       subject: codebookSubject,
       draftUnvalidated,
       reserved,
       answeredFor,
-      rowUnderEdit,
+      reportRowUnderEdit,
     }),
-    [answeredFor, codebookSubject, draftUnvalidated, fieldsPath, reserved],
+    [
+      answeredFor,
+      codebookSubject,
+      draftUnvalidated,
+      reportRowUnderEdit,
+      reserved,
+    ],
   );
 
   return (
@@ -857,7 +875,7 @@ export default function FormFieldsSection({
       <FormFieldsScopeContext value={scope}>
         <RowList config={rowList}>
           <Field<typeof ArrayField<RowValues>>
-            name={fieldsPath}
+            name={FIELDS_PATH}
             label={intl.formatMessage(fieldLabel)}
             hint={intl.formatMessage(fieldHint)}
             component={ArrayField}
@@ -963,7 +981,7 @@ function useExpandFormField(
  */
 function useCommitFormField(
   codebookSubject: CodebookSubject | undefined,
-  rowUnderEdit: RefObject<RowUnderEdit | undefined>,
+  readRowUnderEdit: () => RowUnderEdit | undefined,
   intl: IntlShape,
 ): (row: RowValues, context: RowSaveContext) => Promise<RowSaveOutcome> {
   const protocolContext = useProtocolContext();
@@ -976,7 +994,7 @@ function useCommitFormField(
   // reading for both, and the same one the codebook editors' own create uses.
   const whereTheAnswerLands = useWhereTheAnswerLands(
     codebookSubject,
-    () => rowUnderEdit.current?.variable,
+    () => readRowUnderEdit()?.variable,
   );
 
   return useCallback(
@@ -1047,7 +1065,7 @@ function useCommitFormField(
           // saying so, which is what `NO_INPUT_CONTROL` above is written for —
           // so it goes where the dialog reports everything about a whole draft
           // instead.
-          return rowUnderEdit.current?.offersAControl === true
+          return readRowUnderEdit()?.offersAControl === true
             ? {
                 refused: {
                   fieldErrors: { [INPUT_CONTROL]: outcome.message },
@@ -1250,7 +1268,9 @@ function useCommitFormField(
       createVariable,
       intl,
       protocolContext,
+      readRowUnderEdit,
       setComponent,
+      setOptions,
       whereTheAnswerLands,
     ],
   );
@@ -1446,7 +1466,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
   const { readOnly } = useStageEditorForm();
-  const { subject, rowUnderEdit } = useFormFieldsScope();
+  const { subject, reportRowUnderEdit } = useFormFieldsScope();
   // The attributes a comparison rule may be pointed at, for the validation
   // section below.
   const subjectVariables = useMemo(
@@ -1474,10 +1494,11 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
     control.seeded,
     liveControl,
   );
-  // What every codebook write this row makes is about. Written on every render
-  // rather than from an effect, the way the shared list keeps its own view of
-  // the row it is editing: a save reads this in the middle of an await, and an
-  // effect that has not run yet would answer with the previous render's row.
+  // What every codebook write this row makes is about. Reported at every
+  // commit, before the browser paints, the way the shared list keeps its own
+  // view of the row it is editing: a save reads this in the middle of an
+  // await, so it has to be the row the researcher is looking at rather than a
+  // render that never reached the screen.
   //
   // Not cleared when this unmounts. A dialog dismissed while its save is still
   // with the host leaves that save to commit the row it was made on, and the
@@ -1485,10 +1506,10 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   // it would read as a row that had moved and refuse an edit nothing is wrong
   // with. Every save starts from an open editor, so there is no reader for
   // which this is somebody else's row.
-  rowUnderEdit.current = {
-    variable: control.chosen,
-    offersAControl: control.options.length > 0,
-  };
+  const offersAControl = control.options.length > 0;
+  useLayoutEffect(() => {
+    reportRowUnderEdit({ variable: control.chosen, offersAControl });
+  }, [control.chosen, offersAControl, reportRowUnderEdit]);
 
   return (
     <>
@@ -1519,24 +1540,24 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name="prompt"
           component={LocalizedRichTextField}
+          shape={PROMPT_SHAPE}
           dynamicValues="formField"
           fieldPath={PROMPT_PATH}
           label={intl.formatMessage(formFieldsMessages.promptLabel)}
           hint={intl.formatMessage(formFieldsMessages.promptHint)}
           placeholder={intl.formatMessage(formFieldsMessages.promptPlaceholder)}
-          singleLine
           initialValue={asLocalizedString(item.prompt)}
           required={intl.formatMessage(formFieldsMessages.promptRequired)}
         />
         <Field<typeof LocalizedRichTextField>
           name="hint"
           component={LocalizedRichTextField}
+          shape={HINT_SHAPE}
           dynamicValues="formField"
           fieldPath={HINT_PATH}
           label={intl.formatMessage(formFieldsMessages.hintLabel)}
           hint={intl.formatMessage(formFieldsMessages.hintHint)}
           placeholder={intl.formatMessage(formFieldsMessages.hintPlaceholder)}
-          singleLine
           initialValue={asLocalizedString(item.hint)}
         />
         <Field<typeof ToggleField>
@@ -1669,16 +1690,12 @@ function useAttributeControl(item: RowEditorProps['item']): AttributeControl {
   const type = inventing
     ? (variableTypeForComponent(live ?? '') ?? '')
     : (variable?.type ?? '');
-  const options = useMemo(
-    () =>
-      inventing
-        ? allControlGroups(intl)
-        : controlsForType(type).map(({ value, label }) => ({
-            value,
-            label: intl.formatMessage(label),
-          })),
-    [intl, inventing, type],
-  );
+  const options = inventing
+    ? allControlGroups(intl)
+    : controlsForType(type).map(({ value, label }) => ({
+        value,
+        label: intl.formatMessage(label),
+      }));
   const committed =
     variable !== undefined && 'component' in variable
       ? asString(variable.component)

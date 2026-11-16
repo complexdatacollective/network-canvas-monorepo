@@ -1,0 +1,50 @@
+---
+title: Migrer depuis les applications Classic
+navOrder: 2
+translatedFrom: 2fc6b50accce548ab0b62ce14013d857b85b2681
+---
+
+Si vous avez construit votre étude avec **Architect Classic** et **Interviewer Classic** (les applications à télécharger pour ordinateur et tablette), vous vous demandez peut-être ce qu’implique le passage aux versions actuelles d’[Architect](/fr/design-protocols/choosing-architect) et d’[Interviewer](/fr/collect-data/interviewer), qui fonctionnent dans le navigateur. Cette page passe en revue les décisions dans l’ordre : faut-il changer en cours d’étude, comment transférer votre protocole, ce que deviennent les données déjà recueillies et ce qui change dans l’utilisation au quotidien.
+
+<KeyConcept title="En bref">
+
+Vos protocoles existants restent utilisables. Interviewer et Fresco importent les protocoles en schéma 7 et les migrent automatiquement vers le schéma 8 : vous pouvez donc exécuter un protocole des applications Classic sans le modifier au préalable. Architect peut l’ouvrir en schéma 8 pour le modifier ou, si vous voulez les fonctionnalités les plus récentes, le mettre à niveau vers la dernière version du schéma (actuellement le schéma 9). La migration est **irréversible** : conservez donc une copie de votre fichier `.netcanvas` en schéma 7 tant que vous avez encore besoin des applications Classic. Les données déjà recueillies ou exportées ne sont pas concernées.
+
+</KeyConcept>
+
+## Faut-il changer en cours d’étude ? {#should-you-switch-mid-study}
+
+Si vous êtes en pleine collecte de données, rien ne presse. Les applications Classic continuent d’exécuter les protocoles en schéma 7 : terminer une étude en cours avec Architect Classic et Interviewer Classic est donc entièrement pris en charge, et si votre protocole vous convient tel qu’il est, vous n’avez rien à faire. (Architect Classic est en mode maintenance et ne reçoit plus que des corrections de bogues.)
+
+Changer en cours de collecte est possible, mais mérite d’être planifié avec soin : la migration du protocole est irréversible (voir ci-dessous), et les entretiens recueillis avant et après le changement se trouveront dans deux applications différentes, et devront être exportés séparément depuis chacune d’elles. Pour de nombreuses études, le plus simple est de terminer la collecte de données avec les applications Classic et d’adopter la génération actuelle pour l’étude suivante. Si vous souhaitez malgré tout changer en cours d’étude, choisissez un moment de bascule clair et exportez les sessions qui se trouvent déjà sur vos appareils Classic avant de retirer ces appareils du service.
+
+## Transférer votre protocole {#moving-your-protocol}
+
+Ouvrez ou importez votre fichier `.netcanvas` en schéma 7 dans [Architect](https://architect.networkcanvas.com). Architect vous demande comment vous voulez l’ouvrir et vous propose deux choix.
+
+Pour garder le protocole aussi proche que possible de celui que vous avez conçu, choisissez **Modifier en conservant le schéma 8**. Architect le migre vers le schéma 8 et l’ouvre dans la version précédente d’Architect, intégrée à l’application actuelle. Vous pourrez toujours le mettre à niveau vers le schéma 9 plus tard.
+
+Pour utiliser les fonctionnalités du schéma 9, choisissez **Mettre à niveau vers le schéma 9**. Architect énumère les changements qu’apporte la mise à niveau, puis enregistre une copie mise à niveau dans sa bibliothèque de protocoles (dans le navigateur) et l’ouvre.
+
+Dans les deux cas, la migration est irréversible : tout fichier `.netcanvas` que vous téléchargez ensuite depuis Architect utilise le schéma 8 ou le schéma 9, que les applications Classic ne peuvent pas ouvrir. Conservez votre fichier d’origine en schéma 7 en lieu sûr tant que vous avez encore besoin d’Architect Classic ou d’Interviewer Classic. La page [Informations sur le schéma de protocole](/fr/get-started/protocol-schema-information) explique le fonctionnement de la migration et comprend un tableau de compatibilité qui indique quelles applications prennent en charge quelles versions du schéma.
+
+Si vous voulez seulement _exécuter_ un protocole existant, vous n’avez pas du tout besoin d’Architect. L’importation d’un protocole en schéma 7 dans Interviewer ou Fresco le migre automatiquement vers le schéma 8, et il s’exécute en schéma 8. Cette étape est automatique parce que c’est ainsi que les protocoles passent des applications Classic aux applications actuelles, et les versions précédentes d’Interviewer et de Fresco faisaient de même. Interviewer et Fresco ne migrent jamais un protocole vers le schéma 9 : seul Architect le fait, et uniquement lorsque vous le choisissez.
+
+## Ce que deviennent vos données existantes {#what-happens-to-your-existing-data}
+
+Rien ne change pour elles. Les données d’entretien sont indépendantes du protocole qui les a produites : les sessions recueillies avec Interviewer Classic restent sur l’appareil qui les a recueillies et s’exportent depuis celui-ci exactement comme avant, et les exportations que vous avez déjà faites restent valables. Les deux générations exportent les mêmes formats CSV et GraphML : les données d’avant et d’après un changement alimentent donc le même processus d’analyse. Le [guide d’exportation des données](/fr/analyze-data/data-export) décrit le contenu des exportations, quelle que soit l’application qui les a produites.
+
+## Ce qui change au quotidien {#what-changes-day-to-day}
+
+Le flux de travail général (concevoir un protocole dans Architect, l’exécuter dans Interviewer, exporter vos données) ne change pas. Les différences que vous remarquerez sont les suivantes :
+
+- **Rien à installer.** Architect et Interviewer fonctionnent dans votre navigateur web et sont toujours à jour. Tous deux peuvent, si vous le souhaitez, être installés comme application web progressive (PWA) sur un appareil que vous contrôlez, pour un accès rapide et une utilisation hors ligne.
+- **Les protocoles sont stockés dans la bibliothèque de protocoles, dans le navigateur.** Architect enregistre automatiquement votre travail dans une bibliothèque située à l’intérieur de votre navigateur, et non dans des fichiers `.netcanvas` que vous enregistrez et gérez sur le disque. Téléchargez régulièrement une copie `.netcanvas` en guise de sauvegarde : la page [Enregistrement et sauvegarde](/fr/design-protocols/saving-and-backing-up) explique ce mode de stockage et ses conséquences.
+- **Nouvelles interfaces et fonctionnalités du schéma 8.** La migration vers le schéma 8 ou une version ultérieure donne accès à tout ce qu’a introduit le schéma 8, notamment l’interface géospatiale et les interfaces « Arbre généalogique », « Arbre généalogique narratif » et « Compositeur de réseau » : voir [Version 8 du schéma](/fr/get-started/protocol-schema-information#schema-version-8) pour la liste complète. Notez que certaines interfaces du schéma 8 (comme l’interface géospatiale) nécessitent une connexion Internet pendant l’entretien.
+- **Sécurité sur l’appareil dans Interviewer.** Interviewer peut verrouiller l’application par un code PIN, une phrase secrète ou la biométrie, et chiffre au repos les données qu’il stocke : voir [Sécurité et verrouillage](/fr/collect-data/interviewer/using-interviewer#security-and-locking).
+
+Là où le fonctionnement diffère dans le détail, la documentation présente les deux générations côte à côte : des pages comme [Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer) et [Enregistrement et sauvegarde](/fr/design-protocols/saving-and-backing-up) vous permettent d’afficher, au fil de votre lecture, les instructions pour les applications actuelles ou pour les applications Classic.
+
+## Où obtenir de l’aide {#where-to-get-help}
+
+Si vous ne savez pas bien comment tout cela s’applique à votre étude, ou si quelque chose d’inattendu se produit en cours de route, publiez un message sur le [forum de la communauté](https://community.networkcanvas.com) : c’est l’endroit idéal pour poser vos questions.

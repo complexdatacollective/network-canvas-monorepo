@@ -29,6 +29,14 @@ export type TextInput = string | LocalizedString;
 export type LocalizationInput = {
   defaultLocale: LocaleTag;
   locales: readonly LocaleTag[];
+  /**
+   * The protocol's fallback language, which a protocol names when Network
+   * Canvas has no wording in its default language (`needsFallbackLanguage`
+   * in `@codaco/protocol-validation`). The built protocol names it as given:
+   * a fixture in such a language without one is a protocol still being
+   * written.
+   */
+  fallbackLocale?: LocaleTag;
 };
 
 /**
@@ -355,7 +363,7 @@ export type StageEntry = {
   narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
   narrativePedigreeShowAtRiskStatuses?: boolean;
   /** Stage settings holding participant-visible wording the researcher has
-   * written, by setting name (`tooltips.addPerson` for one inside a group; a
+   * written, by setting name (`conditionText.selectCondition` for one inside a group; a
    * Family Pedigree's may be named with or without its `wording.` group); a
    * setting not named here takes the text Network Canvas supplies. */
   wording?: Record<string, TextInput>;
@@ -615,7 +623,7 @@ export type AddStageInput = {
   >;
   /** Stage settings holding participant-visible wording the researcher has
    * written, by setting name (for example `panelTitle`, or a dotted name
-   * such as `tooltips.addPerson` for a setting inside a group); a setting not
+   * such as `conditionText.selectCondition` for a setting inside a group); a setting not
    * named here takes the text Network Canvas supplies. */
   wording?: Record<string, TextInput>;
   // Geospatial

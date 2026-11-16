@@ -10,7 +10,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.pageHeading.pageHeading',
     defaultMessage: 'Page Heading',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / PageHeading.',
+      "Section heading in the printable protocol summary, above the heading text shown at the top of an Information stage's page.",
   },
 });
 
