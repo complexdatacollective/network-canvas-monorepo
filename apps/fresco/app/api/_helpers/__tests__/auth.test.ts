@@ -85,5 +85,37 @@ describe('API auth helpers', () => {
       expect(result).toEqual({ valid: true });
       expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith('valid-token');
     });
+
+    it.each(['bearer valid-token', 'BEARER valid-token'])(
+      'strips the Bearer prefix in any letter case from %j',
+      async (authorization) => {
+        mockVerifyApiToken.mockResolvedValue({ valid: true });
+
+        const request = new NextRequest('http://localhost:3000/api/v1/test', {
+          headers: { Authorization: authorization },
+        });
+
+        const result = await requireApiTokenAuth(request);
+
+        expect(result).toEqual({ valid: true });
+        expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith(
+          'valid-token',
+        );
+      },
+    );
+
+    it('leaves a Bearer that is not at the start of the header in place', async () => {
+      mockVerifyApiToken.mockResolvedValue({ valid: false });
+
+      const request = new NextRequest('http://localhost:3000/api/v1/test', {
+        headers: { Authorization: 'abc Bearer def' },
+      });
+
+      await requireApiTokenAuth(request);
+
+      expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith(
+        'abc Bearer def',
+      );
+    });
   });
 });
