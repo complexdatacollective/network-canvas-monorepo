@@ -104,6 +104,36 @@ describe('API auth helpers', () => {
       },
     );
 
+    it.each([
+      ['a bare token that begins with the word', 'BearerValidToken'],
+      ['the word joined by a hyphen', 'bearer-valid-token'],
+      ['the word followed by a tab', 'Bearer\tvalid-token'],
+    ])('passes %s through unchanged', async (_description, authorization) => {
+      mockVerifyApiToken.mockResolvedValue({ valid: false });
+
+      const request = new NextRequest('http://localhost:3000/api/v1/test', {
+        headers: { Authorization: authorization },
+      });
+
+      await requireApiTokenAuth(request);
+
+      expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith(authorization);
+    });
+
+    it('strips only the first space after the Bearer prefix', async () => {
+      mockVerifyApiToken.mockResolvedValue({ valid: false });
+
+      const request = new NextRequest('http://localhost:3000/api/v1/test', {
+        headers: { Authorization: 'Bearer  valid-token' },
+      });
+
+      await requireApiTokenAuth(request);
+
+      expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith(
+        ' valid-token',
+      );
+    });
+
     it('leaves a Bearer that is not at the start of the header in place', async () => {
       mockVerifyApiToken.mockResolvedValue({ valid: false });
 

@@ -166,6 +166,49 @@ const VALID_TOTP_CODE = '123456';
 const VALID_RECOVERY_CODE = 'a1b2c3d4e5f6a1b2c3d4';
 const TOTP_SECRET = 'BASE32SECRET';
 
+// Holds recordLoginAttempt pending and fails if the action settles before it
+// resolves, so a branch that stops awaiting the record goes red.
+async function submitWhileFailedAttemptIsRecorded(code: string) {
+  mockVerifyTwoFactorSchemaSafeParse.mockReturnValue({
+    success: true,
+    data: { twoFactorToken: 'valid-token', code },
+  });
+  mockVerifyTwoFactorToken.mockReturnValue({
+    valid: true,
+    userId: VALID_USER_ID,
+  });
+  mockPrismaTotpCredentialFindFirst.mockResolvedValue({
+    user_id: VALID_USER_ID,
+    secret: TOTP_SECRET,
+    verified: true,
+  });
+
+  const recording = Promise.withResolvers<undefined>();
+  mockRecordLoginAttempt.mockReturnValue(recording.promise);
+
+  let actionSettled = false;
+  const action = verifyTwoFactor({
+    twoFactorToken: 'valid-token',
+    code,
+  }).finally(() => {
+    actionSettled = true;
+  });
+
+  await vi.waitFor(() => {
+    expect(mockRecordLoginAttempt).toHaveBeenCalledWith(
+      VALID_USERNAME,
+      VALID_IP,
+      false,
+    );
+  });
+  // Let any continuation that does not wait on the recording run first.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(actionSettled).toBe(false);
+
+  recording.resolve(undefined);
+  return action;
+}
+
 describe('verifyTwoFactor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -344,6 +387,13 @@ describe('verifyTwoFactor', () => {
         false,
       );
     });
+    it('does not return until the failed TOTP attempt has been recorded', async () => {
+      mockVerifyTotpCode.mockReturnValue(false);
+
+      const result = await submitWhileFailedAttemptIsRecorded('000000');
+
+      expect(formErrorMessages(result)).toEqual(['Invalid verification code']);
+    });
   });
 
   describe('recovery code verification', () => {
@@ -440,6 +490,15 @@ describe('verifyTwoFactor', () => {
         false,
       );
     });
+    it('does not return until the failed recovery attempt has been recorded', async () => {
+      mockHashRecoveryCode.mockReturnValue('some-hash');
+      mockPrismaRecoveryCodeUpdateMany.mockResolvedValue({ count: 0 });
+
+      const result =
+        await submitWhileFailedAttemptIsRecorded(VALID_RECOVERY_CODE);
+
+      expect(formErrorMessages(result)).toEqual(['Invalid recovery code']);
+    });
   });
 
   describe('unrecognized code format', () => {
@@ -475,46 +534,9 @@ describe('verifyTwoFactor', () => {
     });
 
     it('does not return until the failed attempt has been recorded', async () => {
-      const badCode = 'not-a-valid-format-xyz';
-
-      mockVerifyTwoFactorSchemaSafeParse.mockReturnValue({
-        success: true,
-        data: { twoFactorToken: 'valid-token', code: badCode },
-      });
-      mockVerifyTwoFactorToken.mockReturnValue({
-        valid: true,
-        userId: VALID_USER_ID,
-      });
-      mockPrismaTotpCredentialFindFirst.mockResolvedValue({
-        user_id: VALID_USER_ID,
-        secret: TOTP_SECRET,
-        verified: true,
-      });
-
-      const recording = Promise.withResolvers<undefined>();
-      mockRecordLoginAttempt.mockReturnValue(recording.promise);
-
-      let actionSettled = false;
-      const action = verifyTwoFactor({
-        twoFactorToken: 'valid-token',
-        code: badCode,
-      }).finally(() => {
-        actionSettled = true;
-      });
-
-      await vi.waitFor(() => {
-        expect(mockRecordLoginAttempt).toHaveBeenCalledWith(
-          VALID_USERNAME,
-          VALID_IP,
-          false,
-        );
-      });
-      // Let any continuation that does not wait on the recording run first.
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(actionSettled).toBe(false);
-
-      recording.resolve(undefined);
-      const result = await action;
+      const result = await submitWhileFailedAttemptIsRecorded(
+        'not-a-valid-format-xyz',
+      );
 
       expect(formErrorMessages(result)).toEqual(['Invalid code format']);
     });
