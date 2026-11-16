@@ -527,6 +527,10 @@
     "defaultMessage": "Could not update type",
     "description": "Title of the error dialog shown when saving changes to an existing node type or edge type fails."
   },
+  "architect.codebook.entityTypeDialog.imageUnavailable": {
+    "defaultMessage": "An image added to this node type is no longer available. Remove the shape that uses it, then add the shape again.",
+    "description": "Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified."
+  },
   "architect.codebook.entityTypeDialog.oK": {
     "defaultMessage": "OK",
     "description": "Button that dismisses the could-not-save-type error dialog."
@@ -534,6 +538,10 @@
   "architect.codebook.entityTypeDialog.saveAndClose": {
     "defaultMessage": "Save and Close",
     "description": "Submit button of the node type or edge type dialog that saves the type and closes the dialog."
+  },
+  "architect.codebook.entityTypeDialog.shapeImageUnavailable": {
+    "defaultMessage": "The image for the shape \"{name}\" is no longer available. Remove this shape and add it again.",
+    "description": "Refusal shown under the custom shapes field of the node type editor when saving fails because the SVG image one custom shape is drawn from can no longer be kept with the protocol. name is the name the researcher gave that shape."
   },
   "architect.codebook.error.attributeInUse": {
     "defaultMessage": "This attribute is in use and cannot be deleted. Remove it from the stages listed under \"Used In\" first.",
@@ -3423,18 +3431,6 @@
     "defaultMessage": "Has skip logic",
     "description": "Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has skip logic set."
   },
-  "architect.typeEditor.shapePicker.config.circle": {
-    "defaultMessage": "Circle",
-    "description": "Name of the circle node shape, shown under its swatch in the shape picker of the node type editor."
-  },
-  "architect.typeEditor.shapePicker.config.diamond": {
-    "defaultMessage": "Diamond",
-    "description": "Name of the diamond node shape, shown under its swatch in the shape picker of the node type editor."
-  },
-  "architect.typeEditor.shapePicker.config.square": {
-    "defaultMessage": "Square",
-    "description": "Name of the square node shape, shown under its swatch in the shape picker of the node type editor."
-  },
   "architect.typeEditor.shapeVariableMapping.attribute": {
     "defaultMessage": "Attribute",
     "description": "Label of the dropdown in the node type editor's shape mapping that chooses which variable of the node type decides the node's shape. Attribute means a codebook variable."
@@ -3458,10 +3454,6 @@
   "architect.typeEditor.shapeVariableMapping.shapeForEachValue": {
     "defaultMessage": "Shape for each value",
     "description": "Heading above the list of a categorical, ordinal or yes/no variable's values in the shape mapping, each with a picker for the shape used for that value."
-  },
-  "architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill": {
-    "defaultMessage": "Some values are unmapped and will use the default shape.",
-    "description": "Warning below the list of values in the shape mapping, shown while at least one value has no shape chosen. Those nodes use the node type's default shape."
   },
   "architect.typeEditor.shapeVariableMapping.thresholds": {
     "defaultMessage": "Thresholds",
@@ -3494,6 +3486,10 @@
   "architect.typeEditor.typeEditor.color": {
     "defaultMessage": "Color",
     "description": "Label of the colour picker field in the node or edge type editor."
+  },
+  "architect.typeEditor.typeEditor.customShapes": {
+    "defaultMessage": "Custom shapes",
+    "description": "Label of the part of the node type editor where the researcher adds their own shapes for the node type from SVG image files."
   },
   "architect.typeEditor.typeEditor.enterANameForThisType": {
     "defaultMessage": "Enter a name for this {entity, select, node {node} edge {edge} other {ego}} type...",

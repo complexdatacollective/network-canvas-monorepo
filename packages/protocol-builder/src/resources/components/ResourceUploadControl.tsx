@@ -1,6 +1,6 @@
 import { Redacted } from 'effect';
 import { Upload } from 'lucide-react';
-import { useCallback, useEffect, useId, useState, type DragEvent } from 'react';
+import { useEffect, useId, useState, type DragEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import {
@@ -17,11 +17,16 @@ import { oversizeFileMessage } from '../resourceMessages.ts';
 import { readRosterFacts } from '../rosterFacts.ts';
 import {
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
+  type ResourceContentKind,
   type ResourceDescriptor,
   type ResourceResult,
   type StageUploadRequest,
 } from '../types.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
+import {
+  type NodeShapeNotice,
+  prepareNodeShapeUpload,
+} from './nodeShapeResource.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   acceptedExtensions,
@@ -97,10 +102,111 @@ async function importFile(
   });
 }
 
+type PreparedImport =
+  /** Another file was chosen meanwhile, or the control has gone. */
+  | Readonly<{ status: 'superseded' }>
+  | Readonly<{ status: 'refused'; error: string }>
+  | Readonly<{
+      status: 'ready';
+      contentKind: ResourceContentKind;
+      bytes: Uint8Array;
+      contentType: string;
+      nodeShape?: NodeShapeNotice;
+    }>;
+
+const SUPERSEDED: PreparedImport = { status: 'superseded' };
+
+const refused = (error: string): PreparedImport => ({
+  status: 'refused',
+  error,
+});
+
+/**
+ * Everything decided about a chosen file before anything is staged: whether
+ * this control takes it, its bytes, and, for a shape or a roster, whether
+ * those bytes can be used at all.
+ *
+ * `current` is asked after every wait, because reading a large first choice
+ * can still be under way when a second one is made, and only the file chosen
+ * last may go on to be staged.
+ */
+async function prepareImport(
+  kind: ResourceUploadControlProps['kind'],
+  file: File,
+  current: () => boolean,
+): Promise<PreparedImport> {
+  const contentKind = contentKindForFile(kind, file.name);
+  if (contentKind === undefined) return refused(unsupportedFileMessage(kind));
+
+  // Before the file is read, not after: staging takes the bytes, so a
+  // control that waits for the host to refuse has already pulled a file of
+  // any size into memory to be told what its own `size` said all along — and
+  // the file picked by mistake is the large one.
+  if (file.size > RESOURCE_UPLOAD_MAX_BYTE_LENGTH) {
+    return refused(oversizeFileMessage(RESOURCE_UPLOAD_MAX_BYTE_LENGTH));
+  }
+
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await file.arrayBuffer());
+  } catch {
+    // A file the researcher has already moved off is not something to report
+    // at all: the import that replaced it is what is happening now.
+    return current()
+      ? refused(createMessageError(messages.unreadable))
+      : SUPERSEDED;
+  }
+  if (!current()) return SUPERSEDED;
+
+  let contentType = contentTypeForFile(file.name, file.type);
+  let nodeShape: NodeShapeNotice | undefined;
+  if (kind === 'nodeShape') {
+    const shape = prepareNodeShapeUpload(file.name, bytes);
+    if ('error' in shape) return refused(shape.error);
+    ({ bytes, contentType } = shape);
+    nodeShape = shape.notice;
+  }
+
+  // Read here, before anything is staged, because a host only has to hold a
+  // roster's bytes and need not read them: a character no export can carry
+  // would otherwise be found when the data is exported, and a roster the
+  // interview cannot load, such as one with a heading it cannot match, when a
+  // participant reaches the stage — both long after the researcher could
+  // still choose a corrected file.
+  if (contentKind === 'network') {
+    const refusal = await rosterCharacterRefusal(bytes, file.name);
+    if (!current()) return SUPERSEDED;
+    if (refusal !== undefined) return refused(refusal);
+
+    const roster = await readRosterFacts({
+      bytes,
+      contentType,
+      source: file.name,
+    });
+    if (!current()) return SUPERSEDED;
+    if ('unreadable' in roster) return refused(roster.unreadable);
+  }
+
+  return {
+    status: 'ready',
+    contentKind,
+    bytes,
+    contentType,
+    ...(nodeShape === undefined ? {} : { nodeShape }),
+  };
+}
+
 export type ResourceUploadControlProps = Readonly<{
   /** Which kinds this control will accept, and what it stages them as. */
   kind: Exclude<ResourcePickerKind, 'apikey'>;
-  onStaged: (descriptor: ResourceDescriptor) => void;
+  /**
+   * Called with the staged resource. A node shape picker also says what was
+   * taken out of the SVG on the way in.
+   */
+  onStaged: (
+    descriptor: ResourceDescriptor,
+    nodeShape?: NodeShapeNotice,
+  ) => void;
   /**
    * Reports whether this control is holding work a dismissal would lose.
    *
@@ -165,89 +271,27 @@ export default function ResourceUploadControl({
     return () => onDraftChange?.(false);
   }, [busy, onDraftChange, reading]);
 
-  const stageFile = useCallback(
-    async (file: File) => {
-      setRejected(undefined);
-      // Claimed before anything about this file is decided, because the claim
-      // is the researcher's choice rather than its consequence. Reading a
-      // large first choice can still be under way when a second one is made,
-      // and the field must end up holding the file chosen last — including
-      // when that file is one this field cannot hold, which supersedes the
-      // earlier choice just as surely as an accepted one does. Claiming also
-      // takes away what the previous choice left on screen, so the refusal
-      // below is the only thing the researcher is being told.
-      const claim = begin();
-      // Held as a draft from the same moment and for the same reason: the
-      // checks below and the read after them all happen while a dismissal
-      // could arrive, and none of them has started a call for `busy` to show.
-      setReading(true);
+  const stageFile = async (file: File) => {
+    setRejected(undefined);
+    // Claimed before anything about this file is decided, because the claim
+    // is the researcher's choice rather than its consequence: the field must
+    // end up holding the file chosen last, including when that file is one
+    // this field cannot hold. Claiming also takes away what the previous
+    // choice left on screen, so a refusal is the only thing the researcher
+    // is being told.
+    const claim = begin();
+    // Held as a draft from the same moment and for the same reason: the
+    // checks and the read all happen while a dismissal could arrive, and
+    // none of them has started a call for `busy` to show.
+    setReading(true);
 
-      const contentKind = contentKindForFile(kind, file.name);
-      if (contentKind === undefined) {
-        setRejected(unsupportedFileMessage(kind));
-        // A refused file is not work to lose: the refusal on screen is the
-        // whole of what happened, and it survives a dismissal by being about
-        // a choice the researcher will make again.
-        setReading(false);
-        return;
-      }
+    let prepared: PreparedImport | undefined;
+    try {
+      prepared = await prepareImport(kind, file, claim.current);
+      if (prepared.status === 'refused') setRejected(prepared.error);
+      if (prepared.status !== 'ready') return;
 
-      // Before the file is read, not after: staging takes the bytes, so a
-      // control that waits for the host to refuse has already pulled a file
-      // of any size into memory to be told what its own `size` said all
-      // along — and the file picked by mistake is the large one.
-      if (file.size > RESOURCE_UPLOAD_MAX_BYTE_LENGTH) {
-        setRejected(oversizeFileMessage(RESOURCE_UPLOAD_MAX_BYTE_LENGTH));
-        setReading(false);
-        return;
-      }
-
-      let bytes: Uint8Array;
-      try {
-        bytes = new Uint8Array(await file.arrayBuffer());
-      } catch {
-        // A file the researcher has already moved off is not something to
-        // report at all: the import that replaced it is what is happening now.
-        // Its draft is that import's to hold as well, so this leaves it be —
-        // saying there is nothing to lose would be saying it about the choice
-        // that superseded this one.
-        if (!claim.current()) return;
-        setRejected(createMessageError(messages.unreadable));
-        setReading(false);
-        return;
-      }
-      if (!claim.current()) return;
-
-      const contentType = contentTypeForFile(file.name, file.type);
-
-      // Read here, before anything is staged, because a host only has to hold
-      // a roster's bytes and need not read them: a character no export can
-      // carry would otherwise be found when the data is exported, and a
-      // roster the interview cannot load, such as one with a heading it cannot
-      // match, when a participant reaches the stage — both long after the
-      // researcher could still choose a corrected file.
-      if (contentKind === 'network') {
-        const refusal = await rosterCharacterRefusal(bytes, file.name);
-        if (!claim.current()) return;
-        if (refusal !== undefined) {
-          setRejected(refusal);
-          setReading(false);
-          return;
-        }
-
-        const roster = await readRosterFacts({
-          bytes,
-          contentType,
-          source: file.name,
-        });
-        if (!claim.current()) return;
-        if ('unreadable' in roster) {
-          setRejected(roster.unreadable);
-          setReading(false);
-          return;
-        }
-      }
-
+      const { contentKind, bytes, contentType, nodeShape } = prepared;
       const source = sourceFilename(file.name);
       // One id for this file, kept across a retry: repeating an uncertain
       // import must not leave the protocol holding the same file twice.
@@ -265,19 +309,20 @@ export default function ResourceUploadControl({
           }),
         (descriptor) => {
           setStatus(`${Redacted.value(descriptor.name)} was imported.`);
-          onStaged(descriptor);
+          onStaged(descriptor, nodeShape);
         },
-        // The import landed with nothing left to hand it to: another file was
-        // chosen, or the browser was closed. No field will ever name it, so
-        // the host is told to let it go.
+        // The import landed with nothing left to hand it to: another file
+        // was chosen, or the browser was closed. No field will ever name
+        // it, so the host is told to let it go.
         (descriptor) => discardAbandonedStaging(resources, descriptor),
       );
-      // After the call has started, so the draft passes from this flag to
-      // `busy` without ever being reported as nothing in between.
-      setReading(false);
-    },
-    [begin, kind, onStaged, resources],
-  );
+    } finally {
+      // A refused file is not work to lose, and a started import is held by
+      // `busy` from here on. A superseded choice leaves the draft alone: it
+      // belongs to the choice that replaced it.
+      if (prepared?.status !== 'superseded') setReading(false);
+    }
+  };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();

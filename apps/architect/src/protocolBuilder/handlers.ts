@@ -52,7 +52,7 @@ import {
   SETTINGS_SECTION,
   STAGE_ORDER_SECTION,
 } from './protocolSections.ts';
-import { ResourceBridge } from './resourceBridge.ts';
+import type { ResourceBridge } from './resourceBridge.ts';
 import {
   createSection,
   deleteStageSection,
@@ -64,30 +64,30 @@ import { WriteLedger } from './writeLedger.ts';
 export const ArchitectHandlers = (
   store: ArchitectStore,
   otherTabName: () => string,
-) =>
-  ProtocolBuilderGroup.toLayer(
+  resources: ResourceBridge,
+) => {
+  const isOpen = (protocolId: string) =>
+    getActiveProtocolId(store.getState()) === protocolId;
+  const requireOpen = (protocolId: string) =>
+    isOpen(protocolId)
+      ? Effect.void
+      : Effect.fail(new ProtocolNotFound({ protocolId }));
+  const otherTab = (): Presence | undefined =>
+    getProtocolLockState(store.getState()) === 'owned'
+      ? undefined
+      : {
+          sessionId: OTHER_TAB_SESSION,
+          userId: OTHER_TAB_SESSION,
+          displayName: Redacted.make(otherTabName()),
+          mode: 'editing' as const,
+        };
+  return ProtocolBuilderGroup.toLayer(
     Effect.gen(function* () {
       const revisions = yield* Effect.acquireRelease(
         Effect.sync(() => new ProtocolRevisions(store)),
         (watching) => Effect.sync(() => watching.dispose()),
       );
-      const resources = new ResourceBridge(store);
       const ledger = new WriteLedger();
-      const isOpen = (protocolId: string) =>
-        getActiveProtocolId(store.getState()) === protocolId;
-      const requireOpen = (protocolId: string) =>
-        isOpen(protocolId)
-          ? Effect.void
-          : Effect.fail(new ProtocolNotFound({ protocolId }));
-      const otherTab = (): Presence | undefined =>
-        getProtocolLockState(store.getState()) === 'owned'
-          ? undefined
-          : {
-              sessionId: OTHER_TAB_SESSION,
-              userId: OTHER_TAB_SESSION,
-              displayName: Redacted.make(otherTabName()),
-              mode: 'editing' as const,
-            };
 
       return ProtocolBuilderGroup.of({
         AcquireLock: (input) =>
@@ -581,6 +581,7 @@ export const ArchitectHandlers = (
       });
     }),
   );
+};
 
 /**
  * The watcher is ended through its abort signal rather than by returning its

@@ -1,6 +1,7 @@
 'use client';
 
 import type { Action } from '@reduxjs/toolkit';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { LocateFixed, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import {
@@ -301,34 +302,31 @@ export default function GeospatialInterface({
   // resolved from the GeoJSON for click-to-select. Real mode ignores all
   // of this.
   const [stubZoom, setStubZoom] = useState<number>(mapOptions.initialZoom);
-  const [stubReady, setStubReady] = useState(false);
-  const [stubFeatureId, setStubFeatureId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!useStub) return undefined;
-    if (!dataSourceUrl) return undefined;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const response = await fetch(dataSourceUrl);
-        const json: unknown = await response.json();
-        if (cancelled) return;
-        const value = readFirstFeatureProperty(
-          json,
-          mapOptions.targetFeatureProperty,
-        );
-        setStubFeatureId(typeof value === 'string' ? value : 'stub-feature');
-        setStubReady(true);
-      } catch {
-        if (cancelled) return;
-        setStubFeatureId('stub-feature');
-        setStubReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [useStub, dataSourceUrl, mapOptions.targetFeatureProperty]);
+  const { data: stubFeature } = useQuery({
+    queryKey: [
+      'geospatial-stub-feature',
+      dataSourceUrl,
+      mapOptions.targetFeatureProperty,
+    ],
+    queryFn:
+      useStub && dataSourceUrl
+        ? async ({ signal }) => {
+            try {
+              const response = await fetch(dataSourceUrl, { signal });
+              const json: unknown = await response.json();
+              const value = readFirstFeatureProperty(
+                json,
+                mapOptions.targetFeatureProperty,
+              );
+              return typeof value === 'string' ? value : 'stub-feature';
+            } catch {
+              return 'stub-feature';
+            }
+          }
+        : skipToken,
+  });
+  const stubReady = stubFeature !== undefined;
+  const stubFeatureId = stubFeature ?? null;
 
   // Stub toolbar handlers — synchronous state updates so the fixture's
   // expect.poll() on data-zoom-level resolves on the next render tick.

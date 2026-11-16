@@ -14,7 +14,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { resolveNodeShape } from '../../../../selectors/session';
+import { symbolShapesOf } from '../../../pedigree-common/symbolShapes';
 import { config, link, person } from '../../__tests__/fixtures';
 import { readFamily } from '../../model';
 import { pedigreeLinksOf } from '../../pedigreeLinks';
@@ -70,13 +70,9 @@ function drawAsInterface(
   const family = readFamily(nodes, edges, config);
   const links = pedigreeLinksOf(family);
   const nodeIds = family.people.map((p) => p.id);
-  const nodeShapes = new Map(
-    family.people.map((p) => [
-      p.id,
-      everyone ??
-        (resolveNodeShape(SHAPE, p.attributes) as PedigreeSymbolShape),
-    ]),
-  );
+  const nodeShapes = everyone
+    ? new Map(family.people.map((p) => [p.id, everyone]))
+    : symbolShapesOf(family.people, SHAPE);
   const { positions, connectorData } = drawPedigree({
     nodeIds,
     links,

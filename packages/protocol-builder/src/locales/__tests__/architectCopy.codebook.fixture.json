@@ -84,11 +84,6 @@
     "es": "Forma para cada valor",
     "from": "74a07e626 architect.typeEditor.shapeVariableMapping.shapeForEachValue"
   },
-  "protocolBuilder.codebookEntity.shapeForValue": {
-    "en": "Shape for {value1}",
-    "es": "Forma para {value1}",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.shapeFor"
-  },
   "protocolBuilder.codebookEntity.shapeHint": {
     "en": "Choose a default shape for this node type.",
     "es": "Elige una forma predeterminada para este tipo de nodo.",
@@ -148,10 +143,5 @@
     "en": "uses default shape",
     "es": "usa la forma predeterminada",
     "from": "74a07e626 architect.typeEditor.shapeVariableMapping.usesDefaultShape"
-  },
-  "protocolBuilder.codebookEntity.shapeValuesUnmapped": {
-    "en": "Some values are unmapped and will use the default shape.",
-    "es": "Algunos valores no tienen una forma asignada y usarán la predeterminada.",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill"
   }
 }

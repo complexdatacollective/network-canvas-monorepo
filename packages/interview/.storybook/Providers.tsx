@@ -13,6 +13,7 @@ import { Toaster } from '@codaco/fresco-ui/Toast';
 import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
 
 import { CurrentStepProvider } from '../src/contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../src/contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../src/contract/context';
 import { TestProtocolLocalization } from '../src/interfaces/__tests__/TestProtocolLocalization';
 
@@ -33,6 +34,9 @@ const noopFinish = () => Promise.resolve();
  *   CurrentStepProvider". Uncontrolled mode (no props) defaults to step 0,
  *   which is fine for stories that don't navigate. Stories that DO mount
  *   `<Shell>` get its own inner CurrentStepProvider that shadows this one.
+ * - InterviewQueryClientProvider: assets (images, custom node shapes,
+ *   roster data) are read through the interview's query cache, which Shell
+ *   provides. Full-Shell stories get Shell's own, which shadows this one.
  * - ContractProvider: components like QuickNodeForm read flags via
  *   `useContractFlags()`; without a provider they crash. Defaults supply
  *   no-op handlers and `isDevelopment: true`. Shell wraps its own
@@ -84,9 +88,11 @@ export default function Providers({
                 onRequestAsset={noopAssetUrl}
                 flags={{ isDevelopment: true }}
               >
-                <TestProtocolLocalization>
-                  <CurrentStepProvider>{children}</CurrentStepProvider>
-                </TestProtocolLocalization>
+                <InterviewQueryClientProvider protocolKey="storybook">
+                  <TestProtocolLocalization>
+                    <CurrentStepProvider>{children}</CurrentStepProvider>
+                  </TestProtocolLocalization>
+                </InterviewQueryClientProvider>
               </ContractProvider>
             </DialogProvider>
           </DndStoreProvider>

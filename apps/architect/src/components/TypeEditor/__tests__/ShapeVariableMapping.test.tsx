@@ -17,40 +17,6 @@ beforeAll(() => architectCatalogSource.load('es'));
 
 afterEach(() => localStorage.removeItem(ARCHITECT_LOCALE_KEY));
 
-vi.mock('../ShapePicker', () => ({
-  ShapePickerControl: ({
-    'aria-label': ariaLabel,
-    value,
-    onChange,
-  }: {
-    'aria-label'?: string;
-    'value'?: string;
-    'onChange'?: (value: string) => void;
-  }) => (
-    <div aria-label={ariaLabel}>
-      {['Circle', 'Square', 'Diamond'].map((label) => {
-        const shape = label.toLowerCase();
-        return (
-          <button
-            key={shape}
-            type="button"
-            aria-label={`Select shape ${label}`}
-            aria-pressed={value === shape}
-            onClick={() => onChange?.(shape)}
-          >
-            shape
-          </button>
-        );
-      })}
-    </div>
-  ),
-  SHAPES: [
-    { value: 'circle', label: 'Circle' },
-    { value: 'square', label: 'Square' },
-    { value: 'diamond', label: 'Diamond' },
-  ],
-}));
-
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   VariablePickerControl: ({
     options = [],
@@ -202,13 +168,14 @@ describe('ShapeVariableMapping', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Is Person' }));
 
-    const trueLabel = screen.getByText('True');
-    const trueRow = trueLabel.parentElement;
-    if (!trueRow) throw new Error('Expected a row for the true boolean value');
-
-    expect(screen.getByText('False')).toBeInTheDocument();
+    expect(
+      screen.getByRole('radiogroup', { name: 'False' }),
+    ).toBeInTheDocument();
     fireEvent.click(
-      within(trueRow).getByRole('button', { name: 'Select shape Circle' }),
+      within(screen.getByRole('radiogroup', { name: 'True' })).getByRole(
+        'radio',
+        { name: 'Select shape Circle' },
+      ),
     );
 
     expect(getDynamic()).toEqual({

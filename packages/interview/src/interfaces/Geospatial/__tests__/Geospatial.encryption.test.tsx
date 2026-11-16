@@ -19,6 +19,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../../contract/context';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
@@ -143,26 +144,28 @@ async function renderGeospatial({
       flags={{ isE2E: true }}
     >
       <Provider store={store}>
-        <WritesInFlightProvider
-          writesSettled={store.writesSettled}
-          trackWrite={store.trackWrite}
-        >
-          <TestProtocolLocalization>
-            <InterviewI18nProvider>
-              <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-                <StageDynamicValues stage={stageUnderTest}>
-                  <GeospatialInterface
-                    stage={stageUnderTest}
-                    getNavigationHelpers={() => ({
-                      moveForward: vi.fn(),
-                      moveBackward: vi.fn(),
-                    })}
-                  />
-                </StageDynamicValues>
-              </CurrentStepProvider>
-            </InterviewI18nProvider>
-          </TestProtocolLocalization>
-        </WritesInFlightProvider>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <WritesInFlightProvider
+            writesSettled={store.writesSettled}
+            trackWrite={store.trackWrite}
+          >
+            <TestProtocolLocalization>
+              <InterviewI18nProvider>
+                <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+                  <StageDynamicValues stage={stageUnderTest}>
+                    <GeospatialInterface
+                      stage={stageUnderTest}
+                      getNavigationHelpers={() => ({
+                        moveForward: vi.fn(),
+                        moveBackward: vi.fn(),
+                      })}
+                    />
+                  </StageDynamicValues>
+                </CurrentStepProvider>
+              </InterviewI18nProvider>
+            </TestProtocolLocalization>
+          </WritesInFlightProvider>
+        </InterviewQueryClientProvider>
       </Provider>
     </ContractProvider>,
   );

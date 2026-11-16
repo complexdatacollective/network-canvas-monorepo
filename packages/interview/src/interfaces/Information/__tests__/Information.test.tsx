@@ -11,6 +11,7 @@ import type {
   LocalizedString,
 } from '@codaco/protocol-validation';
 
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../../contract/context';
 import type { ResolvedAsset } from '../../../contract/types';
 import protocol from '../../../store/modules/protocol';
@@ -65,14 +66,16 @@ function renderInformation(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <TestProtocolLocalization localization={localization} locale={locale}>
-          <ContractProvider
-            onFinish={vi.fn()}
-            onRequestAsset={() => Promise.resolve('blob://asset')}
-          >
-            {children}
-          </ContractProvider>
-        </TestProtocolLocalization>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <TestProtocolLocalization localization={localization} locale={locale}>
+            <ContractProvider
+              onFinish={vi.fn()}
+              onRequestAsset={() => Promise.resolve('blob://asset')}
+            >
+              {children}
+            </ContractProvider>
+          </TestProtocolLocalization>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }

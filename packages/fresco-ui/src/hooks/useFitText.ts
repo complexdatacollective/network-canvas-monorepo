@@ -44,7 +44,45 @@ const overflows = (element: HTMLElement) =>
 type Fitter = {
   element: HTMLElement;
   steps: readonly string[];
-  commit: (stepIndex: number, isTruncated: boolean) => void;
+  container: HTMLElement | null;
+  commit: (measurement: FitMeasurement) => void;
+};
+
+type FitMeasurement = {
+  stepIndex: number;
+  isTruncated: boolean;
+  wholeLines: number | undefined;
+  overflow: number;
+};
+
+/**
+ * How many whole lines of the element's type its container can show. A
+ * line clamp set for more lines than that leaves a sliver of the next line
+ * showing and puts the ellipsis out of sight.
+ */
+const wholeLinesIn = (container: HTMLElement | null, element: HTMLElement) => {
+  if (!container) return undefined;
+  const lineBox = Number.parseFloat(getComputedStyle(element).lineHeight);
+  if (!Number.isFinite(lineBox) || lineBox <= 0) return undefined;
+  return Math.max(
+    1,
+    Math.floor((container.clientHeight + ROUNDING_SLACK) / lineBox),
+  );
+};
+
+/**
+ * How far the element's box reaches below its container's, as a fraction of
+ * the container's height. A rung without a height limit lets text grow past
+ * its container rather than overflow itself, and this is how far.
+ */
+const overflowOf = (container: HTMLElement | null, element: HTMLElement) => {
+  if (!container) return 0;
+  const excess = element.offsetHeight - container.clientHeight;
+  if (excess <= 0) return 0;
+  // `clientHeight` is rounded; a caller scaling the fraction back up by the
+  // container's true size would otherwise be off by the rounding.
+  const height = Number.parseFloat(getComputedStyle(container).height);
+  return height > 0 ? excess / height : 0;
 };
 
 const pending = new Set<Fitter>();
@@ -91,9 +129,19 @@ function flush() {
     }
   }
 
-  for (const state of states) {
-    state.fitter.commit(state.stepIndex, !state.fits);
-  }
+  // Read first, then commit: a commit may write to the page.
+  const measured = states.map(({ fitter, fits, stepIndex }) => ({
+    fitter,
+    measurement: {
+      stepIndex,
+      isTruncated: !fits,
+      wholeLines: fits
+        ? undefined
+        : wholeLinesIn(fitter.container, fitter.element),
+      overflow: overflowOf(fitter.container, fitter.element),
+    },
+  }));
+  for (const { fitter, measurement } of measured) fitter.commit(measurement);
 }
 
 function enqueue(fitter: Fitter) {
@@ -132,12 +180,31 @@ type UseFitTextResult<T> = {
   /** Whether the text still overflows at the smallest rung. */
   isTruncated: boolean;
   /**
+   * For truncated text, the number of whole lines of the fitted type the
+   * container can show.
+   */
+  wholeLines: number | undefined;
+  /**
+   * How far the text reaches below its container, as a fraction of the
+   * container's height; 0 when it stays inside. Only a rung that lifts the
+   * text's height limit lets it reach past.
+   */
+  overflow: number;
+  /**
    * The `watch` value the reported rung was measured for. `stepIndex` is kept
    * until the next measurement lands, so right after `watch` changes it still
    * describes the previous text; a caller that acts on the rung compares this
    * with the `watch` it passed.
    */
   fittedWatch: UseFitTextOptions['watch'];
+};
+
+const UNFITTED = {
+  stepIndex: 0,
+  isTruncated: false,
+  wholeLines: undefined,
+  overflow: 0,
+  fittedWatch: undefined,
 };
 
 /**
@@ -154,15 +221,14 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
   enabled = true,
 }: UseFitTextOptions): UseFitTextResult<T> {
   const ref = useRef<T>(null);
-  const [state, setState] = useState<{
-    stepIndex: number;
-    isTruncated: boolean;
-    fittedWatch: UseFitTextOptions['watch'];
-  }>({ stepIndex: 0, isTruncated: false, fittedWatch: undefined });
+  const [state, setState] = useState<
+    FitMeasurement & { fittedWatch: UseFitTextOptions['watch'] }
+  >(UNFITTED);
 
   // Fits the current text, for whatever later finds the room has changed. A
   // fit left behind by an earlier text has been cancelled, so it does nothing.
   const refitRef = useRef<(() => void) | null>(null);
+  const containerElementRef = useRef<HTMLElement | null>(null);
 
   // Measured before paint, so the first frame already shows the fitted size.
   useLayoutEffect(() => {
@@ -172,9 +238,10 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
       setState((previous) =>
         previous.stepIndex === 0 &&
         !previous.isTruncated &&
+        previous.overflow === 0 &&
         previous.fittedWatch === undefined
           ? previous
-          : { stepIndex: 0, isTruncated: false, fittedWatch: undefined },
+          : UNFITTED,
       );
       return undefined;
     }
@@ -184,14 +251,20 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     const fitter: Fitter = {
       element,
       steps,
-      commit: (stepIndex, isTruncated) => {
+      // Set by the passive effect below, which refits once it has.
+      get container() {
+        return containerElementRef.current;
+      },
+      commit: (measurement) => {
         if (cancelled) return;
         setState((previous) =>
-          previous.stepIndex === stepIndex &&
-          previous.isTruncated === isTruncated &&
+          previous.stepIndex === measurement.stepIndex &&
+          previous.isTruncated === measurement.isTruncated &&
+          previous.wholeLines === measurement.wholeLines &&
+          previous.overflow === measurement.overflow &&
           previous.fittedWatch === watch
             ? previous
-            : { stepIndex, isTruncated, fittedWatch: watch },
+            : { ...measurement, fittedWatch: watch },
         );
       },
     };
@@ -227,6 +300,7 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
   // the observer's first report measures the box as it is then.
   useEffect(() => {
     const container = containerRef.current;
+    containerElementRef.current = container;
     if (!enabled || !container || typeof ResizeObserver === 'undefined') {
       return undefined;
     }
@@ -240,6 +314,8 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     ref,
     stepIndex: state.stepIndex,
     isTruncated: state.isTruncated,
+    wholeLines: state.wholeLines,
+    overflow: state.overflow,
     fittedWatch: state.fittedWatch,
   };
 }

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Button } from '@codaco/fresco-ui/Button';
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { HostUnauthorized } from '@codaco/protocol-builder-core/contract/session';
@@ -109,9 +110,11 @@ describe('a codebook type created from inside a stage editor', () => {
     const seededLabel = storedStageLabel(host);
 
     render(
-      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
-        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
-      </ProtocolBuilder>,
+      <DialogProvider>
+        <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
+          <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+        </ProtocolBuilder>
+      </DialogProvider>,
     );
 
     // The list has actually loaded, and does not already answer the question.
@@ -160,9 +163,11 @@ describe('two codebook types added one after the other', () => {
     const seededLabel = storedStageLabel(host);
 
     render(
-      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
-        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
-      </ProtocolBuilder>,
+      <DialogProvider>
+        <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
+          <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+        </ProtocolBuilder>
+      </DialogProvider>,
     );
 
     const list = screen.getByRole('list', { name: 'Node types' });
@@ -224,9 +229,11 @@ describe('a codebook type whose answer is lost on the way back', () => {
     const seededLabel = storedStageLabel(host);
 
     render(
-      <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
-        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
-      </ProtocolBuilder>,
+      <DialogProvider>
+        <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
+          <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+        </ProtocolBuilder>
+      </DialogProvider>,
     );
 
     const list = screen.getByRole('list', { name: 'Node types' });
@@ -262,9 +269,11 @@ describe('a codebook type whose answer is lost on the way back', () => {
     const seededLabel = storedStageLabel(host);
 
     render(
-      <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
-        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
-      </ProtocolBuilder>,
+      <DialogProvider>
+        <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
+          <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+        </ProtocolBuilder>
+      </DialogProvider>,
     );
 
     const list = screen.getByRole('list', { name: 'Node types' });
@@ -388,9 +397,11 @@ describe('a codebook write whose section a collaborator is holding', () => {
     expect(before.length).toBeGreaterThan(0);
 
     render(
-      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
-        <AttributeInventor />
-      </ProtocolBuilder>,
+      <DialogProvider>
+        <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
+          <AttributeInventor />
+        </ProtocolBuilder>
+      </DialogProvider>,
     );
 
     await user.click(
@@ -460,9 +471,11 @@ describe('a codebook lock whose acquire answer is lost', () => {
     const before = personVariableNames(host);
 
     render(
-      <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
-        <AttributeInventor />
-      </ProtocolBuilder>,
+      <DialogProvider>
+        <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
+          <AttributeInventor />
+        </ProtocolBuilder>
+      </DialogProvider>,
     );
 
     await user.click(
@@ -504,9 +517,11 @@ describe('a codebook lock the session refuses', () => {
     const before = personVariableNames(host);
 
     render(
-      <ProtocolBuilder adapter={adapter} protocolId={host.protocolId}>
-        <AttributeInventor />
-      </ProtocolBuilder>,
+      <DialogProvider>
+        <ProtocolBuilder adapter={adapter} protocolId={host.protocolId}>
+          <AttributeInventor />
+        </ProtocolBuilder>
+      </DialogProvider>,
     );
 
     await user.click(

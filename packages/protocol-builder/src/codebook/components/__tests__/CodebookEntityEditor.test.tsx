@@ -14,6 +14,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
@@ -21,11 +22,13 @@ import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
 /** Every editor here edits a protocol written in English. */
 function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <ProtocolLocalizationProvider
-      localization={{ defaultLocale: 'en', locales: ['en'] }}
-    >
-      {children}
-    </ProtocolLocalizationProvider>
+    <CodebookEditorHost>
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en'] }}
+      >
+        {children}
+      </ProtocolLocalizationProvider>
+    </CodebookEditorHost>
   );
 }
 
@@ -419,6 +422,7 @@ describe('CodebookEntityEditor', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ icon: 'add-a-place' }),
+        undefined,
       );
     });
   });

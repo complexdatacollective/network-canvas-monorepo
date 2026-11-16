@@ -1,7 +1,7 @@
 ---
 title: Libro de códigos
 navOrder: 5
-translatedFrom: af7d2a61b6a7e2d42c3fb57b78ba2ad55fe4c44b
+translatedFrom: 61fa02d4f60b21a6796dae2c39c0a5cdf38938d2
 ---
 
 <Definition>
@@ -39,6 +39,8 @@ En Architect, cada nuevo tipo de nodo o de vínculo empieza con el siguiente col
 
 Cada tipo de nodo tiene una forma predeterminada: círculo, cuadrado o rombo. Si no se ha configurado ninguna asignación, todos los nodos de ese tipo usan la forma predeterminada.
 
+En un protocolo del esquema 9 también puedes añadir a un tipo de nodo formas propias a partir de archivos SVG, y usarlas en cualquier lugar donde elegirías una forma integrada. Consulta [Formas de nodo personalizadas](/es/design-protocols/custom-node-shapes).
+
 ### Asignar la forma según un atributo de nodo {#mapping-a-node-variable-to-shape}
 
 En Architect también puedes hacer que la forma de un tipo de nodo sea **dinámica**, para que los nodos de un mismo tipo cambien de forma según el valor de un atributo. Architect llama **atributo** a cada definición del libro de códigos (esta documentación a menudo la llama variable), y lo que se guarda en cada nodo concreto es el valor de ese atributo.
@@ -55,7 +57,7 @@ La forma de un tipo de nodo solo se puede asignar a partir de un atributo cada v
 - En los atributos **categóricos**, **ordinales** o **booleanos**, asignas una forma a cada valor discreto. Los valores que dejes sin asignar usan la forma predeterminada.
 - En los atributos **numéricos** o **escalares**, defines hasta dos **umbrales** numéricos. Los valores inferiores al primer umbral usan la forma predeterminada, y cada umbral establece la forma que se usa para los valores iguales o superiores al suyo.
 
-Las formas disponibles son las mismas que para la forma predeterminada: círculo, cuadrado y rombo. Cada una, incluida la predeterminada, se elige haciendo clic en su muestra, que se dibuja con el color del propio tipo de nodo. Architect señala los valores que siguen sin asignar y que usarán la forma predeterminada, y no guarda una asignación para un atributo numérico o escalar hasta que hayas añadido al menos un umbral.
+Las formas disponibles son las mismas que para la forma predeterminada: círculo, cuadrado y rombo, seguidas de las [formas personalizadas](/es/design-protocols/custom-node-shapes) que hayas añadido al tipo de nodo. Cada una, incluida la predeterminada, se elige haciendo clic en su muestra, que se dibuja con el color del propio tipo de nodo. Architect señala los valores que siguen sin asignar y que usarán la forma predeterminada, y no guarda una asignación para un atributo numérico o escalar hasta que hayas añadido al menos un umbral.
 
 #### Ejemplo booleano: personas y lugares {#boolean-example-people-and-places}
 

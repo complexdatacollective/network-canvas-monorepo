@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render as renderBare, screen, within } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -14,6 +16,15 @@ const protocol = {
   assetManifest: {},
   stages: [],
 } satisfies CurrentProtocol;
+
+const render = (ui: ReactElement) =>
+  renderBare(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={new QueryClient()}>
+        {children}
+      </QueryClientProvider>
+    ),
+  });
 
 const renderStage = (type: string) =>
   render(

@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { v4 as uuid } from 'uuid';
@@ -98,21 +99,23 @@ describe('Codebook delete confirmations', () => {
 
     render(
       <Provider store={store}>
-        <DialogProvider>
-          <Variables
-            entity="node"
-            type={PERSON}
-            variables={[
-              {
-                id: SPARE_VARIABLE,
-                name: 'spare_variable',
-                component: 'Text',
-                inUse: false,
-                usage: [],
-              },
-            ]}
-          />
-        </DialogProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <DialogProvider>
+            <Variables
+              entity="node"
+              type={PERSON}
+              variables={[
+                {
+                  id: SPARE_VARIABLE,
+                  name: 'spare_variable',
+                  component: 'Text',
+                  inUse: false,
+                  usage: [],
+                },
+              ]}
+            />
+          </DialogProvider>
+        </QueryClientProvider>
       </Provider>,
     );
 
@@ -142,14 +145,16 @@ describe('Codebook delete confirmations', () => {
 
     render(
       <Provider store={store}>
-        <DialogProvider>
-          <EntityType
-            entity="node"
-            type={SPARE_TYPE}
-            usage={[]}
-            inUse={false}
-          />
-        </DialogProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <DialogProvider>
+            <EntityType
+              entity="node"
+              type={SPARE_TYPE}
+              usage={[]}
+              inUse={false}
+            />
+          </DialogProvider>
+        </QueryClientProvider>
       </Provider>,
     );
 

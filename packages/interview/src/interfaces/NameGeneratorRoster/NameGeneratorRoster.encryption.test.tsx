@@ -23,6 +23,7 @@ import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { interviewToastManager } from '../../toast/interviewToastManager';
 import type { StageProps } from '../../types';
+import { TestInterviewAssets } from '../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
@@ -131,19 +132,21 @@ async function renderRoster(
   render(
     <InterviewI18nProvider>
       <Provider store={store}>
-        <TestProtocolLocalization>
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <DndStoreProvider>
-              <NameGeneratorRoster
-                stage={stage}
-                getNavigationHelpers={() => ({
-                  moveForward: () => {},
-                  moveBackward: () => {},
-                })}
-              />
-            </DndStoreProvider>
-          </CurrentStepProvider>
-        </TestProtocolLocalization>
+        <TestInterviewAssets>
+          <TestProtocolLocalization>
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <DndStoreProvider>
+                <NameGeneratorRoster
+                  stage={stage}
+                  getNavigationHelpers={() => ({
+                    moveForward: () => {},
+                    moveBackward: () => {},
+                  })}
+                />
+              </DndStoreProvider>
+            </CurrentStepProvider>
+          </TestProtocolLocalization>
+        </TestInterviewAssets>
       </Provider>
     </InterviewI18nProvider>,
   );

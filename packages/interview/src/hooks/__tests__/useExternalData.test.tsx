@@ -1,4 +1,5 @@
 import { render, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -49,7 +50,16 @@ vi.mock('react-redux', () => ({
     selector === 'getAssetManifest' ? assetManifest : codebook,
 }));
 
+import { InterviewQueryClientProvider } from '../../contexts/InterviewQueryClientProvider';
 import useExternalData, { type ExternalDataStatus } from '../useExternalData';
+
+function withQueryClient(children: ReactNode) {
+  return (
+    <InterviewQueryClientProvider protocolKey="test-protocol">
+      {children}
+    </InterviewQueryClientProvider>
+  );
+}
 
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 
@@ -73,13 +83,14 @@ function observe(dataSource: string) {
     return null;
   }
 
-  render(<Probe />);
+  render(withQueryClient(<Probe />));
   return observations;
 }
 
 beforeEach(() => {
   onRequestAsset.mockReset();
   parseExternalNetworkAsset.mockReset();
+  captureException.mockClear();
 });
 
 /**
@@ -127,13 +138,15 @@ describe('useExternalData reports where the read has got to', () => {
       });
       return null;
     }
-    const { rerender } = render(<Probe dataSource="asset-1" />);
+    const { rerender } = render(
+      withQueryClient(<Probe dataSource="asset-1" />),
+    );
     await waitFor(() => {
       expect(observations.at(-1)).toEqual({ state: 'ready', hasData: true });
     });
 
     const switchedAt = observations.length;
-    rerender(<Probe dataSource="asset-2" />);
+    rerender(withQueryClient(<Probe dataSource="asset-2" />));
 
     // From the first render with the new source, the first source's data is
     // gone and the new source is loading; its read never settles here.
@@ -181,5 +194,9 @@ describe('useExternalData reports where the read has got to', () => {
       expect(observations.at(-1)?.state).toBe('error');
     });
     expect(observations.map((o) => o.state)).not.toContain('ready');
+    expect(captureException).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'asset unavailable' }),
+      { feature: 'external-data' },
+    );
   });
 });

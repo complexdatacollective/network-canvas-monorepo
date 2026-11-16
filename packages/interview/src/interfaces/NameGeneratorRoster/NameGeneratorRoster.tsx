@@ -28,6 +28,7 @@ import Node from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { resolveNodeShapeReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -42,6 +43,7 @@ import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
+import { useCustomShapeSvgs } from '../../hooks/useCustomShapeSvgs';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useStageSubjectName } from '../../hooks/useStageSubjectName';
@@ -152,6 +154,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   const dropNodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
+  const shapeSvgs = useCustomShapeSvgs();
 
   const { status: itemsStatus, items, excludeItems } = useItems(props);
 
@@ -425,8 +428,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           shape={
             nodeTypeDefinition && item.data
               ? resolveNodeShape(
-                  nodeTypeDefinition.shape,
+                  nodeTypeDefinition,
                   item.data[entityAttributesProperty],
+                  shapeSvgs,
                 )
               : undefined
           }
@@ -541,7 +545,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                   <DropOverlay
                     dropTargetId={sourceDropTargetId}
                     nodeColor={dropNodeColor}
-                    nodeShape={nodeTypeDefinition?.shape.default}
+                    nodeShape={resolveNodeShapeReference(
+                      nodeTypeDefinition?.shape.default,
+                      nodeTypeDefinition?.customShapes,
+                      shapeSvgs,
+                    )}
                     message="Drop here to remove"
                   />
                 )}

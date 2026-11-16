@@ -15,6 +15,10 @@ vi.mock('../../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
 }));
 
+vi.mock('../../../../hooks/useCustomShapeSvgs', () => ({
+  useCustomShapeSvgs: () => ({}),
+}));
+
 // The stable `name` is protocol bookkeeping; only the localized `label` is
 // shown to the participant, so the two deliberately differ.
 const { nodeTypeDefinition } = vi.hoisted(() => ({
