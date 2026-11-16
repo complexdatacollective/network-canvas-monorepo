@@ -46,9 +46,11 @@ function mothersOf(graph: GeneticGraph, id: string): AnnotatedParent[] {
  *   `atRiskCarrier` (de novo is not excluded — NOT obligate).
  * - The maternal grandmother and maternal aunts of an affected male →
  *   `atRiskCarrier`; the maternal uncles → `atRiskAffected`.
- * - From every carrier female (obligate or at-risk), DAUGHTERS → `atRiskCarrier`
- *   (themselves carrier females, recursed) and SONS → `atRiskAffected`. NO
- *   male-to-male transmission.
+ * - From every carrier female (obligate or at-risk) and every AFFECTED female,
+ *   DAUGHTERS → `atRiskCarrier` (themselves carrier females, recursed) and SONS
+ *   → `atRiskAffected`. An affected female may be homozygous or a manifesting
+ *   heterozygote, so her children are only ever at risk, and nothing is
+ *   inferred about her parents. NO male-to-male transmission.
  * - A person whose sex is `unknown` in a sex-dependent step → `unknown`
  *   (sex-blocked); such a node is simply never written.
  */
@@ -179,12 +181,17 @@ export function computeXLinkedRecessive(
     }
   }
 
-  // (3) Propagate DOWN from every carrier female (obligate and at-risk) through
-  // the maternal line: daughters become at-risk carrier females (recursed via
-  // the visited-set), sons become at-risk affected. No male-to-male step.
+  // (3) Propagate DOWN from every carrier female (obligate and at-risk) and
+  // every affected female through the maternal line: daughters become at-risk
+  // carrier females (recursed via the visited-set), sons become at-risk
+  // affected. No male-to-male step.
+  const affectedFemales = [...affected].filter(
+    (id) => resolveSex(id) === 'female',
+  );
   const carrierFemaleSeeds = [
     ...obligateCarrierFemales,
     ...atRiskCarrierFemales,
+    ...affectedFemales,
   ];
   const visitedFemales = new Set<string>();
   graph.propagate(

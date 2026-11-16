@@ -364,3 +364,53 @@ means _"insufficient data to place this person on a sex-linked lineage,"_ not
 
 **Decision.** **Accept as-is; document the data-completeness dependence and the
 inclusive gamete fallback. No new runtime signal.**
+
+---
+
+## 6. X-linked recessive: a female recorded as affected passes risk to her children
+
+### What the engine does
+
+In `computeXLinkedRecessive` (`patterns/xLinked.ts`), every female recorded as
+affected is a starting point for the same downward walk that a carrier female
+starts (step 3): her daughters get `atRiskCarrier`, her sons get
+`atRiskAffected`, and the walk continues down through her daughters exactly as
+it does from a carrier. Her own status stays `affected`, and nothing new is
+inferred about her parents. Every write goes through the precedence lattice
+(§4), so a stronger status reached by another rule is kept: a daughter who also
+has an affected father stays `obligateCarrier`, and a child recorded as affected
+stays `affected`. A child of uncertain sex is left `unknown` and the walk does
+not continue through them (§5b).
+
+### Rationale
+
+**Her children are at risk, never certain.** A woman recorded as affected by an
+X-linked recessive condition may be homozygous, or she may be a manifesting
+heterozygote (for example through skewed X-inactivation). A homozygous mother
+passes a disease X to every child; a manifesting heterozygote passes it to about
+half. The recorded pedigree cannot tell these apart, so the engine assumes
+neither and gives her children the at-risk statuses a carrier mother's children
+get. This under-states the homozygous case rather than over-claiming certainty
+for the heterozygous one, in line with the conservative stance of §5.
+
+**Her parents are left alone.** A homozygous daughter implies a carrier mother
+and an affected father, but a manifesting heterozygote implies only that one
+parent passed a disease X, and a de novo variant implies neither. Because the
+engine does not decide which of these applies, it adds no inference upward. Her
+parents still receive any status the existing rules give them (for example a
+carrier status reached through an affected brother).
+
+**The earlier behaviour was an oversight.** The carrier-female helpers return
+early for anyone in the affected set, so an affected woman was never a seed for
+step 3. Her children were marked only when her own mother happened to be a
+derived carrier, because the walk then reached her as a daughter and continued
+through her. The same woman's children therefore got statuses in one family (an
+affected woman whose mother has two affected sons) and none in another (an
+affected woman whose only recorded affected relative is her father), and a lone
+affected woman's children got none at all.
+
+### Decision
+
+**Seed the step-3 walk from every affected female, with at-risk statuses for
+her children and no upward inference.** The status of her children no longer
+depends on whether her mother happened to be marked a carrier.
