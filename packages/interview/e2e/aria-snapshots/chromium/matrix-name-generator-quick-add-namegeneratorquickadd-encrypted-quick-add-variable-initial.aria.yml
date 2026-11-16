@@ -10,4 +10,5 @@
     - button "Passphrase": 🔑
     - progressbar "Progress indicator": x
     - button "Next Step"
+    - status: You can continue to the next step.
   - region "Interview notifications"
