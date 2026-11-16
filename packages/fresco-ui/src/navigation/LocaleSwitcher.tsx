@@ -55,12 +55,6 @@ const messages = defineMessages({
     description:
       'Placeholder of the search box that filters the list of interface languages.',
   },
-  triggerName: {
-    id: 'frescoUi.localeSwitcher.triggerName',
-    defaultMessage: 'Interface language: {current}',
-    description:
-      'Accessible name of the switcher button; {current} is the chosen language’s name or the automatic wording.',
-  },
   noResults: {
     id: 'frescoUi.localeSwitcher.noResults',
     defaultMessage: 'No languages match your search.',
@@ -287,9 +281,7 @@ export default function LocaleSwitcher({
   const triggerLocale = selected.value ?? automaticLocale;
   const triggerLabel =
     selected.value === null ? autonymOf(automaticLocale) : selected.autonym;
-  const triggerName = intl.formatMessage(messages.triggerName, {
-    current: selected.autonym,
-  });
+  const triggerName = `Interface language: ${selected.autonym}`;
   const Chevron = side === 'top' ? ChevronUp : ChevronDown;
   const responsive = display === 'responsive';
   const globe = <Globe aria-hidden />;
@@ -316,6 +308,7 @@ export default function LocaleSwitcher({
       {display === 'icon' ? (
         <Combobox.Trigger
           aria-label={triggerName}
+          lang={renderTrigger ? undefined : 'en'}
           onKeyDown={onTriggerKeyDown}
           render={
             renderTrigger ?? (
@@ -325,6 +318,7 @@ export default function LocaleSwitcher({
                 size={size}
                 icon={globe}
                 aria-label={triggerName}
+                lang="en"
                 className={className}
               />
             )

@@ -18,14 +18,21 @@ const ENCODED_MESSAGE_PREFIX = '@codaco/app-i18n/error/v1:';
 /** A named ICU argument nothing supplied a value for. */
 const UNFORMATTED_PLACEHOLDER = /\{[A-Za-z_][A-Za-z0-9_]*\s*[,}]/;
 
-/** The attributes a researcher reads, beside the text nodes. */
-const COPY_ATTRIBUTES = [
-  'aria-label',
-  'aria-description',
-  'placeholder',
-  'title',
-  'alt',
-];
+/**
+ * The attributes a researcher reads, beside the text nodes.
+ *
+ * `aria-label` and `aria-description` are not here: only a screen reader reads
+ * them, and text only a screen reader reads is English in every language (see
+ * "Text only a screen reader reads is not a message" in
+ * `packages/app-i18n/README.md`).
+ */
+const COPY_ATTRIBUTES = ['placeholder', 'title', 'alt'];
+
+// Screen-reader-only English is marked `lang="en"` by rule (see the
+// app-i18n README, "Text only a screen reader reads is not a message"), so
+// anything whose closest `lang` is `en` is English on purpose, not a leak.
+const isEnglishByRule = (element: Element | null) =>
+  element?.closest('[lang]')?.getAttribute('lang') === 'en';
 
 const collapse = (text: string) => text.replaceAll(/\s+/gu, ' ').trim();
 
@@ -39,12 +46,15 @@ const collapse = (text: string) => text.replaceAll(/\s+/gu, ' ').trim();
  */
 const visibleStrings = (): string[] => {
   const seen: string[] = [];
+
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    if (isEnglishByRule(node.parentElement)) continue;
     const text = collapse(node.textContent ?? '');
     if (text !== '') seen.push(text);
   }
   for (const element of document.body.querySelectorAll('*')) {
+    if (isEnglishByRule(element)) continue;
     for (const name of COPY_ATTRIBUTES) {
       const value = element.getAttribute(name);
       if (value === null) continue;

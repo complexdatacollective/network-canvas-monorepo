@@ -34,13 +34,6 @@ const messages = defineMessages({
     defaultMessage: 'Clear sorting',
     description: 'Menu action removing the active collection sort.',
   },
-  toggleDirection: {
-    id: 'frescoUi.collectionSortSelect.toggleDirection',
-    defaultMessage:
-      '{direction, select, asc {Sort ascending, click to toggle} other {Sort descending, click to toggle}}',
-    description:
-      'Accessible name of the sort-direction toggle button; announces the current direction.',
-  },
 });
 
 type CollectionSortSelectProps = {
@@ -197,9 +190,12 @@ export function CollectionSortSelect({
           variant={variant}
           size={size}
           onClick={handleToggleDirection}
-          aria-label={intl.formatMessage(messages.toggleDirection, {
-            direction: currentDirection,
-          })}
+          lang="en"
+          aria-label={
+            currentDirection === 'asc'
+              ? 'Sort ascending, click to toggle'
+              : 'Sort descending, click to toggle'
+          }
         >
           {currentDirection === 'asc' ? (
             <ArrowUpIcon className="size-3.5" />

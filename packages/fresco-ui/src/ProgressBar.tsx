@@ -2,19 +2,9 @@
 
 import { Progress } from '@base-ui/react/progress';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { cx } from './utils/cva';
-
-const messages = defineMessages({
-  progressIndicator: {
-    id: 'frescoUi.progressBar.label',
-    defaultMessage: 'Progress indicator',
-    description:
-      'Accessible name of a progress bar whose caller supplied no label.',
-  },
-});
 
 type ProgressBarProps = {
   indeterminate?: boolean;
@@ -54,7 +44,8 @@ const ProgressBar = ({
       // server's on the server and the browser's in the browser: two different
       // strings for one element, and neither is the language on screen.
       locale={intl.locale}
-      aria-label={label ?? intl.formatMessage(messages.progressIndicator)}
+      aria-label={label ?? 'Progress indicator'}
+      lang="en"
       onClick={onClick}
       className={cx(
         // Base styles

@@ -68,7 +68,7 @@ for (const { kind, label } of [
     const settings = await page.context().newPage();
     await settings.goto('/');
     const switcher = settings.getByRole('combobox', {
-      name: /^(Idioma de la interfaz|Interface language):/,
+      name: /^Interface language:/,
     });
     const language = settings.getByRole('dialog', {
       name: /^(Idioma de la interfaz|Interface language)$/,

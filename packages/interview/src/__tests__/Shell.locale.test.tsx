@@ -323,12 +323,15 @@ describe('Shell interview languages', () => {
       <AppI18nProvider
         locale="fr"
         locales={[{ locale: 'fr', label: 'Français', direction: 'ltr' }]}
-        messages={{ 'interview.navigation.nextStep': 'Wrong host message' }}
+        messages={{
+          'interview.navigation.exitInterview': 'Wrong host message',
+        }}
       >
         <Shell
           {...handlers}
           payload={payload}
           requestedLocales={['es-MX']}
+          onExit={vi.fn()}
           disableAnalytics
         />
       </AppI18nProvider>,
@@ -340,16 +343,17 @@ describe('Shell interview languages', () => {
     await expectVisibleHeading(titles.es, region);
     expectBuiltIn(builtIn.es, region);
     expect(
-      within(region).getByRole('button', { name: 'Next Step' }),
-    ).toBeVisible();
-    expect(
       within(region).getByRole('textbox', {
         name: /^Nombre elegido por el estudio/,
       }),
     ).toBeVisible();
-    expect(
-      within(region).queryByRole('button', { name: 'Wrong host message' }),
-    ).not.toBeInTheDocument();
+    // The interview's own message shows, not the host's override of it.
+    await userEvent.click(
+      within(region).getByRole('button', { name: 'Settings' }),
+    );
+    const exit = await screen.findByTestId('exit-button');
+    expect(exit).not.toHaveTextContent('Wrong host message');
+    expect(exit).toHaveTextContent('Salir de la entrevista');
   });
 
   it('applies a stated preference at once without writing to the host', async () => {

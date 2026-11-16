@@ -7,7 +7,6 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { EdgeColor } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
 import { edgeColorMap } from '../utils/edgeColorMap';
 import Node from './ConnectedNode';
@@ -82,8 +81,8 @@ export default function Pair({
       {labelId && (
         <span id={labelId} className="sr-only">
           {intl.formatList([
-            fromLabel ?? intl.formatMessage(messages.firstNode),
-            toLabel ?? intl.formatMessage(messages.secondNode),
+            fromLabel ?? 'First item',
+            toLabel ?? 'second item',
           ])}
         </span>
       )}

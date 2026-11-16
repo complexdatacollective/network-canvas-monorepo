@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { AppErrorMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { AppErrorMessage } from '@codaco/app-i18n/react';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
@@ -41,7 +41,6 @@ import {
   getPromptAdditionalAttributes,
   resolveNodeShape,
 } from '../../../selectors/session';
-import { interfaceMessages } from '../../messages';
 
 function convertToNodeColor(color: NodeColorSequence): string {
   switch (color) {
@@ -102,7 +101,6 @@ export default function QuickAddField({
   hint,
   ...validationProps
 }: QuickAddFieldProps) {
-  const intl = useAppIntl();
   const [checked, setChecked] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -344,11 +342,8 @@ export default function QuickAddField({
           <button
             type="button"
             ref={buttonRef}
-            aria-label={
-              checked
-                ? intl.formatMessage(interfaceMessages.quickAddInput)
-                : undefined
-            }
+            aria-label={checked ? 'Quick add input' : undefined}
+            lang={checked ? 'en' : undefined}
             className="focusable relative aspect-square size-28 rounded-full"
             data-testid="quick-add-toggle"
           >

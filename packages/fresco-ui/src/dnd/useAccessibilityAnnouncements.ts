@@ -1,65 +1,12 @@
 'use client';
 
-import { useDirection } from '@base-ui/react/direction-provider';
 import { useCallback, useEffect, useRef } from 'react';
-
-import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
-
-import { resolveIntl } from '../utils/resolveIntl';
-
-const messages = defineMessages({
-  dropTarget: {
-    id: 'frescoUi.dragAndDrop.dropTarget',
-    defaultMessage: 'Drop target {position, number} of {total, number}',
-    description:
-      'Live-region description of the drop target keyboard focus has reached, when the target has no name of its own.',
-  },
-  namedDropTarget: {
-    id: 'frescoUi.dragAndDrop.namedDropTarget',
-    defaultMessage: 'Drop target {position, number} of {total, number}: {name}',
-    description:
-      'Live-region description of the drop target keyboard focus has reached; {name} is the target’s own name.',
-  },
-  instructions: {
-    id: 'frescoUi.dragAndDrop.instructions',
-    defaultMessage:
-      'Use arrow keys to navigate between drop targets. Press Space or Enter to drop. Press Escape to cancel.',
-    description:
-      'Live-region instructions announced once when a keyboard drag begins.',
-  },
-  started: {
-    id: 'frescoUi.dragAndDrop.started',
-    defaultMessage: 'Started dragging. {details}',
-    description:
-      'Live-region announcement when a keyboard drag begins; {details} names what is being dragged.',
-  },
-  navigated: {
-    id: 'frescoUi.dragAndDrop.navigated',
-    defaultMessage: 'Navigated to drop target',
-    description:
-      'Live-region announcement after keyboard navigation reaches a drop target that supplied no description.',
-  },
-  dropped: {
-    id: 'frescoUi.dragAndDrop.dropped',
-    defaultMessage: 'Dropped item. {details}',
-    description:
-      'Live-region announcement after a keyboard drop; {details} names where it landed.',
-  },
-  cancelled: {
-    id: 'frescoUi.dragAndDrop.cancelled',
-    defaultMessage: 'Drag cancelled',
-    description: 'Live-region announcement when a keyboard drag is abandoned.',
-  },
-});
 
 /**
  * Custom hook for managing accessibility announcements in drag and drop operations.
  * Creates and manages an ARIA live region that is properly cleaned up with React's lifecycle.
  */
 export function useAccessibilityAnnouncements() {
-  const { locale } = useAppIntl();
-  const direction = useDirection();
   const liveRegionRef = useRef<HTMLElement | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
@@ -70,6 +17,9 @@ export function useAccessibilityAnnouncements() {
       liveRegion.setAttribute('role', 'status');
       liveRegion.setAttribute('aria-live', 'polite');
       liveRegion.setAttribute('aria-atomic', 'true');
+      // The region lives in document.body, outside any locale subtree.
+      liveRegion.setAttribute('lang', 'en');
+      liveRegion.setAttribute('dir', 'ltr');
 
       // Visually hidden but accessible to screen readers
       liveRegion.style.position = 'absolute';
@@ -99,13 +49,6 @@ export function useAccessibilityAnnouncements() {
     };
   }, []);
 
-  // This region lives in document.body, outside the control's locale subtree.
-  // Preserve its identity while giving assistive technology the active UI voice.
-  useEffect(() => {
-    liveRegionRef.current?.setAttribute('lang', locale);
-    liveRegionRef.current?.setAttribute('dir', direction);
-  }, [locale, direction]);
-
   const announce = useCallback((message: string): void => {
     const region = liveRegionRef.current;
     if (!region) return;
@@ -129,46 +72,29 @@ export function useAccessibilityAnnouncements() {
   return { announce };
 }
 
-// Keyboard navigation helpers (kept as pure functions). Each takes the
-// host's formatter rather than reaching for `useAppIntl`, so it stays callable
-// from outside a render — and, absent one, renders the English it always did.
+// Keyboard navigation helpers (kept as pure functions).
 export function getDropTargetDescription(
   index: number,
   total: number,
   targetName?: string,
-  intl?: IntlShape,
 ): string {
-  const values = { position: index + 1, total };
-  return targetName
-    ? resolveIntl(intl).formatMessage(messages.namedDropTarget, {
-        ...values,
-        name: targetName,
-      })
-    : resolveIntl(intl).formatMessage(messages.dropTarget, values);
+  const description = `Drop target ${index + 1} of ${total}`;
+  return targetName ? `${description}: ${targetName}` : description;
 }
 
 export function getKeyboardDragAnnouncement(
   action: 'start' | 'navigate' | 'drop' | 'cancel',
   details?: string,
-  intl?: IntlShape,
 ): string {
-  const formatter = resolveIntl(intl);
   switch (action) {
     case 'start':
-      // Instructions are their own message rather than interpolated into the
-      // first: a translator moving the details to the end of the sentence
-      // should not have to carry three sentences of keyboard help with them.
-      return `${formatter.formatMessage(messages.started, {
-        details: details ?? '',
-      })} ${formatter.formatMessage(messages.instructions)}`;
+      return `Started dragging. ${details ?? ''} Use arrow keys to navigate between drop targets. Press Space or Enter to drop. Press Escape to cancel.`;
     case 'navigate':
-      return details ?? formatter.formatMessage(messages.navigated);
+      return details ?? 'Navigated to drop target';
     case 'drop':
-      return formatter.formatMessage(messages.dropped, {
-        details: details ?? '',
-      });
+      return `Dropped item. ${details ?? ''}`;
     case 'cancel':
-      return formatter.formatMessage(messages.cancelled);
+      return 'Drag cancelled';
     default:
       return '';
   }

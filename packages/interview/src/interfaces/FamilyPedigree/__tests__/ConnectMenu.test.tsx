@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import ConnectMenu, { describeConnection } from '../components/ConnectMenu';
 import { readFamily } from '../model';
@@ -10,7 +9,6 @@ import { PedigreeWordsProvider } from '../pedigreeWords';
 import { config, link, person } from './fixtures';
 import { pedigreeWordsIn, shownSentence } from './pedigreeWords';
 
-const intl = resolveInterviewIntl();
 const words = pedigreeWordsIn();
 
 const SEX_LABELS = {
@@ -79,7 +77,6 @@ describe('ConnectMenu', () => {
       describeConnection(
         connection,
         words,
-        intl,
         family,
         (id) => (id === 'julie' ? 'Julie' : 'Rob'),
         PARENT_KIND_LABELS,
@@ -107,7 +104,6 @@ describe('ConnectMenu', () => {
           carriedPregnancy: true,
         },
         words,
-        intl,
         family,
         (id) => names.get(id) ?? '',
         PARENT_KIND_LABELS,
@@ -119,7 +115,6 @@ describe('ConnectMenu', () => {
       describeConnection(
         { kind: 'partner', firstId: 'julie', secondId: 'rob', current: false },
         words,
-        intl,
         family,
         (id) => names.get(id) ?? '',
         PARENT_KIND_LABELS,

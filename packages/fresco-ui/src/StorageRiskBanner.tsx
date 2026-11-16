@@ -3,10 +3,7 @@
 import { Download } from 'lucide-react';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-import {
-  defineMessages,
-  type MessageDescriptor,
-} from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Alert, AlertDescription } from './Alert';
@@ -25,24 +22,6 @@ const messages = defineMessages({
     id: 'frescoUi.storageRiskBanner.dismiss',
     defaultMessage: 'Dismiss',
     description: 'Accessible name of the banner dismiss button.',
-  },
-  highRisk: {
-    id: 'frescoUi.storageRiskBanner.highRisk',
-    defaultMessage: 'High data-loss risk',
-    description:
-      'Context label announced before a high-risk browser-storage warning.',
-  },
-  mediumRisk: {
-    id: 'frescoUi.storageRiskBanner.mediumRisk',
-    defaultMessage: 'Medium data-loss risk',
-    description:
-      'Context label announced before a medium-risk browser-storage warning.',
-  },
-  lowRisk: {
-    id: 'frescoUi.storageRiskBanner.lowRisk',
-    defaultMessage: 'Low data-loss risk',
-    description:
-      'Context label announced before a low-risk browser-storage warning.',
   },
 });
 
@@ -78,10 +57,10 @@ const intentByRisk: Record<StorageRisk, StorageRiskIntent> = {
   3: 'info',
 };
 
-const contextLabelByRisk: Record<StorageRisk, MessageDescriptor> = {
-  1: messages.highRisk,
-  2: messages.mediumRisk,
-  3: messages.lowRisk,
+const contextLabelByRisk: Record<StorageRisk, string> = {
+  1: 'High data-loss risk',
+  2: 'Medium data-loss risk',
+  3: 'Low data-loss risk',
 };
 
 /**
@@ -169,7 +148,7 @@ export function StorageRiskBanner({
   return (
     <Alert
       variant={intent}
-      contextLabel={intl.formatMessage(contextLabelByRisk[risk])}
+      contextLabel={contextLabelByRisk[risk]}
       density="compact"
       className={cx(
         'border-outline my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-6 py-2 shadow-none!',

@@ -96,10 +96,26 @@ describe('the interview package built-in messages', () => {
   });
 });
 
-// The interview's messages are written in English. Those a protocol may
-// reword are Network Canvas's wording for a schema 9 protocol, so they are
-// translated into every language the schema says Network Canvas supplies.
-// The rest is text only screen readers read, which stays English.
+// Every message the interview declares is text shown in the interview's
+// language, so each one is translated: wording a protocol may reword, or text
+// a correction added. Text only a screen reader reads is not a message. It
+// stays English, written as a plain string where it is used and marked
+// `lang="en"`, so that it is never mistaken for text to translate and a
+// screen reader reads it in an English voice.
+describe('the messages the interview declares', () => {
+  it('are all translated: wording a protocol may reword, or text a correction added', () => {
+    const wording = new Set(SUPPLIED_TEXTS.map(({ wording: id }) => id));
+    expect(
+      Object.keys(committedEn).filter(
+        (id) => !wording.has(id) && !isAddedTextId(id),
+      ),
+    ).toEqual([]);
+  });
+});
+
+// The interview's messages that a protocol may reword are Network Canvas's
+// wording for a schema 9 protocol, so they are translated into every
+// language the schema says Network Canvas supplies.
 describe('the catalogues of the wording Network Canvas supplies', () => {
   it('has a message, in English, for every text the schema says it words', () => {
     expect(wordingIds.length).toBeGreaterThan(200);

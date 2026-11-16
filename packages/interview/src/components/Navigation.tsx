@@ -14,7 +14,6 @@ import {
 import { motion } from 'motion/react';
 import {
   type ComponentProps,
-  type ReactNode,
   type Ref,
   useCallback,
   useId,
@@ -23,7 +22,7 @@ import {
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -183,10 +182,6 @@ const MAX_TEXT_SCALE_PERCENT = Math.round(
 );
 const TEXT_SCALE_PERCENT_STEP = 10;
 
-const renderHiddenChunks = (chunks: ReactNode[]) => (
-  <span className="sr-only">{chunks}</span>
-);
-
 type NavigationProps = {
   moveBackward: () => void;
   moveForward: () => void;
@@ -229,7 +224,6 @@ const Navigation = ({
   className,
   goToStage,
 }: NavigationProps) => {
-  const intl = useAppIntl();
   // The Shell lays the navigation out in the interview's direction, so in a
   // right-to-left interview Back sits on the right and points right.
   const direction = useDirection();
@@ -430,7 +424,8 @@ const Navigation = ({
                       '[&>.lucide]:h-[1.5em]!',
                       barIconButtonClassName,
                     )}
-                    aria-label={intl.formatMessage(messages.settings)}
+                    aria-label="Settings"
+                    lang="en"
                     data-testid="settings-button"
                   />
                 }
@@ -445,7 +440,7 @@ const Navigation = ({
                 }
                 align="start"
                 className="w-72 max-w-full"
-                aria-label={intl.formatMessage(messages.interviewSettings)}
+                aria-label="Interview settings"
               >
                 <div className="flex flex-col gap-2">
                   {userScalingEnabled && (
@@ -455,11 +450,9 @@ const Navigation = ({
                         className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold"
                       >
                         <ALargeSmall aria-hidden className="size-5 shrink-0" />
-                        <span className="sr-only">
-                          <AppMessage
-                            message={messages.textSize}
-                            values={{ hidden: renderHiddenChunks }}
-                          />
+                        <span className="sr-only" lang="en">
+                          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+                          {'Text size percentage'}
                         </span>
                       </legend>
                       <div ref={textSizeControlRef} className="w-full">
@@ -497,12 +490,8 @@ const Navigation = ({
                             setTextScaleInputValue(String(textScalePercent));
                           }}
                           stepperLabels={{
-                            decrease: intl.formatMessage(
-                              messages.decreaseTextSize,
-                            ),
-                            increase: intl.formatMessage(
-                              messages.increaseTextSize,
-                            ),
+                            decrease: 'Decrease text size',
+                            increase: 'Increase text size',
                           }}
                           stepperDisabled={{
                             decrease:
@@ -520,11 +509,10 @@ const Navigation = ({
                           aria-live="polite"
                           aria-atomic="true"
                           className="sr-only"
+                          lang="en"
                         >
-                          <AppMessage
-                            message={messages.currentTextSize}
-                            values={{ size: textScalePercent / 100 }}
-                          />
+                          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+                          {`Current text size: ${textScalePercent}%`}
                         </output>
                       </div>
                     </fieldset>
@@ -567,7 +555,8 @@ const Navigation = ({
           onClick={moveBackward}
           disabled={disableMoveBackward}
           icon={<BackIcon />}
-          aria-label={intl.formatMessage(messages.previousStep)}
+          aria-label="Previous Step"
+          lang="en"
           buttonRef={backButtonRef}
           data-testid="previous-button"
         />
@@ -586,7 +575,8 @@ const Navigation = ({
             type="button"
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
-            aria-label={intl.formatMessage(messages.goToScreen)}
+            aria-label="Go to another screen"
+            lang="en"
             onClick={() => setMenuOpen(true)}
             variants={variants}
             className={cx(
@@ -623,7 +613,8 @@ const Navigation = ({
           onClick={moveForward}
           disabled={disableMoveForward}
           icon={<ForwardIcon className="size-8" strokeWidth="3px" />}
-          aria-label={intl.formatMessage(messages.nextStep)}
+          aria-label="Next Step"
+          lang="en"
           buttonRef={forwardButtonRef}
           data-testid="next-button"
         />
@@ -666,7 +657,7 @@ const Navigation = ({
               )}
             >
               <Drawer.Popup
-                aria-label={intl.formatMessage(messages.goToScreen)}
+                aria-label="Go to another screen"
                 initialFocus={() =>
                   document.getElementById(STAGES_MENU_LIST_ID)
                 }

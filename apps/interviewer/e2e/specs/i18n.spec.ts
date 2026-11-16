@@ -731,7 +731,7 @@ test('the language chosen on welcome carries through the complete PIN setup on a
   await wizard.getByTestId('wizard-next').click();
   await expect(page).toHaveURL(/\/$/);
   await expect(
-    page.getByRole('combobox', { name: /^Idioma de la interfaz:/ }),
+    page.getByRole('combobox', { name: /^Interface language:/ }),
   ).toBeVisible();
   expect(await vault.readPersistedVaultRaw()).not.toBe(before);
   await page.reload();
@@ -744,7 +744,7 @@ test('the language chosen on welcome carries through the complete PIN setup on a
   await expectCompletePinRow(page, page.getByTestId('segmented-code-pin'));
   await typePin(page.getByTestId('segmented-code-pin'), '12345678');
   await expect(
-    page.getByRole('combobox', { name: /^Idioma de la interfaz:/ }),
+    page.getByRole('combobox', { name: /^Interface language:/ }),
   ).toBeVisible();
 });
 
