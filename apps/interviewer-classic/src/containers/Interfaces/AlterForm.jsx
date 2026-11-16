@@ -25,6 +25,4 @@ const mapDispatchToProps = {
 
 const withAlterStore = connect(makeMapStateToProps, mapDispatchToProps);
 
-export { AlterForm };
-
 export default withAlterStore(AlterForm);
