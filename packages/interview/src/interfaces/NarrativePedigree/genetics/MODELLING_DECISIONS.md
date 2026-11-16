@@ -459,11 +459,11 @@ explain them: the fathers of each female on the route down to that person, the
 person included when she is female. The route starts at the woman's child, or,
 on her mother's side, at the mother's other child (the woman's sister, aunt and
 so on). An affected son of hers and her mother's affected father have no such
-men. Her affected mother has her own father, counted the same way. A female with no recorded father stands for a man
-unrecorded as the father of her mother's children and for every recorded father
-of her mother's other children, because her father may be any of them. When one
-man appears for every affected person, he alone could explain all of the sides,
-and she is not marked. So her daughters by one father give her nothing without a
+men. Her affected mother has her own father, counted the same way. A female
+with no recorded father stands for a man unrecorded as the father of her
+mother's children and for every recorded father of her mother's other children,
+because her father may be any of them. When one man appears for every affected
+person, he alone could explain all of the sides, and she is not marked. So her daughters by one father give her nothing without a
 further side, and neither do her daughters with no recorded father when they
 could be his. Where an affected person is reached along more than one route,
 any man on any of those routes counts for them.
@@ -513,9 +513,9 @@ and not recorded as such. That is the kind of single event the rule sets aside
 only when a second, separate one would also be needed. So a man who appears on
 the route to every affected person cancels the rule. This covers the woman's
 daughters by one father, and also her own daughter and her sister's daughter
-when one man fathered both. Daughters with no recorded father may share one father,
-and that father may be one of the recorded men; in practice he is usually the
-same partner, not entered a second time. The engine assumes that a father left
+when one man fathered both. Daughters with no recorded father may share one
+father, and that father may be one of the recorded men; in practice he is
+usually the same partner, not entered a second time. The engine assumes that a father left
 out of the record of one mother's children is not the same man as a father left
 out of another mother's, so those two never cancel each other.
 
@@ -535,13 +535,14 @@ from the pedigree.
 The relaxation for a female who only links further down can mark a woman whose
 evidence an unrecorded affected man would explain. An affected man recorded as
 the father of another child of that female's mother blocks her line, so this
-applies only to a man who is missing from the pedigree. In a family of a grandmother, a grandfather, their affected son, their daughter
-(the woman), her daughter with no recorded father and that daughter's affected
-son, the woman is marked, although her daughter's unrecorded father could
-explain the grandson. This is accepted because the father of a woman whose son
-is affected is usually known to the family and recorded when he is affected
-himself, and requiring him would withhold the status from the much commoner
-families where he is simply missing.
+applies only to a man who is missing from the pedigree. In a family of a
+grandmother, a grandfather, their affected son, their daughter (the woman), her
+daughter with no recorded father and that daughter's affected son, the woman is
+marked, although her daughter's unrecorded father could explain the grandson.
+This is accepted because the father of a woman whose son is affected is usually
+known to the family and recorded when he is affected himself, and requiring him
+would withhold the status from the much commoner families where he is simply
+missing.
 
 A woman more than two generations above the affected males gets no status when
 her only sides are the lines of two daughters by one father, each heading a
@@ -556,6 +557,19 @@ the partner's affected daughter by another woman, she is marked, although his
 other daughter makes him the likely source of their daughter. The rule still
 holds as stated: no one event explains every affected person, and two separate
 events are needed whether or not she carries it.
+
+With related couples, one man can still account for everything in a few shapes,
+because the engine collects the men below the woman's mother and the possible
+fathers of an affected mother, but not the men above them. In a family of a
+grandmother; her daughter, the woman's mother, with no recorded father; a man
+who fathered another child of the grandmother; the woman and her affected
+brother, both children of the mother; and the woman's affected daughter by that
+man, the woman is marked, although one event in him, who may be her mother's
+father, explains both affected people. The same holds with an affected sister
+whose father is recorded in place of the brother, with the man recorded as the
+mother's father, and with an affected mother whose own mother he fathered. This
+arises only when one man has children with related women, here a woman and her
+granddaughter or great-granddaughter.
 
 One conservative case remains. An affected female with no recorded father gives
 nothing, so an affected sister with an unrecorded father does not corroborate an

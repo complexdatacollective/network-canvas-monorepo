@@ -51,8 +51,9 @@ function mothersOf(graph: GeneticGraph, id: string): AnnotatedParent[] {
  *   evidence herself, since that father may be affected. Two sides must rest
  *   on at least two different affected people. A man could explain an
  *   affected person when he fathered a female on the route to them (the
- *   person included, and an affected mother too), because a single event in him (a germline mosaic, or an
- *   affected man not recorded as such) would reach them through his daughter.
+ *   person included, and an affected mother too), because a single event in
+ *   him (a germline mosaic, or an affected man not recorded as such) would
+ *   reach them through his daughter.
  *   A female with no recorded father stands for an unrecorded man and for
  *   every recorded father of her mother's other children. Affected men
  *   reached only through an unbroken male line give nothing.
@@ -220,9 +221,9 @@ export function computeXLinkedRecessive(
   // her genetic child `childId`, with the fathers along the way. A son's line
   // is the son himself. A daughter's line is blocked when another parent of
   // hers, or a man who may be her father, is affected, because his X would
-  // explain everything below her. An affected daughter with no recorded father blocks it too, since
-  // that father may be affected; a daughter who only links to affected people
-  // further down needs no recorded father.
+  // explain everything below her. An affected daughter with no recorded
+  // father blocks it too, since that father may be affected; a daughter who
+  // only links to affected people further down needs no recorded father.
   const evidenceBelow = (
     childId: string,
     motherId: string,
