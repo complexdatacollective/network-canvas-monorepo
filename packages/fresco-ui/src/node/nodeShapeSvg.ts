@@ -142,6 +142,8 @@ type ParseState = IssueLog & {
   rootFailure?: NodeShapeSvgIssue;
   viewBox?: Box;
   elementCount: number;
+  /** 1 when root attributes were moved to a wrapping <g>, which the stored form nests everything under. */
+  wrapperDepth: 0 | 1;
   hasDrawable: boolean;
   labelRect?: Box;
   labelColor?: string;
@@ -575,6 +577,8 @@ const openRoot = (state: ParseState, tag: SaxesTagNS, isSvg: boolean) => {
   if (kept.size > 0) {
     container = { tag: 'g', attributes: sortAttributes(kept), children: [] };
     state.root.children.push(container);
+    state.elementCount += 1;
+    state.wrapperDepth = 1;
   }
   state.stack.push({
     element: container,
@@ -660,6 +664,7 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
     root: { tag: 'svg', attributes: {}, children: [] },
     rootFound: false,
     elementCount: 0,
+    wrapperDepth: 0,
     hasDrawable: false,
     hasLabelPlate: false,
   };
@@ -684,7 +689,7 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
         `The file has more than ${MAX_ELEMENTS} elements.`,
       );
     }
-    if (state.stack.length >= MAX_DEPTH) {
+    if (state.stack.length + state.wrapperDepth >= MAX_DEPTH) {
       throw new ParseAborted(
         `Elements are nested more than ${MAX_DEPTH} levels deep.`,
       );

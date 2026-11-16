@@ -846,3 +846,25 @@ describe('NodeShapeColorTokens', () => {
     );
   });
 });
+
+describe('limits of the stored form', () => {
+  const nested = (groups: number) =>
+    `<svg viewBox="0 0 10 10" fill="red">${'<g>'.repeat(groups)}<path d="M0 0h1"/>${'</g>'.repeat(groups)}</svg>`;
+  const flat = (paths: number) =>
+    `<svg viewBox="0 0 10 10" fill="red">${'<path d="M0 0h1"/>'.repeat(paths)}</svg>`;
+
+  it.each([
+    ['nesting', nested(29), nested(30)],
+    ['element count', flat(1_998), flat(1_999)],
+  ])(
+    'counts the group that holds root attributes towards the %s limit',
+    (_, within, beyond) => {
+      const accepted = parseNodeShapeSvg(within);
+      if (!accepted.success) throw new Error('expected the shape to parse');
+      expect(
+        parseNodeShapeSvg(serializeNodeShapeSvg(accepted.shape)).success,
+      ).toBe(true);
+      expect(parseNodeShapeSvg(beyond).success).toBe(false);
+    },
+  );
+});
