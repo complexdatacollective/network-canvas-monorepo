@@ -2,7 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { Provider } from 'react-redux';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import createTimelineReducer from '~/ducks/middleware/timeline';
@@ -84,5 +84,27 @@ export const NameSizeSteps: Story = {
     await expect(from33).toBe(upTo64);
     await expect(upTo64).toBeGreaterThan(from65 ?? Infinity);
     await expect(legacy).toBe(from65);
+  },
+};
+
+/** The size follows the name as it is typed, not only once it is saved. */
+export const NameSizeStepsWhileTyping: Story = {
+  args: { name: 'A'.repeat(32) },
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const control = within(canvasElement).getByRole('textbox', {
+      name: 'Protocol name',
+    });
+    const fontSize = () =>
+      Number.parseFloat(getComputedStyle(control).fontSize);
+    const before = fontSize();
+
+    await userEvent.type(control, 'A', {
+      initialSelectionStart: 32,
+      initialSelectionEnd: 32,
+    });
+
+    await expect(control).toHaveValue('A'.repeat(33));
+    await expect(fontSize()).toBeLessThan(before);
   },
 };

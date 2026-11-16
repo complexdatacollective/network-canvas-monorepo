@@ -261,8 +261,8 @@ describe('ProtocolInfoCard', () => {
   // name measured 703px inside a 720px viewport and put the timeline's first row
   // at y=1189. jsdom does no layout, so the pixel proof lives in
   // `e2e/specs/responsive.spec.ts`, along with the height bound and the name's
-  // own text direction. What is left here is the grapheme-count size tier,
-  // whose only jsdom-visible output is the class it picks.
+  // own text direction; the size steps, as stored and as typed, are measured
+  // by the "Name Size Steps" stories. What is left here is the stored value.
   it('keeps a legacy name the cap never saw whole', () => {
     // Arrives from IndexedDB / an imported .netcanvas, over the limit.
     renderCard('م'.repeat(342));
