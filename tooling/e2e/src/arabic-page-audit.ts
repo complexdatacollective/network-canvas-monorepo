@@ -42,10 +42,14 @@ export type ArabicPageAuditOptions = Readonly<{
  *   `"ltr"`, `<bdi>`, an inline box with `unicode-bidi: isolate`, a block
  *   with `plaintext`, isolate marks in the text itself, quotation marks) is
  *   either interface text left in English or a name someone wrote shown
- *   without its own direction, where "team-b!" reads "!team-b". Text only a
- *   screen reader reads counts (a visually hidden label, `aria-label`,
- *   `title`, `alt`, `placeholder`, an icon's `<title>`); an attribute that
- *   repeats a name the page shows in its own direction is that name.
+ *   without its own direction, where "team-b!" reads "!team-b". Text read but
+ *   not drawn counts (a visually hidden label, `title`, `alt`,
+ *   `placeholder`, an icon's `<title>`); an attribute that repeats a name the
+ *   page shows in its own direction is that name. An `aria-label` does not:
+ *   only a screen reader reads it, and text only a screen reader reads is
+ *   English in every language (`@codaco/app-i18n`'s README). Where the
+ *   element it names holds no translated text it is marked `lang="en"`;
+ *   where it does, such as a list of names, it cannot be.
  */
 export function auditArabicPage(
   options: ArabicPageAuditOptions = {},
@@ -257,10 +261,10 @@ export function auditArabicPage(
     if (value) names.add(value);
   }
 
-  // What a screen reader reads that the page does not draw. An attribute
-  // cannot mark a direction, so a name someone wrote there is fine as long
-  // as it is a name the page shows in its own direction.
-  const ATTRIBUTES = ['aria-label', 'title', 'alt', 'placeholder'];
+  // What is read but not drawn. An attribute cannot mark a direction, so a
+  // name someone wrote there is fine as long as it is a name the page shows
+  // in its own direction. `aria-label` is left out: it is English by rule.
+  const ATTRIBUTES = ['title', 'alt', 'placeholder'];
   const isName = (value: string) => {
     const bare = value.replace(/[⁦-⁩]/g, '').trim();
     return names.has(bare);
