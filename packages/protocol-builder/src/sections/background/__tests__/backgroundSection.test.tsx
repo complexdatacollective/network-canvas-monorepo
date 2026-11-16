@@ -115,7 +115,9 @@ describe('what the participant sees behind the nodes', () => {
    * rebuilt field showed it as a plain thumbnail on the editor's own white
    * card. A researcher cannot tell from that how much of their image the
    * canvas keeps, or what it will look like against the interview's dark
-   * ground.
+   * ground. The 16:9 shape is measured in a browser by the
+   * `AsACanvasBackground` story in `fields/AssetPickerField.stories.tsx`;
+   * jsdom lays nothing out, so this reads the theme.
    */
   it('frames the chosen image in the interview theme', async () => {
     renderStageEditor(openImage());
