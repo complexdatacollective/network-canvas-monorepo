@@ -146,7 +146,7 @@ test('accepts an attribute that repeats a name the page shows set apart', async 
   ).toEqual([]);
 });
 
-test('reports a box that runs past the window, unless something clips it', async ({
+test('reports a box that runs past the window, unless clipped or hidden', async ({
   page,
 }) => {
   const issues = await audit(
@@ -154,6 +154,9 @@ test('reports a box that runs past the window, unless something clips it', async
     [
       '<div id="wide" style="width: 1200px">عريض</div>',
       '<div style="overflow: hidden"><div style="width: 1200px">مقصوص</div></div>',
+      // Decoration hidden from screen readers, like the celebration's
+      // particles, is not part of the page anyone reads.
+      '<div aria-hidden="true"><div style="width: 1200px">زينة</div></div>',
     ].join(''),
   );
   expect(issues).toHaveLength(1);

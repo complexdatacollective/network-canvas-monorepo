@@ -1,9 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import {
-  auditArabicPage,
-  finiteAnimationsRunning,
-} from '@codaco/e2e-helpers/arabic-page-audit';
+import { auditArabicPage } from '@codaco/e2e-helpers/arabic-page-audit';
 
 import { expect, test } from '../fixtures/test.js';
 import { clickWhenDeckSettles, waitForDeckToSettle } from '../helpers/deck.js';
@@ -49,10 +46,8 @@ const SETTINGS = 'الإعدادات';
 const CASE_ID = 'team-b!';
 
 const audit = async (page: Page, screen: string) => {
-  // Boxes are measured in the Arabic typeface, not a fallback, and at rest:
-  // nothing still on its way somewhere.
+  // Boxes are measured in the Arabic typeface, not a fallback.
   await page.evaluate(() => document.fonts.ready);
-  await expect.poll(() => page.evaluate(finiteAnimationsRunning)).toBe(0);
   expect
     .soft(
       await page.evaluate(auditArabicPage, { untranslated: UNTRANSLATED }),

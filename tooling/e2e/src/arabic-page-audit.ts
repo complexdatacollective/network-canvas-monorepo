@@ -289,21 +289,3 @@ export function auditArabicPage(
   }
   return issues;
 }
-
-/**
- * How many animations with an end are still running: a page is measured at
- * rest, once this is 0. A box in flight is not where the page lays it out
- * (an interview's celebration flings dots past the window's edge for a
- * second), while an animation without an end, such as a spinner's, never
- * settles and moves nothing out of place. Self-contained, for
- * `page.evaluate`.
- */
-export function finiteAnimationsRunning(): number {
-  return document
-    .getAnimations()
-    .filter(
-      (animation) =>
-        animation.playState === 'running' &&
-        animation.effect?.getComputedTiming().endTime !== Infinity,
-    ).length;
-}

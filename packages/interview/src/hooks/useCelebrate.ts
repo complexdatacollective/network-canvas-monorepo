@@ -84,7 +84,9 @@ export function useCelebrate(
     const halfW = rect.width / 2;
     const halfH = rect.height / 2;
 
+    // Decoration only: nothing in it for a screen reader to read.
     const container = document.createElement('div');
+    container.setAttribute('aria-hidden', 'true');
     Object.assign(container.style, {
       position: 'fixed',
       inset: '0',

@@ -1,9 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import {
-  auditArabicPage,
-  finiteAnimationsRunning,
-} from '@codaco/e2e-helpers/arabic-page-audit';
+import { auditArabicPage } from '@codaco/e2e-helpers/arabic-page-audit';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
@@ -126,10 +123,8 @@ for (const { name, open } of PAGES) {
     await seed(protocol, { assets });
 
     await open(page);
-    // Boxes are measured in the Arabic typeface, not a fallback, and at
-    // rest: nothing still on its way somewhere.
+    // Boxes are measured in the Arabic typeface, not a fallback.
     await page.evaluate(() => document.fonts.ready);
-    await expect.poll(() => page.evaluate(finiteAnimationsRunning)).toBe(0);
 
     expect(
       await page.evaluate(auditArabicPage, { untranslated: UNTRANSLATED }),

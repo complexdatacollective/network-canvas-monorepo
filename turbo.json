@@ -229,6 +229,7 @@
         "INTERVIEWER_BASE_PATH",
         "NODE_ENV",
         "VITE_DISABLE_ANALYTICS",
+        "VITE_DISABLE_ANIMATIONS",
         "POSTHOG_PERSONAL_API_KEY",
         "POSTHOG_PROJECT_ID",
         // Whether dist/v8 holds Interviewer 8 (scripts/buildtime/legacy-app.ts).
