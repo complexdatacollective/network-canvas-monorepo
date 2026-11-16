@@ -59,6 +59,7 @@ const initialForm: DescribeForm = {
   questions: firstExample?.questions ?? [''],
   population: firstExample?.population ?? '',
   synopsis: firstExample?.synopsis ?? '',
+  administration: firstExample?.administration ?? null,
   picked: firstExample?.id ?? null,
   provider: 'anthropic',
   compare: false,
