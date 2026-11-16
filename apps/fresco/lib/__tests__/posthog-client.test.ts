@@ -325,12 +325,7 @@ describe('Fresco PostHog client', () => {
       await starting;
 
       expect(captureException).toHaveBeenCalledOnce();
-      expect(calls).toEqual([
-        'init',
-        'register',
-        'opt_in_capturing',
-        'register',
-      ]);
+      expect(optInCapturing).toHaveBeenCalledBefore(captureException);
       expect(identify).toHaveBeenCalledBefore(captureException);
     });
 

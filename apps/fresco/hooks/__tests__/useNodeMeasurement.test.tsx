@@ -106,13 +106,19 @@ describe('useNodeMeasurement', () => {
     expect(after).toBeLessThan(before);
   });
 
-  test('observes the measured content and disconnects on unmount', () => {
+  test('renders the component into a hidden wrapper, observes that wrapper, and disconnects on unmount', () => {
     setup();
-    const { unmount } = render(<TestConsumer component={<div>test</div>} />);
+    const { getByTestId, unmount } = render(
+      <TestConsumer component={<div data-testid="measured">test</div>} />,
+    );
+
+    const wrapper = getByTestId('measured').parentElement;
+    expect(wrapper).toHaveStyle({ visibility: 'hidden' });
+    expect(wrapper).toHaveAttribute('aria-hidden', 'true');
 
     expect(latestObserverInstances).toHaveLength(1);
     const [observer] = latestObserverInstances;
-    expect(observer?.observeSpy).toHaveBeenCalledOnce();
+    expect(observer?.observeSpy.mock.calls).toEqual([[wrapper]]);
 
     unmount();
 

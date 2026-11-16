@@ -17,8 +17,9 @@ describe('getProtocolSizeError', () => {
     expect(error).toContain('257');
   });
 
-  it('phrases the limit inclusively to match the <= check', () => {
-    const error = getProtocolSizeError({ size: 300 * 1024 * 1024 });
-    expect(error).toContain('256 MB or smaller');
+  it('reports the size and phrases the limit inclusively, to match the <= check', () => {
+    expect(getProtocolSizeError({ size: 300 * 1024 * 1024 })).toBe(
+      'This protocol is 300 MB. Protocols must be 256 MB or smaller to import.',
+    );
   });
 });

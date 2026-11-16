@@ -207,6 +207,8 @@ describe('verifyTwoFactor', () => {
       expect(formErrorMessages(result)).toEqual([
         'Two-factor session expired. Please sign in again.',
       ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 
@@ -233,6 +235,8 @@ describe('verifyTwoFactor', () => {
       expect(formErrorMessages(result)).toEqual([
         'Too many attempts. Please sign in again.',
       ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 
@@ -256,6 +260,7 @@ describe('verifyTwoFactor', () => {
       expect(formErrorMessages(result)).toEqual([
         'Two-factor authentication is not configured',
       ]);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 

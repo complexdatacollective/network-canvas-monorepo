@@ -29,10 +29,11 @@ describe('generateTotpSecret', () => {
 });
 
 describe('generateTotpUri', () => {
-  it('returns a string starting with otpauth://totp/', () => {
+  it('is a TOTP URI that names the issuer for the authenticator entry', () => {
     const secret = generateTotpSecret();
     const uri = generateTotpUri(secret, 'testuser', 'Fresco (localhost)');
     expect(uri).toMatch(/^otpauth:\/\/totp\//);
+    expect(new URL(uri).searchParams.get('issuer')).toBe('Fresco (localhost)');
   });
 
   it('contains the username in the label', () => {

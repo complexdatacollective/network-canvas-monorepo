@@ -12,6 +12,9 @@ describe('getSemverUpdateType', () => {
     expect(
       getSemverUpdateType(currentVersion, { major: 2, minor: 2, patch: 3 }),
     ).toBe('major');
+    expect(
+      getSemverUpdateType(currentVersion, { major: 2, minor: 3, patch: 4 }),
+    ).toBe('major');
   });
 
   it('returns "minor" when major is the same and new minor version is higher', () => {

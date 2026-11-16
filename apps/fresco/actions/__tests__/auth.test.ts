@@ -185,10 +185,6 @@ describe('login', () => {
       mockLoginSchemaSafeParse.mockReturnValue({
         success: false,
         error: {
-          flatten: () => ({
-            formErrors: [],
-            fieldErrors: { username: ['Username cannot be empty'] },
-          }),
           issues: [
             {
               path: ['username'],
