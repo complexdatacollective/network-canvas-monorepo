@@ -24,6 +24,16 @@ export async function clickWhenDeckSettles(
   control: Locator,
   options: { force?: boolean } = {},
 ): Promise<void> {
+  await waitForDeckToSettle(control);
+  await control.click(options);
+}
+
+/**
+ * Waits until `control`, on a deck card, has held one position for a while:
+ * the deck has stopped moving. See `clickWhenDeckSettles` for why two frames
+ * of stillness are not enough.
+ */
+export async function waitForDeckToSettle(control: Locator): Promise<void> {
   let previous: string | null = null;
   await expect(async () => {
     const box = JSON.stringify(await control.boundingBox());
@@ -31,5 +41,4 @@ export async function clickWhenDeckSettles(
     previous = box;
     expect(settled, 'deck card is still moving').toBe(true);
   }).toPass({ intervals: [STILL_FOR_MS], timeout: 15_000 });
-  await control.click(options);
 }

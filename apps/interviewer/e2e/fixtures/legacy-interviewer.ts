@@ -248,9 +248,10 @@ export const test = interviewerTest.extend<
           cwd: APP_ROOT,
           env: {
             ...process.env,
-            // The same switch the suite's main build is made with (run.sh,
-            // the CI job): no PostHog.
+            // The same switches the suite's main build is made with (run.sh,
+            // the CI job): no PostHog, no animation bookkeeping.
             VITE_DISABLE_ANALYTICS: 'true',
+            VITE_DISABLE_ANIMATIONS: 'true',
           },
           stdio: ['ignore', 'pipe', 'inherit'],
         },
