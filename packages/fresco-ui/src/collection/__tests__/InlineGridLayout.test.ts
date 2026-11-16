@@ -254,18 +254,6 @@ describe('InlineGridLayout', () => {
     });
   });
 
-  describe('getGap', () => {
-    it('should return configured gap', () => {
-      const layout = new InlineGridLayout({ gap: 5 });
-      expect(layout.getGap()).toBe(20);
-    });
-
-    it('should default to 16', () => {
-      const layout = new InlineGridLayout();
-      expect(layout.getGap()).toBe(16);
-    });
-  });
-
   describe('items per row calculation (regression tests)', () => {
     it('should calculate exact number of items that fit in container width', () => {
       // This test documents the exact calculation to prevent regressions
