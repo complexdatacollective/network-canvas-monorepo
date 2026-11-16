@@ -20,7 +20,7 @@ const messages = defineMessages({
   imageUnavailable: {
     id: 'architect.codebook.entityTypeDialog.imageUnavailable',
     defaultMessage:
-      'An image added to this node type is no longer available. Remove the shape that uses it and add it again.',
+      'An image added to this node type is no longer available. Remove the shape that uses it, then add the shape again.',
     description:
       'Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified.',
   },

@@ -175,7 +175,7 @@ describe('EntityTypeDialog saving a type with an imported shape image', () => {
 
     expect(
       await screen.findByText(
-        'An image added to this node type is no longer available. Remove the shape that uses it and add it again.',
+        'An image added to this node type is no longer available. Remove the shape that uses it, then add the shape again.',
       ),
     ).toBeInTheDocument();
     expect(dispatchSpy).not.toHaveBeenCalled();

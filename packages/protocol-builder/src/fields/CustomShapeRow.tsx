@@ -34,16 +34,10 @@ const messages = defineMessages({
     description:
       'Sample text drawn inside the preview of a custom node shape, to show where and in what color a node’s label will appear. Keep it short.',
   },
-  remove: {
-    id: 'protocolBuilder.customShapes.remove',
-    defaultMessage: 'Remove shape {name}',
-    description:
-      'Accessible name of the button that removes one custom node shape from the node type. name is the shape’s name.',
-  },
   inUse: {
     id: 'protocolBuilder.customShapes.inUse',
     defaultMessage:
-      '{usage, select, default {Used as the default shape. Choose another default shape to remove it.} mapping {Used in the shape mapping. Choose other shapes there to remove it.} other {Used as the default shape and in the shape mapping. Choose other shapes in both places to remove it.}}',
+      '{usage, select, default {Used as the default shape. To remove this shape, choose another default shape.} mapping {Used in the shape mapping. To remove this shape, choose other shapes there.} other {Used as the default shape and in the shape mapping. To remove this shape, choose other shapes in both places.}}',
     description:
       'Shown beside a custom node shape that cannot be removed because the node type uses it. usage says where: as the default shape, in the mapping from an attribute to shapes, or both.',
   },
@@ -125,9 +119,7 @@ export default function CustomShapeRow({
           variant="text"
           disabled={disabled || readOnly || usage !== undefined}
           onClick={onRemove}
-          aria-label={intl.formatMessage(messages.remove, {
-            name: shape.name.trim(),
-          })}
+          aria-label={`Remove shape ${shape.name.trim()}`}
           aria-describedby={usage === undefined ? undefined : usageId}
         />
       </div>

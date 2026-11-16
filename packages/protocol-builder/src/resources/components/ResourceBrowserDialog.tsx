@@ -69,12 +69,6 @@ const messages = defineMessages({
     description:
       'Shown in place of the resource list when the protocol holds none of the kind this field accepts and none has been imported yet.',
   },
-  checkingShape: {
-    id: 'protocolBuilder.resourceBrowser.checkingShape',
-    defaultMessage: 'Checking the image…',
-    description:
-      'Announced while an SVG image the researcher chose as a custom node shape is read and checked.',
-  },
 });
 
 /**
@@ -309,8 +303,13 @@ function ResourceBrowserBody({
           </ul>
         )}
 
-        <span className="sr-only" aria-live="polite" aria-atomic="true">
-          {checkingShape ? intl.formatMessage(messages.checkingShape) : ''}
+        <span
+          className="sr-only"
+          aria-live="polite"
+          aria-atomic="true"
+          lang="en"
+        >
+          {checkingShape ? 'Checking the image…' : ''}
         </span>
       </Section>
     </div>

@@ -3,7 +3,6 @@ import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import {
-  createMessageError,
   defineMessages,
   formatMessageError,
   type IntlShape,
@@ -49,26 +48,6 @@ const messages = defineMessages({
       'Add your own shapes for this node type from SVG files. To choose where the label goes, draw a rectangle with the id {labelAreaId}; its fill sets the color of the label. To draw part of a shape in this node type’s color, use {nodeColorToken} as its fill or stroke.',
     description:
       'Guidance under the custom shapes heading in the node type editor. labelAreaId is the literal text label-area and nodeColorToken is the literal text var(--node-color), both shown as code and never translated. SVG is a file format name and is not translated.',
-  },
-  addedAnnouncement: {
-    id: 'protocolBuilder.customShapes.addedAnnouncement',
-    defaultMessage: 'Added the shape {name}.',
-    description:
-      'Screen reader announcement after a custom node shape was added. name is the name the new shape was given.',
-  },
-  alreadyAddedAnnouncement: {
-    id: 'protocolBuilder.customShapes.alreadyAddedAnnouncement',
-    defaultMessage:
-      'This image is already the shape {name}, so no new shape was added.',
-    description:
-      'Screen reader announcement when the researcher chose an SVG image that one of this node type’s custom shapes already uses. Focus moves to that shape’s name instead. name is that shape’s name.',
-  },
-  removedAnnouncement: {
-    id: 'protocolBuilder.customShapes.removedAnnouncement',
-    defaultMessage:
-      'Removed the shape {name}. Its image stays in the protocol’s resources.',
-    description:
-      'Screen reader announcement after a custom node shape was removed from the node type. The SVG image it was drawn from is not deleted. name is the removed shape’s name.',
   },
 });
 
@@ -165,9 +144,7 @@ export default function CustomShapesField({
     const existing = customShapeForAsset(shapes, chosen.id);
     if (existing !== undefined) {
       setAnnouncement(
-        createMessageError(messages.alreadyAddedAnnouncement, {
-          name: shapes[existing]?.name.trim() ?? '',
-        }),
+        `This image is already the shape ${shapes[existing]?.name.trim() ?? ''}, so no new shape was added.`,
       );
       chosenShape.current = existing;
       return;
@@ -182,9 +159,7 @@ export default function CustomShapesField({
     if (notice !== undefined) {
       setNotices((current) => ({ ...current, [shapeId]: notice }));
     }
-    setAnnouncement(
-      createMessageError(messages.addedAnnouncement, { name: shapeName }),
-    );
+    setAnnouncement(`Added the shape ${shapeName}.`);
     chosenShape.current = shapeId;
   };
 
@@ -202,7 +177,7 @@ export default function CustomShapesField({
       ),
     );
     setAnnouncement(
-      createMessageError(messages.removedAnnouncement, { name: removedName }),
+      `Removed the shape ${removedName}. Its image stays in the protocol’s resources.`,
     );
     // The add button is outside every row and never unmounts, so focus can
     // move to it before the removed row, which held it, has gone.
@@ -283,8 +258,8 @@ export default function CustomShapesField({
         finalFocus={browserFinalFocus}
       />
 
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {formatMessageError(announcement, intl) ?? announcement}
+      <span className="sr-only" aria-live="polite" aria-atomic="true" lang="en">
+        {announcement}
       </span>
     </div>
   );

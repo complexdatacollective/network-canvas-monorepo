@@ -68,7 +68,7 @@ const messages = defineMessages({
   removedKind: {
     id: 'protocolBuilder.customShapes.removedKind',
     defaultMessage:
-      '{kind, select, scripts {scripts} images {embedded images} styles {unsupported styles} filters {filters} animations {animations} links {links and references to other files} colors {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}',
+      '{kind, select, scripts {scripts} images {embedded images} styles {unsupported styles} filters {filters} animations {animations} links {links and references to other files} tokens {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}',
     description:
       'Name of one kind of content in an SVG image that a custom node shape cannot use. Used as one item of a list in the removedContent and ignoredContent notices, so write it as a phrase that fits there.',
   },
@@ -82,7 +82,7 @@ export type RemovedContentKind =
   | 'filters'
   | 'animations'
   | 'links'
-  | 'colors'
+  | 'tokens'
   | 'labelArea'
   | 'other';
 
@@ -114,7 +114,7 @@ const ISSUE_KINDS: Readonly<
     /^on/i.test(detail) ? 'scripts' : 'other',
   'unsupported-style': () => 'styles',
   'unsafe-value': () => 'links',
-  'unknown-token': () => 'colors',
+  'unknown-token': () => 'tokens',
   'invalid-label-area': () => 'labelArea',
   'not-xml': () => 'other',
   'no-svg-root': () => 'other',
@@ -130,7 +130,7 @@ const KIND_ORDER: readonly RemovedContentKind[] = [
   'filters',
   'animations',
   'links',
-  'colors',
+  'tokens',
   'labelArea',
   'other',
 ];
