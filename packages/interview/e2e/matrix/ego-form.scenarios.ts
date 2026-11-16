@@ -1766,5 +1766,78 @@ export const egoFormScenarios: InterfaceScenarios = {
         await expect(page.locator('[data-dynamic-value]')).toHaveCount(0);
       },
     },
+
+    {
+      id: 'conditions-follow-live-answers',
+      covers: ['conditions'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const ageVar = synth.addEgoVariable({
+          type: 'number',
+          component: 'Number',
+          name: 'age',
+        });
+        const schoolVar = synth.addEgoVariable({
+          type: 'text',
+          component: 'Text',
+          name: 'school',
+        });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
+        // An "If" on a rule about the participant: under 18, or anyone else.
+        stage.stageEntry.conditions = {
+          minor: {
+            rules: [
+              {
+                id: 'under-18',
+                type: 'ego',
+                options: {
+                  attribute: ageVar.id,
+                  operator: 'LESS_THAN',
+                  value: 18,
+                },
+              },
+            ],
+          },
+        };
+        stage.stageEntry.dynamicValues = {
+          minor: { path: '$condition.minor', cases: { yes: true } },
+        };
+        stage.addFormField({
+          variable: ageVar.id,
+          component: 'Number',
+          prompt: 'How old are you?',
+        });
+        stage.addFormField({
+          variable: schoolVar.id,
+          component: 'Text',
+          prompt: {
+            'en-US':
+              '{minor, select, yes {Which school do you go to?} other {Where did you go to school?}}',
+          },
+        });
+        return synth;
+      },
+      run: async ({ page }) => {
+        const age = page.getByRole('spinbutton', { name: 'How old are you?' });
+
+        // Unanswered, the rule is not met: the wording for everyone else.
+        await expect(
+          page.getByRole('textbox', { name: 'Where did you go to school?' }),
+        ).toBeVisible();
+
+        // The later question follows the earlier answer as it is typed.
+        await age.fill('12');
+        await expect(
+          page.getByRole('textbox', { name: 'Which school do you go to?' }),
+        ).toBeVisible();
+
+        await age.fill('40');
+        await expect(
+          page.getByRole('textbox', { name: 'Where did you go to school?' }),
+        ).toBeVisible();
+      },
+    },
   ],
 };

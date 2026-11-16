@@ -1,0 +1,14 @@
+- main:
+  - heading "About you" [level=1]
+  - text: How old are you?
+  - button "Decrease value"
+  - spinbutton "How old are you?": /\d+/
+  - button "Increase value"
+  - text: Where did you go to school?
+  - textbox "Where did you go to school?"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -8,6 +8,7 @@
  */
 export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   CategoricalBin: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -43,6 +44,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'unplacedNodesNotice',
   ],
   AlterForm: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -82,6 +84,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'readyStateScrollGating',
   ],
   AlterEdgeForm: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -131,6 +134,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'form title absence (TitlelessFormSchema)',
   ],
   Anonymisation: [
+    'conditions',
     'dynamicValues',
     'explanationText',
     'label',
@@ -163,6 +167,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'encryptedVariable.schema8.oldAnswerStaysUnavailable',
   ],
   DyadCensus: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -184,6 +189,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'codebook.node.color-shape',
   ],
   EgoForm: [
+    'conditions',
     'dynamicValues',
     'introductionPanel.title',
     'introductionPanel.text',
@@ -233,6 +239,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'skipLogic',
   ],
   OrdinalBin: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -252,6 +259,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'unplacedNodesNotice',
   ],
   NameGenerator: [
+    'conditions',
     'dynamicValues',
     'subject',
     'form',
@@ -285,6 +293,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'skipLogic',
   ],
   NetworkComposer: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -321,6 +330,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'interfaceText.networkComposer',
   ],
   Narrative: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -347,6 +357,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'tooltips.resumeLayout',
   ],
   OneToManyDyadCensus: [
+    'conditions',
     'dynamicValues',
     'subject.type',
     'behaviours.removeAfterConsideration',
@@ -361,6 +372,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'skipLogic',
   ],
   Sociogram: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -385,6 +397,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'tooltips.resumeLayout',
   ],
   TieStrengthCensus: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -406,6 +419,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'stage-completion',
   ],
   NameGeneratorRoster: [
+    'conditions',
     'dynamicValues',
     'label',
     'panelTitle',
@@ -443,6 +457,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'exhausted-roster-empty-state',
   ],
   NameGeneratorQuickAdd: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -473,6 +488,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'codebook.variables.quickAdd.validation=required',
   ],
   FamilyPedigree: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -619,6 +635,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'touchGestures',
   ],
   FinishSession: [
+    'conditions',
     'dynamicValues',
     'stage.type',
     'stage.id',
@@ -654,6 +671,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     // stage-config-schema-support.test.ts enforces this.
   ],
   Geospatial: [
+    'conditions',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -691,6 +709,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'analytics-events',
   ],
   Information: [
+    'conditions',
     'dynamicValues',
     'title',
     'items[].type=text',
@@ -710,6 +729,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'skipLogic',
   ],
   NarrativePedigree: [
+    'conditions',
     'dynamicValues',
     'type',
     'id',
