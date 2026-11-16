@@ -266,17 +266,32 @@
     },
     "@codaco/background-creator#test": {
       "dependsOn": ["^topo"],
-      "inputs": ["src/**", "vite.config.*", "tsconfig*.json", "package.json"],
+      "inputs": [
+        "src/**",
+        "vite.config.*",
+        "vitest.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
       "outputs": []
     },
-    // The theme's tests build and read the Discourse theme under theme/.
+    // The theme's tests build and read the Discourse theme under theme/, and
+    // read the version of site-navigation-element, which is not a dependency.
     "@codaco/community-theme#test": {
       "dependsOn": ["^topo"],
-      "inputs": ["src/**", "theme/**", "vitest.config.*", "package.json"],
+      "inputs": [
+        "src/**",
+        "theme/**",
+        "vitest.config.*",
+        "package.json",
+        "$TURBO_ROOT$/packages/site-navigation-element/package.json"
+      ],
       "outputs": []
     },
-    // The generic test inputs plus the Storybook locale module a unit test
-    // imports.
+    // A copy of the generic test task (inputs and env) plus the Storybook
+    // locale module a unit test imports. This entry replaces the generic one,
+    // so it must follow its changes; scripts/invariants/test-inputs.test.mjs
+    // fails when it does not.
     "@codaco/protocol-builder#test": {
       "dependsOn": ["^topo"],
       "inputs": [
@@ -292,6 +307,11 @@
         "package.json",
         ".env",
         ".env.development"
+      ],
+      "env": [
+        "PROTOCOL_ENCRYPTION_KEY",
+        "PROTOCOL_ENCRYPTION_IV",
+        "GITHUB_TOKEN"
       ],
       "outputs": []
     },
@@ -416,6 +436,7 @@
         "messages/**",
         "netlify/**",
         "public/protocols/**",
+        "public/images/screenshots/**",
         "test/**",
         "instrumentation-client.ts",
         "vitest.config.*",
@@ -610,9 +631,17 @@
         "apps/**/{locales,messages}/*.json",
         "apps/**/*.md",
         "apps/**/*.mdx",
+        // The test-inputs guard reads every workspace package's tests,
+        // stories and .storybook files, what they import, each manifest, and
+        // the task definitions they are checked against. Hidden directories
+        // stay in because .storybook is among them; only Next's build output
+        // is left out.
+        "{apps,packages,tooling,workers}/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json}",
+        "turbo.json",
+        "pnpm-workspace.yaml",
         "!**/node_modules/**",
         "!**/dist/**",
-        "!**/.*/**"
+        "!**/.next/**"
       ],
       "outputs": []
     },
