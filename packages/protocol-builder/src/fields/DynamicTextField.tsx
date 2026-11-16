@@ -49,7 +49,6 @@ import {
   type MessageNode,
   type MessageSwitch,
   messageStructure,
-  parseDynamicValuePath,
   pluralValueExamples,
   printMessageStructure,
   TRUE_CASE,
@@ -61,7 +60,9 @@ import {
   type ConditionDraft,
   conditionAboutChoices,
   conditionCodebook,
+  conditionIdOf,
   conditionSentence,
+  conditionsLeftUntested,
   newConditionId,
 } from '../localization/conditionText.ts';
 import {
@@ -634,15 +635,6 @@ const NEW_CONDITION: ConditionDraft = Object.freeze({ rules: [] });
 /** The action of an "If" that adds a row to it. */
 const ADD_ELSE_IF = 'addElseIf';
 
-/** The id of the condition `binding` stands for, if it stands for one. */
-const conditionIdOf = (
-  binding: DynamicValueBinding | undefined,
-): string | undefined => {
-  if (binding === undefined) return undefined;
-  const parsed = parseDynamicValuePath(binding.path);
-  return parsed?.kind === 'condition' ? parsed.conditionId : undefined;
-};
-
 export type DynamicMessageEditorProps = Readonly<{
   id: string;
   name: string;
@@ -1168,14 +1160,15 @@ export function DynamicMessageEditor({
     }
     for (const [used, binding] of recorded) nextBindings[used] = binding;
     setBindings(nextBindings);
+    const unused = conditionsLeftUntested(dropped, nextBindings);
     if (
       setConditions !== undefined &&
-      (dropped.length > 0 || restored.length > 0)
+      (unused.length > 0 || restored.length > 0)
     ) {
       setConditions({
         ...Object.fromEntries(
           Object.entries(conditionValues).filter(
-            ([conditionId]) => !dropped.includes(conditionId),
+            ([conditionId]) => !unused.includes(conditionId),
           ),
         ),
         ...Object.fromEntries(restored),

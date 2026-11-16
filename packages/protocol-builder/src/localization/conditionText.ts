@@ -3,9 +3,11 @@ import {
   type Codebook,
   CONDITION_ROLES,
   type ConditionRole,
+  type DynamicValueBinding,
   type DynamicValueSiteContext,
   DYNAMIC_VALUE_NAME,
   type LocaleTag,
+  parseDynamicValuePath,
 } from '@codaco/protocol-validation';
 
 import { isRuleDraft, type RuleDraft } from '../rules/rule.ts';
@@ -148,4 +150,28 @@ export const newConditionId = (taken: (id: string) => boolean): string => {
       return candidate;
     }
   }
+};
+
+/** The id of the condition `binding` stands for, if it stands for one. */
+export const conditionIdOf = (
+  binding: DynamicValueBinding | undefined,
+): string | undefined => {
+  if (binding === undefined) return undefined;
+  const parsed = parseDynamicValuePath(binding.path);
+  return parsed?.kind === 'condition' ? parsed.conditionId : undefined;
+};
+
+/**
+ * The conditions among `dropped` that none of `bindings` tests any longer.
+ * Two bindings can test one condition, so removing one of them from the text
+ * leaves the condition in place for the other.
+ */
+export const conditionsLeftUntested = (
+  dropped: readonly string[],
+  bindings: Readonly<Record<string, DynamicValueBinding>>,
+): string[] => {
+  const tested = new Set(
+    Object.values(bindings).map((binding) => conditionIdOf(binding)),
+  );
+  return dropped.filter((conditionId) => !tested.has(conditionId));
 };
