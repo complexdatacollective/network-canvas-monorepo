@@ -253,14 +253,6 @@ export const makeGetVariableWithEntity = (uuid: string) =>
     find(variables, { uuid }),
   );
 
-// Legacy function for backward compatibility
-export const makeGetVariable = (uuid: string) => (state: RootState) => {
-  const codebook = getCodebook(state);
-  if (!codebook) return null;
-  const variables = getAllVariablesByUUID(codebook);
-  return get(variables, uuid, null);
-};
-
 // Main selector for getting variable options. Its inputs are chosen for
 // identity stability: `getIsUsed` keeps its map reference across live-value
 // mirror ticks that don't change which variables are used (see its

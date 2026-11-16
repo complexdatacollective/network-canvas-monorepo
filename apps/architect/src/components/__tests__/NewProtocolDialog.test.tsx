@@ -48,11 +48,10 @@ describe('NewProtocolDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('lays a typed name out in its own direction', () => {
+  it('leaves a typed name to take its own direction', () => {
     renderDialog();
-    // Each line follows its own first letter; an empty box keeps the
-    // interface's direction, so the placeholder starts on its side.
-    expect(nameInput()).toHaveClass('text-own-direction');
+    // A fixed `dir` would override the field's own-direction layout, which
+    // fresco-ui's TextEntryDirection stories measure.
     expect(nameInput()).not.toHaveAttribute('dir');
   });
 
