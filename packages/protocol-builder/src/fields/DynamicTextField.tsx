@@ -49,6 +49,7 @@ import {
   bindingRecordedFor,
   type DynamicValueChoice,
   dynamicValueChoices,
+  isFlagChoice,
 } from '../localization/dynamicValueCatalog.ts';
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { resolveTranslation } from '../localization/localizedText.ts';
@@ -154,6 +155,96 @@ const messages = defineMessages({
     description:
       'Second line of the “Participant or someone else” entry in the insert-a-value menu. Choosing it inserts a piece of text with two versions: one shown when the question is asked about the participant themselves (such as “Are you still living?”), one for everyone else in their family (such as “Is this person still living?”).',
   },
+  defaultNodeLabel: {
+    id: 'protocolBuilder.dynamicText.defaultNodeLabel',
+    defaultMessage: 'Default label',
+    description:
+      'Name of an inserted value, as it appears in the text and in the insert-a-value menu of a node type’s own label: the label the interview would choose for the node if the node type had no label of its own, taken from the node’s name or another of its answers. A node is one entity in the network, which may not be a person.',
+  },
+  defaultNodeLabelDescription: {
+    id: 'protocolBuilder.dynamicText.defaultNodeLabelDescription',
+    defaultMessage: 'The label the interview would otherwise choose',
+    description:
+      'Short note under “Default label” in the insert-a-value menu of a node type’s own label, saying that the value is the label the interview chooses by its usual rules (the node’s name, or another of its answers).',
+  },
+  nodeAttributesGroup: {
+    id: 'protocolBuilder.dynamicText.nodeAttributesGroup',
+    defaultMessage: 'Node Attributes',
+    description:
+      'Heading in the insert-a-value menu of a node type’s own label, above the default label and the attributes of the node the label is shown on. A node is one entity in the network, which may not be a person.',
+  },
+  connectionsGroup: {
+    id: 'protocolBuilder.dynamicText.connectionsGroup',
+    defaultMessage: 'Connections',
+    description:
+      'Heading in the insert-a-value menu of a node type’s own label, above the values that say how the node is connected to other nodes by edges. An edge is a connection between two nodes.',
+  },
+  conditionsGroup: {
+    id: 'protocolBuilder.dynamicText.conditionsGroup',
+    defaultMessage: 'Conditions',
+    description:
+      'Heading in the insert-a-value menu of a node type’s own label, above the conditions the researcher has defined for this node type. A condition is a named set of rules a node either meets or does not.',
+  },
+  connectedAny: {
+    id: 'protocolBuilder.dynamicText.connectedAny',
+    defaultMessage: 'Has any edge',
+    description:
+      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node is connected to another node by an edge of any type. It only chooses between two versions of the label and is never shown itself.',
+  },
+  connectedType: {
+    id: 'protocolBuilder.dynamicText.connectedType',
+    defaultMessage: 'Has a {edgeType} edge',
+    description:
+      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node is connected to another node by an edge of one type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself.',
+  },
+  mostConnectedAny: {
+    id: 'protocolBuilder.dynamicText.mostConnectedAny',
+    defaultMessage: 'Most connections',
+    description:
+      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has more edges, of any type, than any other node of its type. It only chooses between two versions of the label and is never shown itself.',
+  },
+  mostConnectedType: {
+    id: 'protocolBuilder.dynamicText.mostConnectedType',
+    defaultMessage: 'Most {edgeType} connections',
+    description:
+      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has more edges of one type than any other node of its type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself.',
+  },
+  leastConnectedAny: {
+    id: 'protocolBuilder.dynamicText.leastConnectedAny',
+    defaultMessage: 'Least connections',
+    description:
+      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has fewer edges, of any type, than any other node of its type. It only chooses between two versions of the label and is never shown itself.',
+  },
+  leastConnectedType: {
+    id: 'protocolBuilder.dynamicText.leastConnectedType',
+    defaultMessage: 'Least {edgeType} connections',
+    description:
+      'Name of a value in the insert-a-value menu of a node type’s own label, and of the piece of text it inserts: whether the node has fewer edges of one type than any other node of its type. edgeType is that edge type’s name as the researcher wrote it, such as “Friends”. It only chooses between two versions of the label and is never shown itself.',
+  },
+  byConnectivity: {
+    id: 'protocolBuilder.dynamicText.byConnectivity',
+    defaultMessage: 'Different label when this is true of the node',
+    description:
+      'Second line of an entry in the insert-a-value menu of a node type’s own label, under a value that says how the node is connected (such as “Has any edge” or “Most connections”). Choosing it inserts a piece of text with two versions: one shown on a node it is true of, one on every other node.',
+  },
+  byCondition: {
+    id: 'protocolBuilder.dynamicText.byCondition',
+    defaultMessage: 'Different label when the node meets this condition',
+    description:
+      'Second line of an entry in the insert-a-value menu of a node type’s own label, under one of the conditions the researcher defined. Choosing it inserts a piece of text with two versions: one shown on a node that meets the condition’s rules, one on every other node.',
+  },
+  versionsByFlag: {
+    id: 'protocolBuilder.dynamicText.versionsByFlag',
+    defaultMessage: 'Wording depending on “{value}”',
+    description:
+      'Accessible name of a piece of text with two versions: one shown when something is true of the node, one when it is not. value is the name of what is asked, such as “Has any edge” or the name of a condition the researcher defined.',
+  },
+  versionOtherwise: {
+    id: 'protocolBuilder.dynamicText.versionOtherwise',
+    defaultMessage: 'Otherwise',
+    description:
+      'Label of the version of a node’s label shown when what it depends on is not true of the node. The other version is labelled with what is asked of the node, such as “Has any edge” or the name of a condition the researcher defined.',
+  },
   byAnswer: {
     id: 'protocolBuilder.dynamicText.byAnswer',
     defaultMessage: 'Different wording for each answer',
@@ -255,6 +346,24 @@ type Naming = Readonly<{
 const namingFor = (intl: IntlShape): Naming => ({
   valueLabel: (choice) => {
     if (choice.role === undefined) return intl.formatMessage(messages.today);
+    if (choice.kind === 'condition') {
+      return choice.condition?.name ?? choice.condition?.id ?? '';
+    }
+    if (choice.kind === 'connectivity') {
+      const edgeType = choice.edgeType?.name ?? choice.edgeType?.id;
+      const [any, typed] =
+        choice.measure === 'mostConnected'
+          ? [messages.mostConnectedAny, messages.mostConnectedType]
+          : choice.measure === 'leastConnected'
+            ? [messages.leastConnectedAny, messages.leastConnectedType]
+            : [messages.connectedAny, messages.connectedType];
+      return edgeType === undefined
+        ? intl.formatMessage(any)
+        : intl.formatMessage(typed, { edgeType });
+    }
+    if (choice.kind === 'label' && choice.defaultLabel === true) {
+      return intl.formatMessage(messages.defaultNodeLabel);
+    }
     if (choice.kind === 'label') {
       // Of two nodes on screen, a pair's or an edge's ends, a label says
       // which node it is; a node alone just has its label.
@@ -284,11 +393,17 @@ const namingFor = (intl: IntlShape): Naming => ({
   // ends, is listed together; a value of a pair's node says which node.
   groupLabel: (choice) =>
     intl.formatMessage(
-      choice.role === undefined
-        ? messages.interviewGroup
-        : choice.role === 'ego'
-          ? messages.roleEgo
-          : messages.roleContext,
+      choice.kind === 'connectivity'
+        ? messages.connectionsGroup
+        : choice.kind === 'condition'
+          ? messages.conditionsGroup
+          : choice.ownNode === true
+            ? messages.nodeAttributesGroup
+            : choice.role === undefined
+              ? messages.interviewGroup
+              : choice.role === 'ego'
+                ? messages.roleEgo
+                : messages.roleContext,
     ),
 });
 
@@ -388,6 +503,9 @@ const messageLabelsFor = ({
     if (node.type === 'plural') {
       return numberSwitchLabels(intl, locale).switchLabel(value);
     }
+    if (choice?.kind === 'connectivity' || choice?.kind === 'condition') {
+      return intl.formatMessage(messages.versionsByFlag, { value });
+    }
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
     );
@@ -408,6 +526,15 @@ const messageLabelsFor = ({
           ? participantVersionMessages.aboutSomeoneElse
           : participantVersionMessages.aboutParticipant,
       );
+    }
+    // What is asked of the node names the version shown when it is true:
+    // open, the versions take the pill's place, so nothing else says what
+    // they depend on.
+    const flag = choiceByName.get(node.argument);
+    if (flag?.kind === 'connectivity' || flag?.kind === 'condition') {
+      return key === 'other'
+        ? intl.formatMessage(messages.versionOtherwise)
+        : naming.valueLabel(flag);
     }
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
@@ -568,13 +695,20 @@ export function DynamicMessageEditor({
               : messages.needsAnswerLabels,
           );
     // Whether the node is the participant is never shown, only worded for,
-    // so it is offered once, as its two versions.
-    if (choice.kind === 'participant') {
+    // so it is offered once, as its two versions; so is how a node is
+    // connected, and each of its type's conditions.
+    if (isFlagChoice(choice)) {
       items.push({
         id: `answers:${choice.path}`,
         label: valueLabel,
         group,
-        description: intl.formatMessage(messages.byParticipant),
+        description: intl.formatMessage(
+          choice.kind === 'participant'
+            ? messages.byParticipant
+            : choice.kind === 'condition'
+              ? messages.byCondition
+              : messages.byConnectivity,
+        ),
         content: inlineContent(
           [
             {
@@ -603,7 +737,13 @@ export function DynamicMessageEditor({
       ...(unshowable !== undefined
         ? { description: unshowable, disabled: true }
         : choice.kind === 'label'
-          ? { description: intl.formatMessage(messages.nodeLabelDescription) }
+          ? {
+              description: intl.formatMessage(
+                choice.defaultLabel === true
+                  ? messages.defaultNodeLabelDescription
+                  : messages.nodeLabelDescription,
+              ),
+            }
           : type !== undefined && { description: intl.formatMessage(type) }),
       content: inlineContent(
         choice.optional

@@ -33,6 +33,7 @@
     "./fields/DynamicTextField": "./src/fields/DynamicTextField.tsx",
     "./fields/LocalizedMessageField": "./src/fields/LocalizedMessageField.tsx",
     "./fields/LocalizedStringField": "./src/fields/LocalizedStringField.tsx",
+    "./fields/NodeLabelField": "./src/fields/NodeLabelField.tsx",
     "./fields/OptionLabelField": "./src/fields/OptionLabelField.tsx",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
     "./fields/StageNameField": "./src/fields/StageNameField.tsx",

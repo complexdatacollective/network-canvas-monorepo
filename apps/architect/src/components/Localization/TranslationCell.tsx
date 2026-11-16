@@ -36,6 +36,7 @@ import {
   type DynamicValues,
   type DynamicValueSite,
   dynamicValueContextFor,
+  nodeLabelValueContext,
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringFormat,
@@ -910,7 +911,27 @@ const useDynamicSite = (
       ? protocol?.stages[stageIndex]
       : undefined;
   const codebook = protocol?.codebook;
+  // A node type's own label sits in the codebook, and shows what is known
+  // of the node it is on rather than what a stage binds.
+  const labelledNodeType =
+    site === 'nodeLabel' && root === 'codebook' && path[1] === 'node'
+      ? path[2]
+      : undefined;
+  const nodeLabel =
+    typeof labelledNodeType === 'string'
+      ? codebook?.node?.[labelledNodeType]?.dynamicLabel
+      : undefined;
   return useMemo(() => {
+    if (typeof labelledNodeType === 'string') {
+      return {
+        context: nodeLabelValueContext({
+          codebook,
+          nodeType: labelledNodeType,
+          conditions: nodeLabel?.conditions,
+        }),
+        bindings: nodeLabel?.dynamicValues ?? {},
+      };
+    }
     const bindings = (
       isRecord(stage) && isRecord(stage.dynamicValues)
         ? stage.dynamicValues
@@ -922,7 +943,7 @@ const useDynamicSite = (
     };
     // `sitePath` is a fresh array each render; the row's path decides it.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [codebook, stage, site, JSON.stringify(path)]);
+  }, [codebook, stage, site, nodeLabel, JSON.stringify(path)]);
 };
 
 /**

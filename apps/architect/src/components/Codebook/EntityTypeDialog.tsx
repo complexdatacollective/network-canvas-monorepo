@@ -13,7 +13,9 @@ import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
 import TypeEditor, {
   type EntityTypeValues,
 } from '~/components/TypeEditor/TypeEditor';
-import validateEntityType from '~/components/TypeEditor/validateEntityType';
+import validateEntityType, {
+  DYNAMIC_LABEL_FIELD,
+} from '~/components/TypeEditor/validateEntityType';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   createTypeAsync,
@@ -137,7 +139,14 @@ const EntityTypeDialog = ({
       // reports registered fields only — so the properties this editor does
       // not render (`variables` above all) are carried over from the committed
       // definition.
-      const configuration = parse({ ...initialValues, ...values });
+      const merged: Record<string, unknown> = { ...initialValues, ...values };
+      // The Dynamic label section registers its field only while it is
+      // switched on, so a label the committed definition holds must not be
+      // carried over once the section has been switched off.
+      if (values[DYNAMIC_LABEL_FIELD] === undefined) {
+        delete merged[DYNAMIC_LABEL_FIELD];
+      }
+      const configuration = parse(merged);
 
       try {
         if (isNew) {
@@ -234,7 +243,12 @@ const EntityTypeDialog = ({
       formId={FORM_ID}
       submitLabel={intl.formatMessage(messages.saveAndClose)}
       onSubmit={handleSubmit}
-      validate={validateEntityType}
+      validate={(values) =>
+        validateEntityType(values, {
+          codebook: protocol?.codebook,
+          nodeType: entity === 'node' ? type : undefined,
+        })
+      }
       finalFocus={finalFocus}
     >
       <TypeEditor

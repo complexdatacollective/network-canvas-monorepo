@@ -29,7 +29,7 @@ import DialogForm, {
 } from '../form/DialogForm.tsx';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
-import { useProtocolContext } from '../state/protocolContext.ts';
+import { useHasProtocolBuilderHost } from '../state/context.ts';
 import { useLatest } from '../state/useLatest.ts';
 import type { RuleOperatorOption, RuleOperatorSubject } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
@@ -50,12 +50,14 @@ import {
   type RuleVariableOption,
   ruleOperatorOptions,
   ruleOperatorSubject,
+  ruleEntityTypeOptions,
   ruleVariableChoices,
   ruleVariableDateParameters,
   ruleVariableOptions,
   ruleVariables,
   ruleVariableType,
 } from './ruleCodebook.ts';
+import { useRuleCodebook } from './ruleCodebookSource.ts';
 import { describeRule, type RuleProblemCode } from './ruleDescription.ts';
 import {
   dateResolutionMessages,
@@ -1254,10 +1256,10 @@ function RuleEditorFields({
   allowEncryptedAttributes: boolean;
   description: ReactNode;
 }>) {
-  const protocolContext = useProtocolContext();
+  const codebook = useRuleCodebook();
+  const hasProtocolHost = useHasProtocolBuilderHost();
   const intl = useAppIntl();
   const localize = useLocalizedText();
-  const codebook = protocolContext.codebook;
   const values = useFormValue(RULE_CASCADE);
   const target = isRuleTargetType(values[TARGET_FIELD])
     ? values[TARGET_FIELD]
@@ -1295,6 +1297,17 @@ function RuleEditorFields({
     localize,
     target,
   ]);
+
+  const entityTypeChoices = useMemo(
+    () =>
+      target === 'node' || target === 'edge'
+        ? ruleEntityTypeOptions(codebook, target).map(({ value, label }) => ({
+            value,
+            label,
+          }))
+        : [],
+    [codebook, target],
+  );
 
   // The operator the rule HOLDS is part of the list, because a stored operator
   // the editor no longer offers has to be visible rather than left showing the
@@ -1348,7 +1361,35 @@ function RuleEditorFields({
           initialValue={seed.type === '' ? undefined : seed.type}
           required={intl.formatMessage(ruleEditorRequiredMessage)}
         />
-        {(target === 'node' || target === 'edge') && (
+        {(target === 'node' || target === 'edge') && !hasProtocolHost && (
+          // Outside a `ProtocolBuilder` (a node type's label condition, in
+          // the codebook) there is no protocol read model for the type
+          // picker to list, rename or create types through, so the types of
+          // the codebook the rule set was given are a plain choice. Where
+          // there is only one to choose, a new rule starts on it.
+          <Field
+            key={target}
+            name={ENTITY_TYPE_FIELD}
+            label={intl.formatMessage(
+              target === 'node'
+                ? messages.nodeTypeLabel
+                : messages.edgeTypeLabel,
+            )}
+            hint={intl.formatMessage(
+              target === 'node' ? messages.nodeTypeHint : messages.edgeTypeHint,
+            )}
+            component={NativeSelectField}
+            options={entityTypeChoices}
+            initialValue={
+              seedString(seed, 'type') ??
+              (entityTypeChoices.length === 1
+                ? entityTypeChoices[0]?.value
+                : undefined)
+            }
+            required={intl.formatMessage(ruleEditorRequiredMessage)}
+          />
+        )}
+        {(target === 'node' || target === 'edge') && hasProtocolHost && (
           <Field
             name={ENTITY_TYPE_FIELD}
             label={intl.formatMessage(
@@ -1482,7 +1523,7 @@ export default function RuleEditorDialog({
   // stays live without giving the validator a new identity on every revision
   // that reaches it. Same reason `useRuleSetValidation` does it: a codebook
   // edit committed elsewhere has to reach a dialog that is already open.
-  const protocolContext = useProtocolContext();
+  const currentCodebook = useRuleCodebook();
 
   /**
    * Everything the editor can tell about a draft without leaving it, run after
@@ -1496,7 +1537,7 @@ export default function RuleEditorDialog({
    * here and marked broken by the row a moment later.
    */
   const judgeAgainst = useLatest({
-    codebook: protocolContext.codebook,
+    codebook: currentCodebook,
     targets: allowedTargets,
     allowEncryptedAttributes,
   });

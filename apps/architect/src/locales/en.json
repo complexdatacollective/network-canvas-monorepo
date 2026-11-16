@@ -815,6 +815,26 @@
     "defaultMessage": "The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your unsaved changes to this stage.",
     "description": "Body of the dialog asking what to do with unsaved stage changes after the other browser tab closed. Explains that the two versions cannot be combined and describes what downloading a copy or discarding the changes does."
   },
+  "architect.constants.components.typeeditor.validateentitytype.conditionJoinMessage": {
+    "defaultMessage": "Choose how the rules of every condition with more than one rule are matched.",
+    "description": "Validation error on the Dynamic label section of the node type editor when a condition has several rules but the researcher has not chosen whether all of them or any one of them must match."
+  },
+  "architect.constants.components.typeeditor.validateentitytype.conditionNameMessage": {
+    "defaultMessage": "Give every condition a name.",
+    "description": "Validation error on the Dynamic label section of the node type editor when one of its conditions has an empty name. A condition is a named set of rules a node either meets or does not."
+  },
+  "architect.constants.components.typeeditor.validateentitytype.conditionRulesMessage": {
+    "defaultMessage": "Add at least one rule to every condition, or remove the condition.",
+    "description": "Validation error on the Dynamic label section of the node type editor when one of its conditions has no rules. A condition is a named set of rules a node either meets or does not."
+  },
+  "architect.constants.components.typeeditor.validateentitytype.labelProblemMessage": {
+    "defaultMessage": "The label cannot be used as it is written. Correct the problem shown beneath it.",
+    "description": "Validation error on the Dynamic label section of the node type editor when the label text is not valid, for example because it shows a value in a place where the value could be missing. The specific problem is already shown directly beneath the label field."
+  },
+  "architect.constants.components.typeeditor.validateentitytype.labelTextMessage": {
+    "defaultMessage": "Write the label, or turn off Dynamic label.",
+    "description": "Validation error on the Dynamic label section of the node type editor when the section is switched on but no label text has been written. Dynamic label is the name of the section and of its on/off toggle."
+  },
   "architect.constants.components.typeeditor.validateentitytype.selectVariableMessage": {
     "defaultMessage": "Select an attribute to map to a shape, or turn off shape mapping.",
     "description": "Validation error on the shape mapping setting of the node type editor when shape mapping is on but no attribute (codebook variable) has been chosen to drive the node shape."
@@ -3863,6 +3883,14 @@
     "defaultMessage": "Color",
     "description": "Label of the colour picker field in the node or edge type editor."
   },
+  "architect.typeEditor.typeEditor.dynamicLabel": {
+    "defaultMessage": "Dynamic label",
+    "description": "Heading of an optional section of the node type editor, switched on with a toggle. When it is on, the researcher writes the label shown on every node of this type, which can show the node’s attributes and change with them, in place of the label the interview would otherwise choose."
+  },
+  "architect.typeEditor.typeEditor.dynamicLabelDescription": {
+    "defaultMessage": "Write the label shown on every node of this type, in place of the label the interview chooses on its own. The label can show the node’s attributes, add text or emoji, and change depending on an attribute’s value, on how the node is connected, or on conditions you define. It updates as the interview goes on.",
+    "description": "Description under the Dynamic label heading in the node type editor. Attributes are the variables recorded about each node of this type; a node is connected when an edge joins it to another node."
+  },
   "architect.typeEditor.typeEditor.enterANameForThisType": {
     "defaultMessage": "Enter a name for this {entity, select, node {node} edge {edge} other {ego}} type...",
     "description": "Placeholder inside the type name field. entity is node, edge or ego, the kind of type being named."
@@ -3874,6 +3902,14 @@
   "architect.typeEditor.typeEditor.interfaceIcon": {
     "defaultMessage": "Interface icon",
     "description": "Heading of the section of the node type editor where an icon is chosen for the interface stages that create nodes of this type."
+  },
+  "architect.typeEditor.typeEditor.label": {
+    "defaultMessage": "Label",
+    "description": "Label of the text field in the Dynamic label section of the node type editor, where the researcher writes the label shown on every node of this type."
+  },
+  "architect.typeEditor.typeEditor.labelHint": {
+    "defaultMessage": "Type text or emoji. Use the syringe button, or type '{', to insert an attribute, the default label, a connection or a condition. Click an inserted pill to write the text for each of its cases, and insert a value inside one of them to combine conditions.",
+    "description": "Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button that opens the menu of values that can be inserted; a pill is the chip an inserted value is shown as. The default label is the label the interview would otherwise choose for a node. The quoted brace is the literal character the researcher types."
   },
   "architect.typeEditor.typeEditor.nameThisTypeForTheCodebook": {
     "defaultMessage": "Name this type for the codebook and exported data.",

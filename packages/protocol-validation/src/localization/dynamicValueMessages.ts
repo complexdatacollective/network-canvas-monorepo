@@ -67,13 +67,30 @@ const PLURAL_CATEGORIES: ReadonlySet<string> = new Set([
   'other',
 ]);
 
+// A message is read far more often than it changes: the interview reads a
+// node type's label once for every node it draws, each time one changes. The
+// elements are only ever read, so one parse serves every reader. Bounded, so
+// that an editor producing a new message with each keystroke cannot grow it
+// without limit.
+const PARSED_MESSAGES_KEPT = 500;
+const parsedMessages = new Map<string, MessageFormatElement[] | string>();
+
 const parseMessage = (message: string): MessageFormatElement[] | string => {
+  const known = parsedMessages.get(message);
+  if (known !== undefined) return known;
+  let parsed: MessageFormatElement[] | string;
   try {
-    return parse(message, PARSE_OPTIONS);
+    parsed = parse(message, PARSE_OPTIONS);
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
-    return `Text is not valid message syntax (${error.message}).`;
+    parsed = `Text is not valid message syntax (${error.message}).`;
   }
+  if (parsedMessages.size >= PARSED_MESSAGES_KEPT) {
+    const oldest = parsedMessages.keys().next();
+    if (!oldest.done) parsedMessages.delete(oldest.value);
+  }
+  parsedMessages.set(message, parsed);
+  return parsed;
 };
 
 /**

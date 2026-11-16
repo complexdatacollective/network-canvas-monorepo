@@ -23,9 +23,19 @@ const DYNAMIC_VALUE_PATH = 'dynamicValuePath' as const;
  *   the node a bin stage in select mode is placing);
  * - `formField`, a form field's caption, shown while the form describes one
  *   entity: a node or edge form's fields, and the question a Categorical Bin
- *   asks about the node just put in its "other" bin.
+ *   asks about the node just put in its "other" bin;
+ * - `nodeLabel`, the label a node type gives its nodes (the codebook's
+ *   `dynamicLabel`), shown on every node of that type wherever the interview draws
+ *   one: only that node, by its attributes, the label the interview would
+ *   otherwise choose for it, how it is connected, and the type's own
+ *   conditions. It sits on no stage, so `nodeLabelValueContext` gives what
+ *   it can show rather than `dynamicValueRolesAt`.
  */
-export type DynamicValueSite = 'stageText' | 'prompt' | 'formField';
+export type DynamicValueSite =
+  | 'stageText'
+  | 'prompt'
+  | 'formField'
+  | 'nodeLabel';
 
 /**
  * Values the interview itself knows, rather than an attribute of someone in
@@ -111,10 +121,51 @@ const PARTICIPANT_PATH_SEGMENT = '$isParticipant';
  */
 export const PARTICIPANT_CASE = 'participant';
 
+/**
+ * A fact about how a node is connected, which a node type's label can choose
+ * its wording by:
+ * - `connected`, whether an edge joins it to another node;
+ * - `mostConnected` and `leastConnected`, whether it has the most or the
+ *   fewest such edges of the nodes of its type, when they do not all have
+ *   the same number. Nodes that tie share the place.
+ *
+ * Each counts every edge, or only those of one edge type.
+ */
+export const CONNECTIVITY_MEASURES = [
+  'connected',
+  'mostConnected',
+  'leastConnected',
+] as const;
+export type ConnectivityMeasure = (typeof CONNECTIVITY_MEASURES)[number];
+
+const CONNECTIVITY_PATH_SEGMENTS: Readonly<
+  Record<ConnectivityMeasure, string>
+> = {
+  connected: '$connected',
+  mostConnected: '$mostConnected',
+  leastConnected: '$leastConnected',
+};
+const CONDITION_PATH_SEGMENT = '$condition';
+
+/**
+ * The case key a binding of something that is only true or false (how a node
+ * is connected, one of its type's conditions) chooses when it is true; when
+ * it is not, the text reads `other`.
+ */
+export const TRUE_CASE = 'yes';
+
 export type ParsedDynamicValuePath =
   | Readonly<{ kind: 'intrinsic'; name: IntrinsicDynamicValue }>
   | Readonly<{ kind: 'label'; role: LabelledDynamicValueRole }>
   | Readonly<{ kind: 'participant'; role: 'node' }>
+  | Readonly<{
+      kind: 'connectivity';
+      role: 'node';
+      measure: ConnectivityMeasure;
+      /** The one edge type counted, or undefined for every edge. */
+      edgeType?: string;
+    }>
+  | Readonly<{ kind: 'condition'; role: 'node'; conditionId: string }>
   | Readonly<{
       kind: 'attribute';
       role: AttributeDynamicValueRole;
@@ -144,6 +195,37 @@ export const parseDynamicValuePath = (
     path === `${DYNAMIC_VALUE_ROLE_PREFIXES.node}${PARTICIPANT_PATH_SEGMENT}`
   ) {
     return { kind: 'participant', role: 'node' };
+  }
+  const nodePrefix = DYNAMIC_VALUE_ROLE_PREFIXES.node;
+  if (path.startsWith(`${nodePrefix}$`)) {
+    const rest = path.slice(nodePrefix.length);
+    for (const measure of CONNECTIVITY_MEASURES) {
+      const segment = CONNECTIVITY_PATH_SEGMENTS[measure];
+      if (rest === segment) {
+        return { kind: 'connectivity', role: 'node', measure };
+      }
+      if (rest.startsWith(`${segment}.`) && rest.length > segment.length + 1) {
+        return {
+          kind: 'connectivity',
+          role: 'node',
+          measure,
+          edgeType: rest.slice(segment.length + 1),
+        };
+      }
+    }
+    const conditionPrefix = `${CONDITION_PATH_SEGMENT}.`;
+    if (
+      rest.startsWith(conditionPrefix) &&
+      rest.length > conditionPrefix.length
+    ) {
+      return {
+        kind: 'condition',
+        role: 'node',
+        conditionId: rest.slice(conditionPrefix.length),
+      };
+    }
+    // No attribute id holds `$`, so nothing else begins with one.
+    return undefined;
   }
   for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
     if (!isAttributeDynamicValueRole(role)) continue;
@@ -180,6 +262,28 @@ export const dynamicValueLabelPathFor = (
  */
 export const dynamicValueParticipantPathFor = (role: 'node'): string =>
   `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${PARTICIPANT_PATH_SEGMENT}`;
+
+/**
+ * The `path` naming a fact about how the node a label is on is connected
+ * (see `ConnectivityMeasure`), counting every edge or only those of
+ * `edgeType`. Text chooses its wording by it and never shows it. It is never
+ * missing.
+ */
+export const dynamicValueConnectivityPathFor = (
+  measure: ConnectivityMeasure,
+  edgeType?: string,
+): string =>
+  `${DYNAMIC_VALUE_ROLE_PREFIXES.node}${CONNECTIVITY_PATH_SEGMENTS[measure]}${
+    edgeType === undefined ? '' : `.${edgeType}`
+  }`;
+
+/**
+ * The `path` naming whether the node a label is on meets one of its type's
+ * conditions (the node type's `dynamicLabel.conditions`). Text chooses its wording
+ * by it and never shows it. It is never missing.
+ */
+export const dynamicValueConditionPathFor = (conditionId: string): string =>
+  `${DYNAMIC_VALUE_ROLE_PREFIXES.node}${CONDITION_PATH_SEGMENT}.${conditionId}`;
 
 const DynamicValuePathSchema = z
   .string()
@@ -304,6 +408,8 @@ export const dynamicValueRolesAt = (
   site: DynamicValueSite,
   form: DynamicValueForm | undefined,
 ): ReadonlySet<DynamicValueRole> => {
+  // A node's label is about that node alone, on whichever stage draws it.
+  if (site === 'nodeLabel') return new Set<DynamicValueRole>(['node']);
   const roles = new Set<DynamicValueRole>(['ego']);
   if (site === 'prompt') {
     if (DYAD_STAGE_TYPES.has(stage.type)) {
@@ -453,6 +559,19 @@ export type DynamicValueSiteContext = Readonly<{
    */
   participantRoles?: ReadonlySet<DynamicValueRole>;
   /**
+   * What only a node type's label can choose its wording by, about the node
+   * it is on: how that node is connected, by every edge or the edges of one
+   * of `edgeTypes`, and the type's own `conditions`, by id. Absent
+   * everywhere else. Such a label shows no value the interview knows
+   * (today's date): it is drawn on many nodes at once, on every stage.
+   */
+  nodeLabel?: Readonly<{
+    /** Each edge type's name, by id. */
+    edgeTypes: ReadonlyMap<string, string | undefined>;
+    /** Each of the type's conditions' names, by id. */
+    conditions: ReadonlyMap<string, string | undefined>;
+  }>;
+  /**
    * The variables of each role's entity, or undefined where the role names
    * no codebook entity (a node role on a stage with no node subject).
    */
@@ -485,12 +604,60 @@ export const dynamicValueStatus = (
     };
   }
   if (parsed.kind === 'intrinsic') {
+    if (context.nodeLabel !== undefined) {
+      return {
+        status: 'unavailable',
+        reason: 'a node’s label can show only what is known about that node',
+      };
+    }
     return {
       status: 'available',
       argument: {
         cases: [],
         numeric: false,
         optional: INTRINSIC_DYNAMIC_VALUES[parsed.name].optional,
+      },
+    };
+  }
+  if (parsed.kind === 'connectivity' || parsed.kind === 'condition') {
+    if (context.nodeLabel === undefined || !context.roles.has(parsed.role)) {
+      return {
+        status: 'unavailable',
+        reason:
+          parsed.kind === 'connectivity'
+            ? 'how a node is connected is known only to its node type’s label'
+            : 'a node type’s conditions are known only to its label',
+      };
+    }
+    if (
+      parsed.kind === 'connectivity' &&
+      parsed.edgeType !== undefined &&
+      !context.nodeLabel.edgeTypes.has(parsed.edgeType)
+    ) {
+      return {
+        status: 'unknown',
+        reason: 'the edge type it counts does not exist',
+      };
+    }
+    if (
+      parsed.kind === 'condition' &&
+      !context.nodeLabel.conditions.has(parsed.conditionId)
+    ) {
+      return {
+        status: 'unknown',
+        reason: 'the condition it names does not exist',
+      };
+    }
+    return {
+      status: 'available',
+      argument: {
+        cases: Object.keys(binding.cases ?? {}),
+        numeric: false,
+        optional: false,
+        unshowable:
+          parsed.kind === 'connectivity'
+            ? 'how the node is connected only chooses wording, and is never shown itself. Give the label a version for when it is so and one for when it is not.'
+            : 'a condition only chooses wording, and is never shown itself. Give the label a version for when it is met and one for when it is not.',
       },
     };
   }

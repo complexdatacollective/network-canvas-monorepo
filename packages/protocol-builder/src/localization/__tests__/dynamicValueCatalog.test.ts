@@ -6,6 +6,7 @@ import {
   dynamicValueParticipantRolesAt,
   dynamicValueRolesAt,
   type MessageNode,
+  nodeLabelValueContext,
 } from '@codaco/protocol-validation';
 
 import {
@@ -437,5 +438,82 @@ describe('dynamicValueNamesUsedIn', () => {
         }),
       ].toSorted(),
     ).toEqual(['braces', 'name', 'today']);
+  });
+});
+
+describe('what a node type’s own label can show', () => {
+  const context = nodeLabelValueContext({
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            nameVar: { name: 'name', type: 'text' },
+            secret: { name: 'secret', type: 'text', encrypted: true },
+          },
+        },
+      },
+      edge: { knows: { name: 'Knows' }, likes: { name: 'Likes a lot' } },
+    },
+    nodeType: 'person',
+    conditions: { isOld: { name: 'Is old' } },
+  });
+  const choices = dynamicValueChoices(context);
+
+  it('offers the default label and the node’s attributes, but no encrypted one, no ego attribute and no date', () => {
+    expect(
+      choices
+        .filter(
+          (choice) => choice.kind === 'label' || choice.kind === 'attribute',
+        )
+        .map((choice) => choice.path),
+    ).toEqual(['node.$label', 'node.nameVar']);
+    expect(
+      choices.find((choice) => choice.kind === 'label')?.defaultLabel,
+    ).toBe(true);
+    expect(choices.some((choice) => choice.kind === 'intrinsic')).toBe(false);
+    expect(choices.some((choice) => choice.role === 'ego')).toBe(false);
+  });
+
+  it('offers each condition, and each connection for every edge and for each edge type', () => {
+    expect(
+      choices
+        .filter(
+          (choice) =>
+            choice.kind === 'condition' || choice.kind === 'connectivity',
+        )
+        .map((choice) => choice.path),
+    ).toEqual([
+      'node.$condition.isOld',
+      'node.$connected',
+      'node.$connected.knows',
+      'node.$connected.likes',
+      'node.$mostConnected',
+      'node.$mostConnected.knows',
+      'node.$mostConnected.likes',
+      'node.$leastConnected',
+      'node.$leastConnected.knows',
+      'node.$leastConnected.likes',
+    ]);
+  });
+
+  it('binds a connection and a condition with the one case that stands for true', () => {
+    const bound = (path: string) => {
+      const choice = choices.find((each) => each.path === path);
+      if (choice === undefined) throw new Error(`No choice for ${path}`);
+      return bindingFor(choice, {}, {}, () => '');
+    };
+    expect(bound('node.$connected')).toEqual({
+      name: 'connected',
+      binding: { path: 'node.$connected', cases: { yes: true } },
+    });
+    expect(bound('node.$mostConnected.likes')).toEqual({
+      name: 'mostConnectedLikesALot',
+      binding: { path: 'node.$mostConnected.likes', cases: { yes: true } },
+    });
+    expect(bound('node.$condition.isOld')).toEqual({
+      name: 'isOld',
+      binding: { path: 'node.$condition.isOld', cases: { yes: true } },
+    });
   });
 });

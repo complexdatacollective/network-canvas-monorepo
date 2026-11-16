@@ -39,6 +39,13 @@ export type DynamicValueSources = Readonly<{
    * `node.$isParticipant`); a role without an entry reads as missing.
    */
   participants?: Readonly<Partial<Record<DynamicValueRole, boolean>>>;
+  /**
+   * What is true or false of the node a node type's label is on, by the
+   * path that names it: how it is connected (`node.$connected`) and the
+   * type's conditions (`node.$condition.<id>`). Only a node's own label has
+   * these; a path without an entry reads as missing.
+   */
+  nodeFacts?: Readonly<Record<string, boolean>>;
   variablesFor: (
     role: DynamicValueRole,
   ) => Readonly<Record<string, Variable>> | undefined;
@@ -103,6 +110,20 @@ const resolveDynamicValue = (
     return {
       missing: false,
       value: isParticipant,
+      ...(matched !== undefined && { case: matched }),
+    };
+  }
+  if (parsed.kind === 'connectivity' || parsed.kind === 'condition') {
+    const facts = sources.nodeFacts;
+    const fact =
+      facts !== undefined && Object.hasOwn(facts, binding.path)
+        ? facts[binding.path]
+        : undefined;
+    if (fact === undefined) return { missing: true };
+    const matched = caseOf(binding, fact);
+    return {
+      missing: false,
+      value: fact,
       ...(matched !== undefined && { case: matched }),
     };
   }

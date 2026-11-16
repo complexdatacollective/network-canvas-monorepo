@@ -1,4 +1,10 @@
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  dynamicValueArgumentsAt,
+  type DynamicValues,
+  findDynamicValueProblem,
+  nodeLabelValueContext,
+} from '@codaco/protocol-validation';
 
 import type { ShapeMappingType, ShapeThreshold } from './shapeMappingTypes';
 
@@ -37,6 +43,107 @@ const THRESHOLDS_ASCENDING_MESSAGE = defineMessages({
   },
 }).message;
 
+/**
+ * A node type's own label is one opaque field value too (its text, the
+ * values the text shows and its conditions), so its messages are keyed at
+ * that field.
+ */
+export const DYNAMIC_LABEL_FIELD = 'dynamicLabel';
+
+const LABEL_TEXT_MESSAGE = defineMessages({
+  message: {
+    id: 'architect.constants.components.typeeditor.validateentitytype.labelTextMessage',
+    defaultMessage: 'Write the label, or turn off Dynamic label.',
+    description:
+      'Validation error on the Dynamic label section of the node type editor when the section is switched on but no label text has been written. Dynamic label is the name of the section and of its on/off toggle.',
+  },
+}).message;
+const LABEL_PROBLEM_MESSAGE = defineMessages({
+  message: {
+    id: 'architect.constants.components.typeeditor.validateentitytype.labelProblemMessage',
+    defaultMessage:
+      'The label cannot be used as it is written. Correct the problem shown beneath it.',
+    description:
+      'Validation error on the Dynamic label section of the node type editor when the label text is not valid, for example because it shows a value in a place where the value could be missing. The specific problem is already shown directly beneath the label field.',
+  },
+}).message;
+const CONDITION_NAME_MESSAGE = defineMessages({
+  message: {
+    id: 'architect.constants.components.typeeditor.validateentitytype.conditionNameMessage',
+    defaultMessage: 'Give every condition a name.',
+    description:
+      'Validation error on the Dynamic label section of the node type editor when one of its conditions has an empty name. A condition is a named set of rules a node either meets or does not.',
+  },
+}).message;
+const CONDITION_RULES_MESSAGE = defineMessages({
+  message: {
+    id: 'architect.constants.components.typeeditor.validateentitytype.conditionRulesMessage',
+    defaultMessage:
+      'Add at least one rule to every condition, or remove the condition.',
+    description:
+      'Validation error on the Dynamic label section of the node type editor when one of its conditions has no rules. A condition is a named set of rules a node either meets or does not.',
+  },
+}).message;
+const CONDITION_JOIN_MESSAGE = defineMessages({
+  message: {
+    id: 'architect.constants.components.typeeditor.validateentitytype.conditionJoinMessage',
+    defaultMessage:
+      'Choose how the rules of every condition with more than one rule are matched.',
+    description:
+      'Validation error on the Dynamic label section of the node type editor when a condition has several rules but the researcher has not chosen whether all of them or any one of them must match.',
+  },
+}).message;
+
+/** What the label is checked against: the codebook and the type it is for. */
+export type EntityTypeValidationContext = Readonly<{
+  codebook: unknown;
+  /** The node type's id; undefined while a new type is being created. */
+  nodeType: string | undefined;
+}>;
+
+const dynamicLabelError = (
+  label: Record<string, unknown>,
+  { codebook, nodeType }: EntityTypeValidationContext,
+) => {
+  const text = isRecord(label.text) ? label.text : {};
+  const translations = Object.entries(text).filter(
+    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  );
+  if (translations.length === 0) return createMessageError(LABEL_TEXT_MESSAGE);
+
+  const conditions = isRecord(label.conditions) ? label.conditions : {};
+  for (const condition of Object.values(conditions)) {
+    if (!isRecord(condition)) continue;
+    if (typeof condition.name !== 'string' || condition.name.trim() === '') {
+      return createMessageError(CONDITION_NAME_MESSAGE);
+    }
+    const filter = isRecord(condition.filter) ? condition.filter : {};
+    const rules = Array.isArray(filter.rules) ? filter.rules : [];
+    if (rules.length === 0) return createMessageError(CONDITION_RULES_MESSAGE);
+    if (rules.length > 1 && filter.join !== 'AND' && filter.join !== 'OR') {
+      return createMessageError(CONDITION_JOIN_MESSAGE);
+    }
+  }
+
+  // The protocol's own check, against what a label of this type can show.
+  const context = nodeLabelValueContext({
+    codebook,
+    nodeType: nodeType ?? '',
+    conditions,
+  });
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the field's own bindings, written only by its editor; each is read defensively by the checker
+  const bindings = (
+    isRecord(label.dynamicValues) ? label.dynamicValues : {}
+  ) as DynamicValues;
+  const values = dynamicValueArgumentsAt(bindings, context);
+  return translations.some(
+    ([locale, message]) =>
+      findDynamicValueProblem(message, values, locale) !== undefined,
+  )
+    ? createMessageError(LABEL_PROBLEM_MESSAGE)
+    : undefined;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -74,14 +181,27 @@ const shapeMappingError = (dynamic: Record<string, unknown>) => {
 
 const validateEntityType = (
   values: Record<string, unknown>,
+  context: EntityTypeValidationContext = {
+    codebook: undefined,
+    nodeType: undefined,
+  },
 ): EntityTypeFormErrors => {
+  const errors: EntityTypeFormErrors = {};
+
   const shape = values.shape;
-  if (!isRecord(shape) || !isRecord(shape.dynamic)) {
-    return {};
+  if (isRecord(shape) && isRecord(shape.dynamic)) {
+    const message = shapeMappingError(shape.dynamic);
+    if (message) errors[SHAPE_MAPPING_FIELD] = message;
   }
 
-  const message = shapeMappingError(shape.dynamic);
-  return message ? { [SHAPE_MAPPING_FIELD]: message } : {};
+  // Present only while the Dynamic label section is switched on.
+  const label = values[DYNAMIC_LABEL_FIELD];
+  if (isRecord(label)) {
+    const message = dynamicLabelError(label, context);
+    if (message) errors[DYNAMIC_LABEL_FIELD] = message;
+  }
+
+  return errors;
 };
 
 export default validateEntityType;

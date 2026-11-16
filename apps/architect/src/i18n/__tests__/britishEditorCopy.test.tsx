@@ -30,6 +30,10 @@ vi.mock('~/components/TypeEditor/ShapeVariableMapping', () => ({
 }));
 vi.mock('~/selectors/protocol', () => ({
   getCodebook: () => ({ node: {}, edge: {} }),
+  // The Dynamic label section reads the protocol's languages.
+  getProtocol: () => ({
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  }),
 }));
 vi.mock('~/ducks/hooks', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) => selector({}),

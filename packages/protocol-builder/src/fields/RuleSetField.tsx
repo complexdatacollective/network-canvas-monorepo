@@ -9,6 +9,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
 import type { RuleDraft } from '../rules/rule.ts';
 import type { RuleTargetType } from '../rules/ruleCodebook.ts';
+import { useRuleCodebook } from '../rules/ruleCodebookSource.ts';
 import type { RuleTypeOption } from '../rules/RuleEditorDialog.tsx';
 import RuleList from '../rules/RuleList.tsx';
 import {
@@ -19,7 +20,6 @@ import {
   type RuleSetVariant,
   ruleSetTargets,
 } from '../rules/ruleSet.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
 
 /**
  * What each target is offered as, in the sentence that says what it matches.
@@ -68,6 +68,12 @@ const messages = defineMessages({
     defaultMessage: 'Add new filter rule',
     description:
       'Action that adds a rule to the set narrowing which parts of the interview network a stage works on. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once.',
+  },
+  addConditionRule: {
+    id: 'protocolBuilder.ruleSet.addConditionRule',
+    defaultMessage: 'Add new rule',
+    description:
+      'Action that adds a rule to one of the conditions of a node type’s own label. A condition is a named set of rules a node either meets or does not, which the label chooses its wording by.',
   },
   addSkipLogicRule: {
     id: 'protocolBuilder.ruleSet.addSkipLogicRule',
@@ -139,9 +145,8 @@ function RuleSetControl({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
 }: RuleSetFieldProps) {
-  const protocolContext = useProtocolContext();
+  const codebook = useRuleCodebook();
   const intl = useAppIntl();
-  const codebook = protocolContext.codebook;
 
   // Read once per value: the reader builds a new array of rules each time it
   // runs, and the callbacks below depend on that array.
@@ -275,6 +280,25 @@ export function QueryRuleSetField(
       {...props}
       variant="query"
       addRuleLabel={intl.formatMessage(messages.addSkipLogicRule)}
+    />
+  );
+}
+
+/**
+ * The rule builder of one condition of a node type's own label. Its rules
+ * are asked of one node: a node rule about that node, an edge rule about the
+ * edges that join it to others, which is what a stage's filter may hold too.
+ * The codebook it builds against is the one a `RuleCodebookProvider` gives.
+ */
+export function ConditionRuleSetField(
+  props: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel'>,
+) {
+  const intl = useAppIntl();
+  return (
+    <RuleSetControl
+      {...props}
+      variant="filter"
+      addRuleLabel={intl.formatMessage(messages.addConditionRule)}
     />
   );
 }

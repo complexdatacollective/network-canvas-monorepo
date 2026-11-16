@@ -8,11 +8,15 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
+import NodeLabelField, {
+  type NodeLabelDraft,
+} from '@codaco/protocol-builder/fields/NodeLabelField';
+import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import type { LocalizedString } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
-import { getCodebook } from '~/selectors/protocol';
+import { getCodebook, getProtocol } from '~/selectors/protocol';
 
 import ColorPicker from '../Form/Fields/ColorPicker';
 import getPalette from './getPalette';
@@ -22,6 +26,7 @@ import { ShapePickerControl } from './ShapePicker';
 import ShapeVariableMapping, {
   type ShapeMappingVariable,
 } from './ShapeVariableMapping';
+import { DYNAMIC_LABEL_FIELD } from './validateEntityType';
 const messages = defineMessages({
   typeIdentity: {
     id: 'architect.typeEditor.typeEditor.typeIdentity',
@@ -109,6 +114,32 @@ const messages = defineMessages({
     defaultMessage: 'Icon',
     description: 'Label of the icon picker field in the node type editor.',
   },
+  dynamicLabel: {
+    id: 'architect.typeEditor.typeEditor.dynamicLabel',
+    defaultMessage: 'Dynamic label',
+    description:
+      'Heading of an optional section of the node type editor, switched on with a toggle. When it is on, the researcher writes the label shown on every node of this type, which can show the node’s attributes and change with them, in place of the label the interview would otherwise choose.',
+  },
+  dynamicLabelDescription: {
+    id: 'architect.typeEditor.typeEditor.dynamicLabelDescription',
+    defaultMessage:
+      'Write the label shown on every node of this type, in place of the label the interview chooses on its own. The label can show the node’s attributes, add text or emoji, and change depending on an attribute’s value, on how the node is connected, or on conditions you define. It updates as the interview goes on.',
+    description:
+      'Description under the Dynamic label heading in the node type editor. Attributes are the variables recorded about each node of this type; a node is connected when an edge joins it to another node.',
+  },
+  label: {
+    id: 'architect.typeEditor.typeEditor.label',
+    defaultMessage: 'Label',
+    description:
+      'Label of the text field in the Dynamic label section of the node type editor, where the researcher writes the label shown on every node of this type.',
+  },
+  labelHint: {
+    id: 'architect.typeEditor.typeEditor.labelHint',
+    defaultMessage:
+      "Type text or emoji. Use the syringe button, or type '{', to insert an attribute, the default label, a connection or a condition. Click an inserted pill to write the text for each of its cases, and insert a value inside one of them to combine conditions.",
+    description:
+      'Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button that opens the menu of values that can be inserted; a pill is the chip an inserted value is shown as. The default label is the label the interview would otherwise choose for a node. The quoted brace is the literal character the researcher types.',
+  },
   chooseAnIconToDisplayOn: {
     id: 'architect.typeEditor.typeEditor.chooseAnIconToDisplayOn',
     defaultMessage:
@@ -127,6 +158,7 @@ export type EntityTypeValues = {
   color?: string;
   icon?: string;
   shape?: { default?: NodeShape; dynamic?: ShapeMappingDraft };
+  dynamicLabel?: NodeLabelDraft;
   variables?: Record<string, ShapeMappingVariable>;
 };
 
@@ -159,6 +191,9 @@ const TypeEditor = ({
 }: TypeEditorProps) => {
   const intl = useAppIntl();
   const codebook = useAppSelector((state: RootState) => getCodebook(state));
+  const localization = useAppSelector(
+    (state: RootState) => getProtocol(state)?.localization,
+  );
   const existingTypes = useMemo(() => {
     if (!codebook) return [];
     const excludeType = !isNew && type;
@@ -250,6 +285,24 @@ const TypeEditor = ({
                 isNodeShape(defaultShape) ? defaultShape : undefined
               }
             />
+          </Section>
+          <Section
+            toggleable
+            defaultOpen={initialValues.dynamicLabel !== undefined}
+            title={intl.formatMessage(messages.dynamicLabel)}
+            description={intl.formatMessage(messages.dynamicLabelDescription)}
+          >
+            <ProtocolLocalizationProvider localization={localization}>
+              <ArchitectField
+                component={NodeLabelField}
+                name={DYNAMIC_LABEL_FIELD}
+                label={intl.formatMessage(messages.label)}
+                hint={intl.formatMessage(messages.labelHint)}
+                initialValue={initialValues.dynamicLabel}
+                codebook={codebook ?? undefined}
+                nodeType={isNew || !type ? undefined : type}
+              />
+            </ProtocolLocalizationProvider>
           </Section>
           <Section title={intl.formatMessage(messages.interfaceIcon)}>
             <ArchitectField

@@ -25,6 +25,10 @@ const existingCodebook = vi.hoisted(
 );
 vi.mock('~/selectors/protocol', () => ({
   getCodebook: () => existingCodebook.current,
+  // The Dynamic label section reads the protocol's languages.
+  getProtocol: () => ({
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  }),
 }));
 vi.mock('~/ducks/hooks', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
@@ -70,7 +74,9 @@ describe('<TypeEditor /> name validation', () => {
   it('groups controls in untitled Sections', () => {
     const { container } = renderTypeEditor('node');
 
-    expect(container.querySelectorAll('section')).toHaveLength(4);
+    // Identity, colour, appearance, the Dynamic label section (switched off,
+    // so only its heading and toggle) and the icon.
+    expect(container.querySelectorAll('section')).toHaveLength(5);
     expect(screen.getByText('Node type name')).toBeInTheDocument();
     expect(
       screen.queryByRole('heading', {

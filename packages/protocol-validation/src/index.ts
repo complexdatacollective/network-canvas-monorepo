@@ -200,6 +200,8 @@ export {
   DYNAMIC_VALUE_ROLE_PREFIXES,
   DYNAMIC_VALUE_VARIABLE_TYPES,
   type AttributeDynamicValueRole,
+  CONNECTIVITY_MEASURES,
+  type ConnectivityMeasure,
   type DynamicValueBinding,
   type DynamicValueForm,
   type DynamicValueRole,
@@ -208,6 +210,8 @@ export {
   type DynamicValueSiteContext,
   type DynamicValueStatus,
   dynamicValueArgumentsAt,
+  dynamicValueConditionPathFor,
+  dynamicValueConnectivityPathFor,
   dynamicValueLabelPathFor,
   dynamicValueParticipantPathFor,
   dynamicValueParticipantRolesAt,
@@ -223,7 +227,17 @@ export {
   PARTICIPANT_CASE,
   type ParsedDynamicValuePath,
   parseDynamicValuePath,
+  TRUE_CASE,
 } from './schemas/9/dynamic-values.ts';
+// A node type's own label: its schema, and what it can show.
+export {
+  findNodeLabelProblems,
+  type NodeLabel,
+  type NodeLabelCondition,
+  NodeLabelConditionSchema,
+  NodeLabelSchema,
+  nodeLabelValueContext,
+} from './schemas/9/node-label.ts';
 export {
   dynamicValueContextFor,
   type DynamicValueProblem,

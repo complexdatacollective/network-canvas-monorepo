@@ -29,6 +29,7 @@ import {
   OperatorsByVariableType,
   TypeLevelOperators,
 } from './filters/index.ts';
+import { findNodeLabelProblems } from './node-label.ts';
 
 // Re-export all the split schemas
 export * from './assets/index.ts';
@@ -703,6 +704,57 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     localizedStrings,
   )) {
     ctx.addIssue({ code: 'custom' as const, ...problem });
+  }
+
+  // The values each node type's label shows, checked as a stage's text is,
+  // and the rules of the conditions it chooses its wording by. A condition
+  // is asked of one node of the type, so a node rule is about that type; an
+  // edge rule asks about the edges that join the node to others.
+  for (const problem of findNodeLabelProblems(protocol, localizedStrings)) {
+    ctx.addIssue({ code: 'custom' as const, ...problem });
+  }
+  for (const [nodeType, definition] of Object.entries(
+    protocol.codebook.node ?? {},
+  )) {
+    for (const [conditionId, condition] of Object.entries(
+      definition.dynamicLabel?.conditions ?? {},
+    )) {
+      const rulesPath = [
+        'codebook',
+        'node',
+        nodeType,
+        'dynamicLabel',
+        'conditions',
+        conditionId,
+        'filter',
+        'rules',
+      ];
+      const duplicateRuleId = findDuplicateId(condition.filter.rules);
+      if (duplicateRuleId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Rules contain duplicate ID "${duplicateRuleId}"`,
+          path: rulesPath,
+        });
+      }
+      condition.filter.rules.forEach((rule, ruleIndex) => {
+        if (rule.type === 'node' && rule.options.type !== nodeType) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message:
+              'A node rule in a label condition is about the node the label is on, so it must name that node type.',
+            path: [...rulesPath, ruleIndex, 'options', 'type'],
+          });
+        }
+      });
+      validateFilterRules(
+        condition.filter.rules,
+        protocol.codebook,
+        rulesPath,
+        (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        { allowEgoRules: false, readsInterview: true },
+      );
+    }
   }
 
   // Interface-owned structural slots: an interface that DERIVES an

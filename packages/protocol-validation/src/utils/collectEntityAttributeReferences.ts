@@ -328,13 +328,24 @@ const walk = (
     // blocked like deleting any other attribute in use.
     if (isDynamicValuePathSchema(node)) {
       const parsed = parseDynamicValuePath(value);
+      // A node type's label counts only the edges of an edge type it names,
+      // so that type is in use while the label does.
+      if (parsed?.kind === 'connectivity' && parsed.edgeType !== undefined) {
+        return [
+          { kind: 'type', path, typeId: parsed.edgeType, entity: 'edge' },
+        ];
+      }
       if (parsed?.kind !== 'attribute') return [];
       return [
         {
           kind: 'attribute',
           path,
           variableId: parsed.variableId,
-          subject: dynamicValueSubject(parsed.role, ctx.stageSubject),
+          // A binding of a node type's own label is about a node of that
+          // type, which the codebook path names; any other is a stage's.
+          subject:
+            resolveSubject('owningVariable', path, ctx) ??
+            dynamicValueSubject(parsed.role, ctx.stageSubject),
         },
       ];
     }

@@ -311,11 +311,32 @@ export function useResolveLocalizedStringIn(): (
   value: LocalizedString,
   sources: DynamicValueSources | null,
 ) => ResolvedProtocolText {
-  const { localization, resolutionOrder, format, locale } =
-    useProtocolLocalizationState();
+  const resolve = useResolveLocalizedStringWhereLocalized();
+  invariant(
+    resolve,
+    'Protocol localization is only available inside a ProtocolLocalizationProvider',
+  );
+  return resolve;
+}
+
+/**
+ * `useResolveLocalizedStringIn`, or null outside a
+ * `ProtocolLocalizationProvider`: for something shown both inside an
+ * interview and on its own, such as a node, which then shows what it would
+ * without the protocol's text.
+ */
+export function useResolveLocalizedStringWhereLocalized():
+  | ((
+      value: LocalizedString,
+      sources: DynamicValueSources | null,
+    ) => ResolvedProtocolText)
+  | null {
+  const state = useContext(ProtocolLocalizationContext);
   const intl = useAppIntl();
-  return useCallback(
-    (value: LocalizedString, sources: DynamicValueSources | null) => {
+  return useMemo(() => {
+    if (state === null) return null;
+    const { localization, resolutionOrder, format, locale } = state;
+    return (value: LocalizedString, sources: DynamicValueSources | null) => {
       const resolved = resolveText(value, localization, resolutionOrder);
       if (sources !== null) {
         const formatters: DynamicValueFormatters = {
@@ -341,9 +362,8 @@ export function useResolveLocalizedStringIn(): (
         }
       }
       return { ...resolved, text: format(resolved.locale, resolved.text) };
-    },
-    [localization, resolutionOrder, format, locale, intl],
-  );
+    };
+  }, [state, intl]);
 }
 
 export function useLocalizedString(

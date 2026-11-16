@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { messageText } from '~/test/messageText';
 
-import validateEntityType, { SHAPE_MAPPING_FIELD } from '../validateEntityType';
+import validateEntityType, {
+  DYNAMIC_LABEL_FIELD,
+  SHAPE_MAPPING_FIELD,
+} from '../validateEntityType';
 
 describe('validateEntityType()', () => {
   it('returns no errors when there is no dynamic shape mapping', () => {
@@ -98,5 +101,86 @@ describe('validateEntityType()', () => {
     expect(messageText(errors[SHAPE_MAPPING_FIELD])).toMatch(
       /increase in value/,
     );
+  });
+});
+
+describe('validateEntityType() with a dynamic label', () => {
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: { nameVar: { name: 'name', type: 'text' } },
+      },
+    },
+    edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
+  };
+  const context = { codebook, nodeType: 'person' };
+  const labelErrorOf = (dynamicLabel: unknown) =>
+    validateEntityType({ dynamicLabel }, context)[DYNAMIC_LABEL_FIELD];
+
+  it('accepts a label that is switched off', () => {
+    expect(validateEntityType({ name: 'Person' }, context)).toEqual({});
+  });
+
+  it('asks for the label once the section is switched on', () => {
+    expect(labelErrorOf({})).toBeDefined();
+    expect(labelErrorOf({ text: {} })).toBeDefined();
+  });
+
+  it('accepts a label that shows the default label and a connection', () => {
+    expect(
+      labelErrorOf({
+        text: { en: '{linked, select, yes {🔗 } other {}}{nodeLabel}' },
+        dynamicValues: {
+          linked: { path: 'node.$connected.knows', cases: { yes: true } },
+          nodeLabel: { path: 'node.$label' },
+        },
+      }),
+    ).toBeUndefined();
+  });
+
+  it('refuses a label that shows an attribute where it could be missing', () => {
+    expect(
+      labelErrorOf({
+        text: { en: '{name}' },
+        dynamicValues: { name: { path: 'node.nameVar' } },
+      }),
+    ).toBeDefined();
+  });
+
+  it('refuses a condition with no name, no rules or no join', () => {
+    const rule = (id: string) => ({
+      type: 'node',
+      id,
+      options: { type: 'person', attribute: 'nameVar', operator: 'EXISTS' },
+    });
+    const withCondition = (condition: unknown) => ({
+      text: { en: 'x' },
+      conditions: { named: condition },
+    });
+    expect(
+      labelErrorOf(
+        withCondition({ name: ' ', filter: { rules: [rule('a')] } }),
+      ),
+    ).toBeDefined();
+    expect(labelErrorOf(withCondition({ name: 'Named' }))).toBeDefined();
+    expect(
+      labelErrorOf(
+        withCondition({
+          name: 'Named',
+          filter: { rules: [rule('a'), rule('b')] },
+        }),
+      ),
+    ).toBeDefined();
+    expect(
+      labelErrorOf(
+        withCondition({
+          name: 'Named',
+          filter: { join: 'AND', rules: [rule('a'), rule('b')] },
+        }),
+      ),
+    ).toBeUndefined();
   });
 });
