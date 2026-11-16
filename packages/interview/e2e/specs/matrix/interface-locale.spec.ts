@@ -6,7 +6,7 @@ import { buildSyntheticPayload } from '../../helpers/synthetic-payload.js';
 
 matrixTest(
   "the interview shows one of the protocol's languages, chosen from the browser's languages, offline and without changing protocol or responses @smoke",
-  async ({ page, protocol, context }, testInfo) => {
+  async ({ page, protocol, context }) => {
     const synth = new SyntheticInterview();
     synth.setLocalization({ defaultLocale: 'en-US', locales: ['en-US', 'es'] });
     const title = {
@@ -97,10 +97,6 @@ matrixTest(
     });
     expect(after).toEqual(before);
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
-    await page.screenshot({
-      path: testInfo.outputPath('spanish-interview.png'),
-      fullPage: true,
-    });
     await page.getByRole('button', { name: 'Next Step' }).click();
     await expect(
       page.getByRole('heading', { name: 'Finalizar entrevista', exact: true }),

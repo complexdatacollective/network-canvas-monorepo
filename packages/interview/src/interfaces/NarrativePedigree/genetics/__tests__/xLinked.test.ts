@@ -586,20 +586,31 @@ describe('computeXLinkedRecessive', () => {
   });
 
   describe('consanguinity-loop termination', () => {
-    const nodes = [makeNode('A'), makeNode('B'), makeNode('C')];
+    // An affected male's daughter starts an all-female B → C → D → B loop.
+    // Only an affected male passes the X down, and only the female line
+    // carries it on, so this is the loop the carrier walk has to escape.
+    const nodes = [makeNode('A'), makeNode('B'), makeNode('C'), makeNode('D')];
     const edges = [
       makeGeneticEdge('A', 'B'),
       makeGeneticEdge('B', 'C'),
-      makeGeneticEdge('C', 'A'),
+      makeGeneticEdge('C', 'D'),
+      makeGeneticEdge('D', 'B'),
     ];
-    const resolveSex = sexResolver({ A: 'female', B: 'female', C: 'female' });
+    const resolveSex = sexResolver({
+      A: 'male',
+      B: 'female',
+      C: 'female',
+      D: 'female',
+    });
     const graph = buildGraph(nodes, edges, resolveSex);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic pedigree', () => {
-      expect(() =>
-        computeXLinkedRecessive(graph, affected, resolveSex),
-      ).not.toThrow();
+    it('terminates on a cyclic pedigree and gives every member of the loop a status', () => {
+      const result = computeXLinkedRecessive(graph, affected, resolveSex);
+      expect(status(result, 'A')).toBe('affected');
+      for (const id of ['B', 'C', 'D']) {
+        expect(status(result, id)).not.toBe('unknown');
+      }
     });
   });
 });
@@ -757,20 +768,23 @@ describe('computeXLinkedDominant', () => {
   });
 
   describe('consanguinity-loop termination', () => {
+    // The B → C → B loop sits below the affected seed, because the XLD step
+    // never revisits an affected person and so would stop a loop through A.
     const nodes = [makeNode('A'), makeNode('B'), makeNode('C')];
     const edges = [
       makeGeneticEdge('A', 'B'),
       makeGeneticEdge('B', 'C'),
-      makeGeneticEdge('C', 'A'),
+      makeGeneticEdge('C', 'B'),
     ];
     const resolveSex = sexResolver({ A: 'female', B: 'female', C: 'female' });
     const graph = buildGraph(nodes, edges, resolveSex);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic pedigree', () => {
-      expect(() =>
-        computeXLinkedDominant(graph, affected, resolveSex),
-      ).not.toThrow();
+    it('terminates on a cyclic pedigree and gives every member of the loop a status', () => {
+      const result = computeXLinkedDominant(graph, affected, resolveSex);
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'B')).not.toBe('unknown');
+      expect(status(result, 'C')).not.toBe('unknown');
     });
   });
 });
