@@ -23,7 +23,6 @@ describe('RadioMatrixField', () => {
       name: 'Parent partnerships',
     });
 
-    expect(matrix).toHaveClass('@3xl:grid');
     expect(matrix).toHaveStyle({
       gridTemplateColumns: 'minmax(12rem, 1fr) repeat(3, minmax(10rem, 0.5fr))',
     });

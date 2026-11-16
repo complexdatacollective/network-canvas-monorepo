@@ -304,6 +304,50 @@ export const Disabled: Story = {
 };
 
 /**
+ * A read-only group shows its answer but takes no press, so its toggles offer
+ * no hover or pressed treatment.
+ */
+export const ReadOnly: Story = {
+  render: () => (
+    <div className="flex w-full max-w-md flex-col gap-4">
+      <ToggleButtonGroupField
+        aria-label="Read-only choices"
+        options={basicOptions}
+        value={['a']}
+        readOnly
+        onChange={() => undefined}
+      />
+      <ToggleButtonGroupField
+        aria-label="Editable choices"
+        options={basicOptions}
+        value={['a']}
+        onChange={() => undefined}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const readOnlyGroup = within(
+      canvas.getByRole('group', { name: 'Read-only choices' }),
+    );
+    for (const option of basicOptions) {
+      await expect(
+        getComputedStyle(
+          readOnlyGroup.getByRole('checkbox', { name: option.label }),
+        ).pointerEvents,
+      ).toBe('none');
+    }
+    await expect(
+      getComputedStyle(
+        within(
+          canvas.getByRole('group', { name: 'Editable choices' }),
+        ).getByRole('checkbox', { name: 'Option A' }),
+      ).pointerEvents,
+    ).not.toBe('none');
+  },
+};
+
+/**
  * Protocol copy arrives as `PresentationalText`. The label is each toggle's
  * accessible name, so the toggle itself carries the text's `lang` and `dir`:
  * a screen reader pronounces the name in that language, and Arabic labels lay

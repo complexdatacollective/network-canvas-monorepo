@@ -566,6 +566,44 @@ export const LongOptionList: Story = {
   },
 };
 
+const unbrokenLabel = `Stage 12 — ${'Unbrokendestinationlabel'.repeat(12)}`;
+
+/**
+ * A styled select in a narrow container, holding an option label with no
+ * break opportunity that is longer than the viewport is wide. The popup may
+ * grow past the trigger, but never past the viewport, and the label wraps
+ * inside its item instead of running off the edge.
+ */
+export const LongUnbrokenOption: Story = {
+  render: () => (
+    <div style={{ width: '8rem' }}>
+      <StyledSelectField
+        aria-label="Destination"
+        name="destination"
+        options={[{ value: 'destination', label: unbrokenLabel }]}
+        value="destination"
+        onChange={() => undefined}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('combobox', { name: 'Destination' }),
+    );
+
+    const option = await screen.findByRole('option', { name: unbrokenLabel });
+    const text = within(option).getByText(unbrokenLabel);
+    const box = option.getBoundingClientRect();
+
+    await expect(box.left).toBeGreaterThanOrEqual(0);
+    await expect(box.right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(text.scrollWidth).toBeLessThanOrEqual(text.clientWidth);
+    await expect(text.getBoundingClientRect().height).toBeGreaterThan(
+      parseFloat(getComputedStyle(text).lineHeight),
+    );
+  },
+};
+
 export const NumericValues: Story = {
   render: () => {
     const [value, setValue] = useState<string | number>(3);

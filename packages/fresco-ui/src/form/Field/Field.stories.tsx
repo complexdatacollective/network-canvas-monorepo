@@ -310,10 +310,13 @@ export const LabelHidden: Story = {
     // The control keeps its accessible name even though no label is visible.
     const input = canvas.getByRole('textbox', { name: 'Prompt text' });
     await expect(input).toBeInTheDocument();
-    // The label element is present but visually hidden (sr-only).
+    // The label element is present but takes no visible space.
     const label = canvasElement.querySelector('label');
-    await expect(label).not.toBeNull();
-    await expect(label).toHaveClass('sr-only');
+    if (!label) throw new Error('Expected the field to keep its label');
+    const box = label.getBoundingClientRect();
+    await expect(box.width).toBeLessThanOrEqual(1);
+    await expect(box.height).toBeLessThanOrEqual(1);
+    await expect(getComputedStyle(label).position).toBe('absolute');
   },
   parameters: {
     docs: {

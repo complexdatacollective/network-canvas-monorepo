@@ -355,6 +355,31 @@ export const InputTypes: Story = {
 };
 
 /**
+ * An empty native date input shows its format hint muted and italic, the way
+ * other inputs show a placeholder, and a filled one shows its value plainly.
+ * The hint is not a `::placeholder`, so the input carries the treatment
+ * itself while it has no value.
+ */
+export const EmptyDate: Story = {
+  render: () => (
+    <div className="flex w-80 flex-col gap-3">
+      <InputField type="date" aria-label="Empty date" value="" />
+      <InputField type="date" aria-label="Filled date" value="2026-09-01" />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      getComputedStyle(canvas.getByLabelText('Empty date')).fontStyle,
+    ).toBe('italic');
+    await expect(
+      getComputedStyle(canvas.getByLabelText('Filled date')).fontStyle,
+    ).toBe('normal');
+  },
+};
+
+/**
  * Input with prefix and suffix icons demonstrating various use cases.
  * Use controls to change size for all inputs.
  */
@@ -543,11 +568,13 @@ export const NumberInputFeatures: Story = {
       .closest('div')
       ?.parentElement?.querySelector('[aria-label="Increase value"]');
 
-    if (increaseButton) {
-      // Click increase until we hit max
-      for (let i = 0; i < 6; i++) {
-        await userEvent.click(increaseButton);
-      }
+    if (!increaseButton) {
+      throw new Error('Expected the constrained input to have a stepper');
+    }
+    await expect(constrainedInput).toHaveValue(5);
+    // One click past the max of 10
+    for (let i = 0; i < 6; i++) {
+      await userEvent.click(increaseButton);
     }
 
     // Value should be clamped at 10

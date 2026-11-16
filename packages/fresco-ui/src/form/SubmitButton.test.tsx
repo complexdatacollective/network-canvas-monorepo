@@ -78,20 +78,20 @@ describe('SubmitButton', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Save' });
+    expect(button.querySelectorAll('svg')).toHaveLength(1);
     expect(screen.getByTestId('own-icon')).toBeInTheDocument();
-    expect(button.querySelector('.animate-spin')).toBeNull();
 
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(button.querySelector('.animate-spin')).not.toBeNull();
+      expect(screen.queryByTestId('own-icon')).toBeNull();
     });
-    expect(screen.queryByTestId('own-icon')).toBeNull();
+    expect(button.querySelectorAll('svg')).toHaveLength(1);
 
     finishSubmit();
 
     expect(await screen.findByTestId('own-icon')).toBeInTheDocument();
-    expect(button.querySelector('.animate-spin')).toBeNull();
+    expect(button.querySelectorAll('svg')).toHaveLength(1);
   });
 
   it('stays disabled while submitting, whatever a caller passes as disabled', async () => {
