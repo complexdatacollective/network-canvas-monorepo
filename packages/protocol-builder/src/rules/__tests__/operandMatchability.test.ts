@@ -199,6 +199,27 @@ const NEGATING: ReadonlySet<string> = new Set([
   'OPTIONS_NOT_EQUALS',
 ]);
 
+/**
+ * The types each sweep below must reach past its guards. Both skip cells they
+ * have no verdict on, so without these a sweep that skipped every cell would
+ * pass empty. `layout` takes only operators with no operand, so the sweep of
+ * the controls never reaches it.
+ */
+const STORED_RULE_TYPES = [
+  'boolean',
+  'categorical',
+  'datetime',
+  'layout',
+  'location',
+  'number',
+  'ordinal',
+  'scalar',
+  'text',
+];
+const OFFERED_CONTROL_TYPES = STORED_RULE_TYPES.filter(
+  (type) => type !== 'layout',
+);
+
 describe('the editor’s verdict against the interview’s predicate', () => {
   /**
    * Every (type, operator, operand) the protocol schema accepts, in both
@@ -208,6 +229,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
   it('refuses nothing that can match, and reports everything that cannot', () => {
     const refusedButMatchable: Cell[] = [];
     const acceptedButUnmatchable: Cell[] = [];
+    const sweptTypes = new Set<string>();
 
     for (const type of VariableTypesKeys) {
       for (const operator of AllOperators.options) {
@@ -220,6 +242,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
           const rule = ruleFor(operator, operand);
           if (!filterRuleSchema.safeParse(rule).success) continue;
 
+          sweptTypes.add(type);
           const codes = problemCodes(type, operator, operand);
           const cell: Cell = { type, operator, operand, codes };
           const matches = canMatch(type, operator, operand);
@@ -241,6 +264,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
         .map(describeCell),
     ).toEqual([]);
     expect(acceptedButUnmatchable.map(describeCell)).toEqual([]);
+    expect([...sweptTypes].toSorted()).toEqual(STORED_RULE_TYPES);
   });
 
   /**
@@ -256,6 +280,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
    */
   it('offers no control whose values match nothing', () => {
     const offeredButUnmatchable: string[] = [];
+    const offeredTypes = new Set<string>();
 
     for (const type of VariableTypesKeys) {
       for (const operator of operatorsForSubject(type)) {
@@ -287,6 +312,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
           // A value the editor refuses is a value it cannot commit, so it is
           // not something it offers.
           if (problemCodes(type, operator, sample).length > 0) continue;
+          offeredTypes.add(type);
           if (canMatch(type, operator, sample)) continue;
           offeredButUnmatchable.push(
             `${type} ${operator} ${JSON.stringify(sample)} (control ${requirement.control})`,
@@ -296,6 +322,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
     }
 
     expect(offeredButUnmatchable).toEqual([]);
+    expect([...offeredTypes].toSorted()).toEqual(OFFERED_CONTROL_TYPES);
   });
 });
 

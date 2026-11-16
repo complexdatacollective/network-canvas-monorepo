@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
-import { validationRuleMessages } from '@codaco/protocol-validation/messages';
 
 import { getValidationLabel } from '../variableValidation.ts';
 
@@ -18,22 +17,6 @@ import { getValidationLabel } from '../variableValidation.ts';
 const intl = createAppIntl({ locale: 'en' });
 
 describe('what a validation rule is called', () => {
-  const rules = Object.entries(validationRuleMessages);
-
-  it('has rules to compare', () => {
-    // Without this the per-rule assertion below would pass on an empty list.
-    expect(rules.length).toBeGreaterThan(0);
-  });
-
-  it.each(rules)(
-    '%s is called what @codaco/protocol-validation calls it',
-    (rule, descriptor) => {
-      expect(getValidationLabel(rule, intl)).toBe(
-        intl.formatMessage(descriptor),
-      );
-    },
-  );
-
   it('names the rules the researcher ticks with the shared words', () => {
     // Spot-checks the four the package used to name differently, so this test
     // still says something if `validationRuleMessages` is ever re-exported

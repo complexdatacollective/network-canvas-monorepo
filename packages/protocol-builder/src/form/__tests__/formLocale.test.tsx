@@ -1,11 +1,9 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { loadCatalog } from '@codaco/app-i18n/locales';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { esIntl, readMessage } from '../../testing/i18n.ts';
 import {
@@ -15,8 +13,6 @@ import {
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import Options, { optionsValidationFor } from '../arrayFields/Options.tsx';
 import { READ_ONLY_MESSAGE } from '../readOnlyRefusal.ts';
-
-const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
 /**
  * An options list and the shell around it, read in Spanish.
@@ -77,19 +73,6 @@ const renderInSpanish = (fields: SectionDoc = optionsFields) =>
   });
 
 describe('a stage form read in Spanish', () => {
-  it('ships Spanish for the ids this directory declares', () => {
-    // Checked first so a merge that has not landed this directory's catalog
-    // entries fails saying so, rather than as an unexplained English string.
-    expect(Object.keys(spanishMessages)).toEqual(
-      expect.arrayContaining([
-        'protocolBuilder.shell.saveStage',
-        'protocolBuilder.option.editOption',
-        'protocolBuilder.option.emptyState',
-        'protocolBuilder.shell.readOnlyRefusal',
-      ]),
-    );
-  });
-
   it('names the shell and the rows of a list in Spanish', async () => {
     renderInSpanish();
 

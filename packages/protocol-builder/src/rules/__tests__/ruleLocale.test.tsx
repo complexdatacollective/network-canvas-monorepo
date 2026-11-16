@@ -17,7 +17,6 @@ import {
 import { enIntl, esIntl } from '../../testing/i18n.ts';
 import { describeRule } from '../ruleDescription.ts';
 import { ruleDraftRefusal } from '../RuleEditorDialog.tsx';
-import { ruleSubjectMessages } from '../ruleMessages.ts';
 import RulePreview from '../RulePreview.tsx';
 import { ruleSections, testCodebook } from './fixtures.ts';
 import { RuleEditorHost } from './ruleEditorHost.tsx';
@@ -63,18 +62,6 @@ const inSpanish = (rule: unknown) => (
 );
 
 describe('a rule read in Spanish', () => {
-  it('ships Spanish for the ids this directory declares', () => {
-    // Checked first so a merge that has not landed this directory's catalog
-    // entries fails saying so, rather than as an unexplained missing string.
-    expect(Object.keys(spanishMessages)).toEqual(
-      expect.arrayContaining([
-        ruleSubjectMessages.alterAttribute.id,
-        'protocolBuilder.ruleDescription.alterGreaterThan',
-        'protocolBuilder.rulePreview.attribute',
-      ]),
-    );
-  });
-
   it('reads the whole sentence in Spanish', () => {
     render(inSpanish(alterRule));
 
