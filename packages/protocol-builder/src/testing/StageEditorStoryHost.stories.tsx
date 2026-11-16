@@ -76,9 +76,17 @@ export const Editing: Story = {
         canvas.getByRole('status', { name: 'Save status' }),
       ).toHaveTextContent('Saved “Welcome screen”.');
     });
-    await expect(
-      canvas.getByRole('region', { name: 'What the host was asked to commit' }),
-    ).toHaveTextContent('"label": { "en-US": "Welcome screen" }');
+    const committed = canvas.getByRole('region', {
+      name: 'What the host was asked to commit',
+    });
+    await expect(committed).toHaveTextContent(
+      '"label": { "en-US": "Welcome screen" }',
+    );
+    // A stage with a long line makes this box scroll sideways, and the end of
+    // that line is only reachable by scrolling it. So it has to take focus: a
+    // reader who cannot use a pointer has no other way there.
+    committed.focus();
+    await expect(committed).toHaveFocus();
   },
 };
 
