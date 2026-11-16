@@ -1,7 +1,7 @@
 'use client';
 
 import type { DOMOutputSpec } from '@tiptap/pm/model';
-import { Syringe } from 'lucide-react';
+import { Split, Syringe } from 'lucide-react';
 import { type ComponentPropsWithoutRef, Fragment } from 'react';
 
 import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
@@ -46,6 +46,8 @@ type TokenPillProps = Omit<ComponentPropsWithoutRef<'span'>, 'children'> & {
   label: TokenPillLabel;
   /** Outlines the pill, as the editor does while its caret is on it. */
   selected?: boolean;
+  /** Whether the pill is a value or a piece of logic; a value when absent. */
+  variant?: TokenPillVariant;
 };
 
 /**
@@ -53,7 +55,17 @@ type TokenPillProps = Omit<ComponentPropsWithoutRef<'span'>, 'children'> & {
  * placeholders it holds as DOM it builds itself. Outlines the pill while it is
  * `selected`, or while the editor marks it as the selected node.
  */
-export const tokenPillClasses = (className?: string) =>
+/**
+ * What a pill stands for: a `value` filled in later, or `logic`, a piece of
+ * text that reads differently by case. Logic is drawn in a colour and with an
+ * icon of its own, so it can be told from a value in a line of pills.
+ */
+export type TokenPillVariant = 'value' | 'logic';
+
+export const tokenPillClasses = (
+  className?: string,
+  variant: TokenPillVariant = 'value',
+) =>
   cx(
     // A long label wraps like the words around it, each line drawn as the
     // pill, so a narrow column or table cell is never pushed wider.
@@ -61,9 +73,10 @@ export const tokenPillClasses = (className?: string) =>
     // The value's name in bold body type, whatever the text around it is set
     // in, so a pill in a bold label or a heading reads as it does in the
     // editor.
-    'border-primary/40 bg-primary/10 font-body font-bold',
-    'data-selected:outline-primary data-selected:outline-2',
-    '[&.ProseMirror-selectednode]:outline-primary [&.ProseMirror-selectednode]:outline-2',
+    'font-body font-bold data-selected:outline-2 [&.ProseMirror-selectednode]:outline-2',
+    variant === 'logic'
+      ? 'border-info/50 bg-info/10 data-selected:outline-info [&.ProseMirror-selectednode]:outline-info'
+      : 'border-primary/40 bg-primary/10 data-selected:outline-primary [&.ProseMirror-selectednode]:outline-primary',
     className,
   );
 
@@ -136,12 +149,19 @@ export const tokenPillContentSpec = (
  * the rest of the label. For a pill drawn by an element of its own, such as
  * one that is also a button.
  */
-export const TokenPillContent = ({ label }: { label: TokenPillLabel }) => {
+export const TokenPillContent = ({
+  label,
+  variant = 'value',
+}: {
+  label: TokenPillLabel;
+  variant?: TokenPillVariant;
+}) => {
   const [first, rest] = splitFirstWord(presentationalTextValue(label));
+  const Icon = variant === 'logic' ? Split : Syringe;
   return (
     <>
       <span className={tokenPillLeadClasses}>
-        <Syringe aria-hidden className={tokenPillIconClasses} />
+        <Icon aria-hidden className={tokenPillIconClasses} />
         {first}
       </span>
       {rest}
@@ -160,6 +180,7 @@ export const TokenPill = ({
   token,
   label,
   selected = false,
+  variant = 'value',
   className,
   ...props
 }: TokenPillProps) => {
@@ -169,10 +190,11 @@ export const TokenPill = ({
       {...props}
       {...language}
       data-token={token}
+      data-variant={variant === 'logic' ? 'logic' : undefined}
       data-selected={selected || undefined}
-      className={tokenPillClasses(className)}
+      className={tokenPillClasses(className, variant)}
     >
-      <TokenPillContent label={label} />
+      <TokenPillContent label={label} variant={variant} />
     </span>
   );
 };

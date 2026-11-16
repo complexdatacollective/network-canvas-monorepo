@@ -1377,7 +1377,9 @@ describe('versions that are the whole message', () => {
       renderField({ value: nestedValue });
       await screen.findByRole('textbox', { name: 'When it is 1, If named' });
 
-      const pill = screen.getByRole('button', { name: 'Named' });
+      // Folded, the pill says what the set depends on, then what its
+      // versions can show.
+      const pill = screen.getByRole('button', { name: /^Named: / });
       expect(pill).toHaveAttribute('aria-expanded', 'false');
       // Its rows stay mounted, hidden, named by the cases around them too.
       expect(

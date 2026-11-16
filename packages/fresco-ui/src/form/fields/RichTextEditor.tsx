@@ -48,6 +48,7 @@ import {
   Minus,
   Plus,
   Redo,
+  Split,
   Syringe,
   Trash2,
   Undo,
@@ -105,6 +106,7 @@ import {
 import {
   hasVersionRowBeside,
   NestedEditingContext,
+  type RichTextVersionsActionEvent,
   VERSIONS_NODE,
   VersionsNode,
   versionsIn,
@@ -704,8 +706,11 @@ const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
 export type { RichTextInsertMenu, RichTextInsertMenuItem };
 export type {
   RichTextVersion,
+  RichTextVersionsAction,
+  RichTextVersionsActionEvent,
   RichTextVersionsAttributes,
 } from './richText/versionsNode';
+export { versionsPreview } from './richText/versionsNode';
 export { hasVersionRowBeside, VERSIONS_NODE };
 
 const swallowKeystroke = () => true;
@@ -1237,6 +1242,18 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
     'openWholeMessageVersions'?: boolean;
     /** A searchable menu of things to insert at the caret. */
     'insertMenu'?: RichTextInsertMenu;
+    /**
+     * A second menu, of logic to insert at the caret (versions chosen by a
+     * test), behind a toolbar button of its own beside the first. It has no
+     * trigger character.
+     */
+    'logicMenu'?: RichTextInsertMenu;
+    /**
+     * Carries out what a set of versions asks of its consumer: editing or
+     * removing one of its versions, or one of its own actions (see
+     * `RichTextVersionsActionEvent`).
+     */
+    'onVersionsAction'?: (event: RichTextVersionsActionEvent) => void;
     'id': string;
     'name': string;
     'aria-describedby'?: string;
@@ -1294,6 +1311,8 @@ export default function RichTextEditorField({
   versions = false,
   openWholeMessageVersions = false,
   insertMenu,
+  logicMenu,
+  onVersionsAction,
   className,
   onFocus,
   onBlur,
@@ -1309,7 +1328,12 @@ export default function RichTextEditorField({
     position: number;
     anchor: { left: number; top: number; height: number };
   } | null>(null);
-  const [isInsertMenuOpen, setIsInsertMenuOpen] = useState(false);
+  // Which of the two menus is open: the one of values, or the one of logic.
+  const [openMenu, setOpenMenu] = useState<'values' | 'logic' | null>(null);
+  const setIsInsertMenuOpen = useCallback(
+    (open: boolean) => setOpenMenu(open ? 'values' : null),
+    [setOpenMenu],
+  );
   // The editor closing the insert menu hands the caret back to: the one an
   // item from it was just put into, so the next key, Undo included, acts on
   // the text the item went into rather than on the button that opened the
@@ -1587,6 +1611,21 @@ export default function RichTextEditorField({
     ],
   );
   const caretAnchorRef = useRef<HTMLSpanElement>(null);
+  // What each placeholder is called, for the preview a folded set of
+  // versions shows of what it holds.
+  const tokenLabel = useMemo(() => {
+    const labels = new Map(
+      (tokens ?? []).map((token) => [
+        token.id,
+        presentationalTextValue(token.label),
+      ]),
+    );
+    return (tokenId: string) => labels.get(tokenId);
+  }, [tokens]);
+  const onVersionsActionRef = useRef(onVersionsAction);
+  useLayoutEffect(() => {
+    onVersionsActionRef.current = onVersionsAction;
+  });
   const nestedEditing = useMemo(
     () => ({
       extensions: versionExtensions,
@@ -1594,6 +1633,9 @@ export default function RichTextEditorField({
       onFocusEditor: setVersionEditor,
       active: isActive,
       openWholeMessage: openWholeMessageVersions,
+      tokenLabel,
+      onVersionsAction: (event: RichTextVersionsActionEvent) =>
+        onVersionsActionRef.current?.(event),
     }),
     [
       versionExtensions,
@@ -1602,6 +1644,7 @@ export default function RichTextEditorField({
       setVersionEditor,
       isActive,
       openWholeMessageVersions,
+      tokenLabel,
     ],
   );
   // The schema these extensions make, worked out before there is an editor to
@@ -1943,7 +1986,10 @@ export default function RichTextEditorField({
   const toolbarTokens = (tokensProp ?? []).filter(
     ({ inToolbar }) => inToolbar !== false,
   );
-  const showTokens = toolbarTokens.length > 0 || insertMenu !== undefined;
+  const showTokens =
+    toolbarTokens.length > 0 ||
+    insertMenu !== undefined ||
+    logicMenu !== undefined;
 
   const insertItem = (item: RichTextInsertMenuItem) => {
     if (item.disabled === true) return;
@@ -1977,8 +2023,85 @@ export default function RichTextEditorField({
       setCaretReturnsTo(actOn);
     }
     setTriggered(null);
-    setIsInsertMenuOpen(false);
+    setOpenMenu(null);
   };
+  // One of the two menus, behind its toolbar button: the values to insert
+  // (also opened by typing the trigger), or the logic.
+  const renderMenu = (
+    menu: RichTextInsertMenu,
+    kind: 'values' | 'logic',
+    Icon: typeof Syringe,
+  ) => (
+    <Popover
+      open={openMenu === kind && !isDisabled}
+      onOpenChange={(open) => {
+        setOpenMenu(open ? kind : null);
+        if (open) setCaretReturnsTo(null);
+        if (!open) setTriggered(null);
+      }}
+    >
+      <Tooltip>
+        <PopoverTrigger asChild nativeButton disabled={isDisabled}>
+          <TooltipTrigger
+            render={
+              <ToolbarButton
+                className={toolbarButtonStyles}
+                disabled={isDisabled}
+                aria-label={menu.label}
+                onMouseDown={() => setTriggered(null)}
+              >
+                <Icon aria-hidden />
+              </ToolbarButton>
+            }
+          />
+        </PopoverTrigger>
+        <TooltipContent>{menu.label}</TooltipContent>
+      </Tooltip>
+      <PopoverContent
+        align="start"
+        side="bottom"
+        aria-label={menu.label}
+        // A list of options, padded as menus and comboboxes are.
+        spacing="xs"
+        anchor={triggered === null ? undefined : caretAnchorRef}
+        // Closed by a pick, the menu hands the caret to the text
+        // the item went into; opened by typing, back to the
+        // text it was typed in.
+        finalFocus={() => {
+          // Focus already back in this text stays where it is:
+          // a click into the line that closed the menu, or into
+          // a version of the value just inserted, put the caret
+          // there, and moving it would send what is typed next
+          // somewhere else.
+          const root = editor?.isDestroyed ? null : editor;
+          const active = root?.view.dom.ownerDocument.activeElement;
+          if (
+            root != null &&
+            active instanceof Node &&
+            root.view.dom.contains(active)
+          ) {
+            return false;
+          }
+          const into = caretReturnsTo;
+          if (into === null || into.isDestroyed) return true;
+          // Through the editor, rather than by naming its
+          // element for Base UI to focus: focused that way, the
+          // browser puts the caret at the start of the text, and
+          // ProseMirror moves it back only if it notices within
+          // 200 ms and the text was not clicked just before, so
+          // what was typed next could go in at the start. The
+          // editor puts its own caret back as it takes focus. A
+          // microtask later, as Base UI would have moved focus.
+          queueMicrotask(() => {
+            if (!into.isDestroyed) into.view.focus();
+          });
+          return false;
+        }}
+      >
+        <InsertMenuList menu={menu} onPick={insertItem} />
+      </PopoverContent>
+    </Popover>
+  );
   const showHistory = options.history;
   // Undone or redone in the field's history, with the caret handed back to
   // the editor it was in: a version's, while that version is still there.
@@ -2418,82 +2541,10 @@ export default function RichTextEditorField({
                 className={toolbarGroupStyles}
                 aria-label={intl.formatMessage(messages.tokens)}
               >
-                {insertMenu !== undefined && (
-                  <Popover
-                    open={isInsertMenuOpen && !isDisabled}
-                    onOpenChange={(open) => {
-                      setIsInsertMenuOpen(open);
-                      if (open) setCaretReturnsTo(null);
-                      if (!open) setTriggered(null);
-                    }}
-                  >
-                    <Tooltip>
-                      <PopoverTrigger
-                        asChild
-                        nativeButton
-                        disabled={isDisabled}
-                      >
-                        <TooltipTrigger
-                          render={
-                            <ToolbarButton
-                              className={toolbarButtonStyles}
-                              disabled={isDisabled}
-                              aria-label={insertMenu.label}
-                              onMouseDown={() => setTriggered(null)}
-                            >
-                              <Syringe aria-hidden />
-                            </ToolbarButton>
-                          }
-                        />
-                      </PopoverTrigger>
-                      <TooltipContent>{insertMenu.label}</TooltipContent>
-                    </Tooltip>
-                    <PopoverContent
-                      align="start"
-                      side="bottom"
-                      aria-label={insertMenu.label}
-                      // A list of options, padded as menus and comboboxes are.
-                      spacing="xs"
-                      anchor={triggered === null ? undefined : caretAnchorRef}
-                      // Closed by a pick, the menu hands the caret to the text
-                      // the item went into; opened by typing, back to the
-                      // text it was typed in.
-                      finalFocus={() => {
-                        // Focus already back in this text stays where it is:
-                        // a click into the line that closed the menu, or into
-                        // a version of the value just inserted, put the caret
-                        // there, and moving it would send what is typed next
-                        // somewhere else.
-                        const root = editor?.isDestroyed ? null : editor;
-                        const active =
-                          root?.view.dom.ownerDocument.activeElement;
-                        if (
-                          root != null &&
-                          active instanceof Node &&
-                          root.view.dom.contains(active)
-                        ) {
-                          return false;
-                        }
-                        const into = caretReturnsTo;
-                        if (into === null || into.isDestroyed) return true;
-                        // Through the editor, rather than by naming its
-                        // element for Base UI to focus: focused that way, the
-                        // browser puts the caret at the start of the text, and
-                        // ProseMirror moves it back only if it notices within
-                        // 200 ms and the text was not clicked just before, so
-                        // what was typed next could go in at the start. The
-                        // editor puts its own caret back as it takes focus. A
-                        // microtask later, as Base UI would have moved focus.
-                        queueMicrotask(() => {
-                          if (!into.isDestroyed) into.view.focus();
-                        });
-                        return false;
-                      }}
-                    >
-                      <InsertMenuList menu={insertMenu} onPick={insertItem} />
-                    </PopoverContent>
-                  </Popover>
-                )}
+                {insertMenu !== undefined &&
+                  renderMenu(insertMenu, 'values', Syringe)}
+                {logicMenu !== undefined &&
+                  renderMenu(logicMenu, 'logic', Split)}
                 {toolbarTokens.map((token) => {
                   const missing =
                     requiredTokens.has(token.id) && !placedTokens.has(token.id);
