@@ -33,6 +33,12 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
+  isPresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../../PresentationalText';
+import {
+  type TokenPillLabel,
   TokenPillContent,
   tokenPillClasses,
   useTokenPillLanguage,
@@ -62,9 +68,10 @@ export type RichTextVersionsAttributes = Readonly<{
   label: string;
   /**
    * What the element shows while folded, as a pill: the name of what the
-   * versions depend on, such as “First name”. `label` when not given.
+   * versions depend on, such as “First name”. `label` when not given. A name
+   * someone wrote, such as an attribute's, is `{ text, dir: 'auto' }`.
    */
-  summary?: string;
+  summary?: TokenPillLabel;
   versions: readonly RichTextVersion[];
   /** Whatever the consumer needs to read the element back; kept as given. */
   meta?: unknown;
@@ -148,8 +155,10 @@ const versionsAttributesOf = (
   attrs: Record<string, unknown>,
 ): RichTextVersionsAttributes => ({
   label: typeof attrs.label === 'string' ? attrs.label : '',
-  ...(typeof attrs.summary === 'string' &&
-    attrs.summary !== '' && { summary: attrs.summary }),
+  ...(isPresentationalText(attrs.summary) &&
+    presentationalTextValue(attrs.summary) !== '' && {
+      summary: attrs.summary,
+    }),
   versions: versionsIn(attrs.versions),
 });
 
@@ -530,7 +539,9 @@ function VersionsView({
   const nested = useContext(NestedEditingContext);
   const active = nested?.active ?? true;
   const versionsId = useId();
-  const pillLanguage = useTokenPillLanguage();
+  const pillLanguage = useTokenPillLanguage(
+    attributes.summary ?? attributes.label,
+  );
   const wrapperRef = useRef<HTMLElement>(null);
   // The versions are the whole message: nothing but whitespace is around the
   // element in its line. Followed as the line is edited, since text typed
@@ -764,11 +775,32 @@ export const VersionsNode = TiptapNode.create({
       },
       summary: {
         default: null,
-        parseHTML: (element) => element.getAttribute('data-versions-summary'),
-        renderHTML: (attributes) =>
-          typeof attributes.summary === 'string'
-            ? { 'data-versions-summary': attributes.summary }
-            : {},
+        // The text, and the language and direction of text that has its own.
+        parseHTML: (element): TokenPillLabel | null => {
+          const text = element.getAttribute('data-versions-summary');
+          if (text === null) return null;
+          const lang = element.getAttribute('data-versions-summary-lang');
+          const dir = element.getAttribute('data-versions-summary-dir');
+          if (dir === 'auto') return { text, dir };
+          if (lang !== null && (dir === 'ltr' || dir === 'rtl')) {
+            return { text, lang, dir };
+          }
+          return text;
+        },
+        renderHTML: (attributes) => {
+          const { summary } = attributes;
+          if (!isPresentationalText(summary)) return {};
+          const own = presentationalTextProps(summary);
+          return {
+            'data-versions-summary': presentationalTextValue(summary),
+            ...(own.lang !== undefined && {
+              'data-versions-summary-lang': own.lang,
+            }),
+            ...(own.dir !== undefined && {
+              'data-versions-summary-dir': own.dir,
+            }),
+          };
+        },
       },
       meta: {
         default: null,

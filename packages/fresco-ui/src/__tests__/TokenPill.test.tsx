@@ -1,7 +1,31 @@
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { TokenizedText, TokenPill, tokenPillClasses } from '../TokenPill';
+import { defineAppLocales } from '@codaco/app-i18n/locales';
+import { AppI18nProvider } from '@codaco/app-i18n/react';
+
+import {
+  TokenizedText,
+  TokenPill,
+  tokenPillClasses,
+  tokenPillLanguage,
+} from '../TokenPill';
+
+const locales = defineAppLocales([
+  { locale: 'en', label: 'English', direction: 'ltr' },
+  { locale: 'ar', label: 'العربية', direction: 'rtl' },
+]);
+
+/** A pill in the Arabic interface, inside a protocol's English text. */
+const inArabicInterface = (children: ReactNode) =>
+  render(
+    <AppI18nProvider locale="ar" locales={locales}>
+      <p lang="en" dir="ltr">
+        {children}
+      </p>
+    </AppI18nProvider>,
+  );
 
 const pillOf = (container: HTMLElement) =>
   container.querySelector('[data-token]');
@@ -102,5 +126,45 @@ describe('TokenizedText', () => {
     const pill = pillOf(container);
     expect(pill).toHaveAttribute('data-token', 'relation');
     expect(pill).toHaveTextContent('relation');
+  });
+});
+
+describe('a pill’s language', () => {
+  const arabic = { lang: 'ar', dir: 'rtl' } as const;
+
+  it('gives the interface’s words the interface’s language and direction', () => {
+    expect(tokenPillLanguage('اليوم', arabic)).toEqual(arabic);
+
+    const { container } = inArabicInterface(
+      <TokenPill token="today" label="اليوم" />,
+    );
+    const pill = pillOf(container);
+    expect(pill).toHaveAttribute('lang', 'ar');
+    expect(pill).toHaveAttribute('dir', 'rtl');
+  });
+
+  it('lets a name someone wrote read in its own direction, in the text’s language', () => {
+    // An English attribute called “team-b!” in the Arabic interface keeps its
+    // “!” at its end, and a screen reader does not read it as Arabic.
+    const name = { text: 'team-b!', dir: 'auto' } as const;
+    expect(tokenPillLanguage(name, arabic)).toEqual({ dir: 'auto' });
+
+    const { container } = inArabicInterface(
+      <TokenPill token="team" label={name} />,
+    );
+    const pill = pillOf(container);
+    expect(pill).toHaveAttribute('dir', 'auto');
+    expect(pill).not.toHaveAttribute('lang');
+    expect(pill).toHaveTextContent('team-b!');
+  });
+
+  it('shows a placeholder it was not told about by its recorded name, in its own direction', () => {
+    const { container } = inArabicInterface(
+      <TokenizedText parts={[{ token: 'team_b' }]} tokens={[]} />,
+    );
+    const pill = pillOf(container);
+    expect(pill).toHaveTextContent('team_b');
+    expect(pill).toHaveAttribute('dir', 'auto');
+    expect(pill).not.toHaveAttribute('lang');
   });
 });

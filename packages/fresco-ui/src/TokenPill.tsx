@@ -6,13 +6,44 @@ import { type ComponentPropsWithoutRef, Fragment } from 'react';
 
 import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from './PresentationalText';
 import { cx } from './utils/cva';
+
+/**
+ * What a pill says. A plain string is the interface's own words (“Today”, “The
+ * first person's age”); the object form is text with a language of its own,
+ * such as `{ text, dir: 'auto' }` for a name someone wrote (an attribute
+ * called “team-b!”), which reads in its own direction rather than the
+ * interface's.
+ */
+export type TokenPillLabel = PresentationalText;
+
+type InterfaceLanguage = Readonly<{ lang: string; dir: 'ltr' | 'rtl' }>;
+
+/**
+ * `lang` and `dir` for a pill that says `label`. The interface's words take
+ * the interface's language and direction, whatever language the text around
+ * the pill is in (a protocol's English text in an Arabic interface), so a
+ * screen reader reads them in the right voice and they take the interface's
+ * typeface. Text with a language of its own keeps it.
+ */
+export const tokenPillLanguage = (
+  label: TokenPillLabel,
+  interfaceLanguage: InterfaceLanguage,
+): Readonly<{ lang?: string; dir?: 'ltr' | 'rtl' | 'auto' }> =>
+  typeof label === 'string'
+    ? interfaceLanguage
+    : presentationalTextProps(label);
 
 type TokenPillProps = Omit<ComponentPropsWithoutRef<'span'>, 'children'> & {
   /** What the text records for the placeholder, such as `name`. */
   token: string;
   /** What the pill says: the placeholder's name, such as “Name”. */
-  label: string;
+  label: TokenPillLabel;
   /** Outlines the pill, as the editor does while its caret is on it. */
   selected?: boolean;
 };
@@ -91,9 +122,9 @@ const tokenPillIconSpec: DOMOutputSpec = [
  * the label.
  */
 export const tokenPillContentSpec = (
-  label: string,
+  label: TokenPillLabel,
 ): (DOMOutputSpec | string)[] => {
-  const [first, rest] = splitFirstWord(label);
+  const [first, rest] = splitFirstWord(presentationalTextValue(label));
   return [
     ['span', { class: tokenPillLeadClasses }, tokenPillIconSpec, first],
     ...(rest === '' ? [] : [rest]),
@@ -105,8 +136,8 @@ export const tokenPillContentSpec = (
  * the rest of the label. For a pill drawn by an element of its own, such as
  * one that is also a button.
  */
-export const TokenPillContent = ({ label }: { label: string }) => {
-  const [first, rest] = splitFirstWord(label);
+export const TokenPillContent = ({ label }: { label: TokenPillLabel }) => {
+  const [first, rest] = splitFirstWord(presentationalTextValue(label));
   return (
     <>
       <span className={tokenPillLeadClasses}>
@@ -132,11 +163,11 @@ export const TokenPill = ({
   className,
   ...props
 }: TokenPillProps) => {
-  const interfaceLanguage = useTokenPillLanguage();
+  const language = useTokenPillLanguage(label);
   return (
     <span
       {...props}
-      {...interfaceLanguage}
+      {...language}
       data-token={token}
       data-selected={selected || undefined}
       className={tokenPillClasses(className)}
@@ -147,15 +178,14 @@ export const TokenPill = ({
 };
 
 /**
- * `lang` and `dir` for a pill: its label is the interface's words, whatever
- * language the text around it is in (a protocol's English text in an Arabic
- * interface), so a screen reader reads it in the right voice, it takes the
- * interface's typeface, and it reads in the interface's direction.
+ * `lang` and `dir` for a pill, or another label drawn inside text in the
+ * protocol's language, that says `label`: see `tokenPillLanguage`. Without a
+ * label, for the interface's own words.
  */
-export const useTokenPillLanguage = () => {
+export const useTokenPillLanguage = (label: TokenPillLabel = '') => {
   const intl = useAppIntl();
   const dir = useAppDirection();
-  return { lang: intl.locale, dir };
+  return tokenPillLanguage(label, { lang: intl.locale, dir });
 };
 
 /** A run of text, or a placeholder in it, named by what the text records. */
@@ -172,7 +202,7 @@ export const TokenizedText = ({
   tokens,
 }: {
   parts: readonly TokenizedTextPart[];
-  tokens: readonly Readonly<{ id: string; label: string }>[];
+  tokens: readonly Readonly<{ id: string; label: TokenPillLabel }>[];
 }) => (
   <>
     {parts.map((part, index) =>
@@ -183,7 +213,11 @@ export const TokenizedText = ({
           key={index}
           token={part.token}
           label={
-            tokens.find(({ id }) => id === part.token)?.label ?? part.token
+            tokens.find(({ id }) => id === part.token)?.label ?? {
+              // The name the text records, as it was written.
+              text: part.token,
+              dir: 'auto',
+            }
           }
         />
       ),

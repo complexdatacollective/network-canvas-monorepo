@@ -70,13 +70,22 @@ import { linesOf } from '@codaco/shared-consts';
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import {
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
+import {
   controlVariants,
   inputControlVariants,
   interactiveStateVariants,
   multilineContentVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { tokenPillClasses, tokenPillContentSpec } from '../../TokenPill';
+import {
+  type TokenPillLabel,
+  tokenPillClasses,
+  tokenPillContentSpec,
+  tokenPillLanguage,
+} from '../../TokenPill';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import { useEnclosingHeadingLevel } from '../../typography/EnclosingHeadingLevel';
 import { headingVariants } from '../../typography/Heading';
@@ -294,7 +303,11 @@ const SingleLineDocument = TiptapNode.create({
  */
 export type RichTextEditorToken = Readonly<{
   id: string;
-  label: string;
+  /**
+   * The interface's words for it, or `{ text, dir: 'auto' }` for a name
+   * someone wrote (an attribute's), which reads in its own direction.
+   */
+  label: TokenPillLabel;
   required?: boolean;
   /**
    * How the placeholder is written as text, such as `{name}`. Pasted text
@@ -354,8 +367,10 @@ const createTokenNode = (
   interfaceLanguage: InterfaceLanguage,
 ) => {
   const labels = new Map(tokens.map(({ id, label }) => [id, label]));
-  const labelOf = (id: unknown) =>
-    typeof id === 'string' ? (labels.get(id) ?? id) : '';
+  // A token the field does not offer shows the name the text records for it,
+  // as it was written.
+  const labelOf = (id: unknown): TokenPillLabel =>
+    typeof id === 'string' ? (labels.get(id) ?? { text: id, dir: 'auto' }) : '';
 
   return TiptapNode.create({
     name: TOKEN_NODE,
@@ -395,17 +410,16 @@ const createTokenNode = (
           // A pointer, not the text cursor: the pill is one object.
           class: tokenPillClasses('cursor-pointer'),
           contenteditable: 'false',
-          // Its label is the interface's words, whatever language the text
-          // around it is in.
-          lang: interfaceLanguage.lang,
-          dir: interfaceLanguage.dir,
+          // The interface's words in the interface's language, whatever
+          // language the text around it is in; a name in its own direction.
+          ...tokenPillLanguage(labelOf(node.attrs.id), interfaceLanguage),
         }),
         ...tokenPillContentSpec(labelOf(node.attrs.id)),
       ];
     },
 
     renderText({ node }) {
-      return labelOf(node.attrs.id);
+      return presentationalTextValue(labelOf(node.attrs.id));
     },
 
     addProseMirrorPlugins() {
@@ -2493,7 +2507,7 @@ export default function RichTextEditorField({
                         missing
                           ? messages.insertRequiredToken
                           : messages.insertToken,
-                        { token: token.label },
+                        { token: presentationalTextValue(token.label) },
                       )}
                       onClick={() =>
                         actOn
@@ -2507,7 +2521,9 @@ export default function RichTextEditorField({
                       }
                     >
                       <Plus aria-hidden />
-                      {token.label}
+                      <span {...presentationalTextProps(token.label)}>
+                        {presentationalTextValue(token.label)}
+                      </span>
                       {missing && (
                         <span
                           aria-hidden
