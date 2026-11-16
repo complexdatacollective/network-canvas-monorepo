@@ -21,6 +21,7 @@ it.each([
   ['raw emphasis', '<em>Isabel</em>', 'Isabel'],
   ['unwrapped HTML', '<span>Isabel</span>', 'Isabel'],
   ['sanitized script', '<script>ignored</script>Isabel', 'Isabel'],
+  ['unwrapped style', '<style>ignored</style>Isabel', 'ignoredIsabel'],
   ['numeric entity', '&#73;sabel', 'Isabel'],
   ['named entity', 'Isabel &amp; Irene', 'Isabel & Irene'],
   ['link', '[Isabel](https://example.org)', 'Isabel'],
@@ -104,6 +105,34 @@ it.each([
     expect(container.textContent).toBe(text);
   },
 );
+
+it('strips event-handler, style and class attributes from raw HTML', () => {
+  const { container } = render(
+    <RenderMarkdown>
+      {
+        '<em onclick="alert(1)" style="color: red" class="injected">Isabel</em> <a href="https://example.org" onmouseover="alert(1)">Zelda</a>'
+      }
+    </RenderMarkdown>,
+  );
+
+  const emphasis = container.querySelector('em');
+  const link = screen.getByRole('link', { name: 'Zelda' });
+  expect(emphasis).toHaveTextContent('Isabel');
+  for (const attribute of ['onclick', 'style', 'class']) {
+    expect(emphasis).not.toHaveAttribute(attribute);
+  }
+  expect(link).not.toHaveAttribute('onmouseover');
+});
+
+it('renders a javascript: link as text with no href', () => {
+  const { container } = render(
+    <RenderMarkdown>{'[Isabel](javascript:alert(1))'}</RenderMarkdown>,
+  );
+
+  expect(container).toHaveTextContent('Isabel');
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(container.querySelector('[href]')).toBeNull();
+});
 
 it('retains custom components and wrapper props', () => {
   render(

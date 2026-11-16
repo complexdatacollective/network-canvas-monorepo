@@ -53,6 +53,9 @@ describe('ThemeSwitcher', () => {
     expect(darkOption.querySelector('.lucide-moon')).toBeInTheDocument();
     expect(systemOption.querySelector('.lucide-sun-moon')).toBeInTheDocument();
     expect(document.querySelector('.lucide-check')).not.toBeInTheDocument();
+    expect(systemOption).toHaveAttribute('aria-checked', 'true');
+    expect(lightOption).toHaveAttribute('aria-checked', 'false');
+    expect(darkOption).toHaveAttribute('aria-checked', 'false');
 
     fireEvent.click(darkOption);
     expect(onThemeChange).toHaveBeenCalledWith('dark');

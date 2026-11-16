@@ -5,10 +5,35 @@ import { describe, expect, it } from 'vitest';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from './DropdownMenu';
+
+describe('DropdownMenuItem', () => {
+  // The wrapper destructures its own props before spreading the rest onto
+  // Base UI's item, so this is the seam that keeps `disabled` from being lost.
+  it('passes disabled through to the menu item', async () => {
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<button>open</button>} />
+        <DropdownMenuContent>
+          <DropdownMenuItem disabled>Add sibling</DropdownMenuItem>
+          <DropdownMenuItem>Add child</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    await userEvent.click(screen.getByText('open'));
+
+    expect(
+      await screen.findByRole('menuitem', { name: 'Add sibling' }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByRole('menuitem', { name: 'Add child' }),
+    ).not.toHaveAttribute('aria-disabled');
+  });
+});
 
 describe('DropdownMenuRadioItem', () => {
   it('marks only the checked item’s tick as shown', async () => {

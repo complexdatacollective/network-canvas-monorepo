@@ -211,6 +211,20 @@ describe('NavList', () => {
     error.mockRestore();
   });
 
+  it('lets a group render on its own outside any ungrouped run', () => {
+    // The guard reads a context NavList sets on the contents of an ungrouped
+    // list, so it cannot fire on a group that is nobody's row.
+    expect(() =>
+      render(
+        <NavList>
+          <NavListGroup heading="Design">
+            <NavItem href="/study/1/editor" label="Editor" />
+          </NavListGroup>
+        </NavList>,
+      ),
+    ).not.toThrow();
+  });
+
   it('renders a group used on its own', () => {
     render(
       <NavListGroup heading="Data">

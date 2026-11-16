@@ -9,6 +9,9 @@ let visibility: DocumentVisibilityState = 'visible';
 let focused = true;
 
 beforeEach(() => {
+  // The hook re-checks focus a task after a blur. Fake timers decide exactly
+  // when that task runs, so no test depends on how busy the machine is.
+  vi.useFakeTimers();
   visibility = 'visible';
   focused = true;
   Object.defineProperty(document, 'visibilityState', {
@@ -19,14 +22,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
-// The blur check waits a task, as it does in a browser, so the helper does too.
-const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
-
-async function emulateWindow(next: { visible?: boolean; focused?: boolean }) {
-  await act(async () => {
+function emulateWindow(next: { visible?: boolean; focused?: boolean }) {
+  act(() => {
     if (next.visible !== undefined) {
       visibility = next.visible ? 'visible' : 'hidden';
       document.dispatchEvent(new Event('visibilitychange'));
@@ -35,22 +36,24 @@ async function emulateWindow(next: { visible?: boolean; focused?: boolean }) {
       focused = next.focused;
       window.dispatchEvent(new Event(next.focused ? 'focus' : 'blur'));
     }
-    await nextTask();
+  });
+  act(() => {
+    vi.runOnlyPendingTimers();
   });
 }
 
 describe('usePageActive', () => {
-  it('is true only while the page is visible and its window focused', async () => {
+  it('is true only while the page is visible and its window focused', () => {
     const { result } = renderHook(() => usePageActive());
     expect(result.current).toBe(true);
 
-    await emulateWindow({ focused: false });
+    emulateWindow({ focused: false });
     expect(result.current).toBe(false);
 
-    await emulateWindow({ focused: true, visible: false });
+    emulateWindow({ focused: true, visible: false });
     expect(result.current).toBe(false);
 
-    await emulateWindow({ visible: true });
+    emulateWindow({ visible: true });
     expect(result.current).toBe(true);
   });
 
@@ -60,31 +63,33 @@ describe('usePageActive', () => {
     expect(result.current).toBe(false);
   });
 
-  it('stays true through a blur that leaves the page focused', async () => {
+  it('stays true through a blur that leaves the page focused', () => {
     // Focus moving into a frame on the page blurs the window, but the page as
     // a whole keeps focus. `hasFocus()` lags behind the blur event and has
-    // caught up by the next task.
+    // caught up by the time the deferred re-check runs.
     const { result } = renderHook(() => usePageActive());
 
-    // React renders whatever the blur handler reported before focus catches up.
-    await act(async () => {
+    act(() => {
       focused = false;
       window.dispatchEvent(new Event('blur'));
     });
     focused = true;
-    await act(nextTask);
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
 
     expect(result.current).toBe(true);
   });
 
-  it('ignores focus inside a frame, whose page decides', async () => {
-    vi.spyOn(window, 'top', 'get').mockReturnValue({} as Window);
+  it('ignores focus inside a frame, whose page decides', () => {
+    // A null `top` is not this window, which is all the hook asks.
+    vi.spyOn(window, 'top', 'get').mockReturnValue(null);
     const { result } = renderHook(() => usePageActive());
 
-    await emulateWindow({ focused: false });
+    emulateWindow({ focused: false });
     expect(result.current).toBe(true);
 
-    await emulateWindow({ visible: false });
+    emulateWindow({ visible: false });
     expect(result.current).toBe(false);
   });
 });
