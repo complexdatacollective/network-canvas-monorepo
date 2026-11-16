@@ -205,7 +205,7 @@ export async function verifyTwoFactor(
     return { success: true };
   }
 
-  void recordLoginAttempt(user.username, ipAddress, false);
+  await recordLoginAttempt(user.username, ipAddress, false);
   return {
     success: false,
     formErrors: [createMessageError(messages.copyInvalidCodeFormat)],

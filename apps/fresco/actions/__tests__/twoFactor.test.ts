@@ -473,5 +473,50 @@ describe('verifyTwoFactor', () => {
         false,
       );
     });
+
+    it('does not return until the failed attempt has been recorded', async () => {
+      const badCode = 'not-a-valid-format-xyz';
+
+      mockVerifyTwoFactorSchemaSafeParse.mockReturnValue({
+        success: true,
+        data: { twoFactorToken: 'valid-token', code: badCode },
+      });
+      mockVerifyTwoFactorToken.mockReturnValue({
+        valid: true,
+        userId: VALID_USER_ID,
+      });
+      mockPrismaTotpCredentialFindFirst.mockResolvedValue({
+        user_id: VALID_USER_ID,
+        secret: TOTP_SECRET,
+        verified: true,
+      });
+
+      const recording = Promise.withResolvers<undefined>();
+      mockRecordLoginAttempt.mockReturnValue(recording.promise);
+
+      let actionSettled = false;
+      const action = verifyTwoFactor({
+        twoFactorToken: 'valid-token',
+        code: badCode,
+      }).finally(() => {
+        actionSettled = true;
+      });
+
+      await vi.waitFor(() => {
+        expect(mockRecordLoginAttempt).toHaveBeenCalledWith(
+          VALID_USERNAME,
+          VALID_IP,
+          false,
+        );
+      });
+      // Let any continuation that does not wait on the recording run first.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(actionSettled).toBe(false);
+
+      recording.resolve(undefined);
+      const result = await action;
+
+      expect(formErrorMessages(result)).toEqual(['Invalid code format']);
+    });
   });
 });
