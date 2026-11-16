@@ -38,6 +38,8 @@ In Architect, a new node or edge type starts on the next color in the palette, s
 
 Every node type has a default shape: circle, square, or diamond. When no mapping is configured, every node of that type uses the default shape.
 
+In a schema 9 protocol you can also add shapes of your own to a node type from SVG files, and use them wherever you would choose a built-in shape. See [Custom Node Shapes](/en/design-protocols/custom-node-shapes).
+
 ### Mapping a node variable to shape
 
 In Architect you can also make a node type's shape **dynamic**, so that nodes within the same type can change shape according to an attribute value. Architect calls each definition in the codebook an **attribute** (these docs often call it a variable), and what is stored on a particular node is that attribute's value.
@@ -54,7 +56,7 @@ A node type's shape can be mapped from one variable at a time. The mapping works
 - For **categorical**, **ordinal**, or **boolean** variables, you assign a shape to each discrete value. Any value you leave unmapped falls back to the default shape.
 - For **number** or **scalar** variables, you define up to two numeric **thresholds**. Values below the first threshold use the default shape, and each threshold sets the shape used at or above its value.
 
-The shapes available are the same as for the default shape: circle, square, and diamond. You choose each one, including the default, by clicking its swatch, drawn in the node type's own color. Architect points out any values that are still unmapped and will use the default shape, and won't save a mapping for a number or scalar attribute until you have added at least one threshold.
+The shapes available are the same as for the default shape: circle, square, and diamond, followed by any [custom shapes](/en/design-protocols/custom-node-shapes) you have added to the node type. You choose each one, including the default, by clicking its swatch, drawn in the node type's own color. Architect points out any values that are still unmapped and will use the default shape, and won't save a mapping for a number or scalar attribute until you have added at least one threshold.
 
 #### Boolean example: people and places
 
