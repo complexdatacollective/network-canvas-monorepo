@@ -1376,7 +1376,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expectEdgeSlide(page, 'Alex', 'Sam');
 
         // Before completing the slide, the pulse is off (form incomplete).
-        expect(await interview.nextButtonHasPulse()).toBe(false);
+        await interview.expectNotReadyToContinue();
 
         // Complete every field so the form is valid (each field registers
         // invalid until blurred, so all must be touched), then scroll the
@@ -1401,7 +1401,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
             node = node.parentElement;
           }
         });
-        await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
         await advanceEdgeSlide(page, slides); // → slide 1
 
         // Slide 1: fill validly, navigate backwards — auto-submits, no dialog.

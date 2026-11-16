@@ -793,7 +793,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await expect(page.getByText('Extremely')).toBeVisible();
 
         // Not scrolled to the bottom yet: no pulse.
-        expect(await interview.nextButtonHasPulse()).toBe(false);
+        await interview.expectNotReadyToContinue();
 
         await stage.form.fillText('text', 'Hello');
         await stage.form.fillText('textArea', 'A bio');
@@ -845,7 +845,7 @@ export const alterFormScenarios: InterfaceScenarios = {
             el.scrollTop = el.scrollHeight;
           });
 
-        await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
 
         const label = await slides.getCurrentItemLabel();
         await slides.nextSlide(label);
