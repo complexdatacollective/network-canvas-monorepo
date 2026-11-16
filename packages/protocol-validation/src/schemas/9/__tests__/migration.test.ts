@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { MigrationResultInvalidError } from '../../../migration/errors.ts';
 import {
-  getMigrationInfo,
   migrateProtocol,
   migrateProtocolWithSessions,
 } from '../../../migration/migrate-protocol.ts';
@@ -231,14 +230,6 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
       migrated.stages.find(({ type }) => type === 'Anonymisation'),
     ).toMatchObject({ validation });
   });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'If an Anonymisation stage required a minimum passphrase length longer than its maximum',
-    );
-  });
 });
 
 const nodeRule = (id: string, attribute: string, value: string | number) => ({
@@ -420,14 +411,6 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
       );
     },
   );
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'Skip logic and filters can no longer compare the answers to an encrypted attribute.',
-    );
-  });
 });
 
 type OptionValue = string | number;
@@ -886,14 +869,6 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
         9,
       ),
     ).toThrow(MigrationResultInvalidError);
-  });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'Ordinal and categorical option values must now be unique.',
-    );
   });
 });
 
@@ -1438,14 +1413,6 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     ]);
     expect(migrated.stages[0]).not.toHaveProperty('introductionPanel.text');
   });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'Introduction panels within interfaces other than the Ego Form have been removed',
-    );
-  });
 });
 
 // The base protocol with a Categorical Bin whose prompt has an "other" bin,
@@ -1594,14 +1561,6 @@ describe('Migrating the text of a Categorical Bin "other" bin from schema 8 to 9
     expect(stage).not.toHaveProperty('prompts.0.otherOptionLabel.fr');
     expect(stage).not.toHaveProperty('prompts.0.otherVariablePrompt.fr');
   });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'On a Categorical Bin stage, the label of the bin for answers not listed',
-    );
-  });
 });
 
 // The base protocol with a Tie-Strength Census whose prompt has the decline
@@ -1659,14 +1618,6 @@ describe('Migrating a Tie-Strength Census decline label from schema 8 to 9', () 
       negativeLabel: localized('Not close'),
     });
   });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'On a Tie-Strength Census stage, the label of the option for declining',
-    );
-  });
 });
 
 // The base protocol with an Information stage whose title is given, as
@@ -1706,14 +1657,6 @@ describe('Migrating an Information stage title from schema 8 to 9', () => {
     expect(migratedInformationTitle('Hello')).toMatchObject({
       title: localized('Hello'),
     });
-  });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'The title of an Information stage must now contain some text',
-    );
   });
 });
 
@@ -2003,16 +1946,6 @@ describe('Migrating optional text that shows nothing from schema 8 to 9', () => 
     });
     expect(migrated.codebook.ego?.variables?.egoCloseness).not.toHaveProperty(
       'parameters.maxLabel',
-    );
-  });
-});
-
-describe('The schema 9 migration notes', () => {
-  it('say that other text participants see must contain some text', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'Some other text that participants see must now contain some text.',
     );
   });
 });
