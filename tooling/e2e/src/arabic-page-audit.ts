@@ -86,13 +86,16 @@ export function auditArabicPage(
   };
 
   // Read by someone: drawn, or left for a screen reader (a visually hidden
-  // label is a 1px box, but it is read).
+  // label is a 1px box, but it is read). Not when it or any ancestor is
+  // hidden: `display: none` anywhere above it, `visibility: hidden`, or
+  // `content-visibility: hidden` (the inside of a closed `<details>`), which
+  // `checkVisibility` answers for the whole chain, or kept from assistive
+  // technology by an attribute.
   const isRead = (element: Element) => {
     if (element.closest('[aria-hidden="true"], [hidden], [inert]')) {
       return false;
     }
-    const style = getComputedStyle(element);
-    return style.visibility !== 'hidden' && style.display !== 'none';
+    return element.checkVisibility({ visibilityProperty: true });
   };
   const isDrawn = (element: Element) => {
     if (!isRead(element)) return false;
