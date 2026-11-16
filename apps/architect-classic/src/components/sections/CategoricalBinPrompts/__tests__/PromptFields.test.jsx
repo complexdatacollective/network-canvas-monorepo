@@ -60,7 +60,7 @@ const getSubject = (node, store, { form }) =>
     </Provider>,
   );
 
-export const testPromptFields = (PromptFieldsComponent, name = '') => {
+const testPromptFields = (PromptFieldsComponent, name = '') => {
   let mockStore;
 
   beforeEach(() => {

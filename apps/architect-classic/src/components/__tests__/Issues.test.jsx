@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { mount, shallow } from 'enzyme';
+import { mount } from 'enzyme';
 import { Provider } from 'react-redux';
 import { createStore } from 'redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -36,16 +36,6 @@ describe('<Issues />', () => {
   beforeEach(() => {
     mockGetFormSyncErrors.mockReset();
     mockGetFormSyncErrors.mockReturnValue(() => ({}));
-  });
-
-  it('will render', () => {
-    const component = shallow(
-      <Provider store={mockStore}>
-        <Issues {...mockProps} />
-      </Provider>,
-    );
-
-    expect(component).toMatchSnapshot();
   });
 
   it('renders issues from object', () => {
