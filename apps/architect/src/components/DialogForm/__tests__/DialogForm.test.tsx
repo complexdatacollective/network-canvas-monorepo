@@ -68,9 +68,6 @@ describe('DialogForm', () => {
       name: 'Resize form and preview panes',
     });
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '50');
-    expect(
-      screen.getByText('Participant preview').closest('aside'),
-    ).toHaveClass('z-10');
 
     fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' });
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '52');

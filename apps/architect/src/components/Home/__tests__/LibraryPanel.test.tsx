@@ -288,10 +288,10 @@ describe('<LibraryPanel /> row action focus', () => {
 });
 
 // #1397 filed long names as dominating the page generally. On this surface it
-// did NOT reproduce: the row name was already clamped to two lines with
-// `wrap-anywhere` and the full value on `title`. Pinned here so the filed
-// description cannot quietly become true later — and extended with `dir="auto"`,
-// which the row was missing, so an RTL name's clamp truncates from its own end.
+// did NOT reproduce: the row name was already clamped to two lines with the
+// full value on `title`. The clamp is measured in e2e/specs/responsive.spec.ts;
+// this pins the full value and `dir="auto"`, which the row was missing, so an
+// RTL name's clamp truncates from its own end.
 describe('<LibraryPanel /> protocol row name', () => {
   const longRtlName = 'مشروع بحث الشبكات الاجتماعية الحضرية والريفية'.repeat(8);
 
@@ -305,15 +305,10 @@ describe('<LibraryPanel /> protocol row name', () => {
     });
   });
 
-  it('stays clamped, wrappable and fully exposed however long the name is', () => {
+  it('exposes the whole name in its own direction however long it is', () => {
     renderPanel();
 
     const label = screen.getByTitle(longRtlName);
-    expect(label).toHaveClass(
-      'line-clamp-2',
-      'wrap-anywhere',
-      'text-match-parent',
-    );
     expect(label).toHaveAttribute('dir', 'auto');
     expect(label).toHaveTextContent(longRtlName);
   });

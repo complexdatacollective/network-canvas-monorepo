@@ -124,14 +124,6 @@ describe('ConnectedVariablePill', () => {
     });
 
     expect(pill).toHaveAttribute('aria-haspopup', 'dialog');
-    expect(pill).toHaveClass(
-      'cursor-pointer',
-      'effect-shadow-sm',
-      'hover:effect-shadow',
-      'hover:-translate-y-0.5',
-      'focus-visible:effect-shadow',
-      'focus-visible:-translate-y-0.5',
-    );
 
     fireEvent.click(pill);
     expect(

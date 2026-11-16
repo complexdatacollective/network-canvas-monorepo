@@ -75,15 +75,16 @@ describe('new-stage interface option', () => {
   });
 
   it('scrolls itself into view when it becomes the highlighted option', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
     const { rerender } = render(
       <Interface type="NameGenerator" onClick={vi.fn()} />,
     );
-    const option = screen.getByRole('button');
-    const scrollIntoView = vi.mocked(option.scrollIntoView);
-    scrollIntoView.mockClear();
+    expect(scrollIntoView).not.toHaveBeenCalled();
 
     rerender(<Interface type="NameGenerator" onClick={vi.fn()} highlighted />);
 
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
   });
 });

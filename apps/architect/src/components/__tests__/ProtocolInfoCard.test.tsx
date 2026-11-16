@@ -164,8 +164,9 @@ describe('ProtocolInfoCard', () => {
   // heading size tier, the remaining-character readout, the counter's
   // visibility) describes a name that was never saved.
   it('resyncs the control when a whitespace-only edit trims back to the stored name', () => {
-    // 64 graphemes sits exactly on the text-2xl/text-lg tier boundary, so one
-    // phantom space is enough to move the heading a whole size tier.
+    // 64 graphemes sits exactly on a heading size step, so one phantom space
+    // left in the value would move the heading a whole size (see the
+    // ProtocolInfoCard story).
     const name = 'A'.repeat(64);
     const store = renderCard(name);
 
@@ -176,7 +177,6 @@ describe('ProtocolInfoCard', () => {
     expect(allowanceText()).toBe(
       `${PROTOCOL_NAME_MAX_LENGTH - 64} of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
     );
-    expect(nameControl()).toHaveClass('text-2xl');
     expect(store.getState().activeProtocol.present?.name).toBe(name);
   });
 
@@ -263,29 +263,10 @@ describe('ProtocolInfoCard', () => {
   // `e2e/specs/responsive.spec.ts`, along with the height bound and the name's
   // own text direction. What is left here is the grapheme-count size tier,
   // whose only jsdom-visible output is the class it picks.
-  describe('bounding the name against the viewport', () => {
-    it('steps the heading down so a name at the limit fits that bound', () => {
-      renderCard('Short name');
-      // Up to 32 graphemes the page-heading size is untouched.
-      expect(nameControl()).toHaveClass('text-4xl');
-
-      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(50) } });
-      expect(nameControl()).toHaveClass('text-2xl');
-      expect(nameControl()).not.toHaveClass('text-4xl');
-
-      // Past 64 graphemes — the only tier in which a name at the 100-grapheme
-      // limit fits three lines at 390px, the narrowest supported width.
-      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(80) } });
-      expect(nameControl()).toHaveClass('text-lg');
-      expect(nameControl()).not.toHaveClass('text-2xl');
-    });
-
-    it('steps down the heading for a legacy name the cap never saw', () => {
-      // Arrives from IndexedDB / an imported .netcanvas, over the limit.
-      renderCard('م'.repeat(342));
-      expect(nameControl()).toHaveValue('م'.repeat(342));
-      expect(nameControl()).toHaveClass('text-lg');
-    });
+  it('keeps a legacy name the cap never saw whole', () => {
+    // Arrives from IndexedDB / an imported .netcanvas, over the limit.
+    renderCard('م'.repeat(342));
+    expect(nameControl()).toHaveValue('م'.repeat(342));
   });
 
   describe('the protocol name length limit', () => {

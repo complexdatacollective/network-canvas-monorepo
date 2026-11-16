@@ -45,8 +45,8 @@ describe('ExternalLink', () => {
 
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(link).toHaveClass('bg-primary');
-    expect(link).not.toHaveClass('text-link');
+    // Only the caller's classes: no prose-link styling of its own.
+    expect(link).toHaveAttribute('class', 'bg-primary');
     expect(link.firstElementChild).toBeNull();
   });
 });
