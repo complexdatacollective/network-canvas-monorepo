@@ -257,11 +257,14 @@ function VariableEditorDemo({
   // Every surface here is accepted by the host: the one story named for a
   // contradiction is refused by the editor's own analyser before a host is
   // reached. `VariableEditor.test.tsx` drives a host's refusal directly.
-  const answer = (): Promise<CodebookWriteOutcome> =>
-    Promise.resolve({
+  const [submissions, setSubmissions] = useState(0);
+  const answer = (): Promise<CodebookWriteOutcome> => {
+    setSubmissions((count) => count + 1);
+    return Promise.resolve({
       status: 'applied',
       sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
     });
+  };
   const common = {
     openId,
     subject: SUBJECT,
@@ -279,6 +282,9 @@ function VariableEditorDemo({
             {completedId === null
               ? 'No accepted edit yet.'
               : `Accepted attribute id: ${completedId}`}
+          </output>
+          <output className="text-muted">
+            {`Edits handed to the host: ${submissions}`}
           </output>
           <Button
             type="button"
@@ -627,8 +633,9 @@ export const ScaleSettings: Story = {
  * assertion is here to hold: "wait a moment and try again" is the wrong thing
  * to tell someone whose next save cannot succeed until they change something.
  *
- * The draft never leaves the editor: nothing is accepted, focus goes to the
- * refusal, and the researcher can still fix it and save.
+ * The draft never leaves the editor: nothing is handed to the host or
+ * accepted, focus goes to the refusal, and the researcher can still fix it and
+ * save.
  */
 export const RefusedByContradiction: Story = {
   args: { mode: 'update', surface: 'contradiction' },
@@ -649,6 +656,7 @@ export const RefusedByContradiction: Story = {
     await expect(alert).not.toHaveTextContent('Wait a moment and try again');
     await expect(alert).toHaveFocus();
     await expect(canvas.getByText('No accepted edit yet.')).toBeVisible();
+    await expect(canvas.getByText('Edits handed to the host: 0')).toBeVisible();
     await expect(
       canvas.getByRole('button', { name: 'Save attribute' }),
     ).toBeEnabled();

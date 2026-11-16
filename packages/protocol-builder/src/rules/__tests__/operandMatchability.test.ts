@@ -251,6 +251,42 @@ const OFFERED_CONTROL_PAIRS = VariableTypesKeys.flatMap((type) =>
     .map((operator) => `${type} ${operator}`),
 ).toSorted(byText);
 
+/**
+ * The two sets above are built from the tables under test, so they shrink when
+ * those tables do. These literal sizes, per attribute type, are what holds them
+ * still: 784 stored cells and 34 offered pairs in all.
+ */
+const STORED_CELLS_PER_TYPE = {
+  boolean: 68,
+  text: 80,
+  number: 92,
+  datetime: 92,
+  ordinal: 102,
+  scalar: 92,
+  categorical: 122,
+  layout: 68,
+  location: 68,
+};
+const OFFERED_PAIRS_PER_TYPE = {
+  boolean: 2,
+  text: 4,
+  number: 6,
+  datetime: 2,
+  ordinal: 4,
+  scalar: 6,
+  categorical: 8,
+  layout: 0,
+  location: 2,
+};
+
+const countPerType = (keys: readonly string[]) =>
+  Object.fromEntries(
+    VariableTypesKeys.map((type) => [
+      type,
+      keys.filter((key) => key.startsWith(`${type} `)).length,
+    ]),
+  );
+
 describe('the editor’s verdict against the interview’s predicate', () => {
   /**
    * Every (type, operator, operand) the protocol schema accepts, in both
@@ -295,6 +331,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
         .map(describeCell),
     ).toEqual([]);
     expect(acceptedButUnmatchable.map(describeCell)).toEqual([]);
+    expect(countPerType(STORED_RULE_CELLS)).toEqual(STORED_CELLS_PER_TYPE);
     expect([...sweptCells].toSorted(byText)).toEqual(STORED_RULE_CELLS);
   });
 
@@ -353,6 +390,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
     }
 
     expect(offeredButUnmatchable).toEqual([]);
+    expect(countPerType(OFFERED_CONTROL_PAIRS)).toEqual(OFFERED_PAIRS_PER_TYPE);
     expect([...offeredPairs].toSorted(byText)).toEqual(OFFERED_CONTROL_PAIRS);
   });
 });
