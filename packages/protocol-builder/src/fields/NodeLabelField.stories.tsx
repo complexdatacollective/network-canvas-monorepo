@@ -1,14 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { CodebookSchema } from '@codaco/protocol-validation';
 
+import { ProtocolLocalizationProvider } from '../localization/ProtocolLocalization.tsx';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import NodeLabelField, { type NodeLabelDraft } from './NodeLabelField.tsx';
 
 const LABEL = 'Label';
+const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
 
 /** A place with a kind, and one way of joining two places. */
 const CODEBOOK = CodebookSchema.parse({
@@ -50,18 +52,22 @@ const SWITCH_ON_KIND: NodeLabelDraft = {
 
 function NodeLabel({
   initialValue,
-  nodeType = 'place',
-}: Readonly<{ initialValue?: NodeLabelDraft; nodeType?: string | undefined }>) {
+  isNew = false,
+}: Readonly<{ initialValue?: NodeLabelDraft; isNew?: boolean }>) {
+  // The node type editor gives the field the protocol's languages itself,
+  // as Architect's does: it sits outside any stage editor.
   return (
-    <Field<typeof NodeLabelField>
-      name="dynamicLabel"
-      component={NodeLabelField}
-      label={LABEL}
-      hint="Shown on every node of this type."
-      codebook={CODEBOOK}
-      nodeType={nodeType}
-      {...(initialValue === undefined ? {} : { initialValue })}
-    />
+    <ProtocolLocalizationProvider localization={ENGLISH_ONLY}>
+      <Field<typeof NodeLabelField>
+        name="dynamicLabel"
+        component={NodeLabelField}
+        label={LABEL}
+        hint="Shown on every node of this type."
+        codebook={CODEBOOK}
+        nodeType={isNew ? undefined : 'place'}
+        {...(initialValue === undefined ? {} : { initialValue })}
+      />
+    </ProtocolLocalizationProvider>
   );
 }
 
@@ -115,7 +121,8 @@ export const AVersionForEachAnswer: Story = {
     await awaitPassiveEffects();
 
     const box = await canvas.findByRole('textbox', { name: LABEL });
-    await expect(box).toHaveTextContent('kind');
+    // The field's value reaches the editor a turn after it mounts.
+    await waitFor(() => expect(box).toHaveTextContent('kind'));
     await expect(box).toHaveTextContent('Default label');
     await expect(box).toHaveTextContent('Has a Near edge');
   },
@@ -126,7 +133,7 @@ export const AVersionForEachAnswer: Story = {
  * so its conditions wait until it has been.
  */
 export const ANewNodeType: Story = {
-  args: { children: <NodeLabel nodeType={undefined} /> },
+  args: { children: <NodeLabel isNew /> },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
