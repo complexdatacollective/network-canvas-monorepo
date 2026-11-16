@@ -135,6 +135,7 @@ export default defineConfig({
             '@codaco/fresco-ui > react-markdown',
             '@codaco/fresco-ui > rehype-raw',
             '@codaco/fresco-ui > rehype-sanitize',
+            '@codaco/fresco-ui > gemoji',
             '@codaco/fresco-ui > remark-gemoji',
             '@codaco/fresco-ui > remark-gfm',
             '@codaco/fresco-ui > tailwind-merge',

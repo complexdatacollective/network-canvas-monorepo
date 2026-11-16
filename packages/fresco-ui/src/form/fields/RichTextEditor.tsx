@@ -2400,8 +2400,15 @@ export default function RichTextEditorField({
       )}
       {offersEmoji && (
         // The keyboard is in the text, not in the list, so the emoji
-        // highlighted is said here.
-        <span role="status" aria-live="polite" lang="en" className="sr-only">
+        // highlighted is said here. It is a live region with no role: it is
+        // in every editor, and an empty `status` there would read as a notice
+        // to anything that looks for one.
+        <span
+          aria-live="polite"
+          aria-atomic="true"
+          lang="en"
+          className="sr-only"
+        >
           {highlighted === undefined
             ? ''
             : `${highlighted.emoji} ${highlighted.names[0] ?? ''}`}
