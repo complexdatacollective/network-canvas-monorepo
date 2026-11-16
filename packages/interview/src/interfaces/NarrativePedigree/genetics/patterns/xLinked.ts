@@ -39,20 +39,21 @@ function mothersOf(graph: GeneticGraph, id: string): AnnotatedParent[] {
  * - Every DAUGHTER (female child) of an affected male → `obligateCarrier` (he
  *   passes his single X to all daughters). His SONS get the Y → nothing.
  * - A female not recorded affected → `obligateCarrier` when the condition shows
- *   on TWO SIDES of her. A side is an affected son, the lines of her daughters
- *   by one recorded father, or her genetic mother's family. Daughters with no
- *   recorded father give a side only when no recorded father's daughters do,
- *   since an unrecorded father may be one of the recorded ones. A daughter's line is the daughter if affected
- *   plus her children's lines. Her mother's family is the mother if affected,
- *   the mother's affected father, the lines of the mother's other children,
- *   and the mother's own mother's family in turn. A female on any of these
- *   routes passes nothing on when another parent of hers is affected, and an
- *   affected female counts only when she also has a recorded father. Two sides
- *   must rest on at least two different affected people. If she did not carry
- *   it, the two sides would need separate rare events to coincide, the same
- *   alternative the two-affected-sons case already sets aside. Daughters by one
- *   father are one side because a single event in him (a germline mosaic, or
- *   an affected man not recorded as such) would explain them all. Affected men
+ *   on TWO SIDES of her and no one man could explain all of it through his
+ *   daughters. A side is the line of one of her children or her genetic
+ *   mother's family. A daughter's line is the daughter if affected plus her
+ *   children's lines. Her mother's family is the mother if affected, the
+ *   mother's affected father, the lines of the mother's other children, and
+ *   the mother's own mother's family in turn. A female on any of these routes
+ *   passes nothing on when another parent of hers is affected. An affected
+ *   female with no recorded father passes nothing on either and is not
+ *   evidence herself, since that father may be affected. Two sides must rest
+ *   on at least two different affected people. A man could explain an
+ *   affected person when he fathered a female on the route to them (the
+ *   person included), because a single event in him (a germline mosaic, or an
+ *   affected man not recorded as such) would reach them through his daughter.
+ *   A female with no recorded father stands for an unrecorded man and for
+ *   every recorded father of her mother's other children. Affected men
  *   reached only through an unbroken male line give nothing.
  * - Otherwise the mother of an affected male → `atRiskCarrier` (a new variant
  *   in him is not excluded).
@@ -160,105 +161,133 @@ export function computeXLinkedRecessive(
   }
 
   // (2b) A female is an obligate carrier when the condition shows on two
-  // sides of her: an affected son, the lines of her daughters by one father,
-  // or her mother's family. Each side is the set of affected people that
-  // stand as its evidence, and two sides count only when they do not rest on
-  // the same single person. `path` holds the people on the current walk, so a
-  // loop in the recorded links ends the walk instead of repeating it.
-  const none = new Set<string>();
+  // sides of her (each child's line, and her mother's family) and no one man
+  // could explain all of it through his daughters. Each side maps every
+  // affected person standing as its evidence to the fathers who could have
+  // passed it down to them: the fathers of the females on the route to that
+  // person. `path` holds the people on the current walk, so a loop in the
+  // recorded links ends the walk instead of repeating it.
+  type Evidence = Map<string, Set<string>>;
+  const noFathers = new Set<string>();
+
+  const addWitness = (
+    evidence: Evidence,
+    id: string,
+    fathers: Set<string>,
+  ): void => {
+    const existing = evidence.get(id);
+    evidence.set(id, existing ? new Set([...existing, ...fathers]) : fathers);
+  };
+
+  const recordedFathersOf = (childId: string, motherId: string): string[] =>
+    graph
+      .parentsOf(childId)
+      .filter((parent) => parent.id !== motherId && parent.sex === 'male')
+      .map((parent) => parent.id);
+
+  // The fathers who could have passed the X down to `daughterId`. A daughter
+  // with no recorded father may share a father with any of her mother's other
+  // children, so she stands for an unrecorded man and for each of theirs.
+  const fathersOfDaughter = (
+    daughterId: string,
+    motherId: string,
+  ): string[] => {
+    const recorded = recordedFathersOf(daughterId, motherId);
+    if (recorded.length > 0) {
+      return recorded;
+    }
+    const siblingsFathers = graph
+      .childrenOf(motherId)
+      .filter((id) => id !== daughterId)
+      .flatMap((id) => recordedFathersOf(id, motherId));
+    return [`unrecorded:${motherId}`, ...siblingsFathers];
+  };
 
   // The affected people in the X line that runs from `motherId` down through
-  // her genetic child `childId`. A son's line is the son himself. A daughter's
-  // line is blocked when another parent of hers is affected, because that
-  // parent's X would explain everything below her. A daughter who is herself
-  // affected stands as evidence only when she has a recorded father, since an
-  // unrecorded father may be affected; a daughter who only links to affected
-  // people further down needs no recorded father.
+  // her genetic child `childId`, with the fathers along the way. A son's line
+  // is the son himself. A daughter's line is blocked when another parent of
+  // hers is affected, because that parent's X would explain everything below
+  // her. An affected daughter with no recorded father blocks it too, since
+  // that father may be affected; a daughter who only links to affected people
+  // further down needs no recorded father.
   const evidenceBelow = (
     childId: string,
     motherId: string,
     path: Set<string>,
-  ): Set<string> => {
+    fathersAbove: Set<string>,
+  ): Evidence => {
+    const evidence: Evidence = new Map();
     if (path.has(childId)) {
-      return none;
+      return evidence;
     }
     const childSex = resolveSex(childId);
     if (childSex === 'male') {
-      return affected.has(childId) ? new Set([childId]) : none;
+      if (affected.has(childId)) {
+        evidence.set(childId, fathersAbove);
+      }
+      return evidence;
     }
     if (childSex !== 'female') {
-      return none;
+      return evidence;
     }
     const otherParents = graph
       .parentsOf(childId)
       .filter((parent) => parent.id !== motherId);
     if (otherParents.some((parent) => affected.has(parent.id))) {
-      return none;
+      return evidence;
     }
-    const witnesses = new Set<string>();
+    const fathers = new Set([
+      ...fathersAbove,
+      ...fathersOfDaughter(childId, motherId),
+    ]);
     if (affected.has(childId)) {
       if (!otherParents.some((parent) => parent.sex === 'male')) {
-        return none;
+        return evidence;
       }
-      witnesses.add(childId);
+      evidence.set(childId, fathers);
     }
     path.add(childId);
     for (const grandchildId of graph.childrenOf(childId)) {
-      for (const id of evidenceBelow(grandchildId, childId, path)) {
-        witnesses.add(id);
+      const below = evidenceBelow(grandchildId, childId, path, fathers);
+      for (const [id, witnessFathers] of below) {
+        addWitness(evidence, id, witnessFathers);
       }
     }
     path.delete(childId);
-    return witnesses;
+    return evidence;
   };
 
   // The affected people in the family of `womanId`'s genetic mother: the
   // mother herself, the mother's affected father, the lines of the mother's
   // other children, and the same again one generation up.
-  const evidenceAbove = (womanId: string, path: Set<string>): Set<string> => {
-    const witnesses = new Set<string>();
+  const evidenceAbove = (womanId: string, path: Set<string>): Evidence => {
+    const evidence: Evidence = new Map();
     for (const { id: motherId } of mothersOf(graph, womanId)) {
       if (path.has(motherId)) {
         continue;
       }
       if (affected.has(motherId)) {
-        witnesses.add(motherId);
+        addWitness(evidence, motherId, noFathers);
       }
       for (const parent of graph.parentsOf(motherId)) {
         if (parent.sex === 'male' && affected.has(parent.id)) {
-          witnesses.add(parent.id);
+          addWitness(evidence, parent.id, noFathers);
         }
       }
       path.add(motherId);
       // `womanId` is on `path`, so her own line is never counted here.
       for (const siblingId of graph.childrenOf(motherId)) {
-        for (const id of evidenceBelow(siblingId, motherId, path)) {
-          witnesses.add(id);
+        const below = evidenceBelow(siblingId, motherId, path, noFathers);
+        for (const [id, fathers] of below) {
+          addWitness(evidence, id, fathers);
         }
       }
-      for (const id of evidenceAbove(motherId, path)) {
-        witnesses.add(id);
+      for (const [id, fathers] of evidenceAbove(motherId, path)) {
+        addWitness(evidence, id, fathers);
       }
       path.delete(motherId);
     }
-    return witnesses;
-  };
-
-  // Which side below `womanId` her child's line belongs to. Each son is his
-  // own side. Daughters by one father share a side: a single event in him (a
-  // germline mosaic, or an affected man not recorded as such) would explain
-  // all of their lines. Daughters with no recorded father share the
-  // `noRecordedFather` key, since they may have one father.
-  const noRecordedFather = 'father:';
-  const sideBelow = (childId: string, womanId: string): string => {
-    if (resolveSex(childId) !== 'female') {
-      return `child:${childId}`;
-    }
-    const fathers = graph
-      .parentsOf(childId)
-      .filter((parent) => parent.id !== womanId && parent.sex === 'male')
-      .map((parent) => parent.id);
-    return `${noRecordedFather}${fathers.join(',')}`;
+    return evidence;
   };
 
   for (const womanId of graph.nodeIds()) {
@@ -266,38 +295,29 @@ export function computeXLinkedRecessive(
       continue;
     }
     const path = new Set([womanId]);
-    const below = new Map<string, Set<string>>();
-    for (const childId of graph.childrenOf(womanId)) {
-      const key = sideBelow(childId, womanId);
-      const side = below.get(key) ?? new Set<string>();
-      for (const id of evidenceBelow(childId, womanId, path)) {
-        side.add(id);
-      }
-      below.set(key, side);
-    }
-    // An unrecorded father may be one of the recorded fathers, so daughters
-    // with no recorded father add a side only when no recorded father's
-    // daughters give one. Otherwise their affected people join a recorded
-    // father's side rather than standing apart.
-    const unrecorded = below.get(noRecordedFather);
-    below.delete(noRecordedFather);
-    if (unrecorded && unrecorded.size > 0) {
-      const recordedSide = [...below.entries()].find(
-        ([key, side]) => key.startsWith(noRecordedFather) && side.size > 0,
-      )?.[1];
-      if (recordedSide) {
-        for (const id of unrecorded) {
-          recordedSide.add(id);
-        }
-      } else {
-        below.set(noRecordedFather, unrecorded);
+    const sides = [
+      ...graph
+        .childrenOf(womanId)
+        .map((childId) => evidenceBelow(childId, womanId, path, noFathers)),
+      evidenceAbove(womanId, path),
+    ].filter((side) => side.size > 0);
+    const witnesses: Evidence = new Map();
+    for (const side of sides) {
+      for (const [id, fathers] of side) {
+        addWitness(witnesses, id, fathers);
       }
     }
-    const sides = [...below.values(), evidenceAbove(womanId, path)].filter(
-      (side) => side.size > 0,
+    // A man who could have passed it to every affected person would explain
+    // all of the sides without her, however many there are.
+    const [first, ...rest] = [...witnesses.values()];
+    const sharedFathers = [...(first ?? noFathers)].filter((father) =>
+      rest.every((fathers) => fathers.has(father)),
     );
-    const witnesses = new Set(sides.flatMap((side) => [...side]));
-    if (sides.length >= 2 && witnesses.size >= 2) {
+    if (
+      sides.length >= 2 &&
+      witnesses.size >= 2 &&
+      sharedFathers.length === 0
+    ) {
       markObligateFemale(womanId);
     }
   }
