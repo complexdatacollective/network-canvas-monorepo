@@ -36,34 +36,23 @@ const renderNode = (nodeId: string) => (
 );
 
 describe('PedigreeLayout', () => {
-  test('shows spinner when nodeWidth is 0', () => {
+  test.each([
+    { dimension: 'nodeWidth', size: { nodeWidth: 0 } },
+    { dimension: 'nodeHeight', size: { nodeHeight: 0 } },
+  ])('shows a spinner and no people while $dimension is 0', ({ size }) => {
     const nodes = makeNodes([{ id: 'ego', isEgo: true }]);
-    const { container } = render(
+    render(
       <PedigreeLayout
         nodeShapes={new Map()}
         nodeIds={nodes}
         links={[]}
         {...DIMS}
-        nodeWidth={0}
+        {...size}
         renderNode={renderNode}
       />,
     );
-    expect(container.querySelector('.flex.size-full')).not.toBeNull();
-  });
-
-  test('shows spinner when nodeHeight is 0', () => {
-    const nodes = makeNodes([{ id: 'ego', isEgo: true }]);
-    const { container } = render(
-      <PedigreeLayout
-        nodeShapes={new Map()}
-        nodeIds={nodes}
-        links={[]}
-        {...DIMS}
-        nodeHeight={0}
-        renderNode={renderNode}
-      />,
-    );
-    expect(container.querySelector('.flex.size-full')).not.toBeNull();
+    expect(screen.getByTestId('pedigree-layout-spinner')).toBeInTheDocument();
+    expect(screen.queryByTestId('node-ego')).not.toBeInTheDocument();
   });
 
   test('renders nothing when nodes map is empty', () => {
@@ -79,7 +68,7 @@ describe('PedigreeLayout', () => {
     expect(container.innerHTML).toBe('');
   });
 
-  test('renders nodes for a simple family', () => {
+  test('renders what renderNode returns for each person', () => {
     const nodes = makeNodes([
       { id: 'father' },
       { id: 'mother' },
@@ -116,12 +105,12 @@ describe('PedigreeLayout', () => {
       />,
     );
 
-    expect(screen.getByTestId('node-father')).toBeDefined();
-    expect(screen.getByTestId('node-mother')).toBeDefined();
-    expect(screen.getByTestId('node-ego')).toBeDefined();
+    expect(screen.getByTestId('node-father')).toHaveTextContent('father');
+    expect(screen.getByTestId('node-mother')).toHaveTextContent('mother');
+    expect(screen.getByTestId('node-ego')).toHaveTextContent('ego');
   });
 
-  test('positions nodes with absolute positioning', () => {
+  test('places partners side by side on the same row', () => {
     const nodes = makeNodes([
       { id: 'father' },
       { id: 'mother' },
@@ -158,11 +147,19 @@ describe('PedigreeLayout', () => {
       />,
     );
 
-    const fatherNode = screen.getByTestId('node-father');
-    const wrapper = fatherNode.parentElement!;
-    expect(wrapper.style.top).toBeTruthy();
-    expect(wrapper.style.left).toBeTruthy();
-    expect(wrapper.className).toContain('absolute');
+    const positionOf = (id: string) => {
+      const wrapper = screen.getByTestId(`node-${id}`).parentElement;
+      return {
+        left: Number.parseFloat(wrapper?.style.left ?? ''),
+        top: Number.parseFloat(wrapper?.style.top ?? ''),
+      };
+    };
+    const father = positionOf('father');
+    const mother = positionOf('mother');
+    expect(Number.isFinite(father.left)).toBe(true);
+    expect(Number.isFinite(mother.left)).toBe(true);
+    expect(father.top).toBe(mother.top);
+    expect(father.left).not.toBe(mother.left);
   });
 
   test('container has explicit width and height', () => {
@@ -275,7 +272,7 @@ describe('PedigreeLayout', () => {
     }
   });
 
-  test('renders an SVG element for edges', () => {
+  test('draws connector lines for the family', () => {
     const nodes = makeNodes([
       { id: 'father' },
       { id: 'mother' },
@@ -312,36 +309,7 @@ describe('PedigreeLayout', () => {
       />,
     );
 
-    const svg = container.querySelector('svg');
-    expect(svg).not.toBeNull();
-  });
-
-  test('calls renderNode with each node id', () => {
-    const nodes = makeNodes([{ id: 'ego', isEgo: true }, { id: 'partner' }]);
-    const edges = makeEdges([
-      {
-        from: 'ego',
-        to: 'partner',
-        relationshipType: 'partner',
-        isActive: true,
-      },
-    ]);
-
-    render(
-      <PedigreeLayout
-        nodeShapes={new Map()}
-        nodeIds={nodes}
-        links={edges}
-        {...DIMS}
-        renderNode={(nodeId) => (
-          <div data-testid={`rendered-${nodeId}`}>{`${nodeId}-rendered`}</div>
-        )}
-      />,
-    );
-
-    const rendered = screen.getByTestId('rendered-ego');
-    expect(rendered.textContent).toBe('ego-rendered');
-    expect(screen.getByTestId('rendered-partner')).toBeTruthy();
+    expect(container.querySelectorAll('svg line').length).toBeGreaterThan(0);
   });
 
   test('parent generation is above child generation', () => {
