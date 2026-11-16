@@ -25,11 +25,14 @@ const DYNAMIC_VALUE_PATH = 'dynamicValuePath' as const;
  *   entity: a node or edge form's fields, and the question a Categorical Bin
  *   asks about the node just put in its "other" bin;
  * - `nodeLabel`, the label a node type gives its nodes (the codebook's
- *   `dynamicLabel`), shown on every node of that type wherever the interview draws
- *   one: only that node, by its attributes, the label the interview would
- *   otherwise choose for it, how it is connected, and the type's own
- *   conditions. It sits on no stage, so `nodeLabelValueContext` gives what
- *   it can show rather than `dynamicValueRolesAt`.
+ *   `dynamicLabel`), shown on every node of that type wherever the interview
+ *   draws one: only that node, by its attributes and the label the interview
+ *   would otherwise choose for it. It sits on no stage, so
+ *   `nodeLabelValueContext` gives what it can show rather than
+ *   `dynamicValueRolesAt`.
+ *
+ * Text at any site can also choose its wording by a condition: a set of
+ * rules asked of what the text can show there (see `conditions.ts`).
  */
 export type DynamicValueSite =
   | 'stageText'
@@ -121,51 +124,21 @@ const PARTICIPANT_PATH_SEGMENT = '$isParticipant';
  */
 export const PARTICIPANT_CASE = 'participant';
 
-/**
- * A fact about how a node is connected, which a node type's label can choose
- * its wording by:
- * - `connected`, whether an edge joins it to another node;
- * - `mostConnected` and `leastConnected`, whether it has the most or the
- *   fewest such edges of the nodes of its type, when they do not all have
- *   the same number. Nodes that tie share the place.
- *
- * Each counts every edge, or only those of one edge type.
- */
-export const CONNECTIVITY_MEASURES = [
-  'connected',
-  'mostConnected',
-  'leastConnected',
-] as const;
-export type ConnectivityMeasure = (typeof CONNECTIVITY_MEASURES)[number];
-
-const CONNECTIVITY_PATH_SEGMENTS: Readonly<
-  Record<ConnectivityMeasure, string>
-> = {
-  connected: '$connected',
-  mostConnected: '$mostConnected',
-  leastConnected: '$leastConnected',
-};
-const CONDITION_PATH_SEGMENT = '$condition';
+const CONDITION_PATH_PREFIX = '$condition.';
 
 /**
- * The case key a binding of something that is only true or false (how a node
- * is connected, one of its type's conditions) chooses when it is true; when
- * it is not, the text reads `other`.
+ * The case keys a binding of a condition may give: the one chosen when the
+ * condition is met, and the one chosen when it is not. Text reads `other`
+ * for whichever it gives no version.
  */
 export const TRUE_CASE = 'yes';
+export const FALSE_CASE = 'no';
 
 export type ParsedDynamicValuePath =
   | Readonly<{ kind: 'intrinsic'; name: IntrinsicDynamicValue }>
   | Readonly<{ kind: 'label'; role: LabelledDynamicValueRole }>
   | Readonly<{ kind: 'participant'; role: 'node' }>
-  | Readonly<{
-      kind: 'connectivity';
-      role: 'node';
-      measure: ConnectivityMeasure;
-      /** The one edge type counted, or undefined for every edge. */
-      edgeType?: string;
-    }>
-  | Readonly<{ kind: 'condition'; role: 'node'; conditionId: string }>
+  | Readonly<{ kind: 'condition'; conditionId: string }>
   | Readonly<{
       kind: 'attribute';
       role: AttributeDynamicValueRole;
@@ -183,6 +156,12 @@ export const parseDynamicValuePath = (
   path: string,
 ): ParsedDynamicValuePath | undefined => {
   if (isIntrinsic(path)) return { kind: 'intrinsic', name: path };
+  if (path.startsWith(CONDITION_PATH_PREFIX)) {
+    const conditionId = path.slice(CONDITION_PATH_PREFIX.length);
+    return conditionId === '' ? undefined : { kind: 'condition', conditionId };
+  }
+  // No attribute id holds `$`, so nothing else begins with one.
+  if (path.startsWith('$')) return undefined;
   for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
     if (
       isLabelledDynamicValueRole(role) &&
@@ -195,37 +174,6 @@ export const parseDynamicValuePath = (
     path === `${DYNAMIC_VALUE_ROLE_PREFIXES.node}${PARTICIPANT_PATH_SEGMENT}`
   ) {
     return { kind: 'participant', role: 'node' };
-  }
-  const nodePrefix = DYNAMIC_VALUE_ROLE_PREFIXES.node;
-  if (path.startsWith(`${nodePrefix}$`)) {
-    const rest = path.slice(nodePrefix.length);
-    for (const measure of CONNECTIVITY_MEASURES) {
-      const segment = CONNECTIVITY_PATH_SEGMENTS[measure];
-      if (rest === segment) {
-        return { kind: 'connectivity', role: 'node', measure };
-      }
-      if (rest.startsWith(`${segment}.`) && rest.length > segment.length + 1) {
-        return {
-          kind: 'connectivity',
-          role: 'node',
-          measure,
-          edgeType: rest.slice(segment.length + 1),
-        };
-      }
-    }
-    const conditionPrefix = `${CONDITION_PATH_SEGMENT}.`;
-    if (
-      rest.startsWith(conditionPrefix) &&
-      rest.length > conditionPrefix.length
-    ) {
-      return {
-        kind: 'condition',
-        role: 'node',
-        conditionId: rest.slice(conditionPrefix.length),
-      };
-    }
-    // No attribute id holds `$`, so nothing else begins with one.
-    return undefined;
   }
   for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
     if (!isAttributeDynamicValueRole(role)) continue;
@@ -264,26 +212,13 @@ export const dynamicValueParticipantPathFor = (role: 'node'): string =>
   `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${PARTICIPANT_PATH_SEGMENT}`;
 
 /**
- * The `path` naming a fact about how the node a label is on is connected
- * (see `ConnectivityMeasure`), counting every edge or only those of
- * `edgeType`. Text chooses its wording by it and never shows it. It is never
+ * The `path` naming whether one of the conditions declared beside the text
+ * (a stage's `conditions`, or a node type's `dynamicLabel.conditions`) is
+ * met. Text chooses its wording by it and never shows it. It is never
  * missing.
  */
-export const dynamicValueConnectivityPathFor = (
-  measure: ConnectivityMeasure,
-  edgeType?: string,
-): string =>
-  `${DYNAMIC_VALUE_ROLE_PREFIXES.node}${CONNECTIVITY_PATH_SEGMENTS[measure]}${
-    edgeType === undefined ? '' : `.${edgeType}`
-  }`;
-
-/**
- * The `path` naming whether the node a label is on meets one of its type's
- * conditions (the node type's `dynamicLabel.conditions`). Text chooses its wording
- * by it and never shows it. It is never missing.
- */
 export const dynamicValueConditionPathFor = (conditionId: string): string =>
-  `${DYNAMIC_VALUE_ROLE_PREFIXES.node}${CONDITION_PATH_SEGMENT}.${conditionId}`;
+  `${CONDITION_PATH_PREFIX}${conditionId}`;
 
 const DynamicValuePathSchema = z
   .string()
@@ -559,18 +494,20 @@ export type DynamicValueSiteContext = Readonly<{
    */
   participantRoles?: ReadonlySet<DynamicValueRole>;
   /**
-   * What only a node type's label can choose its wording by, about the node
-   * it is on: how that node is connected, by every edge or the edges of one
-   * of `edgeTypes`, and the type's own `conditions`, by id. Absent
-   * everywhere else. Such a label shows no value the interview knows
-   * (today's date): it is drawn on many nodes at once, on every stage.
+   * Set for a node type's own label, which shows no value the interview
+   * knows (today's date): it is drawn on many nodes at once, on every stage.
+   * There, a node's label is the one the interview would otherwise choose.
    */
-  nodeLabel?: Readonly<{
-    /** Each edge type's name, by id. */
-    edgeTypes: ReadonlyMap<string, string | undefined>;
-    /** Each of the type's conditions' names, by id. */
-    conditions: ReadonlyMap<string, string | undefined>;
-  }>;
+  nodeLabel?: boolean;
+  /**
+   * The conditions declared beside the text, by id, each with the role its
+   * node and edge rules are asked of (absent for one that asks only about
+   * the participant). Absent where none are declared.
+   */
+  conditions?: ReadonlyMap<
+    string,
+    Readonly<{ about?: DynamicValueRole | undefined }>
+  >;
   /**
    * The variables of each role's entity, or undefined where the role names
    * no codebook entity (a node role on a stage with no node subject).
@@ -604,7 +541,7 @@ export const dynamicValueStatus = (
     };
   }
   if (parsed.kind === 'intrinsic') {
-    if (context.nodeLabel !== undefined) {
+    if (context.nodeLabel === true) {
       return {
         status: 'unavailable',
         reason: 'a node’s label can show only what is known about that node',
@@ -619,33 +556,18 @@ export const dynamicValueStatus = (
       },
     };
   }
-  if (parsed.kind === 'connectivity' || parsed.kind === 'condition') {
-    if (context.nodeLabel === undefined || !context.roles.has(parsed.role)) {
-      return {
-        status: 'unavailable',
-        reason:
-          parsed.kind === 'connectivity'
-            ? 'how a node is connected is known only to its node type’s label'
-            : 'a node type’s conditions are known only to its label',
-      };
-    }
-    if (
-      parsed.kind === 'connectivity' &&
-      parsed.edgeType !== undefined &&
-      !context.nodeLabel.edgeTypes.has(parsed.edgeType)
-    ) {
-      return {
-        status: 'unknown',
-        reason: 'the edge type it counts does not exist',
-      };
-    }
-    if (
-      parsed.kind === 'condition' &&
-      !context.nodeLabel.conditions.has(parsed.conditionId)
-    ) {
+  if (parsed.kind === 'condition') {
+    const condition = context.conditions?.get(parsed.conditionId);
+    if (condition === undefined) {
       return {
         status: 'unknown',
         reason: 'the condition it names does not exist',
+      };
+    }
+    if (condition.about !== undefined && !context.roles.has(condition.about)) {
+      return {
+        status: 'unavailable',
+        reason: `its rules are about ${ROLE_NAMES[condition.about]}, which this text is not shown with`,
       };
     }
     return {
@@ -655,9 +577,7 @@ export const dynamicValueStatus = (
         numeric: false,
         optional: false,
         unshowable:
-          parsed.kind === 'connectivity'
-            ? 'how the node is connected only chooses wording, and is never shown itself. Give the label a version for when it is so and one for when it is not.'
-            : 'a condition only chooses wording, and is never shown itself. Give the label a version for when it is met and one for when it is not.',
+          'a condition only chooses wording, and is never shown itself. Give the text a version for when it is met and one for when it is not.',
       },
     };
   }

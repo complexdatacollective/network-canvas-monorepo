@@ -24,6 +24,7 @@ import {
   getVariablesForSubject,
   variableExists,
 } from '../../utils/validation-helpers.ts';
+import { type Conditions, isEdgeCountRule } from './conditions.ts';
 import { findDynamicValueProblems } from './dynamic-value-validation.ts';
 import {
   OperatorsByVariableType,
@@ -186,6 +187,99 @@ const validateFilterRules = (
       }
     }
   });
+};
+
+/**
+ * Checks the rules of `conditions`, which sit at `basePath`, against the
+ * codebook and the entity (`subject`) their node and edge rules are asked
+ * of. A node rule is about a node of the subject's type; an edge rule asks
+ * about that node's edges, or, where the subject is an edge, about that
+ * edge itself; a rule that counts edges needs a node to count for.
+ */
+const validateConditions = (
+  conditions: Conditions | undefined,
+  basePath: (string | number)[],
+  codebook: Codebook,
+  subject: { entity: 'node' | 'edge'; type: string } | undefined,
+  { allowEgoRules }: { allowEgoRules: boolean },
+  addIssue: IssueReporter,
+) => {
+  for (const [conditionId, condition] of Object.entries(conditions ?? {})) {
+    const conditionPath = [...basePath, conditionId];
+    const rulesPath = [...conditionPath, 'rules'];
+    const duplicateRuleId = findDuplicateId(condition.rules);
+    if (duplicateRuleId) {
+      addIssue({
+        message: `Rules contain duplicate ID "${duplicateRuleId}"`,
+        path: rulesPath,
+      });
+    }
+    const aboutEdge = condition.about === 'edge';
+    if (
+      condition.about !== undefined &&
+      subject?.entity !== (aboutEdge ? 'edge' : 'node')
+    ) {
+      addIssue({
+        message: aboutEdge
+          ? 'This condition is about an edge, but its text is not shown with one.'
+          : 'This condition is about a node, but its text is not shown with one.',
+        path: [...conditionPath, 'about'],
+      });
+      continue;
+    }
+    condition.rules.forEach((rule, ruleIndex) => {
+      const rulePath = [...rulesPath, ruleIndex];
+      if (isEdgeCountRule(rule)) {
+        if (aboutEdge) {
+          addIssue({
+            message:
+              'Edges are counted for a node, so a condition about an edge cannot count them.',
+            path: [...rulePath, 'options', 'count'],
+          });
+        }
+        const edgeType = rule.options.type;
+        if (edgeType !== undefined && !codebook.edge?.[edgeType]) {
+          addIssue({
+            message: `Rule option type "${edgeType}" is not defined in codebook`,
+            path: [...rulePath, 'options', 'type'],
+          });
+        }
+        return;
+      }
+      if (rule.type === 'node' && (aboutEdge || subject === undefined)) {
+        addIssue({
+          message: 'A node rule needs a condition that is about a node.',
+          path: [...rulePath, 'type'],
+        });
+        return;
+      }
+      if (
+        subject !== undefined &&
+        ((rule.type === 'node' && rule.options.type !== subject.type) ||
+          (rule.type === 'edge' &&
+            aboutEdge &&
+            rule.options.type !== subject.type))
+      ) {
+        addIssue({
+          message:
+            'This rule is asked of the entity the text is shown with, so it must name that entity’s type.',
+          path: [...rulePath, 'options', 'type'],
+        });
+      }
+      // The same checks a filter's rules get, reported at this rule.
+      validateFilterRules(
+        [rule],
+        codebook,
+        rulesPath,
+        (issue) =>
+          addIssue({
+            ...issue,
+            path: [...rulePath, ...issue.path.slice(rulePath.length)],
+          }),
+        { allowEgoRules, readsInterview: true },
+      );
+    });
+  }
 };
 
 const validateFormFieldVariable = (
@@ -706,56 +800,42 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     ctx.addIssue({ code: 'custom' as const, ...problem });
   }
 
-  // The values each node type's label shows, checked as a stage's text is,
-  // and the rules of the conditions it chooses its wording by. A condition
-  // is asked of one node of the type, so a node rule is about that type; an
-  // edge rule asks about the edges that join the node to others.
+  // The values each node type's label shows, checked as a stage's text is.
   for (const problem of findNodeLabelProblems(protocol, localizedStrings)) {
     ctx.addIssue({ code: 'custom' as const, ...problem });
   }
+
+  // The rules of the conditions text chooses its wording by: a node type
+  // label's are asked of a node of that type and never of the participant
+  // (a label is drawn on every stage); a stage's are asked of its subject
+  // and of the participant.
+  const reportIssue: IssueReporter = (issue) =>
+    ctx.addIssue({ code: 'custom' as const, ...issue });
   for (const [nodeType, definition] of Object.entries(
     protocol.codebook.node ?? {},
   )) {
-    for (const [conditionId, condition] of Object.entries(
-      definition.dynamicLabel?.conditions ?? {},
-    )) {
-      const rulesPath = [
-        'codebook',
-        'node',
-        nodeType,
-        'dynamicLabel',
-        'conditions',
-        conditionId,
-        'filter',
-        'rules',
-      ];
-      const duplicateRuleId = findDuplicateId(condition.filter.rules);
-      if (duplicateRuleId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Rules contain duplicate ID "${duplicateRuleId}"`,
-          path: rulesPath,
-        });
-      }
-      condition.filter.rules.forEach((rule, ruleIndex) => {
-        if (rule.type === 'node' && rule.options.type !== nodeType) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message:
-              'A node rule in a label condition is about the node the label is on, so it must name that node type.',
-            path: [...rulesPath, ruleIndex, 'options', 'type'],
-          });
-        }
-      });
-      validateFilterRules(
-        condition.filter.rules,
-        protocol.codebook,
-        rulesPath,
-        (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-        { allowEgoRules: false, readsInterview: true },
-      );
-    }
+    validateConditions(
+      definition.dynamicLabel?.conditions,
+      ['codebook', 'node', nodeType, 'dynamicLabel', 'conditions'],
+      protocol.codebook,
+      { entity: 'node', type: nodeType },
+      { allowEgoRules: false },
+      reportIssue,
+    );
   }
+  protocol.stages.forEach((stage, stageIndex) => {
+    const subject = 'subject' in stage ? stage.subject : undefined;
+    validateConditions(
+      stage.conditions,
+      ['stages', stageIndex, 'conditions'],
+      protocol.codebook,
+      subject === undefined
+        ? undefined
+        : { entity: subject.entity, type: subject.type },
+      { allowEgoRules: true },
+      reportIssue,
+    );
+  });
 
   // Interface-owned structural slots: an interface that DERIVES an
   // attribute's values from the structure a participant builds cannot share

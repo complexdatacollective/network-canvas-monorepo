@@ -328,13 +328,6 @@ const walk = (
     // blocked like deleting any other attribute in use.
     if (isDynamicValuePathSchema(node)) {
       const parsed = parseDynamicValuePath(value);
-      // A node type's label counts only the edges of an edge type it names,
-      // so that type is in use while the label does.
-      if (parsed?.kind === 'connectivity' && parsed.edgeType !== undefined) {
-        return [
-          { kind: 'type', path, typeId: parsed.edgeType, entity: 'edge' },
-        ];
-      }
       if (parsed?.kind !== 'attribute') return [];
       return [
         {

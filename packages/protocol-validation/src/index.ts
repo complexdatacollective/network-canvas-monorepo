@@ -200,8 +200,6 @@ export {
   DYNAMIC_VALUE_ROLE_PREFIXES,
   DYNAMIC_VALUE_VARIABLE_TYPES,
   type AttributeDynamicValueRole,
-  CONNECTIVITY_MEASURES,
-  type ConnectivityMeasure,
   type DynamicValueBinding,
   type DynamicValueForm,
   type DynamicValueRole,
@@ -211,7 +209,6 @@ export {
   type DynamicValueStatus,
   dynamicValueArgumentsAt,
   dynamicValueConditionPathFor,
-  dynamicValueConnectivityPathFor,
   dynamicValueLabelPathFor,
   dynamicValueParticipantPathFor,
   dynamicValueParticipantRolesAt,
@@ -226,19 +223,34 @@ export {
   type LabelledDynamicValueRole,
   PARTICIPANT_CASE,
   type ParsedDynamicValuePath,
+  FALSE_CASE,
   parseDynamicValuePath,
   TRUE_CASE,
 } from './schemas/9/dynamic-values.ts';
+// The conditions text chooses its wording by: a stage's, or a node label's.
+export {
+  type Condition,
+  CONDITION_ROLES,
+  type ConditionRole,
+  type ConditionRule,
+  type Conditions,
+  ConditionSchema,
+  ConditionsSchema,
+  type EdgeCountComparison,
+  EdgeCountComparisons,
+  edgeCountNeedsValue,
+  type EdgeCountRule,
+  isEdgeCountRule,
+} from './schemas/9/conditions.ts';
 // A node type's own label: its schema, and what it can show.
 export {
   findNodeLabelProblems,
   type NodeLabel,
-  type NodeLabelCondition,
-  NodeLabelConditionSchema,
   NodeLabelSchema,
   nodeLabelValueContext,
 } from './schemas/9/node-label.ts';
 export {
+  conditionsContextOf,
   dynamicValueContextFor,
   type DynamicValueProblem,
   findDynamicValueProblems,

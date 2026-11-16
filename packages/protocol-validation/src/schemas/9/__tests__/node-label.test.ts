@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { collectLocalizedStringsFromSchema } from '../../../utils/collectLocalizedStrings.ts';
+import { ConditionSchema } from '../conditions.ts';
 import {
   dynamicValueConditionPathFor,
-  dynamicValueConnectivityPathFor,
   parseDynamicValuePath,
 } from '../dynamic-values.ts';
 import { findNodeLabelProblems, NodeLabelSchema } from '../node-label.ts';
@@ -45,28 +45,68 @@ const problemsOf = (label: unknown) => {
   );
 };
 
-describe('node label value paths', () => {
-  it('round-trips connectivity and condition paths', () => {
-    expect(
-      parseDynamicValuePath(dynamicValueConnectivityPathFor('connected')),
-    ).toEqual({ kind: 'connectivity', role: 'node', measure: 'connected' });
-    expect(
-      parseDynamicValuePath(
-        dynamicValueConnectivityPathFor('mostConnected', 'near'),
-      ),
-    ).toEqual({
-      kind: 'connectivity',
-      role: 'node',
-      measure: 'mostConnected',
-      edgeType: 'near',
-    });
+const LABEL_PATH = ['codebook', 'node', 'place', 'dynamicLabel'];
+
+describe('condition paths', () => {
+  it('round-trips a condition path', () => {
     expect(
       parseDynamicValuePath(dynamicValueConditionPathFor('isBig')),
-    ).toEqual({ kind: 'condition', role: 'node', conditionId: 'isBig' });
+    ).toEqual({ kind: 'condition', conditionId: 'isBig' });
   });
 
-  it('names nothing for an unknown $ segment rather than an attribute', () => {
-    expect(parseDynamicValuePath('node.$nothing')).toBeUndefined();
+  it('names nothing for any other path that starts with $', () => {
+    expect(parseDynamicValuePath('$nothing')).toBeUndefined();
+    expect(parseDynamicValuePath('$condition.')).toBeUndefined();
+  });
+});
+
+describe('ConditionSchema', () => {
+  const nodeRule = (id: string) => ({
+    type: 'node',
+    id,
+    options: { type: 'place', attribute: 'nameVar', operator: 'EXISTS' },
+  });
+
+  it('accepts an edge count against a number, and the most without one', () => {
+    expect(
+      ConditionSchema.safeParse({
+        about: 'node',
+        join: 'OR',
+        rules: [
+          {
+            type: 'edge',
+            id: 'a',
+            options: { type: 'near', count: 'GREATER_THAN', value: 2 },
+          },
+          { type: 'edge', id: 'b', options: { count: 'MOST' } },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it.each([
+    ['a number with the most', { count: 'MOST', value: 1 }],
+    ['no number with a comparison', { count: 'EXACTLY' }],
+    ['a fraction of an edge', { count: 'EXACTLY', value: 1.5 }],
+  ])('refuses %s', (_, options) => {
+    expect(
+      ConditionSchema.safeParse({
+        about: 'node',
+        rules: [{ type: 'edge', id: 'a', options }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('requires a join for several rules, and what a node rule is about', () => {
+    expect(
+      ConditionSchema.safeParse({
+        about: 'node',
+        rules: [nodeRule('a'), nodeRule('b')],
+      }).success,
+    ).toBe(false);
+    expect(ConditionSchema.safeParse({ rules: [nodeRule('a')] }).success).toBe(
+      false,
+    );
   });
 });
 
@@ -78,8 +118,20 @@ describe('NodeLabelSchema', () => {
       },
       dynamicValues: {
         kind: { path: 'node.kind', cases: { hospital: 'hospital' } },
-        linked: { path: 'node.$connected', cases: { yes: true } },
+        linked: { path: '$condition.linked', cases: { yes: true } },
         nodeLabel: { path: 'node.$label' },
+      },
+      conditions: {
+        linked: {
+          about: 'node',
+          rules: [
+            {
+              type: 'edge',
+              id: 'r1',
+              options: { count: 'GREATER_THAN', value: 0 },
+            },
+          ],
+        },
       },
     });
     expect(result.success).toBe(true);
@@ -90,16 +142,14 @@ describe('NodeLabelSchema', () => {
       text: { en: 'x' },
       conditions: {
         'not ok': {
-          name: 'Not ok',
-          filter: {
-            rules: [
-              {
-                type: 'node',
-                id: 'r1',
-                options: { type: 'place', operator: 'EXISTS' },
-              },
-            ],
-          },
+          about: 'node',
+          rules: [
+            {
+              type: 'node',
+              id: 'r1',
+              options: { type: 'place', operator: 'EXISTS' },
+            },
+          ],
         },
       },
     });
@@ -108,36 +158,30 @@ describe('NodeLabelSchema', () => {
 });
 
 describe('findNodeLabelProblems', () => {
-  it('accepts attributes, the default label, connectivity and conditions', () => {
+  const big = {
+    about: 'node',
+    rules: [
+      {
+        type: 'node',
+        id: 'r1',
+        options: { type: 'place', attribute: 'nameVar', operator: 'EXISTS' },
+      },
+    ],
+  };
+
+  it('accepts attributes, the default label and conditions, met or not', () => {
     expect(
       problemsOf({
         text: {
-          en: '{kind, select, missing {} hospital {🏥 } other {}}{linked, select, yes {🔗 } other {}}{big, select, yes {⭐ } other {}}{nodeLabel}',
+          en: '{kind, select, missing {} hospital {🏥 } other {}}{big, select, yes {⭐ } other {}}{small, select, no {· } other {}}{nodeLabel}',
         },
         dynamicValues: {
           kind: { path: 'node.kind', cases: { hospital: 'hospital' } },
-          linked: { path: 'node.$connected.near', cases: { yes: true } },
-          big: { path: 'node.$condition.big', cases: { yes: true } },
+          big: { path: '$condition.big', cases: { yes: true } },
+          small: { path: '$condition.big', cases: { no: false } },
           nodeLabel: { path: 'node.$label' },
         },
-        conditions: {
-          big: {
-            name: 'Big',
-            filter: {
-              rules: [
-                {
-                  type: 'node',
-                  id: 'r1',
-                  options: {
-                    type: 'place',
-                    attribute: 'nameVar',
-                    operator: 'EXISTS',
-                  },
-                },
-              ],
-            },
-          },
-        },
+        conditions: { big },
       }),
     ).toEqual([]);
   });
@@ -147,14 +191,8 @@ describe('findNodeLabelProblems', () => {
       text: { en: '{name}' },
       dynamicValues: { name: { path: 'node.nameVar' } },
     });
-    expect(problems).toHaveLength(1);
-    expect(problems[0]?.path).toEqual([
-      'codebook',
-      'node',
-      'place',
-      'dynamicLabel',
-      'text',
-      'en',
+    expect(problems.map((problem) => problem.path)).toEqual([
+      [...LABEL_PATH, 'text', 'en'],
     ]);
   });
 
@@ -162,213 +200,190 @@ describe('findNodeLabelProblems', () => {
     ['today’s date', { path: 'now' }],
     ['an ego attribute', { path: 'ego.anything' }],
     ['an encrypted attribute', { path: 'node.secret' }],
-    ['an edge type that does not exist', { path: 'node.$connected.gone' }],
-    ['a condition that does not exist', { path: 'node.$condition.gone' }],
+    ['a condition that does not exist', { path: '$condition.gone' }],
   ])('refuses %s', (_, binding) => {
     const problems = problemsOf({
       text: { en: 'x' },
       dynamicValues: { value: binding },
     });
     expect(problems.map((problem) => problem.path)).toEqual([
-      [
-        'codebook',
-        'node',
-        'place',
-        'dynamicLabel',
-        'dynamicValues',
-        'value',
-        'path',
-      ],
+      [...LABEL_PATH, 'dynamicValues', 'value', 'path'],
     ]);
   });
 
-  it('refuses showing a connectivity value as words', () => {
+  it('refuses showing a condition as words', () => {
     const problems = problemsOf({
-      text: { en: '{linked}' },
-      dynamicValues: { linked: { path: 'node.$connected' } },
+      text: { en: '{big}' },
+      dynamicValues: { big: { path: '$condition.big' } },
+      conditions: { big },
     });
     expect(problems[0]?.message).toContain('only chooses wording');
   });
 
-  it('refuses a case other than the true case on a connectivity value', () => {
+  it('refuses a case that stands for neither true nor false', () => {
     const problems = problemsOf({
-      text: { en: '{linked, select, no {a} other {b}}' },
+      text: { en: '{big, select, maybe {a} other {b}}' },
       dynamicValues: {
-        linked: { path: 'node.$connected', cases: { no: false } },
+        big: { path: '$condition.big', cases: { maybe: true } },
       },
+      conditions: { big },
     });
-    expect(problems[0]?.path).toEqual([
-      'codebook',
-      'node',
-      'place',
-      'dynamicLabel',
+    expect(problems.map((problem) => problem.path)).toContainEqual([
+      ...LABEL_PATH,
       'dynamicValues',
-      'linked',
+      'big',
       'cases',
-      'no',
+      'maybe',
     ]);
   });
 });
 
-describe('a protocol whose node type has a label of its own', () => {
+describe('a protocol whose text chooses its wording by conditions', () => {
   type Draft = ReturnType<typeof completeProtocol>;
-  const firstOf = (record: Record<string, unknown> | undefined) => {
-    const [id] = Object.keys(record ?? {});
-    if (id === undefined) throw new Error('The fixture holds no such entity');
-    return id;
-  };
+  const isPlainText = (variable: unknown) =>
+    typeof variable === 'object' &&
+    variable !== null &&
+    Reflect.get(variable, 'type') === 'text' &&
+    Reflect.get(variable, 'encrypted') !== true;
 
-  const protocolWith = (
-    label: (ids: {
-      nodeType: string;
-      edgeType: string;
-      textVariable: string;
-    }) => unknown,
-  ) => {
+  const fixture = () => {
     const protocol: Draft = completeProtocol();
     const nodeTypes: Record<string, { variables?: Record<string, unknown> }> =
       protocol.codebook.node;
     const nodeType = Object.keys(nodeTypes).find((id) =>
-      Object.values(nodeTypes[id]?.variables ?? {}).some(
-        (variable) =>
-          typeof variable === 'object' &&
-          variable !== null &&
-          Reflect.get(variable, 'type') === 'text' &&
-          Reflect.get(variable, 'encrypted') !== true,
-      ),
+      Object.values(nodeTypes[id]?.variables ?? {}).some(isPlainText),
     );
     if (nodeType === undefined) throw new Error('No node type with text');
     const textVariable = Object.entries(
       nodeTypes[nodeType]?.variables ?? {},
-    ).find(
-      ([, variable]) =>
-        typeof variable === 'object' &&
-        variable !== null &&
-        Reflect.get(variable, 'type') === 'text' &&
-        Reflect.get(variable, 'encrypted') !== true,
-    )?.[0];
-    if (textVariable === undefined) throw new Error('No text variable');
-    const edgeType = firstOf(protocol.codebook.edge);
-    Reflect.set(
-      nodeTypes[nodeType] ?? {},
-      'dynamicLabel',
-      label({ nodeType, edgeType, textVariable }),
-    );
-    return { protocol, nodeType };
+    ).find(([, variable]) => isPlainText(variable))?.[0];
+    const [edgeType] = Object.keys(protocol.codebook.edge);
+    const [egoVariable] = Object.keys(protocol.codebook.ego.variables);
+    if (
+      textVariable === undefined ||
+      edgeType === undefined ||
+      egoVariable === undefined
+    ) {
+      throw new Error('The fixture lacks an attribute or an edge type');
+    }
+    const setLabel = (label: unknown) =>
+      Reflect.set(nodeTypes[nodeType] ?? {}, 'dynamicLabel', label);
+    return {
+      protocol,
+      nodeType,
+      textVariable,
+      edgeType,
+      egoVariable,
+      setLabel,
+    };
   };
 
-  const issuesOf = (protocol: unknown) => {
+  const issuePathsOf = (protocol: unknown) => {
     const result = ProtocolSchemaV9.safeParse(protocol);
     return result.success
       ? []
-      : result.error.issues.map((issue) => ({
-          path: issue.path.join('.'),
-          message: issue.message,
-        }));
+      : result.error.issues.map((issue) => issue.path.join('.'));
   };
 
-  it('is valid with attributes, connectivity and a condition', () => {
-    const { protocol } = protocolWith(
-      ({ nodeType, edgeType, textVariable }) => ({
-        text: {
-          en: '{named, select, yes {⭐ } other {}}{linked, select, yes {🔗 } other {}}{nodeLabel}',
-        },
-        dynamicValues: {
-          named: { path: 'node.$condition.named', cases: { yes: true } },
-          linked: {
-            path: `node.$connected.${edgeType}`,
-            cases: { yes: true },
-          },
-          nodeLabel: { path: 'node.$label' },
-        },
-        conditions: {
-          named: {
-            name: 'Named',
-            filter: {
-              join: 'AND',
-              rules: [
-                {
-                  type: 'node',
-                  id: 'r1',
-                  options: {
-                    type: nodeType,
-                    attribute: textVariable,
-                    operator: 'EXISTS',
-                  },
-                },
-                {
-                  type: 'edge',
-                  id: 'r2',
-                  options: { type: edgeType, operator: 'EXISTS' },
-                },
-              ],
+  const labelWith = (rules: unknown[], join?: string) => ({
+    text: { en: '{named, select, yes {⭐ } other {}}{nodeLabel}' },
+    dynamicValues: {
+      named: { path: '$condition.named', cases: { yes: true } },
+      nodeLabel: { path: 'node.$label' },
+    },
+    conditions: { named: { about: 'node', ...(join && { join }), rules } },
+  });
+
+  it('is valid with an attribute rule, an edge rule and an edge count', () => {
+    const { protocol, nodeType, textVariable, edgeType, setLabel } = fixture();
+    setLabel(
+      labelWith(
+        [
+          {
+            type: 'node',
+            id: 'r1',
+            options: {
+              type: nodeType,
+              attribute: textVariable,
+              operator: 'EXISTS',
             },
           },
-        },
-      }),
-    );
-    expect(issuesOf(protocol)).toEqual([]);
-  });
-
-  it('refuses a condition rule about another node type', () => {
-    const { protocol, nodeType } = protocolWith(() => ({
-      text: { en: '{named, select, yes {⭐} other {x}}' },
-      dynamicValues: {
-        named: { path: 'node.$condition.named', cases: { yes: true } },
-      },
-      conditions: {
-        named: {
-          name: 'Named',
-          filter: {
-            rules: [
-              {
-                type: 'node',
-                id: 'r1',
-                options: { type: 'someOtherType', operator: 'EXISTS' },
-              },
-            ],
+          {
+            type: 'edge',
+            id: 'r2',
+            options: { type: edgeType, operator: 'EXISTS' },
           },
-        },
-      },
-    }));
-    expect(issuesOf(protocol).map((issue) => issue.path)).toContain(
-      `codebook.node.${nodeType}.dynamicLabel.conditions.named.filter.rules.0.options.type`,
-    );
-  });
-
-  it('refuses a condition rule about the participant', () => {
-    const { protocol, nodeType } = protocolWith(() => ({
-      text: { en: '{named, select, yes {⭐} other {x}}' },
-      dynamicValues: {
-        named: { path: 'node.$condition.named', cases: { yes: true } },
-      },
-      conditions: {
-        named: {
-          name: 'Named',
-          filter: {
-            rules: [
-              {
-                type: 'ego',
-                id: 'r1',
-                options: { attribute: 'egoName', operator: 'EXISTS' },
-              },
-            ],
+          {
+            type: 'edge',
+            id: 'r3',
+            options: { type: edgeType, count: 'MOST' },
           },
-        },
-      },
-    }));
-    expect(issuesOf(protocol).map((issue) => issue.path)).toContain(
-      `codebook.node.${nodeType}.dynamicLabel.conditions.named.filter.rules.0.type`,
+          {
+            type: 'edge',
+            id: 'r4',
+            options: { count: 'GREATER_THAN_OR_EQUAL', value: 2 },
+          },
+        ],
+        'AND',
+      ),
     );
+    expect(issuePathsOf(protocol)).toEqual([]);
   });
 
-  it('refuses a label that shows an attribute where it could be missing', () => {
-    const { protocol, nodeType } = protocolWith(({ textVariable }) => ({
-      text: { en: '{name}' },
-      dynamicValues: { name: { path: `node.${textVariable}` } },
-    }));
-    expect(issuesOf(protocol).map((issue) => issue.path)).toEqual([
-      `codebook.node.${nodeType}.dynamicLabel.text.en`,
-    ]);
+  it('refuses a label rule about another node type, the participant, or an edge type that does not exist', () => {
+    const { protocol, nodeType, egoVariable, setLabel } = fixture();
+    setLabel(
+      labelWith(
+        [
+          {
+            type: 'node',
+            id: 'r1',
+            options: { type: 'someOtherType', operator: 'EXISTS' },
+          },
+          {
+            type: 'ego',
+            id: 'r2',
+            options: { attribute: egoVariable, operator: 'EXISTS' },
+          },
+          { type: 'edge', id: 'r3', options: { type: 'gone', count: 'MOST' } },
+        ],
+        'OR',
+      ),
+    );
+    const base = `codebook.node.${nodeType}.dynamicLabel.conditions.named.rules`;
+    const paths = issuePathsOf(protocol);
+    expect(paths).toContain(`${base}.0.options.type`);
+    expect(paths).toContain(`${base}.1.type`);
+    expect(paths).toContain(`${base}.2.options.type`);
+  });
+
+  it('lets a stage’s text ask about the participant, and refuses a condition about a node the stage does not have', () => {
+    const { protocol, egoVariable } = fixture();
+    const stages: Record<string, unknown>[] = protocol.stages;
+    const index = stages.findIndex((stage) => stage.type === 'Information');
+    const stage = stages[index];
+    if (stage === undefined) throw new Error('No Information stage');
+    stage.conditions = {
+      answered: {
+        rules: [
+          {
+            type: 'ego',
+            id: 'r1',
+            options: { attribute: egoVariable, operator: 'EXISTS' },
+          },
+        ],
+      },
+    };
+    expect(issuePathsOf(protocol)).toEqual([]);
+
+    stage.conditions = {
+      linked: {
+        about: 'node',
+        rules: [{ type: 'edge', id: 'r1', options: { count: 'MOST' } }],
+      },
+    };
+    expect(issuePathsOf(protocol)).toContain(
+      `stages.${index}.conditions.linked.about`,
+    );
   });
 });
