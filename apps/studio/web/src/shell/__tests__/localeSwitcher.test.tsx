@@ -122,14 +122,14 @@ function renderAt(path: string) {
 /** The switcher's pill: the one combobox named for the interface language. */
 function switcherTrigger() {
   return screen.getByRole('combobox', {
-    name: /^(Interface language|Idioma de la interfaz):/,
+    name: /^Interface language:/,
   });
 }
 
 async function openSwitcher() {
   fireEvent.click(
     await screen.findByRole('combobox', {
-      name: /^(Interface language|Idioma de la interfaz):/,
+      name: /^Interface language:/,
     }),
   );
   return screen.findByRole('dialog', {

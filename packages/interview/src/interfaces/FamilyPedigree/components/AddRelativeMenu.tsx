@@ -6,13 +6,11 @@ import { type MotionValue, motion, useMotionValue } from 'motion/react';
 import { useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionButton } from '@codaco/fresco-ui/Button';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { formatRelativeTerm } from '../kinship';
-import { messages } from '../messages';
 import type { Relation } from '../model';
 import { usePedigreeWords } from '../pedigreeWords';
 
@@ -85,7 +83,6 @@ export default function AddRelativeMenu({
   onAdd,
   scale,
 }: AddRelativeMenuProps) {
-  const intl = useAppIntl();
   const words = usePedigreeWords();
   const reduceMotion = usePrefersReducedMotion();
 
@@ -159,10 +156,7 @@ export default function AddRelativeMenu({
       */}
       <DirectionProvider direction="ltr">
         <Toolbar.Root
-          aria-label={intl.formatMessage(messages.actionsLabel, {
-            isYou: isYou ? 'true' : 'false',
-            name,
-          })}
+          aria-label={isYou ? 'Add your relatives' : `Add relatives of ${name}`}
           loopFocus
           className="pointer-events-none absolute inset-0"
         >

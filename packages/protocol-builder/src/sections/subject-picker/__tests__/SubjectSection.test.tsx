@@ -326,12 +326,9 @@ describe('creating the type a stage needs without leaving it', () => {
       NodeColorSequence.findIndex((reference) => reference === color) + 1;
     expect(colorPosition).toBeGreaterThan(0);
     const hueName =
-      COLOR_SEQUENCE_HUE_NAMES['node-color-seq']?.[colorPosition - 1]
-        ?.defaultMessage;
+      COLOR_SEQUENCE_HUE_NAMES['node-color-seq']?.[colorPosition - 1];
     // Thrown rather than asserted, so the locator below keeps its exact name:
-    // a missing hue is this test's own setup failing, not the palette. A
-    // descriptor's `defaultMessage` is pre-parsed ICU as well as a string, and
-    // a swatch name is always the latter.
+    // a missing hue is this test's own setup failing, not the palette.
     if (typeof hueName !== 'string') {
       throw new Error(
         `the node palette names no hue at position ${colorPosition}`,

@@ -93,7 +93,7 @@ it('applies a choice, stores it, and follows another tab’s change', async () =
     );
   });
   expect(trigger()).toHaveTextContent('Español');
-  expect(trigger()).toHaveAccessibleName('Idioma de la interfaz: Español');
+  expect(trigger()).toHaveAccessibleName('Interface language: Español');
   expect(document.documentElement).toHaveAttribute('lang', 'es');
 });
 
@@ -144,7 +144,7 @@ it('names the language automatic resolves to and returns to it', async () => {
   expect(trigger()).toHaveTextContent(/^Español$/);
   expect(trigger().querySelector('[lang]')).toHaveAttribute('lang', 'es');
   expect(trigger()).toHaveAccessibleName(
-    'Idioma de la interfaz: Automático (Español)',
+    'Interface language: Automático (Español)',
   );
   expect(
     screen.getByRole('option', { name: /^Automático \(Español\)/ }),

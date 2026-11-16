@@ -114,7 +114,7 @@ it('exposes a keyboard-operated language picker from the home header', async () 
   expect(document.documentElement).toHaveAttribute('lang', 'es');
   await waitFor(() => expect(popover).not.toBeInTheDocument());
   const renamed = screen.getByRole('combobox', {
-    name: 'Idioma de la interfaz: Español',
+    name: 'Interface language: Español',
   });
   await waitFor(() => expect(renamed).toHaveFocus());
   expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
@@ -163,7 +163,7 @@ it('asks for the language once, before setup, and keeps PIN values, refusal, and
     'segmented-code-pin-confirm',
   );
   for (const field of [pinFields, confirmFields]) {
-    const inputs = within(field).getAllByLabelText(/oculto/);
+    const inputs = within(field).getAllByLabelText(/, hidden$/);
     expect(inputs).toHaveLength(8);
     for (const input of inputs) await user.type(input, '1');
   }

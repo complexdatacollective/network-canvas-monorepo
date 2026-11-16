@@ -159,6 +159,10 @@ export const useSummaryFits = (
   return fits;
 };
 
+function itemCount(count: number) {
+  return count === 1 ? '1 item' : `${count} items`;
+}
+
 const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   const intl = useAppIntl();
   // The count sits beside the bin's label, so in the protocol's digits.
@@ -226,9 +230,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   } = useDropTarget({
     id: getCatBinDropTargetId(stageId, promptId, index),
     accepts: ['NODE'],
-    announcedName: intl.formatMessage(interfaceMessages.categoryDrop, {
-      label: spokenLabel,
-    }),
+    announcedName: `Category: ${spokenLabel}`,
     onDrop: handleDrop,
     disabled: !!select,
   });
@@ -272,10 +274,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         className={headerClasses}
         onClick={onToggleExpand}
         aria-expanded={true}
-        aria-label={intl.formatMessage(
-          interfaceMessages.categoryContentsExpanded,
-          { label: spokenLabel, count: nodes.length },
-        )}
+        aria-label={`Category ${spokenLabel}, ${itemCount(nodes.length)}, expanded`}
       >
         <OptionLabel
           label={label}
@@ -314,10 +313,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
               aria-disabled={select.focalNodeId === undefined || undefined}
               aria-label={
                 select.focalNodeId !== undefined
-                  ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
-                      name: select.focalName ?? '',
-                      label: spokenLabel,
-                    })
+                  ? `Place ${select.focalName ?? ''} in ${spokenLabel}`
                   : undefined
               }
             >
@@ -337,10 +333,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
               id={listId}
               items={nodes}
               nodeSize="sm"
-              announcedName={intl.formatMessage(
-                interfaceMessages.categoryList,
-                { label: spokenLabel },
-              )}
+              announcedName={`${spokenLabel} category`}
               {...(select && {
                 dragAndDrop: false,
                 onItemClick: select.onChoose,
@@ -389,10 +382,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
               onToggleExpand();
             },
             'aria-expanded': false,
-            'aria-label': intl.formatMessage(
-              interfaceMessages.categoryContents,
-              { label: spokenLabel, count: nodes.length },
-            ),
+            'aria-label': `Category ${spokenLabel}, ${itemCount(nodes.length)}`,
           })}
       transition={springTransition}
       variants={binItemVariants}
@@ -413,14 +403,8 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
           aria-disabled={select.focalNodeId === undefined || undefined}
           aria-label={
             select.focalNodeId !== undefined
-              ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
-                  name: select.focalName ?? '',
-                  label: spokenLabel,
-                })
-              : intl.formatMessage(interfaceMessages.categoryContents, {
-                  label: spokenLabel,
-                  count: nodes.length,
-                })
+              ? `Place ${select.focalName ?? ''} in ${spokenLabel}`
+              : `Category ${spokenLabel}, ${itemCount(nodes.length)}`
           }
           data-testid={`catbin-select-${index}`}
         />
@@ -434,10 +418,8 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
             onToggleExpand();
           }}
           aria-expanded={false}
-          aria-label={intl.formatMessage(
-            interfaceMessages.binSelectShowContents,
-            { label: spokenLabel, count: nodes.length },
-          )}
+          aria-label={`Show what is in ${spokenLabel}, ${itemCount(nodes.length)}`}
+          lang="en"
           data-testid={`catbin-expand-${index}`}
         >
           <Users aria-hidden className="size-1/2" />

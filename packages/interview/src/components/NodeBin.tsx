@@ -2,12 +2,10 @@
 
 import { motion } from 'motion/react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { NcNode } from '@codaco/shared-consts';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import nodeBinUrl from './node-bin.svg';
 
 type NodeBinProps = {
@@ -16,11 +14,10 @@ type NodeBinProps = {
 };
 
 const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
-  const intl = useAppIntl();
   const { dropProps, isOver, willAccept } = useDropTarget({
     id: 'node-bin',
     accepts: ['EXISTING_NODE', 'FAMILY_TREE_NODE'],
-    announcedName: intl.formatMessage(messages.deleteBin),
+    announcedName: 'Delete bin',
     onDrop: (metadata) => {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged node, set by the Node drag source (fresco-ui types it as a record)
       const node = metadata as NcNode;

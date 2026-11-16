@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import { default as Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -38,7 +37,6 @@ import { getStages } from '../../store/modules/protocol';
 import { useSyncFlush } from '../../store/SyncFlushContext';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { interfaceMessages } from '../messages';
 
 type FinishSessionText = Pick<
   FinishSessionStage,
@@ -291,10 +289,9 @@ function FinishingAnnouncement() {
     return () => cancelAnimationFrame(frame);
   }, []);
   return (
-    <output aria-live="polite" className="sr-only">
-      {announced && (
-        <AppMessage message={interfaceMessages.finishingInterview} />
-      )}
+    <output aria-live="polite" className="sr-only" lang="en">
+      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+      {announced && 'Finishing the interview…'}
     </output>
   );
 }

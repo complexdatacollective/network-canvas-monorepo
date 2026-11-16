@@ -2,11 +2,10 @@
 
 import type { MapMouseEvent } from 'mapbox-gl/esm';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ColorReference, MapOptions } from '@codaco/protocol-validation';
 
 import { getMapLanguage } from './mapboxLanguage';
-import { getMapboxLocale, updateMapboxControlLocale } from './mapboxLocale';
+import { getMapboxLocale } from './mapboxLocale';
 
 export type ExtendedMapOptions = MapOptions & {
   showTransit?: boolean;
@@ -188,11 +187,6 @@ export const useMapbox = ({
   initialSelectionValue,
   onSelectionChange,
 }: UseMapboxProps) => {
-  const intl = useAppIntl();
-  const intlRef = useRef(intl);
-  useEffect(() => {
-    intlRef.current = intl;
-  }, [intl]);
   // Map labels follow the protocol language the participant is reading, else
   // the next of their browser's languages Mapbox has. Read through a ref by
   // the construction effect so a language change updates the live map instead
@@ -310,7 +304,7 @@ export const useMapbox = ({
         zoom: initialZoom,
         style,
         accessToken,
-        locale: getMapboxLocale(intlRef.current),
+        locale: getMapboxLocale(),
         // Omitted when Mapbox has no labels in the language, so each label
         // shows in its place's own language.
         ...(mapLanguageRef.current === undefined
@@ -585,11 +579,6 @@ export const useMapbox = ({
     isE2E,
     captureException,
   ]);
-
-  useEffect(() => {
-    if (!mapRef.current) return;
-    updateMapboxControlLocale(mapRef.current, intl);
-  }, [intl]);
 
   // The highlighted area is the saved location as it can be read now, and this
   // is its only writer: none while nothing is saved or the saved location

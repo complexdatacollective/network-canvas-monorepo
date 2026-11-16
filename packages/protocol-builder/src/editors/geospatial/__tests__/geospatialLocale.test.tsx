@@ -97,7 +97,7 @@ describe('the geospatial sections, read in Spanish', () => {
    * The numbers this package splices into its own sentences are covered by the
    * refusal below, which carries two of them.
    */
-  it('names the starting view and its swatches in Spanish', () => {
+  it('names the starting view in Spanish and its swatches in English', () => {
     openEditor();
 
     expect(
@@ -105,9 +105,11 @@ describe('the geospatial sections, read in Spanish', () => {
         'Configura la vista inicial del mapa para ajustar su centro y nivel de zoom.',
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('radio', { name: 'Verde mar' }),
-    ).toBeInTheDocument();
+    // A swatch's name is read only by a screen reader: English, marked so.
+    expect(screen.getByRole('radio', { name: 'Sea Green' })).toHaveAttribute(
+      'lang',
+      'en',
+    );
   });
 
   /**

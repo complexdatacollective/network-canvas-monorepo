@@ -105,10 +105,11 @@ describe('the narrative pedigree sections, read in Spanish', () => {
       disease.getByRole('textbox', { name: 'Etiqueta de enfermedad' }),
     ).toBeInTheDocument();
     // Each swatch is named after the hue the theme gives it, as the released
-    // Architect named them, and the name is translated: what a researcher who
-    // cannot see the swatch has to go on is the colour, not a position.
-    expect(
-      disease.getByRole('radio', { name: 'Turquesa marino' }),
-    ).toBeInTheDocument();
+    // Architect named them. Only a screen reader reads the name, so it is
+    // English in every language and the swatch says so with `lang="en"`.
+    expect(disease.getByRole('radio', { name: 'Sea Serpent' })).toHaveAttribute(
+      'lang',
+      'en',
+    );
   });
 });

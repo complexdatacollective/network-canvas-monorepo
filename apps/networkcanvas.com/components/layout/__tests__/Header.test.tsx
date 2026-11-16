@@ -191,7 +191,7 @@ describe('localized layout navigation', () => {
       screen.getByText(/Derechos de autor de Complex Data Collective/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('combobox', { name: /^Idioma de la interfaz: .+/ }),
+      screen.getByRole('combobox', { name: /^Interface language: .+/ }),
     ).toBeInTheDocument();
   });
 });

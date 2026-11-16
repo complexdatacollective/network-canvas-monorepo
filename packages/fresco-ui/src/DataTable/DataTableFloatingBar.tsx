@@ -21,12 +21,6 @@ export const messages = defineMessages({
     description:
       'Selection summary shown in the floating action bar above a table.',
   },
-  closeSelectionBar: {
-    id: 'frescoUi.dataTableFloatingBar.close',
-    defaultMessage: 'Close selection bar',
-    description:
-      'Accessible name of the button that clears the selection and dismisses the floating action bar.',
-  },
 });
 
 type DataTableFloatingBarProps<TData extends RowData> = {
@@ -73,7 +67,6 @@ export function DataTableFloatingBar<TData extends RowData>({
           <CloseButton
             className="grow"
             onClick={() => table.toggleAllRowsSelected(false)}
-            aria-label={intl.formatMessage(messages.closeSelectionBar)}
           />
         </MotionSurface>
       )}

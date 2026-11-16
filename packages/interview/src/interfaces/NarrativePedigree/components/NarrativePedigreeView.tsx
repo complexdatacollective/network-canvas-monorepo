@@ -15,7 +15,7 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
@@ -443,13 +443,9 @@ export default function NarrativePedigreeView({
     const parts = shownDiseases.map((disease) => {
       const status =
         displayedStatusesByDisease.get(disease.id)?.get(personId) ?? 'unknown';
-      const statusText = getStatusLabel(status, intl);
-      return intl.formatMessage(messages.diseaseStatus, {
-        condition: disease.label,
-        status: statusText,
-      });
+      return `${disease.label}: ${getStatusLabel(status)}`;
     });
-    return intl.formatList(parts, { type: 'conjunction' });
+    return new Intl.ListFormat('en', { type: 'conjunction' }).format(parts);
   };
 
   const selectedDisease =
@@ -683,9 +679,7 @@ export default function NarrativePedigreeView({
           data-node-id={personId}
           data-dimmed={dimmed ? 'true' : 'false'}
           tabIndex={personId === tabStopId ? 0 : -1}
-          aria-label={intl.formatMessage(messages.focusOn, {
-            name: label || personId,
-          })}
+          aria-label={`Focus on ${label || personId}`}
           aria-describedby={statusSummaryId}
           // Disabled (but still announced, with its status, and still a stop
           // for the arrow keys) until a condition is chosen.
@@ -825,7 +819,7 @@ export default function NarrativePedigreeView({
         onKeyDown={(event) => zoomForKey(event, panZoom)}
       >
         <SegmentedToolbar
-          aria-label={intl.formatMessage(messages.toolbarLabel)}
+          aria-label="Family tree controls"
           size="lg"
           className="pointer-events-auto max-w-full min-w-0"
         >
@@ -907,14 +901,11 @@ export default function NarrativePedigreeView({
       {/* Visually-hidden aria-live region for announcing state changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {selectedDiseaseLabel !== null && (
-          <AppMessage
-            message={
-              focalId === null
-                ? messages.showingCondition
-                : messages.showingFocused
-            }
-            values={{ condition: selectedDiseaseLabel, name: focalLabel ?? '' }}
-          />
+          <>
+            {focalId === null
+              ? `Showing ${selectedDiseaseLabel}`
+              : `Showing ${selectedDiseaseLabel}. Focused on ${focalLabel ?? ''}. Showing who contributes to their inheritance.`}
+          </>
         )}
       </div>
 
@@ -927,7 +918,7 @@ export default function NarrativePedigreeView({
           max={45}
           minSizePx={300}
           className="min-h-0 w-full grow"
-          aria-label={intl.formatMessage(messages.resizeKey)}
+          aria-label="Resize the condition key panel"
         >
           {/* Key panel — the resized (first) pane, shown only while a
               condition is: it explains that condition's symbols. In `reverse`

@@ -2,27 +2,11 @@
 
 import { useCallback } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button } from '../../Button';
 import { formatFilterNumber } from './formatFilterNumber';
 import { type RangeFilterConfig, type RangeFilterValue } from './types';
-
-const messages = defineMessages({
-  minimum: {
-    id: 'frescoUi.rangeFilter.minimum',
-    defaultMessage: 'Minimum',
-    description:
-      'Accessible name of the lower-bound slider in a numeric range filter.',
-  },
-  maximum: {
-    id: 'frescoUi.rangeFilter.maximum',
-    defaultMessage: 'Maximum',
-    description:
-      'Accessible name of the upper-bound slider in a numeric range filter.',
-  },
-});
 
 type RangeFilterProps = {
   value: RangeFilterValue | undefined;
@@ -115,7 +99,8 @@ export default function RangeFilter({
         />
         <input
           type="range"
-          aria-label={intl.formatMessage(messages.minimum)}
+          aria-label="Minimum"
+          lang="en"
           min={config.min}
           max={config.max}
           step={step}
@@ -125,7 +110,8 @@ export default function RangeFilter({
         />
         <input
           type="range"
-          aria-label={intl.formatMessage(messages.maximum)}
+          aria-label="Maximum"
+          lang="en"
           min={config.min}
           max={config.max}
           step={step}

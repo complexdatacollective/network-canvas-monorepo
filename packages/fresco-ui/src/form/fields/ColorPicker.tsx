@@ -4,7 +4,6 @@ import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
@@ -50,80 +49,20 @@ const SEQUENCE_PREFIXES = [
  * `node-color-seq-2` is offering the same hue — so naming them per caller is
  * how the same colour ends up called two things.
  */
-const hueMessages = defineMessages({
-  neonCoral: {
-    id: 'frescoUi.colorPicker.neonCoral',
-    defaultMessage: 'Neon Coral',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A warm red-pink.',
-  },
-  seaSerpent: {
-    id: 'frescoUi.colorPicker.seaSerpent',
-    defaultMessage: 'Sea Serpent',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A blue-green.',
-  },
-  purplePizazz: {
-    id: 'frescoUi.colorPicker.purplePizazz',
-    defaultMessage: 'Purple Pizazz',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A bright purple.',
-  },
-  neonCarrot: {
-    id: 'frescoUi.colorPicker.neonCarrot',
-    defaultMessage: 'Neon Carrot',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A bright orange.',
-  },
-  kiwi: {
-    id: 'frescoUi.colorPicker.kiwi',
-    defaultMessage: 'Kiwi',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A yellow-green.',
-  },
-  ceruleanBlue: {
-    id: 'frescoUi.colorPicker.ceruleanBlue',
-    defaultMessage: 'Cerulean Blue',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A deep sky blue.',
-  },
-  paradisePink: {
-    id: 'frescoUi.colorPicker.paradisePink',
-    defaultMessage: 'Paradise Pink',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A warm pink.',
-  },
-  mustard: {
-    id: 'frescoUi.colorPicker.mustard',
-    defaultMessage: 'Mustard',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A dark yellow.',
-  },
-  tomato: {
-    id: 'frescoUi.colorPicker.tomato',
-    defaultMessage: 'Tomato',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A red.',
-  },
-  slateBlue: {
-    id: 'frescoUi.colorPicker.slateBlue',
-    defaultMessage: 'Slate Blue',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A muted violet-blue.',
-  },
-  seaGreen: {
-    id: 'frescoUi.colorPicker.seaGreen',
-    defaultMessage: 'Sea Green',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A green.',
-  },
-  barbiePink: {
-    id: 'frescoUi.colorPicker.barbiePink',
-    defaultMessage: 'Barbie Pink',
-    description:
-      'Name of one colour swatch, announced in place of the swatch itself. A vivid pink.',
-  },
-});
+const hueNames = {
+  neonCoral: 'Neon Coral',
+  seaSerpent: 'Sea Serpent',
+  purplePizazz: 'Purple Pizazz',
+  neonCarrot: 'Neon Carrot',
+  kiwi: 'Kiwi',
+  ceruleanBlue: 'Cerulean Blue',
+  paradisePink: 'Paradise Pink',
+  mustard: 'Mustard',
+  tomato: 'Tomato',
+  slateBlue: 'Slate Blue',
+  seaGreen: 'Sea Green',
+  barbiePink: 'Barbie Pink',
+} as const;
 
 /**
  * Every position each colour sequence defines, named after the hue the theme
@@ -137,53 +76,53 @@ const hueMessages = defineMessages({
  * even where an individual picker offers only part of it.
  */
 export const COLOR_SEQUENCE_HUE_NAMES: Readonly<
-  Record<string, readonly MessageDescriptor[]>
+  Record<string, readonly string[]>
 > = Object.freeze({
   'node-color-seq': [
-    hueMessages.neonCoral,
-    hueMessages.seaSerpent,
-    hueMessages.purplePizazz,
-    hueMessages.neonCarrot,
-    hueMessages.kiwi,
-    hueMessages.ceruleanBlue,
-    hueMessages.paradisePink,
-    hueMessages.mustard,
+    hueNames.neonCoral,
+    hueNames.seaSerpent,
+    hueNames.purplePizazz,
+    hueNames.neonCarrot,
+    hueNames.kiwi,
+    hueNames.ceruleanBlue,
+    hueNames.paradisePink,
+    hueNames.mustard,
   ],
   'edge-color-seq': [
-    hueMessages.mustard,
-    hueMessages.purplePizazz,
-    hueMessages.neonCoral,
-    hueMessages.kiwi,
-    hueMessages.paradisePink,
-    hueMessages.tomato,
-    hueMessages.seaSerpent,
-    hueMessages.slateBlue,
-    hueMessages.seaGreen,
-    hueMessages.ceruleanBlue,
+    hueNames.mustard,
+    hueNames.purplePizazz,
+    hueNames.neonCoral,
+    hueNames.kiwi,
+    hueNames.paradisePink,
+    hueNames.tomato,
+    hueNames.seaSerpent,
+    hueNames.slateBlue,
+    hueNames.seaGreen,
+    hueNames.ceruleanBlue,
   ],
   'ord-color-seq': [
-    hueMessages.seaGreen,
-    hueMessages.seaSerpent,
-    hueMessages.tomato,
-    hueMessages.neonCarrot,
-    hueMessages.kiwi,
-    hueMessages.ceruleanBlue,
-    hueMessages.paradisePink,
-    hueMessages.mustard,
-    hueMessages.purplePizazz,
-    hueMessages.slateBlue,
+    hueNames.seaGreen,
+    hueNames.seaSerpent,
+    hueNames.tomato,
+    hueNames.neonCarrot,
+    hueNames.kiwi,
+    hueNames.ceruleanBlue,
+    hueNames.paradisePink,
+    hueNames.mustard,
+    hueNames.purplePizazz,
+    hueNames.slateBlue,
   ],
   'cat-color-seq': [
-    hueMessages.seaSerpent,
-    hueMessages.purplePizazz,
-    hueMessages.mustard,
-    hueMessages.paradisePink,
-    hueMessages.kiwi,
-    hueMessages.ceruleanBlue,
-    hueMessages.neonCarrot,
-    hueMessages.barbiePink,
-    hueMessages.tomato,
-    hueMessages.slateBlue,
+    hueNames.seaSerpent,
+    hueNames.purplePizazz,
+    hueNames.mustard,
+    hueNames.paradisePink,
+    hueNames.kiwi,
+    hueNames.ceruleanBlue,
+    hueNames.neonCarrot,
+    hueNames.barbiePink,
+    hueNames.tomato,
+    hueNames.slateBlue,
   ],
 });
 
@@ -192,10 +131,7 @@ export const COLOR_SEQUENCE_HUE_NAMES: Readonly<
  * that is not one of the sequences — a caller's own CSS colour, which only the
  * caller can name.
  */
-export function colorSequenceHueName(
-  value: string,
-  intl: IntlShape,
-): string | undefined {
+export function colorSequenceHueName(value: string): string | undefined {
   const prefix = SEQUENCE_PREFIXES.find((candidate) =>
     value.startsWith(candidate),
   );
@@ -203,7 +139,7 @@ export function colorSequenceHueName(
 
   const position = Number(value.slice(prefix.length));
   const name = COLOR_SEQUENCE_HUE_NAMES[prefix.slice(0, -1)]?.[position - 1];
-  return name ? intl.formatMessage(name) : undefined;
+  return name;
 }
 
 /**
@@ -385,9 +321,10 @@ export default function ColorPickerField({
               <button
                 {...renderProps}
                 type="button"
+                lang="en"
                 aria-label={
                   option.label ??
-                  colorSequenceHueName(option.value, intl) ??
+                  colorSequenceHueName(option.value) ??
                   option.value
                 }
                 className={cx(

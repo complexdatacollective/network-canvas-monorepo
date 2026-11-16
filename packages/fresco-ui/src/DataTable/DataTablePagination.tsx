@@ -34,26 +34,6 @@ const messages = defineMessages({
     description:
       'Current page position indicator shown between the table pagination controls.',
   },
-  firstPage: {
-    id: 'frescoUi.dataTablePagination.firstPage',
-    defaultMessage: 'Go to first page',
-    description: 'Accessible name of the first-page pagination button.',
-  },
-  previousPage: {
-    id: 'frescoUi.dataTablePagination.previousPage',
-    defaultMessage: 'Go to previous page',
-    description: 'Accessible name of the previous-page pagination button.',
-  },
-  nextPage: {
-    id: 'frescoUi.dataTablePagination.nextPage',
-    defaultMessage: 'Go to next page',
-    description: 'Accessible name of the next-page pagination button.',
-  },
-  lastPage: {
-    id: 'frescoUi.dataTablePagination.lastPage',
-    defaultMessage: 'Go to last page',
-    description: 'Accessible name of the last-page pagination button.',
-  },
 });
 
 type DataTablePaginationProps<TData extends RowData> = {
@@ -115,7 +95,8 @@ export function DataTablePagination<TData extends RowData>({
           own, being a flex row. */}
       <div className="flex items-center space-x-2">
         <IconButton
-          aria-label={intl.formatMessage(messages.firstPage)}
+          aria-label="Go to first page"
+          lang="en"
           variant="text"
           size="sm"
           onClick={() => table.setPageIndex(0)}
@@ -123,7 +104,8 @@ export function DataTablePagination<TData extends RowData>({
           icon={<ChevronsLeft className="rtl:rotate-180" />}
         />
         <IconButton
-          aria-label={intl.formatMessage(messages.previousPage)}
+          aria-label="Go to previous page"
+          lang="en"
           variant="text"
           size="sm"
           onClick={() => table.previousPage()}
@@ -131,7 +113,8 @@ export function DataTablePagination<TData extends RowData>({
           icon={<ChevronLeft className="rtl:rotate-180" />}
         />
         <IconButton
-          aria-label={intl.formatMessage(messages.nextPage)}
+          aria-label="Go to next page"
+          lang="en"
           variant="text"
           size="sm"
           onClick={() => table.nextPage()}
@@ -139,7 +122,8 @@ export function DataTablePagination<TData extends RowData>({
           icon={<ChevronRight className="rtl:rotate-180" />}
         />
         <IconButton
-          aria-label={intl.formatMessage(messages.lastPage)}
+          aria-label="Go to last page"
+          lang="en"
           variant="text"
           size="sm"
           onClick={() => table.setPageIndex(table.getPageCount() - 1)}

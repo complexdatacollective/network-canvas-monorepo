@@ -3,7 +3,6 @@
 import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { SortRule } from '@codaco/protocol-validation';
 import {
@@ -32,12 +31,10 @@ import { edgeExists, toggleEdge } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
 import { useNodeLabel } from '../Anonymisation/useNodeLabel';
-import { interfaceMessages } from '../messages';
 
 type OneToManyDyadCensusProps = StageProps<'OneToManyDyadCensus'>;
 
 function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
-  const intl = useAppIntl();
   const {
     stage: {
       behaviours: { removeAfterConsideration },
@@ -261,8 +258,8 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
           selectionMode="none"
           layoutGroupId={null}
           animationKey={promptIndex}
-          aria-label={intl.formatMessage(interfaceMessages.targetNodes)}
-          announcedName={intl.formatMessage(interfaceMessages.targetNodes)}
+          aria-label="Target nodes"
+          announcedName="Target nodes"
         />
       </Panel>
     </div>
