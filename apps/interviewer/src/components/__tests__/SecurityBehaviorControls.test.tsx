@@ -13,17 +13,22 @@ const baseValue: Behavior = {
 };
 
 describe('SecurityBehaviorControls', () => {
-  it('renders the three unlock toggles', () => {
-    render(<SecurityBehaviorControls value={baseValue} onChange={vi.fn()} />);
+  it('shows each unlock toggle in the state its setting holds', () => {
+    render(
+      <SecurityBehaviorControls
+        value={{ ...baseValue, requireUnlockOnExport: true }}
+        onChange={vi.fn()}
+      />,
+    );
     expect(
-      screen.getByText('Require unlock when entering an interview'),
-    ).toBeInTheDocument();
+      screen.getByRole('switch', { name: /entering an interview/i }),
+    ).toBeChecked();
     expect(
-      screen.getByText('Require unlock when exiting an interview'),
-    ).toBeInTheDocument();
+      screen.getByRole('switch', { name: /exiting an interview/i }),
+    ).not.toBeChecked();
     expect(
-      screen.getByText('Require unlock before exporting data'),
-    ).toBeInTheDocument();
+      screen.getByRole('switch', { name: /before exporting data/i }),
+    ).toBeChecked();
   });
 
   it('emits requireUnlockOnExit when the exit toggle is switched on', () => {

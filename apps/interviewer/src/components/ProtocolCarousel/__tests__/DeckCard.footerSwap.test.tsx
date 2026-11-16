@@ -4,10 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DeckCard, DeckCardFooter } from '../DeckCard';
 
-// Each footer row's entry delay, in mount order. Animations are off under
-// test, so the transition the card asks for is what is observable.
-const { footerEntryDelays } = vi.hoisted(() => ({
-  footerEntryDelays: [] as (number | undefined)[],
+// Each footer row's entry delay and exit duration, in mount order.
+// Animations are off under test, so the transitions the card asks for are
+// what is observable.
+type FooterTiming = { entryDelay?: number; exitDuration?: number };
+const { footerTimings } = vi.hoisted(() => ({
+  footerTimings: new Array<FooterTiming>(),
 }));
 
 vi.mock('motion/react', async (importOriginal) => {
@@ -15,14 +17,21 @@ vi.mock('motion/react', async (importOriginal) => {
   const { useState } = await import('react');
   const ActualDiv = actual.motion.div;
   function RecordingDiv(props: ComponentProps<typeof ActualDiv>) {
-    const footerRow = props['data-deck-row' as keyof typeof props] === 'footer';
+    const footerRow = Reflect.get(props, 'data-deck-row') === 'footer';
     // Record once per mounted row: its entry is the transition it mounts with.
     useState(() => {
       if (footerRow) {
-        const animate = props.animate as {
-          transition?: { delay?: number };
-        };
-        footerEntryDelays.push(animate.transition?.delay);
+        const { animate, transition } = props;
+        const entry =
+          typeof animate === 'object' &&
+          !Array.isArray(animate) &&
+          'transition' in animate
+            ? animate.transition
+            : undefined;
+        footerTimings.push({
+          entryDelay: entry?.delay,
+          exitDuration: transition?.duration,
+        });
       }
       return null;
     });
@@ -62,20 +71,24 @@ function Card({
 
 describe('DeckCard footer entry', () => {
   it('holds a replacing footer back until the one it replaces has gone, but not a footer that appears fresh', () => {
-    footerEntryDelays.length = 0;
+    footerTimings.length = 0;
     const view = render(<Card isActive={false} footerKey="start" />);
-    expect(footerEntryDelays).toEqual([]);
+    expect(footerTimings).toEqual([]);
 
     // Activation: a fresh appearance enters at once.
     view.rerender(<Card isActive footerKey="start" />);
-    expect(footerEntryDelays).toEqual([undefined]);
+    expect(footerTimings).toHaveLength(1);
+    expect(footerTimings[0]?.entryDelay).toBeUndefined();
 
-    // A replacement waits for the outgoing footer's fade.
+    // A replacement waits exactly as long as the outgoing footer takes to go.
     view.rerender(<Card isActive footerKey="form" />);
-    expect(footerEntryDelays).toEqual([undefined, 0.3]);
+    expect(footerTimings).toHaveLength(2);
+    const outgoingExit = footerTimings[0]?.exitDuration;
+    expect(outgoingExit).toBeGreaterThan(0);
+    expect(footerTimings[1]?.entryDelay).toBe(outgoingExit);
 
     // Re-rendering the replacement does not enter it again.
     view.rerender(<Card isActive footerKey="form" />);
-    expect(footerEntryDelays).toEqual([undefined, 0.3]);
+    expect(footerTimings).toHaveLength(2);
   });
 });

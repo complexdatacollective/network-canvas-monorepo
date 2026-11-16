@@ -71,6 +71,28 @@ describe('Step3BiometricConfigure — recovery passphrase capture', () => {
     await waitFor(() =>
       expect(setNextEnabledMock).toHaveBeenLastCalledWith(true),
     );
+
+    await userEvent.type(confirm, 'x');
+    await waitFor(() =>
+      expect(setNextEnabledMock).toHaveBeenLastCalledWith(false),
+    );
+
+    await userEvent.clear(phrase);
+    await userEvent.clear(confirm);
+    await userEvent.type(phrase, 'Tr0ub4dor&3-clever');
+    await userEvent.type(confirm, 'Tr0ub4dor&3-clever');
+    await waitFor(() =>
+      expect(setNextEnabledMock).toHaveBeenLastCalledWith(true),
+    );
+
+    // Long enough and confirmed, but too guessable.
+    await userEvent.clear(phrase);
+    await userEvent.clear(confirm);
+    await userEvent.type(phrase, 'aaaaaaaaaaaaaa');
+    await userEvent.type(confirm, 'aaaaaaaaaaaaaa');
+    await waitFor(() =>
+      expect(setNextEnabledMock).toHaveBeenLastCalledWith(false),
+    );
   });
 
   it('enrols biometric with the recovery passphrase on Next', async () => {

@@ -1,22 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
+import { legacyApp } from '../../../../../scripts/buildtime/legacy-app.ts';
 import {
   getBundledLegacyInterviewer,
   LEGACY_INTERVIEWER_CACHE_PREFIX,
-  LEGACY_INTERVIEWER_MAJOR,
   legacyInterviewUrl,
 } from '../legacyInterviewer';
 
 const INTERVIEWER_8 = { version: '8.5.0', path: '/v8/' } as const;
 
 describe('legacyInterviewer', () => {
-  it('has no Interviewer 8 under test, as in dev and Storybook', () => {
+  it('reads a build without the Interviewer 8 define as having none, instead of throwing', () => {
     expect(getBundledLegacyInterviewer()).toBeNull();
   });
 
-  it('is the schema 8 Interviewer, caching under its own prefix', () => {
-    expect(LEGACY_INTERVIEWER_MAJOR).toBe(8);
-    expect(LEGACY_INTERVIEWER_CACHE_PREFIX).toBe('interviewer-v8-');
+  it('looks for Interviewer 8 caches under the prefix the bundling step enforces', () => {
+    expect(LEGACY_INTERVIEWER_CACHE_PREFIX).toBe(
+      legacyApp('interviewer').cachePrefix,
+    );
   });
 
   it("addresses Interviewer 8's interview route, keeping the search", () => {
