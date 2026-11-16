@@ -82,7 +82,9 @@ async function interviewToFinish(page: Page, link: string): Promise<void> {
   const egoName = page.locator('[data-field-name="ego_name"] input');
   await egoName.fill('Ada');
   await egoName.blur();
-  await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
+  await expect(page.getByTestId('next-button')).toHaveAccessibleDescription(
+    'You can continue to the next step.',
+  );
   await next(page);
 
   await quickAdd(page, 'Grace');

@@ -70,7 +70,7 @@ import {
   useProtocolLocale,
 } from './localization/ProtocolLocalizationProvider';
 import { NodeLabelWorkerProvider } from './nodeLabelWorker/NodeLabelWorkerProvider';
-import { getInterviewId } from './selectors/session';
+import { getInterviewId, getPromptIndex } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { getInterviewProgress } from './selectors/utils';
 import {
@@ -315,6 +315,7 @@ function ActiveInterview({
     pulseNext,
     progress,
   } = useInterviewNavigation(initialStageOverrideIndex, reviewMode);
+  const promptIndex = useSelector(getPromptIndex);
 
   useStageNavigationAnalytics({
     stage_index: displayedStep,
@@ -445,6 +446,7 @@ function ActiveInterview({
                 disableMoveForward={disableMoveForward}
                 disableMoveBackward={disableMoveBackward}
                 pulseNext={pulseNext}
+                screenId={`${displayedStep}:${promptIndex}`}
                 progress={progress}
                 orientation={navigationOrientation}
                 className={navigationClassnames?.[navigationOrientation]}

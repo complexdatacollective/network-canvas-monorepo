@@ -42,6 +42,7 @@ import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
+import ReadyToContinueAnnouncer from './ReadyToContinueAnnouncer';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
 
 const describeExitError = () => <AppMessage message={messages.exitFailed} />;
@@ -188,6 +189,9 @@ type NavigationProps = {
   disableMoveForward?: boolean;
   disableMoveBackward?: boolean;
   pulseNext: boolean;
+  // Identifies the stage and prompt on screen, so the ready sentence is added
+  // once for each screen.
+  screenId: string;
   progress: number;
   orientation?: NavigationOrientation;
   forwardButtonRef?: Ref<HTMLButtonElement>;
@@ -211,6 +215,7 @@ const Navigation = ({
   disableMoveForward,
   disableMoveBackward,
   pulseNext,
+  screenId,
   progress,
   orientation = 'vertical',
   forwardButtonRef,
@@ -264,6 +269,7 @@ const Navigation = ({
     (TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1) * 100,
   );
   const textSizeLabelId = useId();
+  const readyDescriptionId = useId();
   const textSizeControlRef = useRef<HTMLDivElement>(null);
   const [textScaleInputValue, setTextScaleInputValue] = useState(
     String(textScalePercent),
@@ -614,9 +620,15 @@ const Navigation = ({
           disabled={disableMoveForward}
           icon={<ForwardIcon className="size-8" strokeWidth="3px" />}
           aria-label="Next Step"
+          aria-describedby={pulseNext ? readyDescriptionId : undefined}
           lang="en"
           buttonRef={forwardButtonRef}
           data-testid="next-button"
+        />
+        <ReadyToContinueAnnouncer
+          ready={pulseNext}
+          screenId={screenId}
+          descriptionId={readyDescriptionId}
         />
       </MotionSurface>
       {stageNavigationEnabled && (
