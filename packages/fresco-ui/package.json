@@ -197,6 +197,7 @@
     "./navigation/SiteNavigation.messages": "./src/navigation/SiteNavigation.messages.ts",
     "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
+    "./node/nodeShapeSvg": "./src/node/nodeShapeSvg.ts",
     "./stages/StageBar": "./src/stages/StageBar.tsx",
     "./stages/stageTypes": "./src/stages/stageTypes.ts",
     "./storybook-support/awaitPassiveEffects": "./src/storybook-support/awaitPassiveEffects.ts",
@@ -944,6 +945,10 @@
         "types": "./dist/navigation/ThemeSwitcher.d.ts",
         "default": "./dist/navigation/ThemeSwitcher.js"
       },
+      "./node/nodeShapeSvg": {
+        "types": "./dist/node/nodeShapeSvg.d.ts",
+        "default": "./dist/node/nodeShapeSvg.js"
+      },
       "./stages/StageBar": {
         "types": "./dist/stages/StageBar.d.ts",
         "default": "./dist/stages/StageBar.js"
@@ -1065,6 +1070,7 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gemoji": "^8.0.0",
     "remark-gfm": "^4.0.1",
+    "saxes": "^6.0.0",
     "tailwind-merge": "catalog:",
     "usehooks-ts": "^3.1.1"
   },

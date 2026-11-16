@@ -44,6 +44,7 @@ import {
 } from '~/hooks/useProtocolNavGuard';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
+import { useOtherTabName } from '~/protocolBuilder/useOtherTabName';
 import {
   getLocalization,
   getProtocol,
@@ -87,12 +88,6 @@ const messages = defineMessages({
     defaultMessage: 'New stage',
     description:
       'Name used for a timeline stage that is being created and has not been given a label yet. Shown in the stage editor navigation bar and as the page heading.',
-  },
-  otherTab: {
-    id: 'architect.stageEditor.stageEditorPage.otherTab',
-    defaultMessage: 'Another tab',
-    description:
-      'What an editor calls the browser tab that holds the saved copy of this protocol, when it is not this one. Read as, for example, “Another tab is editing this stage”.',
   },
 });
 
@@ -190,7 +185,7 @@ const StageEditorPage = () => {
     }
   }
 
-  const otherTabName = intl.formatMessage(messages.otherTab);
+  const otherTabName = useOtherTabName();
   // One client per store, because a new one re-opens the protocol channel
   // behind it and drops what this edit has imported. A language change only
   // relabels the other tab; it keeps the client.

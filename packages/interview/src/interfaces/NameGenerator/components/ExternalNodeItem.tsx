@@ -7,6 +7,7 @@ import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import UINode from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
+import { useCustomShapeSvgs } from '../../../contexts/CustomShapeSvgsContext';
 import { resolveNodeShape } from '../../../selectors/session';
 import { getCodebook } from '../../../store/modules/protocol';
 import { useNodeLabel } from '../../Anonymisation/useNodeLabel';
@@ -28,13 +29,18 @@ export default function ExternalNodeItem({
   const nodeTypeDefinition = codebook?.node?.[node.type];
 
   const label = useNodeLabel(node);
+  const shapeSvgs = useCustomShapeSvgs();
 
   const shape = useMemo(
     () =>
       nodeTypeDefinition
-        ? resolveNodeShape(nodeTypeDefinition, node[entityAttributesProperty])
+        ? resolveNodeShape(
+            nodeTypeDefinition,
+            node[entityAttributesProperty],
+            shapeSvgs,
+          )
         : undefined,
-    [nodeTypeDefinition, node],
+    [nodeTypeDefinition, node, shapeSvgs],
   );
 
   if (!nodeTypeDefinition) return null;

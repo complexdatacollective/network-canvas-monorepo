@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen, within } from 'storybook/test';
+import { expect, screen, userEvent, within } from 'storybook/test';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import { buttonPaint, TRANSPARENT } from '../../testing/buttonPaint.ts';
+import { ProtocolWithShapeImages } from '../../testing/ProtocolWithShapeImages.tsx';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import CodebookEntityEditor from './CodebookEntityEditor.tsx';
 
@@ -44,18 +45,13 @@ const PERSON_WITH_SHAPE_MAPPING: SectionDoc = {
   },
 };
 
-const HOME_SHAPE =
-  '<svg viewBox="0 0 100 100"><path d="M8 48 L50 10 L92 48 V92 H8 Z" fill="var(--node-color, #e04f6d)"/><path d="M8 48 L50 10 L92 48" fill="none" stroke="var(--node-color-dark, #a8324c)" stroke-width="8" stroke-linejoin="round"/><rect id="label-area" x="18" y="52" width="64" height="32" fill="#ffffff"/></svg>';
-const SCHOOL_SHAPE =
-  '<svg viewBox="0 0 100 100"><rect x="6" y="34" width="88" height="58" rx="6" fill="#f2b84b"/><path d="M50 6 L50 34 M50 8 L72 16 L50 24" fill="#d9483b" stroke="#5b3a1e" stroke-width="4" stroke-linejoin="round"/><rect id="label-area" x="14" y="46" width="72" height="36" fill="#3b2a12"/></svg>';
-
 /** A type that draws itself with the researcher's own SVG shapes. */
 const PLACE_WITH_CUSTOM_SHAPES: SectionDoc = {
   ...PERSON,
   name: 'Place',
   customShapes: {
-    home: { name: 'Home', svg: HOME_SHAPE },
-    school: { name: 'School', svg: SCHOOL_SHAPE },
+    home: { name: 'Home', asset: 'home-image' },
+    school: { name: 'School', asset: 'school-image' },
   },
   shape: {
     default: 'custom:home',
@@ -100,11 +96,13 @@ const meta = {
   tags: ['autodocs'],
   decorators: [
     (Story) => (
-      <ProtocolLocalizationProvider
-        localization={{ defaultLocale: 'en', locales: ['en'] }}
-      >
-        <Story />
-      </ProtocolLocalizationProvider>
+      <ProtocolWithShapeImages>
+        <ProtocolLocalizationProvider
+          localization={{ defaultLocale: 'en', locales: ['en'] }}
+        >
+          <Story />
+        </ProtocolLocalizationProvider>
+      </ProtocolWithShapeImages>
     ),
   ],
 } satisfies Meta<typeof ExistingNodeEditor>;
@@ -284,5 +282,56 @@ export const WithCustomShapes: Story = {
     await expect(
       dialog.getByRole('button', { name: 'Remove shape School' }),
     ).toBeDisabled();
+  },
+};
+
+/**
+ * Adding a shape: "Add a shape" opens a browser where the researcher imports
+ * an SVG file or picks an SVG image the protocol already holds. Choosing one
+ * adds a shape named after the image.
+ */
+export const AddingAShape: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-person-add-shape-1"
+      dialog={{ title: 'Edit this node type', open: true }}
+      subject={{ entity: 'node', type: 'person' }}
+      initialDraft={PERSON}
+      authoritativeDocument={PERSON}
+      existingEntityNames={['Place']}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'unreachable' }),
+          refusal: { kind: 'unreachable' } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const editor = within(
+      await screen.findByRole('dialog', { name: 'Edit this node type' }),
+    );
+    await userEvent.click(editor.getByRole('button', { name: 'Add a shape' }));
+
+    const browser = within(
+      await screen.findByRole('dialog', { name: 'Choose a node shape' }),
+    );
+    await expect(
+      browser.getByText('Import a shape from an SVG file'),
+    ).toBeVisible();
+    await userEvent.click(
+      await browser.findByRole('button', { name: 'school.svg' }),
+    );
+
+    await expect(await editor.findByDisplayValue('school')).toBeInTheDocument();
+    await expect(
+      within(editor.getByRole('radiogroup', { name: /^Shape/ })).getByRole(
+        'radio',
+        { name: 'Select shape school' },
+      ),
+    ).toBeInTheDocument();
   },
 };

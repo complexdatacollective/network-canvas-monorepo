@@ -21,6 +21,7 @@ import {
   EdgeColorSequence,
   NodeColorSequence as NodeColorReferences,
   type StageSubject,
+  resolveNodeShapeReference,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
@@ -31,6 +32,7 @@ import {
   documentWithEntityProperties,
 } from '../codebook/editing.ts';
 import { useCodebookSectionDocument } from '../codebook/useCodebookVariableEdits.ts';
+import { useNodeShapeSvgs } from '../codebook/useNodeShapeSvgs.ts';
 import {
   useCodebookSectionWrite,
   useCreateCodebookEntity,
@@ -153,12 +155,35 @@ const asEntityColor = (
 const typeOption = (
   summary: EntityTypeSummary,
   entityType: RuleEntityTarget,
+  shapeSvgs: Readonly<Record<string, string>>,
 ): RuleEntityTypeOption => ({
   value: summary.id,
   label: codebookLabel(summary.name, summary.id),
   color: asEntityColor(summary.color, entityType),
-  ...(entityType === 'edge' ? {} : { shape: summary.shape ?? 'circle' }),
+  ...(entityType === 'edge'
+    ? {}
+    : {
+        shape:
+          resolveNodeShapeReference(
+            summary.shape,
+            summary.customShapes,
+            shapeSvgs,
+          ) ?? 'circle',
+      }),
 });
+
+/** Every type's custom shapes in one record, for `useNodeShapeSvgs`. */
+const summaryShapeAssets = (summaries: readonly EntityTypeSummary[]) =>
+  Object.fromEntries(
+    summaries.flatMap((summary) =>
+      Object.entries(summary.customShapes ?? {}).map(
+        ([shapeId, shape]): [string, Readonly<{ asset: string }>] => [
+          `${summary.id}/${shapeId}`,
+          shape,
+        ],
+      ),
+    ),
+  );
 
 /**
  * Empty-state copy, written out per entity kind.
@@ -785,7 +810,9 @@ function EntityTypeCodebookControls({
             )}
             readOnly={readOnly}
             existingEntityNames={existingEntityNames}
-            onSubmit={(document) => createEntity(entityType, document)}
+            onSubmit={(document, promote) =>
+              createEntity(entityType, document, promote)
+            }
             onApplied={(outcome) => {
               // The id the HOST minted, read off the write: it is the host's
               // to issue, and the stage has to name the type it created.
@@ -820,7 +847,7 @@ function EntityTypeCodebookControls({
               authoritativeDocument={editedDocument}
               readOnly={readOnly}
               existingEntityNames={existingEntityNames}
-              onSubmit={(document) => {
+              onSubmit={(document, promote) => {
                 const subject = {
                   entity: entityType,
                   type: session.typeId,
@@ -834,12 +861,20 @@ function EntityTypeCodebookControls({
                 // this is the same rebase re-asked at the only moment the
                 // answer is authoritative, and the helper keeps `variables`
                 // for exactly this reason.
-                return writeSection(subject, (authoritativeDocument) =>
-                  documentWithEntityProperties({
-                    subject,
-                    authoritativeDocument,
-                    draft: document,
-                  }),
+                return writeSection(
+                  subject,
+                  (authoritativeDocument) =>
+                    documentWithEntityProperties({
+                      subject,
+                      authoritativeDocument,
+                      draft: document,
+                      // A type left with no custom shapes is saved without
+                      // the key, which would otherwise keep the stored ones.
+                      ...(Object.hasOwn(document, 'customShapes')
+                        ? {}
+                        : { unsetProperties: ['customShapes'] }),
+                    }),
+                  promote,
                 );
               }}
               onApplied={closeSession}
@@ -1013,9 +1048,11 @@ export default function EntityTypePickerField({
   // each type's name and look and nothing else, so an edit inside a stage is
   // not a reason to redraw the chips.
   const summaries = useEntityTypes(entityType);
+  const shapeSvgs = useNodeShapeSvgs(summaryShapeAssets(summaries));
   const codebookOptions = useMemo(
-    () => summaries.map((summary) => typeOption(summary, entityType)),
-    [entityType, summaries],
+    () =>
+      summaries.map((summary) => typeOption(summary, entityType, shapeSvgs)),
+    [entityType, shapeSvgs, summaries],
   );
 
   const isMissing =

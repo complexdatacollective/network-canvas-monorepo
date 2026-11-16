@@ -21,6 +21,7 @@ import {
   chooseAttribute,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
+import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import {
   shapeMappingDraft,
   shapeMappingIssue,
@@ -107,19 +108,21 @@ const renderEditor = (
   document: SectionDoc = PERSON,
 ) => {
   render(
-    <ProtocolLocalizationProvider
-      localization={{ defaultLocale: 'en', locales: ['en'] }}
-    >
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="mapping"
-        subject={SUBJECT}
-        initialDraft={document}
-        authoritativeDocument={document}
-        existingEntityNames={[]}
-        onSubmit={onSubmit}
-      />
-    </ProtocolLocalizationProvider>,
+    <CodebookEditorHost>
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en'] }}
+      >
+        <CodebookEntityEditor
+          mode="update"
+          sessionKey="mapping"
+          subject={SUBJECT}
+          initialDraft={document}
+          authoritativeDocument={document}
+          existingEntityNames={[]}
+          onSubmit={onSubmit}
+        />
+      </ProtocolLocalizationProvider>
+    </CodebookEditorHost>,
   );
   return userEvent.setup();
 };

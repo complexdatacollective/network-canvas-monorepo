@@ -32,6 +32,7 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
+import { useCustomShapeSvgs } from '../../../contexts/CustomShapeSvgsContext';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getNodeIconName } from '../../../selectors/name-generator';
@@ -233,12 +234,13 @@ export default function QuickAddField({
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
+  const shapeSvgs = useCustomShapeSvgs();
 
   // When open, the toggle previews the node being created, so it takes the
   // shape the new node will have (resolved against the prompt's additional
   // attributes, which are the only attributes set at creation time).
   const nodeShape = nodeTypeDefinition
-    ? resolveNodeShape(nodeTypeDefinition, newNodeAttributes)
+    ? resolveNodeShape(nodeTypeDefinition, newNodeAttributes, shapeSvgs)
     : 'circle';
 
   // Close form when disabled

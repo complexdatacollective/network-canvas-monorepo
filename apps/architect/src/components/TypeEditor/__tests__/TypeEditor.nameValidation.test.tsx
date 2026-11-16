@@ -16,6 +16,15 @@ vi.mock('@codaco/protocol-builder/fields/ShapePickerField', () => ({
   default: () => null,
 }));
 vi.mock('../ShapeVariableMapping', () => ({ default: () => null }));
+vi.mock(
+  '@codaco/protocol-builder/fields/CustomShapesField',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@codaco/protocol-builder/fields/CustomShapesField')
+    >()),
+    default: () => null,
+  }),
+);
 
 const existingCodebook = vi.hoisted(
   (): {

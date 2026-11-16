@@ -1,10 +1,16 @@
 import { get } from 'es-toolkit/compat';
 import { createElement, useCallback, useMemo, useState } from 'react';
+import { useStore } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
+import {
+  ResourceClientProvider,
+  useStagedResources,
+} from '@codaco/protocol-builder/resources/client';
 import DialogForm, {
   type DialogFormProps,
 } from '~/components/DialogForm/DialogForm';
@@ -15,11 +21,15 @@ import TypeEditor, {
 } from '~/components/TypeEditor/TypeEditor';
 import validateEntityType from '~/components/TypeEditor/validateEntityType';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
   createTypeAsync,
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
+import type { ArchitectClient } from '~/protocolBuilder/client';
+import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
+import { useOtherTabName } from '~/protocolBuilder/useOtherTabName';
 import { getProtocol } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
 const chromeMessages = defineMessages({
@@ -84,110 +94,23 @@ type EntityTypeDialogProps = {
   finalFocus?: DialogFormProps['finalFocus'];
 };
 
-const EntityTypeDialog = ({
-  show,
-  entity,
-  type,
-  onClose,
-  finalFocus,
-}: EntityTypeDialogProps) => {
-  const intl = useAppIntl();
-  const dispatch = useAppDispatch();
-  const { openDialog } = useDialog();
-  const protocol = useAppSelector((state: RootState) => getProtocol(state));
-
-  const isNew = !type;
-
-  const initialValues = useMemo<EntityTypeValues>(() => {
-    if (!entity || !protocol) {
-      return {};
-    }
-    const defaultValue = getNewTypeTemplate({
-      protocol,
-      entity,
-    });
-    const value = type
-      ? get(protocol, ['codebook', entity, type]) || defaultValue
-      : defaultValue;
-    return format(value) as EntityTypeValues;
-  }, [protocol, entity, type]);
-
-  const title = useMemo(() => {
-    if (!entity) {
-      return '';
-    }
-    const entityLabel =
-      entity === 'node'
-        ? intl.formatMessage(chromeMessages.node)
-        : intl.formatMessage(chromeMessages.edge);
-    return isNew
-      ? intl.formatMessage(chromeMessages.createType, {
-          entityLabel: entityLabel,
-        })
-      : intl.formatMessage(chromeMessages.editType, {
-          entityLabel: entityLabel,
-        });
-  }, [entity, isNew, intl]);
-
-  const handleSubmit = useCallback(
-    async (values: Record<string, FieldValue>) => {
-      if (!entity) return;
-
-      // `updateType` replaces the whole definition, and `getFormValues()`
-      // reports registered fields only — so the properties this editor does
-      // not render (`variables` above all) are carried over from the committed
-      // definition.
-      const configuration = parse({ ...initialValues, ...values });
-
-      try {
-        if (isNew) {
-          const result = await dispatch(
-            createTypeAsync({
-              entity,
-              configuration,
-            }),
-          ).unwrap();
-          onClose(result.type);
-        } else if (type) {
-          await dispatch(
-            updateTypeAsync({
-              entity,
-              type,
-              configuration,
-            }),
-          ).unwrap();
-          onClose();
-        }
-      } catch (error) {
-        // Keep the dialog open so the user can retry, and tell them the save
-        // failed rather than leaving the submit looking like a no-op.
-        const normalizedError = reportError(error);
-        void openDialog({
-          type: 'acknowledge',
-          intent: 'destructive',
-          title: isNew
-            ? createElement(AppMessage, {
-                message: messages.couldNotCreateType,
-              })
-            : createElement(AppMessage, {
-                message: messages.couldNotUpdateType,
-              }),
-          description: normalizedError.message,
-          actions: {
-            primary: {
-              label: createElement(AppMessage, { message: messages.oK }),
-              value: true,
-            },
-          },
-        });
-      }
-    },
-    [dispatch, initialValues, onClose, entity, type, isNew, openDialog],
-  );
+/**
+ * The node or edge type editor, inside a protocol builder so its custom shape
+ * field can import SVG images as protocol resources.
+ *
+ * Each opening is an edit of its own for those imports: a save hands them to
+ * the protocol, and Cancel takes them back.
+ */
+const EntityTypeDialog = (props: EntityTypeDialogProps) => {
+  const { show, entity, type } = props;
+  const store = useStore<RootState>();
+  const client = useArchitectClient(store, useOtherTabName());
+  const protocolId = useAppSelector(getActiveProtocolId);
 
   /**
    * Every open is a different editing session, so each one needs its own field
-   * store — the `key` `DialogForm` documents for exactly this.
+   * store — the `key` `DialogForm` documents for exactly this — and its own
+   * resource edit.
    *
    * Identifying the session by what is being edited is not enough. `type` is
    * undefined for a creation, so `new-${entity}` was the SAME key for two
@@ -219,17 +142,164 @@ const EntityTypeDialog = ({
     }
   }
 
-  if (!entity) {
+  if (!entity || protocolId === null) {
     return null;
   }
 
+  // `entity`/`type` stay in the key so switching what is being edited without
+  // closing still remounts.
+  const sessionKey = `${entity}-${type ?? 'new'}-${openCount}`;
+
+  return (
+    <ProtocolBuilder adapter={client.adapter} protocolId={protocolId}>
+      <ResourceClientProvider key={sessionKey}>
+        <EntityTypeForm
+          {...props}
+          entity={entity}
+          adoptStagedResources={client.adoptStagedResources}
+        />
+      </ResourceClientProvider>
+    </ProtocolBuilder>
+  );
+};
+
+type EntityTypeFormProps = EntityTypeDialogProps &
+  Readonly<{
+    entity: 'node' | 'edge' | 'ego';
+    adoptStagedResources: ArchitectClient['adoptStagedResources'];
+  }>;
+
+const EntityTypeForm = ({
+  show,
+  entity,
+  type,
+  onClose,
+  finalFocus,
+  adoptStagedResources,
+}: EntityTypeFormProps) => {
+  const intl = useAppIntl();
+  const dispatch = useAppDispatch();
+  const staged = useStagedResources();
+  const { openDialog } = useDialog();
+  const protocol = useAppSelector((state: RootState) => getProtocol(state));
+
+  const isNew = !type;
+
+  const initialValues = useMemo<EntityTypeValues>(() => {
+    if (!protocol) {
+      return {};
+    }
+    const defaultValue = getNewTypeTemplate({
+      protocol,
+      entity,
+    });
+    const value = type
+      ? get(protocol, ['codebook', entity, type]) || defaultValue
+      : defaultValue;
+    return format(value) as EntityTypeValues;
+  }, [protocol, entity, type]);
+
+  const title = useMemo(() => {
+    const entityLabel =
+      entity === 'node'
+        ? intl.formatMessage(chromeMessages.node)
+        : intl.formatMessage(chromeMessages.edge);
+    return isNew
+      ? intl.formatMessage(chromeMessages.createType, {
+          entityLabel: entityLabel,
+        })
+      : intl.formatMessage(chromeMessages.editType, {
+          entityLabel: entityLabel,
+        });
+  }, [entity, isNew, intl]);
+
+  const handleSubmit = useCallback(
+    async (values: Record<string, FieldValue>) => {
+      // `updateType` replaces the whole definition, and `getFormValues()`
+      // reports registered fields only — so the properties this editor does
+      // not render (`variables` above all) are carried over from the committed
+      // definition.
+      const configuration = parse({ ...initialValues, ...values });
+
+      // Architect has already written each imported image to the protocol's
+      // assets; handing them over stops this edit's cancel from removing them.
+      const keepImports = () => {
+        const promotion = staged.promotion();
+        if (promotion === undefined) return;
+        if (adoptStagedResources(promotion)) {
+          staged.promoted();
+          return;
+        }
+        // Only reachable if a resource named by this edit was imported by
+        // another; the type itself is saved either way.
+        reportError(new Error('an imported resource belonged to another edit'));
+      };
+
+      try {
+        if (isNew) {
+          const result = await dispatch(
+            createTypeAsync({
+              entity,
+              configuration,
+            }),
+          ).unwrap();
+          keepImports();
+          onClose(result.type);
+        } else if (type) {
+          await dispatch(
+            updateTypeAsync({
+              entity,
+              type,
+              configuration,
+            }),
+          ).unwrap();
+          keepImports();
+          onClose();
+        }
+      } catch (error) {
+        // Keep the dialog open so the user can retry, and tell them the save
+        // failed rather than leaving the submit looking like a no-op.
+        const normalizedError = reportError(error);
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'destructive',
+          title: isNew
+            ? createElement(AppMessage, {
+                message: messages.couldNotCreateType,
+              })
+            : createElement(AppMessage, {
+                message: messages.couldNotUpdateType,
+              }),
+          description: normalizedError.message,
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
+        });
+      }
+    },
+    [
+      dispatch,
+      initialValues,
+      onClose,
+      entity,
+      type,
+      isNew,
+      openDialog,
+      staged,
+      adoptStagedResources,
+    ],
+  );
+
   return (
     <DialogForm
-      // `entity`/`type` stay in the key so switching what is being edited
-      // without closing still remounts, as before.
-      key={`${entity}-${type ?? 'new'}-${openCount}`}
       open={show}
-      onClose={() => onClose()}
+      onClose={() => {
+        void staged.discardAll();
+        onClose();
+      }}
       title={title}
       formId={FORM_ID}
       submitLabel={intl.formatMessage(messages.saveAndClose)}

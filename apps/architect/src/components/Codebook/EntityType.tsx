@@ -9,10 +9,13 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { NodeShapeProp } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { ColorReference } from '@codaco/protocol-validation';
+import type {
+  ColorReference,
+  NodeDefinition,
+  NodeShapeReference,
+} from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -121,7 +124,8 @@ type EntityTypeProps = {
   type: string;
   name: string;
   color: ColorReference;
-  shape?: NodeShapeProp;
+  shape?: NodeShapeReference;
+  customShapes?: NodeDefinition['customShapes'];
   usage: UsageItem[];
   inUse?: boolean;
   search?: string;
@@ -133,6 +137,7 @@ const EntityType = ({
   name,
   color,
   shape,
+  customShapes,
   inUse = true,
   usage,
   entity,
@@ -260,6 +265,7 @@ const EntityType = ({
             color={color}
             entity={entity}
             shape={shape}
+            customShapes={customShapes}
             size="small"
           />
         </div>

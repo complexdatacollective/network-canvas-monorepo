@@ -5,7 +5,6 @@ import { filter, includes } from 'es-toolkit/compat';
 import {
   type NodeColorSequence,
   type NodeShapeProp,
-  resolveNodeShapeReference,
 } from '@codaco/fresco-ui/Node';
 import { filter as customFilter } from '@codaco/network-query';
 import {
@@ -20,6 +19,7 @@ import {
   type StageSubject,
   type VariableOption,
   type VariableOptions,
+  resolveNodeShapeReference,
 } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
@@ -424,17 +424,21 @@ const resolveShapeReference = (
 /**
  * Resolves a node's shape from its codebook node definition and the node's
  * attributes. Uses the dynamic mapping (discrete or breakpoints) when
- * configured, falling back to the default shape; a custom shape the node type
- * does not define draws as a circle.
+ * configured, falling back to the default shape. `shapeSvgs` holds the loaded
+ * SVG text of the protocol's custom shapes by asset id (see
+ * `useCustomShapeSvgs`); a custom shape the node type does not define, or
+ * whose SVG has not loaded, draws as a circle.
  */
 export function resolveNodeShape(
   nodeDefinition: Pick<NodeDefinition, 'shape' | 'customShapes'>,
   attributes: Record<string, unknown>,
+  shapeSvgs: Readonly<Record<string, string>>,
 ): NodeShapeProp {
   return (
     resolveNodeShapeReference(
       resolveShapeReference(nodeDefinition.shape, attributes),
       nodeDefinition.customShapes,
+      shapeSvgs,
     ) ?? 'circle'
   );
 }

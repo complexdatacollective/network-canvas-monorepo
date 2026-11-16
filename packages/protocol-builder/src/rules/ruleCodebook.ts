@@ -1,10 +1,6 @@
 import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
-  type NodeShapeProp,
-  resolveNodeShapeReference,
-} from '@codaco/fresco-ui/Node';
-import {
   type Codebook,
   type ColorReference,
   type LocalizedString,
@@ -17,6 +13,8 @@ import {
   type Variable,
   type Variables,
   type VariableType,
+  resolveNodeShapeReference,
+  type ResolvedNodeShape,
 } from '@codaco/protocol-validation';
 import {
   datePickerWindows,
@@ -87,7 +85,7 @@ export type RuleEntityTypeOption = Readonly<{
   value: string;
   label: string;
   color: ColorReference;
-  shape?: NodeShapeProp;
+  shape?: ResolvedNodeShape;
 }>;
 
 const EMPTY_VARIABLES: Readonly<Variables> = Object.freeze({});
@@ -873,6 +871,7 @@ export const operandNumberProblems = (
 export const ruleEntityTypeOptions = (
   codebook: Readonly<Codebook>,
   target: RuleEntityTarget,
+  shapeSvgs: Readonly<Record<string, string>>,
 ): RuleEntityTypeOption[] => {
   if (target === 'edge') {
     return Object.entries(codebook.edge ?? {}).map(([value, definition]) => ({
@@ -890,6 +889,7 @@ export const ruleEntityTypeOptions = (
       resolveNodeShapeReference(
         definition.shape.default,
         definition.customShapes,
+        shapeSvgs,
       ) ?? 'circle',
   }));
 };

@@ -7,10 +7,6 @@ import {
 import { Redacted } from 'effect';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  type NodeShapeProp,
-  resolveNodeShapeReference,
-} from '@codaco/fresco-ui/Node';
 import type {
   Presence,
   ResourceDescriptor,
@@ -21,7 +17,10 @@ import type {
   SectionHolderSchema,
   SectionIssueSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
-import type { InterfaceTextUpdate } from '@codaco/protocol-validation';
+import type {
+  InterfaceTextUpdate,
+  NodeShapeReference,
+} from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -30,6 +29,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import {
+  type CustomShapes,
   isNodeShapeReference,
   readCustomShapes,
 } from '../codebook/customShapes.ts';
@@ -101,7 +101,9 @@ export type EntityTypeSummary = Readonly<{
   name: string;
   color?: string;
   /** How a node of this type is drawn. Node types only; edges have no shape. */
-  shape?: NodeShapeProp;
+  shape?: NodeShapeReference;
+  /** The type's own shapes, which `shape` may name. */
+  customShapes?: CustomShapes;
 }>;
 
 /** Every node or edge type in the codebook, for a picker's options. */
@@ -554,17 +556,13 @@ function entityTypeSummary(
     shape !== null && typeof shape === 'object' && 'default' in shape
       ? shape.default
       : undefined;
-  const defaultShape = isNodeShapeReference(storedDefault)
-    ? resolveNodeShapeReference(
-        storedDefault,
-        readCustomShapes(document.customShapes),
-      )
-    : undefined;
+  const customShapes = readCustomShapes(document.customShapes);
   return {
     id: typeId,
     name: typeof document.name === 'string' ? document.name : typeId,
     ...(typeof document.color === 'string' ? { color: document.color } : {}),
-    ...(defaultShape === undefined ? {} : { shape: defaultShape }),
+    ...(isNodeShapeReference(storedDefault) ? { shape: storedDefault } : {}),
+    ...(customShapes === undefined ? {} : { customShapes }),
   };
 }
 

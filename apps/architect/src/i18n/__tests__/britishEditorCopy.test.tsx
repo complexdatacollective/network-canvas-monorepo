@@ -28,6 +28,15 @@ vi.mock('@codaco/protocol-builder/fields/ShapePickerField', () => ({
 vi.mock('~/components/TypeEditor/ShapeVariableMapping', () => ({
   default: () => null,
 }));
+vi.mock(
+  '@codaco/protocol-builder/fields/CustomShapesField',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@codaco/protocol-builder/fields/CustomShapesField')
+    >()),
+    default: () => null,
+  }),
+);
 vi.mock('~/selectors/protocol', () => ({
   getCodebook: () => ({ node: {}, edge: {} }),
 }));

@@ -8,19 +8,24 @@ import {
 import type { ArchitectStore } from './architectStore.ts';
 import { ArchitectHandlers } from './handlers.ts';
 import { makeInProcessClient } from './inProcessClient.ts';
+import type { ResourceBridge } from './resourceBridge.ts';
 import { ArchitectHostSession } from './session.ts';
 
 export class ArchitectHostClient extends Context.Service<
   ArchitectHostClient,
   ProtocolBuilderClient
 >()('@codaco/architect/protocolBuilder/ArchitectHostClient') {
-  static readonly layer = (store: ArchitectStore, otherTabName: () => string) =>
+  static readonly layer = (
+    store: ArchitectStore,
+    otherTabName: () => string,
+    resources: ResourceBridge,
+  ) =>
     Layer.effect(ArchitectHostClient)(
       makeInProcessClient(ProtocolBuilderGroup),
     ).pipe(
       Layer.provide(
         Layer.mergeAll(
-          ArchitectHandlers(store, otherTabName),
+          ArchitectHandlers(store, otherTabName, resources),
           ArchitectHostSession,
         ),
       ),
@@ -30,5 +35,8 @@ export class ArchitectHostClient extends Context.Service<
 export const makeArchitectHostRuntime = (
   store: ArchitectStore,
   otherTabName: () => string,
+  resources: ResourceBridge,
 ): ManagedRuntime.ManagedRuntime<ArchitectHostClient, never> =>
-  ManagedRuntime.make(ArchitectHostClient.layer(store, otherTabName));
+  ManagedRuntime.make(
+    ArchitectHostClient.layer(store, otherTabName, resources),
+  );

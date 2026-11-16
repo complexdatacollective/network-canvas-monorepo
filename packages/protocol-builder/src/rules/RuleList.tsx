@@ -12,6 +12,7 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import type { Codebook } from '@codaco/protocol-validation';
 
+import { useNodeShapeSvgs } from '../codebook/useNodeShapeSvgs.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
@@ -69,7 +70,21 @@ type RuleListBinding = Readonly<{
   allowedTargets: readonly RuleTargetType[];
   allowEncryptedAttributes: boolean;
   duplicateIds: ReadonlySet<string>;
+  shapeSvgs: Readonly<Record<string, string>>;
 }>;
+
+/** Every node type's custom shapes in one record, for `useNodeShapeSvgs`. */
+const codebookShapeAssets = (codebook: Readonly<Codebook>) =>
+  Object.fromEntries(
+    Object.entries(codebook.node ?? {}).flatMap(([typeId, definition]) =>
+      Object.entries(definition.customShapes ?? {}).map(
+        ([shapeId, shape]): [string, Readonly<{ asset: string }>] => [
+          `${typeId}/${shapeId}`,
+          shape,
+        ],
+      ),
+    ),
+  );
 
 const RuleListBindingContext = createContext<RuleListBinding | null>(null);
 
@@ -95,8 +110,13 @@ function RuleListItem({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<RuleDraft>) {
-  const { codebook, allowedTargets, allowEncryptedAttributes, duplicateIds } =
-    useRuleListBinding();
+  const {
+    codebook,
+    allowedTargets,
+    allowEncryptedAttributes,
+    duplicateIds,
+    shapeSvgs,
+  } = useRuleListBinding();
   const rule = asRule(item);
   const intl = useAppIntl();
   const { localization, locale } = useEditingLanguage();
@@ -111,6 +131,7 @@ function RuleListItem({
         codebook,
         targets: allowedTargets,
         duplicateIds,
+        shapeSvgs,
         allowEncryptedAttributes,
         intl,
         localization,
@@ -125,6 +146,7 @@ function RuleListItem({
       locale,
       localization,
       rule,
+      shapeSvgs,
     ],
   );
 
@@ -415,6 +437,7 @@ export default function RuleList({
 }: RuleListProps) {
   const intl = useAppIntl();
   const duplicateIds = useDuplicateRuleIds(rules);
+  const shapeSvgs = useNodeShapeSvgs(codebookShapeAssets(codebook));
 
   // Bound through a context rather than closed over: the item and editor
   // components are identified by reference, so rebuilding them with the
@@ -425,8 +448,15 @@ export default function RuleList({
       allowedTargets,
       allowEncryptedAttributes,
       duplicateIds,
+      shapeSvgs,
     }),
-    [allowEncryptedAttributes, allowedTargets, codebook, duplicateIds],
+    [
+      allowEncryptedAttributes,
+      allowedTargets,
+      codebook,
+      duplicateIds,
+      shapeSvgs,
+    ],
   );
 
   const getId = useMemo(() => ruleRowId(duplicateIds), [duplicateIds]);

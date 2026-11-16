@@ -1,13 +1,12 @@
 import { createElement, type ReactNode } from 'react';
 
+import { type CSSVariablesStyle } from '../utils/cssVariables';
 import {
   LABEL_PLATE_ID,
   type NodeShapeSvgElement,
   type ParsedNodeShapeSvg,
   parseNodeShapeSvg,
-} from '@codaco/protocol-validation';
-
-import { type CSSVariablesStyle } from '../utils/cssVariables';
+} from './nodeShapeSvg';
 
 // A canvas re-renders every node on each interaction; parsing the same artwork
 // again each time would dominate the render.
@@ -196,12 +195,12 @@ const renderElement = (
     const rendered = renderAttribute(element.tag, name, value, idPrefix);
     if (rendered !== undefined) props[reactName] = rendered;
   }
-  if (element.tag === 'rect' && element.attributes.id === LABEL_PLATE_ID) {
-    // Lets a host that draws the artwork without a label leave the plate out.
-    props['data-node-shape-label-plate'] = '';
-    if (labelPlateGrowth > 0) {
-      props.height = Number(element.attributes.height) + labelPlateGrowth;
-    }
+  if (
+    labelPlateGrowth > 0 &&
+    element.tag === 'rect' &&
+    element.attributes.id === LABEL_PLATE_ID
+  ) {
+    props.height = Number(element.attributes.height) + labelPlateGrowth;
   }
   return createElement(
     element.tag,

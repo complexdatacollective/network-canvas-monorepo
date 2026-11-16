@@ -39,8 +39,16 @@ import {
 } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
+import CustomShapesField, {
+  customShapesGuidance,
+} from '../../fields/CustomShapesField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
+import {
+  ResourceClientProvider,
+  useStagedResources,
+} from '../../resources/client.tsx';
+import type { ResourcePromotion } from '../../state/hooks.ts';
 import { codebookEditingMessages } from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
@@ -65,9 +73,6 @@ import {
   type ShapeMappingDraft,
 } from '../shapeMapping.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
-import CustomShapesField, {
-  customShapesGuidance,
-} from './CustomShapesField.tsx';
 import NodeShapeMappingFields from './NodeShapeMappingFields.tsx';
 
 export const codebookEntityMessages = defineMessages({
@@ -655,8 +660,16 @@ type CommonEditorProps = Readonly<{
   existingEntityNames: readonly string[];
   /** Disables editing and submission without discarding the current draft. */
   readOnly?: boolean;
-  /** Writes the section, and answers with what became of it. */
-  onSubmit(document: SectionDoc): Promise<CodebookWriteOutcome>;
+  /**
+   * Writes the section, and answers with what became of it.
+   *
+   * `promote` names the files imported while the editor was open, such as a
+   * custom shape's SVG, for the host to commit in the same write.
+   */
+  onSubmit(
+    document: SectionDoc,
+    promote?: ResourcePromotion,
+  ): Promise<CodebookWriteOutcome>;
   onCancel?(): void;
 }>;
 
@@ -682,9 +695,20 @@ export type CodebookEntityEditorProps = CommonEditorProps &
 /**
  * Reusable entity editor. The host owns only the write and the close or
  * navigation chrome around it.
+ *
+ * Each opening is an edit of its own for the files imported in it: they are
+ * promoted with the save, and discarded when the editor goes without one.
+ * Keyed by the opening, so reopening starts a fresh draft and a fresh edit.
  */
-export default function CodebookEntityEditor({
-  sessionKey,
+export default function CodebookEntityEditor(props: CodebookEntityEditorProps) {
+  return (
+    <ResourceClientProvider key={props.sessionKey}>
+      <EntityEditor {...props} />
+    </ResourceClientProvider>
+  );
+}
+
+function EntityEditor({
   dialog,
   subject,
   initialDraft,
@@ -695,10 +719,10 @@ export default function CodebookEntityEditor({
   ...modeProps
 }: CodebookEntityEditorProps) {
   const intl = useAppIntl();
+  const staged = useStagedResources();
   // The save lives in the dialog's footer, outside the `<form>` element, so it
   // names the form it submits rather than being inside it.
   const formDomId = useId();
-  const [openKey, setOpenKey] = useState(sessionKey);
   const [draft, setDraft] = useState<CodebookEntityDraft>(initialDraft);
   const [errors, setErrors] = useState<EntityFieldErrors>({});
   // A record rather than the sentence, so a second refusal saying the same
@@ -707,17 +731,6 @@ export default function CodebookEntityEditor({
     useState<Readonly<{ message: string; held: boolean }>>();
   const [busy, setBusy] = useState(false);
   const failureRef = useRef<HTMLDivElement>(null);
-
-  // The caller's open identity owns reset semantics: the initial values may be
-  // reconstructed on every render and must not reset a draft while one opening
-  // is still on screen.
-  if (openKey !== sessionKey) {
-    setOpenKey(sessionKey);
-    setDraft(initialDraft);
-    setErrors({});
-    setFailure(undefined);
-    setBusy(false);
-  }
 
   useEffect(() => {
     if (failure !== undefined) failureRef.current?.focus();
@@ -775,8 +788,9 @@ export default function CodebookEntityEditor({
 
     setBusy(true);
     try {
-      const outcome = await onSubmit(document);
+      const outcome = await onSubmit(document, staged.promotion());
       if (outcome.status === 'applied') {
+        staged.promoted();
         if (modeProps.mode === 'create') modeProps.onApplied(outcome);
         else modeProps.onApplied?.(outcome);
         return;

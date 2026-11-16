@@ -19,7 +19,7 @@ export function symbolShapesOf(
   return new Map(
     people.map((person) => {
       const shape = shapeDefinition
-        ? resolveNodeShape({ shape: shapeDefinition }, person.attributes)
+        ? resolveNodeShape({ shape: shapeDefinition }, person.attributes, {})
         : 'circle';
       return [person.id, typeof shape === 'string' ? shape : 'circle'];
     }),

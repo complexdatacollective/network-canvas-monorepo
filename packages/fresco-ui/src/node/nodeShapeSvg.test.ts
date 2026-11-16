@@ -6,7 +6,7 @@ import {
   type NodeShapeSvgResult,
   parseNodeShapeSvg,
   serializeNodeShapeSvg,
-} from '../node-shape-svg.ts';
+} from './nodeShapeSvg';
 
 const svg = (content: string, rootAttributes = 'viewBox="0 0 100 100"') =>
   `<svg xmlns="http://www.w3.org/2000/svg" ${rootAttributes}>${content}</svg>`;

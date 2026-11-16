@@ -37,14 +37,19 @@ Custom shapes belong to one node type. To add them:
 
 1. Open the codebook and edit the node type, or create a new one.
 2. Find **Custom shapes** in the **Node appearance** section.
-3. Click **Add shapes from SVG files** and choose one or more SVG files.
-4. Give each shape a name. Every shape of the node type needs a name that no
-   other shape of that type uses.
+3. Click **Add a shape**. A window opens where you can import a new SVG file,
+   or choose an SVG image that is already one of the protocol's resources.
+4. Give the shape a name. Architect suggests the name of the file. Every shape
+   of the node type needs a name that no other shape of that type uses.
 
-![The Edit Node Type dialog in Architect. The Custom shapes section lists three uploaded shapes, each with a preview showing where the label will go, a Shape name field, and a remove button.](/assets/img/custom-node-shapes/architect-custom-shapes.png)
+![The Edit Node Type dialog in Architect. The Custom shapes section lists the shapes of the node type, each with a preview showing where the label will go, a Shape name field, and a remove button, above an Add a shape button.](/assets/img/custom-node-shapes/architect-custom-shapes.png)
 
 Each shape is shown with a preview that includes a sample label, so you can
 check where the label will sit before you use the shape.
+
+Architect checks each file when you add it. A file that can't be used as a
+shape is refused, with a message saying what needs to change. See [Prepare an
+SVG file](#prepare-an-svg-file) for the rules.
 
 Once a shape is added it appears alongside circle, square, and diamond wherever
 you choose a shape for that node type:
@@ -186,8 +191,10 @@ walls and windows use fixed colors, and the label sits on a plate that grows.
 
 ## Things to keep in mind
 
-- **Shapes are stored in the protocol.** You don't need to keep the SVG files
-  alongside the protocol file or add them to the resource library.
+- **Shapes are resources of the protocol.** Each SVG file is saved in the
+  protocol file with its other resources, so you don't need to keep the
+  original files alongside it. The same image can be used by more than one
+  node type.
 - **Participants still need the label.** A drawing shows what kind of thing a
   node is, and the label says which one. Leave enough room for it.
 - **Selection and other states are shown around the shape.** When a node is

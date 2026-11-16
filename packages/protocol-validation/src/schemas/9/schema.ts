@@ -38,7 +38,6 @@ export * from './common/index.ts';
 export * from './entity-attribute-reference.ts';
 export * from './filters/index.ts';
 export * from './interface-owned-options.ts';
-export * from './node-shape-svg.ts';
 export * from './stages/index.ts';
 export * from './variables/index.ts';
 
@@ -1567,6 +1566,33 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
             code: 'custom' as const,
             message: `Shape "${reference}" refers to a custom shape "${shapeId}" that node type "${nodeDef.name}" does not define`,
             path,
+          });
+        }
+      }
+
+      for (const [shapeId, customShape] of Object.entries(
+        nodeDef.customShapes ?? {},
+      )) {
+        const assetPath = [
+          'codebook',
+          'node',
+          nodeType,
+          'customShapes',
+          shapeId,
+          'asset',
+        ];
+        const asset = protocol.assetManifest?.[customShape.asset];
+        if (!asset) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Custom shape "${customShape.name}" uses the image "${customShape.asset}", which is not an asset in the manifest.`,
+            path: assetPath,
+          });
+        } else if (asset.type !== 'image') {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Custom shape "${customShape.name}" must use an 'image' asset, but "${customShape.asset}" is of type "${asset.type}".`,
+            path: assetPath,
           });
         }
       }

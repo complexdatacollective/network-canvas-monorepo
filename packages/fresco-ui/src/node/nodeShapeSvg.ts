@@ -1,8 +1,8 @@
 import { SaxesParser, type SaxesAttributeNS, type SaxesTagNS } from 'saxes';
 
-import { NodeColorSequence } from './color-reference.ts';
+import { NodeColorSequence } from '@codaco/protocol-validation';
 
-export const NodeShapeColorTokens = [
+const NodeShapeColorTokens = [
   'node-color',
   'node-color-dark',
   ...NodeColorSequence,
@@ -13,7 +13,6 @@ export const NodeShapeColorTokens = [
   'accent',
   'selected',
 ] as const;
-export type NodeShapeColorToken = (typeof NodeShapeColorTokens)[number];
 
 export const MAX_NODE_SHAPE_SVG_LENGTH = 50_000;
 

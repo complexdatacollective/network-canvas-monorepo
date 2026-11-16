@@ -39,8 +39,8 @@ const renderShape = (option: OptionMappingOption) =>
   isShape(option.value) ? (
     <Node
       presentational
-      label=""
       shape={option.value}
+      label=""
       color="node-color-seq-1"
       size="xxs"
       className="size-11"

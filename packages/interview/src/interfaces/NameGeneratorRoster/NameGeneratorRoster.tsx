@@ -24,10 +24,11 @@ import type {
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
 import Icon from '@codaco/fresco-ui/Icon';
-import Node, { resolveNodeShapeReference } from '@codaco/fresco-ui/Node';
+import Node from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { resolveNodeShapeReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -40,6 +41,7 @@ import Panel from '../../components/Panel';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { useCustomShapeSvgs } from '../../contexts/CustomShapeSvgsContext';
 import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useNodeLimits from '../../hooks/useNodeLimits';
@@ -151,6 +153,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   const dropNodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
+  const shapeSvgs = useCustomShapeSvgs();
 
   const { status: itemsStatus, items, excludeItems } = useItems(props);
 
@@ -426,6 +429,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
               ? resolveNodeShape(
                   nodeTypeDefinition,
                   item.data[entityAttributesProperty],
+                  shapeSvgs,
                 )
               : undefined
           }
@@ -545,6 +549,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     nodeShape={resolveNodeShapeReference(
                       nodeTypeDefinition?.shape.default,
                       nodeTypeDefinition?.customShapes,
+                      shapeSvgs,
                     )}
                     message={intl.formatMessage(runtimeMessages.dropToRemove, {
                       subject,

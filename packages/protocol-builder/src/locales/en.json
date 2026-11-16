@@ -1311,6 +1311,10 @@
     "defaultMessage": "This change is not something the codebook can hold, so nothing was saved. Check what you entered and try again.",
     "description": "Refusal shown in a codebook editor when the protocol refused the change because it is not shaped like the part of the codebook it was written to."
   },
+  "protocolBuilder.compoundFailure.promotionFailed": {
+    "defaultMessage": "The files you imported could not be saved with this change, so nothing was saved and your changes are still here. Try saving again.",
+    "description": "Refusal shown in a codebook editor when the host would not take the files imported while it was open, such as an SVG image added as a custom node shape, so neither they nor the change were saved. The researcher’s unsaved work is still on screen."
+  },
   "protocolBuilder.compoundFailure.protocolGone": {
     "defaultMessage": "This protocol is no longer open, so nothing was saved. Reload it and try again.",
     "description": "Refusal shown in a codebook editor when the application it is running in no longer holds the protocol the change was written to."
@@ -1475,21 +1479,29 @@
     "defaultMessage": "Choose the video this block plays.",
     "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
   },
-  "protocolBuilder.customShapes.addShapes": {
-    "defaultMessage": "Add shapes from SVG files",
-    "description": "Button that opens a file chooser for adding custom node shapes. Several SVG files can be chosen at once. SVG is a file format name and is not translated."
+  "protocolBuilder.customShapes.addShape": {
+    "defaultMessage": "Add a shape",
+    "description": "Button that opens the dialog for choosing or importing an SVG image to use as a custom node shape. A custom shape is an SVG image the researcher added to draw nodes of this type."
   },
   "protocolBuilder.customShapes.addedAnnouncement": {
-    "defaultMessage": "{count, plural, one {Added # shape.} other {Added # shapes.}}",
-    "description": "Screen reader announcement after custom node shapes were added from SVG files. count is how many were added."
+    "defaultMessage": "Added the shape {name}.",
+    "description": "Screen reader announcement after a custom node shape was added. name is the name the new shape was given."
+  },
+  "protocolBuilder.customShapes.alreadyAddedAnnouncement": {
+    "defaultMessage": "This image is already the shape {name}, so no new shape was added.",
+    "description": "Screen reader announcement when the researcher chose an SVG image that one of this node type’s custom shapes already uses. Focus moves to that shape’s name instead. name is that shape’s name."
   },
   "protocolBuilder.customShapes.centredLabel": {
-    "defaultMessage": "This file has no label area, so the label will be placed in the center of the shape.",
-    "description": "Notice shown under a custom node shape whose SVG file does not say where the node’s label goes."
+    "defaultMessage": "This image has no label area, so the label will be placed in the center of the shape.",
+    "description": "Notice shown under a custom node shape whose SVG image does not say where the node’s label goes."
   },
   "protocolBuilder.customShapes.guidance": {
     "defaultMessage": "Add your own shapes for this node type from SVG files. To choose where the label goes, draw a rectangle with the id {labelAreaId}; its fill sets the color of the label. To draw part of a shape in this node type’s color, use {nodeColorToken} as its fill or stroke.",
     "description": "Guidance under the custom shapes heading in the node type editor. labelAreaId is the literal text label-area and nodeColorToken is the literal text var(--node-color), both shown as code and never translated. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.customShapes.ignoredContent": {
+    "defaultMessage": "Some content in this image cannot be used in a node shape and will not be drawn: {removed}.",
+    "description": "Notice shown under a custom node shape made from an SVG image already stored in the protocol. The image is kept as it is, but the listed content is skipped when a node is drawn. removed is a list of the kinds of content, such as \"scripts, embedded images and filters\"."
   },
   "protocolBuilder.customShapes.inUse": {
     "defaultMessage": "{usage, select, default {Used as the default shape. Choose another default shape to remove it.} mapping {Used in the shape mapping. Choose other shapes there to remove it.} other {Used as the default shape and in the shape mapping. Choose other shapes in both places to remove it.}}",
@@ -1539,13 +1551,17 @@
     "defaultMessage": "Remove shape {name}",
     "description": "Accessible name of the button that removes one custom node shape from the node type. name is the shape’s name."
   },
+  "protocolBuilder.customShapes.removedAnnouncement": {
+    "defaultMessage": "Removed the shape {name}. Its image stays in the protocol’s resources.",
+    "description": "Screen reader announcement after a custom node shape was removed from the node type. The SVG image it was drawn from is not deleted. name is the removed shape’s name."
+  },
   "protocolBuilder.customShapes.removedContent": {
     "defaultMessage": "Some content in this file cannot be used in a node shape and was left out: {removed}.",
     "description": "Notice shown under a custom node shape that was added from an SVG file after unsupported content was removed from it. removed is a list of the kinds of content, such as \"scripts, embedded images and filters\"."
   },
   "protocolBuilder.customShapes.removedKind": {
     "defaultMessage": "{kind, select, scripts {scripts} images {embedded images} styles {unsupported styles} filters {filters} animations {animations} links {links and references to other files} colors {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}",
-    "description": "Name of one kind of content removed from an SVG file added as a custom node shape. Used as one item of a list in the removedContent notice, so write it as a phrase that fits there."
+    "description": "Name of one kind of content in an SVG image that a custom node shape cannot use. Used as one item of a list in the removedContent and ignoredContent notices, so write it as a phrase that fits there."
   },
   "protocolBuilder.customShapes.tooLarge": {
     "defaultMessage": "\"{file}\" is too large. A shape can be at most {limit, number} characters long.",
@@ -1553,7 +1569,7 @@
   },
   "protocolBuilder.customShapes.unreadable": {
     "defaultMessage": "\"{file}\" could not be read. Choose it again.",
-    "description": "Shown when the browser could not read a file the researcher chose as a custom node shape. file is the name of the file."
+    "description": "Shown when the file or stored image the researcher chose as a custom node shape could not be read. file is the name of the file or image."
   },
   "protocolBuilder.dialogForm.configurationPane": {
     "defaultMessage": "Configuration",
@@ -6367,6 +6383,10 @@
     "defaultMessage": "Node availability",
     "description": "Names this section of the stage editor, in the editor’s outline and to assistive technology. A node is one member of the network the participant is building; this section decides whether one they have already been asked about stays available to be asked about again."
   },
+  "protocolBuilder.resourceBrowser.checkingShape": {
+    "defaultMessage": "Checking the image…",
+    "description": "Announced while an SVG image the researcher chose as a custom node shape is read and checked."
+  },
   "protocolBuilder.resourceBrowser.emptyState": {
     "defaultMessage": "There are no resources to choose from yet.",
     "description": "Shown in place of the resource list when the protocol holds none of the kind this field accepts and none has been imported yet."
@@ -6386,6 +6406,10 @@
   "protocolBuilder.resourceBrowser.retryLibrary": {
     "defaultMessage": "Try loading the resource list again",
     "description": "Button beside a failure notice, which asks the host again for the list of resources. Named rather than generic because several parts of the dialog can be failing at once."
+  },
+  "protocolBuilder.resourceBrowser.shapeLibraryDescription": {
+    "defaultMessage": "SVG images already saved in this protocol, and any imported since this node type was opened.",
+    "description": "Description under the heading of the resource list when a researcher is choosing an SVG image to use as a node shape, while editing a node type in the codebook."
   },
   "protocolBuilder.resourceFailure.resourceDiscarded": {
     "defaultMessage": "That resource is no longer available: it was discarded while this list was open. Close and reopen the browser to see what there is.",
@@ -6590,6 +6614,26 @@
   "protocolBuilder.resourceKinds.networkSelectAction": {
     "defaultMessage": "Select a data file",
     "description": "Button that opens the picker for a stage field that holds imported participant data, when the field holds none yet."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeBrowserDescription": {
+    "defaultMessage": "Import an SVG file, or choose an SVG image already stored in this protocol. Nodes of this type can then be drawn with it.",
+    "description": "Description under the title of the dialog where a researcher picks or imports the SVG image a custom node shape is drawn from. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeBrowserTitle": {
+    "defaultMessage": "Choose a node shape",
+    "description": "Title of the dialog where a researcher picks or imports the SVG image a custom node shape is drawn from."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeChangeAction": {
+    "defaultMessage": "Change the node shape",
+    "description": "Button that opens the picker for a field that already holds the SVG image a custom node shape is drawn from."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeImportTitle": {
+    "defaultMessage": "Import a shape from an SVG file",
+    "description": "Heading over the file-import area of the dialog for choosing a custom node shape. Only SVG files can be imported there. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeSelectAction": {
+    "defaultMessage": "Select a node shape",
+    "description": "Button that opens the picker for a field that holds the SVG image a custom node shape is drawn from, when the field holds none yet."
   },
   "protocolBuilder.resourceKinds.oversizeFile": {
     "defaultMessage": "That file is too large to import. Files can be up to {size}.",

@@ -129,6 +129,33 @@ describe('collectAssetReferences', () => {
     expect(assetIdsIn(protocol)).not.toContain('Some words about the study.');
   });
 
+  it("finds the images a node type's custom shapes draw with", () => {
+    const hits = collectAssetReferences({
+      schemaVersion: 9,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'custom:star' },
+            customShapes: {
+              star: { name: 'Star', asset: 'star-asset' },
+              moon: { name: 'Moon', asset: 'moon-asset' },
+            },
+          },
+        },
+      },
+      stages: [],
+    });
+
+    expect(
+      Object.fromEntries(hits.map((hit) => [hit.assetId, hit.path.join('.')])),
+    ).toEqual({
+      'moon-asset': 'codebook.node.person.customShapes.moon.asset',
+      'star-asset': 'codebook.node.person.customShapes.star.asset',
+    });
+  });
+
   it('finds nothing in a protocol that names no assets', () => {
     expect(assetIdsIn({ schemaVersion: 8, stages: [] })).toEqual([]);
     expect(assetIdsIn(undefined)).toEqual([]);

@@ -56,6 +56,7 @@ import { ArchitectHandlers } from '../handlers.ts';
 import { makeInProcessClient } from '../inProcessClient.ts';
 import { ProtocolRevisions } from '../protocolRevisions.ts';
 import { ASSETS_SECTION, STAGE_ORDER_SECTION } from '../protocolSections.ts';
+import { ResourceBridge } from '../resourceBridge.ts';
 import { ArchitectHostClient } from '../runtime.ts';
 import { ArchitectHostSession } from '../session.ts';
 
@@ -588,7 +589,11 @@ describe("Architect's in-process protocol-builder host", () => {
       ).pipe(
         Layer.provide(
           Layer.mergeAll(
-            ArchitectHandlers(store, () => OTHER_TAB),
+            ArchitectHandlers(
+              store,
+              () => OTHER_TAB,
+              new ResourceBridge(store),
+            ),
             ArchitectHostSession,
           ),
         ),
@@ -685,6 +690,45 @@ describe("Architect's in-process protocol-builder host", () => {
     // Nothing in the protocol names the bytes any more, which is the condition
     // Architect's own orphan sweep collects them on.
     expect(Object.keys(getAssetManifest(store.getState()))).not.toContain(id);
+  });
+
+  /**
+   * The node type dialog saves through Redux rather than a submit, so the
+   * client hands it the edit's imports to keep once the type is written.
+   */
+  it('keeps the imports an edit adopted when that edit is then discarded', async () => {
+    const store = configureStore({ reducer: rootReducer });
+    store.dispatch(setActiveProtocolId(PROTOCOL_ID));
+    store.dispatch(
+      setActiveProtocol(CurrentProtocolSchema.parse(allInterfaces)),
+    );
+    const architect = createArchitectClient(store, OTHER_TAB);
+    runtimes.push(architect.runtime);
+    const client = {
+      call: architect.adapter.rpcCall,
+      runtime: architect.runtime,
+    };
+    const kept = await importResource(client);
+    const foreign = await importResource(client, OTHER_EDIT);
+
+    expect(
+      architect.adoptStagedResources({ editId: EDIT, resourceIds: [foreign] }),
+    ).toBe(false);
+    expect(
+      architect.adoptStagedResources({ editId: EDIT, resourceIds: [kept] }),
+    ).toBe(true);
+    await client.call('ResourcesDiscard', {
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+    });
+    await client.call('ResourcesDiscard', {
+      protocolId: PROTOCOL_ID,
+      editId: OTHER_EDIT,
+    });
+
+    const manifest = getAssetManifest(store.getState());
+    expect(Object.keys(manifest)).toContain(kept);
+    expect(Object.keys(manifest)).not.toContain(foreign);
   });
 
   /**

@@ -7,15 +7,15 @@ import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
-import CustomShapesField, {
-  customShapesGuidance,
-} from '@codaco/protocol-builder/codebook/components/CustomShapesField';
 import {
   type CustomShapes,
   customShapeUsage,
   isNodeShapeReference,
   readCustomShapes,
 } from '@codaco/protocol-builder/codebook/customShapes';
+import CustomShapesField, {
+  customShapesGuidance,
+} from '@codaco/protocol-builder/fields/CustomShapesField';
 import ShapePickerField from '@codaco/protocol-builder/fields/ShapePickerField';
 import type {
   LocalizedString,

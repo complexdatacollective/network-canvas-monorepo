@@ -10,7 +10,10 @@ import Node, {
   type NodeColorSequence,
   type NodeShapeProp,
 } from '@codaco/fresco-ui/Node';
-import type { NodeShapeReference } from '@codaco/protocol-validation';
+import {
+  type NodeShapeReference,
+  resolveNodeShapeReference,
+} from '@codaco/protocol-validation';
 
 import {
   customShapeReference,
@@ -18,6 +21,7 @@ import {
   isNodeShapeReference,
 } from '../codebook/customShapes.ts';
 import { shapeOptions } from '../codebook/shapeMapping.ts';
+import { useNodeShapeSvgs } from '../codebook/useNodeShapeSvgs.ts';
 
 const messages = defineMessages({
   selectShape: {
@@ -40,20 +44,28 @@ type ShapeTileOption = OptionMappingOption &
 const isNodeColor = (value: string): value is NodeColorSequence =>
   NodeColors.some((color) => color === value);
 
-/** The shapes a node type offers: the built-in ones, then the type's own. */
+/**
+ * The shapes a node type offers: the built-in ones, then the type's own, drawn
+ * from `shapeSvgs` (see `useNodeShapeSvgs`).
+ */
 export const shapeTileOptions = (
   intl: IntlShape,
   customShapes: CustomShapes | undefined,
+  shapeSvgs: Readonly<Record<string, string>>,
 ): ShapeTileOption[] =>
   [
     ...shapeOptions(intl).map((option) => ({ ...option, shape: option.value })),
-    ...Object.entries(customShapes ?? {}).map(([shapeId, custom], index) => ({
-      value: customShapeReference(shapeId),
-      label:
-        custom.name.trim() ||
-        intl.formatMessage(messages.unnamedShape, { position: index + 1 }),
-      shape: { svg: custom.svg },
-    })),
+    ...Object.entries(customShapes ?? {}).map(([shapeId, custom], index) => {
+      const value = customShapeReference(shapeId);
+      return {
+        value,
+        label:
+          custom.name.trim() ||
+          intl.formatMessage(messages.unnamedShape, { position: index + 1 }),
+        shape:
+          resolveNodeShapeReference(value, customShapes, shapeSvgs) ?? 'circle',
+      };
+    }),
   ].map((option) => ({
     ...option,
     ariaLabel: intl.formatMessage(messages.selectShape, {
@@ -62,24 +74,23 @@ export const shapeTileOptions = (
   }));
 
 /**
- * One shape as a tile shows it: drawn in the type's own colour, with no
- * label, so a custom shape's label plate is left out rather than shown empty.
+ * One shape as a tile shows it: drawn as a node of the type will be, in the
+ * type's own colour. The label is left empty: a tile is too small to read one,
+ * though a shape's label plate is still drawn.
  */
 export function ShapeTile({
   shape,
   nodeColor = 'node-color-seq-1',
 }: Readonly<{ shape: NodeShapeProp; nodeColor?: string }>) {
   return (
-    <span className="block [&_[data-node-shape-label-plate]]:hidden">
-      <Node
-        presentational
-        label=""
-        shape={shape}
-        color={isNodeColor(nodeColor) ? nodeColor : 'node-color-seq-1'}
-        size="xxs"
-        className="size-11"
-      />
-    </span>
+    <Node
+      presentational
+      shape={shape}
+      label=""
+      color={isNodeColor(nodeColor) ? nodeColor : 'node-color-seq-1'}
+      size="xxs"
+      className="size-11"
+    />
   );
 }
 
@@ -116,7 +127,11 @@ export default function ShapePickerField({
   ...rest
 }: ShapePickerFieldProps) {
   const intl = useAppIntl();
-  const options = shapeTileOptions(intl, customShapes);
+  const options = shapeTileOptions(
+    intl,
+    customShapes,
+    useNodeShapeSvgs(customShapes),
+  );
 
   return (
     <OptionMappingField

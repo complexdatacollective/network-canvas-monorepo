@@ -66,6 +66,28 @@ vi.mock('~/selectors/protocol', () => ({
   getLocalization: () => undefined,
 }));
 
+// The dialog hosts the protocol builder for the custom shapes field; an
+// in-memory host stands in for the Architect client behind it.
+vi.mock('react-redux', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-redux')>()),
+  useStore: () => ({}),
+}));
+vi.mock('~/ducks/modules/app', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/ducks/modules/app')>()),
+  getActiveProtocolId: () => 'protocol-1',
+}));
+vi.mock('~/protocolBuilder/useArchitectClient', async () => {
+  const { createInMemoryHost } =
+    await import('@codaco/protocol-builder/testing/host/createInMemoryHost');
+  const host = createInMemoryHost({ sections: {} });
+  return {
+    useArchitectClient: () => ({
+      adapter: host.adapter,
+      adoptStagedResources: () => true,
+    }),
+  };
+});
+
 vi.mock('~/ducks/hooks', () => ({
   useAppDispatch: () => vi.fn(),
   useAppSelector: (selector: (state: unknown) => unknown) => selector({}),

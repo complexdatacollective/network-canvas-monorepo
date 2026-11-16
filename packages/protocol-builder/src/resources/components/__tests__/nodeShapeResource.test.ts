@@ -1,0 +1,94 @@
+import { Redacted } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { isValidNodeShapeSvg } from '@codaco/fresco-ui/node/nodeShapeSvg';
+
+import type { ResourceDescriptor } from '../../types.ts';
+import {
+  checkNodeShapeSvg,
+  isNodeShapeResource,
+  isOversizeShapeFile,
+} from '../nodeShapeResource.ts';
+
+const HOME_SVG =
+  '<svg viewBox="0 0 100 100"><path d="M10 50 L50 10 L90 50 V90 H10 Z" fill="var(--node-color, #e04f6d)"/><rect id="label-area" x="20" y="55" width="60" height="30" fill="#ffffff"/></svg>';
+
+const messageId = (encoded: string) =>
+  /protocolBuilder\.[A-Za-z.]+/.exec(encoded)?.[0];
+
+const descriptor = (
+  overrides: Partial<Pick<ResourceDescriptor, 'kind'>> &
+    Readonly<{ name: string; source?: string }>,
+): ResourceDescriptor => ({
+  id: 'asset-1',
+  kind: overrides.kind ?? 'image',
+  name: Redacted.make(overrides.name),
+  status: 'committed',
+  ...(overrides.source === undefined
+    ? {}
+    : { source: Redacted.make(overrides.source) }),
+});
+
+describe('checkNodeShapeSvg', () => {
+  it('accepts a clean file in its canonical form', () => {
+    const result = checkNodeShapeSvg('home.svg', HOME_SVG);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(isValidNodeShapeSvg(result.svg)).toBe(true);
+    expect(result.removed).toEqual([]);
+    expect(result.centredLabel).toBe(false);
+  });
+
+  it('removes unsupported content and says what kind', () => {
+    const result = checkNodeShapeSvg(
+      'risky.svg',
+      '<svg viewBox="0 0 10 10"><script>alert(1)</script><style>.a{}</style><filter id="f"><feGaussianBlur/></filter><circle cx="5" cy="5" r="4" onclick="x()"/></svg>',
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.removed).toEqual(['scripts', 'styles', 'filters']);
+    expect(result.centredLabel).toBe(true);
+    expect(result.svg).not.toContain('script');
+    expect(result.svg).not.toContain('onclick');
+    expect(isValidNodeShapeSvg(result.svg)).toBe(true);
+  });
+
+  it('explains why a file cannot be used at all', () => {
+    const failure = (source: string) => {
+      const result = checkNodeShapeSvg('x.svg', source);
+      return result.success ? undefined : messageId(result.error);
+    };
+    expect(failure('not an image')).toBe('protocolBuilder.customShapes.notSvg');
+    expect(failure('<svg><circle r="2"/></svg>')).toBe(
+      'protocolBuilder.customShapes.noViewBox',
+    );
+    expect(failure('<svg viewBox="0 0 10 10"><script/></svg>')).toBe(
+      'protocolBuilder.customShapes.nothingToDraw',
+    );
+    expect(
+      failure(
+        `<svg viewBox="0 0 10 10"><path d="${'M0 0 '.repeat(12_000)}"/></svg>`,
+      ),
+    ).toBe('protocolBuilder.customShapes.tooLarge');
+  });
+});
+
+describe('isOversizeShapeFile', () => {
+  it('refuses only files that cannot fit the limit', () => {
+    expect(isOversizeShapeFile(1024)).toBe(false);
+    expect(isOversizeShapeFile(10_000_000)).toBe(true);
+  });
+});
+
+describe('isNodeShapeResource', () => {
+  it('offers SVG images and nothing else', () => {
+    expect(isNodeShapeResource(descriptor({ name: 'home.svg' }))).toBe(true);
+    expect(
+      isNodeShapeResource(descriptor({ name: 'Home', source: 'abc.svg' })),
+    ).toBe(true);
+    expect(isNodeShapeResource(descriptor({ name: 'photo.png' }))).toBe(false);
+    expect(
+      isNodeShapeResource(descriptor({ name: 'home.svg', kind: 'video' })),
+    ).toBe(false);
+  });
+});

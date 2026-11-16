@@ -1,13 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import {
-  isValidNodeShapeSvg,
-  parseNodeShapeSvg,
-} from '@codaco/protocol-validation';
-
-import Node, { resolveNodeShapeReference } from './Node';
+import Node from './Node';
 import { NodeShapeArtwork } from './node/NodeShapeArtwork';
+import { isValidNodeShapeSvg, parseNodeShapeSvg } from './node/nodeShapeSvg';
 
 const houseSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--node-color)"/><stop offset="1" stop-color="var(--node-color-dark)"/></linearGradient><clipPath id="clip"><rect width="100" height="100"/></clipPath></defs><path d="M50 4 L95 42 L95 96 L5 96 L5 42 Z" fill="url(#shade)" clip-path="url('#clip')" stroke-width="2"/><use href="#roof"/><rect id="label-area" x="16" y="46" width="68" height="40" fill="#ffffff"/></svg>`;
 
@@ -292,28 +288,6 @@ describe('NodeShapeArtwork label plate', () => {
   });
 });
 
-describe('resolveNodeShapeReference', () => {
-  const customShapes = { home: { svg: houseSvg } };
-
-  it('passes built-in shapes through', () => {
-    expect(resolveNodeShapeReference('diamond', customShapes)).toBe('diamond');
-    expect(resolveNodeShapeReference(undefined, customShapes)).toBeUndefined();
-  });
-
-  it('resolves a custom reference to its svg', () => {
-    expect(resolveNodeShapeReference('custom:home', customShapes)).toEqual({
-      svg: houseSvg,
-    });
-  });
-
-  it('falls back to a circle for a reference the node type does not define', () => {
-    expect(resolveNodeShapeReference('custom:gone', customShapes)).toBe(
-      'circle',
-    );
-    expect(resolveNodeShapeReference('custom:home', undefined)).toBe('circle');
-  });
-});
-
 describe('Node built-in shapes', () => {
   it.each(['circle', 'square', 'diamond'] as const)(
     'renders the %s shape as before',
@@ -329,11 +303,4 @@ describe('Node built-in shapes', () => {
       ).toMatchSnapshot();
     },
   );
-});
-
-describe('resolveNodeShapeReference lookups', () => {
-  it('draws a circle for an id that only exists on the prototype', () => {
-    expect(resolveNodeShapeReference('custom:constructor', {})).toBe('circle');
-    expect(resolveNodeShapeReference('custom:__proto__', {})).toBe('circle');
-  });
 });

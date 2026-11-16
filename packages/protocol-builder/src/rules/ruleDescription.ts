@@ -1,15 +1,13 @@
 import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
-  type NodeShapeProp,
+  type Codebook,
+  type ColorReference,
+  type FilterOperator,
+  type LocaleTag,
+  type VariableType,
   resolveNodeShapeReference,
-} from '@codaco/fresco-ui/Node';
-import type {
-  Codebook,
-  ColorReference,
-  FilterOperator,
-  LocaleTag,
-  VariableType,
+  type ResolvedNodeShape,
 } from '@codaco/protocol-validation';
 
 import {
@@ -72,7 +70,7 @@ export type RuleDescriptionEntity =
       typeId: string | undefined;
       label: string;
       color: ColorReference;
-      shape: NodeShapeProp | undefined;
+      shape: ResolvedNodeShape | undefined;
       missing: boolean;
     }>
   | Readonly<{
@@ -261,6 +259,12 @@ export type DescribeRuleInput = Readonly<{
    * committing a second copy of one.
    */
   duplicateIds?: ReadonlySet<string>;
+  /**
+   * The SVG text of the codebook's custom shape assets, keyed by asset id, so
+   * a node type drawn in one of its own shapes is drawn in it. Without it such
+   * a type is drawn as a circle.
+   */
+  shapeSvgs?: Readonly<Record<string, string>>;
   /**
    * Whether the rule set holding this rule may compare an encrypted
    * attribute's answers, rather than only check whether it is answered.
@@ -603,6 +607,7 @@ export function describeRule({
   codebook,
   targets,
   duplicateIds,
+  shapeSvgs = {},
   allowEncryptedAttributes = false,
   intl = englishIntl,
   localization,
@@ -665,7 +670,13 @@ export function describeRule({
       : undefined;
   const hasAttributeKey = Object.hasOwn(options, 'attribute');
 
-  const entity = describeEntity(codebook, target, entityTypeId, intl);
+  const entity = describeEntity(
+    codebook,
+    target,
+    entityTypeId,
+    shapeSvgs,
+    intl,
+  );
   if (entity?.missing === true) {
     problems.push({
       code: 'missingEntityType',
@@ -966,6 +977,7 @@ function describeEntity(
   codebook: Readonly<Codebook>,
   target: RuleTargetType | undefined,
   entityTypeId: string | undefined,
+  shapeSvgs: Readonly<Record<string, string>>,
   intl: IntlShape,
 ): RuleDescriptionEntity | undefined {
   if (target === undefined) return undefined;
@@ -1000,6 +1012,7 @@ function describeEntity(
     shape: resolveNodeShapeReference(
       definition?.shape.default,
       definition?.customShapes,
+      shapeSvgs,
     ),
     missing: definition === undefined,
   });

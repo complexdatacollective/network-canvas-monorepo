@@ -30,6 +30,7 @@ import NodeDrawer from '../../components/NodeDrawer';
 import PassphraseEntry from '../../components/PassphraseEntry';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { useCustomShapeSvgs } from '../../contexts/CustomShapeSvgsContext';
 import {
   useDynamicValueSources,
   withDynamicValueEntities,
@@ -303,6 +304,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
+  const shapeSvgs = useCustomShapeSvgs();
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const intl = useAppIntl();
   const { unlocked, requirePassphrase, lockedNotice } = usePassphrase();
@@ -452,6 +454,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
                 ? resolveNodeShape(
                     nodeTypeDefinition,
                     node[entityAttributesProperty],
+                    shapeSvgs,
                   )
                 : undefined
             }

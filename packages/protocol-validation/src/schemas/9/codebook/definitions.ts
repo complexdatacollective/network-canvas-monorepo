@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { CodebookNameSchema } from '@codaco/shared-consts';
 
+import { assetReference } from '../asset-reference.ts';
 import {
   EdgeColorReferenceSchema,
   NodeColorReferenceSchema,
@@ -9,10 +10,6 @@ import {
   type NodeColorReference,
 } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import {
-  MAX_NODE_SHAPE_SVG_LENGTH,
-  parseNodeShapeSvg,
-} from '../node-shape-svg.ts';
 import {
   EdgeVariablesSchema,
   EgoVariablesSchema,
@@ -43,24 +40,41 @@ export const isCustomShapeReference = (
 export const getCustomShapeId = (reference: `custom:${string}`) =>
   reference.slice(CUSTOM_SHAPE_PREFIX.length);
 
+/** What a shape reference resolves to: a built-in shape, or the SVG text of a
+ *  custom shape's drawing. */
+export type ResolvedNodeShape = NodeShape | { svg: string };
+
+/** Resolves a codebook shape reference. `customShapes` is the node type's
+ *  codebook entries, each naming the asset that holds its drawing, and
+ *  `shapeSvgs` maps those asset ids to the drawing's SVG text. A `custom:<id>`
+ *  that the node type does not define, or whose drawing is not in `shapeSvgs`,
+ *  falls back to 'circle'. */
+export function resolveNodeShapeReference(
+  reference: NodeShapeReference | undefined,
+  customShapes: Readonly<Record<string, { asset: string }>> | undefined,
+  shapeSvgs: Readonly<Record<string, string>>,
+): ResolvedNodeShape | undefined {
+  if (reference === undefined) return undefined;
+  if (!isCustomShapeReference(reference)) return reference;
+  const id = getCustomShapeId(reference);
+  // Own entries only: an id such as `constructor` must not reach the
+  // prototype.
+  const custom =
+    customShapes && Object.hasOwn(customShapes, id)
+      ? customShapes[id]
+      : undefined;
+  const svg =
+    custom && Object.hasOwn(shapeSvgs, custom.asset)
+      ? shapeSvgs[custom.asset]
+      : undefined;
+  return typeof svg === 'string' ? { svg } : 'circle';
+}
+
 const CustomNodeShapeSchema = z.strictObject({
   name: z.string().refine((value) => value.trim() !== '', {
     message: 'A custom shape name cannot be blank',
   }),
-  svg: z
-    .string()
-    .max(MAX_NODE_SHAPE_SVG_LENGTH, {
-      message: `The shape's SVG cannot be longer than ${MAX_NODE_SHAPE_SVG_LENGTH} characters`,
-    })
-    .superRefine((svg, ctx) => {
-      const [issue] = parseNodeShapeSvg(svg).issues;
-      if (issue) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `The shape's SVG image is not supported (${issue.code}: ${issue.detail})`,
-        });
-      }
-    }),
+  asset: assetReference(),
 });
 export type CustomNodeShape = z.infer<typeof CustomNodeShapeSchema>;
 

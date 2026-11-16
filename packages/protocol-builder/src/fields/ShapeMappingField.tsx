@@ -7,6 +7,7 @@ import OptionMappingField, {
 } from '@codaco/fresco-ui/form/fields/OptionMappingField';
 
 import type { CustomShapes } from '../codebook/customShapes.ts';
+import { useNodeShapeSvgs } from '../codebook/useNodeShapeSvgs.ts';
 import { DOCS_BASE_URL } from '../interfaces/documentation.ts';
 import { ShapeTile, shapeTileOptions } from './ShapePickerField.tsx';
 
@@ -58,7 +59,11 @@ export default function ShapeMappingField({
   ...rest
 }: ShapeMappingFieldProps) {
   const intl = useAppIntl();
-  const options = shapeTileOptions(intl, customShapes);
+  const options = shapeTileOptions(
+    intl,
+    customShapes,
+    useNodeShapeSvgs(customShapes),
+  );
   const mapped = new Set((Array.isArray(value) ? value : []).map((e) => e.id));
 
   return (

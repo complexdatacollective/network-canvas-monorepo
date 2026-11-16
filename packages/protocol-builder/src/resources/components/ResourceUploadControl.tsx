@@ -22,6 +22,13 @@ import {
   type StageUploadRequest,
 } from '../types.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
+import {
+  checkNodeShapeSvg,
+  isOversizeShapeFile,
+  type NodeShapeNotice,
+  notSvgMessage,
+  oversizeShapeFileMessage,
+} from './nodeShapeResource.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   acceptedExtensions,
@@ -112,7 +119,14 @@ async function importFile(
 export type ResourceUploadControlProps = Readonly<{
   /** Which kinds this control will accept, and what it stages them as. */
   kind: Exclude<ResourcePickerKind, 'apikey'>;
-  onStaged: (descriptor: ResourceDescriptor) => void;
+  /**
+   * Called with the staged resource. A node shape picker also says what was
+   * taken out of the SVG on the way in.
+   */
+  onStaged: (
+    descriptor: ResourceDescriptor,
+    nodeShape?: NodeShapeNotice,
+  ) => void;
   /**
    * Reports whether this control is holding work a dismissal would lose.
    *
@@ -215,6 +229,11 @@ export default function ResourceUploadControl({
         setReading(false);
         return;
       }
+      if (kind === 'nodeShape' && isOversizeShapeFile(file.size)) {
+        setRejected(oversizeShapeFileMessage(file.name));
+        setReading(false);
+        return;
+      }
 
       let bytes: Uint8Array;
       try {
@@ -232,7 +251,36 @@ export default function ResourceUploadControl({
       }
       if (!claim.current()) return;
 
-      const contentType = contentTypeForFile(file.name, file.type);
+      let contentType = contentTypeForFile(file.name, file.type);
+      let nodeShape: NodeShapeNotice | undefined;
+
+      // The SVG is checked here and stored in the cleaned form a node draws,
+      // so the protocol never holds a shape the interview would refuse.
+      if (kind === 'nodeShape') {
+        let text: string;
+        try {
+          text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch {
+          setRejected(notSvgMessage(file.name));
+          setReading(false);
+          return;
+        }
+        const checked = checkNodeShapeSvg(file.name, text);
+        if (!checked.success) {
+          setRejected(checked.error);
+          setReading(false);
+          return;
+        }
+        // Copied into this realm's Uint8Array: an encoder's output can come
+        // from another one, which the contract's bytes schema refuses.
+        bytes = Uint8Array.from(new TextEncoder().encode(checked.svg));
+        contentType = 'image/svg+xml';
+        nodeShape = {
+          origin: 'imported',
+          removed: checked.removed,
+          centredLabel: checked.centredLabel,
+        };
+      }
 
       // Read here, before anything is staged, because a host only has to hold
       // a roster's bytes and need not read them: a character no export can
@@ -283,7 +331,7 @@ export default function ResourceUploadControl({
               name: Redacted.value(descriptor.name),
             }),
           );
-          onStaged(descriptor);
+          onStaged(descriptor, nodeShape);
         },
         // The import landed with nothing left to hand it to: another file was
         // chosen, or the browser was closed. No field will ever name it, so

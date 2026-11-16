@@ -5,12 +5,8 @@ import {
   type CustomNodeShape,
   getCustomShapeId,
   isCustomShapeReference,
-  MAX_NODE_SHAPE_SVG_LENGTH,
   type NodeShapeReference,
-  type NodeShapeSvgIssue,
   NodeShapes,
-  parseNodeShapeSvg,
-  serializeNodeShapeSvg,
 } from '@codaco/protocol-validation';
 
 export type CustomShapes = Readonly<Record<string, CustomNodeShape>>;
@@ -50,39 +46,6 @@ const messages = defineMessages({
     description:
       'Refusal shown under the shape mapping of the node type editor when one of its rows names a custom shape the node type no longer has.',
   },
-  notSvg: {
-    id: 'protocolBuilder.customShapes.notSvg',
-    defaultMessage: '"{file}" is not an SVG image.',
-    description:
-      'Shown when a file the researcher chose as a custom node shape cannot be read as an SVG image. file is the name of the file. SVG is a file format name and is not translated.',
-  },
-  noViewBox: {
-    id: 'protocolBuilder.customShapes.noViewBox',
-    defaultMessage:
-      '"{file}" has no viewBox, so its size cannot be worked out. Add a viewBox to the svg element, or a numeric width and height, and choose it again.',
-    description:
-      'Shown when an SVG file chosen as a custom node shape does not say how large its drawing is. file is the name of the file. viewBox, width and height are SVG attribute names and svg is an element name: none of them is translated.',
-  },
-  tooLarge: {
-    id: 'protocolBuilder.customShapes.tooLarge',
-    defaultMessage:
-      '"{file}" is too large. A shape can be at most {limit, number} characters long.',
-    description:
-      'Shown when an SVG file chosen as a custom node shape is longer than the limit. file is the name of the file; limit is the largest number of characters a shape may have.',
-  },
-  nothingToDraw: {
-    id: 'protocolBuilder.customShapes.nothingToDraw',
-    defaultMessage:
-      '"{file}" has nothing that can be drawn once unsupported content is removed.',
-    description:
-      'Shown when an SVG file chosen as a custom node shape contains no drawing that a node shape can use. file is the name of the file.',
-  },
-  unreadable: {
-    id: 'protocolBuilder.customShapes.unreadable',
-    defaultMessage: '"{file}" could not be read. Choose it again.',
-    description:
-      'Shown when the browser could not read a file the researcher chose as a custom node shape. file is the name of the file.',
-  },
 });
 
 const CUSTOM_REFERENCE_PATTERN = /^custom:[A-Za-z0-9_-]+$/;
@@ -102,15 +65,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * The custom shapes a stored node type carries, read leniently: an entry that
- * is not a name and an SVG is not one this editor can show or keep.
+ * is not a name and an asset id is not one this editor can show or keep.
  */
 export const readCustomShapes = (value: unknown): CustomShapes | undefined => {
   if (!isRecord(value)) return undefined;
   const entries = Object.entries(value).flatMap(([id, shape]) =>
     isRecord(shape) &&
     typeof shape.name === 'string' &&
-    typeof shape.svg === 'string'
-      ? [[id, { name: shape.name, svg: shape.svg }] as const]
+    typeof shape.asset === 'string'
+      ? [[id, { name: shape.name, asset: shape.asset }] as const]
       : [],
   );
   return Object.fromEntries(entries);
@@ -216,131 +179,7 @@ export const mappedShapesIssue = (
     ? createMessageError(messages.missingMappedShape)
     : undefined;
 
-/** The kinds of content a shape's file can lose on the way in. */
-export type RemovedContentKind =
-  | 'scripts'
-  | 'images'
-  | 'styles'
-  | 'filters'
-  | 'animations'
-  | 'links'
-  | 'colors'
-  | 'labelArea'
-  | 'other';
-
-const ELEMENT_KINDS: Readonly<Record<string, RemovedContentKind>> = {
-  script: 'scripts',
-  image: 'images',
-  foreignObject: 'images',
-  style: 'styles',
-  filter: 'filters',
-  animate: 'animations',
-  animateMotion: 'animations',
-  animateTransform: 'animations',
-  set: 'animations',
-  a: 'links',
-};
-
-const elementKind = (detail: string): RemovedContentKind => {
-  const tag = /^<([^>\s]+)>$/.exec(detail)?.[1] ?? '';
-  if (tag.startsWith('fe')) return 'filters';
-  return ELEMENT_KINDS[tag] ?? 'other';
-};
-
-const ISSUE_KINDS: Readonly<
-  Record<NodeShapeSvgIssue['code'], (detail: string) => RemovedContentKind>
-> = {
-  'unsupported-element': elementKind,
-  // Event handler attributes (onload, onclick) are scripts.
-  'unsupported-attribute': (detail) =>
-    /^on/i.test(detail) ? 'scripts' : 'other',
-  'unsupported-style': () => 'styles',
-  'unsafe-value': () => 'links',
-  'unknown-token': () => 'colors',
-  'invalid-label-area': () => 'labelArea',
-  'not-xml': () => 'other',
-  'no-svg-root': () => 'other',
-  'no-view-box': () => 'other',
-  'too-long': () => 'other',
-  'empty': () => 'other',
-};
-
-const issueKind = ({ code, detail }: NodeShapeSvgIssue) =>
-  ISSUE_KINDS[code](detail);
-
-const KIND_ORDER: readonly RemovedContentKind[] = [
-  'scripts',
-  'images',
-  'styles',
-  'filters',
-  'animations',
-  'links',
-  'colors',
-  'labelArea',
-  'other',
-];
-
-export type ImportedCustomShape = Readonly<{
-  shape: CustomNodeShape;
-  removed: readonly RemovedContentKind[];
-  /** The file declared no label area, so the label sits in the centre. */
-  centredLabel: boolean;
-}>;
-
-export type CustomShapeImport =
-  | Readonly<{ success: true; imported: ImportedCustomShape }>
-  | Readonly<{ success: false; error: string }>;
-
-/**
- * A file's text as a custom shape: parsed, cleaned of what a node shape may
- * not hold, and stored in its canonical, safe form.
- */
-export const importCustomShape = (
-  name: string,
-  file: string,
-  source: string,
-): CustomShapeImport => {
-  const result = parseNodeShapeSvg(source);
-  if (!result.success) {
-    const codes = new Set(result.issues.map((issue) => issue.code));
-    const error = codes.has('too-long')
-      ? createMessageError(messages.tooLarge, {
-          file,
-          limit: MAX_NODE_SHAPE_SVG_LENGTH,
-        })
-      : codes.has('no-view-box')
-        ? createMessageError(messages.noViewBox, { file })
-        : codes.has('empty')
-          ? createMessageError(messages.nothingToDraw, { file })
-          : createMessageError(messages.notSvg, { file });
-    return { success: false, error };
-  }
-  const kinds = new Set(result.issues.map(issueKind));
-  return {
-    success: true,
-    imported: {
-      shape: { name, svg: serializeNodeShapeSvg(result.shape) },
-      removed: KIND_ORDER.filter((kind) => kinds.has(kind)),
-      centredLabel: result.shape.labelRect === undefined,
-    },
-  };
-};
-
-/** A file whose bytes cannot possibly fit the character limit. */
-export const isOversizeShapeFile = (byteLength: number) =>
-  // UTF-8 spends at most four bytes on a character.
-  byteLength > MAX_NODE_SHAPE_SVG_LENGTH * 4;
-
-export const oversizeShapeFileMessage = (file: string) =>
-  createMessageError(messages.tooLarge, {
-    file,
-    limit: MAX_NODE_SHAPE_SVG_LENGTH,
-  });
-
-export const unreadableShapeFileMessage = (file: string) =>
-  createMessageError(messages.unreadable, { file });
-
-/** The name a file suggests for its shape: its own, without the extension. */
+/** The name a resource suggests for its shape: its own, without the extension. */
 export const shapeNameFromFile = (
   fileName: string,
   takenNames: readonly string[],
@@ -355,10 +194,21 @@ export const shapeNameFromFile = (
   return `${base} ${taken.size + 2}`;
 };
 
-/** A short id for a new shape, unused among the type's own. */
+/** The shape that already draws from this resource, if any. */
+export const customShapeForAsset = (
+  shapes: CustomShapes | undefined,
+  asset: string,
+): string | undefined =>
+  Object.entries(shapes ?? {}).find(([, shape]) => shape.asset === asset)?.[0];
+
+/**
+ * A short id for a new shape, unused among the type's own. It starts with a
+ * letter because an all-digit key would sort ahead of the others in the
+ * record, moving the shape to the front of every picker.
+ */
 export const newCustomShapeId = (
   existing: CustomShapes | undefined,
 ): string => {
-  const short = uuid().slice(0, 8);
-  return Object.hasOwn(existing ?? {}, short) ? uuid() : short;
+  const short = `s${uuid().slice(0, 8)}`;
+  return Object.hasOwn(existing ?? {}, short) ? `s${uuid()}` : short;
 };

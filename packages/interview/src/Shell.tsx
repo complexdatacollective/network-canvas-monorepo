@@ -35,6 +35,7 @@ import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndica
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
 import { CurrentStepProvider } from './contexts/CurrentStepContext';
+import { CustomShapeSvgsProvider } from './contexts/CustomShapeSvgsContext';
 import {
   type InterviewCompletion,
   InterviewCompletionProvider,
@@ -942,36 +943,38 @@ const Shell = ({
                 flags={flags}
                 finishConfirmationDescription={finishConfirmationDescription}
               >
-                <InterviewCompletionProvider
-                  // A new payload is a new interview.
-                  key={payload.session.id}
-                  initialCompletion={initialCompletion}
-                  completedActions={completedActions}
-                >
-                  <CurrentStepProvider
-                    currentStep={reviewEntry.currentStep}
-                    onStepChange={onStepChange}
+                <CustomShapeSvgsProvider codebook={payload.protocol.codebook}>
+                  <InterviewCompletionProvider
+                    // A new payload is a new interview.
+                    key={payload.session.id}
+                    initialCompletion={initialCompletion}
+                    completedActions={completedActions}
                   >
-                    <Interview
-                      onExit={onExit}
-                      hideNavigation={hideNavigation}
-                      navigationOrientation={navigationOrientation}
-                      navigationClassnames={navigationClassnames}
-                      allowStageNavigation={
-                        allowStageNavigation &&
-                        (currentStep === undefined ||
-                          onStepChange !== undefined)
-                      }
-                      allowUserScaling={allowUserScaling}
-                      initialTextScale={initialTextScale}
-                      onTextScaleChange={onTextScaleChange}
-                      initialStageOverrideIndex={
-                        reviewEntry.initialStageOverrideIndex
-                      }
-                      reviewMode={reviewMode}
-                    />
-                  </CurrentStepProvider>
-                </InterviewCompletionProvider>
+                    <CurrentStepProvider
+                      currentStep={reviewEntry.currentStep}
+                      onStepChange={onStepChange}
+                    >
+                      <Interview
+                        onExit={onExit}
+                        hideNavigation={hideNavigation}
+                        navigationOrientation={navigationOrientation}
+                        navigationClassnames={navigationClassnames}
+                        allowStageNavigation={
+                          allowStageNavigation &&
+                          (currentStep === undefined ||
+                            onStepChange !== undefined)
+                        }
+                        allowUserScaling={allowUserScaling}
+                        initialTextScale={initialTextScale}
+                        onTextScaleChange={onTextScaleChange}
+                        initialStageOverrideIndex={
+                          reviewEntry.initialStageOverrideIndex
+                        }
+                        reviewMode={reviewMode}
+                      />
+                    </CurrentStepProvider>
+                  </InterviewCompletionProvider>
+                </CustomShapeSvgsProvider>
               </ContractProvider>
             </WritesInFlightProvider>
           </SyncFlushProvider>

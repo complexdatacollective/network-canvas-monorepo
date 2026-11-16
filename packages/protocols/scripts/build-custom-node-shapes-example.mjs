@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// Builds examples/custom-node-shapes/protocol.json from the SVG files in
-// examples/custom-node-shapes/shapes/{illustrated,accented}. The SVG files are
-// the source; the protocol stores each one in the canonical form Architect
-// stores after an upload.
-import { readFile, writeFile } from 'node:fs/promises';
+// Builds examples/custom-node-shapes/protocol.json and its assets/ folder from
+// the SVG files in examples/custom-node-shapes/shapes/{illustrated,accented}.
+// The SVG files are the source; each becomes an image asset, written in the
+// canonical form the node shape parser produces.
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
   parseNodeShapeSvg,
   serializeNodeShapeSvg,
-} from '../../protocol-validation/src/schemas/9/node-shape-svg.ts';
+} from '../../fresco-ui/src/node/nodeShapeSvg.ts';
 
 const exampleDir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -19,6 +19,7 @@ const exampleDir = join(
   'custom-node-shapes',
 );
 const protocolPath = join(exampleDir, 'protocol.json');
+const assetDir = join(exampleDir, 'assets');
 
 const kinds = [
   { value: 'person', label: 'A person' },
@@ -37,6 +38,8 @@ const kinds = [
 
 const en = (text) => ({ en: text });
 
+const assetManifest = {};
+
 async function readShapes(set) {
   const shapes = {};
   for (const { value, label } of kinds) {
@@ -48,9 +51,21 @@ async function readShapes(set) {
         .join('; ');
       throw new Error(`${file} is not a valid node shape SVG (${detail})`);
     }
+    const assetId = `shape-${set}-${value}`;
+    const source = `${assetId}.svg`;
+    await writeFile(
+      join(assetDir, source),
+      `${serializeNodeShapeSvg(result.shape)}\n`,
+    );
+    assetManifest[assetId] = {
+      id: assetId,
+      type: 'image',
+      name: `${value}.svg (${set})`,
+      source,
+    };
     shapes[value] = {
       name: label.replace(/^An? /, '').replace(/^./, (c) => c.toUpperCase()),
-      svg: serializeNodeShapeSvg(result.shape),
+      asset: assetId,
     };
   }
   return shapes;
@@ -130,6 +145,9 @@ function sociogram({ id, type, edge, label }) {
 }
 
 async function buildProtocol() {
+  await rm(assetDir, { recursive: true, force: true });
+  await mkdir(assetDir);
+
   const template = JSON.parse(
     await readFile(
       join(
@@ -146,6 +164,8 @@ async function buildProtocol() {
   const finish = template.stages.find(
     (stage) => stage.type === 'FinishSession' && stage.outcome === 'completed',
   );
+  const illustrated = await readShapes('illustrated');
+  const accented = await readShapes('accented');
 
   return {
     name: 'Custom Node Shapes',
@@ -161,13 +181,13 @@ async function buildProtocol() {
           key: 'world_illustrated',
           name: 'Part of my world',
           color: 'node-color-seq-1',
-          customShapes: await readShapes('illustrated'),
+          customShapes: illustrated,
         }),
         world_accented: nodeType({
           key: 'world_accented',
           name: 'Part of my world (node colour)',
           color: 'node-color-seq-6',
-          customShapes: await readShapes('accented'),
+          customShapes: accented,
         }),
       },
       edge: {
@@ -178,6 +198,7 @@ async function buildProtocol() {
         },
       },
     },
+    assetManifest,
     stages: [
       {
         id: 'welcome',

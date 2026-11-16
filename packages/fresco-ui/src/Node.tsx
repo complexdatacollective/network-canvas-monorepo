@@ -17,12 +17,6 @@ import { useMergeRefs } from 'react-best-merge-refs';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  getCustomShapeId,
-  isCustomShapeReference,
-  type NodeShapeReference,
-  type ParsedNodeShapeSvg,
-} from '@codaco/protocol-validation';
 
 import { useFitText } from './hooks/useFitText';
 import {
@@ -41,6 +35,7 @@ import {
   NodeShapeArtwork,
   toNodeShapeIdPrefix,
 } from './node/NodeShapeArtwork';
+import { type ParsedNodeShapeSvg } from './node/nodeShapeSvg';
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
 import { type CSSVariablesStyle } from './utils/cssVariables';
@@ -48,27 +43,9 @@ import { cva, cx, type VariantProps } from './utils/cva';
 import { withLabelBreakPoints } from './utils/labelBreakPoints';
 
 export type NodeShape = 'circle' | 'square' | 'diamond';
-/** A custom shape: the stored, validated SVG text. */
+/** A custom shape: the SVG text of its drawing. */
 export type NodeCustomShape = { svg: string };
 export type NodeShapeProp = NodeShape | NodeCustomShape;
-
-/** Turns a codebook shape reference into the `shape` prop. A `custom:<id>`
- *  that the node type does not define falls back to 'circle'. */
-export function resolveNodeShapeReference(
-  reference: NodeShapeReference | undefined,
-  customShapes: Record<string, { svg: string }> | undefined,
-): NodeShapeProp | undefined {
-  if (reference === undefined) return undefined;
-  if (!isCustomShapeReference(reference)) return reference;
-  const id = getCustomShapeId(reference);
-  // An own entry only: an id such as `constructor` must not reach the
-  // prototype.
-  const custom =
-    customShapes && Object.hasOwn(customShapes, id)
-      ? customShapes[id]
-      : undefined;
-  return typeof custom?.svg === 'string' ? custom : 'circle';
-}
 
 export type { ActivationSource, NodeDragEndInfo };
 

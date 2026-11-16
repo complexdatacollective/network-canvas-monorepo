@@ -32,6 +32,7 @@ import VariableValidationEditor from '../validation/VariableValidationEditor.tsx
 import type { ValidationMap } from '../variableValidation.ts';
 import { ruleMapPrecheck } from '../variableValidation.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
+import { CodebookEditorHost } from './codebookEditorHost.tsx';
 
 /**
  * The codebook read in the researcher's own language, through both routes the
@@ -56,9 +57,11 @@ const LOCALIZATION: ProtocolLocalization = {
 
 /** The protocol's languages, which the editors' localized fields edit in. */
 const inProtocol = (children: ReactNode) => (
-  <ProtocolLocalizationProvider localization={LOCALIZATION}>
-    {children}
-  </ProtocolLocalizationProvider>
+  <CodebookEditorHost>
+    <ProtocolLocalizationProvider localization={LOCALIZATION}>
+      {children}
+    </ProtocolLocalizationProvider>
+  </CodebookEditorHost>
 );
 
 const context: ProtocolBuilderProtocolContext = {

@@ -1,18 +1,26 @@
 import Icon from '@codaco/fresco-ui/Icon';
-import Node, {
-  type NodeColorSequence,
-  type NodeShapeProp,
-} from '@codaco/fresco-ui/Node';
-import type { ColorReference } from '@codaco/protocol-validation';
+import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
+import {
+  type ColorReference,
+  type NodeShapeReference,
+  resolveNodeShapeReference,
+} from '@codaco/protocol-validation';
 import { cva } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
+import { useStoredShapeSvgs } from './useStoredShapeSvgs';
+
 type EntityIconSize = 'default' | 'small' | 'tiny';
+
+type CustomShapes = Readonly<Record<string, Readonly<{ asset: string }>>>;
 
 type EntityIconProps = {
   entity: string;
   color?: ColorReference;
-  shape?: NodeShapeProp;
+  /** A node type's default shape, as the codebook stores it. */
+  shape?: NodeShapeReference;
+  /** The node type's own custom shapes, which `shape` may name. */
+  customShapes?: CustomShapes;
   label?: React.ReactNode;
   size?: EntityIconSize;
 };
@@ -48,24 +56,46 @@ const edgeIconStyle = (
   '--icon-tone-secondary': resolveProtocolColor(color),
 });
 
-const renderIcon = (
-  entity: string,
-  color?: ColorReference,
-  shape: NodeShapeProp = 'circle',
-  size: EntityIconSize = 'default',
-) => {
+type NodeIconProps = {
+  color?: ColorReference;
+  shape?: NodeShapeReference;
+  customShapes?: CustomShapes;
+  size: EntityIconSize;
+};
+
+const NodeIcon = ({ color, shape, customShapes, size }: NodeIconProps) => {
+  const shapeSvgs = useStoredShapeSvgs(customShapes);
+  // Color comes from the codebook, which protocol-validation guarantees is
+  // a NodeColorSequence value when entity === "node".
+  return (
+    <Node
+      presentational
+      label=""
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the validated codebook only holds node colours for a node type, though ColorReference also spans the edge and variable palettes
+      color={color as NodeColorSequence | undefined}
+      shape={
+        resolveNodeShapeReference(shape, customShapes, shapeSvgs) ?? 'circle'
+      }
+      size={nodeSizeMap[size]}
+    />
+  );
+};
+
+const renderIcon = ({
+  entity,
+  color,
+  shape,
+  customShapes,
+  size = 'default',
+}: EntityIconProps) => {
   switch (entity) {
     case 'node':
-      // Color comes from the codebook, which protocol-validation guarantees is
-      // a NodeColorSequence value when entity === "node".
       return (
-        <Node
-          presentational
-          label=""
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the validated codebook only holds node colours for a node type, though ColorReference also spans the edge and variable palettes
-          color={color as NodeColorSequence | undefined}
+        <NodeIcon
+          color={color}
           shape={shape}
-          size={nodeSizeMap[size]}
+          customShapes={customShapes}
+          size={size}
         />
       );
     case 'edge':
@@ -88,22 +118,15 @@ const renderIcon = (
   }
 };
 
-const EntityIcon = ({
-  entity,
-  color,
-  shape = 'circle',
-  label,
-  size = 'default',
-}: EntityIconProps) => {
+const EntityIcon = (props: EntityIconProps) => {
+  const { label, size = 'default' } = props;
   if (!label) {
-    return renderIcon(entity, color, shape, size);
+    return renderIcon(props);
   }
 
   return (
     <div className="inline-flex flex-row items-center justify-start">
-      <div className={graphicVariants({ size })}>
-        {renderIcon(entity, color, shape, size)}
-      </div>
+      <div className={graphicVariants({ size })}>{renderIcon(props)}</div>
       <div>{label}</div>
     </div>
   );

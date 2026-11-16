@@ -8,14 +8,20 @@ import {
   type NodeDefinition,
   type NodeShape,
   type NodeShapeReference,
+  resolveNodeShapeReference,
 } from '../codebook/definitions.ts';
 import { asEntityAttributeReference } from '../entity-attribute-reference.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 
-const HOME_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10 50 50 10 90 50V90H10Z" fill="var(--node-color)"/></svg>';
-const TREE_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="40" r="30" fill="var(--node-color)"/></svg>';
+const ASSET_MANIFEST = {
+  'home-image': { type: 'image', name: 'home.svg', source: 'home-image.svg' },
+  'tree-image': { type: 'image', name: 'tree.svg', source: 'tree-image.svg' },
+  'roster-data': {
+    type: 'network',
+    name: 'roster.csv',
+    source: 'roster-data.csv',
+  },
+};
 
 const withPerson = (
   customShapes: unknown,
@@ -24,6 +30,7 @@ const withPerson = (
   const protocol = createBaseProtocol();
   return withFinishStage({
     ...protocol,
+    assetManifest: ASSET_MANIFEST,
     codebook: {
       ...protocol.codebook,
       node: {
@@ -35,8 +42,8 @@ const withPerson = (
 };
 
 const SHAPES = {
-  home: { name: 'Home', svg: HOME_SVG },
-  tree_1: { name: 'Tree', svg: TREE_SVG },
+  home: { name: 'Home', asset: 'home-image' },
+  tree_1: { name: 'Tree', asset: 'tree-image' },
 };
 
 const issuesFor = (protocol: unknown) => {
@@ -159,6 +166,7 @@ describe('custom node shapes in the schema', () => {
     const protocol = createBaseProtocol();
     const shared = withFinishStage({
       ...protocol,
+      assetManifest: ASSET_MANIFEST,
       codebook: {
         ...protocol.codebook,
         node: {
@@ -202,14 +210,9 @@ describe('custom node shapes in the schema', () => {
     },
   );
 
-  it('rejects an svg that fails the strict parse, naming the problem', () => {
+  it('rejects a custom shape whose asset is not in the manifest', () => {
     const issues = issuesFor(
-      withPerson({
-        home: {
-          name: 'Home',
-          svg: HOME_SVG.replace('<path', '<script>alert(1)</script><path'),
-        },
-      }),
+      withPerson({ home: { name: 'Home', asset: 'missing-image' } }),
     );
     expect(issues).toHaveLength(1);
     expect(issues[0]?.path).toEqual([
@@ -218,22 +221,41 @@ describe('custom node shapes in the schema', () => {
       'person',
       'customShapes',
       'home',
-      'svg',
+      'asset',
     ]);
     expect(issues[0]?.message).toBe(
-      "The shape's SVG image is not supported (unsupported-element: <script>)",
+      'Custom shape "Home" uses the image "missing-image", which is not an asset in the manifest.',
     );
   });
 
-  it('rejects an svg longer than the limit', () => {
+  it('rejects a custom shape whose asset is not an image', () => {
     const issues = issuesFor(
-      withPerson({
-        home: { name: 'Home', svg: `${HOME_SVG}${' '.repeat(50_000)}` },
-      }),
+      withPerson({ home: { name: 'Home', asset: 'roster-data' } }),
     );
-    expect(issues.map((issue) => issue.message)).toContain(
-      "The shape's SVG cannot be longer than 50000 characters",
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.path).toEqual([
+      'codebook',
+      'node',
+      'person',
+      'customShapes',
+      'home',
+      'asset',
+    ]);
+    expect(issues[0]?.message).toBe(
+      `Custom shape "Home" must use an 'image' asset, but "roster-data" is of type "network".`,
     );
+  });
+
+  it('rejects a custom shape with an empty asset id', () => {
+    const issues = issuesFor(withPerson({ home: { name: 'Home', asset: '' } }));
+    expect(issues.map((issue) => issue.path)).toContainEqual([
+      'codebook',
+      'node',
+      'person',
+      'customShapes',
+      'home',
+      'asset',
+    ]);
   });
 
   it.each(['has space', 'dot.id', '', 'custom:home'])(
@@ -258,8 +280,8 @@ describe('custom node shapes in the schema', () => {
   ])('rejects %s duplicate shape names', (_, first, second) => {
     const issues = issuesFor(
       withPerson({
-        a: { name: first, svg: HOME_SVG },
-        b: { name: second, svg: TREE_SVG },
+        a: { name: first, asset: 'home-image' },
+        b: { name: second, asset: 'tree-image' },
       }),
     );
     expect(issues).toHaveLength(1);
@@ -277,6 +299,7 @@ describe('custom node shapes in the schema', () => {
     const protocol = createBaseProtocol();
     const shared = withFinishStage({
       ...protocol,
+      assetManifest: ASSET_MANIFEST,
       codebook: {
         ...protocol.codebook,
         node: {
@@ -292,7 +315,9 @@ describe('custom node shapes in the schema', () => {
   });
 
   it.each(['', '   '])('rejects the blank shape name %j', (name) => {
-    const issues = issuesFor(withPerson({ home: { name, svg: HOME_SVG } }));
+    const issues = issuesFor(
+      withPerson({ home: { name, asset: 'home-image' } }),
+    );
     expect(issues.map((issue) => issue.path)).toEqual([
       ['codebook', 'node', 'person', 'customShapes', 'home', 'name'],
     ]);
@@ -303,5 +328,61 @@ describe('custom node shapes in the schema', () => {
       withPerson({ home: { ...SHAPES.home, color: 'red' } }),
     );
     expect(issues).toHaveLength(1);
+  });
+});
+
+describe('resolveNodeShapeReference', () => {
+  const houseSvg =
+    '<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>';
+  const customShapes = { home: { name: 'Home', asset: 'home-image' } };
+  const shapeSvgs = { 'home-image': houseSvg };
+
+  it('passes built-in shapes through', () => {
+    expect(resolveNodeShapeReference('diamond', customShapes, shapeSvgs)).toBe(
+      'diamond',
+    );
+    expect(
+      resolveNodeShapeReference(undefined, customShapes, shapeSvgs),
+    ).toBeUndefined();
+  });
+
+  it("resolves a custom reference to its asset's svg", () => {
+    expect(
+      resolveNodeShapeReference('custom:home', customShapes, shapeSvgs),
+    ).toEqual({ svg: houseSvg });
+  });
+
+  it('falls back to a circle for a reference the node type does not define', () => {
+    expect(
+      resolveNodeShapeReference('custom:gone', customShapes, shapeSvgs),
+    ).toBe('circle');
+    expect(resolveNodeShapeReference('custom:home', undefined, shapeSvgs)).toBe(
+      'circle',
+    );
+  });
+
+  it('falls back to a circle when the svg of the asset is not loaded', () => {
+    expect(resolveNodeShapeReference('custom:home', customShapes, {})).toBe(
+      'circle',
+    );
+  });
+
+  it('falls back to a circle for an id that only exists on the prototype', () => {
+    expect(resolveNodeShapeReference('custom:constructor', {}, {})).toBe(
+      'circle',
+    );
+    expect(resolveNodeShapeReference('custom:__proto__', {}, {})).toBe(
+      'circle',
+    );
+  });
+
+  it('falls back to a circle for an asset id that only exists on the prototype', () => {
+    expect(
+      resolveNodeShapeReference(
+        'custom:home',
+        { home: { asset: 'constructor' } },
+        {},
+      ),
+    ).toBe('circle');
   });
 });

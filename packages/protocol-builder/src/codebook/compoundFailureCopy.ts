@@ -19,6 +19,8 @@ export type CodebookRefusal =
   /** Something the host cannot rewrite still names what was to be deleted. */
   | Readonly<{ kind: 'referencesRemain'; references: number }>
   | Readonly<{ kind: 'invalidShape' }>
+  /** The host would not take the files imported while the editor was open. */
+  | Readonly<{ kind: 'promotionFailed' }>
   | Readonly<{ kind: 'sectionGone' }>
   /** A collaborator created the section this change would have created. */
   | Readonly<{ kind: 'sectionCreatedElsewhere' }>
@@ -69,6 +71,13 @@ const messages = defineMessages({
       'This change is not something the codebook can hold, so nothing was saved. Check what you entered and try again.',
     description:
       'Refusal shown in a codebook editor when the protocol refused the change because it is not shaped like the part of the codebook it was written to.',
+  },
+  promotionFailed: {
+    id: 'protocolBuilder.compoundFailure.promotionFailed',
+    defaultMessage:
+      'The files you imported could not be saved with this change, so nothing was saved and your changes are still here. Try saving again.',
+    description:
+      'Refusal shown in a codebook editor when the host would not take the files imported while it was open, such as an SVG image added as a custom node shape, so neither they nor the change were saved. The researcher’s unsaved work is still on screen.',
   },
   sectionGone: {
     id: 'protocolBuilder.compoundFailure.sectionGone',
@@ -142,6 +151,8 @@ export function codebookRefusalMessage(refusal: CodebookRefusal): string {
       });
     case 'invalidShape':
       return createMessageError(messages.invalidShape);
+    case 'promotionFailed':
+      return createMessageError(messages.promotionFailed);
     case 'sectionGone':
       return createMessageError(messages.sectionGone);
     case 'sectionCreatedElsewhere':
