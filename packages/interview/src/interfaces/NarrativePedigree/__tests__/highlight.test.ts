@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { InheritancePattern } from '@codaco/protocol-validation';
 
 import { edgeKey } from '../../FamilyPedigree/pedigree-layout/components/EdgeRenderer';
-import type { GeneticGraph } from '../genetics/geneticGraph';
+import { buildGeneticGraph, type GeneticGraph } from '../genetics/geneticGraph';
+import { computeXLinkedRecessive } from '../genetics/patterns/xLinked';
 import type { Status } from '../genetics/status';
 import { computeContributors, type DiseaseContributors } from '../highlight';
 
@@ -744,8 +745,8 @@ describe('computeContributors — (h) X-linked recessive: affected father is the
 
 describe('computeContributors — (i) X-linked recessive: an affected daughter has BOTH parents as sources', () => {
   /**
-   * A daughter recorded `affected` took a disease X from each
-   * parent — an affected father AND a carrier mother — so both lineages light.
+   * A daughter recorded `affected`, with an affected father and a carrier
+   * mother, may have received a copy from each parent, so both lineages light.
    *
    *   FATHER (affected male) ──┐
    *                            DAUGHTER (focal, female, affected)
@@ -927,8 +928,9 @@ describe('computeContributors — (l) X-linked recessive: a carrier daughter of 
    * A daughter of an affected father carries the condition because of the X
    * he gave her. Whether her mother is affected, a carrier or at risk, the
    * daughter's carrier status is explained by her father, so her path runs
-   * only through him. If she is herself recorded affected, she took a
-   * disease X from each parent and both lines are kept.
+   * only through him. If she is herself recorded affected, she may have
+   * received a copy from each parent, so her mother's line is kept as a
+   * possible source.
    *
    *   FATHER (affected male) ──┐
    *                            DAUGHTER (focal, female)
@@ -1262,5 +1264,150 @@ describe('computeContributors — (o) edges follow transmission, not just both-e
   it('reaches the father’s disease-X source through his carrier mother (FGM)', () => {
     expect(result.nodes.has(FGM)).toBe(true);
     expect(result.edges.has(edgeKey(FGM, FATHER))).toBe(true);
+  });
+});
+
+/**
+ * Runs the real graph builder and X-linked recessive engine over a
+ * parent→child list, so the highlight walk sees the statuses the engine gives.
+ */
+function xlrFromEngine(
+  edges: [parentId: string, childId: string][],
+  sex: Map<string, Sex>,
+  affected: string[],
+) {
+  const resolveSex = resolveSexFrom(sex);
+  const graph = buildGeneticGraph(
+    {
+      people: [...sex.keys()].map((id) => ({ id })),
+      links: edges.map(([source, target]) => ({
+        source,
+        target,
+        kind: 'biological',
+      })),
+    },
+    resolveSex,
+  );
+  const statuses = computeXLinkedRecessive(
+    graph,
+    new Set(affected),
+    resolveSex,
+  );
+  const diseases = asDiseases(
+    new Map([[DISEASE_A, statuses]]),
+    'xLinkedRecessive',
+  );
+  return {
+    statuses,
+    pathOf: (focal: string) =>
+      [
+        ...computeContributors(focal, graph, diseases, resolveSex).nodes,
+      ].toSorted(),
+  };
+}
+
+describe('computeContributors — (q) X-linked recessive: a woman with an affected son and an affected maternal uncle', () => {
+  /**
+   *   GRANDMOTHER ── GRANDFATHER
+   *        │
+   *   UNCLE (affected)   MOTHER ── FATHER
+   *                         │
+   *                       WOMAN ── PARTNER
+   *                         │
+   *                    SON (affected)
+   */
+  const sex = new Map<string, Sex>([
+    ['grandmother', 'female'],
+    ['grandfather', 'male'],
+    ['uncle', 'male'],
+    ['mother', 'female'],
+    ['father', 'male'],
+    ['woman', 'female'],
+    ['partner', 'male'],
+    ['son', 'male'],
+  ]);
+  const { statuses, pathOf } = xlrFromEngine(
+    [
+      ['grandmother', 'uncle'],
+      ['grandfather', 'uncle'],
+      ['grandmother', 'mother'],
+      ['grandfather', 'mother'],
+      ['mother', 'woman'],
+      ['father', 'woman'],
+      ['woman', 'son'],
+      ['partner', 'son'],
+    ],
+    sex,
+    ['uncle', 'son'],
+  );
+
+  it('marks the grandmother, the mother and the woman obligate carriers', () => {
+    expect([
+      statuses.get('grandmother'),
+      statuses.get('mother'),
+      statuses.get('woman'),
+    ]).toEqual(['obligateCarrier', 'obligateCarrier', 'obligateCarrier']);
+  });
+
+  it('runs the woman’s path through her mother to her grandmother', () => {
+    expect(pathOf('woman')).toEqual(
+      ['grandmother', 'mother', 'woman'].toSorted(),
+    );
+  });
+
+  it('runs the son’s path through his mother up the same maternal line', () => {
+    expect(pathOf('son')).toEqual(
+      ['grandmother', 'mother', 'son', 'woman'].toSorted(),
+    );
+  });
+});
+
+describe('computeContributors — (r) X-linked recessive: a woman with an affected son and an affected maternal grandfather', () => {
+  /**
+   *   AFFECTED_MGF ── GRANDMOTHER_OF_MOTHER
+   *        │
+   *   MOTHER (obligate) ── FATHER
+   *        │
+   *      WOMAN ── PARTNER
+   *        │
+   *   SON (affected)
+   */
+  const sex = new Map<string, Sex>([
+    ['affMGF', 'male'],
+    ['mgm', 'female'],
+    ['mother', 'female'],
+    ['father', 'male'],
+    ['woman', 'female'],
+    ['partner', 'male'],
+    ['son', 'male'],
+  ]);
+  const { statuses, pathOf } = xlrFromEngine(
+    [
+      ['affMGF', 'mother'],
+      ['mgm', 'mother'],
+      ['mother', 'woman'],
+      ['father', 'woman'],
+      ['woman', 'son'],
+      ['partner', 'son'],
+    ],
+    sex,
+    ['affMGF', 'son'],
+  );
+
+  it('marks the woman an obligate carrier as her carrier mother is', () => {
+    expect([statuses.get('mother'), statuses.get('woman')]).toEqual([
+      'obligateCarrier',
+      'obligateCarrier',
+    ]);
+  });
+
+  it('runs the woman’s path through her mother to her affected grandfather', () => {
+    expect(pathOf('woman')).toEqual(['affMGF', 'mother', 'woman'].toSorted());
+  });
+
+  it('runs the son’s path through his mother to his affected great-grandfather', () => {
+    expect(pathOf('son')).toEqual(
+      ['affMGF', 'mother', 'son', 'woman'].toSorted(),
+    );
   });
 });
