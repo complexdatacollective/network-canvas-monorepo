@@ -1,6 +1,11 @@
+import { type QueryClient, queryOptions } from '@tanstack/react-query';
 import { Redacted } from 'effect';
 
-import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
 import {
   MAX_NODE_SHAPE_SVG_LENGTH,
   type NodeShapeSvgIssue,
@@ -8,7 +13,7 @@ import {
   serializeNodeShapeSvg,
 } from '@codaco/fresco-ui/node/nodeShapeSvg';
 
-import type { ResourceClient } from '../client.tsx';
+import type { ProtocolBuilderContextValue } from '../../state/context.ts';
 import type { ResourceDescriptor } from '../types.ts';
 import { fileExtension } from './resourceKinds.ts';
 
@@ -45,6 +50,27 @@ const messages = defineMessages({
     defaultMessage: '"{file}" could not be read. Choose it again.',
     description:
       'Shown when the file or stored image the researcher chose as a custom node shape could not be read. file is the name of the file or image.',
+  },
+  removedContent: {
+    id: 'protocolBuilder.customShapes.removedContent',
+    defaultMessage:
+      'Some content in this file cannot be used in a node shape and was left out: {removed}.',
+    description:
+      'Notice shown under a custom node shape that was added from an SVG file after unsupported content was removed from it. removed is a list of the kinds of content, such as "scripts, embedded images and filters".',
+  },
+  ignoredContent: {
+    id: 'protocolBuilder.customShapes.ignoredContent',
+    defaultMessage:
+      'Some content in this image cannot be used in a node shape and will not be drawn: {removed}.',
+    description:
+      'Notice shown under a custom node shape made from an SVG image already stored in the protocol. The image is kept as it is, but the listed content is skipped when a node is drawn. removed is a list of the kinds of content, such as "scripts, embedded images and filters".',
+  },
+  removedKind: {
+    id: 'protocolBuilder.customShapes.removedKind',
+    defaultMessage:
+      '{kind, select, scripts {scripts} images {embedded images} styles {unsupported styles} filters {filters} animations {animations} links {links and references to other files} colors {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}',
+    description:
+      'Name of one kind of content in an SVG image that a custom node shape cannot use. Used as one item of a list in the removedContent and ignoredContent notices, so write it as a phrase that fits there.',
   },
 });
 
@@ -123,6 +149,22 @@ export type NodeShapeNotice = Readonly<{
   centredLabel: boolean;
 }>;
 
+/** The sentence saying what in a shape's SVG a node does not draw. */
+export const contentNotice = (intl: IntlShape, notice: NodeShapeNotice) =>
+  intl.formatMessage(
+    notice.origin === 'imported'
+      ? messages.removedContent
+      : messages.ignoredContent,
+    {
+      removed: intl.formatList(
+        notice.removed.map((kind) =>
+          intl.formatMessage(messages.removedKind, { kind }),
+        ),
+        { type: 'conjunction' },
+      ),
+    },
+  );
+
 type NodeShapeSvgCheck =
   | Readonly<{
       success: true;
@@ -162,18 +204,57 @@ export function checkNodeShapeSvg(
 }
 
 /** A file whose bytes cannot possibly fit the character limit. */
-export const isOversizeShapeFile = (byteLength: number) =>
+const isOversizeShapeFile = (byteLength: number) =>
   // UTF-8 spends at most four bytes on a character.
   byteLength > MAX_NODE_SHAPE_SVG_LENGTH * 4;
 
-export const oversizeShapeFileMessage = (file: string) =>
+const oversizeShapeFileMessage = (file: string) =>
   createMessageError(messages.tooLarge, {
     file,
     limit: MAX_NODE_SHAPE_SVG_LENGTH,
   });
 
-export const notSvgMessage = (file: string) =>
-  createMessageError(messages.notSvg, { file });
+type NodeShapeUpload =
+  | Readonly<{
+      /** The SVG in the canonical form a node draws, ready to stage. */
+      bytes: Uint8Array;
+      contentType: string;
+      notice: NodeShapeNotice;
+    }>
+  | Readonly<{ error: string }>;
+
+/**
+ * Checks a file being imported as a shape and turns it into what is staged:
+ * the cleaned SVG a node draws, so the protocol never holds a shape the
+ * interview would refuse.
+ */
+export function prepareNodeShapeUpload(
+  file: string,
+  bytes: Uint8Array,
+): NodeShapeUpload {
+  if (isOversizeShapeFile(bytes.byteLength)) {
+    return { error: oversizeShapeFileMessage(file) };
+  }
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return { error: createMessageError(messages.notSvg, { file }) };
+  }
+  const checked = checkNodeShapeSvg(file, text);
+  if (!checked.success) return { error: checked.error };
+  return {
+    // Copied into this realm's Uint8Array: an encoder's output can come from
+    // another one, which the contract's bytes schema refuses.
+    bytes: Uint8Array.from(new TextEncoder().encode(checked.svg)),
+    contentType: 'image/svg+xml',
+    notice: {
+      origin: 'imported',
+      removed: checked.removed,
+      centredLabel: checked.centredLabel,
+    },
+  };
+}
 
 /** Whether a stored resource is an SVG image a shape picker may offer. */
 export function isNodeShapeResource(descriptor: ResourceDescriptor): boolean {
@@ -187,33 +268,63 @@ export function isNodeShapeResource(descriptor: ResourceDescriptor): boolean {
 }
 
 /**
+ * The SVG text of one shape image, read through the URL the host gives for
+ * previewing it and cached for the session. Inside an open edit the read
+ * names it, so an image imported but not yet saved can be read too.
+ */
+export const nodeShapeSvgQuery = (
+  { adapter, protocolId }: ProtocolBuilderContextValue,
+  editId: string | undefined,
+  asset: string,
+) =>
+  queryOptions({
+    queryKey: ['protocol-builder', protocolId, 'node-shape-svg', asset],
+    queryFn: async (): Promise<Readonly<{ asset: string; svg: string }>> => {
+      const preview = await adapter.rpcCall('ResourcesPreview', {
+        protocolId,
+        ...(editId === undefined ? {} : { editId }),
+        resourceId: asset,
+      });
+      if (preview.status !== 'ok') {
+        throw new Error(`the shape asset ${asset} has no preview`);
+      }
+      const response = await fetch(Redacted.value(preview.data.url));
+      if (!response.ok) {
+        throw new Error(`the shape asset ${asset} could not be read`);
+      }
+      return { asset, svg: await response.text() };
+    },
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+  });
+
+/**
  * Reads an image the protocol already holds and checks it can draw a node.
  *
- * The image is read through the URL the host gives for previewing it, and is
- * only ever read: what it holds that a node cannot draw is reported, not
- * removed.
+ * Read through the same cached query a shape preview draws from, so an image
+ * just checked is drawn without being read again. It is only ever read: what
+ * it holds that a node cannot draw is reported, not removed.
  */
 export async function checkExistingNodeShape(
-  resources: ResourceClient,
+  queryClient: QueryClient,
+  host: ProtocolBuilderContextValue,
+  editId: string | undefined,
   descriptor: ResourceDescriptor,
 ): Promise<
   | Readonly<{ success: true; notice: NodeShapeNotice }>
   | Readonly<{ success: false; error: string }>
 > {
   const file = Redacted.value(descriptor.name);
-  const unreadable: Readonly<{ success: false; error: string }> = {
-    success: false,
-    error: createMessageError(messages.unreadable, { file }),
-  };
-  const preview = await resources.resolvePreview(descriptor.id);
-  if (preview.status !== 'ok') return unreadable;
   let source: string;
   try {
-    const response = await fetch(Redacted.value(preview.data.url));
-    if (!response.ok) return unreadable;
-    source = await response.text();
+    ({ svg: source } = await queryClient.fetchQuery(
+      nodeShapeSvgQuery(host, editId, descriptor.id),
+    ));
   } catch {
-    return unreadable;
+    return {
+      success: false,
+      error: createMessageError(messages.unreadable, { file }),
+    };
   }
   const checked = checkNodeShapeSvg(file, source);
   if (!checked.success) return checked;

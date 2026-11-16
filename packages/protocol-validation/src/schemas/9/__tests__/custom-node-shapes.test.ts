@@ -337,13 +337,13 @@ describe('resolveNodeShapeReference', () => {
   const customShapes = { home: { name: 'Home', asset: 'home-image' } };
   const shapeSvgs = { 'home-image': houseSvg };
 
-  it('passes built-in shapes through', () => {
+  it('passes built-in shapes through and draws no reference as a circle', () => {
     expect(resolveNodeShapeReference('diamond', customShapes, shapeSvgs)).toBe(
       'diamond',
     );
-    expect(
-      resolveNodeShapeReference(undefined, customShapes, shapeSvgs),
-    ).toBeUndefined();
+    expect(resolveNodeShapeReference(undefined, customShapes, shapeSvgs)).toBe(
+      'circle',
+    );
   });
 
   it("resolves a custom reference to its asset's svg", () => {

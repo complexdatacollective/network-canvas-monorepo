@@ -39,6 +39,7 @@
     "@codaco/tsconfig": "workspace:^",
     "@reduxjs/toolkit": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@types/redux-logger": "^3.0.13",
     "clsx": "catalog:",

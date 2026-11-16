@@ -53,8 +53,8 @@ export function resolveNodeShapeReference(
   reference: NodeShapeReference | undefined,
   customShapes: Readonly<Record<string, { asset: string }>> | undefined,
   shapeSvgs: Readonly<Record<string, string>>,
-): ResolvedNodeShape | undefined {
-  if (reference === undefined) return undefined;
+): ResolvedNodeShape {
+  if (reference === undefined) return 'circle';
   if (!isCustomShapeReference(reference)) return reference;
   const id = getCustomShapeId(reference);
   // Own entries only: an id such as `constructor` must not reach the

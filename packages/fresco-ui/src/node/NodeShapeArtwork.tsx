@@ -2,6 +2,18 @@ import { createElement, type ReactNode } from 'react';
 
 import { type CSSVariablesStyle } from '../utils/cssVariables';
 import {
+  HREF_ELEMENTS,
+  ID_PATTERN,
+  ID_REFERENCE_PATTERN,
+  NODE_SHAPE_ELEMENTS,
+  PRESENTATION_ATTRIBUTES,
+  STRUCTURAL_ATTRIBUTES,
+  TEXT_ELEMENTS,
+  UNSAFE_VALUE_PATTERN,
+  URL_ATTRIBUTES,
+  URL_REFERENCE_PATTERN,
+} from './nodeShapeGrammar';
+import {
   LABEL_PLATE_ID,
   type NodeShapeSvgElement,
   type ParsedNodeShapeSvg,
@@ -44,103 +56,6 @@ export const NODE_SHAPE_TOKEN_STYLE: CSSVariablesStyle = {
   '--node-color-seq-8': 'var(--node-8)',
 };
 
-// The parser already enforces this allow-list; the renderer keeps its own so
-// that nothing it was not written to draw can reach the DOM.
-const RENDERED_ELEMENTS = new Set([
-  'g',
-  'path',
-  'rect',
-  'circle',
-  'ellipse',
-  'line',
-  'polyline',
-  'polygon',
-  'text',
-  'tspan',
-  'defs',
-  'linearGradient',
-  'radialGradient',
-  'stop',
-  'clipPath',
-  'mask',
-  'symbol',
-  'use',
-]);
-const TEXT_ELEMENTS = new Set(['text', 'tspan']);
-
-const REACT_ATTRIBUTE_NAMES = new Map<string, string>([
-  ['id', 'id'],
-  ['transform', 'transform'],
-  ['d', 'd'],
-  ['x', 'x'],
-  ['y', 'y'],
-  ['x1', 'x1'],
-  ['y1', 'y1'],
-  ['x2', 'x2'],
-  ['y2', 'y2'],
-  ['cx', 'cx'],
-  ['cy', 'cy'],
-  ['r', 'r'],
-  ['rx', 'rx'],
-  ['ry', 'ry'],
-  ['width', 'width'],
-  ['height', 'height'],
-  ['points', 'points'],
-  ['dx', 'dx'],
-  ['dy', 'dy'],
-  ['fill', 'fill'],
-  ['fill-opacity', 'fillOpacity'],
-  ['fill-rule', 'fillRule'],
-  ['clip-rule', 'clipRule'],
-  ['stroke', 'stroke'],
-  ['stroke-width', 'strokeWidth'],
-  ['stroke-linecap', 'strokeLinecap'],
-  ['stroke-linejoin', 'strokeLinejoin'],
-  ['stroke-miterlimit', 'strokeMiterlimit'],
-  ['stroke-dasharray', 'strokeDasharray'],
-  ['stroke-dashoffset', 'strokeDashoffset'],
-  ['stroke-opacity', 'strokeOpacity'],
-  ['opacity', 'opacity'],
-  ['color', 'color'],
-  ['stop-color', 'stopColor'],
-  ['stop-opacity', 'stopOpacity'],
-  ['offset', 'offset'],
-  ['gradientUnits', 'gradientUnits'],
-  ['gradientTransform', 'gradientTransform'],
-  ['spreadMethod', 'spreadMethod'],
-  ['fx', 'fx'],
-  ['fy', 'fy'],
-  ['fr', 'fr'],
-  ['clip-path', 'clipPath'],
-  ['mask', 'mask'],
-  ['clipPathUnits', 'clipPathUnits'],
-  ['maskUnits', 'maskUnits'],
-  ['maskContentUnits', 'maskContentUnits'],
-  ['viewBox', 'viewBox'],
-  ['preserveAspectRatio', 'preserveAspectRatio'],
-  ['font-family', 'fontFamily'],
-  ['font-size', 'fontSize'],
-  ['font-weight', 'fontWeight'],
-  ['font-style', 'fontStyle'],
-  ['text-anchor', 'textAnchor'],
-  ['dominant-baseline', 'dominantBaseline'],
-  ['letter-spacing', 'letterSpacing'],
-  ['paint-order', 'paintOrder'],
-  ['vector-effect', 'vectorEffect'],
-  ['display', 'display'],
-  ['visibility', 'visibility'],
-  ['href', 'href'],
-]);
-
-const URL_ATTRIBUTES = new Set(['fill', 'stroke', 'clip-path', 'mask']);
-const HREF_ELEMENTS = new Set(['use', 'linearGradient', 'radialGradient']);
-
-const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_.:-]*$/;
-const HREF_PATTERN = /^#([A-Za-z_][A-Za-z0-9_.:-]*)$/;
-const URL_REFERENCE_PATTERN =
-  /^url\(\s*(['"]?)#([A-Za-z_][A-Za-z0-9_.:-]*)\1\s*\)$/i;
-const UNSAFE_VALUE_PATTERN = /[<\\;{}]|\/\*|javascript:|expression\(|@import/i;
-
 /**
  * Rewrites one attribute for rendering, or drops it. Every id, and every
  * reference to one, gains the instance prefix so two nodes drawing the same
@@ -159,7 +74,7 @@ const renderAttribute = (
   }
   if (name === 'href') {
     if (!HREF_ELEMENTS.has(tag)) return undefined;
-    const match = HREF_PATTERN.exec(trimmed);
+    const match = ID_REFERENCE_PATTERN.exec(trimmed);
     return match ? `#${idPrefix}${match[1]}` : undefined;
   }
   if (/url\s*\(/i.test(trimmed)) {
@@ -187,10 +102,14 @@ const renderElement = (
   key: number,
   labelPlateGrowth: number,
 ): ReactNode => {
-  if (!RENDERED_ELEMENTS.has(element.tag)) return null;
+  // The parser already applied the grammar; applying it again here keeps
+  // anything the renderer was not written to draw out of the DOM.
+  if (!NODE_SHAPE_ELEMENTS.has(element.tag)) return null;
   const props: Record<string, string | number> = { key };
   for (const [name, value] of Object.entries(element.attributes)) {
-    const reactName = REACT_ATTRIBUTE_NAMES.get(name);
+    const reactName =
+      PRESENTATION_ATTRIBUTES.get(name) ??
+      (STRUCTURAL_ATTRIBUTES.has(name) ? name : undefined);
     if (reactName === undefined) continue;
     const rendered = renderAttribute(element.tag, name, value, idPrefix);
     if (rendered !== undefined) props[reactName] = rendered;

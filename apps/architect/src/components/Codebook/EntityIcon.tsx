@@ -1,5 +1,5 @@
 import Icon from '@codaco/fresco-ui/Icon';
-import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
+import Node, { isNodeColorSequence } from '@codaco/fresco-ui/Node';
 import {
   type ColorReference,
   type NodeShapeReference,
@@ -65,17 +65,12 @@ type NodeIconProps = {
 
 const NodeIcon = ({ color, shape, customShapes, size }: NodeIconProps) => {
   const shapeSvgs = useStoredShapeSvgs(customShapes);
-  // Color comes from the codebook, which protocol-validation guarantees is
-  // a NodeColorSequence value when entity === "node".
   return (
     <Node
       presentational
       label=""
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the validated codebook only holds node colours for a node type, though ColorReference also spans the edge and variable palettes
-      color={color as NodeColorSequence | undefined}
-      shape={
-        resolveNodeShapeReference(shape, customShapes, shapeSvgs) ?? 'circle'
-      }
+      color={isNodeColorSequence(color) ? color : undefined}
+      shape={resolveNodeShapeReference(shape, customShapes, shapeSvgs)}
       size={nodeSizeMap[size]}
     />
   );

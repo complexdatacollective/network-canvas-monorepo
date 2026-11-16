@@ -35,12 +35,12 @@ import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndica
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
 import { CurrentStepProvider } from './contexts/CurrentStepContext';
-import { CustomShapeSvgsProvider } from './contexts/CustomShapeSvgsContext';
 import {
   type InterviewCompletion,
   InterviewCompletionProvider,
   useInterviewCompletion,
 } from './contexts/InterviewCompletionContext';
+import { InterviewQueryClientProvider } from './contexts/InterviewQueryClientProvider';
 import { StageMetadataProvider } from './contexts/StageMetadataContext';
 import { ContractProvider } from './contract/context';
 import type {
@@ -943,7 +943,9 @@ const Shell = ({
                 flags={flags}
                 finishConfirmationDescription={finishConfirmationDescription}
               >
-                <CustomShapeSvgsProvider codebook={payload.protocol.codebook}>
+                <InterviewQueryClientProvider
+                  protocolKey={`${payload.protocol.id}\n${payload.protocol.hash}\n${payload.protocol.importedAt}`}
+                >
                   <InterviewCompletionProvider
                     // A new payload is a new interview.
                     key={payload.session.id}
@@ -974,7 +976,7 @@ const Shell = ({
                       />
                     </CurrentStepProvider>
                   </InterviewCompletionProvider>
-                </CustomShapeSvgsProvider>
+                </InterviewQueryClientProvider>
               </ContractProvider>
             </WritesInFlightProvider>
           </SyncFlushProvider>

@@ -134,7 +134,12 @@ function InFieldExample() {
       options={shapeOptions}
       renderOption={renderShape}
       value={value}
-      onChange={(next) => setValue(next ?? [])}
+      onRowChange={(rowId, next) =>
+        setValue((current) => [
+          ...current.filter((entry) => entry.id !== rowId),
+          { id: rowId, value: next },
+        ])
+      }
     />
   );
 }

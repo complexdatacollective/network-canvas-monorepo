@@ -32,8 +32,8 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
-import { useCustomShapeSvgs } from '../../../contexts/CustomShapeSvgsContext';
 import { useCelebrate } from '../../../hooks/useCelebrate';
+import { useCustomShapeSvgs } from '../../../hooks/useCustomShapeSvgs';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import {

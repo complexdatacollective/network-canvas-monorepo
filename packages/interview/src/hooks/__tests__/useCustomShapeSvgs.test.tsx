@@ -1,14 +1,15 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
 
+import { AnalyticsContext } from '../../analytics/AnalyticsContext';
+import { InterviewQueryClientProvider } from '../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../contract/context';
-import {
-  CustomShapeSvgsProvider,
-  useCustomShapeSvgs,
-} from '../CustomShapeSvgsContext';
+import { useCustomShapeSvgs } from '../useCustomShapeSvgs';
 
 const homeSvg = '<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>';
 const treeSvg = '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></svg>';
@@ -28,7 +29,7 @@ const codebook: Codebook = {
       name: 'Venue',
       color: 'node-color-seq-2',
       shape: { default: 'custom:house' },
-      // Shares an asset with `place`, so it must be loaded only once.
+      // Shares an asset with `place`.
       customShapes: { house: { name: 'House', asset: 'home-asset' } },
     },
   },
@@ -47,8 +48,12 @@ const fetchMock = vi.fn((url: string) =>
   ),
 );
 
+const captureException = vi.fn();
+const tracker = { track: vi.fn(), captureException };
+
 beforeEach(() => {
   fetchMock.mockClear();
+  captureException.mockClear();
   vi.stubGlobal('fetch', fetchMock);
 });
 
@@ -59,37 +64,90 @@ afterEach(() => {
 const makeWrapper = (
   onRequestAsset: (id: string) => Promise<string>,
   providedCodebook: Codebook,
-) =>
-  function Wrapper({ children }: { children: ReactNode }) {
+) => {
+  const store = configureStore({
+    reducer: { protocol: () => ({ codebook: providedCodebook }) },
+  });
+  return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <ContractProvider onFinish={vi.fn()} onRequestAsset={onRequestAsset}>
-        <CustomShapeSvgsProvider codebook={providedCodebook}>
-          {children}
-        </CustomShapeSvgsProvider>
-      </ContractProvider>
+      <AnalyticsContext.Provider value={tracker}>
+        <Provider store={store}>
+          <ContractProvider onFinish={vi.fn()} onRequestAsset={onRequestAsset}>
+            <InterviewQueryClientProvider protocolKey="test-protocol">
+              {children}
+            </InterviewQueryClientProvider>
+          </ContractProvider>
+        </Provider>
+      </AnalyticsContext.Provider>
     );
   };
+};
 
 const resolveToBlobUrl = (id: string) =>
   Promise.resolve(id === 'home-asset' ? 'blob:home' : 'blob:tree');
 
-describe('CustomShapeSvgsProvider', () => {
-  it('loads each distinct shape asset once and exposes its svg text', async () => {
-    const onRequestAsset = vi.fn(resolveToBlobUrl);
+describe('useCustomShapeSvgs', () => {
+  it('starts empty and exposes the svg text of every custom shape asset', async () => {
     const { result } = renderHook(() => useCustomShapeSvgs(), {
-      wrapper: makeWrapper(onRequestAsset, codebook),
+      wrapper: makeWrapper(resolveToBlobUrl, codebook),
     });
 
     expect(result.current).toEqual({});
-
     await waitFor(() =>
       expect(result.current).toEqual({
         'home-asset': homeSvg,
         'tree-asset': treeSvg,
       }),
     );
-    expect(onRequestAsset).toHaveBeenCalledTimes(2);
+  });
+
+  it('loads each asset once, however many nodes and node types use it', async () => {
+    const onRequestAsset = vi.fn(resolveToBlobUrl);
+    function Consumer({ name }: { name: string }) {
+      const svgs = useCustomShapeSvgs();
+      return <span>{`${name}:${Object.keys(svgs).length}`}</span>;
+    }
+    const Wrapper = makeWrapper(onRequestAsset, codebook);
+    const tree = (
+      <Wrapper>
+        <Consumer name="a" />
+        <Consumer name="b" />
+        <Consumer name="c" />
+      </Wrapper>
+    );
+    const { rerender } = render(tree);
+
+    await screen.findByText('a:2');
+    screen.getByText('b:2');
+    screen.getByText('c:2');
+    rerender(tree);
+
+    expect(onRequestAsset.mock.calls.map(([id]) => id).toSorted()).toEqual([
+      'home-asset',
+      'tree-asset',
+    ]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the loaded map stable across re-renders', async () => {
+    const seen = new Set<Readonly<Record<string, string>>>();
+    function Consumer() {
+      const svgs = useCustomShapeSvgs();
+      if (Object.keys(svgs).length === 2) seen.add(svgs);
+      return <span>{Object.keys(svgs).length}</span>;
+    }
+    const Wrapper = makeWrapper(resolveToBlobUrl, codebook);
+    const tree = (
+      <Wrapper>
+        <Consumer />
+      </Wrapper>
+    );
+    const { rerender } = render(tree);
+    await screen.findByText('2');
+    rerender(tree);
+    rerender(tree);
+
+    expect(seen.size).toBe(1);
   });
 
   it('reads data URLs without fetching them', async () => {
@@ -112,52 +170,43 @@ describe('CustomShapeSvgsProvider', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('shares one map between consumers and does not refetch on re-render', async () => {
-    const onRequestAsset = vi.fn(resolveToBlobUrl);
-    const seen: Readonly<Record<string, string>>[] = [];
-    function Consumer({ name }: { name: string }) {
-      const svgs = useCustomShapeSvgs();
-      seen.push(svgs);
-      return <span>{`${name}:${Object.keys(svgs).length}`}</span>;
-    }
-    const Wrapper = makeWrapper(onRequestAsset, codebook);
-    const tree = (
-      <Wrapper>
-        <Consumer name="a" />
-        <Consumer name="b" />
-      </Wrapper>
-    );
-    const { rerender } = render(tree);
-
-    await screen.findByText('a:2');
-    screen.getByText('b:2');
-    rerender(tree);
-
-    const loaded = seen.filter((svgs) => Object.keys(svgs).length === 2);
-    expect(new Set(loaded).size).toBe(1);
-    expect(onRequestAsset).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('leaves out a shape that fails to load and keeps the others', async () => {
-    const onRequestAsset = vi.fn((id: string) =>
+  it('leaves out an asset that fails to resolve, reports it, and keeps the others', async () => {
+    const onRequestAsset = (id: string) =>
       id === 'home-asset'
         ? Promise.reject(new Error('asset not found'))
-        : Promise.resolve('blob:tree'),
-    );
+        : Promise.resolve('blob:tree');
     const { result } = renderHook(() => useCustomShapeSvgs(), {
       wrapper: makeWrapper(onRequestAsset, codebook),
     });
 
+    await waitFor(() => expect(captureException).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(result.current).toEqual({ 'tree-asset': treeSvg }),
+    );
+    expect(captureException).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'asset not found' }),
+      { feature: 'custom-shapes' },
+    );
+  });
+
+  it('treats an unsuccessful response as a failed load', async () => {
+    const onRequestAsset = (id: string) =>
+      Promise.resolve(id === 'home-asset' ? 'blob:gone' : 'blob:tree');
+    const { result } = renderHook(() => useCustomShapeSvgs(), {
+      wrapper: makeWrapper(onRequestAsset, codebook),
+    });
+
+    await waitFor(() => expect(captureException).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(result.current).toEqual({ 'tree-asset': treeSvg }),
     );
   });
 
-  it('treats an unsuccessful response as a failed load', async () => {
-    const onRequestAsset = vi.fn((id: string) =>
-      Promise.resolve(id === 'home-asset' ? 'blob:gone' : 'blob:tree'),
-    );
+  it('shows an asset as soon as it loads, without waiting for the others', async () => {
+    const onRequestAsset = (id: string) =>
+      id === 'home-asset'
+        ? new Promise<string>(() => undefined)
+        : Promise.resolve('blob:tree');
     const { result } = renderHook(() => useCustomShapeSvgs(), {
       wrapper: makeWrapper(onRequestAsset, codebook),
     });
@@ -186,7 +235,7 @@ describe('CustomShapeSvgsProvider', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('ignores a load that settles after unmount', async () => {
+  it('abandons a load that settles after unmount', async () => {
     let resolveUrl: (url: string) => void = () => undefined;
     const onRequestAsset = vi.fn(
       () =>
@@ -213,6 +262,7 @@ describe('CustomShapeSvgsProvider', () => {
     resolveUrl('blob:home');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(captureException).not.toHaveBeenCalled();
     expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });

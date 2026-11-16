@@ -69,15 +69,21 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  */
 export const readCustomShapes = (value: unknown): CustomShapes | undefined => {
   if (!isRecord(value)) return undefined;
-  const entries = Object.entries(value).flatMap(([id, shape]) =>
-    isRecord(shape) &&
-    typeof shape.name === 'string' &&
-    typeof shape.asset === 'string'
-      ? [[id, { name: shape.name, asset: shape.asset }] as const]
-      : [],
+  const entries = Object.entries(value).flatMap(
+    ([id, shape]): [string, CustomNodeShape][] =>
+      isRecord(shape) &&
+      typeof shape.name === 'string' &&
+      typeof shape.asset === 'string'
+        ? [[id, { name: shape.name, asset: shape.asset }]]
+        : [],
   );
   return Object.fromEntries(entries);
 };
+
+/** The resources a type's custom shapes draw from, for `useNodeShapeSvgs`. */
+export const shapeAssetIds = (
+  shapes: CustomShapes | undefined,
+): readonly string[] => Object.values(shapes ?? {}).map(({ asset }) => asset);
 
 export type CustomShapeUsage = 'default' | 'mapping' | 'defaultAndMapping';
 

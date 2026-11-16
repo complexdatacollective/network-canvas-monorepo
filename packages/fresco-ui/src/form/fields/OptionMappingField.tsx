@@ -35,29 +35,34 @@ export type OptionMappingOption = {
 /** One entry per mapped row; a row with no entry is unmapped. */
 export type OptionMappingValue = { id: string; value: string }[];
 
-type OptionMappingFieldProps = CreateFormFieldProps<
-  OptionMappingValue,
-  'fieldset',
-  {
-    /** The things being mapped; each row is an independent radio group. */
-    rows: OptionMappingRow[];
-    /** The values a row can be mapped to, the same for every row. */
-    options: OptionMappingOption[];
-    /** Draws what a tile shows for an option. */
-    renderOption: (option: OptionMappingOption) => ReactNode;
-    /** Show each option's label under its tile. */
-    showOptionLabels?: boolean;
-    /**
-     * Leave the row labels out. For a single row whose label would repeat the
-     * field's own: its radio group takes the field's name instead.
-     */
-    rowLabelsHidden?: boolean;
-    /**
-     * Draw no container of its own. For a mapping placed inside a row that
-     * is already a control surface.
-     */
-    bare?: boolean;
-  }
+type OptionMappingFieldProps<T extends OptionMappingOption> = Omit<
+  CreateFormFieldProps<
+    OptionMappingValue,
+    'fieldset',
+    {
+      /** The things being mapped; each row is an independent radio group. */
+      rows: OptionMappingRow[];
+      /** The values a row can be mapped to, the same for every row. */
+      options: readonly T[];
+      /** Draws what a tile shows for one of the caller's own options. */
+      renderOption: (option: T) => ReactNode;
+      /** Called with the row the researcher changed and the value it now has. */
+      onRowChange?: (rowId: string, value: T['value']) => void;
+      /** Show each option's label under its tile. */
+      showOptionLabels?: boolean;
+      /**
+       * Leave the row labels out. For a single row whose label would repeat
+       * the field's own: its radio group takes the field's name instead.
+       */
+      rowLabelsHidden?: boolean;
+      /**
+       * Draw no container of its own. For a mapping placed inside a row that
+       * is already a control surface.
+       */
+      bare?: boolean;
+    }
+  >,
+  'onChange'
 >;
 
 /**
@@ -69,7 +74,9 @@ type OptionMappingFieldProps = CreateFormFieldProps<
  * and tint, inside the control. Rows stack their label above their tiles in
  * a narrow container and put it in a column beside them in a wide one.
  */
-export default function OptionMappingField(props: OptionMappingFieldProps) {
+export default function OptionMappingField<T extends OptionMappingOption>(
+  props: OptionMappingFieldProps<T>,
+) {
   const {
     id,
     className,
@@ -77,11 +84,11 @@ export default function OptionMappingField(props: OptionMappingFieldProps) {
     rows,
     options,
     renderOption,
+    onRowChange,
     showOptionLabels = false,
     rowLabelsHidden = false,
     bare = false,
     value,
-    onChange,
     disabled,
     readOnly,
     ...rest
@@ -91,15 +98,10 @@ export default function OptionMappingField(props: OptionMappingFieldProps) {
   const current = Array.isArray(value) ? value : [];
   const headingId = useId();
 
-  const handleRowChange = (rowId: string, next: string) => {
+  const handleRowChange = (rowId: string, next: unknown) => {
     if (readOnly) return;
-    onChange?.(
-      rows.flatMap((row) => {
-        if (row.id === rowId) return [{ id: row.id, value: next }];
-        const existing = current.find((entry) => entry.id === row.id);
-        return existing === undefined ? [] : [existing];
-      }),
-    );
+    const option = options.find((candidate) => candidate.value === next);
+    if (option !== undefined) onRowChange?.(rowId, option.value);
   };
 
   return (
@@ -158,9 +160,7 @@ export default function OptionMappingField(props: OptionMappingFieldProps) {
             )}
             <RadioGroup
               value={current.find((entry) => entry.id === row.id)?.value ?? ''}
-              onValueChange={(next) => {
-                if (typeof next === 'string') handleRowChange(row.id, next);
-              }}
+              onValueChange={(next) => handleRowChange(row.id, next)}
               disabled={disabled}
               readOnly={readOnly}
               name={name ? `${name}.${row.id}` : undefined}

@@ -27,6 +27,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
+import { shapeAssetIds } from '../codebook/customShapes.ts';
 import {
   type CodebookEntityDraft,
   documentWithEntityProperties,
@@ -163,27 +164,13 @@ const typeOption = (
   ...(entityType === 'edge'
     ? {}
     : {
-        shape:
-          resolveNodeShapeReference(
-            summary.shape,
-            summary.customShapes,
-            shapeSvgs,
-          ) ?? 'circle',
+        shape: resolveNodeShapeReference(
+          summary.shape,
+          summary.customShapes,
+          shapeSvgs,
+        ),
       }),
 });
-
-/** Every type's custom shapes in one record, for `useNodeShapeSvgs`. */
-const summaryShapeAssets = (summaries: readonly EntityTypeSummary[]) =>
-  Object.fromEntries(
-    summaries.flatMap((summary) =>
-      Object.entries(summary.customShapes ?? {}).map(
-        ([shapeId, shape]): [string, Readonly<{ asset: string }>] => [
-          `${summary.id}/${shapeId}`,
-          shape,
-        ],
-      ),
-    ),
-  );
 
 /**
  * Empty-state copy, written out per entity kind.
@@ -1048,7 +1035,9 @@ export default function EntityTypePickerField({
   // each type's name and look and nothing else, so an edit inside a stage is
   // not a reason to redraw the chips.
   const summaries = useEntityTypes(entityType);
-  const shapeSvgs = useNodeShapeSvgs(summaryShapeAssets(summaries));
+  const shapeSvgs = useNodeShapeSvgs(
+    summaries.flatMap((summary) => shapeAssetIds(summary.customShapes)),
+  );
   const codebookOptions = useMemo(
     () =>
       summaries.map((summary) => typeOption(summary, entityType, shapeSvgs)),

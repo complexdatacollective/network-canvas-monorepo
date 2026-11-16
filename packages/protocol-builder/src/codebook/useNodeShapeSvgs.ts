@@ -1,27 +1,12 @@
-import {
-  QueryClient,
-  useQueries,
-  type UseQueryResult,
-} from '@tanstack/react-query';
-import { Redacted } from 'effect';
+import { useQueries, type UseQueryResult } from '@tanstack/react-query';
 
 import { useOpenEditId } from '../resources/client.tsx';
-import {
-  type ProtocolBuilderContextValue,
-  useOptionalProtocolBuilderContext,
-} from '../state/context.ts';
-
-type ShapeAssets = Readonly<Record<string, Readonly<{ asset: string }>>>;
-
-type ShapeSvg = Readonly<{ asset: string; svg: string }>;
-
-// Asked nothing: it stands in for the builder's cache where there is no host,
-// so a field drawn outside a protocol still renders, with built-in shapes.
-const NO_HOST_CLIENT = new QueryClient();
+import { nodeShapeSvgQuery } from '../resources/components/nodeShapeResource.ts';
+import { useProtocolBuilderContext } from '../state/context.ts';
 
 // Module level, so TanStack keeps the combined record while no read changes.
 const bySvgAsset = (
-  results: readonly UseQueryResult<ShapeSvg>[],
+  results: readonly UseQueryResult<Readonly<{ asset: string; svg: string }>>[],
 ): Readonly<Record<string, string>> =>
   Object.fromEntries(
     results.flatMap(({ data }) =>
@@ -29,63 +14,25 @@ const bySvgAsset = (
     ),
   );
 
-const readShapeSvg = async (
-  { adapter, protocolId }: ProtocolBuilderContextValue,
-  editId: string | undefined,
-  asset: string,
-): Promise<ShapeSvg> => {
-  const preview = await adapter.rpcCall('ResourcesPreview', {
-    protocolId,
-    ...(editId === undefined ? {} : { editId }),
-    resourceId: asset,
-  });
-  if (preview.status !== 'ok') {
-    throw new Error(`the shape asset ${asset} has no preview`);
-  }
-  const response = await fetch(Redacted.value(preview.data.url));
-  if (!response.ok) {
-    throw new Error(`the shape asset ${asset} could not be read`);
-  }
-  return { asset, svg: await response.text() };
-};
-
 /**
- * The SVG text of each asset a node type's custom shapes draw from, keyed by
- * asset id, for `resolveNodeShapeReference`.
+ * The SVG text of each shape asset named, keyed by asset id, for
+ * `resolveNodeShapeReference`.
  *
- * Each asset is read once through the host's preview URL and cached for the
- * session. Inside an open edit the read names it, so a shape imported but not
- * yet saved is drawn too. An asset still loading, or one that cannot be read,
- * is absent, and the node falls back to a built-in shape. Outside a
- * `ProtocolBuilder` nothing is read.
+ * Each asset is read once through `nodeShapeSvgQuery`. An asset still loading,
+ * or one that cannot be read, is absent, and the node falls back to a built-in
+ * shape. Needs a `ProtocolBuilder`; a component that may be drawn without one
+ * reads through `NodeShapeSvgs` instead.
  */
 export function useNodeShapeSvgs(
-  customShapes: ShapeAssets | undefined,
+  assets: readonly string[],
 ): Readonly<Record<string, string>> {
-  const host = useOptionalProtocolBuilderContext();
+  const host = useProtocolBuilderContext();
   const editId = useOpenEditId();
-  const assets = [
-    ...new Set(Object.values(customShapes ?? {}).map(({ asset }) => asset)),
-  ].toSorted();
 
-  return useQueries(
-    {
-      queries:
-        host === undefined
-          ? []
-          : assets.map((asset) => ({
-              queryKey: [
-                'protocol-builder',
-                host.protocolId,
-                'node-shape-svg',
-                asset,
-              ],
-              queryFn: () => readShapeSvg(host, editId, asset),
-              staleTime: Number.POSITIVE_INFINITY,
-              retry: false,
-            })),
-      combine: bySvgAsset,
-    },
-    host === undefined ? NO_HOST_CLIENT : undefined,
-  );
+  return useQueries({
+    queries: [...new Set(assets)]
+      .toSorted()
+      .map((asset) => nodeShapeSvgQuery(host, editId, asset)),
+    combine: bySvgAsset,
+  });
 }

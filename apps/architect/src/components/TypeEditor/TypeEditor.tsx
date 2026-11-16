@@ -6,6 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { isNodeColorSequence } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
 import {
   type CustomShapes,
@@ -28,7 +29,6 @@ import { getCodebook } from '~/selectors/protocol';
 
 import ColorPicker from '../Form/Fields/ColorPicker';
 import getPalette from './getPalette';
-import { isNodeColorSequence } from './nodeAppearance';
 import type { ShapeMappingDraft } from './shapeMappingTypes';
 import ShapeVariableMapping, {
   type ShapeMappingVariable,

@@ -1,6 +1,5 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   type ButtonHTMLAttributes,
@@ -18,7 +17,6 @@ import { useMergeRefs } from 'react-best-merge-refs';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { useFitText } from './hooks/useFitText';
 import {
   type ActivationSource,
   type NodeDragEndInfo,
@@ -29,18 +27,16 @@ import {
   useSafeAnimate,
   useShouldSkipAnimations,
 } from './hooks/useSafeAnimate';
+import { NodeLabelArea } from './node/NodeLabelArea';
 import {
   getParsedNodeShape,
-  NODE_SHAPE_TOKEN_STYLE,
   NodeShapeArtwork,
   toNodeShapeIdPrefix,
 } from './node/NodeShapeArtwork';
-import { type ParsedNodeShapeSvg } from './node/nodeShapeSvg';
+import { useNodeLabelFit } from './node/useNodeLabelFit';
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
-import { type CSSVariablesStyle } from './utils/cssVariables';
-import { cva, cx, type VariantProps } from './utils/cva';
-import { withLabelBreakPoints } from './utils/labelBreakPoints';
+import { cva, type VariantProps } from './utils/cva';
 
 export type NodeShape = 'circle' | 'square' | 'diamond';
 /** A custom shape: the SVG text of its drawing. */
@@ -72,6 +68,10 @@ export const NodeColors = [
 ] as const;
 
 export type NodeColorSequence = (typeof NodeColors)[number];
+
+export const isNodeColorSequence = (
+  value: unknown,
+): value is NodeColorSequence => NodeColors.some((color) => color === value);
 
 const nodeVariants = cva({
   base: [
@@ -232,11 +232,13 @@ const EMERGENCY_BREAKS = 'hyphens-manual wrap-anywhere text-balance';
 // existing 60% height budget therefore stays inside the painted shape.
 const DIAMOND_LABEL_WIDTH = 'w-[60%]!';
 
+type FitLadder = readonly [string, ...string[]];
+
 const buildFitSteps = (
   size: NodeSize,
   labelClassName?: string,
   floorClassName = labelClassName,
-): readonly [string, ...string[]] => {
+): FitLadder => {
   const floor = LABEL_FIT_OVERRIDES[size].at(-1) ?? '';
   const withLabelClass = (className?: string) =>
     [className, labelClassName].filter(Boolean).join(' ');
@@ -261,75 +263,33 @@ const buildFitSteps = (
   ];
 };
 
-const LABEL_FIT_STEPS: Record<NodeSize, readonly [string, ...string[]]> = {
-  xxs: buildFitSteps('xxs'),
-  xs: buildFitSteps('xs'),
-  sm: buildFitSteps('sm'),
-  md: buildFitSteps('md'),
-  lg: buildFitSteps('lg'),
-};
+const fitStepsBySize = (
+  labelClassName?: string,
+  floorClassName?: string,
+): Record<NodeSize, FitLadder> => ({
+  xxs: buildFitSteps('xxs', labelClassName, floorClassName),
+  xs: buildFitSteps('xs', labelClassName, floorClassName),
+  sm: buildFitSteps('sm', labelClassName, floorClassName),
+  md: buildFitSteps('md', labelClassName, floorClassName),
+  lg: buildFitSteps('lg', labelClassName, floorClassName),
+});
 
-const DIAMOND_LABEL_FIT_STEPS: Record<
-  NodeSize,
-  readonly [string, ...string[]]
-> = {
-  xxs: buildFitSteps('xxs', DIAMOND_LABEL_WIDTH),
-  xs: buildFitSteps('xs', DIAMOND_LABEL_WIDTH),
-  sm: buildFitSteps('sm', DIAMOND_LABEL_WIDTH),
-  md: buildFitSteps('md', DIAMOND_LABEL_WIDTH),
-  lg: buildFitSteps('lg', DIAMOND_LABEL_WIDTH),
-};
+const LABEL_FIT_STEPS = fitStepsBySize();
+const DIAMOND_LABEL_FIT_STEPS = fitStepsBySize(DIAMOND_LABEL_WIDTH);
 
 // A custom shape's label box is the artwork's own label area, already placed
 // inside the drawing, so the label uses all of it rather than an inscribed
 // share, and its height bounds the ladder instead of the line count alone.
 const CUSTOM_LABEL_SIZE = 'w-full! max-h-full';
+const CUSTOM_LABEL_FIT_STEPS = fitStepsBySize(CUSTOM_LABEL_SIZE);
 
-const CUSTOM_LABEL_FIT_STEPS: Record<NodeSize, readonly [string, ...string[]]> =
-  {
-    xxs: buildFitSteps('xxs', CUSTOM_LABEL_SIZE),
-    xs: buildFitSteps('xs', CUSTOM_LABEL_SIZE),
-    sm: buildFitSteps('sm', CUSTOM_LABEL_SIZE),
-    md: buildFitSteps('md', CUSTOM_LABEL_SIZE),
-    lg: buildFitSteps('lg', CUSTOM_LABEL_SIZE),
-  };
-
-// An artwork with a label plate lets the label outgrow its area: once no size
-// fits, the last three rungs set the label at the floor size with no height
-// limit but the floor's line clamp, and the plate is drawn taller to hold it.
-// Whole words come first, then the breaking rungs.
+// An artwork with a label plate lets the label outgrow its area: its floor
+// rungs lift the height limit (see `useNodeLabelFit`).
 const GROWN_LABEL_SIZE = 'w-full! max-h-none';
-const GROWN_RUNGS = 3;
-
-const GROWING_LABEL_FIT_STEPS: Record<
-  NodeSize,
-  readonly [string, ...string[]]
-> = {
-  xxs: buildFitSteps('xxs', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
-  xs: buildFitSteps('xs', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
-  sm: buildFitSteps('sm', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
-  md: buildFitSteps('md', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
-  lg: buildFitSteps('lg', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
-};
-
-// `currentColor` in an artwork means the node's colour; on the HTML label it
-// would otherwise resolve to the root's white text.
-const resolveCustomLabelColor = (labelColor: string | undefined) => {
-  if (labelColor === undefined) return 'var(--text)';
-  return /^currentcolor$/i.test(labelColor.trim()) ? 'var(--base)' : labelColor;
-};
-
-const customLabelAreaStyle = ({
-  labelArea,
-  labelColor,
-}: ParsedNodeShapeSvg): CSSVariablesStyle => ({
-  ...NODE_SHAPE_TOKEN_STYLE,
-  left: `${labelArea.x * 100}%`,
-  top: `${labelArea.y * 100}%`,
-  width: `${labelArea.width * 100}%`,
-  height: `${labelArea.height * 100}%`,
-  color: resolveCustomLabelColor(labelColor),
-});
+const GROWING_LABEL_FIT_STEPS = fitStepsBySize(
+  CUSTOM_LABEL_SIZE,
+  GROWN_LABEL_SIZE,
+);
 
 export function truncateNodeLabel(label: string, maxLength = 35): string {
   if (label.length <= maxLength) return label;
@@ -513,91 +473,37 @@ export default function Node(props: UINodeProps) {
     disabled,
   });
 
-  // Fit the label to the node rather than clipping it at a fixed size, so most
-  // names are readable in full without any interaction at all.
-  const labelBoxRef = useRef<HTMLSpanElement>(null);
   // An artwork that cannot be parsed draws as a circle.
   const customShape =
     typeof shape === 'object' ? getParsedNodeShape(shape.svg) : null;
   const builtInShape: NodeShape =
     typeof shape === 'string' ? shape : customShape ? 'square' : 'circle';
   const shapeIdPrefix = toNodeShapeIdPrefix(useId());
-  const growsLabelPlate = customShape?.labelPlate === true;
-  const fitSteps = customShape
-    ? (growsLabelPlate ? GROWING_LABEL_FIT_STEPS : CUSTOM_LABEL_FIT_STEPS)[
-        size ?? 'md'
-      ]
-    : builtInShape === 'diamond'
-      ? DIAMOND_LABEL_FIT_STEPS[size ?? 'md']
-      : LABEL_FIT_STEPS[size ?? 'md'];
 
-  // A label that only fits once words are broken is shown with break points
-  // marked in it (see `withLabelBreakPoints`). They are added only after a fit
-  // has landed on a breaking rung for this very label, so the great majority
-  // of names are rendered exactly as given.
-  const [breakPointsFor, setBreakPointsFor] = useState<string>();
-  const markBreakPoints = breakPointsFor === label;
-  const displayedLabel = markBreakPoints ? withLabelBreakPoints(label) : label;
-  const fitKey = `${markBreakPoints ? 'breakable' : 'plain'}:${label}`;
+  // Fit the label to the node rather than clipping it at a fixed size, so most
+  // names are readable in full without any interaction at all.
   const {
-    ref: labelRef,
-    stepIndex,
+    labelBoxRef,
+    labelRef,
+    labelClassName,
+    displayedLabel,
     isTruncated,
-    wholeLines,
-    fittedWatch,
-  } = useFitText<HTMLSpanElement>({
-    steps: fitSteps,
-    containerRef: labelBoxRef,
-    watch: fitKey,
-    enabled: !loading,
+    labelLineClamp,
+    labelPlateGrowth,
+  } = useNodeLabelFit({
+    label,
+    steps: (customShape
+      ? customShape.labelPlate
+        ? GROWING_LABEL_FIT_STEPS
+        : CUSTOM_LABEL_FIT_STEPS
+      : builtInShape === 'diamond'
+        ? DIAMOND_LABEL_FIT_STEPS
+        : LABEL_FIT_STEPS)[size ?? 'md'],
+    customShape,
+    loading,
   });
-  // The breaking rungs are the last two of every ladder.
-  const reachedBreakingRung = stepIndex >= fitSteps.length - 2;
-  if (
-    reachedBreakingRung &&
-    fittedWatch === fitKey &&
-    !markBreakPoints &&
-    withLabelBreakPoints(label) !== label
-  ) {
-    setBreakPointsFor(label);
-  }
 
   // A keyboard drag already owns arrow keys and the node's position; revealing
-  const labelGrown =
-    growsLabelPlate && !loading && stepIndex >= fitSteps.length - GROWN_RUNGS;
-  // How far the grown label reaches past its area, in the artwork's viewBox
-  // units, which is what the plate is drawn in.
-  const [labelPlateGrowth, setLabelPlateGrowth] = useState(0);
-  useEffect(() => {
-    const labelElement = labelRef.current;
-    const box = labelBoxRef.current;
-    const root = box?.parentElement;
-    if (!labelGrown || !customShape || !labelElement || !box || !root) {
-      setLabelPlateGrowth(0);
-      return undefined;
-    }
-    const { width, height } = customShape.viewBox;
-    const measure = () => {
-      const overflow = labelElement.offsetHeight - box.clientHeight;
-      const unitsPerPixel = Math.max(width, height) / root.clientWidth;
-      setLabelPlateGrowth(
-        overflow > 0 && Number.isFinite(unitsPerPixel)
-          ? Math.round(overflow * unitsPerPixel * 10) / 10
-          : 0,
-      );
-    };
-    measure();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(measure);
-    observer.observe(labelElement);
-    return () => observer.disconnect();
-  }, [labelGrown, customShape, labelRef]);
-
-  // A label area holds fewer lines than the ladder's clamps allow for, so a
-  // label cut short in one is clamped to the lines that are whole.
-  const labelLineClamp =
-    customShape && isTruncated && !labelGrown ? wholeLines : undefined;
-
   // the label on top of that is noise.
   const isGrabbed = buttonProps['data-dragging'] === true;
 
@@ -755,31 +661,6 @@ export default function Node(props: UINodeProps) {
     }
   }, [displayedSelected, highlighted, stateScope, animate]);
 
-  const nodeContent = (
-    <>
-      {loading && <Loader2 className="animate-spin" size={24} />}
-      {!loading && (
-        // A label is usually a name a participant typed, in any script: it
-        // takes the direction of its own text, so a Latin name ending in
-        // punctuation ("team-b!") keeps it at the end in a right-to-left
-        // interview. The label is centred, so its side does not change.
-        // oxlint-disable-next-line direction/typed-text-matches-parent -- labelVariants centre the label (text-center), so it has no side to keep
-        <span
-          ref={labelRef}
-          dir="auto"
-          className={fitSteps[stepIndex] ?? fitSteps[0]}
-          style={
-            labelLineClamp === undefined
-              ? undefined
-              : { WebkitLineClamp: labelLineClamp }
-          }
-        >
-          {displayedLabel}
-        </span>
-      )}
-    </>
-  );
-
   // Hoisted out of the branch below: a ternary arm is not a place to call a
   // hook, whatever `presentational` happens to be on this render.
   const buttonRef = useMergeRefs({ ref, scope });
@@ -884,35 +765,18 @@ export default function Node(props: UINodeProps) {
           )}
         </AnimatePresence>
       </span>
-      {/* Content layer - positioned so it paints above the shape layer, and
-          the fixed-size box the label is fitted to */}
-      {customShape ? (
-        <span
-          ref={labelBoxRef}
-          data-node-label-area
-          // Placed over the artwork's label area, which is drawn by
-          // coordinates and does not mirror.
-          data-direction-exempt
-          className={cx(
-            'absolute flex min-w-0 justify-center',
-            labelGrown && labelPlateGrowth > 0
-              ? 'items-start overflow-visible'
-              : 'items-center overflow-hidden',
-          )}
-          style={customLabelAreaStyle(customShape)}
-        >
-          {nodeContent}
-          {props.children}
-        </span>
-      ) : (
-        <span
-          ref={labelBoxRef}
-          className="relative flex size-full min-w-0 items-center justify-center overflow-hidden rounded-[inherit]"
-        >
-          {nodeContent}
-          {props.children}
-        </span>
-      )}
+      <NodeLabelArea
+        boxRef={labelBoxRef}
+        labelRef={labelRef}
+        label={displayedLabel}
+        labelClassName={labelClassName}
+        labelLineClamp={labelLineClamp}
+        customShape={customShape}
+        plateGrown={labelPlateGrowth > 0}
+        loading={loading}
+      >
+        {props.children}
+      </NodeLabelArea>
     </>
   );
 

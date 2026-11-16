@@ -2,17 +2,16 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
-import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
-import type { OptionMappingValue } from '@codaco/fresco-ui/form/fields/OptionMappingField';
+import type { NodeShapeReference } from '@codaco/protocol-validation';
 
 import type { CustomShapes } from '../codebook/customShapes.ts';
 import { ProtocolWithShapeImages } from '../testing/ProtocolWithShapeImages.tsx';
 import ShapeMappingField from './ShapeMappingField.tsx';
 
-const ROWS = [
-  { id: 'home', label: 'Home' },
-  { id: 'school', label: 'School' },
-  { id: 'work', label: 'Work' },
+const ANSWERS = [
+  { value: 'home', label: 'Home' },
+  { value: 'school', label: 'School' },
+  { value: 'work', label: 'Work' },
 ];
 
 const CUSTOM_SHAPES: CustomShapes = {
@@ -21,25 +20,27 @@ const CUSTOM_SHAPES: CustomShapes = {
 };
 
 function ShapeMapping({
-  initialValue,
+  initialValue = {},
   customShapes,
   readOnly = false,
 }: Readonly<{
-  initialValue?: OptionMappingValue;
+  /** The shape chosen for each answer so far, keyed by answer. */
+  initialValue?: Readonly<Record<string, NodeShapeReference>>;
   customShapes?: CustomShapes;
   readOnly?: boolean;
 }>) {
   const [value, setValue] = useState(initialValue);
   return (
-    <UnconnectedField
+    <ShapeMappingField
       name="shapeMapping"
       label="Shape for each value"
-      component={ShapeMappingField}
-      rows={ROWS}
+      answers={ANSWERS}
+      shapeFor={(answer) => value[answer]}
+      onShapeChange={(answer, shape) =>
+        setValue((current) => ({ ...current, [answer]: shape }))
+      }
       nodeColor="node-color-seq-4"
       {...(customShapes === undefined ? {} : { customShapes })}
-      value={value}
-      onChange={setValue}
       readOnly={readOnly}
     />
   );
@@ -75,7 +76,7 @@ type Story = StoryObj<typeof meta>;
 /** Built-in shapes only: choosing one for a value marks that row as mapped. */
 export const BuiltInShapes: Story = {
   args: {
-    initialValue: [{ id: 'home', value: 'square' }],
+    initialValue: { home: 'square' },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -96,10 +97,7 @@ export const BuiltInShapes: Story = {
 export const WithCustomShapes: Story = {
   args: {
     customShapes: CUSTOM_SHAPES,
-    initialValue: [
-      { id: 'home', value: 'custom:home' },
-      { id: 'school', value: 'custom:school' },
-    ],
+    initialValue: { home: 'custom:home', school: 'custom:school' },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -115,7 +113,7 @@ export const WithCustomShapes: Story = {
 export const ReadOnly: Story = {
   args: {
     readOnly: true,
-    initialValue: [{ id: 'home', value: 'square' }],
+    initialValue: { home: 'square' },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

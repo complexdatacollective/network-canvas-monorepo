@@ -17,13 +17,8 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import type { NodeColorSequence } from '@codaco/fresco-ui/Node';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import {
-  type CustomShapes,
-  isNodeShapeReference,
-} from '@codaco/protocol-builder/codebook/customShapes';
-import ShapeMappingField, {
-  useShapeMappingHint,
-} from '@codaco/protocol-builder/fields/ShapeMappingField';
+import type { CustomShapes } from '@codaco/protocol-builder/codebook/customShapes';
+import ShapeMappingField from '@codaco/protocol-builder/fields/ShapeMappingField';
 import ShapePickerField from '@codaco/protocol-builder/fields/ShapePickerField';
 import {
   type NodeShapeReference,
@@ -331,7 +326,6 @@ const ShapeMappingEditor = ({
   customShapes,
 }: ShapeMappingEditorProps) => {
   const intl = useAppIntl();
-  const shapeMappingHint = useShapeMappingHint();
   const localization = useSelector(getLocalization);
   const dynamic = (value ?? EMPTY_MAPPING) as ShapeMappingDraft;
 
@@ -438,35 +432,14 @@ const ShapeMappingEditor = ({
       />
 
       {selectedVar && dynamic.type === 'discrete' && (
-        <UnconnectedField
+        <ShapeMappingField
           name={`${SHAPE_MAPPING_FIELD}.map`}
           label={intl.formatMessage(messages.shapeForEachValue)}
-          hint={shapeMappingHint}
-          component={ShapeMappingField}
           nodeColor={nodeColor}
           customShapes={customShapes}
-          rows={discreteOptions.map((option, index) => ({
-            id: String(index),
-            label: option.label,
-          }))}
-          value={discreteOptions.flatMap((option, index) => {
-            const shape = getShapeForValue(option.value);
-            return shape === undefined
-              ? []
-              : [{ id: String(index), value: shape }];
-          })}
-          onChange={(next) => {
-            for (const entry of next ?? []) {
-              const option = discreteOptions[Number(entry.id)];
-              if (
-                option !== undefined &&
-                isNodeShapeReference(entry.value) &&
-                getShapeForValue(option.value) !== entry.value
-              ) {
-                handleDiscreteShapeChange(option.value, entry.value);
-              }
-            }
-          }}
+          answers={discreteOptions}
+          shapeFor={getShapeForValue}
+          onShapeChange={handleDiscreteShapeChange}
         />
       )}
 

@@ -434,12 +434,10 @@ export function resolveNodeShape(
   attributes: Record<string, unknown>,
   shapeSvgs: Readonly<Record<string, string>>,
 ): NodeShapeProp {
-  return (
-    resolveNodeShapeReference(
-      resolveShapeReference(nodeDefinition.shape, attributes),
-      nodeDefinition.customShapes,
-      shapeSvgs,
-    ) ?? 'circle'
+  return resolveNodeShapeReference(
+    resolveShapeReference(nodeDefinition.shape, attributes),
+    nodeDefinition.customShapes,
+    shapeSvgs,
   );
 }
 

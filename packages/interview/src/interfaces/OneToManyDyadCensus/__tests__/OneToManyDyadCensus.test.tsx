@@ -20,6 +20,7 @@ import type {
   RegisterBeforeNext,
   StageProps,
 } from '../../../types';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import OneToManyDyadCensus from '../OneToManyDyadCensus';
 
@@ -122,11 +123,13 @@ function renderInterface(edges: NcEdge[] = []) {
     return (
       <TestProtocolLocalization>
         <Provider store={store}>
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <StageMetadataContext.Provider value={registerBeforeNext}>
-              {children}
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
+          <TestInterviewAssets>
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider value={registerBeforeNext}>
+                {children}
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </TestInterviewAssets>
         </Provider>
       </TestProtocolLocalization>
     );

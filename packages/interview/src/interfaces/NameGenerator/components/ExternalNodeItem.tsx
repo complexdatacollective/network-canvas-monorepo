@@ -7,7 +7,7 @@ import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import UINode from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
-import { useCustomShapeSvgs } from '../../../contexts/CustomShapeSvgsContext';
+import { useCustomShapeSvgs } from '../../../hooks/useCustomShapeSvgs';
 import { resolveNodeShape } from '../../../selectors/session';
 import { getCodebook } from '../../../store/modules/protocol';
 import { useNodeLabel } from '../../Anonymisation/useNodeLabel';

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import Node from './Node';
 import { NodeShapeArtwork } from './node/NodeShapeArtwork';
-import { isValidNodeShapeSvg, parseNodeShapeSvg } from './node/nodeShapeSvg';
+import { parseNodeShapeSvg } from './node/nodeShapeSvg';
 
 const houseSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--node-color)"/><stop offset="1" stop-color="var(--node-color-dark)"/></linearGradient><clipPath id="clip"><rect width="100" height="100"/></clipPath></defs><path d="M50 4 L95 42 L95 96 L5 96 L5 42 Z" fill="url(#shade)" clip-path="url('#clip')" stroke-width="2"/><use href="#roof"/><rect id="label-area" x="16" y="46" width="68" height="40" fill="#ffffff"/></svg>`;
 
@@ -21,10 +21,19 @@ const artworkOf = (node: HTMLElement) =>
 
 describe('Node custom shapes', () => {
   it('uses fixtures the schema accepts', () => {
-    expect(isValidNodeShapeSvg(houseSvg)).toBe(true);
-    expect(isValidNodeShapeSvg(wideSvg)).toBe(true);
-    expect(isValidNodeShapeSvg(plainSvg)).toBe(true);
-    expect(isValidNodeShapeSvg(hostileSvg)).toBe(false);
+    expect(parseNodeShapeSvg(houseSvg)).toMatchObject({
+      success: true,
+      issues: [],
+    });
+    expect(parseNodeShapeSvg(wideSvg)).toMatchObject({
+      success: true,
+      issues: [],
+    });
+    expect(parseNodeShapeSvg(plainSvg)).toMatchObject({
+      success: true,
+      issues: [],
+    });
+    expect(parseNodeShapeSvg(hostileSvg).issues).not.toHaveLength(0);
   });
 
   it('draws the artwork as a fitted, hidden svg', () => {
@@ -277,7 +286,10 @@ describe('NodeShapeArtwork label plate', () => {
   };
 
   it('draws the plate taller by the growth it is given', () => {
-    expect(isValidNodeShapeSvg(platedSvg)).toBe(true);
+    expect(parseNodeShapeSvg(platedSvg)).toMatchObject({
+      success: true,
+      issues: [],
+    });
     expect(plateHeight(platedSvg, 0)).toBe('32');
     expect(plateHeight(platedSvg, 12.5)).toBe('44.5');
   });

@@ -17,14 +17,12 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NodeShapeReference } from '@codaco/protocol-validation';
 
-import ShapeMappingField, {
-  useShapeMappingHint,
-} from '../../fields/ShapeMappingField.tsx';
+import ShapeMappingField from '../../fields/ShapeMappingField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import type { ResolvedTranslation } from '../../localization/localizedText.ts';
 import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
-import { type CustomShapes, isNodeShapeReference } from '../customShapes.ts';
+import type { CustomShapes } from '../customShapes.ts';
 import {
   eligibleShapeVariables,
   MAX_SHAPE_THRESHOLDS,
@@ -385,7 +383,6 @@ export default function NodeShapeMappingFields({
   const config = thresholdInputConfig(selected);
   const options = eligibleShapeVariables(variables);
   const localize = useLocalizedText();
-  const shapeMappingHint = useShapeMappingHint();
   const answers =
     selected === undefined ? [] : discreteAnswers(selected, intl, localize);
   const thresholds = mapping.thresholds ?? [];
@@ -439,13 +436,11 @@ export default function NodeShapeMappingFields({
           />
 
           {selected !== undefined && mapping.type === 'discrete' && (
-            <UnconnectedField
+            <ShapeMappingField
               name="shape-for-each-value"
               label={intl.formatMessage(messages.shapeForEachValue)}
-              hint={shapeMappingHint}
-              component={ShapeMappingField}
-              rows={answers.map((answer, index) => ({
-                id: String(index),
+              answers={answers.map((answer) => ({
+                value: answer.value,
                 label:
                   answer.label.lang !== undefined &&
                   answer.label.dir !== undefined
@@ -456,37 +451,13 @@ export default function NodeShapeMappingFields({
                       }
                     : answer.label.text,
               }))}
+              shapeFor={(answerValue) => shapeForValue(mapping, answerValue)}
+              onShapeChange={(answerValue, shape) =>
+                onChange(withDiscreteShape(mapping, answerValue, shape))
+              }
               nodeColor={nodeColor}
               customShapes={customShapes}
-              value={answers.flatMap((answer, index) => {
-                const shape = shapeForValue(mapping, answer.value);
-                return shape === undefined
-                  ? []
-                  : [{ id: String(index), value: shape }];
-              })}
               disabled={disabled}
-              onChange={(next) => {
-                const changed = (next ?? []).find((entry) => {
-                  const answer = answers[Number(entry.id)];
-                  return (
-                    answer !== undefined &&
-                    shapeForValue(mapping, answer.value) !== entry.value
-                  );
-                });
-                const answer =
-                  changed === undefined
-                    ? undefined
-                    : answers[Number(changed.id)];
-                if (
-                  changed !== undefined &&
-                  answer !== undefined &&
-                  isNodeShapeReference(changed.value)
-                ) {
-                  onChange(
-                    withDiscreteShape(mapping, answer.value, changed.value),
-                  );
-                }
-              }}
             />
           )}
 

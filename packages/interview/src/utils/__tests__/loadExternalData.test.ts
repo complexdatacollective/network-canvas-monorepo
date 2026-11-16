@@ -98,10 +98,11 @@ describe('loadExternalData CSV-vs-JSON selection', () => {
 
   it('parses CSV when the filename has a .csv extension', async () => {
     const csvText = 'name,age\nAlice,30\nBob,42\n';
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      text: () => Promise.resolve(csvText),
-      json: () => Promise.reject(new Error('should not call json() for CSV')),
-    } as unknown as Response);
+    const response = new Response(csvText);
+    vi.spyOn(response, 'json').mockRejectedValue(
+      new Error('should not call json() for CSV'),
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
 
     const { nodes } = await loadExternalData('classmates.csv', 'stub://url');
 
@@ -128,15 +129,26 @@ describe('loadExternalData CSV-vs-JSON selection', () => {
     const jsonPayload = {
       nodes: [{ [entityAttributesProperty]: { name: 'Carol' } }],
     };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      text: () => Promise.reject(new Error('should not call text() for JSON')),
-      json: () => Promise.resolve(jsonPayload),
-    } as unknown as Response);
+    const response = new Response(JSON.stringify(jsonPayload));
+    vi.spyOn(response, 'text').mockRejectedValue(
+      new Error('should not call text() for JSON'),
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
 
     const { nodes } = await loadExternalData('classmates.json', 'stub://url');
 
     expect(nodes).toHaveLength(1);
     expect(nodes[0]?.[entityAttributesProperty]).toEqual({ name: 'Carol' });
+  });
+
+  it('rejects an unsuccessful response instead of parsing its body', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('name\nAlice\n', { status: 404 }),
+    );
+
+    await expect(
+      loadExternalData('classmates.csv', 'stub://url'),
+    ).rejects.toThrow('(404)');
   });
 
   it('preserves valid unknown JSON attributes and omits legacy nullish entries', async () => {

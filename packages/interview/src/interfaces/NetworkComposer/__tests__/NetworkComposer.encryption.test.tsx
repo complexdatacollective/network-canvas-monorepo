@@ -22,6 +22,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { WritesInFlightProvider } from '../../../store/WritesInFlightContext';
@@ -281,29 +282,31 @@ function renderComposer(store: Store, composerStage = stage) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <TestProtocolLocalization>
-          <ContractProvider
-            onFinish={vi.fn()}
-            onRequestAsset={vi.fn()}
-            flags={{ isE2E: false, isDevelopment: false }}
-          >
-            <DialogProvider>
-              <WritesInFlightProvider
-                writesSettled={store.writesSettled}
-                trackWrite={store.trackWrite}
-              >
-                <CurrentStepProvider
-                  currentStep={0}
-                  onStepChange={() => undefined}
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <TestProtocolLocalization>
+            <ContractProvider
+              onFinish={vi.fn()}
+              onRequestAsset={vi.fn()}
+              flags={{ isE2E: false, isDevelopment: false }}
+            >
+              <DialogProvider>
+                <WritesInFlightProvider
+                  writesSettled={store.writesSettled}
+                  trackWrite={store.trackWrite}
                 >
-                  <StageMetadataContext.Provider value={registerBeforeNext}>
-                    {children}
-                  </StageMetadataContext.Provider>
-                </CurrentStepProvider>
-              </WritesInFlightProvider>
-            </DialogProvider>
-          </ContractProvider>
-        </TestProtocolLocalization>
+                  <CurrentStepProvider
+                    currentStep={0}
+                    onStepChange={() => undefined}
+                  >
+                    <StageMetadataContext.Provider value={registerBeforeNext}>
+                      {children}
+                    </StageMetadataContext.Provider>
+                  </CurrentStepProvider>
+                </WritesInFlightProvider>
+              </DialogProvider>
+            </ContractProvider>
+          </TestProtocolLocalization>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }

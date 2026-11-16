@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  isValidNodeShapeSvg,
   MAX_NODE_SHAPE_SVG_LENGTH,
   type NodeShapeSvgResult,
   parseNodeShapeSvg,
@@ -190,7 +189,10 @@ describe('parseNodeShapeSvg', () => {
     const base = svg('<circle r="1"/>');
     const source = `${base}${' '.repeat(MAX_NODE_SHAPE_SVG_LENGTH - base.length)}`;
     expect(source).toHaveLength(MAX_NODE_SHAPE_SVG_LENGTH);
-    expect(isValidNodeShapeSvg(source)).toBe(true);
+    expect(parseNodeShapeSvg(source)).toMatchObject({
+      success: true,
+      issues: [],
+    });
   });
 
   it('reports too-long for nesting deeper than the cap', () => {
@@ -213,10 +215,13 @@ describe('parseNodeShapeSvg', () => {
     const nested = svg(
       `${'<g>'.repeat(30)}<circle r="1"/>${'</g>'.repeat(30)}`,
     );
-    expect(isValidNodeShapeSvg(nested)).toBe(true);
-    expect(isValidNodeShapeSvg(svg('<circle r="1"/>'.repeat(1_999)))).toBe(
-      true,
-    );
+    expect(parseNodeShapeSvg(nested)).toMatchObject({
+      success: true,
+      issues: [],
+    });
+    expect(
+      parseNodeShapeSvg(svg('<circle r="1"/>'.repeat(1_999))),
+    ).toMatchObject({ success: true, issues: [] });
   });
 
   describe('removals', () => {
@@ -690,11 +695,16 @@ describe('parseNodeShapeSvg', () => {
   });
 });
 
-describe('isValidNodeShapeSvg', () => {
-  it('is true only for a successful parse with no issues', () => {
-    expect(isValidNodeShapeSvg(svg('<circle r="1"/>'))).toBe(true);
-    expect(isValidNodeShapeSvg(svg('<circle r="1" onclick="x"/>'))).toBe(false);
-    expect(isValidNodeShapeSvg('not xml')).toBe(false);
+describe('strict validity', () => {
+  it('reports no issues only for a clean file', () => {
+    expect(parseNodeShapeSvg(svg('<circle r="1"/>'))).toMatchObject({
+      success: true,
+      issues: [],
+    });
+    expect(
+      parseNodeShapeSvg(svg('<circle r="1" onclick="x"/>')).issues,
+    ).not.toHaveLength(0);
+    expect(parseNodeShapeSvg('not xml').issues).not.toHaveLength(0);
   });
 });
 
@@ -728,7 +738,10 @@ describe('serializeNodeShapeSvg', () => {
     'produces a strictly valid file from dirty fixture %i',
     (_, fixture) => {
       const shape = parsed(fixture).shape;
-      expect(isValidNodeShapeSvg(serializeNodeShapeSvg(shape))).toBe(true);
+      expect(parseNodeShapeSvg(serializeNodeShapeSvg(shape))).toMatchObject({
+        success: true,
+        issues: [],
+      });
     },
   );
 
@@ -749,10 +762,9 @@ describe('hardening', () => {
   it('refuses values that could end a CSS declaration', () => {
     for (const fill of ['red;background:blue', 'red}', 'red/*x*/', '{red']) {
       expect(
-        isValidNodeShapeSvg(
-          wrap(`<rect width="5" height="5" fill="${fill}"/>`),
-        ),
-      ).toBe(false);
+        parseNodeShapeSvg(wrap(`<rect width="5" height="5" fill="${fill}"/>`))
+          .issues,
+      ).not.toHaveLength(0);
     }
   });
 
@@ -801,7 +813,9 @@ describe('hardening', () => {
       'unsupported-element',
     );
     expect(serializeNodeShapeSvg(result.shape)).not.toContain('<use');
-    expect(isValidNodeShapeSvg(serializeNodeShapeSvg(result.shape))).toBe(true);
+    expect(
+      parseNodeShapeSvg(serializeNodeShapeSvg(result.shape)),
+    ).toMatchObject({ success: true, issues: [] });
   });
 
   it('removes a <use> that reaches itself', () => {
@@ -813,11 +827,11 @@ describe('hardening', () => {
 
   it('keeps an ordinary <use>', () => {
     expect(
-      isValidNodeShapeSvg(
+      parseNodeShapeSvg(
         wrap(
           '<defs><circle id="dot" r="1"/></defs><use href="#dot" x="2" y="2"/>',
         ),
       ),
-    ).toBe(true);
+    ).toMatchObject({ success: true, issues: [] });
   });
 });

@@ -12,7 +12,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { useCustomShapeSvgs } from '../contexts/CustomShapeSvgsContext';
+import { useCustomShapeSvgs } from '../hooks/useCustomShapeSvgs';
 import { useStageSelector } from '../hooks/useStageSelector';
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
 import { getNetworkNodes, resolveNodeShape } from '../selectors/session';

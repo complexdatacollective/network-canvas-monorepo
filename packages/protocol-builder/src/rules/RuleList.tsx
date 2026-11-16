@@ -12,7 +12,8 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import type { Codebook } from '@codaco/protocol-validation';
 
-import { useNodeShapeSvgs } from '../codebook/useNodeShapeSvgs.ts';
+import { shapeAssetIds } from '../codebook/customShapes.ts';
+import NodeShapeSvgs from '../codebook/NodeShapeSvgs.tsx';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
@@ -72,19 +73,6 @@ type RuleListBinding = Readonly<{
   duplicateIds: ReadonlySet<string>;
   shapeSvgs: Readonly<Record<string, string>>;
 }>;
-
-/** Every node type's custom shapes in one record, for `useNodeShapeSvgs`. */
-const codebookShapeAssets = (codebook: Readonly<Codebook>) =>
-  Object.fromEntries(
-    Object.entries(codebook.node ?? {}).flatMap(([typeId, definition]) =>
-      Object.entries(definition.customShapes ?? {}).map(
-        ([shapeId, shape]): [string, Readonly<{ asset: string }>] => [
-          `${typeId}/${shapeId}`,
-          shape,
-        ],
-      ),
-    ),
-  );
 
 const RuleListBindingContext = createContext<RuleListBinding | null>(null);
 
@@ -423,7 +411,19 @@ function useDuplicateRuleIds(rules: readonly RuleDraft[]): ReadonlySet<string> {
  * keyboard equivalent, focus return, deletion, animation and the standard add
  * affordance; this adapter supplies only the rule-specific preview and editor.
  */
-export default function RuleList({
+export default function RuleList(props: RuleListProps) {
+  return (
+    <NodeShapeSvgs
+      assets={Object.values(props.codebook.node ?? {}).flatMap((definition) =>
+        shapeAssetIds(definition.customShapes),
+      )}
+    >
+      {(shapeSvgs) => <RuleListBody {...props} shapeSvgs={shapeSvgs} />}
+    </NodeShapeSvgs>
+  );
+}
+
+function RuleListBody({
   rules,
   codebook,
   ruleTypes,
@@ -434,10 +434,10 @@ export default function RuleList({
   hasError = false,
   disabled = false,
   readOnly = false,
-}: RuleListProps) {
+  shapeSvgs,
+}: RuleListProps & Readonly<{ shapeSvgs: RuleListBinding['shapeSvgs'] }>) {
   const intl = useAppIntl();
   const duplicateIds = useDuplicateRuleIds(rules);
-  const shapeSvgs = useNodeShapeSvgs(codebookShapeAssets(codebook));
 
   // Bound through a context rather than closed over: the item and editor
   // components are identified by reference, so rebuilding them with the

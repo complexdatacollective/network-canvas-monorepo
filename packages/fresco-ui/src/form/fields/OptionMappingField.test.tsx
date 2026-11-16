@@ -2,9 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { findDanglingIdReferences } from '../../utils/ariaIdReferences';
-import OptionMappingField, {
-  type OptionMappingValue,
-} from './OptionMappingField';
+import OptionMappingField from './OptionMappingField';
 
 const options = [
   { value: 'circle', label: 'Circle' },
@@ -19,7 +17,7 @@ const rows = [
 const renderField = (
   props: Partial<Parameters<typeof OptionMappingField>[0]> = {},
 ) => {
-  const onChange = vi.fn<(value: OptionMappingValue | undefined) => void>();
+  const onRowChange = vi.fn<(rowId: string, value: string) => void>();
   const view = render(
     <OptionMappingField
       aria-label="Shape for each value"
@@ -28,11 +26,11 @@ const renderField = (
       options={options}
       renderOption={(option) => <span data-testid={`tile-${option.value}`} />}
       value={[{ id: 'row one', value: 'circle' }]}
-      onChange={onChange}
+      onRowChange={onRowChange}
       {...props}
     />,
   );
-  return { onChange, ...view };
+  return { onRowChange, ...view };
 };
 
 describe('OptionMappingField', () => {
@@ -65,8 +63,8 @@ describe('OptionMappingField', () => {
     ).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('emits an entry for every mapped row and none for an unmapped one', () => {
-    const { onChange } = renderField();
+  it('reports which row changed and the option it now has', () => {
+    const { onRowChange } = renderField();
 
     fireEvent.click(
       within(screen.getByRole('radiogroup', { name: 'Friend' })).getByRole(
@@ -74,9 +72,7 @@ describe('OptionMappingField', () => {
         { name: 'Select shape Square' },
       ),
     );
-    expect(onChange).toHaveBeenLastCalledWith([
-      { id: 'row one', value: 'square' },
-    ]);
+    expect(onRowChange).toHaveBeenLastCalledWith('row one', 'square');
 
     fireEvent.click(
       within(screen.getByRole('radiogroup', { name: 'Family' })).getByRole(
@@ -84,14 +80,27 @@ describe('OptionMappingField', () => {
         { name: 'Circle' },
       ),
     );
-    expect(onChange).toHaveBeenLastCalledWith([
-      { id: 'row one', value: 'circle' },
-      { id: '友 2', value: 'circle' },
-    ]);
+    expect(onRowChange).toHaveBeenLastCalledWith('友 2', 'circle');
+    expect(onRowChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('hands the caller its own option to draw', () => {
+    render(
+      <OptionMappingField
+        aria-label="Colour for each value"
+        rows={rows}
+        options={[{ value: 'circle', label: 'Circle', colour: 'red' }]}
+        renderOption={(option) => (
+          <span data-testid={`tile-${option.colour}`} />
+        )}
+      />,
+    );
+
+    expect(screen.getAllByTestId('tile-red')).toHaveLength(2);
   });
 
   it('changes nothing while read-only', () => {
-    const { onChange } = renderField({ readOnly: true });
+    const { onRowChange } = renderField({ readOnly: true });
 
     fireEvent.click(
       within(screen.getByRole('radiogroup', { name: 'Friend' })).getByRole(
@@ -100,7 +109,7 @@ describe('OptionMappingField', () => {
       ),
     );
 
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onRowChange).not.toHaveBeenCalled();
   });
 
   it('gives a single unlabelled row the field’s own name', () => {

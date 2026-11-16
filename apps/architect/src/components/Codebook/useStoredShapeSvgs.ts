@@ -1,4 +1,10 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  type QueryClient,
+  useQueries,
+  useQueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query';
+import { useSyncExternalStore } from 'react';
 
 import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
 import {
@@ -9,84 +15,84 @@ import {
 
 type ShapeAssets = Readonly<Record<string, Readonly<{ asset: string }>>>;
 
-type ShapeSvgs = Readonly<Record<string, string>>;
+type ShapeSvg = Readonly<{ asset: string; svg: string }>;
 
-const NO_SVGS: ShapeSvgs = {};
+const QUERY_ROOT = 'architect-stored-shape-svg';
 
-const SEPARATOR = '\u0000';
-
-// Every icon on the codebook page draws from the same few assets, so each is
-// read once per version of the asset store rather than once per icon.
-const reads = new Map<string, Promise<string | undefined>>();
-
-const readSvg = (asset: string, version: number) => {
-  const key = [getActiveProtocolScope() ?? '', version, asset].join(SEPARATOR);
-  let read = reads.get(key);
-  if (read === undefined) {
-    read = (async () => {
-      const stored = await getAssetById(asset);
-      return stored === undefined || typeof stored.data === 'string'
-        ? undefined
-        : await stored.data.text();
-    })().catch(() => undefined);
-    reads.set(key, read);
+const readShapeSvg = async (
+  scope: string,
+  asset: string,
+): Promise<ShapeSvg> => {
+  const stored = await getAssetById(asset, scope);
+  if (stored === undefined || typeof stored.data === 'string') {
+    throw new Error(`the shape asset ${asset} is not a stored file`);
   }
-  return read;
+  return { asset, svg: await stored.data.text() };
 };
 
-const readSvgs = async (
-  assets: readonly string[],
-  version: number,
-): Promise<ShapeSvgs> => {
-  const texts = await Promise.all(
-    assets.map(async (asset) => ({
-      asset,
-      svg: await readSvg(asset, version),
-    })),
-  );
-  return Object.fromEntries(
-    texts.flatMap(({ asset, svg }) =>
-      svg === undefined ? [] : [[asset, svg]],
+/**
+ * A changed store version is a new query, and `useQueries` gives a new query a
+ * new observer, so `keepPreviousData` has nothing to keep. The newest earlier
+ * version's text stands in instead while the new version is read.
+ */
+const earlierShapeSvg = (
+  queryClient: QueryClient,
+  scope: string,
+  asset: string,
+): ShapeSvg | undefined =>
+  queryClient
+    .getQueriesData<ShapeSvg>({ queryKey: [QUERY_ROOT, scope, asset] })
+    .flatMap(([key, data]) => {
+      const version = key[3];
+      return data === undefined || typeof version !== 'number'
+        ? []
+        : [{ version, data }];
+    })
+    .toSorted((a, b) => b.version - a.version)[0]?.data;
+
+// Module level, so TanStack keeps the combined record while no read changes.
+const bySvgAsset = (
+  results: readonly UseQueryResult<ShapeSvg>[],
+): Readonly<Record<string, string>> =>
+  Object.fromEntries(
+    results.flatMap(({ data }) =>
+      data === undefined ? [] : [[data.asset, data.svg]],
     ),
   );
-};
 
 /**
  * The SVG text of each asset a node type's custom shapes draw from, keyed by
  * asset id, for `resolveNodeShapeReference`.
  *
- * Read from the open protocol's asset store, and read again when it changes.
- * Until an asset has been read, or when it cannot be, it is absent and the
- * node falls back to a built-in shape.
+ * Each asset is read once per version of the open protocol's asset store.
+ * While a newer version is read the earlier text is kept, so an icon does not
+ * flicker back to its fallback shape. An asset not yet read, or one that cannot
+ * be, is absent and the node falls back to a built-in shape.
  */
 export function useStoredShapeSvgs(
   customShapes: ShapeAssets | undefined,
-): ShapeSvgs {
+): Readonly<Record<string, string>> {
+  const queryClient = useQueryClient();
   const version = useSyncExternalStore(
     subscribeToAssetStore,
     getAssetStoreVersion,
   );
-  const assetList = [
+  const scope = getActiveProtocolScope();
+  const assets = [
     ...new Set(Object.values(customShapes ?? {}).map(({ asset }) => asset)),
-  ]
-    .toSorted()
-    .join(SEPARATOR);
-  const [loaded, setLoaded] = useState<ShapeSvgs>(NO_SVGS);
+  ].toSorted();
 
-  useEffect(() => {
-    let current = true;
-    const load = async () => {
-      if (assetList === '') return;
-      const svgs = await readSvgs(assetList.split(SEPARATOR), version);
-      if (current) setLoaded(svgs);
-    };
-    void load();
-    return () => {
-      current = false;
-    };
-  }, [assetList, version]);
-
-  // Kept while a new read is under way, so an icon does not flicker back to
-  // its fallback shape whenever the store changes.
-  return assetList === '' ? NO_SVGS : loaded;
+  return useQueries({
+    queries:
+      scope === null
+        ? []
+        : assets.map((asset) => ({
+            queryKey: [QUERY_ROOT, scope, asset, version],
+            queryFn: () => readShapeSvg(scope, asset),
+            staleTime: Number.POSITIVE_INFINITY,
+            retry: false,
+            placeholderData: () => earlierShapeSvg(queryClient, scope, asset),
+          })),
+    combine: bySvgAsset,
+  });
 }

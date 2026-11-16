@@ -1,5 +1,6 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Redacted } from 'effect';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
@@ -10,7 +11,8 @@ import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
-import { useResourceClient } from '../client.tsx';
+import { useProtocolBuilderContext } from '../../state/context.ts';
+import { useOpenEditId } from '../client.tsx';
 import { resourceOk, type ResourceDescriptor } from '../types.ts';
 import {
   checkExistingNodeShape,
@@ -183,40 +185,48 @@ function ResourceBrowserBody({
 }: ResourceBrowserBodyProps) {
   const intl = useAppIntl();
   const copy = RESOURCE_PICKER_COPY[kind];
-  const resources = useResourceClient();
+  const queryClient = useQueryClient();
+  const host = useProtocolBuilderContext();
+  const editId = useOpenEditId();
   const library = useResourceLibrary(browsableKinds(kind));
   const readLibrary = library.read;
   const offered =
     kind === 'nodeShape'
       ? library.resources.filter(isNodeShapeResource)
       : library.resources;
-  /** Why the stored image chosen last cannot draw a node, encoded. */
-  const [shapeRefusal, setShapeRefusal] = useState<string | undefined>(
-    undefined,
-  );
-  const [checkingShape, setCheckingShape] = useState(false);
-  const shapeCheck = useRef(0);
+  // Fails with why the stored image cannot draw a node, encoded.
+  const shapeCheck = useMutation({
+    mutationFn: async (descriptor: ResourceDescriptor) => {
+      const result = await checkExistingNodeShape(
+        queryClient,
+        host,
+        editId,
+        descriptor,
+      );
+      if (!result.success) throw new Error(result.error);
+      return result.notice;
+    },
+  });
+  const checkShape = shapeCheck.mutate;
 
   // A stored image is read and checked before it is handed over, because a
   // shape the interview cannot draw would only be found once a node needs it.
+  // Only the check started last hands its image over: `mutate`'s own callbacks
+  // are called for the latest call alone.
   const chooseExisting = useCallback(
-    async (descriptor: ResourceDescriptor) => {
+    (descriptor: ResourceDescriptor) => {
       if (kind !== 'nodeShape') {
         onSelect(descriptor);
         return;
       }
-      shapeCheck.current += 1;
-      const check = shapeCheck.current;
-      setShapeRefusal(undefined);
-      setCheckingShape(true);
-      const result = await checkExistingNodeShape(resources, descriptor);
-      if (check !== shapeCheck.current) return;
-      setCheckingShape(false);
-      if (result.success) onSelect(descriptor, result.notice);
-      else setShapeRefusal(result.error);
+      checkShape(descriptor, {
+        onSuccess: (notice) => onSelect(descriptor, notice),
+      });
     },
-    [kind, onSelect, resources],
+    [checkShape, kind, onSelect],
   );
+  const shapeRefusal = shapeCheck.error?.message;
+  const checkingShape = shapeCheck.isPending;
   // Read where the browser reads it, but when the key is submitted rather
   // than when this dialog opened: the list below is what there was, and a
   // name is refused for what there is.
@@ -291,7 +301,7 @@ function ResourceBrowserBody({
                 <ResourceChoiceCard
                   descriptor={descriptor}
                   current={descriptor.id === selectedId}
-                  onSelect={(chosen) => void chooseExisting(chosen)}
+                  onSelect={chooseExisting}
                   disabled={disabled || checkingShape}
                 />
               </li>

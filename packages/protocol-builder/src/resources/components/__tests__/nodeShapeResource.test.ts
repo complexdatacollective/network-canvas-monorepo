@@ -1,13 +1,13 @@
 import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { isValidNodeShapeSvg } from '@codaco/fresco-ui/node/nodeShapeSvg';
+import { parseNodeShapeSvg } from '@codaco/fresco-ui/node/nodeShapeSvg';
 
 import type { ResourceDescriptor } from '../../types.ts';
 import {
   checkNodeShapeSvg,
   isNodeShapeResource,
-  isOversizeShapeFile,
+  prepareNodeShapeUpload,
 } from '../nodeShapeResource.ts';
 
 const HOME_SVG =
@@ -34,7 +34,7 @@ describe('checkNodeShapeSvg', () => {
     const result = checkNodeShapeSvg('home.svg', HOME_SVG);
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(isValidNodeShapeSvg(result.svg)).toBe(true);
+    expect(parseNodeShapeSvg(result.svg).issues).toEqual([]);
     expect(result.removed).toEqual([]);
     expect(result.centredLabel).toBe(false);
   });
@@ -50,7 +50,7 @@ describe('checkNodeShapeSvg', () => {
     expect(result.centredLabel).toBe(true);
     expect(result.svg).not.toContain('script');
     expect(result.svg).not.toContain('onclick');
-    expect(isValidNodeShapeSvg(result.svg)).toBe(true);
+    expect(parseNodeShapeSvg(result.svg).issues).toEqual([]);
   });
 
   it('explains why a file cannot be used at all', () => {
@@ -73,10 +73,48 @@ describe('checkNodeShapeSvg', () => {
   });
 });
 
-describe('isOversizeShapeFile', () => {
-  it('refuses only files that cannot fit the limit', () => {
-    expect(isOversizeShapeFile(1024)).toBe(false);
-    expect(isOversizeShapeFile(10_000_000)).toBe(true);
+describe('prepareNodeShapeUpload', () => {
+  it('refuses a file that cannot fit the limit before reading it', () => {
+    expect(
+      'error' in prepareNodeShapeUpload('big.svg', new Uint8Array(10_000_000)),
+    ).toBe(true);
+    expect(
+      'error' in
+        prepareNodeShapeUpload('home.svg', new TextEncoder().encode(HOME_SVG)),
+    ).toBe(false);
+  });
+
+  it('stores a clean file in its canonical form and notes it was imported', () => {
+    const upload = prepareNodeShapeUpload(
+      'home.svg',
+      new TextEncoder().encode(HOME_SVG),
+    );
+    if ('error' in upload) throw new Error(upload.error);
+    expect(upload.contentType).toBe('image/svg+xml');
+    expect(
+      parseNodeShapeSvg(new TextDecoder().decode(upload.bytes)).issues,
+    ).toEqual([]);
+    expect(upload.notice).toEqual({
+      origin: 'imported',
+      removed: [],
+      centredLabel: false,
+    });
+  });
+
+  it('says why a file cannot be used', () => {
+    const failure = (bytes: Uint8Array) => {
+      const upload = prepareNodeShapeUpload('x.svg', bytes);
+      return 'error' in upload ? messageId(upload.error) : undefined;
+    };
+    expect(failure(new Uint8Array(10_000_000))).toBe(
+      'protocolBuilder.customShapes.tooLarge',
+    );
+    expect(failure(new Uint8Array([0xff, 0xfe, 0xfd]))).toBe(
+      'protocolBuilder.customShapes.notSvg',
+    );
+    expect(
+      failure(new TextEncoder().encode('<svg><circle r="2"/></svg>')),
+    ).toBe('protocolBuilder.customShapes.noViewBox');
   });
 });
 

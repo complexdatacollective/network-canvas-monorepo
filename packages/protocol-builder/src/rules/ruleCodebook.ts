@@ -885,11 +885,10 @@ export const ruleEntityTypeOptions = (
     value,
     label: codebookLabel(definition.name, value),
     color: definition.color,
-    shape:
-      resolveNodeShapeReference(
-        definition.shape.default,
-        definition.customShapes,
-        shapeSvgs,
-      ) ?? 'circle',
+    shape: resolveNodeShapeReference(
+      definition.shape.default,
+      definition.customShapes,
+      shapeSvgs,
+    ),
   }));
 };

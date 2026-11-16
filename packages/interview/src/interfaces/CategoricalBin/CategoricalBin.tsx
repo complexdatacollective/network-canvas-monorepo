@@ -30,7 +30,6 @@ import NodeDrawer from '../../components/NodeDrawer';
 import PassphraseEntry from '../../components/PassphraseEntry';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
-import { useCustomShapeSvgs } from '../../contexts/CustomShapeSvgsContext';
 import {
   useDynamicValueSources,
   withDynamicValueEntities,
@@ -44,6 +43,7 @@ import {
 } from '../../forms/writeSubmissionResult';
 import { useBinSelection } from '../../hooks/useBinSelection';
 import useCompletePlacement from '../../hooks/useCompletePlacement';
+import { useCustomShapeSvgs } from '../../hooks/useCustomShapeSvgs';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   type ResolvedProtocolText,

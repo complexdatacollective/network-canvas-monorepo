@@ -2,15 +2,11 @@ import { get } from 'es-toolkit/compat';
 import { createElement, useCallback, useMemo, useState } from 'react';
 import { useStore } from 'react-redux';
 
-import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
-import {
-  customShapeForAsset,
-  readCustomShapes,
-} from '@codaco/protocol-builder/codebook/customShapes';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import {
   ResourceClientProvider,
@@ -24,9 +20,7 @@ import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
 import TypeEditor, {
   type EntityTypeValues,
 } from '~/components/TypeEditor/TypeEditor';
-import validateEntityType, {
-  CUSTOM_SHAPES_FIELD,
-} from '~/components/TypeEditor/validateEntityType';
+import validateEntityType from '~/components/TypeEditor/validateEntityType';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
@@ -39,6 +33,9 @@ import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
 import { useOtherTabName } from '~/protocolBuilder/useOtherTabName';
 import { getProtocol } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
+
+import { adoptStagedImages } from './adoptStagedImages';
+
 const chromeMessages = defineMessages({
   node: {
     id: 'architect.chrome.codebook.entityTypeDialog.node',
@@ -83,20 +80,6 @@ const messages = defineMessages({
     defaultMessage: 'OK',
     description: 'Button that dismisses the could-not-save-type error dialog.',
   },
-  shapeImageUnavailable: {
-    id: 'architect.codebook.entityTypeDialog.shapeImageUnavailable',
-    defaultMessage:
-      'The image for the shape "{name}" is no longer available. Remove this shape and add it again.',
-    description:
-      'Refusal shown under the custom shapes field of the node type editor when saving fails because the SVG image one custom shape is drawn from can no longer be kept with the protocol. name is the name the researcher gave that shape.',
-  },
-  imageUnavailable: {
-    id: 'architect.codebook.entityTypeDialog.imageUnavailable',
-    defaultMessage:
-      'An image added to this node type is no longer available. Remove the shape that uses it and add it again.',
-    description:
-      'Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified.',
-  },
   saveAndClose: {
     id: 'architect.codebook.entityTypeDialog.saveAndClose',
     defaultMessage: 'Save and Close',
@@ -128,32 +111,9 @@ const EntityTypeDialog = (props: EntityTypeDialogProps) => {
   const client = useArchitectClient(store, useOtherTabName());
   const protocolId = useAppSelector(getActiveProtocolId);
 
-  /**
-   * Every open is a different editing session, so each one needs its own field
-   * store — the `key` `DialogForm` documents for exactly this — and its own
-   * resource edit.
-   *
-   * Identifying the session by what is being edited is not enough. `type` is
-   * undefined for a creation, so `new-${entity}` was the SAME key for two
-   * consecutive creations of the same entity — and this dialog is mounted for
-   * the lifetime of its owner (`CodebookPage` keeps it rendered and only
-   * toggles `show`), so nothing else separates them. What normally hides that
-   * is `Modal`'s exit animation: it unmounts the form, whose `useForm` cleanup
-   * resets the store. A close followed by another open before that exit
-   * finishes cancels the removal, so the reset never runs — and the next
-   * type's fields re-register over the previous one's parked values, which
-   * `registerField` prefers over `initialValue`. Creating two edge types back
-   * to back (the sample protocol's edge-creation sociogram does exactly that)
-   * therefore reopened the dialog still holding the first type's name, colour
-   * and shape, and saving it wrote those over the second type's own defaults.
-   * Reopening the same type after abandoning an edit had the same effect.
-   *
-   * Counting opens rather than naming the session also covers that reopen
-   * case, since `type` alone repeats there too. It is bumped as the dialog
-   * OPENS (the React-documented adjust-state-on-prop-change pattern) rather
-   * than on close, so the entering dialog is the fresh one and a close still
-   * animates out.
-   */
+  // Every opening needs a fresh field store and resource edit, even when
+  // `entity`/`type` repeat (two creations, or a reopen before the exit
+  // animation unmounts the form), so openings are counted as the dialog opens.
   const [wasShown, setWasShown] = useState(show);
   const [openCount, setOpenCount] = useState(0);
   if (show !== wasShown) {
@@ -220,19 +180,13 @@ const EntityTypeForm = ({
     return format(value) as EntityTypeValues;
   }, [protocol, entity, type]);
 
-  const title = useMemo(() => {
-    const entityLabel =
-      entity === 'node'
-        ? intl.formatMessage(chromeMessages.node)
-        : intl.formatMessage(chromeMessages.edge);
-    return isNew
-      ? intl.formatMessage(chromeMessages.createType, {
-          entityLabel: entityLabel,
-        })
-      : intl.formatMessage(chromeMessages.editType, {
-          entityLabel: entityLabel,
-        });
-  }, [entity, isNew, intl]);
+  const entityLabel = intl.formatMessage(
+    entity === 'node' ? chromeMessages.node : chromeMessages.edge,
+  );
+  const title = intl.formatMessage(
+    isNew ? chromeMessages.createType : chromeMessages.editType,
+    { entityLabel },
+  );
 
   const handleSubmit = useCallback(
     async (
@@ -244,41 +198,14 @@ const EntityTypeForm = ({
       // definition.
       const configuration = parse({ ...initialValues, ...values });
 
-      // Architect has already written each imported image to the protocol's
-      // assets; handing them over stops this edit's cancel from removing them.
-      // Checked before the save so a type is never written naming an image
-      // this edit could not keep.
-      const promotion = staged.promotion();
-      const adoption =
-        promotion === undefined
-          ? undefined
-          : planStagedResourceAdoption(promotion);
-      if (adoption?.status === 'failed') {
-        const shapes = readCustomShapes(values[CUSTOM_SHAPES_FIELD]);
-        const shapeId =
-          adoption.resourceId === undefined
-            ? undefined
-            : customShapeForAsset(shapes, adoption.resourceId);
-        const shapeName =
-          shapeId === undefined ? undefined : shapes?.[shapeId]?.name;
-        return {
-          success: false,
-          fieldErrors: {
-            [CUSTOM_SHAPES_FIELD]: [
-              shapeName === undefined
-                ? createMessageError(messages.imageUnavailable)
-                : createMessageError(messages.shapeImageUnavailable, {
-                    name: shapeName,
-                  }),
-            ],
-          },
-        };
+      const adoption = adoptStagedImages(
+        staged,
+        planStagedResourceAdoption,
+        values,
+      );
+      if (adoption.status === 'failed') {
+        return { success: false, fieldErrors: adoption.fieldErrors };
       }
-      const keepImports = () => {
-        if (adoption === undefined) return;
-        adoption.complete();
-        staged.promoted();
-      };
 
       try {
         if (isNew) {
@@ -288,7 +215,7 @@ const EntityTypeForm = ({
               configuration,
             }),
           ).unwrap();
-          keepImports();
+          adoption.keep();
           onClose(result.type);
         } else if (type) {
           await dispatch(
@@ -298,7 +225,7 @@ const EntityTypeForm = ({
               configuration,
             }),
           ).unwrap();
-          keepImports();
+          adoption.keep();
           onClose();
         }
       } catch (error) {

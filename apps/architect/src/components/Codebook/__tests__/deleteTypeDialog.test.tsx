@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -55,10 +56,12 @@ describe('Codebook delete type confirmation', () => {
 
     render(
       <Provider store={store}>
-        <DialogProvider>
-          {/* A stale snapshot: the store says this type IS used. */}
-          <EntityType entity="node" type={PERSON} inUse={false} usage={[]} />
-        </DialogProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <DialogProvider>
+            {/* A stale snapshot: the store says this type IS used. */}
+            <EntityType entity="node" type={PERSON} inUse={false} usage={[]} />
+          </DialogProvider>
+        </QueryClientProvider>
       </Provider>,
     );
 
@@ -102,14 +105,16 @@ describe('Codebook delete type confirmation', () => {
 
     render(
       <Provider store={store}>
-        <DialogProvider>
-          <EntityType
-            entity="node"
-            type={unusedType}
-            inUse={false}
-            usage={[]}
-          />
-        </DialogProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <DialogProvider>
+            <EntityType
+              entity="node"
+              type={unusedType}
+              inUse={false}
+              usage={[]}
+            />
+          </DialogProvider>
+        </QueryClientProvider>
       </Provider>,
     );
 

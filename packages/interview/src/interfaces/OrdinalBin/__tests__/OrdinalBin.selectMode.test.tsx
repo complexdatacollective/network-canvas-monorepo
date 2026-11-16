@@ -36,6 +36,7 @@ import session, {
 } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import OrdinalBin from '../OrdinalBin';
 
@@ -248,26 +249,28 @@ function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
     <InterviewI18nProvider>
       <TestProtocolLocalization>
         <Provider store={store}>
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <DialogProvider>
-              <DndStoreProvider>
-                <CaptureDndStore
-                  onStore={(s) => {
-                    dndStore = s;
-                  }}
-                />
-                <StageDynamicValues stage={buildStage(mode, options)}>
-                  <OrdinalBin
-                    stage={buildStage(mode, options)}
-                    getNavigationHelpers={() => ({
-                      moveForward: () => {},
-                      moveBackward: () => {},
-                    })}
+          <TestInterviewAssets>
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <DialogProvider>
+                <DndStoreProvider>
+                  <CaptureDndStore
+                    onStore={(s) => {
+                      dndStore = s;
+                    }}
                   />
-                </StageDynamicValues>
-              </DndStoreProvider>
-            </DialogProvider>
-          </CurrentStepProvider>
+                  <StageDynamicValues stage={buildStage(mode, options)}>
+                    <OrdinalBin
+                      stage={buildStage(mode, options)}
+                      getNavigationHelpers={() => ({
+                        moveForward: () => {},
+                        moveBackward: () => {},
+                      })}
+                    />
+                  </StageDynamicValues>
+                </DndStoreProvider>
+              </DialogProvider>
+            </CurrentStepProvider>
+          </TestInterviewAssets>
         </Provider>
       </TestProtocolLocalization>
     </InterviewI18nProvider>,
@@ -523,9 +526,11 @@ describe('OrdinalBin in select mode (#1652)', () => {
       <InterviewI18nProvider>
         <TestProtocolLocalization>
           <Provider store={store}>
-            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-              <BinSelectAnnouncer node={focal} promptId={promptId} />
-            </CurrentStepProvider>
+            <TestInterviewAssets>
+              <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+                <BinSelectAnnouncer node={focal} promptId={promptId} />
+              </CurrentStepProvider>
+            </TestInterviewAssets>
           </Provider>
         </TestProtocolLocalization>
       </InterviewI18nProvider>

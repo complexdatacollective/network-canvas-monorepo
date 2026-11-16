@@ -275,9 +275,10 @@ describe('the analytics event catalogue', () => {
         },
         { feature: 'stage-error-boundary', is_offline: true },
         { feature: 'external-data' },
+        { feature: 'custom-shapes' },
         { feature: 'geospatial-map-init' },
       ].map((properties) => decode(properties)._tag),
-    ).toEqual(Array.from({ length: 5 }, () => 'Some'));
+    ).toEqual(Array.from({ length: 6 }, () => 'Some'));
     expect(decode({ feature: 'external-data', name: 'Jane Doe' })._tag).toBe(
       'None',
     );

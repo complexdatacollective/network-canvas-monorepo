@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import { isValidNodeShapeSvg } from '@codaco/fresco-ui/node/nodeShapeSvg';
+import { parseNodeShapeSvg } from '@codaco/fresco-ui/node/nodeShapeSvg';
 
 import type {
   CustomShapes,
@@ -137,7 +137,7 @@ describe('CustomShapesField', () => {
 
     expect(stagedBytes).toHaveLength(1);
     expect(stagedBytes[0]).not.toContain('script');
-    expect(isValidNodeShapeSvg(stagedBytes[0] ?? '')).toBe(true);
+    expect(parseNodeShapeSvg(stagedBytes[0] ?? '').issues).toEqual([]);
   });
 
   it('refuses a file that is not an SVG and keeps the value unchanged', async () => {

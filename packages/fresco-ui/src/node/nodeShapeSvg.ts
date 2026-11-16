@@ -2,6 +2,18 @@ import { SaxesParser, type SaxesAttributeNS, type SaxesTagNS } from 'saxes';
 
 import { NodeColorSequence } from '@codaco/protocol-validation';
 
+import {
+  HREF_ELEMENTS,
+  ID_PATTERN,
+  ID_REFERENCE_PATTERN,
+  NODE_SHAPE_ELEMENTS,
+  PRESENTATION_ATTRIBUTES,
+  TEXT_ELEMENTS,
+  UNSAFE_VALUE_PATTERN,
+  URL_ATTRIBUTES,
+  URL_REFERENCE_PATTERN,
+} from './nodeShapeGrammar.ts';
+
 const NodeShapeColorTokens = [
   'node-color',
   'node-color-dark',
@@ -70,28 +82,7 @@ const LABEL_AREA_ID = 'label-area';
 export const LABEL_PLATE_ID = 'label-plate';
 const DEFAULT_LABEL_AREA: Box = { x: 0.1, y: 0.2, width: 0.8, height: 0.6 };
 
-const ALLOWED_ELEMENTS = new Set([
-  'g',
-  'path',
-  'rect',
-  'circle',
-  'ellipse',
-  'line',
-  'polyline',
-  'polygon',
-  'text',
-  'tspan',
-  'defs',
-  'linearGradient',
-  'radialGradient',
-  'stop',
-  'clipPath',
-  'mask',
-  'symbol',
-  'use',
-]);
 const SILENTLY_DROPPED_ELEMENTS = new Set(['title', 'desc', 'metadata']);
-const TEXT_ELEMENTS = new Set(['text', 'tspan']);
 const DRAWABLE_ELEMENTS = new Set([
   'path',
   'rect',
@@ -105,84 +96,14 @@ const DRAWABLE_ELEMENTS = new Set([
 ]);
 const NON_RENDERED_CONTAINERS = new Set(['defs', 'clipPath', 'mask', 'symbol']);
 
-// Attributes that may also be written as `style` declarations.
-const PRESENTATION_ATTRIBUTES = new Set([
-  'transform',
-  'd',
-  'x',
-  'y',
-  'x1',
-  'y1',
-  'x2',
-  'y2',
-  'cx',
-  'cy',
-  'r',
-  'rx',
-  'ry',
-  'width',
-  'height',
-  'points',
-  'dx',
-  'dy',
-  'fill',
-  'fill-opacity',
-  'fill-rule',
-  'clip-rule',
-  'stroke',
-  'stroke-width',
-  'stroke-linecap',
-  'stroke-linejoin',
-  'stroke-miterlimit',
-  'stroke-dasharray',
-  'stroke-dashoffset',
-  'stroke-opacity',
-  'opacity',
-  'color',
-  'stop-color',
-  'stop-opacity',
-  'offset',
-  'gradientUnits',
-  'gradientTransform',
-  'spreadMethod',
-  'fx',
-  'fy',
-  'fr',
-  'clip-path',
-  'mask',
-  'clipPathUnits',
-  'maskUnits',
-  'maskContentUnits',
-  'font-family',
-  'font-size',
-  'font-weight',
-  'font-style',
-  'text-anchor',
-  'dominant-baseline',
-  'letter-spacing',
-  'paint-order',
-  'vector-effect',
-  'display',
-  'visibility',
-]);
 const VIEW_BOX_ELEMENTS = new Set(['svg', 'symbol']);
 const PRESERVE_ASPECT_RATIO_ELEMENTS = new Set(['symbol']);
-const HREF_ELEMENTS = new Set(['use', 'linearGradient', 'radialGradient']);
-const URL_ATTRIBUTES = new Set(['fill', 'stroke', 'clip-path', 'mask']);
 const VAR_ATTRIBUTES = new Set(['fill', 'stroke', 'stop-color', 'color']);
 const ROOT_ONLY_SILENT_ATTRIBUTES = new Set(['width', 'height', 'version']);
 
-const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_.:-]*$/;
-const ID_REFERENCE_PATTERN = /^#[A-Za-z_][A-Za-z0-9_.:-]*$/;
-const URL_REFERENCE_PATTERN =
-  /^url\(\s*(?:#[A-Za-z_][A-Za-z0-9_.:-]*|'#[A-Za-z_][A-Za-z0-9_.:-]*'|"#[A-Za-z_][A-Za-z0-9_.:-]*")\s*\)$/i;
 const VAR_PATTERN = /^var\(\s*--([A-Za-z0-9-]+)\s*(?:,\s*(.*?)\s*)?\)$/is;
 const COLOR_FUNCTION_PATTERN =
   /^(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^()]*\)$/i;
-// `;`, braces and comment markers never occur in a legitimate value (a
-// `style` attribute is split into declarations before this is applied), and
-// refusing them keeps a value from ending the declaration it is written into.
-const UNSAFE_VALUE_PATTERN = /[<\\;{}]|\/\*|javascript:|expression\(|@import/i;
 // The label colour is written into a CSS declaration rather than an SVG
 // attribute, so it is held to a colour and nothing else.
 const LABEL_COLOR_PATTERN =
@@ -202,15 +123,28 @@ type Frame = {
   transformed: boolean;
 };
 
-type ParseState = {
+type IssueLog = {
   issues: NodeShapeSvgIssue[];
   issueKeys: Set<string>;
+};
+
+type ParseState = IssueLog & {
+  stack: Frame[];
+  root: NodeShapeSvgElement;
+  rootFound: boolean;
+  rootFailure?: NodeShapeSvgIssue;
+  viewBox?: Box;
+  elementCount: number;
+  hasDrawable: boolean;
+  labelRect?: Box;
+  labelColor?: string;
+  hasLabelPlate: boolean;
 };
 
 class ParseAborted extends Error {}
 
 const addIssue = (
-  state: ParseState,
+  state: IssueLog,
   code: NodeShapeSvgIssueCode,
   detail: string,
 ) => {
@@ -232,23 +166,44 @@ const parseLength = (value: string | undefined) => {
   return match?.[1] === undefined ? undefined : Number(match[1]);
 };
 
-const parseViewBox = (value: string): Box | undefined => {
-  const parts = value.trim().split(/[\s,]+/);
-  if (parts.length !== 4) return undefined;
-  const numbers = parts.map((part) => parseNumber(part));
-  const [x, y, width, height] = numbers;
+// A box whose coordinates are all finite numbers and whose size is positive.
+const positiveBox = (
+  x: number | undefined,
+  y: number | undefined,
+  width: number | undefined,
+  height: number | undefined,
+): Box | undefined => {
   if (
     x === undefined ||
     y === undefined ||
     width === undefined ||
     height === undefined ||
-    !numbers.every((n) => n !== undefined && Number.isFinite(n)) ||
+    ![x, y, width, height].every(Number.isFinite) ||
     width <= 0 ||
     height <= 0
   ) {
     return undefined;
   }
   return { x, y, width, height };
+};
+
+const parseViewBox = (value: string): Box | undefined => {
+  const parts = value.trim().split(/[\s,]+/);
+  if (parts.length !== 4) return undefined;
+  const [x, y, width, height] = parts.map((part) => parseNumber(part));
+  return positiveBox(x, y, width, height);
+};
+
+// The root's viewBox, or else its width and height as one.
+const readRootSizing = (rootSizing: Map<string, string>): Box | undefined => {
+  const viewBox = rootSizing.get('viewBox');
+  if (viewBox !== undefined) return parseViewBox(viewBox);
+  return positiveBox(
+    0,
+    0,
+    parseLength(rootSizing.get('width')),
+    parseLength(rootSizing.get('height')),
+  );
 };
 
 const parseStyle = (style: string) => {
@@ -281,7 +236,7 @@ const isAttributeAllowedOn = (name: string, tag: string) => {
 };
 
 const validateValue = (
-  state: ParseState,
+  state: IssueLog,
   tag: string,
   name: string,
   value: string,
@@ -344,7 +299,7 @@ const sortAttributes = (attributes: Map<string, string>) =>
  * sizing attributes, which never survive as attributes.
  */
 const collectAttributes = (
-  state: ParseState,
+  state: IssueLog,
   tag: SaxesTagNS,
   localName: string,
   isRoot: boolean,
@@ -449,9 +404,6 @@ const appendText = (element: NodeShapeSvgElement, text: string) => {
   }
 };
 
-/** Lenient parse: unsupported content is REMOVED and reported in `issues`;
- *  `success: false` only when nothing usable remains (not XML, no <svg> root,
- *  no viewBox, too long, no drawable content). */
 const childElements = (element: NodeShapeSvgElement) =>
   element.children.filter((child) => typeof child !== 'string');
 
@@ -504,41 +456,206 @@ const hasRenderedDrawable = (element: NodeShapeSvgElement): boolean =>
       (DRAWABLE_ELEMENTS.has(child.tag) || hasRenderedDrawable(child)),
   );
 
-export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
-  if (typeof source !== 'string') {
-    return {
-      success: false,
-      issues: [{ code: 'not-xml', detail: 'The shape is not text.' }],
-    };
+type Placement = { transformed: boolean; nonRendered: boolean };
+
+const DROPPED_FRAME: Frame = {
+  element: null,
+  keepsText: false,
+  nonRendered: true,
+  transformed: true,
+};
+
+/** Records the `label-area` rect, which marks where the label goes and is
+ *  never drawn. */
+const readLabelArea = (
+  state: ParseState,
+  kept: Map<string, string>,
+  { transformed, nonRendered }: Placement,
+) => {
+  if (state.labelRect !== undefined) {
+    addIssue(state, 'invalid-label-area', 'There is more than one label area.');
+    return;
   }
-  if (source.length > MAX_NODE_SHAPE_SVG_LENGTH) {
-    return {
-      success: false,
-      issues: [
-        {
-          code: 'too-long',
-          detail: `The file is ${source.length} characters long; the limit is ${MAX_NODE_SHAPE_SVG_LENGTH}.`,
-        },
-      ],
+  if (transformed) {
+    addIssue(
+      state,
+      'invalid-label-area',
+      'The label area, or a group around it, has a transform.',
+    );
+    return;
+  }
+  if (nonRendered) {
+    addIssue(
+      state,
+      'invalid-label-area',
+      'The label area is inside <defs>, <clipPath>, <mask> or <symbol>.',
+    );
+    return;
+  }
+  const labelRect = positiveBox(
+    kept.has('x') ? parseNumber(kept.get('x')) : 0,
+    kept.has('y') ? parseNumber(kept.get('y')) : 0,
+    parseNumber(kept.get('width')),
+    parseNumber(kept.get('height')),
+  );
+  if (!labelRect) {
+    addIssue(
+      state,
+      'invalid-label-area',
+      'The label area needs numeric x and y and a width and height greater than zero.',
+    );
+    return;
+  }
+  state.labelRect = labelRect;
+  const fill = kept.get('fill')?.trim();
+  if (fill === undefined || fill === '' || fill === 'none') return;
+  if (LABEL_COLOR_PATTERN.test(fill)) {
+    state.labelColor = fill;
+  } else {
+    addIssue(
+      state,
+      'invalid-label-area',
+      `The label area's fill "${fill}" is not a colour.`,
+    );
+  }
+};
+
+/** Whether a `label-plate` rect can be grown: the renderer adds to its height
+ *  in the artwork's own coordinates. */
+const readLabelPlate = (
+  state: ParseState,
+  kept: Map<string, string>,
+  { transformed, nonRendered }: Placement,
+) => {
+  const height = parseNumber(kept.get('height'));
+  if (state.hasLabelPlate) {
+    addIssue(
+      state,
+      'invalid-label-area',
+      'There is more than one label plate.',
+    );
+  } else if (transformed || nonRendered) {
+    addIssue(
+      state,
+      'invalid-label-area',
+      'The label plate has a transform, or is inside <defs>, <clipPath>, <mask> or <symbol>.',
+    );
+  } else if (height === undefined || !Number.isFinite(height)) {
+    addIssue(
+      state,
+      'invalid-label-area',
+      'The label plate needs a numeric height.',
+    );
+  } else {
+    state.hasLabelPlate = true;
+  }
+};
+
+const openRoot = (state: ParseState, tag: SaxesTagNS, isSvg: boolean) => {
+  state.rootFound = true;
+  if (!isSvg) {
+    state.rootFailure = {
+      code: 'no-svg-root',
+      detail: `The root element is <${tag.name}>, not <svg>.`,
     };
+    throw new ParseAborted(state.rootFailure.detail);
+  }
+  const { kept, rootSizing } = collectAttributes(state, tag, 'svg', true);
+  state.viewBox = readRootSizing(rootSizing);
+  // Root presentation attributes inherit to every child; a wrapping <g>
+  // keeps them without giving the root element attributes of its own.
+  let container = state.root;
+  if (kept.size > 0) {
+    container = { tag: 'g', attributes: sortAttributes(kept), children: [] };
+    state.root.children.push(container);
+  }
+  state.stack.push({
+    element: container,
+    keepsText: false,
+    nonRendered: false,
+    transformed: kept.has('transform'),
+  });
+};
+
+const openElement = (
+  state: ParseState,
+  tag: SaxesTagNS,
+  isSvgNamespace: boolean,
+) => {
+  const parent = state.stack.at(-1);
+  if (!parent) return;
+  const localName = tag.local;
+
+  if (
+    parent.element === null ||
+    (isSvgNamespace && SILENTLY_DROPPED_ELEMENTS.has(localName))
+  ) {
+    state.stack.push(DROPPED_FRAME);
+    return;
+  }
+  if (!isSvgNamespace || !NODE_SHAPE_ELEMENTS.has(localName)) {
+    addIssue(state, 'unsupported-element', `<${tag.name}>`);
+    state.stack.push(DROPPED_FRAME);
+    return;
   }
 
-  const state: ParseState = { issues: [], issueKeys: new Set() };
-  const stack: Frame[] = [];
-  const root: NodeShapeSvgElement = {
-    tag: 'svg',
-    attributes: {},
+  const { kept } = collectAttributes(state, tag, localName, false);
+  const placement: Placement = {
+    transformed: parent.transformed || kept.has('transform'),
+    nonRendered: parent.nonRendered || NON_RENDERED_CONTAINERS.has(localName),
+  };
+
+  if (localName === 'rect' && kept.get('id') === LABEL_AREA_ID) {
+    state.stack.push(DROPPED_FRAME);
+    readLabelArea(state, kept, placement);
+    return;
+  }
+
+  const element: NodeShapeSvgElement = {
+    tag: localName,
+    attributes: sortAttributes(kept),
     children: [],
   };
-  let wrapper: NodeShapeSvgElement | undefined;
-  let viewBox: Box | undefined;
-  let rootFound = false;
-  let rootFailure: NodeShapeSvgIssue | undefined;
-  let elementCount = 0;
-  let hasDrawable = false;
-  let labelRect: Box | undefined;
-  let labelColor: string | undefined;
-  let hasLabelPlate = false;
+  parent.element.children.push(element);
+  if (!placement.nonRendered && DRAWABLE_ELEMENTS.has(localName)) {
+    state.hasDrawable = true;
+  }
+  if (localName === 'rect' && kept.get('id') === LABEL_PLATE_ID) {
+    readLabelPlate(state, kept, placement);
+  }
+  state.stack.push({
+    element,
+    keepsText: TEXT_ELEMENTS.has(localName),
+    ...placement,
+  });
+};
+
+const failure = (...issues: NodeShapeSvgIssue[]): NodeShapeSvgResult => ({
+  success: false,
+  issues,
+});
+
+/** Lenient parse: unsupported content is REMOVED and reported in `issues`;
+ *  `success: false` only when nothing usable remains (not XML, no <svg> root,
+ *  no viewBox, too long, no drawable content). */
+export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
+  if (source.length > MAX_NODE_SHAPE_SVG_LENGTH) {
+    return failure({
+      code: 'too-long',
+      detail: `The file is ${source.length} characters long; the limit is ${MAX_NODE_SHAPE_SVG_LENGTH}.`,
+    });
+  }
+
+  const state: ParseState = {
+    issues: [],
+    issueKeys: new Set(),
+    stack: [],
+    root: { tag: 'svg', attributes: {}, children: [] },
+    rootFound: false,
+    elementCount: 0,
+    hasDrawable: false,
+    hasLabelPlate: false,
+  };
 
   const parser = new SaxesParser({
     xmlns: true,
@@ -554,205 +671,31 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
   });
 
   parser.on('opentag', (tag) => {
-    elementCount += 1;
-    if (elementCount > MAX_ELEMENTS) {
+    state.elementCount += 1;
+    if (state.elementCount > MAX_ELEMENTS) {
       throw new ParseAborted(
         `The file has more than ${MAX_ELEMENTS} elements.`,
       );
     }
-    if (stack.length >= MAX_DEPTH) {
+    if (state.stack.length >= MAX_DEPTH) {
       throw new ParseAborted(
         `Elements are nested more than ${MAX_DEPTH} levels deep.`,
       );
     }
-
     const isSvgNamespace = tag.uri === SVG_NAMESPACE || tag.uri === '';
-    const localName = tag.local;
-
-    if (!rootFound) {
-      rootFound = true;
-      if (!isSvgNamespace || localName !== 'svg') {
-        rootFailure = {
-          code: 'no-svg-root',
-          detail: `The root element is <${tag.name}>, not <svg>.`,
-        };
-        throw new ParseAborted(rootFailure.detail);
-      }
-      const { kept, rootSizing } = collectAttributes(state, tag, 'svg', true);
-      const viewBoxValue = rootSizing.get('viewBox');
-      if (viewBoxValue !== undefined) {
-        viewBox = parseViewBox(viewBoxValue);
-      } else {
-        const width = parseLength(rootSizing.get('width'));
-        const height = parseLength(rootSizing.get('height'));
-        if (
-          width !== undefined &&
-          height !== undefined &&
-          Number.isFinite(width) &&
-          Number.isFinite(height) &&
-          width > 0 &&
-          height > 0
-        ) {
-          viewBox = { x: 0, y: 0, width, height };
-        }
-      }
-      // Root presentation attributes inherit to every child; a wrapping <g>
-      // keeps them without giving the root element attributes of its own.
-      if (kept.size > 0) {
-        wrapper = {
-          tag: 'g',
-          attributes: sortAttributes(kept),
-          children: [],
-        };
-        root.children.push(wrapper);
-      }
-      stack.push({
-        element: wrapper ?? root,
-        keepsText: false,
-        nonRendered: false,
-        transformed: kept.has('transform'),
-      });
-      return;
+    if (state.rootFound) {
+      openElement(state, tag, isSvgNamespace);
+    } else {
+      openRoot(state, tag, isSvgNamespace && tag.local === 'svg');
     }
-
-    const parent = stack.at(-1);
-    if (!parent) return;
-    const dropped: Frame = {
-      element: null,
-      keepsText: false,
-      nonRendered: true,
-      transformed: true,
-    };
-
-    if (parent.element === null) {
-      stack.push(dropped);
-      return;
-    }
-    if (isSvgNamespace && SILENTLY_DROPPED_ELEMENTS.has(localName)) {
-      stack.push(dropped);
-      return;
-    }
-    if (!isSvgNamespace || !ALLOWED_ELEMENTS.has(localName)) {
-      addIssue(state, 'unsupported-element', `<${tag.name}>`);
-      stack.push(dropped);
-      return;
-    }
-
-    const { kept } = collectAttributes(state, tag, localName, false);
-    const transformed = parent.transformed || kept.has('transform');
-    const nonRendered =
-      parent.nonRendered || NON_RENDERED_CONTAINERS.has(localName);
-
-    if (localName === 'rect' && kept.get('id') === LABEL_AREA_ID) {
-      stack.push(dropped);
-      const x = kept.has('x') ? parseNumber(kept.get('x')) : 0;
-      const y = kept.has('y') ? parseNumber(kept.get('y')) : 0;
-      const width = parseNumber(kept.get('width'));
-      const height = parseNumber(kept.get('height'));
-      if (labelRect !== undefined) {
-        addIssue(
-          state,
-          'invalid-label-area',
-          'There is more than one label area.',
-        );
-        return;
-      }
-      if (transformed) {
-        addIssue(
-          state,
-          'invalid-label-area',
-          'The label area, or a group around it, has a transform.',
-        );
-        return;
-      }
-      if (nonRendered) {
-        addIssue(
-          state,
-          'invalid-label-area',
-          'The label area is inside <defs>, <clipPath>, <mask> or <symbol>.',
-        );
-        return;
-      }
-      if (
-        x === undefined ||
-        y === undefined ||
-        width === undefined ||
-        height === undefined ||
-        !Number.isFinite(x) ||
-        !Number.isFinite(y) ||
-        !Number.isFinite(width) ||
-        !Number.isFinite(height) ||
-        width <= 0 ||
-        height <= 0
-      ) {
-        addIssue(
-          state,
-          'invalid-label-area',
-          'The label area needs numeric x and y and a width and height greater than zero.',
-        );
-        return;
-      }
-      labelRect = { x, y, width, height };
-      const fill = kept.get('fill')?.trim();
-      if (fill !== undefined && fill !== '' && fill !== 'none') {
-        if (LABEL_COLOR_PATTERN.test(fill)) {
-          labelColor = fill;
-        } else {
-          addIssue(
-            state,
-            'invalid-label-area',
-            `The label area's fill "${fill}" is not a colour.`,
-          );
-        }
-      }
-      return;
-    }
-
-    const element: NodeShapeSvgElement = {
-      tag: localName,
-      attributes: sortAttributes(kept),
-      children: [],
-    };
-    parent.element.children.push(element);
-    if (!nonRendered && DRAWABLE_ELEMENTS.has(localName)) hasDrawable = true;
-    if (localName === 'rect' && kept.get('id') === LABEL_PLATE_ID) {
-      const height = parseNumber(kept.get('height'));
-      if (hasLabelPlate) {
-        addIssue(
-          state,
-          'invalid-label-area',
-          'There is more than one label plate.',
-        );
-      } else if (transformed || nonRendered) {
-        addIssue(
-          state,
-          'invalid-label-area',
-          'The label plate has a transform, or is inside <defs>, <clipPath>, <mask> or <symbol>.',
-        );
-      } else if (height === undefined || !Number.isFinite(height)) {
-        addIssue(
-          state,
-          'invalid-label-area',
-          'The label plate needs a numeric height.',
-        );
-      } else {
-        hasLabelPlate = true;
-      }
-    }
-    stack.push({
-      element,
-      keepsText: TEXT_ELEMENTS.has(localName),
-      nonRendered,
-      transformed,
-    });
   });
 
   parser.on('closetag', () => {
-    stack.pop();
+    state.stack.pop();
   });
 
   const onText = (text: string) => {
-    const frame = stack.at(-1);
+    const frame = state.stack.at(-1);
     if (frame?.element && frame.keepsText) appendText(frame.element, text);
   };
   parser.on('text', onText);
@@ -761,44 +704,29 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
   try {
     parser.write(source).close();
   } catch (error) {
-    if (rootFailure) return { success: false, issues: [rootFailure] };
+    if (state.rootFailure) return failure(state.rootFailure);
     if (error instanceof ParseAborted) {
-      return {
-        success: false,
-        issues: [{ code: 'too-long', detail: error.message }],
-      };
+      return failure({ code: 'too-long', detail: error.message });
     }
-    return {
-      success: false,
-      issues: [
-        {
-          code: 'not-xml',
-          detail: error instanceof Error ? error.message : String(error),
-        },
-      ],
-    };
+    return failure({
+      code: 'not-xml',
+      detail: error instanceof Error ? error.message : String(error),
+    });
   }
 
-  if (!rootFound) {
-    return {
-      success: false,
-      issues: [
-        { code: 'no-svg-root', detail: 'The file has no <svg> element.' },
-      ],
-    };
+  if (!state.rootFound) {
+    return failure({
+      code: 'no-svg-root',
+      detail: 'The file has no <svg> element.',
+    });
   }
+  const { viewBox, root } = state;
   if (!viewBox) {
-    return {
-      success: false,
-      issues: [
-        ...state.issues,
-        {
-          code: 'no-view-box',
-          detail:
-            'The <svg> element needs a viewBox of four numbers with a positive width and height, or numeric width and height attributes.',
-        },
-      ],
-    };
+    return failure(...state.issues, {
+      code: 'no-view-box',
+      detail:
+        'The <svg> element needs a viewBox of four numbers with a positive width and height, or numeric width and height attributes.',
+    });
   }
   if (expandsBeyondLimit(root)) {
     addIssue(
@@ -807,18 +735,16 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
       '<use> (the shape repeats its own parts too many times)',
     );
     removeUseElements(root);
-    hasDrawable = hasRenderedDrawable(root);
+    state.hasDrawable = hasRenderedDrawable(root);
   }
-  if (!hasDrawable) {
-    return {
-      success: false,
-      issues: [
-        ...state.issues,
-        { code: 'empty', detail: 'The file has nothing to draw.' },
-      ],
-    };
+  if (!state.hasDrawable) {
+    return failure(...state.issues, {
+      code: 'empty',
+      detail: 'The file has nothing to draw.',
+    });
   }
 
+  let { labelRect, labelColor } = state;
   let labelArea = DEFAULT_LABEL_AREA;
   if (labelRect) {
     const area = clampedLabelArea(labelRect, viewBox);
@@ -842,15 +768,9 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
   };
   if (labelRect) shape.labelRect = labelRect;
   if (labelColor !== undefined) shape.labelColor = labelColor;
-  if (hasLabelPlate && labelRect) shape.labelPlate = true;
+  if (state.hasLabelPlate && labelRect) shape.labelPlate = true;
 
   return { success: true, shape, issues: state.issues };
-}
-
-/** Strict: true only when the lenient parse succeeds with zero issues. */
-export function isValidNodeShapeSvg(source: string): boolean {
-  const result = parseNodeShapeSvg(source);
-  return result.success && result.issues.length === 0;
 }
 
 const escapeAttribute = (value: string) =>
@@ -884,7 +804,7 @@ const serializeNode = (node: NodeShapeSvgElement | string): string => {
 };
 
 /** Canonical, safe SVG text for a parsed shape (re-emits the label-area rect).
- *  `isValidNodeShapeSvg(serializeNodeShapeSvg(shape))` is always true, and
+ *  Parsing the output always succeeds with no issues, and
  *  parse(serialize(parse(x))) deep-equals parse(x).shape. */
 export function serializeNodeShapeSvg(shape: ParsedNodeShapeSvg): string {
   const { viewBox, labelRect, labelColor } = shape;

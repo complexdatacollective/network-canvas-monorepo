@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { InterviewQueryClientProvider } from '../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../contract/context';
 import { useAssetUrl } from '../useAssetUrl';
 
@@ -8,7 +9,9 @@ const makeWrapper = (onRequestAsset: (id: string) => Promise<string>) => {
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <ContractProvider onFinish={vi.fn()} onRequestAsset={onRequestAsset}>
-        {children}
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          {children}
+        </InterviewQueryClientProvider>
       </ContractProvider>
     );
   }

@@ -6,8 +6,7 @@ import OptionMappingField, {
   type OptionMappingOption,
 } from '@codaco/fresco-ui/form/fields/OptionMappingField';
 import Node, {
-  NodeColors,
-  type NodeColorSequence,
+  isNodeColorSequence,
   type NodeShapeProp,
 } from '@codaco/fresco-ui/Node';
 import {
@@ -18,10 +17,10 @@ import {
 import {
   customShapeReference,
   type CustomShapes,
-  isNodeShapeReference,
+  shapeAssetIds,
 } from '../codebook/customShapes.ts';
+import NodeShapeSvgs from '../codebook/NodeShapeSvgs.tsx';
 import { shapeOptions } from '../codebook/shapeMapping.ts';
-import { useNodeShapeSvgs } from '../codebook/useNodeShapeSvgs.ts';
 
 const messages = defineMessages({
   selectShape: {
@@ -38,15 +37,12 @@ const messages = defineMessages({
   },
 });
 
-type ShapeTileOption = OptionMappingOption &
+export type ShapeTileOption = OptionMappingOption &
   Readonly<{ value: NodeShapeReference; shape: NodeShapeProp }>;
-
-const isNodeColor = (value: string): value is NodeColorSequence =>
-  NodeColors.some((color) => color === value);
 
 /**
  * The shapes a node type offers: the built-in ones, then the type's own, drawn
- * from `shapeSvgs` (see `useNodeShapeSvgs`).
+ * from `shapeSvgs` (see `NodeShapeSvgs`).
  */
 export const shapeTileOptions = (
   intl: IntlShape,
@@ -62,8 +58,7 @@ export const shapeTileOptions = (
         label:
           custom.name.trim() ||
           intl.formatMessage(messages.unnamedShape, { position: index + 1 }),
-        shape:
-          resolveNodeShapeReference(value, customShapes, shapeSvgs) ?? 'circle',
+        shape: resolveNodeShapeReference(value, customShapes, shapeSvgs),
       };
     }),
   ].map((option) => ({
@@ -87,7 +82,7 @@ export function ShapeTile({
       presentational
       shape={shape}
       label=""
-      color={isNodeColor(nodeColor) ? nodeColor : 'node-color-seq-1'}
+      color={isNodeColorSequence(nodeColor) ? nodeColor : 'node-color-seq-1'}
       size="xxs"
       className="size-11"
     />
@@ -127,33 +122,24 @@ export default function ShapePickerField({
   ...rest
 }: ShapePickerFieldProps) {
   const intl = useAppIntl();
-  const options = shapeTileOptions(
-    intl,
-    customShapes,
-    useNodeShapeSvgs(customShapes),
-  );
 
   return (
-    <OptionMappingField
-      {...rest}
-      rows={[{ id: ROW_ID, label: '' }]}
-      rowLabelsHidden
-      bare={small}
-      showOptionLabels={!small}
-      options={options}
-      renderOption={(option) => {
-        const shape = options.find((o) => o.value === option.value)?.shape;
-        return shape === undefined ? null : (
-          <ShapeTile shape={shape} nodeColor={nodeColor} />
-        );
-      }}
-      value={value === undefined ? [] : [{ id: ROW_ID, value }]}
-      onChange={(next) => {
-        const chosen = next?.[0]?.value;
-        if (chosen !== undefined && isNodeShapeReference(chosen)) {
-          onChange?.(chosen);
-        }
-      }}
-    />
+    <NodeShapeSvgs assets={shapeAssetIds(customShapes)}>
+      {(shapeSvgs) => (
+        <OptionMappingField
+          {...rest}
+          rows={[{ id: ROW_ID, label: '' }]}
+          rowLabelsHidden
+          bare={small}
+          showOptionLabels={!small}
+          options={shapeTileOptions(intl, customShapes, shapeSvgs)}
+          renderOption={(option) => (
+            <ShapeTile shape={option.shape} nodeColor={nodeColor} />
+          )}
+          value={value === undefined ? [] : [{ id: ROW_ID, value }]}
+          onRowChange={(_row, shape) => onChange?.(shape)}
+        />
+      )}
+    </NodeShapeSvgs>
   );
 }

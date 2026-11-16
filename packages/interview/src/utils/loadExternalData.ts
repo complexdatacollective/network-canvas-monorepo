@@ -120,6 +120,11 @@ const loadExternalData = async (fileName: string, url: string) => {
   const isCSV = fileName.split('.').pop() === 'csv';
 
   const data = await fetch(url);
+  if (!data.ok) {
+    throw new Error(
+      `External data "${fileName}" failed to load (${data.status})`,
+    );
+  }
 
   if (isCSV) {
     const text = await data.text();
