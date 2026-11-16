@@ -9,11 +9,12 @@ import {
   type DateFormat,
   DEFAULT_TYPE as DEFAULT_DATE_FORMAT,
   isValidDateAtResolution,
-  type NodeShape,
   OperatorsByVariableType,
   type Variable,
   type Variables,
   type VariableType,
+  resolveNodeShapeReference,
+  type ResolvedNodeShape,
 } from '@codaco/protocol-validation';
 import {
   datePickerWindows,
@@ -84,7 +85,7 @@ export type RuleEntityTypeOption = Readonly<{
   value: string;
   label: string;
   color: ColorReference;
-  shape?: NodeShape;
+  shape?: ResolvedNodeShape;
 }>;
 
 const EMPTY_VARIABLES: Readonly<Variables> = Object.freeze({});
@@ -870,6 +871,7 @@ export const operandNumberProblems = (
 export const ruleEntityTypeOptions = (
   codebook: Readonly<Codebook>,
   target: RuleEntityTarget,
+  shapeSvgs: Readonly<Record<string, string>>,
 ): RuleEntityTypeOption[] => {
   if (target === 'edge') {
     return Object.entries(codebook.edge ?? {}).map(([value, definition]) => ({
@@ -883,6 +885,10 @@ export const ruleEntityTypeOptions = (
     value,
     label: codebookLabel(definition.name, value),
     color: definition.color,
-    shape: definition.shape.default,
+    shape: resolveNodeShapeReference(
+      definition.shape.default,
+      definition.customShapes,
+      shapeSvgs,
+    ),
   }));
 };

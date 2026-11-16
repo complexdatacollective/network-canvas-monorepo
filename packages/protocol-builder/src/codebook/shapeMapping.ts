@@ -6,11 +6,13 @@ import {
   NodeShapes,
   type NodeDefinition,
   type NodeShape,
+  type NodeShapeReference,
   type VariableType,
   VariableTypes,
 } from '@codaco/protocol-validation';
 
 import { asLocalizedString } from '../localization/localizedText.ts';
+import { isNodeShapeReference } from './customShapes.ts';
 
 type ShapeMapping = NonNullable<NodeDefinition['shape']['dynamic']>;
 type DiscreteShapeMapping = Extract<ShapeMapping, { type: 'discrete' }>;
@@ -237,14 +239,16 @@ export const shapeMappingDraft = (value: unknown): ShapeMappingDraft => {
   }
   if (Array.isArray(value.map)) {
     draft.map = value.map.flatMap((entry) =>
-      isRecord(entry) && isOptionValue(entry.value) && isNodeShape(entry.shape)
+      isRecord(entry) &&
+      isOptionValue(entry.value) &&
+      isNodeShapeReference(entry.shape)
         ? [{ value: entry.value, shape: entry.shape }]
         : [],
     );
   }
   if (Array.isArray(value.thresholds)) {
     draft.thresholds = value.thresholds.flatMap((entry) => {
-      if (!isRecord(entry) || !isNodeShape(entry.shape)) return [];
+      if (!isRecord(entry) || !isNodeShapeReference(entry.shape)) return [];
       const threshold = readNumber(entry.value);
       return threshold === undefined
         ? []
@@ -287,14 +291,14 @@ const sameValue = (
 export const shapeForValue = (
   mapping: ShapeMappingDraft,
   value: DiscreteShapeMapEntry['value'],
-): NodeShape | undefined =>
+): NodeShapeReference | undefined =>
   mapping.map?.find((entry) => sameValue(entry.value, value))?.shape;
 
 /** The mapping with one of the attribute's answers given a shape. */
 export const withDiscreteShape = (
   mapping: ShapeMappingDraft,
   value: DiscreteShapeMapEntry['value'],
-  shape: NodeShape,
+  shape: NodeShapeReference,
 ): ShapeMappingDraft => {
   const map = mapping.map ?? [];
   const existing = map.findIndex((entry) => sameValue(entry.value, value));

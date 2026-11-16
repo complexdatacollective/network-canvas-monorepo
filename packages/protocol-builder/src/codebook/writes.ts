@@ -17,6 +17,7 @@ import {
   useProtocolBuilderContext,
   type ProtocolBuilderAdapter,
 } from '../state/context.ts';
+import type { ResourcePromotion } from '../state/hooks.ts';
 import { useKeptRequestId, type KeptRequestId } from '../state/requestKey.ts';
 import {
   codebookRefusalMessage,
@@ -56,6 +57,9 @@ type CreateDeps = Readonly<{
   queryClient: QueryClient;
   protocolId: string;
 }>;
+
+/** Lays the change over the section document the host holds now. */
+type SectionUpdate = (authoritativeDocument: SectionDoc) => SectionDoc;
 
 /**
  * What became of a codebook change the researcher asked for.
@@ -199,8 +203,9 @@ const builderRefusal = (error: unknown): CodebookWriteOutcome => {
 async function rewriteSection(
   { adapter, protocolId }: Pick<CreateDeps, 'adapter' | 'protocolId'>,
   id: ProtocolSectionId,
-  next: (authoritativeDocument: SectionDoc) => SectionDoc,
+  next: SectionUpdate,
   whenMissing?: () => Promise<CodebookWriteOutcome>,
+  promote?: ResourcePromotion,
 ): Promise<CodebookWriteOutcome> {
   const acquired = await attempt(adapter, 'AcquireLock', {
     protocolId,
@@ -242,6 +247,7 @@ async function rewriteSection(
       sectionId: id,
       document: Redacted.make(document),
       revision: acquired.data.revision,
+      ...(promote === undefined ? {} : { promote }),
     });
     if (submitted.isSuccess) return { status: 'applied', sectionId: id };
     const { refusal } = submitted;
@@ -254,6 +260,9 @@ async function rewriteSection(
     if (refusal?._tag === 'InvalidShape') {
       return refused({ kind: 'invalidShape' });
     }
+    if (refusal?._tag === 'PromotionFailed') {
+      return refused({ kind: 'promotionFailed' });
+    }
     return refused(protocolRefusal(refusal));
   } finally {
     await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
@@ -263,7 +272,9 @@ async function rewriteSection(
 /** Rewrites one existing codebook section under its own lock (see `rewriteSection`). */
 export function useCodebookSectionWrite(): (
   subject: CodebookSubject,
-  next: (authoritativeDocument: SectionDoc) => SectionDoc,
+  next: SectionUpdate,
+  /** Files imported while editing, committed in the same revision. */
+  promote?: ResourcePromotion,
 ) => Promise<CodebookWriteOutcome> {
   const { adapter, protocolId } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
@@ -272,7 +283,7 @@ export function useCodebookSectionWrite(): (
   const egoKey = useKeptRequestId();
 
   return useCallback(
-    (subject, next) =>
+    (subject, next, promote) =>
       rewriteSection(
         { adapter, protocolId },
         sectionIdForCodebookSubject(subject),
@@ -289,8 +300,10 @@ export function useCodebookSectionWrite(): (
                 { adapter, queryClient, protocolId },
                 egoKey,
                 next,
+                promote,
               )
           : undefined,
+        promote,
       ),
     [adapter, egoKey, protocolId, queryClient],
   );
@@ -305,7 +318,7 @@ const SETTINGS = sectionId({ kind: 'settings' });
  * save, like a codebook change made from a stage.
  */
 export function useSettingsSectionWrite(): (
-  next: (authoritativeDocument: SectionDoc) => SectionDoc,
+  next: SectionUpdate,
 ) => Promise<CodebookWriteOutcome> {
   const { adapter, protocolId } = useProtocolBuilderContext();
   return useCallback(
@@ -327,7 +340,8 @@ export function useSettingsSectionWrite(): (
 async function createEgoCodebook(
   deps: CreateDeps,
   egoKey: KeptRequestId,
-  next: (authoritativeDocument: SectionDoc) => SectionDoc,
+  next: SectionUpdate,
+  promote?: ResourcePromotion,
 ): Promise<CodebookWriteOutcome> {
   let document: SectionDoc;
   try {
@@ -342,6 +356,7 @@ async function createEgoCodebook(
     requestId,
     kind: 'codebookEgo',
     document: Redacted.make(document),
+    ...(promote === undefined ? {} : { promote }),
   });
   if (created.answered) egoKey.settled(requestId);
   if (created.isSuccess) {
@@ -358,6 +373,9 @@ async function createEgoCodebook(
   if (refusal?._tag === 'SectionExists') {
     return refused({ kind: 'sectionCreatedElsewhere' });
   }
+  if (refusal?._tag === 'PromotionFailed') {
+    return refused({ kind: 'promotionFailed' });
+  }
   return refused(protocolRefusal(refusal));
 }
 
@@ -370,13 +388,15 @@ async function createEgoCodebook(
 export function useCreateCodebookEntity(): (
   entity: 'node' | 'edge',
   document: SectionDoc,
+  /** Files imported while editing, committed with the new section. */
+  promote?: ResourcePromotion,
 ) => Promise<CodebookWriteOutcome> {
   const { adapter, protocolId } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
   const createKey = useKeptRequestId();
 
   return useCallback(
-    async (entity, document) => {
+    async (entity, document, promote) => {
       const kind = entity === 'node' ? 'codebookNode' : 'codebookEdge';
       // Kept while the answer is uncertain, so the researcher pressing Save
       // again on a dialog that reported "could not be sent" asks the host
@@ -391,6 +411,7 @@ export function useCreateCodebookEntity(): (
         requestId,
         kind,
         document: Redacted.make(document),
+        ...(promote === undefined ? {} : { promote }),
       });
       if (created.answered) createKey.settled(requestId);
       if (created.isSuccess) {
@@ -408,6 +429,9 @@ export function useCreateCodebookEntity(): (
       }
       if (refusal?._tag === 'SectionsLocked') {
         return refused(blockedRefusal(refusal.blocked));
+      }
+      if (refusal?._tag === 'PromotionFailed') {
+        return refused({ kind: 'promotionFailed' });
       }
       return refused(protocolRefusal(refusal));
     },

@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -37,7 +38,11 @@ const makeStore = () => {
 
 const renderWithLock = (ui: React.ReactElement, readOnly: boolean | null) => {
   const store = makeStore();
-  const tree = <Provider store={store}>{ui}</Provider>;
+  const tree = (
+    <Provider store={store}>
+      <QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>
+    </Provider>
+  );
   return render(
     readOnly === null ? (
       tree

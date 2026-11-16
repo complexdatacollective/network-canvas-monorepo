@@ -15,6 +15,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { useAssetUrl } from '../../../hooks/useAssetUrl';
@@ -169,17 +170,19 @@ function renderInterface(stageOverride: typeof stage = stage) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <StageMetadataContext.Provider value={registerBeforeNext}>
-              <TestProtocolLocalization>{children}</TestProtocolLocalization>
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
-        </ContractProvider>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider value={registerBeforeNext}>
+                <TestProtocolLocalization>{children}</TestProtocolLocalization>
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </ContractProvider>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }

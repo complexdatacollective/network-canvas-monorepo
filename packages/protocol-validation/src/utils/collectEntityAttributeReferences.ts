@@ -531,8 +531,8 @@ export const collectEntityTypeReferences = (
  * schema's `assetReference` tags — the asset counterpart of
  * `collectEntityAttributeReferences`. Covers name generator and panel data
  * sources, sociogram/narrative background images, the Geospatial map's token
- * and data-source assets, and Information intro-screen asset
- * items.
+ * and data-source assets, Information intro-screen asset items, and the
+ * images a node type's custom shapes draw with.
  *
  * Consumers that need to know whether an asset is in use must derive it from
  * here rather than keeping their own list of paths: a stage type that gains an

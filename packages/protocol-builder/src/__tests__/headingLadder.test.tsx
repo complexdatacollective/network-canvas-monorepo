@@ -8,6 +8,7 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { CodebookEditorHost } from '../codebook/__tests__/codebookEditorHost.tsx';
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import type { CodebookWriteOutcome } from '../codebook/writes.ts';
@@ -223,21 +224,23 @@ describe('an editor opened in a dialog', () => {
     const user = userEvent.setup();
 
     render(
-      <CodebookEntityEditor
-        mode="create"
-        sessionKey="open-1"
-        dialog={{ title: 'Create node type', open: true }}
-        subject={SUBJECT}
-        initialDraft={{
-          name: 'Person',
-          color: 'node-color-seq-1',
-          icon: 'add-a-person',
-          shape: { default: 'circle' },
-        }}
-        existingEntityNames={[]}
-        onSubmit={REFUSED}
-        onApplied={() => undefined}
-      />,
+      <CodebookEditorHost>
+        <CodebookEntityEditor
+          mode="create"
+          sessionKey="open-1"
+          dialog={{ title: 'Create node type', open: true }}
+          subject={SUBJECT}
+          initialDraft={{
+            name: 'Person',
+            color: 'node-color-seq-1',
+            icon: 'add-a-person',
+            shape: { default: 'circle' },
+          }}
+          existingEntityNames={[]}
+          onSubmit={REFUSED}
+          onApplied={() => undefined}
+        />
+      </CodebookEditorHost>,
     );
 
     await user.click(screen.getByRole('button', { name: 'Save entity' }));

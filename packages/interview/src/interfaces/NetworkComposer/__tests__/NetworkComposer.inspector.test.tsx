@@ -18,6 +18,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
@@ -293,19 +294,26 @@ function renderInterface(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <DialogProvider>
-            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-              <StageMetadataContext.Provider value={registerBeforeNext}>
-                <TestProtocolLocalization>{children}</TestProtocolLocalization>
-              </StageMetadataContext.Provider>
-            </CurrentStepProvider>
-          </DialogProvider>
-        </ContractProvider>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <DialogProvider>
+              <CurrentStepProvider
+                currentStep={0}
+                onStepChange={() => undefined}
+              >
+                <StageMetadataContext.Provider value={registerBeforeNext}>
+                  <TestProtocolLocalization>
+                    {children}
+                  </TestProtocolLocalization>
+                </StageMetadataContext.Provider>
+              </CurrentStepProvider>
+            </DialogProvider>
+          </ContractProvider>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }
@@ -848,39 +856,41 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     const builds: (() => AttributePatch | null)[] = [];
     const inspector = (attributes: Record<string, string>) => (
       <Provider store={store}>
-        <TestProtocolLocalization>
-          <ContractProvider
-            onFinish={vi.fn()}
-            onRequestAsset={vi.fn()}
-            flags={{ isE2E: false, isDevelopment: false }}
-          >
-            <DialogProvider>
-              <CurrentStepProvider
-                currentStep={0}
-                onStepChange={() => undefined}
-              >
-                <StageMetadataContext.Provider value={vi.fn()}>
-                  <Inspector
-                    entityId={NODE_A_ID}
-                    overtakenEditNotice={OVERTAKEN_EDIT_NOTICE}
-                    // The fixture's loose stage shape, as the interface is given.
-                    form={
-                      twoQuestionStage.nodeForm as unknown as InspectorProps['form']
-                    }
-                    subject={{ entity: 'node', type: NODE_TYPE }}
-                    attributes={attributes}
-                    // The save is asked for, but made only when the test says.
-                    onSave={async (_id, build) => {
-                      builds.push(build);
-                    }}
-                    onDelete={vi.fn()}
-                    guardDraft={() => () => undefined}
-                  />
-                </StageMetadataContext.Provider>
-              </CurrentStepProvider>
-            </DialogProvider>
-          </ContractProvider>
-        </TestProtocolLocalization>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <TestProtocolLocalization>
+            <ContractProvider
+              onFinish={vi.fn()}
+              onRequestAsset={vi.fn()}
+              flags={{ isE2E: false, isDevelopment: false }}
+            >
+              <DialogProvider>
+                <CurrentStepProvider
+                  currentStep={0}
+                  onStepChange={() => undefined}
+                >
+                  <StageMetadataContext.Provider value={vi.fn()}>
+                    <Inspector
+                      entityId={NODE_A_ID}
+                      overtakenEditNotice={OVERTAKEN_EDIT_NOTICE}
+                      // The fixture's loose stage shape, as the interface is given.
+                      form={
+                        twoQuestionStage.nodeForm as unknown as InspectorProps['form']
+                      }
+                      subject={{ entity: 'node', type: NODE_TYPE }}
+                      attributes={attributes}
+                      // The save is asked for, but made only when the test says.
+                      onSave={async (_id, build) => {
+                        builds.push(build);
+                      }}
+                      onDelete={vi.fn()}
+                      guardDraft={() => () => undefined}
+                    />
+                  </StageMetadataContext.Provider>
+                </CurrentStepProvider>
+              </DialogProvider>
+            </ContractProvider>
+          </TestProtocolLocalization>
+        </InterviewQueryClientProvider>
       </Provider>
     );
     const { rerender } = render(inspector({ [NODE_NAME_VAR]: 'Alice Smith' }));
