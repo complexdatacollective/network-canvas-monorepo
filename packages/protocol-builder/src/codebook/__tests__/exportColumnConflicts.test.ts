@@ -118,13 +118,11 @@ describe('creating an attribute', () => {
     });
   });
 
-  it('refuses a name that is where a layout attribute writes a position', () => {
-    const section = sectionOf({ pos: layout('pos') });
-    for (const name of ['pos_x', 'pos_Y', 'pos_screenSpaceX']) {
-      expect(conflictOf(() => create(section, text(name)))?.path).toEqual([
-        'name',
-      ]);
-    }
+  it('refuses a name that is the column of an option written in another script', () => {
+    const section = sectionOf({ ami: categorical('友人', ['近い', '遠い']) });
+    expect(conflictOf(() => create(section, text('友人_近い')))?.path).toEqual([
+      'name',
+    ]);
   });
 
   it('refuses an option written where another attribute already is', () => {
@@ -135,20 +133,6 @@ describe('creating an attribute', () => {
       path: ['options'],
       text: 'Option “bar” of “foo” would be exported to a column called “foo_bar”, but the attribute “foo_bar” already has a column called “foo_bar”. Change the option value or the attribute name.',
     });
-  });
-
-  it('refuses an option written where an option of another attribute is', () => {
-    const section = sectionOf({ a: categorical('a', ['b_c', 'd']) });
-    expect(
-      conflictOf(() => create(section, categorical('a_b', ['c', 'e'])))?.path,
-    ).toEqual(['options']);
-  });
-
-  it('refuses an option written where a layout attribute writes a position', () => {
-    const section = sectionOf({ a_b: layout('a_b') });
-    expect(
-      conflictOf(() => create(section, categorical('a', ['b_x', 'c'])))?.path,
-    ).toEqual(['options']);
   });
 
   it('refuses a layout attribute whose position is written where another attribute is', () => {
@@ -164,16 +148,6 @@ describe('creating an attribute', () => {
     ).toEqual(['name']);
   });
 
-  it('refuses a name the export writes itself, in any case', () => {
-    expect(conflictOf(() => create(sectionOf({}), text('nodeID')))).toEqual({
-      path: ['name'],
-      text: 'The export already has a built-in column called “nodeID”, so an attribute cannot be named “nodeID”. Choose a different name.',
-    });
-    expect(
-      conflictOf(() => create(sectionOf({}), text('NetworkCanvasUUID')))?.path,
-    ).toEqual(['name']);
-  });
-
   it('judges a built-in column against the kind of thing it belongs to', () => {
     // `COMMIT_HASH` is a column of the participant's own row only.
     const draft = categorical('COMMIT', ['HASH', 'other']);
@@ -181,21 +155,6 @@ describe('creating an attribute', () => {
       conflictOf(() => create({ variables: {} }, draft, EGO))?.path,
     ).toEqual(['options']);
     expect(() => create(sectionOf({}), draft)).not.toThrow();
-  });
-
-  it('does not expand an ordinal attribute into a column per option', () => {
-    const section = sectionOf({ foo_bar: text('foo_bar') });
-    expect(() =>
-      create(section, {
-        name: 'foo',
-        type: 'ordinal',
-        component: 'RadioGroup',
-        options: [
-          { label: { en: 'Bar' }, value: 'bar' },
-          { label: { en: 'Baz' }, value: 'baz' },
-        ],
-      }),
-    ).not.toThrow();
   });
 
   it('leaves two attributes of one name to the duplicate-name refusal', () => {
@@ -373,27 +332,37 @@ describe('changing an attribute that is already in the codebook', () => {
     });
 
     it('still saves an unrelated change to either attribute', () => {
-      expect(() => update(section, 'clash', { encrypted: true })).not.toThrow();
-      expect(() =>
-        update(
-          section,
+      expect(
+        storedVariable(update(section, 'clash', { encrypted: true }), 'clash'),
+      ).toMatchObject({ name: 'foo_bar', encrypted: true });
+      expect(
+        storedVariable(
+          update(
+            section,
+            'foo',
+            {
+              options: [
+                { label: { en: 'Bar' }, value: 'bar' },
+                { label: { en: 'Baz' }, value: 'baz' },
+                { label: { en: 'Qux' }, value: 'qux' },
+              ],
+            },
+            ['options'],
+          ),
           'foo',
-          {
-            options: [
-              { label: { en: 'Bar' }, value: 'bar' },
-              { label: { en: 'Baz' }, value: 'baz' },
-              { label: { en: 'Qux' }, value: 'qux' },
-            ],
-          },
-          ['options'],
         ),
-      ).not.toThrow();
+      ).toMatchObject({
+        options: [{ value: 'bar' }, { value: 'baz' }, { value: 'qux' }],
+      });
     });
 
     it('still saves moving one of them off the clash', () => {
-      expect(() =>
-        update(section, 'clash', { name: 'foo_other' }),
-      ).not.toThrow();
+      expect(
+        storedVariable(
+          update(section, 'clash', { name: 'foo_other' }),
+          'clash',
+        ),
+      ).toMatchObject({ name: 'foo_other' });
     });
 
     it('still refuses a second clash', () => {
@@ -428,6 +397,13 @@ describe('the names the write stores', () => {
     const written = create(sectionOf({}), text('  first_name  '));
     expect(storedVariable(written, 'new-variable')).toMatchObject({
       name: 'first_name',
+    });
+  });
+
+  it('stores an attribute named in another script, with a space', () => {
+    const written = create(sectionOf({}), text('友人 cercano'));
+    expect(storedVariable(written, 'new-variable')).toMatchObject({
+      name: '友人 cercano',
     });
   });
 

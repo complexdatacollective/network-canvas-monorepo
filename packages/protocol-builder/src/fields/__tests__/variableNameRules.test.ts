@@ -135,15 +135,6 @@ describe('the rule for an attribute name', () => {
       expect(variableNameRefusal('foo_baz', { intl, scope })).toBe(undefined);
     });
 
-    it('refuses a name that is where a layout attribute writes a position', () => {
-      const scope = scopeOf([{ id: 'v-pos', name: 'pos', type: 'layout' }]);
-      for (const typed of ['pos_x', 'pos_Y', 'pos_screenSpaceX']) {
-        expect(variableNameRefusal(typed, { intl, scope })).toMatch(
-          /for the position of the layout attribute “pos”/,
-        );
-      }
-    });
-
     it('refuses a name that is a built-in column, in any case', () => {
       expect(variableNameRefusal('nodeID', { intl, scope: SCOPE })).toBe(
         'The export already has a built-in column called “nodeID”, so an attribute cannot be named “nodeID”. Choose a different name.',
@@ -164,18 +155,6 @@ describe('the rule for an attribute name', () => {
       );
       expect(variableNameRefusal('edgeID', { intl, scope: edgeScope })).toMatch(
         /built-in column/,
-      );
-    });
-
-    it('refuses a name the export writes the way another attribute’s is written', () => {
-      const scope = scopeOf([
-        { id: 'v-close', name: 'close_friend', type: 'text' },
-      ]);
-      expect(variableNameRefusal('close friend', { intl, scope })).toBe(
-        'In the export, the name “close friend” and the column “close_friend” of the attribute “close_friend” would become the same column, “close_friend”. Choose a different name.',
-      );
-      expect(variableNameRefusal('close-friend', { intl, scope })).toBe(
-        undefined,
       );
     });
 
@@ -294,6 +273,14 @@ describe('the export columns an attribute would write', () => {
         text: 'The export already has a column called “pos_x” for the position of the layout attribute “pos”. Choose a different name.',
       },
     ]);
+    // Every position column the layout writes, in any case.
+    for (const name of ['pos_Y', 'pos_screenSpaceX']) {
+      expect(
+        refusals({ name, type: 'text' }, [{ name: 'pos', type: 'layout' }]).map(
+          ({ origin }) => origin,
+        ),
+      ).toEqual(['name']);
+    }
   });
 
   it('refuses an option written where another attribute already is', () => {
@@ -430,6 +417,12 @@ describe('the export columns an attribute would write', () => {
         text: 'In the export, the name “close friend” and the column “close_friend” of the attribute “close_friend” would become the same column, “close_friend”. Choose a different name.',
       },
     ]);
+    // A hyphen is kept, so this name writes a column of its own.
+    expect(
+      refusals({ name: 'close-friend', type: 'text' }, [
+        { name: 'close_friend', type: 'text' },
+      ]),
+    ).toEqual([]);
   });
 
   it('refuses a name CSV writes as another attribute’s column', () => {

@@ -191,7 +191,8 @@ const SURFACES = {
     },
   },
   /**
-   * A rule requiring three answers, left two to choose from.
+   * A rule requiring three answers, on an attribute whose third option the
+   * play removes.
    *
    * The refusal is written by the codebook schema's own contradiction
    * analyser, which the editor runs over the whole entity before it asks the
@@ -218,6 +219,7 @@ const SURFACES = {
       options: [
         { label: { en: 'Low' }, value: 'low' },
         { label: { en: 'Middle' }, value: 'middle' },
+        { label: { en: 'High' }, value: 'high' },
       ],
       validation: { minSelected: 3 },
     },
@@ -255,11 +257,14 @@ function VariableEditorDemo({
   // Every surface here is accepted by the host: the one story named for a
   // contradiction is refused by the editor's own analyser before a host is
   // reached. `VariableEditor.test.tsx` drives a host's refusal directly.
-  const answer = (): Promise<CodebookWriteOutcome> =>
-    Promise.resolve({
+  const [submissions, setSubmissions] = useState(0);
+  const answer = (): Promise<CodebookWriteOutcome> => {
+    setSubmissions((count) => count + 1);
+    return Promise.resolve({
       status: 'applied',
       sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
     });
+  };
   const common = {
     openId,
     subject: SUBJECT,
@@ -277,6 +282,9 @@ function VariableEditorDemo({
             {completedId === null
               ? 'No accepted edit yet.'
               : `Accepted attribute id: ${completedId}`}
+          </output>
+          <output className="text-muted">
+            {`Edits handed to the host: ${submissions}`}
           </output>
           <Button
             type="button"
@@ -350,10 +358,118 @@ type Story = StoryObj<typeof meta>;
  */
 const inEnglish = { globals: { appLocale: 'en' } };
 
+/** A custom property as it resolves on one element. */
+const resolved = (element: Element, property: string): string =>
+  getComputedStyle(element).getPropertyValue(property).trim();
+
+/**
+ * The destructive ink as each option field on a tinted row resolves it.
+ *
+ * The page's own destructive ink is too faint to read on the accent surface,
+ * so the row points `--destructive-ink` at the accent surface's own
+ * `--surface-accent-destructive`. An error on that row is boxed rather than
+ * drawn in the ink, so what is painted with it there is the required-field
+ * asterisk; `expectRequiredMarkInAccentInk` measures that paint.
+ */
+async function expectAccentInk(
+  canvasElement: HTMLElement,
+  fieldNames: readonly string[],
+): Promise<void> {
+  await expect(fieldNames.length).toBeGreaterThan(0);
+  const pageInk = resolved(canvasElement, '--destructive-ink');
+  for (const fieldName of fieldNames) {
+    const region = canvasElement.querySelector(
+      `[data-field-name="${fieldName}"] [aria-live]`,
+    );
+    if (region === null) {
+      throw new Error(`no error region for the field "${fieldName}"`);
+    }
+    const ink = resolved(region, '--destructive-ink');
+    await expect(ink).not.toBe('');
+    await expect(ink).toBe(resolved(region, '--surface-accent-destructive'));
+    await expect(ink).not.toBe(pageInk);
+    // The fill a destructive control paints with is the page's own: only the
+    // ink is redirected.
+    await expect(resolved(region, '--destructive')).toBe(
+      resolved(canvasElement, '--destructive'),
+    );
+  }
+}
+
+/** The colour `color` resolves to when it is set to this value beside `host`. */
+const paintedColour = (host: Element, color: string): string => {
+  const probe = document.createElement('span');
+  probe.style.color = color;
+  host.append(probe);
+  const painted = getComputedStyle(probe).color;
+  probe.remove();
+  return painted;
+};
+
+/**
+ * Each field's required-field asterisk, as it is painted, against probes
+ * painted with the accent surface's destructive ink and the page's own.
+ */
+async function expectRequiredMarkInAccentInk(
+  canvasElement: HTMLElement,
+  fieldNames: readonly string[],
+): Promise<void> {
+  const pageInk = paintedColour(canvasElement, 'var(--destructive-ink)');
+  for (const fieldName of fieldNames) {
+    const field = canvasElement.querySelector(
+      `[data-field-name="${fieldName}"]`,
+    );
+    if (field === null) throw new Error(`no field named "${fieldName}"`);
+    const marks = [...field.querySelectorAll('[aria-hidden="true"]')].filter(
+      (element) => element.textContent?.trim() === '*',
+    );
+    await expect(marks).toHaveLength(1);
+    for (const mark of marks) {
+      const accentInk = paintedColour(
+        field,
+        'var(--surface-accent-destructive)',
+      );
+      await expect(getComputedStyle(mark).color).toBe(accentInk);
+      await expect(accentInk).not.toBe(pageInk);
+    }
+  }
+}
+
 export const NewCategoricalVariable: Story = {};
 
+/**
+ * An attribute whose choices are already written. Each option field sits on
+ * a tinted row, and its required-field mark is drawn in the destructive ink
+ * that row can carry, while the button that removes the option keeps the
+ * page's destructive fill.
+ */
 export const ExistingVariable: Story = {
   args: { mode: 'update' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const removeButtons = await canvas.findAllByRole('button', {
+      name: /^Remove option \d+$/,
+    });
+    await expect(removeButtons).toHaveLength(2);
+    for (const button of removeButtons) {
+      await expect(resolved(button, '--destructive')).toBe(
+        resolved(canvasElement, '--destructive'),
+      );
+    }
+
+    await expectAccentInk(canvasElement, [
+      'option-1-label',
+      'option-1-value',
+      'option-2-label',
+      'option-2-value',
+    ]);
+    await expectRequiredMarkInAccentInk(canvasElement, [
+      'option-1-label',
+      'option-1-value',
+      'option-2-label',
+      'option-2-value',
+    ]);
+  },
 };
 
 export const InterfaceOwnedOptions: Story = {
@@ -398,6 +514,11 @@ export const BooleanAnswers: Story = {
         'Write what this answer says, or clear both to offer Yes and No.',
       ),
     ).toBeVisible();
+
+    await expectAccentInk(canvasElement, [
+      'boolean-answer-true-label',
+      'boolean-answer-false-label',
+    ]);
   },
 };
 
@@ -511,12 +632,19 @@ export const ScaleSettings: Story = {
  * package's own copy for a save that did not happen, which is what the second
  * assertion is here to hold: "wait a moment and try again" is the wrong thing
  * to tell someone whose next save cannot succeed until they change something.
+ *
+ * The draft never leaves the editor: nothing is handed to the host or
+ * accepted, focus goes to the refusal, and the researcher can still fix it and
+ * save.
  */
 export const RefusedByContradiction: Story = {
   args: { mode: 'update', surface: 'contradiction' },
   ...inEnglish,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Remove option 3' }),
+    );
     await userEvent.click(
       canvas.getByRole('button', { name: 'Save attribute' }),
     );
@@ -526,5 +654,11 @@ export const RefusedByContradiction: Story = {
       'Attribute "preference": minSelected (3) is greater than the number of options (2)',
     );
     await expect(alert).not.toHaveTextContent('Wait a moment and try again');
+    await expect(alert).toHaveFocus();
+    await expect(canvas.getByText('No accepted edit yet.')).toBeVisible();
+    await expect(canvas.getByText('Edits handed to the host: 0')).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Save attribute' }),
+    ).toBeEnabled();
   },
 };

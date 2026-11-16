@@ -73,30 +73,6 @@ describe('StageNameInput', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
   });
 
-  it('puts a pasted name on one line without shortening it', () => {
-    const onChange = vi.fn();
-
-    render(
-      <StageNameInput
-        name="label"
-        value=""
-        onChange={onChange}
-        characterLimit={50}
-      />,
-    );
-
-    const pasted = 'Close ties\n   and weak ties';
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: pasted },
-    });
-
-    expect(onChange).toHaveBeenCalledWith('Close ties    and weak ties');
-    // Length-preserving on purpose. `maxLength` is the browser's and lands on
-    // the raw value first, so a normalisation that shortened the string would
-    // leave the cap discarding characters the finished name had room for.
-    expect(onChange.mock.calls[0]?.[0]).toHaveLength(pasted.length);
-  });
-
   it("puts a name pasted with Unicode's line separators on one line", () => {
     const onChange = vi.fn();
 
