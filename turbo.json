@@ -646,7 +646,9 @@
         "!**/.netlify/**",
         "!**/.turbo/**",
         "!**/build/**",
-        "!**/coverage/**",
+        // Unlike the names around it, coverage is not ignored repo-wide, so
+        // only a package's own report directory is left out.
+        "!{apps,packages,tooling,workers}/*/coverage/**",
         "!**/out/**",
         "!**/playwright-report/**",
         "!**/storybook-static/**",
