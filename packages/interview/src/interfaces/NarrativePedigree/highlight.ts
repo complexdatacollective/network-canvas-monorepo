@@ -48,9 +48,9 @@ const AFFECTED_MALE_STATUSES: ReadonlySet<Status> = new Set<Status>([
  *     parent only (his father gave him the Y, not an X);
  *   - under X-linked RECESSIVE a daughter of an affected father who carries
  *     the condition is explained by the X he gave her, so the maternal line is
- *     excluded whatever the mother's status — UNLESS the daughter is herself
- *     recorded `affected`, which needs a disease X from each parent, so both
- *     lines are kept. This drops an incidental maternal-line relative (e.g. a
+ *     excluded whatever the mother's status. A daughter who is herself recorded
+ *     `affected` needs a disease X from each parent, so both lines are kept for
+ *     her. This drops an incidental maternal-line relative (e.g. a
  *     maternal grandmother flagged only as an at-risk prior);
  *   - under X-linked DOMINANT one affected X suffices, so an affected father
  *     never excludes an affected/transmitting mother — every on-lineage parent

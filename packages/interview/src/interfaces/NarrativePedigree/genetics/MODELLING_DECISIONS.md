@@ -375,8 +375,10 @@ In `computeXLinkedRecessive` (`patterns/xLinked.ts`), every female recorded as
 affected is a starting point for the same downward walk that a carrier female
 starts (step 3): her daughters get `atRiskCarrier`, her sons get
 `atRiskAffected`, and the walk continues down through her daughters exactly as
-it does from a carrier. Her own status stays `affected`, and nothing new is
-inferred about her parents. Every write goes through the precedence lattice
+it does from a carrier. Her own status stays `affected`, and her being affected
+adds nothing about her parents (other rules may still mark them). An affected
+person of uncertain sex is not a starting point, because neither the male nor
+the female rule can be applied to them. Every write goes through the precedence lattice
 (§4), so a stronger status reached by another rule is kept: a daughter who also
 has an affected father stays `obligateCarrier`, and a child recorded as affected
 stays `affected`. A child of uncertain sex is left `unknown` and the walk does
@@ -412,5 +414,74 @@ affected woman's children got none at all.
 ### Decision
 
 **Seed the step-3 walk from every affected female, with at-risk statuses for
-her children and no upward inference.** The status of her children no longer
-depends on whether her mother happened to be marked a carrier.
+her children and no upward inference from her own status.** The status of her
+children no longer depends on whether her mother happened to be marked a
+carrier.
+
+---
+
+## 7. X-linked recessive: an affected son and an affected mother make a woman an obligate carrier
+
+### What the engine does
+
+In step 2 of `computeXLinkedRecessive`, a woman with an affected son is marked
+`obligateCarrier` when her own genetic mother is recorded as affected. This sits
+beside the two existing corroborations (two or more affected sons, or an
+affected son and an affected sibling who shares her mother). Only genetic links
+count: an adoptive or social mother does not trigger it, and neither does a son
+conceived with a donor egg, because the woman is then not his genetic mother.
+An affected daughter in place of the affected son does not trigger it. The
+woman is not herself marked affected, and the precedence lattice (§4) is
+unchanged. Her other children then get the statuses an obligate carrier's
+children get through step 3.
+
+### Rationale
+
+With an affected mother above her and an affected son below her, the disease X
+is on the woman's maternal line on both sides of her, so a new variant arising
+in her son no longer explains the son on its own. This is the same reasoning
+that already makes an affected maternal brother sufficient. Whether the affected
+mother has one copy or two does not matter here: either way the son's X came
+from the woman, and the woman's X line leads back to an affected woman.
+
+The rule is not widened to other relatives. Measured on the current engine:
+
+- an affected son and a mother who is herself an obligate carrier (through her
+  own affected father) leave the woman `atRiskCarrier`;
+- an affected son and an affected maternal half-brother already make her
+  `obligateCarrier` (the existing sibling rule);
+- an affected son and an affected sister who shares her mother leave her
+  `atRiskCarrier`;
+- an affected son and an affected maternal uncle leave her `atRiskCarrier`.
+
+### Decision
+
+**Add the affected genetic mother as a third corroboration for a woman with an
+affected son, and go no further.**
+
+---
+
+## 8. Focus highlighting: a carrier daughter of an affected father
+
+### What the code does
+
+When a person is focused, `transmittingParents` in `highlight.ts` decides which
+parents the highlighted path climbs through. Under X-linked recessive, for a
+female who carries the condition and whose father is affected (or inferred
+affected), the path runs only through her father, whatever her mother's status.
+If she is herself recorded affected, the path runs through both parents.
+
+### Rationale
+
+Her carrier status is fully explained by the X her affected father gave her.
+Earlier code also kept the maternal line when the mother was affected, on the
+assumption that an affected woman has two copies and passes a disease X to
+every child. Section 6 does not make that assumption, so the exception was
+removed. A daughter recorded affected needs a disease X from each parent, so
+both lines stay.
+
+### Decision
+
+**For a carrier daughter of an affected father, highlight only the paternal
+path unless she is herself affected.** A woman made an obligate carrier by §7
+has no affected father, so her path runs through her affected mother.
