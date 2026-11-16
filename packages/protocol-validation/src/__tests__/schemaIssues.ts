@@ -28,11 +28,13 @@ const summarise = ({ path, code, message, keys }: Issue): IssueSummary => ({
   ...(code === 'unrecognized_keys' ? { keys } : {}),
 });
 
-const sortKey = ({ path, code, message = '' }: IssueSummary) =>
-  `${path}\u0000${code}\u0000${message}`;
+const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
+// Code-unit order, field by field, so the order does not depend on a locale.
 const bySortKey = (a: IssueSummary, b: IssueSummary) =>
-  sortKey(a).localeCompare(sortKey(b));
+  compareText(a.path, b.path) ||
+  compareText(a.code, b.code) ||
+  compareText(a.message ?? '', b.message ?? '');
 
 /**
  * Every issue of a parse, summarised and sorted so that the order in which

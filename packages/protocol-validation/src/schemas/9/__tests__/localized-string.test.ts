@@ -420,9 +420,9 @@ describe('schema version boundary', () => {
       { path: 'stages.0.title', code: 'invalid_type' },
       { path: 'stages.1.content', code: 'invalid_type' },
       { path: 'stages.1.finishConfirmation', code: 'invalid_type' },
-      { path: 'stages.1.finishedContent', code: 'invalid_type' },
       { path: 'stages.1.finishFailed', code: 'invalid_type' },
       { path: 'stages.1.finishLabel', code: 'invalid_type' },
+      { path: 'stages.1.finishedContent', code: 'invalid_type' },
       { path: 'stages.1.label', code: 'invalid_type' },
     ]);
   });

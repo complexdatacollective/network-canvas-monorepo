@@ -302,12 +302,12 @@ describe('ComposerFormFieldSchema', () => {
       },
     });
     expect(parseIssues(result)).toEqual([
-      { path: 'nodeForm.fields.0.label', code: 'invalid_type' },
       {
         path: 'nodeForm.fields.0',
         code: 'unrecognized_keys',
         keys: ['prompt'],
       },
+      { path: 'nodeForm.fields.0.label', code: 'invalid_type' },
     ]);
   });
 

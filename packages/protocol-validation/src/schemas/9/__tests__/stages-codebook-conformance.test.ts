@@ -632,9 +632,6 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
         message: 'Attribute record key "shared" is reused across entity types',
       },
     ]);
-    expect(result.error?.issues[0]?.message).toContain(
-      'is reused across entity types',
-    );
   });
 
   it('rejects a variable record key reused across a node type and ego', () => {
@@ -665,9 +662,6 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
         message: 'Attribute record key "shared" is reused across entity types',
       },
     ]);
-    expect(result.error?.issues[0]?.message).toContain(
-      'is reused across entity types',
-    );
   });
 });
 

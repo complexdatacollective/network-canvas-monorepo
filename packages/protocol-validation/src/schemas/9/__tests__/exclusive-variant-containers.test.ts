@@ -136,9 +136,12 @@ describe('the exclusive-variant containers of a stage document', () => {
     );
     const hybrid = {
       ...base,
+      assetManifest: {
+        map: { id: 'map', type: 'image', name: 'Map', source: 'map.png' },
+      },
       stages: base.stages.map((stage) =>
         stage.type === 'Sociogram'
-          ? { ...stage, background: { concentricCircles: 4, image: 'map.png' } }
+          ? { ...stage, background: { concentricCircles: 4, image: 'map' } }
           : stage,
       ),
     };
@@ -151,12 +154,6 @@ describe('the exclusive-variant containers of a stage document', () => {
         code: 'custom',
         message:
           'concentricCircles cannot be set when background has an image.',
-      },
-      {
-        path: 'stages.1.background.image',
-        code: 'custom',
-        message:
-          'Canvas background image "map.png" does not reference an asset in the manifest.',
       },
     ]);
   });

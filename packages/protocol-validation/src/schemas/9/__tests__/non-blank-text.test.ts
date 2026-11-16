@@ -438,8 +438,6 @@ describe.each(REQUIRED_TEXT_SITES)('$name', ({ schema, valid, path }) => {
   );
 });
 
-// The variable schema is a union of every variable type, so a refusal is
-// reported as the union's; whether the variable parses is what is asked.
 describe('option labels', () => {
   const booleanVariable = (label: Record<string, string>) => ({
     name: 'Smokes',

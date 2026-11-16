@@ -64,7 +64,7 @@ const protocolWith = (stages: Stage[]) => ({
             type: 'text',
             component: 'Text',
           },
-          isEgo: { name: 'is_ego', type: 'boolean' },
+          isEgo: { name: 'is_ego', type: 'boolean', component: 'Toggle' },
           genderIdentity: {
             name: 'genderIdentity',
             type: 'categorical',
@@ -211,12 +211,6 @@ describe('findExclusiveVariableConflicts', () => {
         code: 'custom',
         message:
           'Attribute "is_ego" is set by the Family Pedigree interface, which marks the participant, so nothing else in this protocol may set it.',
-      },
-      {
-        path: 'stages.0.form.fields.0.variable',
-        code: 'custom',
-        message:
-          'Form field attribute "isEgo" must define a component (input control) to be rendered as a form field.',
       },
     ]);
   });
