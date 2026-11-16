@@ -70,16 +70,19 @@ export const Default: Story = {};
 export const Compact: Story = {
   globals: { viewport: { value: 'compact', isRotated: false } },
   play: async ({ canvasElement }) => {
+    // The width comes from the runner applying the viewport global.
+    await expect(window.innerWidth).toBe(900);
     const { mark, heading } = brandParts(canvasElement);
     await expect(mark.height).toBe('64px');
     await expect(heading.position).toBe('absolute');
   },
 };
 
-/** Tablet landscape shrinks the mark to 56px and shows a 24px wordmark. */
+/** Tablet landscape shrinks the mark to 56px and shows the wordmark at text-2xl. */
 export const TabletLandscape: Story = {
   globals: { viewport: { value: 'tabletLandscape', isRotated: false } },
   play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBe(1112);
     const { mark, heading } = brandParts(canvasElement);
     await expect(mark.height).toBe('56px');
     await expect(heading.position).toBe('static');
@@ -89,10 +92,11 @@ export const TabletLandscape: Story = {
   },
 };
 
-/** Laptop widths return to an 80px mark and a 30px wordmark. */
+/** Laptop widths return to an 80px mark and a text-3xl wordmark. */
 export const Laptop: Story = {
   globals: { viewport: { value: 'laptop', isRotated: false } },
   play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBe(1440);
     const { mark, heading } = brandParts(canvasElement);
     await expect(mark.height).toBe('80px');
     await expect(heading.position).toBe('static');

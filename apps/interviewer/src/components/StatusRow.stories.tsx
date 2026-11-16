@@ -191,6 +191,8 @@ export const BelowTabletLandscape: Story = {
   parameters: { viewport: { options: widthViewports } },
   globals: { viewport: { value: 'belowTabletLandscape', isRotated: false } },
   play: async ({ canvas, canvasElement }) => {
+    // The width comes from the runner applying the viewport global.
+    await expect(window.innerWidth).toBe(900);
     await expect(getComputedStyle(countsLink(canvasElement)).display).toBe(
       'none',
     );
@@ -207,6 +209,7 @@ export const TabletLandscapeAndUp: Story = {
   parameters: { viewport: { options: widthViewports } },
   globals: { viewport: { value: 'tabletLandscape', isRotated: false } },
   play: async ({ canvas, canvasElement }) => {
+    await expect(window.innerWidth).toBe(1112);
     // inline-flex computes to flex because the row is a flex container.
     await expect(getComputedStyle(countsLink(canvasElement)).display).toBe(
       'flex',

@@ -46,40 +46,57 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
-function setVisibility(state: DocumentVisibilityState | null) {
-  if (state === null) {
-    Reflect.deleteProperty(document, 'visibilityState');
-  } else {
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => state,
-    });
-  }
-  document.dispatchEvent(new Event('visibilitychange'));
+// Overrides a document property and returns a function that puts back
+// whatever own property was there before (none, or an earlier stub).
+function overrideDocument(
+  name: 'hasFocus' | 'visibilityState',
+  descriptor: PropertyDescriptor,
+) {
+  const previous = Object.getOwnPropertyDescriptor(document, name);
+  Object.defineProperty(document, name, { configurable: true, ...descriptor });
+  return () => {
+    if (previous) Object.defineProperty(document, name, previous);
+    else Reflect.deleteProperty(document, name);
+  };
 }
+
+const announceVisibility = () =>
+  document.dispatchEvent(new Event('visibilitychange'));
 
 /**
  * The status dot pulses only while the page is active, so a hidden tab does
- * not keep animating.
+ * not keep animating. Focus is stubbed so the play does not depend on the
+ * runner's window having focus.
  */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const dot = canvasElement.querySelector('span[aria-hidden].rounded-full');
     if (!dot) throw new Error('status dot not found');
-    await waitFor(() =>
-      expect(getComputedStyle(dot).animationName).toBe('animate-pulse-glow'),
-    );
+    const restoreFocus = overrideDocument('hasFocus', { value: () => true });
     try {
-      setVisibility('hidden');
+      announceVisibility();
       await waitFor(() =>
-        expect(getComputedStyle(dot).animationName).toBe('none'),
+        expect(getComputedStyle(dot).animationName).toBe('animate-pulse-glow'),
+      );
+      const restoreVisibility = overrideDocument('visibilityState', {
+        get: () => 'hidden',
+      });
+      try {
+        announceVisibility();
+        await waitFor(() =>
+          expect(getComputedStyle(dot).animationName).toBe('none'),
+        );
+      } finally {
+        restoreVisibility();
+        announceVisibility();
+      }
+      await waitFor(() =>
+        expect(getComputedStyle(dot).animationName).toBe('animate-pulse-glow'),
       );
     } finally {
-      setVisibility(null);
+      restoreFocus();
+      announceVisibility();
     }
-    await waitFor(() =>
-      expect(getComputedStyle(dot).animationName).toBe('animate-pulse-glow'),
-    );
   },
 };
 
