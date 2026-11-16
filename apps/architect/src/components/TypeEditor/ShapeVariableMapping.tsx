@@ -451,23 +451,30 @@ const ShapeMappingEditor = ({
             {intl.formatMessage(messages.shapeForEachValue)}
           </Heading>
           {getDiscreteOptions().map((option) => (
-            <div key={String(option.value)} className={ITEM_ROW_CLASSES}>
+            // The row wraps, so a picker too wide to share a line with the
+            // value's label moves below it rather than squeezing the label.
+            <div
+              key={String(option.value)}
+              className={`${ITEM_ROW_CLASSES} flex-wrap`}
+            >
               <OptionLabel
                 label={option.label}
-                render={<span className="flex-1 text-sm" />}
+                render={<span className="min-w-40 flex-1 text-sm" />}
               />
-              <ShapePickerField
-                small
-                nodeColor={nodeColor}
-                customShapes={customShapes}
-                aria-label={intl.formatMessage(messages.shapeFor, {
-                  value1: optionLabelText(option.label),
-                })}
-                value={getShapeForValue(option.value)}
-                onChange={(shape) => {
-                  if (shape) handleDiscreteShapeChange(option.value, shape);
-                }}
-              />
+              <div className="max-w-full">
+                <ShapePickerField
+                  small
+                  nodeColor={nodeColor}
+                  customShapes={customShapes}
+                  aria-label={intl.formatMessage(messages.shapeFor, {
+                    value1: optionLabelText(option.label),
+                  })}
+                  value={getShapeForValue(option.value)}
+                  onChange={(shape) => {
+                    if (shape) handleDiscreteShapeChange(option.value, shape);
+                  }}
+                />
+              </div>
             </div>
           ))}
           {getDiscreteOptions().some((opt) => !getShapeForValue(opt.value)) && (

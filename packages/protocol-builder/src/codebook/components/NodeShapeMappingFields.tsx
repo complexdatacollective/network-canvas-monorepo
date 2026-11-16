@@ -459,7 +459,7 @@ export default function NodeShapeMappingFields({
                     label={answer.label.text}
                     render={
                       <span
-                        className="min-w-32 flex-1 text-sm"
+                        className="min-w-40 flex-1 text-sm"
                         lang={answer.label.lang}
                         dir={answer.label.dir}
                       />
