@@ -54,12 +54,6 @@ const messages = defineMessages({
     description:
       'Body of the confirmation dialog shown before removing one option from a categorical or ordinal variable.',
   },
-  reorderOptionOf: {
-    id: 'architect.form.arrayFields.option.reorderOptionOf',
-    defaultMessage: 'Reorder option {value1, number} of {itemCount, number}',
-    description:
-      "Accessible name of the drag handle that moves an option up or down in the list of a variable's options; read only by screen readers. value1 is the option's position, itemCount is how many options there are.",
-  },
   untitledOption: {
     id: 'architect.form.arrayFields.option.untitledOption',
     defaultMessage: 'Untitled option',
@@ -71,24 +65,6 @@ const messages = defineMessages({
     defaultMessage: 'No value',
     description:
       "Shown in italics in the summary line of an option in a variable's option list when the option has no value yet.",
-  },
-  editOption: {
-    id: 'architect.form.arrayFields.option.editOption',
-    defaultMessage: 'Edit option {value1, number}',
-    description:
-      'Accessible edit-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value.',
-  },
-  removeOption45a9b: {
-    id: 'architect.form.arrayFields.option.removeOption45a9b',
-    defaultMessage: 'Remove option {value1, number}',
-    description:
-      'Accessible remove-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value.',
-  },
-  finishEditingOption: {
-    id: 'architect.form.arrayFields.option.finishEditingOption',
-    defaultMessage: 'Finish editing option',
-    description:
-      "Accessible name of the check-mark button that closes the inline editor of one option in a variable's option list; read only by screen readers.",
   },
   label: {
     id: 'architect.form.arrayFields.option.label',
@@ -263,10 +239,8 @@ const Option = ({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={intl.formatMessage(messages.reorderOptionOf, {
-              value1: index + 1,
-              itemCount: itemCount,
-            })}
+            // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+            label={`Reorder option ${index + 1} of ${itemCount}`}
           />
         )}
         <div dir="auto" className="text-match-parent min-w-0 flex-1 truncate">
@@ -295,18 +269,16 @@ const Option = ({
         <div className="flex shrink-0 items-center gap-2">
           <IconButton
             icon={<Pencil />}
-            aria-label={intl.formatMessage(messages.editOption, {
-              value1: index + 1,
-            })}
+            aria-label={`Edit option ${index + 1}`}
+            lang="en"
             color="dynamic"
             disabled={interactionDisabled}
             onClick={onEdit}
           />
           <IconButton
             icon={<Trash2 />}
-            aria-label={intl.formatMessage(messages.removeOption45a9b, {
-              value1: index + 1,
-            })}
+            aria-label={`Remove option ${index + 1}`}
+            lang="en"
             color="destructive"
             disabled={interactionDisabled}
             onClick={handleDelete}
@@ -333,16 +305,16 @@ const Option = ({
       <div className="flex items-center justify-end gap-2">
         <IconButton
           icon={<Check />}
-          aria-label={intl.formatMessage(messages.finishEditingOption)}
+          aria-label="Finish editing option"
+          lang="en"
           color="primary"
           disabled={interactionDisabled}
           onClick={handleFinishEditing}
         />
         <IconButton
           icon={<Trash2 />}
-          aria-label={intl.formatMessage(messages.removeOption45a9b, {
-            value1: index + 1,
-          })}
+          aria-label={`Remove option ${index + 1}`}
+          lang="en"
           color="destructive"
           disabled={interactionDisabled}
           onClick={handleDelete}

@@ -155,10 +155,10 @@ describe('resource surfaces in a reader’s own language', () => {
     );
   });
 
-  it('announces a chosen resource in Spanish', async () => {
+  it('announces a chosen resource in English, whatever the language', async () => {
     // The one thing a researcher who cannot see the field learns from making a
-    // choice, so it is the one sentence the picker MUST say in their language:
-    // the summary beside it is already there for everybody else.
+    // choice. It is read only by a screen reader, so it stays English by rule
+    // (and is marked as English); the summary beside it is what is translated.
     const user = userEvent.setup();
     const host = createResourceHost({ resources: [IMAGE_SEED] });
     render(
@@ -182,23 +182,23 @@ describe('resource surfaces in a reader’s own language', () => {
     );
 
     // The resource's own name is the researcher's, so it is not translated —
-    // everything the picker says around it is.
+    // everything the picker says around it is, except this.
     const announcement = await screen.findByText(
-      'Neighbourhood photo está ahora seleccionado.',
+      'Neighbourhood photo is now selected.',
     );
     expect(announcement).toHaveAttribute('aria-live', 'polite');
+    expect(announcement).toHaveAttribute('lang', 'en');
   });
 
   /**
    * An announcement is the copy that waits longest for a reader.
    *
    * Nothing replaces it until the researcher makes another choice, so it is
-   * still in the live region when an application changes its language — and it
-   * is the one sentence a reader who cannot see the field has. Held as an
-   * encoded descriptor, it is read in whichever language the region is being
-   * read in now rather than the one the choice was made in.
+   * still in the live region when an application changes its language. It is
+   * English in every language, so the sentence the region holds is the same
+   * before and after the change rather than half in each.
    */
-  it('re-reads the announcement it is holding when the language changes', async () => {
+  it('keeps the announcement it is holding in English when the language changes', async () => {
     const user = userEvent.setup();
     const host = createResourceHost({ resources: [IMAGE_SEED] });
     const picker = (
@@ -235,11 +235,8 @@ describe('resource surfaces in a reader’s own language', () => {
     );
 
     expect(
-      await screen.findByText('Neighbourhood photo está ahora seleccionado.'),
-    ).toBeVisible();
-    expect(
-      screen.queryByText('Neighbourhood photo is now selected.'),
-    ).not.toBeInTheDocument();
+      await screen.findByText('Neighbourhood photo is now selected.'),
+    ).toHaveAttribute('lang', 'en');
   });
 });
 

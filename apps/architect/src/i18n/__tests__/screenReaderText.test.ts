@@ -17,7 +17,30 @@ import {
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 /** Attributes whose text a sighted person also sees, so it is translated. */
-const SHOWN_AS_WELL: Record<string, string> = {};
+const SHOWN_AS_WELL: Record<string, string> = {
+  'components/Home/LibraryPanel.tsx: messages.clearAllLocallySavedProtocols':
+    'the button has the same text as a visible tooltip',
+  'components/Localization/LanguageList.tsx: messages.editTranslations':
+    'the same text is the button tooltip',
+  'components/Localization/LanguageList.tsx: messages.changeLanguage':
+    'the same text is the button tooltip',
+  'components/Localization/TranslationTable.tsx: messages.search':
+    'the same text is the search field placeholder',
+  'components/ProjectNav/StageEditorNav.tsx: messages.previewSettings':
+    'a toolbar icon button shows its name as a tooltip',
+  'components/ProjectNav/historyToolbarItems.tsx: messages.undo':
+    'a toolbar icon button shows its name as a tooltip',
+  'components/ProjectNav/historyToolbarItems.tsx: messages.redo':
+    'a toolbar icon button shows its name as a tooltip',
+  'components/Screens/NewStageScreen/NewStageScreen.tsx: messages.clearSearch':
+    'the same text is the button title and tooltip',
+  'components/TypeEditor/ShapeVariableMapping.tsx: messages.thresholds':
+    'the same text is the visible heading above the list',
+  'components/TypeEditor/ShapeVariableMapping.tsx: messages.mapAttributeToShape':
+    'the same text is the toggle visible label',
+  'components/VariablePill.tsx: messages.editAttributeName':
+    'the same text is the pill tooltip',
+};
 
 describe('text only a screen reader reads', () => {
   it('is looking at enough of Architect to be worth trusting', () => {

@@ -6,12 +6,6 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { DATE_RESOLUTION } from '@codaco/protocol-validation';
 
 const messages = defineMessages({
-  yearPart: {
-    id: 'protocolBuilder.coarseDateBound.yearPart',
-    defaultMessage: 'Year',
-    description:
-      'Names the year half of a bounding date that is written as a year and a month, for a screen reader that would otherwise hear the two halves as one field said twice.',
-  },
   monthPart: {
     id: 'protocolBuilder.coarseDateBound.monthPart',
     defaultMessage: 'Month',
@@ -117,8 +111,8 @@ export default function CoarseDateBound({
           two apart. These say which half is which, and are pointed at rather
           than nested so the visible label still comes first. */}
       {yearPartId && (
-        <span id={yearPartId} className="sr-only">
-          {intl.formatMessage(messages.yearPart)}
+        <span id={yearPartId} className="sr-only" lang="en">
+          Year
         </span>
       )}
       {monthPartId && (

@@ -94,6 +94,10 @@ import {
   windowItemProps,
 } from './useWindowedRows';
 
+/** Screen-reader text, so it stays English in every language. */
+const TABLE_CAPTION =
+  'Everything participants see, with its translation into each of the protocol’s languages';
+
 const messages = defineMessages({
   about: {
     id: 'architect.localization.translationTable.about',
@@ -101,19 +105,6 @@ const messages = defineMessages({
       'This table shows everything participants see in the interview, with its translation into each language. Where a translation is missing, the cell shows what participants see instead.',
     description:
       'Opening paragraph of the help for the translation table, which explains what the table shows.',
-  },
-  help: {
-    id: 'architect.localization.translationTable.help',
-    defaultMessage: 'Help',
-    description:
-      'Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it.',
-  },
-  caption: {
-    id: 'architect.localization.translationTable.caption',
-    defaultMessage:
-      'Everything participants see, with its translation into each of the protocol’s languages',
-    description:
-      'Caption of the translation table, read by screen readers. Each row is one localized string, each column one language.',
   },
   textColumn: {
     id: 'architect.localization.translationTable.textColumn',
@@ -127,35 +118,17 @@ const messages = defineMessages({
     description:
       'Badge beside the name of the protocol’s default language, in the heading of its column in the translation table.',
   },
-  progress: {
-    id: 'architect.localization.translationTable.progress',
-    defaultMessage: '{translated, number} of {total, number} translated',
-    description:
-      'Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s localized strings have a translation into it.',
-  },
   progressCount: {
     id: 'architect.localization.translationTable.progressCount',
     defaultMessage: '{translated, number} of {total, number}',
     description:
       'Shown beside a language’s name and progress bar in the heading of its column in the translation table: how many of the protocol’s localized strings have a translation into it. Keep it as short as possible, since it shares one line with the language’s name.',
   },
-  progressLabel: {
-    id: 'architect.localization.translationTable.progressLabel',
-    defaultMessage: '{language} translation progress',
-    description:
-      'Accessible name of the progress bar in the heading of a language’s column in the translation table.',
-  },
   search: {
     id: 'architect.localization.translationTable.search',
     defaultMessage: 'Search translations',
     description:
       'Label and placeholder of the search field above the translation table. It finds localized strings by where they are or by their translations into the languages shown.',
-  },
-  filter: {
-    id: 'architect.localization.translationTable.filter',
-    defaultMessage: 'Translations to show',
-    description:
-      'Accessible name of the menu above the translation table that chooses whether it shows every localized string or only those with a translation missing.',
   },
   allTexts: {
     id: 'architect.localization.translationTable.allTexts',
@@ -1061,7 +1034,7 @@ const TranslationTableContent = ({
           <NativeSelectField
             id={filterId}
             name="translation-table-filter"
-            aria-label={intl.formatMessage(messages.filter)}
+            aria-label="Translations to show"
             value={
               filter.kind === 'language'
                 ? languageOption(filter.locale)
@@ -1123,7 +1096,8 @@ const TranslationTableContent = ({
                   variant="text"
                   color="dynamic"
                   icon={<CircleHelp aria-hidden />}
-                  aria-label={intl.formatMessage(messages.help)}
+                  aria-label="Help"
+                  lang="en"
                 />
               </PopoverTrigger>
               <PopoverContent
@@ -1193,8 +1167,8 @@ const TranslationTableContent = ({
         }}
         className="w-[calc(var(--translation-table-names)+var(--translation-columns)*var(--translation-table-column))] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-column:14.5rem] [--translation-table-names:clamp(10rem,13vw,14rem)]"
       >
-        <caption className="sr-only">
-          {intl.formatMessage(messages.caption)}
+        <caption className="sr-only" lang="en">
+          {TABLE_CAPTION}
         </caption>
         <colgroup>
           <col className="w-(--translation-table-names)" />
@@ -1251,9 +1225,8 @@ const TranslationTableContent = ({
                               : (translated / coverage.total) * 100
                           }
                           nudge={false}
-                          label={intl.formatMessage(messages.progressLabel, {
-                            language: name,
-                          })}
+                          // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+                          label={`${name} translation progress`}
                           className="h-1.5"
                         />
                       </div>
@@ -1266,11 +1239,9 @@ const TranslationTableContent = ({
                           total: coverage.total,
                         })}
                       </span>
-                      <span className="sr-only">
-                        {intl.formatMessage(messages.progress, {
-                          translated,
-                          total: coverage.total,
-                        })}
+                      <span className="sr-only" lang="en">
+                        {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+                        {`${translated} of ${coverage.total} translated`}
                       </span>
                     </div>
                   </div>

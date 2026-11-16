@@ -118,8 +118,8 @@ export default function FeaturePropertyField({
       onFocus={onFocus}
     >
       {busy && (
-        <output className="sr-only">
-          {intl.formatMessage(geospatialMessages.propertyLoading)}
+        <output className="sr-only" lang="en">
+          {'Reading the map layer.'}
         </output>
       )}
 

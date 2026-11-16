@@ -38,18 +38,6 @@ const messages = defineMessages({
     description:
       'Accessible name and tooltip of the attribute pill when pressing it opens the editor for the attribute’s name. label is the researcher’s own name for it and is not translated.',
   },
-  renameDialogName: {
-    id: 'protocolBuilder.variablePicker.renameDialogName',
-    defaultMessage: 'Edit attribute name',
-    description:
-      'Accessible name of the small editor that opens over the attribute pill for renaming the attribute.',
-  },
-  renameFieldLabel: {
-    id: 'protocolBuilder.variablePicker.renameFieldLabel',
-    defaultMessage: 'Attribute name',
-    description:
-      'Accessible name of the box the attribute’s new name is typed into.',
-  },
   renamePlaceholder: {
     id: 'protocolBuilder.variablePicker.renamePlaceholder',
     defaultMessage: 'Enter an attribute name...',
@@ -617,7 +605,7 @@ export default function AttributePill({
         {editorFrame !== null && (
           <ModalPopup
             key="attribute-pill-editor"
-            aria-label={intl.formatMessage(messages.renameDialogName)}
+            aria-label="Edit attribute name"
             className="fixed z-40 flex flex-col items-center gap-6 p-6 outline-none"
             style={editorFrame.style}
             initial={{ opacity: 0.9999 }}
@@ -645,7 +633,7 @@ export default function AttributePill({
               <PillContents iconUrl={iconUrl} fill>
                 <InputField
                   autoFocus
-                  aria-label={intl.formatMessage(messages.renameFieldLabel)}
+                  aria-label="Attribute name"
                   aria-invalid={isValid ? undefined : true}
                   aria-describedby={isValid ? undefined : validationId}
                   className="h-full w-full rounded-s-none! outline-none!"

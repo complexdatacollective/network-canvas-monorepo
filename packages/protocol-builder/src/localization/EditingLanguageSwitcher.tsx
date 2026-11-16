@@ -80,15 +80,15 @@ export function EditingLanguageSwitcher({
             />
           }
         >
-          <span className="sr-only">
-            {intl.formatMessage(languageMessages.editingLanguage)}
+          <span className="sr-only" lang="en">
+            Editing language
           </span>
           <LanguageName locale={locale} />
           <ChevronDown aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuRadioGroup
-            aria-label={intl.formatMessage(languageMessages.editingLanguage)}
+            aria-label="Editing language"
             value={locale}
             onValueChange={(next) => {
               if (typeof next === 'string') setLocale(next);

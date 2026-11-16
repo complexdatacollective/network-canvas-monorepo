@@ -70,7 +70,6 @@ describe('a rule read in Spanish', () => {
       expect.arrayContaining([
         ruleSubjectMessages.alterAttribute.id,
         'protocolBuilder.ruleDescription.alterGreaterThan',
-        'protocolBuilder.rulePreview.attribute',
       ]),
     );
   });
@@ -91,7 +90,7 @@ describe('a rule read in Spanish', () => {
     // reads: asserting `esIntl.formatMessage(...)` here would pass whatever
     // the catalog said, including nothing.
     expect(
-      screen.getByLabelText('Age (tipo de atributo: number)'),
+      screen.getByLabelText('Age (attribute type: number)'),
     ).toBeInTheDocument();
   });
 
@@ -105,9 +104,7 @@ describe('a rule read in Spanish', () => {
     );
 
     expect(
-      screen.getByLabelText(
-        'gone (el atributo ya no está en el libro de códigos)',
-      ),
+      screen.getByLabelText('gone (attribute is no longer in the codebook)'),
     ).toBeInTheDocument();
   });
 });

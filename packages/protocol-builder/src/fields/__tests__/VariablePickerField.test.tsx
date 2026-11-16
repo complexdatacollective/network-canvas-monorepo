@@ -1256,7 +1256,7 @@ describe('the attribute picker, read in Spanish', () => {
     const dialog = await openInSpanish(harness);
     await harness.user.type(
       within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
+        name: 'Find or create an attribute',
       }),
       attributeName,
     );
@@ -1275,11 +1275,11 @@ describe('the attribute picker, read in Spanish', () => {
 
     expect(dialog).toHaveAccessibleName('Crear o seleccionar un atributo');
     const box = within(dialog).getByRole('searchbox', {
-      name: 'Busca o crea un atributo',
+      name: 'Find or create an attribute',
     });
     expect(box).toHaveAttribute('placeholder', 'Busca o crea un atributo…');
     expect(
-      within(dialog).getByRole('listbox', { name: 'Resultados de atributos' }),
+      within(dialog).getByRole('listbox', { name: 'Attribute results' }),
     ).toBeInTheDocument();
   });
 
@@ -1289,7 +1289,7 @@ describe('the attribute picker, read in Spanish', () => {
 
     await harness.user.type(
       within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
+        name: 'Find or create an attribute',
       }),
       'nominado_pronto',
     );
@@ -1312,7 +1312,7 @@ describe('the attribute picker, read in Spanish', () => {
 
     await harness.user.type(
       within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
+        name: 'Find or create an attribute',
       }),
       'age',
     );
@@ -1399,7 +1399,7 @@ describe('the attribute picker, read in Spanish', () => {
     const dialog = await screen.findByRole('dialog');
     await control.user.type(
       within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
+        name: 'Find or create an attribute',
       }),
       'nominado_pronto',
     );

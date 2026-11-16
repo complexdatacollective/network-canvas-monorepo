@@ -2,24 +2,12 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { navigate } from 'wouter/use-browser-location';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { focusRouteTarget } from '~/components/RouteFocus';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { guardState, isProtocolPath } from '~/hooks/useProtocolNavGuard';
 import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
-
-const chromeMessages = defineMessages({
-  editingRestored: {
-    id: 'architect.chrome.protocolRouteGuard.editingRestored',
-    defaultMessage:
-      'The other tab is no longer editing this protocol, so you can edit it here again.',
-    description:
-      'Screen-reader announcement made when a tab that was showing a protocol read-only, because another tab was editing it, becomes able to edit it.',
-  },
-});
 
 type ProtocolRouteGuardProps = {
   children: ReactNode;
@@ -46,7 +34,6 @@ type ProtocolRouteGuardProps = {
  * a page lets through.
  */
 const ProtocolRouteGuard = ({ children }: ProtocolRouteGuardProps) => {
-  const intl = useAppIntl();
   const [location] = useLocation();
   const mode = useProtocolAccessMode();
   const { closeAllDialogs } = useDialog();
@@ -90,10 +77,12 @@ const ProtocolRouteGuard = ({ children }: ProtocolRouteGuardProps) => {
     }
 
     if (previous !== 'read-only' || mode !== 'editable') return;
-    announce(intl.formatMessage(chromeMessages.editingRestored));
+    announce(
+      'The other tab is no longer editing this protocol, so you can edit it here again.',
+    );
     const focused = document.activeElement;
     if (!focused || focused === document.body) focusRouteTarget();
-  }, [mode, closeAllDialogs, announce, intl]);
+  }, [mode, closeAllDialogs, announce]);
 
   useEffect(() => {
     if (!blocked) return;

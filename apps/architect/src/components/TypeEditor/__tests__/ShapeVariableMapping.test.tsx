@@ -107,7 +107,7 @@ const THRESHOLD_MAPPING = {
   thresholds: [{ value: 5, shape: 'square' }],
 } as ShapeMappingDraft;
 
-it('formats a threshold value in the active locale without rounding or changing the numeric input', () => {
+it('names threshold controls in English, with the exact number, in every language without changing the numeric input', () => {
   localStorage.setItem(ARCHITECT_LOCALE_KEY, 'en');
   const initialMapping = {
     variable: 'weight',
@@ -127,7 +127,7 @@ it('formats a threshold value in the active locale without rounding or changing 
     </Provider>,
   );
   expect
-    .soft(screen.queryByLabelText('Shape at threshold 12,345.678901234'))
+    .soft(screen.queryByLabelText('Shape at threshold 12345.678901234'))
     .toBeInTheDocument();
   act(() => {
     localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
@@ -136,10 +136,10 @@ it('formats a threshold value in the active locale without rounding or changing 
     );
   });
   expect(
-    screen.getByLabelText('Forma en el umbral 12.345,678901234'),
+    screen.getByLabelText('Shape at threshold 12345.678901234'),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole('spinbutton', { name: 'Valor del umbral 1' }),
+    screen.getByRole('spinbutton', { name: 'Threshold 1 value' }),
   ).toHaveValue(12345.678901234);
   expect(initialMapping).toEqual({
     variable: 'weight',

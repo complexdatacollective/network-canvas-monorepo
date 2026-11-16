@@ -1,24 +1,3 @@
-import {
-  createAppIntl,
-  defineMessages,
-  type IntlShape,
-} from '@codaco/app-i18n/messages';
-const localeMessages = defineMessages({
-  moved: {
-    id: 'architect.timeline.announcement.moved',
-    defaultMessage:
-      'Moved stage {fromPosition, number} to position {toPosition, number} of {total, number}.',
-    description: 'Live announcement after a timeline operation succeeds.',
-  },
-  deleted: {
-    id: 'architect.timeline.announcement.deleted',
-    defaultMessage:
-      'Deleted stage {position, number}. {remaining, plural, =0 {No stages remain.} one {1 stage remains.} other {# stages remain.}}',
-    description: 'Live announcement after a timeline operation succeeds.',
-  },
-});
-const defaultIntl = createAppIntl({ locale: 'en' });
-
 /**
  * What the timeline's `aria-live` region says after a stage is moved or
  * deleted.
@@ -29,20 +8,26 @@ const defaultIntl = createAppIntl({ locale: 'en' });
  * raised. A reorder that only a sighted user is told about is not a reorder
  * everyone was told about.
  *
- * Each variant is a whole sentence chosen by branch rather than assembled from
- * fragments, so it can be localised as a unit and never reads "1 stages
- * remain".
+ * Screen-reader text stays English in every language, so each variant is a
+ * whole English sentence chosen by branch rather than assembled from
+ * fragments; it never reads "1 stages remain".
  */
 
 export const getStageMovedAnnouncement = (
   fromPosition: number,
   toPosition: number,
   total: number,
-  intl: IntlShape = defaultIntl,
-) =>
-  intl.formatMessage(localeMessages.moved, { fromPosition, toPosition, total });
+) => `Moved stage ${fromPosition} to position ${toPosition} of ${total}.`;
+
 export const getStageDeletedAnnouncement = (
   position: number,
   remaining: number,
-  intl: IntlShape = defaultIntl,
-) => intl.formatMessage(localeMessages.deleted, { position, remaining });
+) => {
+  const left =
+    remaining === 0
+      ? 'No stages remain.'
+      : remaining === 1
+        ? '1 stage remains.'
+        : `${remaining} stages remain.`;
+  return `Deleted stage ${position}. ${left}`;
+};

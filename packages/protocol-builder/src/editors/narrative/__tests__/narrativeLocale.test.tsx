@@ -61,7 +61,7 @@ describe('the narrative sections, read in Spanish', () => {
       sections: narrativeSections,
     });
 
-    const preset = await openPreset(harness, 0, 'Editar vista predefinida');
+    const preset = await openPreset(harness, 0, 'Edit vista predefinida');
     // The picker is a labelled field holding a trigger, so the label and the
     // words on the button are two separate translations and both are asserted.
     // This preset already positions by an attribute, which is the state the
@@ -78,7 +78,7 @@ describe('the narrative sections, read in Spanish', () => {
       await createRowIn(
         harness.user,
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
-        'Busca o crea un atributo',
+        'Find or create an attribute',
         (term) => `Crear un atributo nuevo llamado «${term}».`,
       ),
     ).not.toBeNull();
@@ -125,7 +125,7 @@ describe('the narrative sections, read in Spanish', () => {
       locale: 'es',
     });
 
-    const preset = await openPreset(harness, 0, 'Editar vista predefinida');
+    const preset = await openPreset(harness, 0, 'Edit vista predefinida');
     // Asserted on the whole rendered name, so a placeholder left out of the
     // Spanish fails here rather than rendering as `{attributeId}`.
     expect(

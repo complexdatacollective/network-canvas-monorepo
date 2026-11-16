@@ -11,7 +11,12 @@ import { packageSource, sourceFiles } from './packageSource.ts';
  */
 
 /** Attributes whose text a sighted person also sees, so it is translated. */
-const SHOWN_AS_WELL: Record<string, string> = {};
+const SHOWN_AS_WELL: Record<string, string> = {
+  'codebook/components/NodeShapeMappingFields.tsx: messages.shapeMappingToggle':
+    'the toggle is named by the same words the row shows beside it, so the text is also visible',
+  'resources/components/ResourceBrowserDialog.tsx: messages.libraryTitle':
+    'the same words are the visible title of the library section the region is named after',
+};
 
 describe('text only a screen reader reads', () => {
   it('is looking at enough of the package to be worth trusting', () => {

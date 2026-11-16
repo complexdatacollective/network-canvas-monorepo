@@ -179,12 +179,6 @@ const messages = defineMessages({
     description:
       'Hint under the value control, saying what stamping means: a node is a member of the interview network, and a prompt is the question a participant reads.',
   },
-  deleteRow: {
-    id: 'protocolBuilder.assignAttributes.deleteRow',
-    defaultMessage: 'Delete attribute',
-    description:
-      'Accessible name of the button that removes one row from the list of attributes a prompt stamps onto the nodes it creates. It removes the row, not the attribute from the codebook.',
-  },
 });
 
 /**
@@ -526,7 +520,8 @@ export default function Attribute({
       </div>
       <IconButton
         icon={<Trash2 />}
-        aria-label={intl.formatMessage(messages.deleteRow)}
+        aria-label="Delete attribute"
+        lang="en"
         color="destructive"
         disabled={disabled || readOnly}
         onClick={onDelete}

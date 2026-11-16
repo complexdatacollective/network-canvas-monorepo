@@ -208,8 +208,8 @@ export default function MapPreviewDialog({
         </Paragraph>
 
         {busy && (
-          <output className="sr-only">
-            {intl.formatMessage(geospatialMessages.previewLoading)}
+          <output className="sr-only" lang="en">
+            {'Loading the map.'}
           </output>
         )}
 
@@ -251,7 +251,7 @@ export default function MapPreviewDialog({
         {accessToken !== undefined && (
           <section
             ref={setContainer}
-            aria-label={intl.formatMessage(geospatialMessages.previewMapLabel)}
+            aria-label="Interactive map"
             aria-busy={status === 'loading'}
             className="h-[50vh] w-full"
           />

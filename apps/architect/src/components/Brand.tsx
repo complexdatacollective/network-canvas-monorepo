@@ -1,17 +1,6 @@
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import architectIcon from '~/images/architect-icon.png';
 import { cx } from '~/utils/cva';
-const messages = defineMessages({
-  returnToStartScreen: {
-    id: 'architect.brand.returnToStartScreen',
-    defaultMessage: 'Return to start screen',
-    description:
-      'Accessible name of the Architect logo button in the app header; read only by screen readers. Activating it closes the current protocol and returns to the start screen.',
-  },
-});
-
 type BrandProps = {
   onClick?: () => void;
   className?: string;
@@ -25,7 +14,6 @@ const INTERACTIVE =
   'cursor-pointer border-none hover:opacity-90 transition-opacity';
 
 const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
-  const intl = useAppIntl();
   const isPill = variant === 'pill';
   const isIcon = variant === 'icon';
 
@@ -42,7 +30,8 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
         <button
           type="button"
           onClick={onClick}
-          aria-label={intl.formatMessage(messages.returnToStartScreen)}
+          aria-label="Return to start screen"
+          lang="en"
           className={cx(
             'flex shrink-0 bg-transparent p-0',
             INTERACTIVE,
@@ -81,7 +70,8 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
       <button
         type="button"
         onClick={onClick}
-        aria-label={intl.formatMessage(messages.returnToStartScreen)}
+        aria-label="Return to start screen"
+        lang="en"
         className={cx(
           baseClasses,
           INTERACTIVE,

@@ -164,7 +164,7 @@ describe('the codebook read in Spanish', () => {
       expect.arrayContaining([
         'protocolBuilder.codebookEntity.codebookTitle',
         'protocolBuilder.codebookEntity.subjectDescription',
-        'protocolBuilder.codebookEntity.editAttributeLabel',
+        'protocolBuilder.codebookEntity.editAttribute',
         'protocolBuilder.variableValidation.incompleteValueRule',
       ]),
     );
@@ -208,20 +208,20 @@ describe('the codebook read in Spanish', () => {
       screen.getByRole('article', { name: 'Atributos de ego' }),
     ).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Editar tipo de vínculo: Knows' }),
+      screen.getByRole('button', { name: 'Edit Edge type: Knows' }),
     ).toBeVisible();
     expect(
       screen.getByRole('button', {
-        name: 'Crear atributo para el tipo de nodo: Person',
+        name: 'Create attribute for Node type: Person',
       }),
     ).toBeVisible();
     expect(
       screen.getByRole('button', {
-        name: 'Editar el atributo Consent de los atributos de ego',
+        name: 'Edit attribute Consent for Ego attributes',
       }),
     ).toBeVisible();
     expect(
-      screen.getByRole('list', { name: 'Atributos de Person' }),
+      screen.getByRole('list', { name: 'Person attributes' }),
     ).toHaveTextContent('Age');
   });
 
@@ -342,7 +342,7 @@ describe('the codebook editors swept for English', () => {
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeVisible();
     expect(
-      screen.getByRole('radio', { name: 'Seleccionar forma Círculo' }),
+      screen.getByRole('radio', { name: 'Select shape Círculo' }),
     ).toBeInTheDocument();
     expectNoLocaleLeaks('the entity editor', protocolStrings(PERSON_DOCUMENT));
 
