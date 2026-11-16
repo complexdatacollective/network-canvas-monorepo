@@ -125,8 +125,8 @@ describe('computeAutosomalDominant', () => {
     const result = computeAutosomalDominant(graph, affected);
 
     it('marks BOTH unaffected intermediates as obligateCarrier', () => {
-      expect(status(result, 'B')).not.toBe('unknown');
-      expect(status(result, 'C')).not.toBe('unknown');
+      expect(status(result, 'B')).toBe('obligateCarrier');
+      expect(status(result, 'C')).toBe('obligateCarrier');
     });
 
     it('keeps the affected endpoints affected', () => {

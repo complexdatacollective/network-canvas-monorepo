@@ -768,11 +768,13 @@ describe('computeXLinkedDominant', () => {
   });
 
   describe('consanguinity-loop termination', () => {
+    // The B → C → B loop sits below the affected seed, because the XLD step
+    // never revisits an affected person and so would stop a loop through A.
     const nodes = [makeNode('A'), makeNode('B'), makeNode('C')];
     const edges = [
       makeGeneticEdge('A', 'B'),
       makeGeneticEdge('B', 'C'),
-      makeGeneticEdge('C', 'A'),
+      makeGeneticEdge('C', 'B'),
     ];
     const resolveSex = sexResolver({ A: 'female', B: 'female', C: 'female' });
     const graph = buildGraph(nodes, edges, resolveSex);

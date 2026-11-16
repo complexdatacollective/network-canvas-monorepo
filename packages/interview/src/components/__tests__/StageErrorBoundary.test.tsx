@@ -53,7 +53,7 @@ describe('StageErrorBoundary', () => {
       ).toBeInTheDocument();
       expect(screen.getByText(/check your connection/i)).toBeInTheDocument();
       // The heading this screen used to show (taskErrorTitle, removed in
-      // favour of the error icon) stays gone.
+      // 6a8d37a175) stays gone.
       expect(screen.queryByText('A problem occurred!')).toBeNull();
     },
   );
