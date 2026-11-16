@@ -16,12 +16,6 @@ import {
 } from '~/lib/auth/totp';
 
 describe('generateTotpSecret', () => {
-  it('returns a non-empty string', () => {
-    const secret = generateTotpSecret();
-    expect(typeof secret).toBe('string');
-    expect(secret.length).toBeGreaterThan(0);
-  });
-
   it('returns a valid base32 string', () => {
     const secret = generateTotpSecret();
     expect(secret).toMatch(/^[A-Z2-7]+=*$/);
@@ -35,16 +29,11 @@ describe('generateTotpSecret', () => {
 });
 
 describe('generateTotpUri', () => {
-  it('returns a string starting with otpauth://totp/', () => {
+  it('is a TOTP URI that names the issuer for the authenticator entry', () => {
     const secret = generateTotpSecret();
     const uri = generateTotpUri(secret, 'testuser', 'Fresco (localhost)');
     expect(uri).toMatch(/^otpauth:\/\/totp\//);
-  });
-
-  it('contains the issuer Fresco', () => {
-    const secret = generateTotpSecret();
-    const uri = generateTotpUri(secret, 'testuser', 'Fresco (localhost)');
-    expect(uri).toContain('Fresco');
+    expect(new URL(uri).searchParams.get('issuer')).toBe('Fresco (localhost)');
   });
 
   it('contains the username in the label', () => {
@@ -125,10 +114,7 @@ describe('createTwoFactorToken and verifyTwoFactorToken', () => {
     const userId = 'user-abc-123';
     const token = createTwoFactorToken(userId, installationId);
     const result = verifyTwoFactorToken(token, installationId);
-    expect(result.valid).toBe(true);
-    if (result.valid) {
-      expect(result.userId).toBe(userId);
-    }
+    expect(result).toEqual({ valid: true, userId });
   });
 
   it('tampered signature returns { valid: false }', () => {
