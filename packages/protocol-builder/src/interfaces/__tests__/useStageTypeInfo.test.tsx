@@ -7,7 +7,7 @@ import {
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { stageTypeDocumentationUrl } from '../documentation.ts';
-import { interfaceDisplayName } from '../interfaceNames.ts';
+import { INTERFACE_NAMES } from '../interfaceNames.ts';
 import { useStageTypeInfo } from '../useStageTypeInfo.ts';
 
 /** What the hook answers, written out where a test can read it. */
@@ -47,10 +47,8 @@ describe('what kind of stage is open', () => {
     const { type } = loadFixtureStage(stageId);
     renderStageEditor({ stageId, sections: <TypeInfo /> });
 
-    const expected = interfaceDisplayName(type);
-    expect(typeof expected, `${type} has no display name`).toBe('string');
     expect(screen.getByTestId('interface-name'), stageId).toHaveTextContent(
-      expected as string,
+      INTERFACE_NAMES[type],
     );
   });
 });
