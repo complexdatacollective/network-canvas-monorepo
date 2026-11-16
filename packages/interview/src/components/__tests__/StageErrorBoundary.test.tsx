@@ -36,28 +36,25 @@ describe('StageErrorBoundary', () => {
     vi.useRealTimers();
   });
 
-  it('shows the same description when a stage crashes while online', () => {
-    online = true;
-    renderWithToastProvider(
-      <StageErrorBoundary>
-        <Boom />
-      </StageErrorBoundary>,
-    );
-    expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
-    expect(screen.getByText(/check your connection/i)).toBeTruthy();
-  });
-
-  it('shows the same description when a stage crashes while offline', () => {
-    online = false;
-    renderWithToastProvider(
-      <StageErrorBoundary>
-        <Boom />
-      </StageErrorBoundary>,
-    );
-    expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
-    expect(screen.getByText(/check your connection/i)).toBeTruthy();
-    expect(screen.queryByText('A problem occurred!')).toBeNull();
-  });
+  it.each([
+    { connection: 'online', isOnline: true },
+    { connection: 'offline', isOnline: false },
+  ])(
+    'shows the same description when a stage crashes while $connection',
+    ({ isOnline }) => {
+      online = isOnline;
+      renderWithToastProvider(
+        <StageErrorBoundary>
+          <Boom />
+        </StageErrorBoundary>,
+      );
+      expect(
+        screen.getByText(/this task could not be displayed/i),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/check your connection/i)).toBeInTheDocument();
+      expect(screen.queryByText('A problem occurred!')).toBeNull();
+    },
+  );
 
   // A protocol may word the message itself, as markdown, so the researcher
   // can format it and link to where participants can get help.

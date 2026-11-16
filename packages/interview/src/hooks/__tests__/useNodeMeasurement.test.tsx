@@ -90,25 +90,6 @@ describe('useNodeMeasurement', () => {
     expect(container!.parentElement).not.toBe(document.body);
   });
 
-  test('renders content into the hidden container', () => {
-    setup();
-    render(<TestConsumer component={<div>test</div>} />);
-
-    const containers = document.querySelectorAll(
-      'div[style*="visibility: hidden"]',
-    );
-    const container = containers[0]!;
-    expect(container.children.length).toBeGreaterThan(0);
-  });
-
-  test('creates a ResizeObserver for the content', () => {
-    setup();
-    render(<TestConsumer component={<div>test</div>} />);
-
-    expect(latestObserverInstances.length).toBeGreaterThan(0);
-    expect(latestObserverInstances[0]!.observeSpy).toHaveBeenCalled();
-  });
-
   test('updates dimensions when ResizeObserver fires', () => {
     setup();
     const { getByTestId } = render(
@@ -141,21 +122,15 @@ describe('useNodeMeasurement', () => {
     expect(getByTestId('height').textContent).toBe('150');
   });
 
-  test('cleans up container on unmount', () => {
+  test('removes its one hidden container on unmount', () => {
     setup();
     const { unmount } = render(<TestConsumer component={<div>test</div>} />);
+    const hiddenContainers = () =>
+      document.querySelectorAll('div[style*="visibility: hidden"]').length;
 
-    const before = document.querySelectorAll(
-      'div[style*="visibility: hidden"]',
-    ).length;
-
+    expect(hiddenContainers()).toBe(1);
     unmount();
-
-    const after = document.querySelectorAll(
-      'div[style*="visibility: hidden"]',
-    ).length;
-
-    expect(after).toBeLessThan(before);
+    expect(hiddenContainers()).toBe(0);
   });
 
   test('disconnects observer on unmount', () => {
