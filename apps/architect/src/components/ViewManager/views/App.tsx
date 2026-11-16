@@ -18,6 +18,7 @@ import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { useAppDispatch } from '~/ducks/hooks';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
+import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import { resetRunOnce } from '~/hooks/useRunOnce';
 import {
   subscribeAutosaveFailures,
@@ -29,6 +30,7 @@ import {
   takeLaunchFiles,
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
+import { ROUTE_HEIGHT_VARIABLE } from '~/utils/routeHeight';
 import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
@@ -180,6 +182,9 @@ const AppContents = () => {
   // Hold the cross-tab single-editor lock while this tab is in the protocol
   // editor, releasing it on the start screen.
   useProtocolTabLock();
+  const routeArea = usePublishedBlockHeight<HTMLDivElement>(
+    ROUTE_HEIGHT_VARIABLE,
+  );
 
   // Returning to the start screen ends the current protocol session, so the
   // next /protocol visit gets a fresh entrance animation.
@@ -218,7 +223,7 @@ const AppContents = () => {
         {/* Sits directly beneath the install banner (both are shrink-0 strips);
             self-hides unless the open protocol is also open in another tab. */}
         <ProtocolLockBanner />
-        <div className="min-h-0 flex-1">
+        <div ref={routeArea} className="min-h-0 flex-1">
           <Routes />
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { type Page } from '@playwright/test';
+import { type Locator, type Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
@@ -251,47 +251,34 @@ test('the stage editor’s section list stays below the navigation bar once the 
  * And it ends where the researcher can still see it. Stuck under the bar, a
  * list as tall as the window would run its last rows off the bottom of the
  * screen, out of reach for as long as the form is scrolled; it is bounded to
- * the room below the bar and scrolls itself instead.
+ * the room below the bar and scrolls itself instead. That room is what the
+ * route is given, so a notice drawn above the route (the install prompt in a
+ * browser tab) takes its height off the list's.
  */
-test('the stage editor’s section list ends inside the viewport once it sticks under the navigation bar', async ({
-  architectPage,
-  seed,
-}) => {
-  const { protocol, assets } = loadAllInterfacesFixture();
-  await seed(protocol, { name: 'All Interfaces', assets });
-  // Short enough that the list is taller than the room below the bar.
-  const viewportHeight = 280;
-  await architectPage.setViewportSize({ width: 1280, height: viewportHeight });
-  await gotoProtocol(architectPage);
-  const [stage] = protocol.stages;
-  if (!stage) throw new Error('fixture has no stages');
-  await architectPage.goto(`/protocol/stage/${stage.id}`);
+async function openStuckSectionList(
+  page: Page,
+  stageId: string,
+  viewportHeight: number,
+) {
+  await page.setViewportSize({ width: 1280, height: viewportHeight });
+  await gotoProtocol(page);
+  await page.goto(`/protocol/stage/${stageId}`);
 
-  const outline = architectPage.getByRole('navigation', {
-    name: 'Stage sections',
-  });
+  const outline = page.getByRole('navigation', { name: 'Stage sections' });
   await expect(outline.getByRole('listitem').first()).toBeVisible();
-  const bar = architectPage.getByRole('banner');
+  const bar = page.getByRole('banner');
   await expect(bar).toHaveCount(1);
-
-  // The install notice sits above the scroll port, outside the room the bound
-  // is computed from.
-  const install = architectPage.getByRole('status', {
-    name: 'Install Architect',
-  });
-  await install.getByRole('button', { name: 'Dismiss' }).click();
-  await expect(install).toHaveCount(0);
 
   // Part way down the form: past the column's top padding, so the list has
   // come to rest under the bar, and short of the column's end, which would
   // carry it back up the page.
-  const scrolled = await architectPage.evaluate(() => {
+  const scrolled = await page.evaluate(() => {
     const ports = Array.from(document.querySelectorAll('*')).filter(
       (element): element is HTMLElement => {
         if (!(element instanceof HTMLElement)) return false;
         const { overflowY } = getComputedStyle(element);
         if (overflowY !== 'auto' && overflowY !== 'scroll') return false;
-        return element.clientHeight >= window.innerHeight * 0.5;
+        return element.clientHeight >= window.innerHeight * 0.3;
       },
     );
     const [port] = ports.filter(
@@ -329,11 +316,80 @@ test('the stage editor’s section list ends inside the viewport once it sticks 
     })
     .toBeLessThanOrEqual(1);
 
-  const { bottom, scrollHeight, clientHeight } = await measure();
-  expect(bottom).toBeLessThanOrEqual(viewportHeight + 1);
-  // The list holds more than the room it is given, so the bound above is the
-  // one doing the work rather than a list that happens to be short.
-  expect(scrollHeight).toBeGreaterThan(clientHeight);
+  return { outline, measure };
+}
+
+async function expectEveryRowReachable(page: Page, outline: Locator) {
+  const viewportHeight = page.viewportSize()?.height ?? 0;
+  const last = outline.getByRole('listitem').last();
+  await last.scrollIntoViewIfNeeded();
+  const box = await last.boundingBox();
+  if (!box) throw new Error('the last section is not drawn');
+  expect(box.y + box.height).toBeLessThanOrEqual(viewportHeight + 1);
+}
+
+const installNotice = (page: Page) =>
+  page.getByRole('status', { name: 'Install Architect' });
+
+for (const { viewportHeight, stageType } of [
+  { viewportHeight: 280, stageType: 'NameGenerator' },
+  { viewportHeight: 720, stageType: 'FamilyPedigree' },
+]) {
+  test(`the stage editor’s section list ends inside a ${viewportHeight}px viewport under the install notice`, async ({
+    architectPage,
+    seed,
+  }) => {
+    const { protocol, assets } = loadAllInterfacesFixture();
+    await seed(protocol, { name: 'All Interfaces', assets });
+    const stage = protocol.stages.find(({ type }) => type === stageType);
+    if (!stage) throw new Error(`fixture has no ${stageType} stage`);
+
+    const { outline, measure } = await openStuckSectionList(
+      architectPage,
+      stage.id,
+      viewportHeight,
+    );
+    await expect(installNotice(architectPage)).toBeVisible();
+
+    const { bottom, scrollHeight, clientHeight } = await measure();
+    expect(bottom).toBeLessThanOrEqual(viewportHeight + 1);
+    // The list holds more than the room it is given, so the bound above is
+    // the one doing the work rather than a list that happens to be short.
+    expect(scrollHeight).toBeGreaterThan(clientHeight);
+    await expectEveryRowReachable(architectPage, outline);
+  });
+}
+
+test('the stage editor’s section list takes back the install notice’s room once it is dismissed', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  const [stage] = protocol.stages;
+  if (!stage) throw new Error('fixture has no stages');
+  const viewportHeight = 280;
+  const { measure } = await openStuckSectionList(
+    architectPage,
+    stage.id,
+    viewportHeight,
+  );
+
+  const notice = installNotice(architectPage);
+  await notice.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(notice).toHaveCount(0);
+
+  // Still stuck under the bar, and now running to the foot of the window:
+  // bounded by the bar alone.
+  await expect
+    .poll(async () => {
+      const { top, barBottom, bottom } = await measure();
+      return [
+        Math.abs(Math.round(top - barBottom)) <= 1,
+        Math.abs(Math.round(bottom - viewportHeight)) <= 1,
+      ];
+    })
+    .toEqual([true, true]);
 });
 
 /**
