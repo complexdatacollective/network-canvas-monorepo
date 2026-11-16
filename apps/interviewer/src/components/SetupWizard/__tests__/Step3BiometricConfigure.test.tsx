@@ -85,11 +85,26 @@ describe('Step3BiometricConfigure — recovery passphrase capture', () => {
       expect(setNextEnabledMock).toHaveBeenLastCalledWith(true),
     );
 
-    // Long enough and confirmed, but too guessable.
+    // Strong and confirmed, but one character short of the minimum.
     await userEvent.clear(phrase);
     await userEvent.clear(confirm);
-    await userEvent.type(phrase, 'aaaaaaaaaaaaaa');
-    await userEvent.type(confirm, 'aaaaaaaaaaaaaa');
+    await userEvent.type(phrase, 'Tr0ub4dor&3');
+    await userEvent.type(confirm, 'Tr0ub4dor&3');
+    await waitFor(() =>
+      expect(setNextEnabledMock).toHaveBeenLastCalledWith(false),
+    );
+
+    await userEvent.type(phrase, 'x');
+    await userEvent.type(confirm, 'x');
+    await waitFor(() =>
+      expect(setNextEnabledMock).toHaveBeenLastCalledWith(true),
+    );
+
+    // Long enough and confirmed, but only "Fair": two character classes.
+    await userEvent.clear(phrase);
+    await userEvent.clear(confirm);
+    await userEvent.type(phrase, 'abcdefgh12345');
+    await userEvent.type(confirm, 'abcdefgh12345');
     await waitFor(() =>
       expect(setNextEnabledMock).toHaveBeenLastCalledWith(false),
     );

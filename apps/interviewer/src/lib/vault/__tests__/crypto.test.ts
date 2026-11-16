@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  decryptJson,
+  encryptJson,
   fromBase64,
   generateDek,
   toBase64,
@@ -51,6 +53,12 @@ describe('wrapDek / unwrapDek', () => {
     expect(session.usages).toEqual(
       expect.arrayContaining(['encrypt', 'decrypt']),
     );
+
+    // The unwrapped key is the same key: it reads what the original sealed.
+    const sealed = await encryptJson({ secret: 42 }, dek, 'sessions:rt');
+    await expect(decryptJson(sealed, session, 'sessions:rt')).resolves.toEqual({
+      secret: 42,
+    });
   });
 
   it('rejects unwrapping with the wrong KEK', async () => {

@@ -435,7 +435,7 @@ describe('sessions repo — date range filtering (#753)', () => {
     expect(result.totalCount).toBe(0);
   });
 
-  it('drops an out-of-range (overflow) calendar bound rather than rolling over', async () => {
+  it('excludes every row when a calendar bound overflows, rather than rolling it over', async () => {
     const created = await createSession({
       protocolHash: 'h1',
       protocolName: 'Study',
