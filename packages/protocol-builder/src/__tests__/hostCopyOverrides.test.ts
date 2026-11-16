@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -219,19 +219,44 @@ describe('what the scan reaches', () => {
   /**
    * `sourceFiles` drops fixtures and test-support paths, so a directory whose
    * source all matched one of those patterns would read as clean while nothing
-   * looked at it. These are the areas that once had their own copy and were
-   * converted last.
+   * looked at it. The directories are found here by a walk of their own, so a
+   * new one is checked the day it is added: every directory that directly
+   * holds a module that is not a test, story or mock, outside `testing/`.
    */
-  it.each([
-    'editors/anonymisation/sections',
-    'editors/family-pedigree/sections',
-    'editors/geospatial/sections',
-    'editors/narrative-pedigree/sections',
-    'editors/network-composer/sections',
-    'resources',
-  ])('reads the source in %s', (directory) => {
+  const directoriesWithSource = readdirSync(packageSource, {
+    recursive: true,
+    withFileTypes: true,
+  })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        /\.tsx?$/.test(entry.name) &&
+        !/\.(test|stories)\./.test(entry.name),
+    )
+    .map((entry) => sourcePath(entry.parentPath))
+    .filter(
+      (directory) =>
+        directory !== '' &&
+        !/(^|\/)(__tests__|__mocks__)(\/|$)/.test(directory) &&
+        directory !== 'testing' &&
+        !directory.startsWith('testing/'),
+    );
+  const expected = [...new Set(directoriesWithSource)].toSorted();
+
+  it('finds the directories it checks', () => {
+    expect(expected).toContain('editors/geospatial/sections');
+    expect(expected).toContain('resources');
+  });
+
+  it.each(expected)('reads the source in %s', (directory) => {
     const scanned = sourceFiles().map(sourcePath);
 
-    expect(scanned.some((path) => path.startsWith(`${directory}/`))).toBe(true);
+    expect(
+      scanned.some(
+        (path) =>
+          path.startsWith(`${directory}/`) &&
+          !path.slice(directory.length + 1).includes('/'),
+      ),
+    ).toBe(true);
   });
 });

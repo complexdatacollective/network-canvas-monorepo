@@ -356,9 +356,9 @@ A family that needs different words from a shared section names them one at a
 time as `MessageDescriptor` props — `PromptsSection`'s `description`,
 `FormFieldsSection`'s `title`, `SectionCapability.confirmClear` — never as
 strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
-is the scan that keeps it that way: it excludes no source directory, so a
-section reintroducing a `copy?:` prop or a string-bearing `…Copy` type fails
-there.
+is the scan that keeps it that way: it excludes only the test-support
+directory `testing/`, so a section reintroducing a `copy?:` prop or a
+string-bearing `…Copy` type fails there.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
