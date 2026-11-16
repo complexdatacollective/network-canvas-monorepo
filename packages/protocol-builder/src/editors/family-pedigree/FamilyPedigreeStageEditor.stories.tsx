@@ -157,6 +157,60 @@ export const EditingGenderIdentityOptions: Story = {
 };
 
 /**
+ * A new gender identity attribute, invented from its slot. It starts from the
+ * suggested options, each with its words, so the codebook's editor opens as
+ * wide as the options dialog above.
+ */
+export const CreatingAGenderIdentityAttribute: Story = {
+  globals: { appLocale: 'en' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(document.body);
+    await awaitPassiveEffects();
+
+    const label = await canvas.findByText('Gender identity', {
+      selector: 'label[id$="-label"]',
+    });
+    const field = label.closest<HTMLElement>('[data-field-name]');
+    const trigger = field?.querySelector<HTMLElement>(
+      'button[data-field-focus-target]',
+    );
+    if (trigger === null || trigger === undefined) {
+      throw new Error('the gender identity slot has no attribute picker');
+    }
+    await userEvent.click(trigger);
+
+    // Found by its own marker: the window is titled after the slot's question.
+    const attributeWindow = await waitFor(() => {
+      const found = document.body.querySelector<HTMLElement>(
+        '[data-variable-spotlight]',
+      );
+      if (found === null) throw new Error('the attribute window did not open');
+      return found;
+    });
+    await userEvent.type(
+      within(attributeWindow).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+      'gender_new',
+    );
+    await userEvent.click(
+      within(attributeWindow).getByRole('option', {
+        name: 'Create new attribute called “gender_new”.',
+      }),
+    );
+
+    const editor = await body.findByRole('dialog', {
+      name: 'Create a new gender identity attribute',
+    });
+    // Wider than the readable dialog, which stops at 42rem (672px).
+    await expect(
+      Number.parseFloat(getComputedStyle(editor).maxWidth),
+    ).toBeGreaterThan(672);
+  },
+};
+
+/**
  * The person type's symbols: one choice at the end of the person attributes.
  * The fixture's type draws everyone as a circle, so "Set in the codebook" is
  * chosen and says so; choosing sex assigned at birth writes a circle for
