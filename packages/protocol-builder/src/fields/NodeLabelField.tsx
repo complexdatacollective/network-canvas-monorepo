@@ -396,7 +396,7 @@ export default function NodeLabelField({
                   <div className="flex flex-col items-start gap-2">
                     <Button
                       type="button"
-                      variant="dashed"
+                      variant="text"
                       color="destructive"
                       size="sm"
                       icon={<Trash2 aria-hidden />}
@@ -421,7 +421,6 @@ export default function NodeLabelField({
             <div>
               <Button
                 type="button"
-                variant="dashed"
                 icon={<Plus aria-hidden />}
                 disabled={locked}
                 onClick={addCondition}
