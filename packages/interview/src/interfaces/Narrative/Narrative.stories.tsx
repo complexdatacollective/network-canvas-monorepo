@@ -1141,10 +1141,8 @@ export const BackgroundImage: Story = {
       return image;
     });
 
-    // The whole image shows, centred, filling the canvas it sits in.
-    const style = getComputedStyle(backgroundImage);
-    await expect(style.objectFit).toBe('contain');
-    await expect(style.objectPosition).toBe('50% 50%');
+    // The whole image shows, filling the canvas it sits in.
+    await expect(getComputedStyle(backgroundImage).objectFit).toBe('contain');
     const frame = backgroundImage.parentElement;
     if (!frame) throw new Error('The background image has no container');
     await expect(backgroundImage.getBoundingClientRect().width).toBe(

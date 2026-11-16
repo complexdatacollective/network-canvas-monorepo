@@ -19,9 +19,14 @@ describe('computeLayoutMetrics', () => {
   });
 
   test('rounds gaps to whole pixels', () => {
-    const metrics = computeLayoutMetrics({ nodeWidth: 73, nodeHeight: 91 });
+    // 73 x 0.6 = 43.8 and 77 x 1.4 = 107.8, both rounded up.
+    const metrics = computeLayoutMetrics({
+      nodeWidth: 73,
+      nodeHeight: 77,
+      rowGapRatio: 1.4,
+    });
     expect(metrics.columnGap).toBe(44);
-    expect(metrics.rowGap).toBe(91);
+    expect(metrics.rowGap).toBe(108);
   });
 
   test('scales the gaps by the ratios Family Pedigree passes', () => {

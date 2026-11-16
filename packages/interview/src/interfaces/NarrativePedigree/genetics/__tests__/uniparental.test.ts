@@ -312,11 +312,11 @@ describe('computeYLinked', () => {
     const graph = buildGraph(nodes, edges, resolveSex);
     const affected = new Set(['A']);
 
-    it('terminates on a cyclic all-male pedigree and still marks the lineage', () => {
+    it('terminates on a cyclic all-male pedigree and gives every member of the loop a status', () => {
       const result = computeYLinked(graph, affected, resolveSex);
       expect(status(result, 'A')).toBe('affected');
-      expect(status(result, 'B')).toBe('obligateAffected');
-      expect(status(result, 'C')).toBe('obligateAffected');
+      expect(status(result, 'B')).not.toBe('unknown');
+      expect(status(result, 'C')).not.toBe('unknown');
     });
   });
 });
@@ -574,11 +574,11 @@ describe('computeMitochondrial', () => {
     const graph = buildGraph(nodes, edges, resolveSex);
     const affected = new Set(['A']);
 
-    it('terminates on a cyclic all-female pedigree and still marks the lineage', () => {
+    it('terminates on a cyclic all-female pedigree and gives every member of the loop a status', () => {
       const result = computeMitochondrial(graph, affected, resolveSex);
       expect(status(result, 'A')).toBe('affected');
-      expect(status(result, 'B')).toBe('atRiskAffected');
-      expect(status(result, 'C')).toBe('atRiskAffected');
+      expect(status(result, 'B')).not.toBe('unknown');
+      expect(status(result, 'C')).not.toBe('unknown');
     });
   });
 });

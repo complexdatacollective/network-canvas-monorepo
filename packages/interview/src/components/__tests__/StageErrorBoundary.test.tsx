@@ -52,6 +52,8 @@ describe('StageErrorBoundary', () => {
         screen.getByText(/this task could not be displayed/i),
       ).toBeInTheDocument();
       expect(screen.getByText(/check your connection/i)).toBeInTheDocument();
+      // The heading this screen used to show (taskErrorTitle, removed in
+      // favour of the error icon) stays gone.
       expect(screen.queryByText('A problem occurred!')).toBeNull();
     },
   );

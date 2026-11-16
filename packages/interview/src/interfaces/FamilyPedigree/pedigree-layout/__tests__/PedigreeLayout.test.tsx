@@ -51,7 +51,10 @@ describe('PedigreeLayout', () => {
         renderNode={renderNode}
       />,
     );
-    expect(screen.getByTestId('pedigree-layout-spinner')).toBeInTheDocument();
+    // fresco-ui's Spinner has no role or name, so check its wrapper holds it.
+    expect(
+      screen.getByTestId('pedigree-layout-spinner'),
+    ).not.toBeEmptyDOMElement();
     expect(screen.queryByTestId('node-ego')).not.toBeInTheDocument();
   });
 
@@ -158,6 +161,8 @@ describe('PedigreeLayout', () => {
     const mother = positionOf('mother');
     expect(Number.isFinite(father.left)).toBe(true);
     expect(Number.isFinite(mother.left)).toBe(true);
+    expect(Number.isFinite(father.top)).toBe(true);
+    expect(Number.isFinite(mother.top)).toBe(true);
     expect(father.top).toBe(mother.top);
     expect(father.left).not.toBe(mother.left);
   });

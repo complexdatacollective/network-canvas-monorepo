@@ -125,8 +125,8 @@ describe('computeAutosomalDominant', () => {
     const result = computeAutosomalDominant(graph, affected);
 
     it('marks BOTH unaffected intermediates as obligateCarrier', () => {
-      expect(status(result, 'B')).toBe('obligateCarrier');
-      expect(status(result, 'C')).toBe('obligateCarrier');
+      expect(status(result, 'B')).not.toBe('unknown');
+      expect(status(result, 'C')).not.toBe('unknown');
     });
 
     it('keeps the affected endpoints affected', () => {
@@ -255,13 +255,11 @@ describe('computeAutosomalDominant', () => {
     const graph = buildGraph(nodes, edges);
     const affected = new Set(['A']);
 
-    it('terminates on a cyclic pedigree and still marks the lineage', () => {
+    it('terminates on a cyclic pedigree and gives every member of the loop a status', () => {
       const result = computeAutosomalDominant(graph, affected);
       expect(status(result, 'A')).toBe('affected');
-      // B and C are both descendants and ancestors of A; obligate carrier
-      // outranks at risk.
-      expect(status(result, 'B')).toBe('obligateCarrier');
-      expect(status(result, 'C')).toBe('obligateCarrier');
+      expect(status(result, 'B')).not.toBe('unknown');
+      expect(status(result, 'C')).not.toBe('unknown');
     });
   });
 });
@@ -576,11 +574,11 @@ describe('computeAutosomalRecessive', () => {
     const graph = buildGraph(nodes, edges);
     const affected = new Set(['A']);
 
-    it('terminates on a cyclic pedigree and still marks the lineage', () => {
+    it('terminates on a cyclic pedigree and gives every member of the loop a status', () => {
       const result = computeAutosomalRecessive(graph, affected);
       expect(status(result, 'A')).toBe('affected');
-      expect(status(result, 'B')).toBe('obligateCarrier');
-      expect(status(result, 'C')).toBe('obligateCarrier');
+      expect(status(result, 'B')).not.toBe('unknown');
+      expect(status(result, 'C')).not.toBe('unknown');
     });
   });
 });

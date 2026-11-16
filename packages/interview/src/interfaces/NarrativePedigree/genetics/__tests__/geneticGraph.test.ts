@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { Gamete } from '../../../FamilyPedigree/gametes';
 import {
@@ -166,10 +166,10 @@ describe('buildGeneticGraph — consanguinity loop termination', () => {
   });
 
   it('propagate without a visited set still covers the whole loop once', () => {
-    const result = cyclicGraph.propagate(['A'], (id) =>
-      cyclicGraph.childrenOf(id),
-    );
+    const step = vi.fn((id: string) => cyclicGraph.childrenOf(id));
+    const result = cyclicGraph.propagate(['A'], step);
     expect(result).toEqual(new Set(['A', 'B', 'C']));
+    expect(step).toHaveBeenCalledTimes(3);
   });
 });
 

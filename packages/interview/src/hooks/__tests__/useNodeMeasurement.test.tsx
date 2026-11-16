@@ -71,10 +71,10 @@ describe('useNodeMeasurement', () => {
     expect(getByTestId('height').textContent).toBe('0');
   });
 
-  test('renders the hidden container inline within the consumer subtree', () => {
+  test('renders the measured content in a hidden container inline within the consumer subtree', () => {
     setup();
     const { getByTestId } = render(
-      <TestConsumer component={<div>test</div>} />,
+      <TestConsumer component={<div data-testid="measured">test</div>} />,
     );
 
     const container = document.querySelector<HTMLElement>(
@@ -88,12 +88,20 @@ describe('useNodeMeasurement', () => {
     // sizing. Portaling to body would resolve the base size and mis-measure.
     expect(getByTestId('consumer-root').contains(container)).toBe(true);
     expect(container!.parentElement).not.toBe(document.body);
+    expect(container).toContainElement(getByTestId('measured'));
   });
 
-  test('updates dimensions when ResizeObserver fires', () => {
+  test('observes the hidden container and updates dimensions when it resizes', () => {
     setup();
     const { getByTestId } = render(
       <TestConsumer component={<div>test</div>} />,
+    );
+    const container = document.querySelector(
+      'div[style*="visibility: hidden"]',
+    );
+    expect(latestObserverInstances).toHaveLength(1);
+    expect(latestObserverInstances[0]?.observeSpy).toHaveBeenCalledWith(
+      container,
     );
 
     act(() => {
