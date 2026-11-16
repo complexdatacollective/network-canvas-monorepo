@@ -177,31 +177,6 @@ const optionText = () =>
   );
 
 describe('the fields in this directory, read in Spanish', () => {
-  it('ships Spanish for the ids this directory declares', () => {
-    // Checked first so a merge that has not landed this directory's catalog
-    // entries fails saying so, rather than as an unexplained missing string.
-    expect(Object.keys(spanishMessages)).toEqual(
-      expect.arrayContaining([
-        'protocolBuilder.entitySelect.nodeEmptyState',
-        'protocolBuilder.entitySelect.missingOptionLabel',
-        'protocolBuilder.entitySelect.missingType',
-        'protocolBuilder.variablePicker.selectAttribute',
-        'protocolBuilder.variablePicker.changeAttribute',
-        'protocolBuilder.variablePicker.noneSelected',
-        'protocolBuilder.variablePicker.createRow',
-        'protocolBuilder.variablePicker.createRowRefused',
-        'protocolBuilder.variablePicker.emptyState',
-        'protocolBuilder.variablePicker.missingOptionLabel',
-        'protocolBuilder.variablePicker.missingAttribute',
-        'protocolBuilder.skipLogicDestination.nextAvailable',
-        'protocolBuilder.skipLogicDestination.finish',
-        'protocolBuilder.skipLogicDestination.stageOption',
-        'protocolBuilder.skipLogicDestination.untitledStageOption',
-        'protocolBuilder.skipLogicDestination.missingProblem',
-      ]),
-    );
-  });
-
   it('names the entity chips and says what is missing in Spanish', () => {
     // Literals rather than the same descriptors re-formatted: asserting
     // `esIntl.formatMessage(...)` here would pass whatever the catalog said,

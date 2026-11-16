@@ -281,12 +281,4 @@ describe('protocol/assetManifest', () => {
       expect(result.duplicateCount).toBe(0);
     });
   });
-
-  describe('actionCreators', () => {
-    it.todo('importAssetAsync() dispatches correct actions');
-    it.todo(
-      'importAssetAsync() dispatches correct actions when util/importAsset fails',
-    );
-    it.todo('deleteAsset() dispatches correct actions');
-  });
 });

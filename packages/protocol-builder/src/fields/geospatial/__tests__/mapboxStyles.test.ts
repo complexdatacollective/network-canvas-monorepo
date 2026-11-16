@@ -40,6 +40,11 @@ function protocolWithStyle(style: string): unknown {
  * one the schema rejects produces a stage that cannot be saved.
  */
 describe('the basemaps a geospatial stage may be drawn on', () => {
+  it('offers basemaps to check', () => {
+    // Without this every check below would pass on an empty list.
+    expect(MAP_STYLE_OPTIONS.length).toBeGreaterThan(0);
+  });
+
   it.each(MAP_STYLE_OPTIONS.map((option) => option.value))(
     'is one the protocol schema accepts: %s',
     async (style) => {
@@ -58,6 +63,10 @@ describe('the basemaps a geospatial stage may be drawn on', () => {
     );
 
     expect(result.success).toBe(false);
+    // Refused for its basemap, not for something else about the fixture.
+    expect(result.error?.issues.map((issue) => issue.path.slice(-2))).toEqual([
+      ['mapOptions', 'style'],
+    ]);
   });
 
   it('names each basemap distinctly, so one can be chosen by name', () => {

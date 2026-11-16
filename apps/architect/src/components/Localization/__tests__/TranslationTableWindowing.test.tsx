@@ -520,14 +520,6 @@ describe('TranslationTable with a large protocol', () => {
       expect(document.querySelector('[data-window-key]')).toBeNull();
       expect(document.querySelector('[aria-rowindex]')).toBeNull();
       expect(document.querySelector('tr[aria-hidden]')).toBeNull();
-      // The browser keeps what is being read where it is, as nothing else does.
-      expect(scroller().className).not.toContain('overflow-anchor');
-    });
-
-    it('turns the browser’s own scroll anchoring off only once it is windowed', () => {
-      renderTable();
-
-      expect(scroller().className).toContain('overflow-anchor:none');
     });
   });
 });

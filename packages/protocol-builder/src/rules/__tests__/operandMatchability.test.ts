@@ -22,6 +22,7 @@ import {
   AllOperators,
   type Codebook,
   type FilterOperator,
+  FilterOperandKinds,
   filterRuleSchema,
   OperatorsByVariableType,
   type VariableType,
@@ -199,6 +200,93 @@ const NEGATING: ReadonlySet<string> = new Set([
   'OPTIONS_NOT_EQUALS',
 ]);
 
+const byText = (a: string, b: string) => a.localeCompare(b);
+
+const cellKey = (type: string, operator: string, operand: unknown) =>
+  `${type} ${operator} ${JSON.stringify(operand)}`;
+
+/**
+ * What each of the schema's operand kinds admits, restated here so the sweep
+ * below can be held to it: `none` and `attribute` leave the shape to the
+ * attribute, the others are a number, a whole number or a pattern.
+ */
+const OPERAND_KIND_ADMITS: Readonly<
+  Record<
+    (typeof FilterOperandKinds)[FilterOperator],
+    (operand: unknown) => boolean
+  >
+> = {
+  none: () => true,
+  attribute: () => true,
+  number: (operand) => typeof operand === 'number',
+  integer: (operand) => Number.isInteger(operand),
+  string: (operand) => typeof operand === 'string',
+};
+
+const operandKindAdmits = (operator: FilterOperator, operand: unknown) =>
+  OPERAND_KIND_ADMITS[FilterOperandKinds[operator]](operand);
+
+/**
+ * What each sweep below must reach past its guards. Both skip cells they have
+ * no verdict on, so without these a sweep whose guards came to skip one
+ * operator, or one shape of operand, would pass on what was left. The stored
+ * sweep is held to every cell its operator's operand kind admits; the control
+ * sweep to every (type, operator) pair that takes an operand.
+ */
+const STORED_RULE_CELLS = VariableTypesKeys.flatMap((type) =>
+  AllOperators.options
+    .filter((operator) => OperatorsByVariableType[type]?.includes(operator))
+    .flatMap((operator) =>
+      OPERANDS.filter((operand) => operandKindAdmits(operator, operand)).map(
+        (operand) => cellKey(type, operator, operand),
+      ),
+    ),
+).toSorted(byText);
+const OFFERED_CONTROL_PAIRS = VariableTypesKeys.flatMap((type) =>
+  [...operatorsForSubject(type)]
+    .filter((operator) => {
+      const requirement = operandRequirement(type, operator);
+      return requirement !== undefined && requirement.kind !== 'none';
+    })
+    .map((operator) => `${type} ${operator}`),
+).toSorted(byText);
+
+/**
+ * The two sets above are built from the tables under test, so they shrink when
+ * those tables do. These literal sizes, per attribute type, are what holds them
+ * still: 784 stored cells and 34 offered pairs in all.
+ */
+const STORED_CELLS_PER_TYPE = {
+  boolean: 68,
+  text: 80,
+  number: 92,
+  datetime: 92,
+  ordinal: 102,
+  scalar: 92,
+  categorical: 122,
+  layout: 68,
+  location: 68,
+};
+const OFFERED_PAIRS_PER_TYPE = {
+  boolean: 2,
+  text: 4,
+  number: 6,
+  datetime: 2,
+  ordinal: 4,
+  scalar: 6,
+  categorical: 8,
+  layout: 0,
+  location: 2,
+};
+
+const countPerType = (keys: readonly string[]) =>
+  Object.fromEntries(
+    VariableTypesKeys.map((type) => [
+      type,
+      keys.filter((key) => key.startsWith(`${type} `)).length,
+    ]),
+  );
+
 describe('the editor’s verdict against the interview’s predicate', () => {
   /**
    * Every (type, operator, operand) the protocol schema accepts, in both
@@ -208,6 +296,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
   it('refuses nothing that can match, and reports everything that cannot', () => {
     const refusedButMatchable: Cell[] = [];
     const acceptedButUnmatchable: Cell[] = [];
+    const sweptCells = new Set<string>();
 
     for (const type of VariableTypesKeys) {
       for (const operator of AllOperators.options) {
@@ -220,6 +309,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
           const rule = ruleFor(operator, operand);
           if (!filterRuleSchema.safeParse(rule).success) continue;
 
+          sweptCells.add(cellKey(type, operator, operand));
           const codes = problemCodes(type, operator, operand);
           const cell: Cell = { type, operator, operand, codes };
           const matches = canMatch(type, operator, operand);
@@ -241,6 +331,8 @@ describe('the editor’s verdict against the interview’s predicate', () => {
         .map(describeCell),
     ).toEqual([]);
     expect(acceptedButUnmatchable.map(describeCell)).toEqual([]);
+    expect(countPerType(STORED_RULE_CELLS)).toEqual(STORED_CELLS_PER_TYPE);
+    expect([...sweptCells].toSorted(byText)).toEqual(STORED_RULE_CELLS);
   });
 
   /**
@@ -256,6 +348,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
    */
   it('offers no control whose values match nothing', () => {
     const offeredButUnmatchable: string[] = [];
+    const offeredPairs = new Set<string>();
 
     for (const type of VariableTypesKeys) {
       for (const operator of operatorsForSubject(type)) {
@@ -287,6 +380,7 @@ describe('the editor’s verdict against the interview’s predicate', () => {
           // A value the editor refuses is a value it cannot commit, so it is
           // not something it offers.
           if (problemCodes(type, operator, sample).length > 0) continue;
+          offeredPairs.add(`${type} ${operator}`);
           if (canMatch(type, operator, sample)) continue;
           offeredButUnmatchable.push(
             `${type} ${operator} ${JSON.stringify(sample)} (control ${requirement.control})`,
@@ -296,6 +390,8 @@ describe('the editor’s verdict against the interview’s predicate', () => {
     }
 
     expect(offeredButUnmatchable).toEqual([]);
+    expect(countPerType(OFFERED_CONTROL_PAIRS)).toEqual(OFFERED_PAIRS_PER_TYPE);
+    expect([...offeredPairs].toSorted(byText)).toEqual(OFFERED_CONTROL_PAIRS);
   });
 });
 

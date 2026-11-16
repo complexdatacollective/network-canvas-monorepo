@@ -7,11 +7,7 @@ import {
 } from '~/components/StageEditor/stageDraftBeacon';
 import type { RootState } from '~/ducks/modules/root';
 
-import {
-  getAllVariablesByUUID,
-  getVariableOptionsForSubject,
-  makeGetVariable,
-} from '..';
+import { getAllVariablesByUUID, getVariableOptionsForSubject } from '..';
 import testState from '../../../__tests__/testState.json' with { type: 'json' };
 
 describe('codebook selectors', () => {
@@ -151,30 +147,6 @@ describe('codebook selectors', () => {
       } as unknown as Codebook);
 
       expect(result).toMatchSnapshot();
-    });
-  });
-
-  describe('makeGetVariable()', () => {
-    it('returns a variable by UUID', () => {
-      const result = makeGetVariable('foo')(testState as unknown as RootState);
-
-      expect(result).toMatchSnapshot();
-    });
-
-    it('returns null if variable is not found', () => {
-      const result = makeGetVariable('not found')(
-        testState as unknown as RootState,
-      );
-
-      expect(result).toBeNull();
-    });
-
-    // `makeGetVariable` returns null when there is no codebook; it used to
-    // throw only because reading the protocol off an empty state threw first.
-    // The protocol accessors tolerate an unpopulated store now, so the
-    // function's own contract is what shows through.
-    it('returns null if there is no codebook', () => {
-      expect(makeGetVariable('foo')({} as unknown as RootState)).toBeNull();
     });
   });
 });

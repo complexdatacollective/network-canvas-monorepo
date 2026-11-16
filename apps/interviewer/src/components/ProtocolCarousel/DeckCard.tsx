@@ -674,8 +674,11 @@ export function DeckCard(props: DeckCardProps) {
                   ref={headingRef}
                   level="h2"
                   title={protocol.name}
+                  // The researcher's name for the protocol, in its own
+                  // direction, on the interface's side.
+                  dir="auto"
                   className={cx(
-                    'w-full text-start font-black wrap-break-word hyphens-auto',
+                    'text-match-parent w-full font-black wrap-break-word hyphens-auto',
                     cardHeadingSizeClass(protocol.name),
                   )}
                   // line-height must be inline: leading-* utilities lose to
@@ -742,7 +745,8 @@ export function DeckCard(props: DeckCardProps) {
                   {protocol.description ? (
                     <span
                       ref={descriptionRef}
-                      className="text-[max(12px,3.5cqi)] leading-tight text-current/80"
+                      dir="auto"
+                      className="text-match-parent text-[max(12px,3.5cqi)] leading-tight text-current/80"
                       style={{
                         display: '-webkit-box',
                         WebkitBoxOrient: 'vertical',

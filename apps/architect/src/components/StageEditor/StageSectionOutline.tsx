@@ -122,7 +122,7 @@ export default function StageSectionOutline({
         noContainer
         spacing="xs"
         shadow="sm"
-        className="@max-[60rem]:contents @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto"
+        className="@max-[60rem]:contents @min-[60rem]:max-h-[calc(var(--architect-route-height,100dvh)-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto"
       >
         <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
           {entries.map((section) => (

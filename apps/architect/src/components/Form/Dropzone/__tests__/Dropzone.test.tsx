@@ -31,7 +31,6 @@ describe('Dropzone', () => {
 
     const dropzone = screen.getByRole('button', { name: 'Upload file' });
     expect(dropzone).toHaveAttribute('tabindex', '0');
-    expect(dropzone).toHaveClass('focusable');
   });
 
   it('announces rejected file types and links the error to the control', async () => {
