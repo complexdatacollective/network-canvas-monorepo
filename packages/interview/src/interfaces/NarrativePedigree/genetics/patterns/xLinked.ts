@@ -39,18 +39,20 @@ function mothersOf(graph: GeneticGraph, id: string): AnnotatedParent[] {
  * - Every DAUGHTER (female child) of an affected male → `obligateCarrier` (he
  *   passes his single X to all daughters). His SONS get the Y → nothing.
  * - A female with ≥2 affected sons, OR an affected son AND an affected MATERNAL
- *   SIBLING (a male sharing her own mother) → `obligateCarrier`. An affected
- *   male who is merely an ANCESTOR of the mother (father, maternal grandfather,
- *   …) does NOT make her obligate: he transmits to her with probability ≤50%.
- * - The mother of a SINGLE affected male with no affected maternal sibling →
+ *   SIBLING (a male sharing her own mother), OR an affected son AND an affected
+ *   genetic MOTHER → `obligateCarrier`. Any other affected male ANCESTOR of the
+ *   mother (her maternal grandfather, …) does NOT make her obligate this way:
+ *   he transmits to her with probability ≤50%.
+ * - The mother of a SINGLE affected male with none of that corroboration →
  *   `atRiskCarrier` (de novo is not excluded — NOT obligate).
  * - The maternal grandmother and maternal aunts of an affected male →
  *   `atRiskCarrier`; the maternal uncles → `atRiskAffected`.
  * - From every carrier female (obligate or at-risk) and every AFFECTED female,
  *   DAUGHTERS → `atRiskCarrier` (themselves carrier females, recursed) and SONS
  *   → `atRiskAffected`. An affected female may be homozygous or a manifesting
- *   heterozygote, so her children are only ever at risk, and nothing is
- *   inferred about her parents. NO male-to-male transmission.
+ *   heterozygote, so her children are only ever at risk, and her own affected
+ *   status adds nothing about her parents (other rules may still mark them).
+ *   NO male-to-male transmission.
  * - A person whose sex is `unknown` in a sex-dependent step → `unknown`
  *   (sex-blocked); such a node is simply never written.
  */
@@ -144,7 +146,19 @@ export function computeXLinkedRecessive(
         );
       });
 
-      if (affectedSons.length >= 2 || hasAffectedMaternalSibling) {
+      // An affected GENETIC mother of the mother corroborates in the same way
+      // as an affected maternal brother: the allele is then on the mother's X
+      // line both above and below her, so a de novo variant in her son no
+      // longer explains it.
+      const hasAffectedMother = [...motherOwnMothers].some((id) =>
+        affected.has(id),
+      );
+
+      if (
+        affectedSons.length >= 2 ||
+        hasAffectedMaternalSibling ||
+        hasAffectedMother
+      ) {
         markObligateFemale(motherId);
       } else {
         // Single affected son, no affected maternal sibling: de novo is not

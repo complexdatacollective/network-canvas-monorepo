@@ -672,19 +672,21 @@ describe('computeXLinkedRecessive', () => {
       });
     });
 
-    it('infers nothing about the parents of an affected woman', () => {
+    it('infers nothing about the parents or siblings of an affected woman', () => {
       /**
-       *   mother --- father
-       *         |
-       *   woman (affected) --- partner
-       *         |
-       *        son
+       *            mother --- father
+       *       |          |           |
+       *   brother     sister    woman (affected) --- partner
+       *                               |
+       *                              son
        */
       expect(
         statusesOf(
           {
             mother: 'female',
             father: 'male',
+            brother: 'male',
+            sister: 'female',
             woman: 'female',
             partner: 'male',
             son: 'male',
@@ -692,6 +694,10 @@ describe('computeXLinkedRecessive', () => {
           [
             ['mother', 'woman'],
             ['father', 'woman'],
+            ['mother', 'brother'],
+            ['father', 'brother'],
+            ['mother', 'sister'],
+            ['father', 'sister'],
             ['woman', 'son'],
             ['partner', 'son'],
           ],
@@ -700,6 +706,8 @@ describe('computeXLinkedRecessive', () => {
       ).toEqual({
         mother: 'unknown',
         father: 'unknown',
+        brother: 'unknown',
+        sister: 'unknown',
         woman: 'affected',
         partner: 'unknown',
         son: 'atRiskAffected',
@@ -939,6 +947,219 @@ describe('computeXLinkedRecessive', () => {
         child: 'unknown',
         son: 'atRiskAffected',
         grandchild: 'unknown',
+      });
+    });
+
+    it('passes nothing on from an affected person of uncertain sex', () => {
+      /**
+       *   person (affected, unknown sex) --- partner
+       *              |          |
+       *             son      daughter
+       */
+      expect(
+        statusesOf(
+          {
+            person: 'unknown',
+            partner: 'male',
+            son: 'male',
+            daughter: 'female',
+          },
+          [
+            ['person', 'son'],
+            ['partner', 'son'],
+            ['person', 'daughter'],
+            ['partner', 'daughter'],
+          ],
+          ['person'],
+        ),
+      ).toEqual({
+        person: 'affected',
+        partner: 'unknown',
+        son: 'unknown',
+        daughter: 'unknown',
+      });
+    });
+  });
+
+  describe('obligate: a female with an affected son and an affected mother', () => {
+    /** Runs the engine over `[parent, child, kind]` links and returns every person's status. */
+    function statusesWithKinds(
+      people: Record<string, Sex>,
+      links: [string, string, string][],
+      affected: string[],
+    ): Record<string, Status> {
+      const resolveSex = sexResolver(people);
+      const graph = buildGraph(
+        Object.keys(people).map(makeNode),
+        links.map(([source, target, kind]) => ({ source, target, kind })),
+        resolveSex,
+      );
+      const result = computeXLinkedRecessive(
+        graph,
+        new Set(affected),
+        resolveSex,
+      );
+      return Object.fromEntries(
+        Object.keys(people).map((id) => [id, status(result, id)]),
+      );
+    }
+
+    const people: Record<string, Sex> = {
+      grandmother: 'female',
+      grandfather: 'male',
+      woman: 'female',
+      partner: 'male',
+      son: 'male',
+    };
+
+    it('marks her an obligate carrier', () => {
+      /**
+       *   grandmother (affected) --- grandfather
+       *                  |
+       *               woman --- partner
+       *                  |
+       *              son (affected)
+       */
+      expect(
+        statusesWithKinds(
+          people,
+          [
+            ['grandmother', 'woman', 'biological'],
+            ['grandfather', 'woman', 'biological'],
+            ['woman', 'son', 'biological'],
+            ['partner', 'son', 'biological'],
+          ],
+          ['grandmother', 'son'],
+        ),
+      ).toEqual({
+        grandmother: 'affected',
+        grandfather: 'unknown',
+        woman: 'obligateCarrier',
+        partner: 'unknown',
+        son: 'affected',
+      });
+    });
+
+    it.each(['adoptive', 'social'])(
+      'does not fire when the affected woman is her %s mother',
+      (kind) => {
+        expect(
+          statusesWithKinds(
+            people,
+            [
+              ['grandmother', 'woman', kind],
+              ['grandfather', 'woman', 'biological'],
+              ['woman', 'son', 'biological'],
+              ['partner', 'son', 'biological'],
+            ],
+            ['grandmother', 'son'],
+          ),
+        ).toEqual({
+          grandmother: 'affected',
+          grandfather: 'unknown',
+          woman: 'atRiskCarrier',
+          partner: 'unknown',
+          son: 'affected',
+        });
+      },
+    );
+
+    it('does not fire when her affected son was conceived with a donor egg', () => {
+      /**
+       *   grandmother (affected) --- grandfather
+       *                  |
+       *   eggDonor    woman --- partner
+       *
+       *   son (affected): egg from eggDonor, raised by the woman (a social
+       *   link, no egg), sperm from the partner.
+       */
+      expect(
+        statusesWithKinds(
+          { ...people, eggDonor: 'female' },
+          [
+            ['grandmother', 'woman', 'biological'],
+            ['grandfather', 'woman', 'biological'],
+            ['woman', 'son', 'social'],
+            ['eggDonor', 'son', 'donor'],
+            ['partner', 'son', 'biological'],
+          ],
+          ['grandmother', 'son'],
+        ),
+      ).toEqual({
+        grandmother: 'affected',
+        grandfather: 'unknown',
+        woman: 'atRiskCarrier',
+        partner: 'unknown',
+        son: 'affected',
+        eggDonor: 'atRiskCarrier',
+      });
+    });
+
+    it('does not fire for an affected daughter in place of an affected son', () => {
+      /**
+       *   grandmother (affected) --- grandfather
+       *                  |
+       *               woman --- partner
+       *                  |
+       *          daughter (affected)
+       */
+      expect(
+        statusesWithKinds(
+          {
+            grandmother: 'female',
+            grandfather: 'male',
+            woman: 'female',
+            partner: 'male',
+            daughter: 'female',
+          },
+          [
+            ['grandmother', 'woman', 'biological'],
+            ['grandfather', 'woman', 'biological'],
+            ['woman', 'daughter', 'biological'],
+            ['partner', 'daughter', 'biological'],
+          ],
+          ['grandmother', 'daughter'],
+        ),
+      ).toEqual({
+        grandmother: 'affected',
+        grandfather: 'unknown',
+        woman: 'atRiskCarrier',
+        partner: 'unknown',
+        daughter: 'affected',
+      });
+    });
+
+    it("gives her other children an obligate carrier's children's statuses", () => {
+      /**
+       *   grandmother (affected) --- grandfather
+       *                  |
+       *               woman --- partner
+       *         |         |        |
+       *   son (affected)  son2   daughter
+       */
+      expect(
+        statusesWithKinds(
+          { ...people, son2: 'male', daughter: 'female' },
+          [
+            ['grandmother', 'woman', 'biological'],
+            ['grandfather', 'woman', 'biological'],
+            ['woman', 'son', 'biological'],
+            ['partner', 'son', 'biological'],
+            ['woman', 'son2', 'biological'],
+            ['partner', 'son2', 'biological'],
+            ['woman', 'daughter', 'biological'],
+            ['partner', 'daughter', 'biological'],
+          ],
+          ['grandmother', 'son'],
+        ),
+      ).toEqual({
+        grandmother: 'affected',
+        grandfather: 'unknown',
+        woman: 'obligateCarrier',
+        partner: 'unknown',
+        son: 'affected',
+        son2: 'atRiskAffected',
+        daughter: 'atRiskCarrier',
       });
     });
   });
