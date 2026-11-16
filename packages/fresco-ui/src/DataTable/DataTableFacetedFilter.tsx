@@ -10,7 +10,6 @@ import ComboboxField from '../form/fields/Combobox/Combobox';
 import { type ComboboxOption } from '../form/fields/Combobox/shared';
 import { type DataTableFeatures } from './features';
 import { isFacetedFilterValue } from './filters/types';
-import { type Option } from './types';
 
 const messages = defineMessages({
   filterPlaceholder: {
@@ -36,7 +35,8 @@ const messages = defineMessages({
 type DataTableFacetedFilterProps<TData extends RowData, TValue> = {
   column?: Column<DataTableFeatures, TData, TValue>;
   title?: string;
-  options: Option[];
+  /** A name someone wrote is `{ text, dir: 'auto' }`. */
+  options: ComboboxOption[];
   className?: string;
 };
 

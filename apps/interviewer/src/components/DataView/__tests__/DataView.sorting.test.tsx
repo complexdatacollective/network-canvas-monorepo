@@ -10,6 +10,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { type ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
+import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { db } from '~/lib/db/db';
 import type { StoredSessionRow } from '~/lib/db/recordCrypto';
@@ -28,12 +30,12 @@ vi.mock('../DataViewToolbar', () => ({
   DataViewToolbar: ({
     protocolOptions,
   }: {
-    protocolOptions: { label: string; value: string }[];
+    protocolOptions: ComboboxOption[];
   }) => (
     <select aria-label="Protocol filter">
       {protocolOptions.map((option) => (
         <option key={option.value} value={option.value}>
-          {option.label}
+          {presentationalTextValue(option.label)}
         </option>
       ))}
     </select>

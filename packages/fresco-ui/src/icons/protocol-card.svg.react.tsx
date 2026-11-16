@@ -5,6 +5,8 @@ import type { SVGProps } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { isDecorativeIcon } from './isDecorativeIcon';
+
 const messages = defineMessages({
   title: {
     id: 'frescoUi.icon.protocolCard',
@@ -22,7 +24,9 @@ export default function Icon(props: SVGProps<SVGSVGElement>) {
       viewBox="0 0 236.5 310.9"
       {...props}
     >
-      <title>{intl.formatMessage(messages.title)}</title>{' '}
+      {isDecorativeIcon(props) ? null : (
+        <title>{intl.formatMessage(messages.title)}</title>
+      )}{' '}
       <g id="Server">
         {' '}
         <path

@@ -42,14 +42,14 @@ export type ArabicPageAuditOptions = Readonly<{
  *   `"ltr"`, `<bdi>`, an inline box with `unicode-bidi: isolate`, a block
  *   with `plaintext`, isolate marks in the text itself, quotation marks) is
  *   either interface text left in English or a name someone wrote shown
- *   without its own direction, where "team-b!" reads "!team-b". Text read but
- *   not drawn counts (a visually hidden label, `title`, `alt`,
- *   `placeholder`, an icon's `<title>`); an attribute that repeats a name the
- *   page shows in its own direction is that name. An `aria-label` does not:
- *   only a screen reader reads it, and text only a screen reader reads is
- *   English in every language (`@codaco/app-i18n`'s README). Where the
- *   element it names holds no translated text it is marked `lang="en"`;
- *   where it does, such as a list of names, it cannot be.
+ *   without its own direction, where "team-b!" reads "!team-b". Text seen
+ *   only on demand counts (`title`, `alt`, `placeholder`, an icon's
+ *   `<title>`, the options of a closed select); an attribute that repeats a
+ *   name the page shows in its own direction is that name. Text only a screen
+ *   reader reads does not (an `aria-label`, a visually hidden label, a live
+ *   region): it is English in every language, names inserted into it
+ *   included (`@codaco/app-i18n`'s README). Where it holds no translated or
+ *   entered text it is marked `lang="en"`; where it does, it cannot be.
  */
 export function auditArabicPage(
   options: ArabicPageAuditOptions = {},
@@ -213,7 +213,6 @@ export function auditArabicPage(
   // Text: Arabic marked as another language, and Latin left loose in the
   // Arabic interface.
   const names = new Set<string>();
-  const unseen: [Element, string][] = [];
   const reported = new Set<Element>();
   const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -240,13 +239,10 @@ export function auditArabicPage(
       names.add(text.trim());
       continue;
     }
-    // Text nobody sees laid out (a visually hidden heading, an option of a
-    // closed native select) has no direction to get wrong: it is read like an
-    // attribute, below.
-    if (!isDrawn(parent)) {
-      unseen.push([parent, text]);
-      continue;
-    }
+    // Text nobody sees laid out is text only a screen reader reads (a
+    // visually hidden label, a live region): English by rule, names inserted
+    // into it included.
+    if (!isDrawn(parent)) continue;
     const english = looseLatin(text);
     if (english.length > 0 && !reported.has(parent)) {
       reported.add(parent);
@@ -278,7 +274,16 @@ export function auditArabicPage(
       );
     }
   };
-  for (const [element, text] of unseen) read(element, 'hidden text', text);
+  // A native select draws its options itself, once it opens: each is judged
+  // like text, by its own language and direction (a language's own name
+  // carries its own `lang`).
+  for (const select of body.querySelectorAll('select')) {
+    if (select.closest(excluded) || !isRead(select)) continue;
+    for (const option of select.querySelectorAll('option')) {
+      if (!inArabic(option) || readsOnItsOwn(option)) continue;
+      read(option, 'an option', option.textContent ?? '');
+    }
+  }
   for (const element of body.querySelectorAll('*')) {
     if (element.closest(excluded) || !isRead(element)) continue;
     if (!inArabic(element)) continue;

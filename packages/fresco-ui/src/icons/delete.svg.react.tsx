@@ -5,6 +5,8 @@ import type { SVGProps } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { isDecorativeIcon } from './isDecorativeIcon';
+
 const messages = defineMessages({
   title: {
     id: 'frescoUi.icon.delete',
@@ -17,7 +19,9 @@ export default function Icon(props: SVGProps<SVGSVGElement>) {
   const intl = useAppIntl();
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" {...props}>
-      <title>{intl.formatMessage(messages.title)}</title>
+      {isDecorativeIcon(props) ? null : (
+        <title>{intl.formatMessage(messages.title)}</title>
+      )}
       <path
         className="fill-platinum-dark"
         d="M.007 2.831L2.836.003l37.172 37.173-2.828 2.828z"

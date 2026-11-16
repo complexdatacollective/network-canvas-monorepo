@@ -5,6 +5,8 @@ import type { SVGProps } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { isDecorativeIcon } from './isDecorativeIcon';
+
 const messages = defineMessages({
   title: {
     id: 'frescoUi.icon.menuSociogram',
@@ -17,7 +19,9 @@ export default function Icon(props: SVGProps<SVGSVGElement>) {
   const intl = useAppIntl();
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70" {...props}>
-      <title>{intl.formatMessage(messages.title)}</title>
+      {isDecorativeIcon(props) ? null : (
+        <title>{intl.formatMessage(messages.title)}</title>
+      )}
       <path
         fill="var(--icon-tone-primary, oklch(var(--platinum--dark)))"
         d="M18.741 42.178l14.996-23.004 2.514 1.638-14.996 23.004z"
