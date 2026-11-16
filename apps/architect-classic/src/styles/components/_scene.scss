@@ -98,14 +98,6 @@
     z-index: 2;
   }
 
-  &__recent-protocols {
-    display: flex;
-    opacity: 1;
-    visibility: visible;
-    z-index: 2;
-    margin: 0 auto;
-  }
-
   &__protocol {
     flex: 1 1 auto;
     overflow-y: scroll;
