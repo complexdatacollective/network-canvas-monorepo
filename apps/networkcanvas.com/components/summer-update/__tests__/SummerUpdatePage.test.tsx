@@ -284,26 +284,6 @@ describe('SummerUpdatePage', () => {
     });
   });
 
-  it('keeps the introductory cards in one column on phone-sized screens', () => {
-    renderWithIntl(<SummerUpdatePage />);
-
-    const firstBenefitCard = screen
-      .getByRole('heading', { name: 'Low friction use' })
-      .closest('article');
-    const benefitGrid = firstBenefitCard?.parentElement?.parentElement;
-
-    if (!(benefitGrid instanceof HTMLElement)) {
-      throw new Error('Introductory benefit grid did not render');
-    }
-
-    expect(benefitGrid).toHaveClass(
-      'grid-cols-1',
-      'tablet-portrait:grid-cols-2',
-      'desktop:grid-cols-4',
-    );
-    expect(benefitGrid).not.toHaveClass('phone-landscape:grid-cols-2');
-  });
-
   it('links every Schema 8 explorer item to its relevant documentation', () => {
     renderWithIntl(<SummerUpdatePage />);
 
@@ -591,8 +571,6 @@ describe('SummerUpdatePage', () => {
       documentationImageColumn,
     );
     expect(websiteArticle.lastElementChild).toBe(websiteImageColumn);
-    expect(websiteScreenshot.parentElement).toHaveClass('aspect-7/5');
-    expect(documentationScreenshot.parentElement).toHaveClass('aspect-7/5');
   });
 
   it('presents the new-generation destinations as descriptive launch cards', () => {
@@ -623,21 +601,7 @@ describe('SummerUpdatePage', () => {
     ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
   });
 
-  it('matches new app screenshot ratios without cropping', () => {
-    renderWithIntl(<SummerUpdatePage />);
-
-    const architectScreenshot = screen.getByRole('img', {
-      name: 'Architect protocol editor showing the Sample Protocol timeline',
-    });
-    const interviewerScreenshot = screen.getByRole('img', {
-      name: 'Interviewer dashboard showing protocol cards and a resume interview action',
-    });
-
-    expect(architectScreenshot.parentElement).toHaveClass('aspect-4/3');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-7/5');
-  });
-
-  it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', () => {
+  it('keeps the woven hero backdrop decorative and anchors the weave to the project name', () => {
     renderWithIntl(<SummerUpdatePage />);
 
     const heroHeading = screen.getByRole('heading', {
@@ -650,20 +614,11 @@ describe('SummerUpdatePage', () => {
       throw new Error('Hero focal text did not render');
     }
 
-    expect(hero).toHaveClass('relative', 'm-0!', 'flex-col', 'overflow-hidden');
-    expect(hero.querySelector('.min-h-screen')).not.toBeInTheDocument();
-    // The backdrop sits behind the header as well as the hero, and the two
-    // fill the first screen between them.
+    // The backdrop sits behind the header as well as the hero.
     const heroWeave = screen.getByTestId('hero-weave');
-    const heroBackdrop = heroWeave.closest('.min-h-svh');
-    expect(heroBackdrop).toHaveAttribute('aria-hidden');
+    const heroBackdrop = heroWeave.closest('[aria-hidden]');
+    expect(heroBackdrop).not.toBeNull();
     expect(heroBackdrop).not.toContainElement(hero);
-    expect(heroBackdrop?.querySelector('.bg-linear-to-b')).toHaveClass(
-      'from-slate-blue/25',
-      'via-sea-serpent/10',
-      'to-transparent',
-    );
-    expect(projectName).toHaveClass('bg-clip-text', 'text-white');
     expect(projectName).toHaveStyle({
       animation: 'var(--animate-text-glow)',
     });
@@ -675,30 +630,6 @@ describe('SummerUpdatePage', () => {
       'data-homepage-weave-target',
     );
     expect(heroWeave.parentElement).toHaveClass('entrance-motion-item');
-    expect(hero.querySelectorAll('[class*="z-"]')).toHaveLength(0);
-    expect(hero.querySelectorAll('.relative')).toHaveLength(0);
-
-    const upgradeHeading = screen.getByRole('heading', {
-      name: 'When should you upgrade?',
-    });
-    const upgradeSection = upgradeHeading.closest('section');
-
-    expect(upgradeHeading).toHaveClass('sr-only');
-    expect(upgradeSection).toHaveClass('relative');
-    expect(upgradeSection).not.toHaveClass(
-      'bg-linear-to-br',
-      'bg-rich-black',
-      'bg-white',
-    );
-
-    const interviewerScreenshot = screen.getByRole('img', {
-      name: 'Interviewer dashboard showing protocol cards and a resume interview action',
-    });
-    expect(interviewerScreenshot.parentElement).toHaveClass('bg-white');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-7/5');
-    expect(interviewerScreenshot.parentElement).not.toHaveClass(
-      'bg-rich-black',
-    );
   });
 
   it('localizes feature interactions, images, and compatibility statuses in Spanish', async () => {

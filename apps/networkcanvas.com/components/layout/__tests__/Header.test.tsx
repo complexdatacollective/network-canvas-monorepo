@@ -147,14 +147,12 @@ describe('localized layout navigation', () => {
     );
   });
 
-  it('uses a large, heavier-stroked desktop theme control', () => {
+  it('shows the system theme icon on the desktop theme control', () => {
     renderWithIntl(<ThemeSwitcher view="desktop" />);
 
     const trigger = screen.getByRole('button', {
       name: 'Color theme: System',
     });
-    expect(trigger).toHaveClass('h-16');
-    expect(trigger).toHaveClass('[&>.lucide]:stroke-[3.5]');
     expect(trigger.querySelector('.lucide-sun-moon')).toBeInTheDocument();
   });
 

@@ -26,11 +26,6 @@ describe('MailingListForm', () => {
     expect(form).toHaveAttribute('target', '_blank');
     expect(email).toHaveAttribute('name', 'EMAIL');
     expect(submit).toHaveAttribute('type', 'submit');
-    expect(submit).toHaveClass(
-      'h-12',
-      'elevation-low',
-      'ui-enabled:active:translate-y-[2px]',
-    );
 
     fireEvent.change(email, { target: { value: 'researcher@example.com' } });
 

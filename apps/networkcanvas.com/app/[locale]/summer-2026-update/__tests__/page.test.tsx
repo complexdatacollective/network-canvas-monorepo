@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setRequestLocale } from 'next-intl/server';
+import { describe, expect, it, vi } from 'vitest';
 
 import SummerUpdateRoute, { generateMetadata } from '../page';
 
@@ -42,20 +42,23 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('~/components/summer-update/SummerUpdatePage', () => ({
-  SummerUpdatePage: () => <div>Localized summer update</div>,
+  SummerUpdatePage: () => null,
 }));
 
-afterEach(cleanup);
-
 describe('localized Summer 2026 update route', () => {
-  it('renders the announcement at the Spanish route', async () => {
-    const page = await SummerUpdateRoute({
-      params: Promise.resolve({ locale: 'es' }),
-    });
+  it('sets the request locale from the route', async () => {
+    await SummerUpdateRoute({ params: Promise.resolve({ locale: 'es' }) });
 
-    render(page);
+    expect(vi.mocked(setRequestLocale)).toHaveBeenCalledWith('es');
+  });
 
-    expect(screen.getByText('Localized summer update')).toBeInTheDocument();
+  it('returns not found for an unsupported locale', async () => {
+    await expect(
+      SummerUpdateRoute({ params: Promise.resolve({ locale: 'tlh' }) }),
+    ).rejects.toThrow('not found');
+    await expect(
+      generateMetadata({ params: Promise.resolve({ locale: 'tlh' }) }),
+    ).rejects.toThrow('not found');
   });
 
   it('generates localized Spanish metadata, canonical URL, and alternates', async () => {
@@ -85,8 +88,9 @@ describe('localized Summer 2026 update route', () => {
     });
   });
 
-  it('uses each supported locale in its canonical URL', async () => {
-    for (const locale of ['en-US', 'en-GB', 'es'] as const) {
+  it.each(['en-US', 'en-GB'] as const)(
+    'uses %s in its canonical URL',
+    async (locale) => {
       const metadata = await generateMetadata({
         params: Promise.resolve({ locale }),
       });
@@ -94,6 +98,6 @@ describe('localized Summer 2026 update route', () => {
       expect(metadata.alternates?.canonical).toBe(
         `https://networkcanvas.com/${locale}/summer-2026-update`,
       );
-    }
-  });
+    },
+  );
 });

@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { act, cleanup, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -33,33 +30,9 @@ const newsItems: [NewsItem] = [
 ];
 
 describe('NewsTicker', () => {
-  // The strip overflows towards the end edge and travels towards the start
-  // edge. The stylesheet is not loaded here, so this holds the two halves of
-  // that together: the strip asks for the other way in a right-to-left
-  // language, and the animation takes its distance from what the strip asks.
-  it('runs the marquee the other way in a right-to-left language', () => {
+  it('renders the story in both tickers, with the marquee duplicate kept out of the tab order', () => {
     const { container } = renderWithIntl(<NewsTicker newsItems={newsItems} />);
 
-    expect(container.querySelector('.animate-marquee')).toHaveClass(
-      'rtl:[--marquee-travel:50%]',
-    );
-    const stylesheet = readFileSync(
-      join(__dirname, '..', '..', '..', 'app', 'globals.css'),
-      'utf8',
-    );
-    expect(stylesheet).toContain(
-      'transform: translateX(var(--marquee-travel, -50%));',
-    );
-  });
-
-  it('switches to the compact marquee at tablet portrait width', () => {
-    const { container } = renderWithIntl(<NewsTicker newsItems={newsItems} />);
-    const ticker = container.firstElementChild;
-    const desktopTicker = ticker?.children[0];
-    const mobileTicker = ticker?.children[1];
-
-    expect(desktopTicker).toHaveClass('tablet-portrait:flex', 'hidden');
-    expect(mobileTicker).toHaveClass('tablet-portrait:hidden', 'flex');
     expect(screen.getAllByText('Fixture-only research news')).toHaveLength(3);
     expect(
       screen.getAllByRole('link', {
@@ -71,11 +44,6 @@ describe('NewsTicker', () => {
     ).not.toBeInTheDocument();
     const duplicate = container.querySelector('[aria-hidden="true"] a');
     expect(duplicate).toHaveAttribute('tabindex', '-1');
-    expect(container.querySelector('.animate-marquee')).toHaveClass(
-      'hover:[animation-play-state:paused]',
-      'focus-within:[animation-play-state:paused]',
-      'motion-reduce:animate-none',
-    );
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();

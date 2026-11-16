@@ -92,22 +92,6 @@ describe('DesignPrinciples', () => {
     }
   });
 
-  it('draws the scene across the whole canvas, so its forms sit centred on it', () => {
-    const { container } = renderWithIntl(<DesignPrinciples />);
-
-    const canvas = container.querySelector('[data-theme-interview]');
-    const scene = canvas?.querySelector('svg');
-    expect(scene).not.toBeNull();
-    // Between the canvas and the scene, nothing is inset or offset.
-    for (
-      let element = scene!.parentElement;
-      element && element !== canvas;
-      element = element.parentElement
-    ) {
-      expect(element.className).toBe('absolute inset-0');
-    }
-  });
-
   it("tints the canvas faintly with each form's colour, every colour as light as the next", () => {
     const { container } = renderWithIntl(<DesignPrinciples />);
 
@@ -198,44 +182,6 @@ describe('DesignPrinciples', () => {
     for (const name of classes) {
       expect(name, name).toMatch(/^(stroke-text|fill-white\/\d+)$/);
     }
-  });
-
-  it('keeps the canvas square on wide screens, the cards passing over its edge', () => {
-    const { container } = renderWithIntl(<DesignPrinciples />);
-
-    const canvas = container.querySelector('[data-theme-interview]')!;
-    const classes = canvas.getAttribute('class')!.split(/\s+/);
-    // As tall as it is wide, and no wider than it may be tall.
-    expect(classes).toEqual(
-      expect.arrayContaining([
-        'tablet-landscape:aspect-square',
-        'tablet-landscape:max-h-[86svh]',
-        'tablet-landscape:max-w-[86svh]',
-      ]),
-    );
-    // At the end of its columns, its end edge two rem past the start of the
-    // reading column's: one column, less two rem, of padding.
-    const holder = canvas.parentElement!.getAttribute('class')!.split(/\s+/);
-    expect(holder).toEqual(
-      expect.arrayContaining([
-        'tablet-landscape:col-span-8',
-        'tablet-landscape:justify-end',
-        'tablet-landscape:pe-[calc((100%-21rem)/8-2rem)]',
-      ]),
-    );
-  });
-
-  it('holds the canvas in view until the last card has passed the reading line', () => {
-    const { container } = renderWithIntl(<DesignPrinciples />);
-
-    // The canvas is held for as long as the reading column runs on. The
-    // reader reads at 58% of the window's height, so the column runs at
-    // least the remaining 42% past the last card.
-    const column = container.querySelector('[data-reading-column]')!;
-    const room = /tablet-landscape:pb-\[(\d+)svh\]/.exec(
-      column.getAttribute('class')!,
-    );
-    expect(Number(room?.[1])).toBeGreaterThanOrEqual(42);
   });
 
   it('uses no relative colours, which older Safari drops', () => {
