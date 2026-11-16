@@ -362,7 +362,7 @@ describe('the participant sync handler’s recovery', () => {
 
     await expect(
       onSync('session-1', session('Ada'), SYNC),
-    ).rejects.toBeDefined();
+    ).rejects.toBeInstanceOf(SessionTakenOver);
     await onSync('session-1', session('Grace'), SYNC);
 
     expect(harness.calls).toHaveLength(1);
@@ -777,7 +777,7 @@ describe('the participant finish handler', () => {
     });
     const { onFinish, onNotice } = handlersFor();
 
-    await expect(onFinish('session-1', FINISH, signal)).rejects.toBeDefined();
+    await expect(onFinish('session-1', FINISH, signal)).rejects.toThrow('boom');
     expect(onNotice).not.toHaveBeenCalled();
   });
 });

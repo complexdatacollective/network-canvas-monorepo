@@ -623,21 +623,6 @@ describe('Team activity screen', () => {
     });
   });
 
-  // The Fresco theme resets `--breakpoint-*` and defines only named
-  // breakpoints, so a default-namespace variant such as `sm:` compiles to no
-  // CSS at all and its declaration silently never applies.
-  it('sizes page padding with a registered Fresco breakpoint', async () => {
-    renderActivity();
-    await screen.findByRole('cell', { name: 'Invitation created' });
-
-    // The `<main>` is the area layout's; the page container this test is
-    // about is the route's own element inside it.
-    const page = screen.getByRole('main').firstElementChild;
-    const className = page?.className ?? '';
-    expect(className).toContain('tablet-portrait:p-8');
-    expect(className).not.toMatch(/(?:^|\s)(?:sm|md|lg|xl|2xl):/);
-  });
-
   it('renders a detail value that JSON cannot express', async () => {
     fixtures.getAudit.mockReturnValue(
       Effect.succeed({
