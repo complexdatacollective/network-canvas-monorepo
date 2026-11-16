@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { FormFieldSchema, FormSchema } from '../common/forms.ts';
 import { panelSchema } from '../common/panels.ts';
@@ -409,10 +409,16 @@ describe('a scale attribute end label', () => {
 
   it.each(BLANK_TRANSLATIONS)('rejects a translation of %s', (_n, text) => {
     expect(
-      issueCodes(
+      parseIssues(
         VariableSchema.safeParse(scale({ en: 'Very close', fr: text })),
       ),
-    ).toEqual([{ path: 'parameters.maxLabel.fr', code: 'custom' }]);
+    ).toEqual([
+      {
+        path: 'parameters.maxLabel.fr',
+        code: 'custom',
+        message: 'Text cannot be blank.',
+      },
+    ]);
   });
 });
 
@@ -471,16 +477,23 @@ describe('option labels', () => {
     );
   });
 
+  const empty = { path: 'options.0.label.fr', code: 'too_small' };
+  const blank = {
+    path: 'options.0.label.fr',
+    code: 'custom',
+    message: 'Text cannot be blank.',
+  };
+
   it.each([
-    ['a Boolean choice', '', 'too_small', booleanVariable],
-    ['a Boolean choice', '   ', 'custom', booleanVariable],
-    ['a categorical option', '', 'too_small', categoricalVariable],
-    ['a categorical option', '   ', 'custom', categoricalVariable],
-    ['an ordinal option', '', 'too_small', ordinalVariable],
-    ['an ordinal option', '   ', 'custom', ordinalVariable],
-  ])('%s rejects the label %j', (_n, text, code, variable) => {
+    ['a Boolean choice', '', empty, booleanVariable],
+    ['a Boolean choice', '   ', blank, booleanVariable],
+    ['a categorical option', '', empty, categoricalVariable],
+    ['a categorical option', '   ', blank, categoricalVariable],
+    ['an ordinal option', '', empty, ordinalVariable],
+    ['an ordinal option', '   ', blank, ordinalVariable],
+  ])('%s rejects the label %j', (_n, text, issue, variable) => {
     expect(
-      issueCodes(VariableSchema.safeParse(variable({ en: 'Red', fr: text }))),
-    ).toEqual([{ path: 'options.0.label.fr', code }]);
+      parseIssues(VariableSchema.safeParse(variable({ en: 'Red', fr: text }))),
+    ).toEqual([issue]);
   });
 });

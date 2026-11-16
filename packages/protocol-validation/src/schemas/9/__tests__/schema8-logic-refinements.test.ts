@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
@@ -472,10 +472,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           }),
         ),
       );
-      expect(issueCodes(result)).toEqual([
+      expect(parseIssues(result)).toEqual([
         {
           path: 'codebook.ego.variables.when.parameters.before',
           code: 'custom',
+          message: 'RelativeDatePicker "before" must not be negative',
         },
       ]);
     });
@@ -505,10 +506,12 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           }),
         ),
       );
-      expect(issueCodes(result)).toEqual([
+      expect(parseIssues(result)).toEqual([
         {
           path: 'codebook.ego.variables.when.parameters.anchor',
           code: 'custom',
+          message:
+            'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
         },
       ]);
     });
@@ -525,10 +528,12 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           }),
         ),
       );
-      expect(issueCodes(result)).toEqual([
+      expect(parseIssues(result)).toEqual([
         {
           path: 'codebook.ego.variables.when.parameters.anchor',
           code: 'custom',
+          message:
+            'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
         },
       ]);
     });
@@ -594,26 +599,35 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           }),
         ),
       );
-      expect(belowFloor.success).toBe(false);
-      if (!belowFloor.success) {
-        expect(
-          belowFloor.error.issues.some((issue) =>
-            issue.message.includes('native date input starts at year 0001'),
-          ),
-        ).toBe(true);
-      }
+      expect(parseIssues(belowFloor)).toEqual([
+        {
+          path: 'codebook.ego.variables.when.parameters.anchor',
+          code: 'custom',
+          message:
+            'RelativeDatePicker anchor must use a year of 0001 or later — the native date input starts at year 0001',
+        },
+      ]);
 
       expect(
-        ProtocolSchemaV9.safeParse(
-          withFinishStage(
-            buildProtocolWithParams({
-              anchor: '0000-01-01',
-              before: 1,
-              after: 5,
-            }),
+        parseIssues(
+          ProtocolSchemaV9.safeParse(
+            withFinishStage(
+              buildProtocolWithParams({
+                anchor: '0000-01-01',
+                before: 1,
+                after: 5,
+              }),
+            ),
           ),
-        ).success,
-      ).toBe(false);
+        ),
+      ).toEqual([
+        {
+          path: 'codebook.ego.variables.when.parameters.anchor',
+          code: 'custom',
+          message:
+            'RelativeDatePicker anchor must use a year of 0001 or later — the native date input starts at year 0001',
+        },
+      ]);
     });
 
     // Contrast case, so the two floors introduced by different waves are
@@ -684,7 +698,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       };
 
       const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(issueCodes(result)).toEqual([
+      expect(parseIssues(result)).toEqual([
         {
           path: 'codebook.node.person.variables.rank.options',
           code: 'too_small',

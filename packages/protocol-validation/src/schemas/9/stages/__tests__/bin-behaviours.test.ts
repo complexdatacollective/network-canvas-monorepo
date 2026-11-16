@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { issueCodes } from '../../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import {
   stageWithSuppliedText,
   stageWithoutSuppliedText,
@@ -55,7 +55,7 @@ describe.each([
 
   it('refuses an unknown interaction mode', () => {
     expect(
-      issueCodes(
+      parseIssues(
         schema.safeParse({ ...stage, behaviours: { interactionMode: 'tap' } }),
       ),
     ).toEqual([{ path: 'behaviours.interactionMode', code: 'invalid_value' }]);
@@ -63,10 +63,12 @@ describe.each([
 
   it('refuses an unknown behaviour', () => {
     expect(
-      issueCodes(
+      parseIssues(
         schema.safeParse({ ...stage, behaviours: { requireAll: true } }),
       ),
-    ).toEqual([{ path: 'behaviours', code: 'unrecognized_keys' }]);
+    ).toEqual([
+      { path: 'behaviours', code: 'unrecognized_keys', keys: ['requireAll'] },
+    ]);
   });
 
   it('accepts the completion gate without its notice, which the interview words itself', () => {

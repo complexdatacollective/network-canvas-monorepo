@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { stageSchema } from '../stages/index.ts';
 import { networkComposerStage } from '../stages/network-composer.ts';
@@ -139,15 +139,20 @@ describe('networkComposerStage schema', () => {
       ...validStage,
       background: { image: 'assets/background.png', concentricCircles: 4 },
     });
-    expect(issueCodes(result)).toEqual([
-      { path: 'background.concentricCircles', code: 'custom' },
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'background.concentricCircles',
+        code: 'custom',
+        message:
+          'concentricCircles cannot be set when background has an image.',
+      },
     ]);
   });
 
   it('rejects a missing background', () => {
     const { background: _background, ...withoutBackground } = validStage;
     expect(
-      issueCodes(networkComposerStage.safeParse(withoutBackground)),
+      parseIssues(networkComposerStage.safeParse(withoutBackground)),
     ).toEqual([{ path: 'background', code: 'invalid_type' }]);
   });
 });
@@ -244,7 +249,7 @@ describe('ComposerFormFieldSchema', () => {
         ],
       },
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'nodeForm.fields.0.label.en', code: 'too_small' },
     ]);
   });
@@ -278,7 +283,7 @@ describe('ComposerFormFieldSchema', () => {
         ],
       },
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'nodeForm.fields.0.component', code: 'invalid_union' },
     ]);
   });
@@ -296,9 +301,13 @@ describe('ComposerFormFieldSchema', () => {
         ],
       },
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'nodeForm.fields.0.label', code: 'invalid_type' },
-      { path: 'nodeForm.fields.0', code: 'unrecognized_keys' },
+      {
+        path: 'nodeForm.fields.0',
+        code: 'unrecognized_keys',
+        keys: ['prompt'],
+      },
     ]);
   });
 
@@ -347,8 +356,13 @@ describe('ComposerFormFieldSchema', () => {
         ],
       },
     });
-    expect(issueCodes(result)).toEqual([
-      { path: 'nodeForm.fields.0.parameters.min', code: 'custom' },
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'nodeForm.fields.0.parameters.min',
+        code: 'custom',
+        message:
+          'DatePicker "min" must be a valid YYYY date matching the picker\'s resolution',
+      },
     ]);
   });
 
@@ -373,8 +387,12 @@ describe('ComposerFormFieldSchema', () => {
         },
       ],
     });
-    expect(issueCodes(result)).toEqual([
-      { path: 'edges.0.form.fields.0.parameters.before', code: 'custom' },
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'edges.0.form.fields.0.parameters.before',
+        code: 'custom',
+        message: 'RelativeDatePicker "before" must not be negative',
+      },
     ]);
   });
 

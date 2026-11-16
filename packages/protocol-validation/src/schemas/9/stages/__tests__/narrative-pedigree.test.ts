@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
-import { issueCodes } from '../../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
 import { labelCollisionIssues } from '../../../../localization/labelCollisions.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
@@ -161,7 +161,7 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       ...validNarrativePedigreeStageShape,
       diseases: [],
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'diseases', code: 'too_small' },
     ]);
   });
@@ -186,7 +186,13 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         },
       ],
     });
-    expect(issueCodes(result)).toEqual([{ path: 'diseases', code: 'custom' }]);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'diseases',
+        code: 'custom',
+        message: 'Diseases contain duplicate ID "dup"',
+      },
+    ]);
   });
 
   it('rejects two diseases mapped to the same attribute', () => {
@@ -250,7 +256,7 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         },
       ],
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'diseases.0.label.en', code: 'too_small' },
     ]);
   });
@@ -300,8 +306,8 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         },
       ],
     });
-    expect(issueCodes(result)).toEqual([
-      { path: '', code: 'unrecognized_keys' },
+    expect(parseIssues(result)).toEqual([
+      { path: '', code: 'unrecognized_keys', keys: ['presets'] },
     ]);
   });
 });

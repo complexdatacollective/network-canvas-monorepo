@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import {
   AMBIGUOUS_VARIANT_CONTAINERS,
@@ -144,10 +144,20 @@ describe('the exclusive-variant containers of a stage document', () => {
     };
 
     expect(
-      issueCodes(ProtocolSchemaV9.safeParse(withFinishStage(hybrid))),
+      parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(hybrid))),
     ).toEqual([
-      { path: 'stages.1.background.concentricCircles', code: 'custom' },
-      { path: 'stages.1.background.image', code: 'custom' },
+      {
+        path: 'stages.1.background.concentricCircles',
+        code: 'custom',
+        message:
+          'concentricCircles cannot be set when background has an image.',
+      },
+      {
+        path: 'stages.1.background.image',
+        code: 'custom',
+        message:
+          'Canvas background image "map.png" does not reference an asset in the manifest.',
+      },
     ]);
   });
 
@@ -181,9 +191,13 @@ describe('the exclusive-variant containers of a stage document', () => {
     };
 
     expect(
-      issueCodes(ProtocolSchemaV9.safeParse(withFinishStage(hybrid))),
+      parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(hybrid))),
     ).toEqual([
-      { path: 'stages.1.skipLogic.destination', code: 'unrecognized_keys' },
+      {
+        path: 'stages.1.skipLogic.destination',
+        code: 'unrecognized_keys',
+        keys: ['stageId'],
+      },
     ]);
   });
 });

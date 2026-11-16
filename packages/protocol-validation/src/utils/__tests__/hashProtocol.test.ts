@@ -24,6 +24,7 @@ describe('hashProtocol', () => {
       codebook: { node: { person: { variables: {} } } },
       stages: [{ id: 's1', type: 'Information' }],
     };
+    // Changing this literal means the hashes Fresco stored for imported protocols no longer match.
     expect(hashProtocol(protocol)).toBe(
       'x8bb7QfA5dPoa-2npRSbDEHILsCLMe7Kh7nnw2Kc0so',
     );

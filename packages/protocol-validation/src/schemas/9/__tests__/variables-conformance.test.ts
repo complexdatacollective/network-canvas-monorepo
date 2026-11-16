@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  issueCodes,
-  unionBranchIssueCodes,
+  parseIssues,
+  unionBranchIssues,
 } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import {
@@ -34,8 +34,12 @@ describe('variable schema conformance', () => {
           validation: { unique: true },
         },
       });
-      expect(issueCodes(result)).toEqual([
-        { path: 'egoId.validation.unique', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'egoId.validation.unique',
+          code: 'custom',
+          message: 'Ego attributes cannot use the "unique" validation',
+        },
       ]);
     });
 
@@ -74,8 +78,12 @@ describe('variable schema conformance', () => {
         ],
         validation: { minSelected: 1 },
       });
-      expect(issueCodes(result)).toEqual([
-        { path: 'validation', code: 'unrecognized_keys' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'validation',
+          code: 'unrecognized_keys',
+          keys: ['minSelected'],
+        },
       ]);
     });
 
@@ -90,8 +98,12 @@ describe('variable schema conformance', () => {
         ],
         validation: { maxSelected: 3 },
       });
-      expect(issueCodes(result)).toEqual([
-        { path: 'validation', code: 'unrecognized_keys' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'validation',
+          code: 'unrecognized_keys',
+          keys: ['maxSelected'],
+        },
       ]);
     });
 
@@ -135,7 +147,7 @@ describe('variable schema conformance', () => {
           { label: localized('Strong'), value: 'strong' },
         ],
       });
-      expect(unionBranchIssueCodes(result)).toContainEqual([
+      expect(unionBranchIssues(result)).toContainEqual([
         { path: 'options.0.value', code: 'invalid_union' },
       ]);
     });
@@ -150,7 +162,7 @@ describe('variable schema conformance', () => {
           { label: localized('Strong'), value: 'strong' },
         ],
       });
-      expect(unionBranchIssueCodes(result)).toContainEqual([
+      expect(unionBranchIssues(result)).toContainEqual([
         { path: 'options.0.value', code: 'invalid_union' },
       ]);
     });
@@ -177,7 +189,7 @@ describe('variable schema conformance', () => {
         component: 'CheckboxGroup',
         options: [{ label: localized('only'), value: 'only' }],
       });
-      expect(issueCodes(result)).toEqual([
+      expect(parseIssues(result)).toEqual([
         { path: 'options', code: 'too_small' },
       ]);
     });
@@ -189,7 +201,7 @@ describe('variable schema conformance', () => {
         component: 'CheckboxGroup',
         options: [],
       });
-      expect(issueCodes(result)).toEqual([
+      expect(parseIssues(result)).toEqual([
         { path: 'options', code: 'too_small' },
       ]);
     });
@@ -201,7 +213,7 @@ describe('variable schema conformance', () => {
         component: 'RadioGroup',
         options: [{ label: localized('only'), value: 'only' }],
       });
-      expect(issueCodes(result)).toEqual([
+      expect(parseIssues(result)).toEqual([
         { path: 'options', code: 'too_small' },
       ]);
     });
@@ -314,8 +326,12 @@ describe('variable schema conformance', () => {
           encrypted: true,
         },
       });
-      expect(issueCodes(result)).toEqual([
-        { path: 'count.encrypted', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'count.encrypted',
+          code: 'custom',
+          message: 'Only text attributes can be encrypted',
+        },
       ]);
     });
 
@@ -328,8 +344,12 @@ describe('variable schema conformance', () => {
           encrypted: true,
         },
       });
-      expect(issueCodes(result)).toEqual([
-        { path: 'when.encrypted', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'when.encrypted',
+          code: 'custom',
+          message: 'Only text attributes can be encrypted',
+        },
       ]);
     });
 
@@ -342,8 +362,12 @@ describe('variable schema conformance', () => {
           encrypted: true,
         },
       });
-      expect(issueCodes(result)).toEqual([
-        { path: 'egoSecret.encrypted', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'egoSecret.encrypted',
+          code: 'custom',
+          message: 'Ego attributes cannot be encrypted',
+        },
       ]);
     });
 
@@ -356,8 +380,12 @@ describe('variable schema conformance', () => {
           encrypted: true,
         },
       });
-      expect(issueCodes(result)).toEqual([
-        { path: 'edgeSecret.encrypted', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'edgeSecret.encrypted',
+          code: 'custom',
+          message: 'Edge attributes cannot be encrypted',
+        },
       ]);
     });
 
@@ -406,28 +434,46 @@ describe('variable schema conformance', () => {
 
     it('rejects a minValue', () => {
       expect(
-        issueCodes(
+        parseIssues(
           VariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
         ),
-      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
+      ).toEqual([
+        {
+          path: 'closeness.validation',
+          code: 'unrecognized_keys',
+          keys: ['minValue'],
+        },
+      ]);
     });
 
     it('rejects a maxValue', () => {
       expect(
-        issueCodes(
+        parseIssues(
           VariablesSchema.safeParse(scalarVariables({ maxValue: 10 })),
         ),
-      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
+      ).toEqual([
+        {
+          path: 'closeness.validation',
+          code: 'unrecognized_keys',
+          keys: ['maxValue'],
+        },
+      ]);
     });
 
     it('rejects a complete pair', () => {
       expect(
-        issueCodes(
+        parseIssues(
           VariablesSchema.safeParse(
             scalarVariables({ minValue: 2, maxValue: 10 }),
           ),
         ),
-      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
+      ).toEqual([
+        {
+          path: 'closeness.validation',
+          code: 'unrecognized_keys',
+          keys: ['minValue', 'maxValue'],
+        },
+      ]);
     });
 
     it('accepts requiredness and comparisons against another scalar', () => {
@@ -461,15 +507,27 @@ describe('variable schema conformance', () => {
 
     it('applies to edge and ego variables too', () => {
       expect(
-        issueCodes(
+        parseIssues(
           EdgeVariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
         ),
-      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
+      ).toEqual([
+        {
+          path: 'closeness.validation',
+          code: 'unrecognized_keys',
+          keys: ['minValue'],
+        },
+      ]);
       expect(
-        issueCodes(
+        parseIssues(
           EgoVariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
         ),
-      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
+      ).toEqual([
+        {
+          path: 'closeness.validation',
+          code: 'unrecognized_keys',
+          keys: ['minValue'],
+        },
+      ]);
     });
   });
   // Thirteenth-wave Finding 2: fresco-ui's BooleanField applies its Yes/No
@@ -521,11 +579,25 @@ describe('variable schema conformance', () => {
 
     it('applies to edge and ego variables too', () => {
       expect(
-        issueCodes(EdgeVariablesSchema.safeParse(booleanVariable([]))),
-      ).toEqual([{ path: 'isClose.options', code: 'custom' }]);
+        parseIssues(EdgeVariablesSchema.safeParse(booleanVariable([]))),
+      ).toEqual([
+        {
+          path: 'isClose.options',
+          code: 'custom',
+          message:
+            'Boolean options must offer at least one choice when component is "Boolean"',
+        },
+      ]);
       expect(
-        issueCodes(EgoVariablesSchema.safeParse(booleanVariable([]))),
-      ).toEqual([{ path: 'isClose.options', code: 'custom' }]);
+        parseIssues(EgoVariablesSchema.safeParse(booleanVariable([]))),
+      ).toEqual([
+        {
+          path: 'isClose.options',
+          code: 'custom',
+          message:
+            'Boolean options must offer at least one choice when component is "Boolean"',
+        },
+      ]);
     });
 
     // Twenty-eighth-wave Finding 1: the empty-array rejection above only

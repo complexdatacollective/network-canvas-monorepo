@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import {
   createBaseProtocol,
@@ -2661,13 +2661,24 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(multiErrorProtocol),
       );
-      expect(issueCodes(result)).toEqual([
-        { path: 'stages.0.form.fields.0.variable', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.form.fields.0.variable',
+          code: 'custom',
+          message:
+            'The attribute "nonexistentVariable" does not exist in the codebook',
+        },
         {
           path: 'stages.0.prompts.0.additionalAttributes.0.variable',
           code: 'custom',
+          message:
+            'The attribute "anotherNonexistent" does not exist in the codebook',
         },
-        { path: 'stages.0.subject', code: 'custom' },
+        {
+          path: 'stages.0.subject',
+          code: 'custom',
+          message: 'Stage subject is not defined in the codebook',
+        },
       ]);
     });
   });
@@ -2766,7 +2777,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       (color) => {
         const protocol = createGeospatialProtocol({ color });
         const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-        expect(issueCodes(result)).toEqual([
+        expect(parseIssues(result)).toEqual([
           { path: 'stages.0.mapOptions.color', code: 'invalid_union' },
         ]);
       },
@@ -3107,7 +3118,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           }),
         ),
       );
-      expect(issueCodes(result)).toEqual([
+      expect(parseIssues(result)).toEqual([
         {
           path: 'stages.0.nodeConfiguration.genderIdentity.terms.0.words',
           code: 'invalid_value',

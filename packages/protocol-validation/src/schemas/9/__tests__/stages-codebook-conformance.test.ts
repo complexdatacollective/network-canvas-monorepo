@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { assetSchema } from '../assets/index.ts';
 import { CodebookSchema } from '../codebook/codebook.ts';
@@ -175,7 +175,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         },
       ],
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'background.image', code: 'too_small' },
     ]);
   });
@@ -213,7 +213,7 @@ describe('Geospatial targetFeatureProperty (#674)', () => {
       ...baseStage,
       mapOptions: { ...baseMapOptions, targetFeatureProperty: '' },
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'mapOptions.targetFeatureProperty', code: 'too_small' },
     ]);
   });
@@ -237,7 +237,7 @@ describe('apikey asset value (#674)', () => {
       type: 'apikey',
       value: '',
     });
-    expect(issueCodes(result)).toEqual([{ path: 'value', code: 'too_small' }]);
+    expect(parseIssues(result)).toEqual([{ path: 'value', code: 'too_small' }]);
   });
 });
 
@@ -262,7 +262,7 @@ describe('Information size and items (#676)', () => {
       ...baseStage,
       items: [{ id: 'i1', type: 'asset', content: 'img-1', size: 'large' }],
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'items.0.size', code: 'invalid_value' },
     ]);
   });
@@ -272,7 +272,7 @@ describe('Information size and items (#676)', () => {
       ...baseStage,
       items: [{ id: 'i1', type: 'asset', content: 'img-1', size: 'XL' }],
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'items.0.size', code: 'invalid_value' },
     ]);
   });
@@ -289,8 +289,8 @@ describe('Information size and items (#676)', () => {
         },
       ],
     });
-    expect(issueCodes(result)).toEqual([
-      { path: 'items.0', code: 'unrecognized_keys' },
+    expect(parseIssues(result)).toEqual([
+      { path: 'items.0', code: 'unrecognized_keys', keys: ['size'] },
     ]);
   });
 
@@ -326,7 +326,7 @@ describe('Information item content non-empty', () => {
       ...baseStage,
       items: [{ id: 'i1', type: 'text', content: localized('') }],
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'items.0.content.en', code: 'too_small' },
     ]);
   });
@@ -336,7 +336,7 @@ describe('Information item content non-empty', () => {
       ...baseStage,
       items: [{ id: 'i1', type: 'asset', content: '' }],
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'items.0.content', code: 'too_small' },
     ]);
   });
@@ -369,7 +369,7 @@ describe('Anonymisation explanationText non-empty', () => {
 
   it('rejects an empty explanationText', () => {
     expect(
-      issueCodes(
+      parseIssues(
         anonymisationStage.safeParse({
           ...baseStage,
           explanationText: localized(''),
@@ -381,7 +381,7 @@ describe('Anonymisation explanationText non-empty', () => {
   // The heading is part of the text, so the title it replaced is refused.
   it('rejects the separate title and body schema 8 had', () => {
     expect(
-      issueCodes(
+      parseIssues(
         anonymisationStage.safeParse({
           ...baseStage,
           explanationText: {
@@ -391,8 +391,8 @@ describe('Anonymisation explanationText non-empty', () => {
         }),
       ),
     ).toEqual([
-      { path: 'explanationText.title', code: 'invalid_type' },
       { path: 'explanationText.body', code: 'invalid_type' },
+      { path: 'explanationText.title', code: 'invalid_type' },
     ]);
   });
 });
@@ -421,7 +421,7 @@ describe('Narrative preset label non-empty', () => {
       ...baseStage,
       presets: [{ id: 'preset1', label: localized(''), layoutVariable: 'pos' }],
     });
-    expect(issueCodes(result)).toEqual([
+    expect(parseIssues(result)).toEqual([
       { path: 'presets.0.label.en', code: 'too_small' },
     ]);
   });
@@ -445,8 +445,13 @@ describe('Narrative preset label non-empty', () => {
         { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
       ],
     });
-    expect(issueCodes(result)).toEqual([
-      { path: 'background.concentricCircles', code: 'custom' },
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'background.concentricCircles',
+        code: 'custom',
+        message:
+          'concentricCircles cannot be set when background has an image.',
+      },
     ]);
   });
 });
@@ -464,7 +469,9 @@ describe('Side panel title and dataSource non-empty', () => {
 
   it('rejects a panel with an empty title', () => {
     expect(
-      issueCodes(panelSchema.safeParse({ ...basePanel, title: localized('') })),
+      parseIssues(
+        panelSchema.safeParse({ ...basePanel, title: localized('') }),
+      ),
     ).toEqual([{ path: 'title.en', code: 'too_small' }]);
   });
 
@@ -509,7 +516,7 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
 
   it('rejects an empty dataSource', () => {
     expect(
-      issueCodes(
+      parseIssues(
         nameGeneratorRosterStage.safeParse({ ...baseStage, dataSource: '' }),
       ),
     ).toEqual([{ path: 'dataSource', code: 'too_small' }]);
@@ -526,7 +533,7 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
 
   it('rejects searchOptions with an empty matchProperties array', () => {
     expect(
-      issueCodes(
+      parseIssues(
         nameGeneratorRosterStage.safeParse({
           ...baseStage,
           searchOptions: { fuzziness: 0.5, matchProperties: [] },
@@ -618,7 +625,13 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
         },
       },
     });
-    expect(issueCodes(result)).toEqual([{ path: '', code: 'custom' }]);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: '',
+        code: 'custom',
+        message: 'Attribute record key "shared" is reused across entity types',
+      },
+    ]);
     expect(result.error?.issues[0]?.message).toContain(
       'is reused across entity types',
     );
@@ -645,7 +658,13 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
         },
       },
     });
-    expect(issueCodes(result)).toEqual([{ path: '', code: 'custom' }]);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: '',
+        code: 'custom',
+        message: 'Attribute record key "shared" is reused across entity types',
+      },
+    ]);
     expect(result.error?.issues[0]?.message).toContain(
       'is reused across entity types',
     );
@@ -679,11 +698,11 @@ describe('Empty-rules filter (#669)', () => {
 
   it('rejects a filter with an empty rules array', () => {
     const result = FilterSchema.safeParse({ rules: [] });
-    expect(issueCodes(result)).toEqual([{ path: 'rules', code: 'too_small' }]);
+    expect(parseIssues(result)).toEqual([{ path: 'rules', code: 'too_small' }]);
   });
 
   it('rejects a multiple-join filter with an empty rules array', () => {
     const result = FilterSchema.safeParse({ join: 'AND', rules: [] });
-    expect(issueCodes(result)).toEqual([{ path: 'rules', code: 'too_small' }]);
+    expect(parseIssues(result)).toEqual([{ path: 'rules', code: 'too_small' }]);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import {
   EdgeDefinitionSchema,
@@ -15,13 +15,26 @@ import {
 // becomes part of an export (a file name, a column), so each is held to
 // `CodebookNameSchema`: any script, but not empty, padded, non-NFC, or
 // carrying characters an export cannot write.
+const empty = { code: 'too_small' };
+const padded = {
+  code: 'custom',
+  message: 'A name cannot start or end with whitespace',
+};
+const nfc = {
+  code: 'custom',
+  message: 'A name must be in Unicode normalization form C (NFC)',
+};
+const control = {
+  code: 'custom',
+  message: 'A name cannot contain control characters, U+FFFE or U+FFFF',
+};
 const INVALID_NAMES = [
-  ['empty', ''],
-  ['only spaces', '   '],
-  ['padded', ' Person '],
-  ['not NFC', 'Café'],
-  ['a control character', 'Per\u0007son'],
-  ['a line break', 'Per\nson'],
+  ['empty', '', empty],
+  ['only spaces', '   ', padded],
+  ['padded', ' Person ', padded],
+  ['not NFC', 'Café', nfc],
+  ['a control character', 'Per\u0007son', control],
+  ['a line break', 'Per\nson', control],
 ] as const;
 
 const nodeType = (name: string) => ({
@@ -32,11 +45,6 @@ const nodeType = (name: string) => ({
 
 const edgeType = (name: string) => ({ name });
 
-const nameIssuePaths = (
-  schema: typeof NodeDefinitionSchema | typeof EdgeDefinitionSchema,
-  value: unknown,
-) => schema.safeParse(value).error?.issues.map(({ path }) => path) ?? [];
-
 describe.each([
   ['a node type', NodeDefinitionSchema, nodeType],
   ['an edge type', EdgeDefinitionSchema, edgeType],
@@ -46,24 +54,24 @@ describe.each([
     expect(schema.safeParse(entity('人')).success).toBe(true);
   });
 
-  it.each(INVALID_NAMES)('rejects a name that is %s', (_n, name) => {
-    expect(nameIssuePaths(schema, entity(name))).toContainEqual(['name']);
+  it.each(INVALID_NAMES)('rejects a name that is %s', (_n, name, issue) => {
+    expect(parseIssues(schema.safeParse(entity(name)))).toEqual([
+      { path: 'name', ...issue },
+    ]);
   });
 });
 
 describe('an attribute name', () => {
-  const issuePaths = (variable: unknown) =>
-    VariableSchema.safeParse(variable).error?.issues.map(({ path }) => path) ??
-    [];
-
   it('accepts a name in any script, with spaces', () => {
     expect(
       VariableSchema.safeParse({ name: 'Âge du parent', type: 'text' }).success,
     ).toBe(true);
   });
 
-  it.each(INVALID_NAMES)('rejects a name that is %s', (_n, name) => {
-    expect(issuePaths({ name, type: 'text' })).toContainEqual(['name']);
+  it.each(INVALID_NAMES)('rejects a name that is %s', (_n, name, issue) => {
+    expect(
+      parseIssues(VariableSchema.safeParse({ name, type: 'text' })),
+    ).toEqual([{ path: 'name', ...issue }]);
   });
 });
 
@@ -75,11 +83,14 @@ describe('an option value', () => {
     );
   });
 
-  it.each(INVALID_NAMES)('rejects a text value that is %s', (_n, value) => {
-    expect(issueCodes(categoricalOptionValueSchema.safeParse(value))).toEqual([
-      { path: '', code: value === '' ? 'too_small' : 'custom' },
-    ]);
-  });
+  it.each(INVALID_NAMES)(
+    'rejects a text value that is %s',
+    (_n, value, issue) => {
+      expect(
+        parseIssues(categoricalOptionValueSchema.safeParse(value)),
+      ).toEqual([{ path: '', ...issue }]);
+    },
+  );
 
   // What an option records cannot be known when its value is blank, so the
   // attribute is refused at that option rather than given a value.

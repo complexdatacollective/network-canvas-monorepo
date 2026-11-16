@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { issueCodes } from '../../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import {
   filterRuleSchema,
   FilterSchema,
@@ -160,7 +160,7 @@ describe('how the rules in a filter combine', () => {
 
   it('refuses a filter with no rules at all', () => {
     expect(
-      issueCodes(FilterSchema.safeParse({ join: 'AND', rules: [] })),
+      parseIssues(FilterSchema.safeParse({ join: 'AND', rules: [] })),
     ).toEqual([{ path: 'rules', code: 'too_small' }]);
   });
 });

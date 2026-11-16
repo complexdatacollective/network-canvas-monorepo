@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 
@@ -143,20 +143,27 @@ describe('Cross-reference conformance', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(rosterProtocol('imageAsset')),
       );
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(
-          result.error.issues.some((i) => i.message.includes('network')),
-        ).toBe(true);
-      }
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.dataSource',
+          code: 'custom',
+          message:
+            'Roster dataSource "imageAsset" must reference a \'network\' asset, but is of type "image".',
+        },
+      ]);
     });
 
     it("rejects dataSource of 'existing'", () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(rosterProtocol('existing')),
       );
-      expect(issueCodes(result)).toEqual([
-        { path: 'stages.0.dataSource', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.dataSource',
+          code: 'custom',
+          message:
+            'Roster dataSource "existing" does not reference an asset in the manifest.',
+        },
       ]);
     });
 
@@ -164,8 +171,13 @@ describe('Cross-reference conformance', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(rosterProtocol('missingId')),
       );
-      expect(issueCodes(result)).toEqual([
-        { path: 'stages.0.dataSource', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.dataSource',
+          code: 'custom',
+          message:
+            'Roster dataSource "missingId" does not reference an asset in the manifest.',
+        },
       ]);
     });
   });
@@ -248,8 +260,13 @@ describe('Cross-reference conformance', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(geoProtocol({ tokenAssetId: 'missing' })),
       );
-      expect(issueCodes(result)).toEqual([
-        { path: 'stages.0.mapOptions.tokenAssetId', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.mapOptions.tokenAssetId',
+          code: 'custom',
+          message:
+            'Geospatial tokenAssetId "missing" does not reference an asset in the manifest.',
+        },
       ]);
     });
 
@@ -257,8 +274,13 @@ describe('Cross-reference conformance', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(geoProtocol({ tokenAssetId: 'geoAsset' })),
       );
-      expect(issueCodes(result)).toEqual([
-        { path: 'stages.0.mapOptions.tokenAssetId', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.mapOptions.tokenAssetId',
+          code: 'custom',
+          message:
+            'Geospatial tokenAssetId "geoAsset" must reference an asset of type \'apikey\', but is of type "geojson".',
+        },
       ]);
     });
 
@@ -266,8 +288,13 @@ describe('Cross-reference conformance', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(geoProtocol({ dataSourceAssetId: 'missing' })),
       );
-      expect(issueCodes(result)).toEqual([
-        { path: 'stages.0.mapOptions.dataSourceAssetId', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.mapOptions.dataSourceAssetId',
+          code: 'custom',
+          message:
+            'Geospatial dataSourceAssetId "missing" does not reference an asset in the manifest.',
+        },
       ]);
     });
 
@@ -275,8 +302,13 @@ describe('Cross-reference conformance', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(geoProtocol({ dataSourceAssetId: 'tokenAsset' })),
       );
-      expect(issueCodes(result)).toEqual([
-        { path: 'stages.0.mapOptions.dataSourceAssetId', code: 'custom' },
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.mapOptions.dataSourceAssetId',
+          code: 'custom',
+          message:
+            'Geospatial dataSourceAssetId "tokenAsset" must reference an asset of type \'geojson\' or \'network\', but is of type "apikey".',
+        },
       ]);
     });
 

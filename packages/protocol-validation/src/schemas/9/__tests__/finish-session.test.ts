@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { withInterfaceText } from '../../../__tests__/suppliedWording.ts';
 import {
   migrateProtocol,
@@ -86,13 +86,13 @@ describe('FinishSession stage schema', () => {
 
   it('refuses an outcome outside the three kinds', () => {
     expect(
-      issueCodes(finishSessionStage.safeParse(finish('f', 'withdrawn'))),
+      parseIssues(finishSessionStage.safeParse(finish('f', 'withdrawn'))),
     ).toEqual([{ path: 'outcome', code: 'invalid_value' }]);
   });
 
   it('refuses a stage without an outcome', () => {
     const { outcome: _outcome, ...withoutOutcome } = finish();
-    expect(issueCodes(finishSessionStage.safeParse(withoutOutcome))).toEqual([
+    expect(parseIssues(finishSessionStage.safeParse(withoutOutcome))).toEqual([
       { path: 'outcome', code: 'invalid_value' },
     ]);
   });
@@ -105,11 +105,13 @@ describe('FinishSession stage schema', () => {
 
   it('refuses a stage without a mode, or with another one', () => {
     const { mode: _mode, ...withoutMode } = finish();
-    expect(issueCodes(finishSessionStage.safeParse(withoutMode))).toEqual([
+    expect(parseIssues(finishSessionStage.safeParse(withoutMode))).toEqual([
       { path: 'mode', code: 'invalid_value' },
     ]);
     expect(
-      issueCodes(finishSessionStage.safeParse({ ...finish(), mode: 'manual' })),
+      parseIssues(
+        finishSessionStage.safeParse({ ...finish(), mode: 'manual' }),
+      ),
     ).toEqual([{ path: 'mode', code: 'invalid_value' }]);
   });
 
@@ -117,7 +119,7 @@ describe('FinishSession stage schema', () => {
     'requires %s text',
     (field) => {
       expect(
-        issueCodes(
+        parseIssues(
           finishSessionStage.safeParse({ ...finish(), [field]: { en: '' } }),
         ),
       ).toEqual([{ path: `${field}.en`, code: 'too_small' }]);
@@ -126,7 +128,7 @@ describe('FinishSession stage schema', () => {
 
   it('refuses skip logic: every route ends at a finish stage', () => {
     expect(
-      issueCodes(
+      parseIssues(
         finishSessionStage.safeParse({
           ...finish(),
           skipLogic: { action: 'SKIP', filter: { rules: [] } },

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
-import { issueCodes } from '../../../__tests__/schemaIssues.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { escapeMessageText } from '../../../localization/messageSyntax.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { VersionedProtocolSchema } from '../../index.ts';
@@ -148,14 +148,14 @@ describe('ProtocolLocalizationSchema', () => {
 
   it('rejects keys it does not define', () => {
     expect(
-      issueCodes(
+      parseIssues(
         ProtocolLocalizationSchema.safeParse({
           defaultLocale: 'en',
           locales: ['en'],
           fallback: 'en',
         }),
       ),
-    ).toEqual([{ path: '', code: 'unrecognized_keys' }]);
+    ).toEqual([{ path: '', code: 'unrecognized_keys', keys: ['fallback'] }]);
   });
 });
 
@@ -188,7 +188,7 @@ describe('localizedString', () => {
   });
 
   it('rejects a plain string', () => {
-    expect(issueCodes(required.safeParse('Hello'))).toEqual([
+    expect(parseIssues(required.safeParse('Hello'))).toEqual([
       { path: '', code: 'invalid_type' },
     ]);
   });
@@ -327,12 +327,14 @@ describe('Information stage title', () => {
   // another language, and show a stage with no heading.
   it('rejects a translation that shows nothing', () => {
     expect(
-      issueCodes(
+      parseIssues(
         informationStageSchema.safeParse(
           stage({ en: 'Information', fr: '   ' }),
         ),
       ),
-    ).toEqual([{ path: 'title.fr', code: 'custom' }]);
+    ).toEqual([
+      { path: 'title.fr', code: 'custom', message: 'Text cannot be blank.' },
+    ]);
   });
 
   it('accepts a title in every language', () => {
@@ -407,21 +409,21 @@ describe('schema version boundary', () => {
 
   it('rejects plain-string copy in schema 9', () => {
     expect(
-      issueCodes(
+      parseIssues(
         ProtocolSchemaV9.safeParse(
           withFinishStage(schema9Protocol('Welcome', 'Hello')),
         ),
       ),
     ).toEqual([
+      { path: 'stages.0.items.0.content', code: 'invalid_type' },
       { path: 'stages.0.label', code: 'invalid_type' },
       { path: 'stages.0.title', code: 'invalid_type' },
-      { path: 'stages.0.items.0.content', code: 'invalid_type' },
-      { path: 'stages.1.label', code: 'invalid_type' },
       { path: 'stages.1.content', code: 'invalid_type' },
-      { path: 'stages.1.finishedContent', code: 'invalid_type' },
-      { path: 'stages.1.finishLabel', code: 'invalid_type' },
       { path: 'stages.1.finishConfirmation', code: 'invalid_type' },
+      { path: 'stages.1.finishedContent', code: 'invalid_type' },
       { path: 'stages.1.finishFailed', code: 'invalid_type' },
+      { path: 'stages.1.finishLabel', code: 'invalid_type' },
+      { path: 'stages.1.label', code: 'invalid_type' },
     ]);
   });
 
