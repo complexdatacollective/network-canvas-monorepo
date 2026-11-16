@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { issueCodes } from '../../__tests__/schemaIssues.ts';
 import migrationV1toV2 from '../../schemas/2/migration.ts';
 import migrationV2toV3 from '../../schemas/3/migration.ts';
 import migrationV4toV5 from '../../schemas/5/migration.ts';
@@ -234,7 +235,9 @@ describe('Protocol Migrations', () => {
         stages: [],
       };
       const result = VersionedProtocolSchema.safeParse(invalidDoc);
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'schemaVersion', code: 'invalid_union' },
+      ]);
     });
   });
 

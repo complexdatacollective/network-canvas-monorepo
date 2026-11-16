@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { issueCodes } from '../../../../__tests__/schemaIssues.ts';
 import {
   stageWithSuppliedText,
   stageWithoutSuppliedText,
@@ -38,21 +39,34 @@ describe.each([
   ['CategoricalBin', categoricalBinStage, categoricalBin],
 ] as const)('%s behaviours', (_type, schema, stage) => {
   it('accepts a stage with no behaviours, which keeps today’s behaviour', () => {
-    expect(schema.safeParse(stage).success).toBe(true);
+    const result = schema.safeParse(stage);
+    expect(result.success).toBe(true);
+    expect(result.data?.behaviours).toBeUndefined();
   });
 
-  it('accepts both interaction modes', () => {
-    for (const interactionMode of ['drag', 'select']) {
-      expect(
-        schema.safeParse({ ...stage, behaviours: { interactionMode } }).success,
-      ).toBe(true);
-    }
+  it.each(['drag', 'select'])('accepts interactionMode %s', (mode) => {
+    const result = schema.safeParse({
+      ...stage,
+      behaviours: { interactionMode: mode },
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.behaviours?.interactionMode).toBe(mode);
+  });
+
+  it('refuses an unknown interaction mode', () => {
+    expect(
+      issueCodes(
+        schema.safeParse({ ...stage, behaviours: { interactionMode: 'tap' } }),
+      ),
+    ).toEqual([{ path: 'behaviours.interactionMode', code: 'invalid_value' }]);
   });
 
   it('refuses an unknown behaviour', () => {
     expect(
-      schema.safeParse({ ...stage, behaviours: { requireAll: true } }).success,
-    ).toBe(false);
+      issueCodes(
+        schema.safeParse({ ...stage, behaviours: { requireAll: true } }),
+      ),
+    ).toEqual([{ path: 'behaviours', code: 'unrecognized_keys' }]);
   });
 
   it('accepts the completion gate without its notice, which the interview words itself', () => {

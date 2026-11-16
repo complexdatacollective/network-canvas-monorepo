@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  issueCodes,
+  unionBranchIssueCodes,
+} from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import {
   EdgeVariablesSchema,
@@ -30,7 +34,9 @@ describe('variable schema conformance', () => {
           validation: { unique: true },
         },
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'egoId.validation.unique', code: 'custom' },
+      ]);
     });
 
     it('accepts an ego variable without unique', () => {
@@ -68,7 +74,9 @@ describe('variable schema conformance', () => {
         ],
         validation: { minSelected: 1 },
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'validation', code: 'unrecognized_keys' },
+      ]);
     });
 
     it('rejects an ordinal variable declaring maxSelected', () => {
@@ -82,7 +90,9 @@ describe('variable schema conformance', () => {
         ],
         validation: { maxSelected: 3 },
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'validation', code: 'unrecognized_keys' },
+      ]);
     });
 
     it('still allows minSelected/maxSelected on a categorical variable', () => {
@@ -125,7 +135,9 @@ describe('variable schema conformance', () => {
           { label: localized('Strong'), value: 'strong' },
         ],
       });
-      expect(result.success).toBe(false);
+      expect(unionBranchIssueCodes(result)).toContainEqual([
+        { path: 'options.0.value', code: 'invalid_union' },
+      ]);
     });
 
     it('rejects an ordinal option with a boolean value', () => {
@@ -138,7 +150,9 @@ describe('variable schema conformance', () => {
           { label: localized('Strong'), value: 'strong' },
         ],
       });
-      expect(result.success).toBe(false);
+      expect(unionBranchIssueCodes(result)).toContainEqual([
+        { path: 'options.0.value', code: 'invalid_union' },
+      ]);
     });
 
     it('accepts string- and number-valued options', () => {
@@ -163,7 +177,9 @@ describe('variable schema conformance', () => {
         component: 'CheckboxGroup',
         options: [{ label: localized('only'), value: 'only' }],
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'options', code: 'too_small' },
+      ]);
     });
 
     it('rejects a categorical variable with zero options', () => {
@@ -173,7 +189,9 @@ describe('variable schema conformance', () => {
         component: 'CheckboxGroup',
         options: [],
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'options', code: 'too_small' },
+      ]);
     });
 
     it('rejects an ordinal variable with one option', () => {
@@ -183,7 +201,9 @@ describe('variable schema conformance', () => {
         component: 'RadioGroup',
         options: [{ label: localized('only'), value: 'only' }],
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'options', code: 'too_small' },
+      ]);
     });
 
     it('accepts a categorical variable with two options', () => {
@@ -294,7 +314,9 @@ describe('variable schema conformance', () => {
           encrypted: true,
         },
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'count.encrypted', code: 'custom' },
+      ]);
     });
 
     it('rejects encrypted on a node datetime variable', () => {
@@ -306,7 +328,9 @@ describe('variable schema conformance', () => {
           encrypted: true,
         },
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'when.encrypted', code: 'custom' },
+      ]);
     });
 
     it('rejects encrypted on an ego text variable', () => {
@@ -318,7 +342,9 @@ describe('variable schema conformance', () => {
           encrypted: true,
         },
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'egoSecret.encrypted', code: 'custom' },
+      ]);
     });
 
     it('rejects encrypted on an edge text variable', () => {
@@ -330,7 +356,9 @@ describe('variable schema conformance', () => {
           encrypted: true,
         },
       });
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'edgeSecret.encrypted', code: 'custom' },
+      ]);
     });
 
     it('accepts an edge text variable without encrypted', () => {
@@ -378,22 +406,28 @@ describe('variable schema conformance', () => {
 
     it('rejects a minValue', () => {
       expect(
-        VariablesSchema.safeParse(scalarVariables({ minValue: 10 })).success,
-      ).toBe(false);
+        issueCodes(
+          VariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
+        ),
+      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
     });
 
     it('rejects a maxValue', () => {
       expect(
-        VariablesSchema.safeParse(scalarVariables({ maxValue: 10 })).success,
-      ).toBe(false);
+        issueCodes(
+          VariablesSchema.safeParse(scalarVariables({ maxValue: 10 })),
+        ),
+      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
     });
 
     it('rejects a complete pair', () => {
       expect(
-        VariablesSchema.safeParse(
-          scalarVariables({ minValue: 2, maxValue: 10 }),
-        ).success,
-      ).toBe(false);
+        issueCodes(
+          VariablesSchema.safeParse(
+            scalarVariables({ minValue: 2, maxValue: 10 }),
+          ),
+        ),
+      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
     });
 
     it('accepts requiredness and comparisons against another scalar', () => {
@@ -427,12 +461,15 @@ describe('variable schema conformance', () => {
 
     it('applies to edge and ego variables too', () => {
       expect(
-        EdgeVariablesSchema.safeParse(scalarVariables({ minValue: 10 }))
-          .success,
-      ).toBe(false);
+        issueCodes(
+          EdgeVariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
+        ),
+      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
       expect(
-        EgoVariablesSchema.safeParse(scalarVariables({ minValue: 10 })).success,
-      ).toBe(false);
+        issueCodes(
+          EgoVariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
+        ),
+      ).toEqual([{ path: 'closeness.validation', code: 'unrecognized_keys' }]);
     });
   });
   // Thirteenth-wave Finding 2: fresco-ui's BooleanField applies its Yes/No
@@ -483,12 +520,12 @@ describe('variable schema conformance', () => {
     });
 
     it('applies to edge and ego variables too', () => {
-      expect(EdgeVariablesSchema.safeParse(booleanVariable([])).success).toBe(
-        false,
-      );
-      expect(EgoVariablesSchema.safeParse(booleanVariable([])).success).toBe(
-        false,
-      );
+      expect(
+        issueCodes(EdgeVariablesSchema.safeParse(booleanVariable([]))),
+      ).toEqual([{ path: 'isClose.options', code: 'custom' }]);
+      expect(
+        issueCodes(EgoVariablesSchema.safeParse(booleanVariable([]))),
+      ).toEqual([{ path: 'isClose.options', code: 'custom' }]);
     });
 
     // Twenty-eighth-wave Finding 1: the empty-array rejection above only

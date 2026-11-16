@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import {
   createBaseProtocol,
@@ -228,6 +229,8 @@ describe('form field variable uniqueness', () => {
         ],
       }),
     );
-    expect(result.success).toBe(false);
+    expect(issueCodes(result)).toEqual([
+      { path: 'stages.2.form.fields.1.variable', code: 'custom' },
+    ]);
   });
 });

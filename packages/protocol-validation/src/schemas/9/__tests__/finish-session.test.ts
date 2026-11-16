@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { withInterfaceText } from '../../../__tests__/suppliedWording.ts';
 import {
   migrateProtocol,
@@ -84,14 +85,16 @@ describe('FinishSession stage schema', () => {
   );
 
   it('refuses an outcome outside the three kinds', () => {
-    expect(finishSessionStage.safeParse(finish('f', 'withdrawn')).success).toBe(
-      false,
-    );
+    expect(
+      issueCodes(finishSessionStage.safeParse(finish('f', 'withdrawn'))),
+    ).toEqual([{ path: 'outcome', code: 'invalid_value' }]);
   });
 
   it('refuses a stage without an outcome', () => {
     const { outcome: _outcome, ...withoutOutcome } = finish();
-    expect(finishSessionStage.safeParse(withoutOutcome).success).toBe(false);
+    expect(issueCodes(finishSessionStage.safeParse(withoutOutcome))).toEqual([
+      { path: 'outcome', code: 'invalid_value' },
+    ]);
   });
 
   it.each(['confirmation', 'automatic'])('accepts the %s mode', (mode) => {
@@ -102,29 +105,34 @@ describe('FinishSession stage schema', () => {
 
   it('refuses a stage without a mode, or with another one', () => {
     const { mode: _mode, ...withoutMode } = finish();
-    expect(finishSessionStage.safeParse(withoutMode).success).toBe(false);
+    expect(issueCodes(finishSessionStage.safeParse(withoutMode))).toEqual([
+      { path: 'mode', code: 'invalid_value' },
+    ]);
     expect(
-      finishSessionStage.safeParse({ ...finish(), mode: 'manual' }).success,
-    ).toBe(false);
+      issueCodes(finishSessionStage.safeParse({ ...finish(), mode: 'manual' })),
+    ).toEqual([{ path: 'mode', code: 'invalid_value' }]);
   });
 
   it.each(['content', 'finishedContent'] as const)(
     'requires %s text',
     (field) => {
       expect(
-        finishSessionStage.safeParse({ ...finish(), [field]: { en: '' } })
-          .success,
-      ).toBe(false);
+        issueCodes(
+          finishSessionStage.safeParse({ ...finish(), [field]: { en: '' } }),
+        ),
+      ).toEqual([{ path: `${field}.en`, code: 'too_small' }]);
     },
   );
 
   it('refuses skip logic: every route ends at a finish stage', () => {
     expect(
-      finishSessionStage.safeParse({
-        ...finish(),
-        skipLogic: { action: 'SKIP', filter: { rules: [] } },
-      }).success,
-    ).toBe(false);
+      issueCodes(
+        finishSessionStage.safeParse({
+          ...finish(),
+          skipLogic: { action: 'SKIP', filter: { rules: [] } },
+        }),
+      ),
+    ).toEqual([{ path: 'skipLogic', code: 'invalid_type' }]);
   });
 });
 

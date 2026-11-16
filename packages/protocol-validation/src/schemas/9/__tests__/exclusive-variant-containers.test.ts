@@ -12,6 +12,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import {
   AMBIGUOUS_VARIANT_CONTAINERS,
@@ -142,9 +143,12 @@ describe('the exclusive-variant containers of a stage document', () => {
       ),
     };
 
-    expect(ProtocolSchemaV9.safeParse(withFinishStage(hybrid)).success).toBe(
-      false,
-    );
+    expect(
+      issueCodes(ProtocolSchemaV9.safeParse(withFinishStage(hybrid))),
+    ).toEqual([
+      { path: 'stages.1.background.concentricCircles', code: 'custom' },
+      { path: 'stages.1.background.image', code: 'custom' },
+    ]);
   });
 
   it('refuses a skip-logic destination carrying both variants', () => {
@@ -176,9 +180,11 @@ describe('the exclusive-variant containers of a stage document', () => {
       ),
     };
 
-    expect(ProtocolSchemaV9.safeParse(withFinishStage(hybrid)).success).toBe(
-      false,
-    );
+    expect(
+      issueCodes(ProtocolSchemaV9.safeParse(withFinishStage(hybrid))),
+    ).toEqual([
+      { path: 'stages.1.skipLogic.destination', code: 'unrecognized_keys' },
+    ]);
   });
 });
 

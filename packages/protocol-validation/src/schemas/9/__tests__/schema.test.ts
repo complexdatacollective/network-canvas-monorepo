@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
@@ -116,7 +117,9 @@ describe('Schema 9 attribute names', () => {
         protocolWithNames({ node: { name: '名前', age: '名前' } }),
       ),
     );
-    expect(result.success).toBe(false);
+    expect(issueCodes(result)).toEqual([
+      { path: 'codebook.node.person.variables', code: 'custom' },
+    ]);
   });
 
   it('keeps attribute record keys to the id alphabet', () => {
@@ -143,7 +146,12 @@ describe('Schema 9 attribute names', () => {
         },
       }),
     );
-    expect(result.success).toBe(false);
+    expect(issueCodes(result)).toEqual([
+      {
+        path: 'codebook.node.person.variables.nombre completo',
+        code: 'invalid_key',
+      },
+    ]);
   });
 });
 

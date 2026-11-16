@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 
@@ -154,14 +155,18 @@ describe('Cross-reference conformance', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(rosterProtocol('existing')),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'stages.0.dataSource', code: 'custom' },
+      ]);
     });
 
     it('rejects dataSource referencing a missing asset id', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(rosterProtocol('missingId')),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'stages.0.dataSource', code: 'custom' },
+      ]);
     });
   });
 
@@ -243,28 +248,36 @@ describe('Cross-reference conformance', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(geoProtocol({ tokenAssetId: 'missing' })),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'stages.0.mapOptions.tokenAssetId', code: 'custom' },
+      ]);
     });
 
     it('rejects tokenAssetId resolving to a non-apikey asset', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(geoProtocol({ tokenAssetId: 'geoAsset' })),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'stages.0.mapOptions.tokenAssetId', code: 'custom' },
+      ]);
     });
 
     it('rejects dataSourceAssetId that is missing from the manifest', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(geoProtocol({ dataSourceAssetId: 'missing' })),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'stages.0.mapOptions.dataSourceAssetId', code: 'custom' },
+      ]);
     });
 
     it('rejects dataSourceAssetId resolving to an apikey asset', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(geoProtocol({ dataSourceAssetId: 'tokenAsset' })),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        { path: 'stages.0.mapOptions.dataSourceAssetId', code: 'custom' },
+      ]);
     });
 
     it('rejects a geospatial prompt variable that is not type location', () => {

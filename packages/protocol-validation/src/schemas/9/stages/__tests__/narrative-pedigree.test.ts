@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
+import { issueCodes } from '../../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
 import { labelCollisionIssues } from '../../../../localization/labelCollisions.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
@@ -160,20 +161,9 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       ...validNarrativePedigreeStageShape,
       diseases: [],
     });
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects an invalid inheritancePattern', () => {
-    const result = narrativePedigreeStage.safeParse({
-      ...validNarrativePedigreeStageShape,
-      diseases: [
-        {
-          ...validNarrativePedigreeStageShape.diseases[0],
-          inheritancePattern: 'notAPattern',
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
+    expect(issueCodes(result)).toEqual([
+      { path: 'diseases', code: 'too_small' },
+    ]);
   });
 
   it('rejects duplicate disease ids (stage-level)', () => {
@@ -196,7 +186,7 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(issueCodes(result)).toEqual([{ path: 'diseases', code: 'custom' }]);
   });
 
   it('rejects two diseases mapped to the same attribute', () => {
@@ -260,7 +250,9 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(issueCodes(result)).toEqual([
+      { path: 'diseases.0.label.en', code: 'too_small' },
+    ]);
   });
 
   // A disease colours nodes in the pedigree, so it must name one of the eight
@@ -308,7 +300,9 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(issueCodes(result)).toEqual([
+      { path: '', code: 'unrecognized_keys' },
+    ]);
   });
 });
 

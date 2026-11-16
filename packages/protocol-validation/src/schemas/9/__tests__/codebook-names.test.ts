@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import {
   EdgeDefinitionSchema,
@@ -75,7 +76,9 @@ describe('an option value', () => {
   });
 
   it.each(INVALID_NAMES)('rejects a text value that is %s', (_n, value) => {
-    expect(categoricalOptionValueSchema.safeParse(value).success).toBe(false);
+    expect(issueCodes(categoricalOptionValueSchema.safeParse(value))).toEqual([
+      { path: '', code: value === '' ? 'too_small' : 'custom' },
+    ]);
   });
 
   // What an option records cannot be known when its value is blank, so the

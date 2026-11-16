@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { CURRENT_SCHEMA_VERSION, type Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
@@ -1541,7 +1542,9 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { codebook: { node: Record<string, { color: string }> } };
       expect(migratedRaw.codebook.node.person?.color).toBe('node-color-seq-11');
-      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(false);
+      expect(issueCodes(V8OutputSchema.safeParse(migratedRaw))).toEqual([
+        { path: 'codebook.node.person.color', code: 'invalid_value' },
+      ]);
     });
 
     it('leaves a colour that is not a palette position for the schema to reject', () => {

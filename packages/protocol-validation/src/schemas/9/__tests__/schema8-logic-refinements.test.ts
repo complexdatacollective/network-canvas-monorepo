@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
@@ -471,7 +472,12 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           }),
         ),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        {
+          path: 'codebook.ego.variables.when.parameters.before',
+          code: 'custom',
+        },
+      ]);
     });
 
     it('accepts before greater than after (independent opposite-direction offsets)', () => {
@@ -499,7 +505,12 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           }),
         ),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        {
+          path: 'codebook.ego.variables.when.parameters.anchor',
+          code: 'custom',
+        },
+      ]);
     });
 
     it('rejects an impossible calendar anchor date (e.g. 2020-02-31)', () => {
@@ -514,7 +525,12 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           }),
         ),
       );
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        {
+          path: 'codebook.ego.variables.when.parameters.anchor',
+          code: 'custom',
+        },
+      ]);
     });
 
     it('accepts a valid leap-day anchor (2020-02-29)', () => {
@@ -668,7 +684,12 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       };
 
       const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(result.success).toBe(false);
+      expect(issueCodes(result)).toEqual([
+        {
+          path: 'codebook.node.person.variables.rank.options',
+          code: 'too_small',
+        },
+      ]);
     });
   });
 

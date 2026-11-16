@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { issueCodes } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { FormFieldSchema, FormSchema } from '../common/forms.ts';
 import { panelSchema } from '../common/panels.ts';
@@ -408,8 +409,10 @@ describe('a scale attribute end label', () => {
 
   it.each(BLANK_TRANSLATIONS)('rejects a translation of %s', (_n, text) => {
     expect(
-      VariableSchema.safeParse(scale({ en: 'Very close', fr: text })).success,
-    ).toBe(false);
+      issueCodes(
+        VariableSchema.safeParse(scale({ en: 'Very close', fr: text })),
+      ),
+    ).toEqual([{ path: 'parameters.maxLabel.fr', code: 'custom' }]);
   });
 });
 
@@ -469,15 +472,15 @@ describe('option labels', () => {
   });
 
   it.each([
-    ['a Boolean choice', '', booleanVariable],
-    ['a Boolean choice', '   ', booleanVariable],
-    ['a categorical option', '', categoricalVariable],
-    ['a categorical option', '   ', categoricalVariable],
-    ['an ordinal option', '', ordinalVariable],
-    ['an ordinal option', '   ', ordinalVariable],
-  ])('%s rejects the label %j', (_n, text, variable) => {
+    ['a Boolean choice', '', 'too_small', booleanVariable],
+    ['a Boolean choice', '   ', 'custom', booleanVariable],
+    ['a categorical option', '', 'too_small', categoricalVariable],
+    ['a categorical option', '   ', 'custom', categoricalVariable],
+    ['an ordinal option', '', 'too_small', ordinalVariable],
+    ['an ordinal option', '   ', 'custom', ordinalVariable],
+  ])('%s rejects the label %j', (_n, text, code, variable) => {
     expect(
-      VariableSchema.safeParse(variable({ en: 'Red', fr: text })).success,
-    ).toBe(false);
+      issueCodes(VariableSchema.safeParse(variable({ en: 'Red', fr: text }))),
+    ).toEqual([{ path: 'options.0.label.fr', code }]);
   });
 });
