@@ -42,6 +42,8 @@ const UNTRANSLATED = [
 /** Interviewer's own words for the controls the walk uses. */
 const START_NEW_INTERVIEW = 'بدء مقابلة جديدة';
 const SETTINGS = 'الإعدادات';
+const FILTERS = 'عوامل التصفية';
+const PROTOCOL = 'البروتوكول';
 
 const CASE_ID = 'team-b!';
 
@@ -140,6 +142,16 @@ test('every screen of Interviewer reads right to left in Arabic', async ({
     page.getByRole('cell', { name: CASE_ID, exact: true }),
   ).toBeVisible();
   await audit(page, 'interview data');
+
+  // The filters, with the protocols to filter by.
+  await page.getByTestId('data-filter-trigger').click();
+  const filters = page.getByRole('dialog').filter({ hasText: FILTERS });
+  await expect(filters).toBeVisible();
+  await filters.getByRole('combobox').filter({ hasText: PROTOCOL }).click();
+  await expect(
+    page.getByRole('option', { name: LEAN_E2E_PROTOCOL_NAME }),
+  ).toBeVisible();
+  await audit(page, 'interview data: protocol filter');
 
   expect(errors).toEqual([]);
 });
