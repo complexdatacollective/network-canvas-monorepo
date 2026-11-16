@@ -40,8 +40,9 @@ function mothersOf(graph: GeneticGraph, id: string): AnnotatedParent[] {
  *   passes his single X to all daughters). His SONS get the Y → nothing.
  * - A female not recorded affected → `obligateCarrier` when the condition shows
  *   on TWO SIDES of her. A side is an affected son, the lines of her daughters
- *   by one father (daughters with no recorded father count as one group), or
- *   her genetic mother's family. A daughter's line is the daughter if affected
+ *   by one recorded father, or her genetic mother's family. Daughters with no
+ *   recorded father give a side only when no recorded father's daughters do,
+ *   since an unrecorded father may be one of the recorded ones. A daughter's line is the daughter if affected
  *   plus her children's lines. Her mother's family is the mother if affected,
  *   the mother's affected father, the lines of the mother's other children,
  *   and the mother's own mother's family in turn. A female on any of these
@@ -246,8 +247,9 @@ export function computeXLinkedRecessive(
   // Which side below `womanId` her child's line belongs to. Each son is his
   // own side. Daughters by one father share a side: a single event in him (a
   // germline mosaic, or an affected man not recorded as such) would explain
-  // all of their lines. Daughters with no recorded father share one side,
-  // since they may have one father.
+  // all of their lines. Daughters with no recorded father share the
+  // `noRecordedFather` key, since they may have one father.
+  const noRecordedFather = 'father:';
   const sideBelow = (childId: string, womanId: string): string => {
     if (resolveSex(childId) !== 'female') {
       return `child:${childId}`;
@@ -256,7 +258,7 @@ export function computeXLinkedRecessive(
       .parentsOf(childId)
       .filter((parent) => parent.id !== womanId && parent.sex === 'male')
       .map((parent) => parent.id);
-    return `father:${fathers.join(',')}`;
+    return `${noRecordedFather}${fathers.join(',')}`;
   };
 
   for (const womanId of graph.nodeIds()) {
@@ -272,6 +274,24 @@ export function computeXLinkedRecessive(
         side.add(id);
       }
       below.set(key, side);
+    }
+    // An unrecorded father may be one of the recorded fathers, so daughters
+    // with no recorded father add a side only when no recorded father's
+    // daughters give one. Otherwise their affected people join a recorded
+    // father's side rather than standing apart.
+    const unrecorded = below.get(noRecordedFather);
+    below.delete(noRecordedFather);
+    if (unrecorded && unrecorded.size > 0) {
+      const recordedSide = [...below.entries()].find(
+        ([key, side]) => key.startsWith(noRecordedFather) && side.size > 0,
+      )?.[1];
+      if (recordedSide) {
+        for (const id of unrecorded) {
+          recordedSide.add(id);
+        }
+      } else {
+        below.set(noRecordedFather, unrecorded);
+      }
     }
     const sides = [...below.values(), evidenceAbove(womanId, path)].filter(
       (side) => side.size > 0,
