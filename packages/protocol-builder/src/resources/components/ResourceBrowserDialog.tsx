@@ -200,6 +200,8 @@ function ResourceBrowserBody({
       if (!result.success) throw new Error(result.error);
       return result.notice;
     },
+    // Reads an image the host already holds, so it runs offline too.
+    networkMode: 'always',
   });
   const checkShape = shapeCheck.mutate;
 

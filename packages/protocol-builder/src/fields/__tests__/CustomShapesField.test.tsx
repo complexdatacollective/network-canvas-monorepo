@@ -1,8 +1,9 @@
+import { onlineManager } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Redacted } from 'effect';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { parseNodeShapeSvg } from '@codaco/fresco-ui/node/nodeShapeSvg';
@@ -181,6 +182,25 @@ describe('CustomShapesField', () => {
     );
     expect(await screen.findByLabelText(/Shape name/)).toHaveValue(
       'Stored home',
+    );
+  });
+
+  it('adds a stored image while the browser is offline', async () => {
+    const user = userEvent.setup();
+    const { values } = renderField();
+
+    const dialog = await openBrowser(user);
+    const stored = await within(dialog).findByRole('button', {
+      name: 'Stored home',
+    });
+    onTestFinished(() => onlineManager.setOnline(true));
+    onlineManager.setOnline(false);
+    await user.click(stored);
+
+    await waitFor(() =>
+      expect(Object.values(values.at(-1) ?? {})).toEqual([
+        { name: 'Stored home', asset: 'stored-home' },
+      ]),
     );
   });
 
