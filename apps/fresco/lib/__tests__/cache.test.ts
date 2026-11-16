@@ -14,53 +14,45 @@ vi.mock('next/cache', () => ({
 
 import { safeCacheTag, safeRevalidateTag, safeUpdateTag } from '../cache';
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 describe('safeUpdateTag', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should call updateTag for a single tag', () => {
+  it('calls updateTag once for a single tag and once per tag in an array', () => {
     safeUpdateTag('getInterviews');
-    expect(mockUpdateTag).toHaveBeenCalledWith('getInterviews');
-  });
+    safeUpdateTag(['getInterviews-abc', 'getParticipants']);
 
-  it('should call updateTag for each tag in an array', () => {
-    safeUpdateTag(['getInterviews', 'getParticipants']);
-    expect(mockUpdateTag).toHaveBeenCalledWith('getInterviews');
-    expect(mockUpdateTag).toHaveBeenCalledWith('getParticipants');
+    expect(mockUpdateTag.mock.calls).toEqual([
+      ['getInterviews'],
+      ['getInterviews-abc'],
+      ['getParticipants'],
+    ]);
   });
 });
 
 describe('safeRevalidateTag', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should call revalidateTag with max profile for a single tag', () => {
+  it('revalidates every tag with the max profile', () => {
     safeRevalidateTag('getInterviews');
-    expect(mockRevalidateTag).toHaveBeenCalledWith('getInterviews', 'max');
-  });
+    safeRevalidateTag(['getInterviews-abc', 'getParticipants']);
 
-  it('should call revalidateTag with max profile for each tag in an array', () => {
-    safeRevalidateTag(['getInterviews', 'getParticipants']);
-    expect(mockRevalidateTag).toHaveBeenCalledWith('getInterviews', 'max');
-    expect(mockRevalidateTag).toHaveBeenCalledWith('getParticipants', 'max');
+    expect(mockRevalidateTag.mock.calls).toEqual([
+      ['getInterviews', 'max'],
+      ['getInterviews-abc', 'max'],
+      ['getParticipants', 'max'],
+    ]);
   });
 });
 
 describe('safeCacheTag', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should call cacheTag for a single tag', () => {
+  it('calls cacheTag once for a single tag and once per tag in an array', () => {
     safeCacheTag('getInterviews');
-    expect(mockCacheTag).toHaveBeenCalledWith('getInterviews');
-  });
+    safeCacheTag(['getInterviews-abc', 'getParticipants']);
 
-  it('should call cacheTag for each tag in an array', () => {
-    safeCacheTag(['getInterviews', 'getParticipants']);
-    expect(mockCacheTag).toHaveBeenCalledWith('getInterviews');
-    expect(mockCacheTag).toHaveBeenCalledWith('getParticipants');
+    expect(mockCacheTag.mock.calls).toEqual([
+      ['getInterviews'],
+      ['getInterviews-abc'],
+      ['getParticipants'],
+    ]);
   });
 });

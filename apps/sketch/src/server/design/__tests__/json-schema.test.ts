@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { CritiqueSchema } from '../critique.ts';
 import {
   countOptional,
   countUnions,
@@ -28,6 +29,7 @@ const SCHEMAS = [
   ['StudyDesign', StudyDesignSchema],
   ['Wording', WordingSchema],
   ['Screening', ScreeningSchema],
+  ['Critique', CritiqueSchema],
 ] as const;
 
 describe('provider JSON Schemas', () => {
@@ -53,13 +55,13 @@ describe('provider JSON Schemas', () => {
     expect(schemaStats(toProviderJsonSchema(StudyDesignSchema))).toEqual({
       unions: 1,
       optional: 0,
-      properties: 158,
-      objects: 27,
+      properties: 190,
+      objects: 32,
       enums: expect.any(Number),
       maxEnum: 14,
-      anyOfBranches: 11,
+      anyOfBranches: 13,
       maxObjectDepth: 2,
-      bytes: 29_882,
+      bytes: 37_305,
     });
     expect(
       Object.keys(toProviderJsonSchema(StudyDesignSchema).$defs as object),
@@ -82,15 +84,16 @@ describe('provider JSON Schemas', () => {
       ),
     ).toMatchInlineSnapshot(`
       {
+        "Critique": "475a5bd6245b6f427d50fe86316d7223fd7d196a8e067b05aaec70585d58d9d0",
         "Screening": "b26b714997904503f942e3f7fa6302138337122472bc36eca22e938ef00df3a3",
-        "StudyDesign": "ba7ec83389dd3f46fe98e9a4af65f61a553e29dc88b06029b9a496a4a11858f9",
+        "StudyDesign": "cc7886f6d7e878c0b386d5cd66acbc1528d6bf55999797fdea8a185f371d5b82",
         "Wording": "4b760d7df90de94c5d6d013446340d1cc734f57ca66840b8a4b00495a484d24d",
       }
     `);
     expect(
       sha256(toProviderJsonSchema(StudyDesignSchema, { defs: false })),
     ).toMatchInlineSnapshot(
-      `"2d52f8d54f0565defb48488772deec82d188684b7c3e67c5f25aeb8be20b7d2a"`,
+      `"3848238f807cf99e0b044155ea8c6d855fbb0a68ad4a1969bcf84305398ee657"`,
     );
   });
 });

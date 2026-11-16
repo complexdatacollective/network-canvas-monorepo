@@ -470,7 +470,10 @@ function EdgeChip({
       style={chipStyle}
     >
       <Icon name="links" className="me-2.5 size-6" style={iconStyle} />
-      {label}
+      {/* The researcher's name for the type reads in its own direction. */}
+      <span dir="auto" className="text-match-parent">
+        {label}
+      </span>
     </span>
   );
 }

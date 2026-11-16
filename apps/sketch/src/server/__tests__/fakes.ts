@@ -51,12 +51,14 @@ export const scriptedAdapter = (scripts: {
   screening?: Script[];
   study_design?: Script[];
   wording?: Script[];
+  critique?: Script[];
 }) => {
   const requests: StructuredRequest[] = [];
   const queues: Record<string, Script[]> = {
     screening: [...(scripts.screening ?? [])],
     study_design: [...(scripts.study_design ?? [])],
     wording: [...(scripts.wording ?? [])],
+    critique: [...(scripts.critique ?? [])],
   };
   const adapter: ProviderAdapter = {
     provider: 'anthropic',

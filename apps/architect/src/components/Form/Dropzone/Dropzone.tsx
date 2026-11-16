@@ -309,7 +309,11 @@ const Dropzone = ({
         aria-describedby={state.error ? errorId : undefined}
         className={dropzoneVariants({ state: dropzoneState, class: className })}
       >
-        <input {...getInputProps()} />
+        {/* The file chooser the button above opens. The button is the control
+            a person reaches and hears, so this is hidden from both, as it is on
+            the start screen; otherwise it is a second control named by
+            react-dropzone's own English "file upload". */}
+        <input {...getInputProps()} aria-hidden="true" tabIndex={-1} />
         <div
           className={cx(
             'absolute inset-0 z-1 bg-transparent transition-[background-color] duration-150 ease-in-out',

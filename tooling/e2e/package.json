@@ -10,6 +10,7 @@
   "exports": {
     "./accessible-name-audit": "./src/accessible-name-audit.ts",
     "./announcements": "./src/announcements.ts",
+    "./arabic-page-audit": "./src/arabic-page-audit.ts",
     "./direction-audit": "./src/direction-audit.ts"
   },
   "scripts": {

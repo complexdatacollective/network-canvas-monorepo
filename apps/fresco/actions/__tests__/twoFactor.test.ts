@@ -1,4 +1,4 @@
-import { formatActionError } from './formatActionError';
+import { formErrorMessages } from './formatActionError';
 vi.mock('~/i18n/server', async () => {
   const { createAppIntl } = await import('@codaco/app-i18n/messages');
   return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
@@ -186,12 +186,8 @@ describe('verifyTwoFactor', () => {
 
       const result = await verifyTwoFactor({ twoFactorToken: '', code: '' });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Invalid submission',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual(['Invalid submission']);
+      expect(mockVerifyTwoFactorToken).not.toHaveBeenCalled();
     });
   });
 
@@ -208,12 +204,11 @@ describe('verifyTwoFactor', () => {
         code: VALID_TOTP_CODE,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Two-factor session expired. Please sign in again.',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Two-factor session expired. Please sign in again.',
+      ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 
@@ -237,12 +232,11 @@ describe('verifyTwoFactor', () => {
         code: VALID_TOTP_CODE,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Too many attempts. Please sign in again.',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Too many attempts. Please sign in again.',
+      ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 
@@ -263,12 +257,11 @@ describe('verifyTwoFactor', () => {
         code: VALID_TOTP_CODE,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Two-factor authentication is not configured',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Two-factor authentication is not configured',
+      ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 
@@ -320,12 +313,8 @@ describe('verifyTwoFactor', () => {
         code: '000000',
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Invalid verification code',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual(['Invalid verification code']);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
 
     it('records a failed login attempt when TOTP code is invalid', async () => {
@@ -419,12 +408,8 @@ describe('verifyTwoFactor', () => {
         code: VALID_RECOVERY_CODE,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Invalid recovery code',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual(['Invalid recovery code']);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
 
     it('records a failed login attempt when recovery code is invalid', async () => {
@@ -480,12 +465,8 @@ describe('verifyTwoFactor', () => {
         code: badCode,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Invalid code format',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual(['Invalid code format']);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
       expect(mockRecordLoginAttempt).toHaveBeenCalledWith(
         VALID_USERNAME,
         VALID_IP,

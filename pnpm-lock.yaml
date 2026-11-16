@@ -693,9 +693,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.5(@vitest/browser@5.0.5)(vitest@5.0.5)
-      animejs:
-        specifier: ^4.4.1
-        version: 4.4.1
       autoprefixer:
         specifier: ^10.6.1
         version: 10.6.1(postcss@8.5.31)
@@ -10159,9 +10156,6 @@ packages:
 
   animejs@2.2.0:
     resolution: {integrity: sha512-suPqfRapTDhrfwxg1El8LlGz6qVGwoandR2uRQLQBxXavxkpIr9Uv2kNGrJIF7oa001jSxS5rRIXPHryKIshJg==}
-
-  animejs@4.4.1:
-    resolution: {integrity: sha512-XimhJw4vPb6tAd6Zaoa6BaspJ8UteQMKvL7Pvrt6MW/6u2UvJs0TB/LLqR1sigaiYvpVPC3Tokr9emcCMhWFhw==}
 
   ansi-escapes@3.2.0:
     resolution: {integrity: sha512-cBhpre4ma+U0T1oM5fXg7Dy1Jw7zzwv7lt/GoCpr+hDQJoYnKVPLL4dCvSEFMmQurOQvSrwT7SL/DAlhBI97RQ==}
@@ -24880,8 +24874,6 @@ snapshots:
       '@algolia/requester-node-http': 5.40.1
 
   animejs@2.2.0: {}
-
-  animejs@4.4.1: {}
 
   ansi-escapes@3.2.0: {}
 

@@ -5,13 +5,13 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { frescoLocales } from '~/i18n/locales';
 import { frescoCatalogSource } from '~/src/locales/catalogs';
 
-const { mockPush, mockStartTwoFactorSetup, mockUseTwoFactorSetup } = vi.hoisted(
-  () => ({
+const { mockLogout, mockPush, mockStartTwoFactorSetup, mockUseTwoFactorSetup } =
+  vi.hoisted(() => ({
+    mockLogout: vi.fn(),
     mockPush: vi.fn(),
     mockStartTwoFactorSetup: vi.fn(),
     mockUseTwoFactorSetup: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: vi.fn() }),
@@ -21,7 +21,7 @@ vi.mock('~/components/TwoFactorSetup', () => ({
   useTwoFactorSetup: mockUseTwoFactorSetup,
 }));
 
-vi.mock('~/actions/auth', () => ({ logout: vi.fn() }));
+vi.mock('~/actions/auth', () => ({ logout: mockLogout }));
 
 import TwoFactorSetupPrompt from '../TwoFactorSetupPrompt';
 
@@ -72,10 +72,13 @@ describe('TwoFactorSetupPrompt', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it('offers a way to sign out instead', () => {
+  it('offers a way to sign out instead', async () => {
     render(view('en'));
 
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    await waitFor(() => expect(mockLogout).toHaveBeenCalledOnce());
+    expect(mockStartTwoFactorSetup).not.toHaveBeenCalled();
   });
 
   it('renders the Spanish prompt', () => {

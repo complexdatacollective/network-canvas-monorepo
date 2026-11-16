@@ -15,6 +15,4 @@ BackgroundImage.defaultProps = {
   style: {},
 };
 
-export { BackgroundImage };
-
 export default injectAssetUrl(BackgroundImage);

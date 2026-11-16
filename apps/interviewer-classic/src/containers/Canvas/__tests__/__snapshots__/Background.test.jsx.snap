@@ -1,5 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`<SociogramBackground /> > renders ok for image 1`] = `ShallowWrapper {}`;
-
-exports[`<SociogramBackground /> > renders ok for radar 1`] = `ShallowWrapper {}`;

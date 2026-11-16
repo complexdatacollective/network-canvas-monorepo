@@ -775,7 +775,8 @@
           ]
         },
         "destination": {
-          "type": "finish"
+          "type": "stage",
+          "stageId": "consent_declined"
         }
       }
     },
@@ -1504,6 +1505,21 @@
         "en": "# Interview Finished\n\nThank you for participating!"
       },
       "outcome": "completed"
+    },
+    {
+      "id": "consent_declined",
+      "type": "FinishSession",
+      "mode": "automatic",
+      "label": {
+        "en": "Consent declined"
+      },
+      "content": {
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "finishedContent": {
+        "en": "# Thank you\n\nYou chose not to take part, so the interview has ended. Nothing more will be asked."
+      },
+      "outcome": "ineligible"
     }
   ]
 }
