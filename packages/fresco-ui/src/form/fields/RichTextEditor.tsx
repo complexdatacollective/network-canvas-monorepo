@@ -26,6 +26,7 @@ import {
   Slice,
 } from '@tiptap/pm/model';
 import { Plugin, PluginKey, Selection } from '@tiptap/pm/state';
+import type { EditorView } from '@tiptap/pm/view';
 import {
   EditorContent,
   type JSONContent,
@@ -70,6 +71,7 @@ import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
+import Surface from '../../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import {
   presentationalTextProps,
@@ -100,8 +102,11 @@ import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
 import {
   EMOJI_MENU_LIMIT,
-  loadEmojiMenuItems,
-  typedEmojiSearch,
+  type EmojiSuggestion,
+  emojiMenuItems,
+  loadEmoji,
+  suggestEmoji,
+  typedEmojiName,
 } from './richText/emojiMenu';
 import { documentInSchema, marksInSchema } from './richText/fitToSchema';
 import {
@@ -176,6 +181,12 @@ const messages = defineMessages({
     defaultMessage: 'Thematic break',
     description:
       'Accessible name of the toolbar button inserting a horizontal rule.',
+  },
+  emojiSuggestions: {
+    id: 'frescoUi.richTextEditor.emojiSuggestions',
+    defaultMessage: 'Emoji suggestions',
+    description:
+      'Accessible name of the short list of emoji the rich text editor shows beside the caret while the start of an emoji’s name is typed after a colon, such as “:sm”.',
   },
   emojiMenu: {
     id: 'frescoUi.richTextEditor.emojiMenu',
@@ -819,8 +830,8 @@ type ExtensionOptions = {
   trigger?: string;
   /** Told when the trigger is typed, and where it now sits. */
   onTrigger: (editor: Editor, position: number) => void;
-  /** Given what opens the emoji menu as it is typed; absent, nothing does. */
-  onEmojiTyped?: (editor: Editor, position: number, typed: string) => void;
+  /** Drives the emoji suggested as a name is typed; absent, none are. */
+  emojiSuggestions?: EmojiSuggestionHooks;
   /**
    * For a version's own editor: the history its edits belong to, the field's.
    * The version keeps none of its own, and its undo and redo keys act on the
@@ -914,38 +925,84 @@ const createInsertTrigger = (
     },
   });
 
+/** The start of an emoji's name at the caret: where its colon sits. */
+type TypedEmoji = Readonly<{ from: number; typed: string }>;
+
 /**
- * Opens the emoji menu as the start of an emoji's name is typed: a colon
- * that opens a word, then the letters `typedEmojiSearch` asks for. `onTyped`
- * is given where the colon sits and what was typed from it on.
+ * What the editor's emoji suggestions are driven through. The field owns
+ * the list and what is highlighted in it; an editor (the field's, or one of
+ * a version's) reports the name being typed at its caret, and offers each
+ * key to the list before acting on it itself.
  */
-const createEmojiTrigger = (
-  onTyped: (editor: Editor, position: number, typed: string) => void,
-) =>
+type EmojiSuggestionHooks = {
+  /** The name now at the caret of `editor`, or null where there is none. */
+  onTyped: (editor: Editor, found: TypedEmoji | null) => void;
+  /** Whether the list took the key, which the editor then leaves alone. */
+  onKey: (event: KeyboardEvent) => boolean;
+};
+
+/** The start of an emoji's name at the caret of `view`, while it has the keyboard. */
+const typedAt = (view: EditorView): TypedEmoji | null => {
+  const { selection } = view.state;
+  if (!selection.empty || !view.hasFocus()) return null;
+  const { $from } = selection;
+  const typed = typedEmojiName(
+    $from.parent.textBetween(0, $from.parentOffset, undefined, ' '),
+  );
+  return typed === undefined ? null : { from: $from.pos - typed.length, typed };
+};
+
+/**
+ * Follows the start of an emoji's name as it is typed (`:sm`, `:smi`, …) and
+ * reports it, so the field can suggest emoji beside the caret while the
+ * keyboard stays in the text. Suggestions open on an edit, never on the
+ * caret merely arriving after a colon, and stay away from a name they were
+ * dismissed at until it is left.
+ */
+const createEmojiSuggestions = (hooks: EmojiSuggestionHooks) =>
   Extension.create({
-    name: 'emojiMenuTrigger',
+    name: 'emojiSuggestions',
     addProseMirrorPlugins() {
       const { editor } = this;
+      let open = false;
+      let dismissedAt: number | undefined;
+      const report = (found: TypedEmoji | null) => {
+        open = found !== null;
+        hooks.onTyped(editor, found);
+      };
       return [
         new Plugin({
-          key: new PluginKey('emojiMenuTrigger'),
+          key: new PluginKey('emojiSuggestions'),
+          view: () => ({
+            update: (view, previous) => {
+              const found = typedAt(view);
+              if (found === null) {
+                dismissedAt = undefined;
+                if (open) report(null);
+                return;
+              }
+              if (found.from === dismissedAt) return;
+              if (open || !previous.doc.eq(view.state.doc)) report(found);
+            },
+            destroy: () => {
+              if (open) report(null);
+            },
+          }),
           props: {
-            handleTextInput: (view, from, _to, text) => {
-              const { $from } = view.state.selection;
-              const before =
-                $from.parent.textBetween(
-                  0,
-                  $from.parentOffset,
-                  undefined,
-                  ' ',
-                ) + text;
-              const typed = typedEmojiSearch(before);
-              if (typed === undefined) return false;
-              const position = from + text.length - typed.length;
-              // After the character is in: the menu replaces what was
-              // typed if an emoji is chosen.
-              queueMicrotask(() => onTyped(editor, position, typed));
-              return false;
+            handleKeyDown: (view, event) => {
+              if (!open) return false;
+              if (event.key === 'Escape') {
+                dismissedAt = typedAt(view)?.from;
+                report(null);
+                return true;
+              }
+              return hooks.onKey(event);
+            },
+            handleDOMEvents: {
+              blur: () => {
+                if (open) report(null);
+                return false;
+              },
             },
           },
         }),
@@ -968,7 +1025,7 @@ function createCustomExtensions({
   versions,
   trigger,
   onTrigger,
-  onEmojiTyped,
+  emojiSuggestions,
   history,
   placeholderWhenReadOnly = false,
 }: ExtensionOptions): AnyExtension[] {
@@ -1080,8 +1137,8 @@ function createCustomExtensions({
     extensions.push(createInsertTrigger(trigger, onTrigger));
   }
 
-  if (onEmojiTyped !== undefined) {
-    extensions.push(createEmojiTrigger(onEmojiTyped));
+  if (emojiSuggestions !== undefined) {
+    extensions.push(createEmojiSuggestions(emojiSuggestions));
   }
 
   if (headingLevels.length > 0) {
@@ -1307,9 +1364,10 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      */
     'logicMenu'?: RichTextInsertMenu;
     /**
-     * Whether the editor offers its menu of emoji, from the toolbar and by
-     * typing a colon and the first letters of an emoji's name (`:sm`). An
-     * emoji is inserted as the character itself. On unless turned off.
+     * Whether the editor offers emoji: suggested beside the caret as a colon
+     * and the start of an emoji's name are typed (`:sm`), and from a menu in
+     * the toolbar. An emoji is inserted as the character itself. On unless
+     * turned off.
      */
     'emojiMenu'?: boolean;
     /**
@@ -1399,13 +1457,92 @@ export default function RichTextEditorField({
   const [openMenu, setOpenMenu] = useState<'values' | 'logic' | 'emoji' | null>(
     null,
   );
-  // The emoji, once the menu has been asked for: the list is loaded then.
-  const [emojiItems, setEmojiItems] = useState<
-    readonly RichTextInsertMenuItem[] | null
-  >(null);
-  const loadEmoji = useCallback(() => {
-    void loadEmojiMenuItems().then(setEmojiItems);
+  // The emoji, once they have been asked for: the list is loaded then.
+  const [emojiList, setEmojiList] = useState<readonly EmojiSuggestion[] | null>(
+    null,
+  );
+  const askForEmoji = useCallback(() => {
+    void loadEmoji().then(setEmojiList);
   }, []);
+  // The start of an emoji's name being typed, in which editor and where,
+  // and which of the emoji suggested for it is highlighted.
+  const [typedEmoji, setTypedEmoji] = useState<{
+    editor: Editor;
+    from: number;
+    typed: string;
+    anchor: { left: number; top: number; height: number };
+    index: number;
+  } | null>(null);
+  const suggestions = useMemo(
+    () =>
+      typedEmoji === null || emojiList === null
+        ? []
+        : suggestEmoji(emojiList, typedEmoji.typed.slice(1)),
+    [typedEmoji, emojiList],
+  );
+  const emojiMenuList = useMemo(
+    () => (emojiList === null ? [] : emojiMenuItems(emojiList)),
+    [emojiList],
+  );
+  const pickEmoji = (suggestion: EmojiSuggestion) => {
+    if (typedEmoji === null || typedEmoji.editor.isDestroyed) return;
+    const { editor: into, from, typed } = typedEmoji;
+    into
+      .chain()
+      .focus()
+      .insertContentAt(
+        { from, to: from + typed.length },
+        { type: 'text', text: suggestion.emoji },
+      )
+      .run();
+    setTypedEmoji(null);
+  };
+  // The editors hold these hooks for as long as they live, so the hooks
+  // reach what they act on through what was last drawn.
+  const emojiKeys = useRef<(event: KeyboardEvent) => boolean>(() => false);
+  useLayoutEffect(() => {
+    emojiKeys.current = (event) => {
+      if (typedEmoji === null || suggestions.length === 0) return false;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        setTypedEmoji({
+          ...typedEmoji,
+          index:
+            (typedEmoji.index + step + suggestions.length) % suggestions.length,
+        });
+        return true;
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        const picked = suggestions[typedEmoji.index] ?? suggestions[0];
+        if (picked !== undefined) pickEmoji(picked);
+        return true;
+      }
+      return false;
+    };
+  });
+  const [emojiHooks] = useState<EmojiSuggestionHooks>(() => ({
+    onTyped: (typedIn, found) => {
+      if (found === null) {
+        setTypedEmoji(null);
+        return;
+      }
+      askForEmoji();
+      const coords = typedIn.view.coordsAtPos(found.from);
+      setTypedEmoji((current) => ({
+        editor: typedIn,
+        from: found.from,
+        typed: found.typed,
+        anchor: {
+          left: coords.left,
+          top: coords.top,
+          height: coords.bottom - coords.top,
+        },
+        // What is typed next narrows the list, so its first is the best.
+        index: current?.typed === found.typed ? current.index : 0,
+      }));
+    },
+    onKey: (event) => emojiKeys.current(event),
+  }));
   const setIsInsertMenuOpen = useCallback(
     (open: boolean) => setOpenMenu(open ? 'values' : null),
     [setOpenMenu],
@@ -1438,26 +1575,7 @@ export default function RichTextEditorField({
     },
     [setTriggered, setIsInsertMenuOpen, setCaretReturnsTo, triggerCharacter],
   );
-  const onEmojiTyped = useCallback(
-    (typedIn: Editor, position: number, typed: string) => {
-      const coords = typedIn.view.coordsAtPos(position);
-      setTriggered({
-        editor: typedIn,
-        position,
-        typed,
-        anchor: {
-          left: coords.left,
-          top: coords.top,
-          height: coords.bottom - coords.top,
-        },
-      });
-      setCaretReturnsTo(typedIn);
-      loadEmoji();
-      setOpenMenu('emoji');
-    },
-    [setTriggered, setCaretReturnsTo, loadEmoji, setOpenMenu],
-  );
-  const emojiTrigger = offersEmoji ? onEmojiTyped : undefined;
+  const emojiSuggestions = offersEmoji ? emojiHooks : undefined;
   // The version being written, when the caret is in one: the toolbar acts on
   // it rather than on the line around it.
   const [versionEditor, setVersionEditor] = useState<Editor | null>(null);
@@ -1649,7 +1767,7 @@ export default function RichTextEditorField({
         versions,
         trigger: insertMenu?.trigger,
         onTrigger,
-        onEmojiTyped: emojiTrigger,
+        emojiSuggestions,
       }),
     [
       interfaceLanguage,
@@ -1665,7 +1783,7 @@ export default function RichTextEditorField({
       versions,
       insertMenu?.trigger,
       onTrigger,
-      emojiTrigger,
+      emojiSuggestions,
     ],
   );
   // The field's own editor, once there is one, keeps the history of every
@@ -1696,7 +1814,7 @@ export default function RichTextEditorField({
             versions,
             trigger: insertMenu?.trigger,
             onTrigger,
-            onEmojiTyped: emojiTrigger,
+            emojiSuggestions,
             history: sharedHistory,
           })
         : [],
@@ -1707,7 +1825,7 @@ export default function RichTextEditorField({
       versions,
       insertMenu?.trigger,
       onTrigger,
-      emojiTrigger,
+      emojiSuggestions,
       sharedHistory,
       emptyVersionText,
     ],
@@ -2102,8 +2220,10 @@ export default function RichTextEditorField({
   const showInsert = showTokens || offersEmoji;
   const emojiMenuContents: RichTextInsertMenu = {
     label: intl.formatMessage(messages.emojiMenu),
-    items: emojiItems ?? [],
+    items: emojiMenuList,
   };
+  const highlighted =
+    typedEmoji === null ? undefined : suggestions[typedEmoji.index];
 
   const insertItem = (item: RichTextInsertMenuItem) => {
     if (item.disabled === true) return;
@@ -2131,18 +2251,7 @@ export default function RichTextEditorField({
               into.state.doc.content.size,
             ),
           ) === opened.typed;
-        // Letters typed on after an emoji's opening ones, before the menu
-        // had taken the keyboard, are part of the same name.
-        const length = opened.typed.startsWith(':')
-          ? (/^:[\w+-]*/.exec(
-              into.state.doc.textBetween(
-                position,
-                Math.min(position + 40, into.state.doc.content.size),
-                '\n',
-                '\n',
-              ),
-            )?.[0].length ?? opened.typed.length)
-          : opened.typed.length;
+        const length = opened.typed.length;
         const sizeBefore = into.state.doc.content.size;
         into
           .chain()
@@ -2190,7 +2299,7 @@ export default function RichTextEditorField({
     <Popover
       open={openMenu === kind && !isDisabled}
       onOpenChange={(open) => {
-        if (open && kind === 'emoji') loadEmoji();
+        if (open && kind === 'emoji') askForEmoji();
         setOpenMenu(open ? kind : null);
         if (open) setCaretReturnsTo(null);
         if (!open) setTriggered(null);
@@ -2257,14 +2366,7 @@ export default function RichTextEditorField({
         <InsertMenuList
           menu={menu}
           onPick={insertItem}
-          {...(kind === 'emoji' && {
-            limit: EMOJI_MENU_LIMIT,
-            // Opened by typing, it searches for what was typed after the
-            // colon.
-            ...(triggered !== null && {
-              initialSearch: triggered.typed.slice(1),
-            }),
-          })}
+          {...(kind === 'emoji' && { limit: EMOJI_MENU_LIMIT })}
         />
       </PopoverContent>
     </Popover>
@@ -2352,6 +2454,59 @@ export default function RichTextEditorField({
             height: triggered.anchor.height,
           }}
         />
+      )}
+      {typedEmoji !== null && suggestions.length > 0 && (
+        // Beside the caret, under the name being typed, while the keyboard
+        // stays in the text: the arrow keys move through the list, Enter or
+        // Tab takes the one highlighted, and Escape puts it away.
+        <Surface
+          floating
+          noContainer
+          spacing="xs"
+          shadow="md"
+          role="listbox"
+          aria-label={intl.formatMessage(messages.emojiSuggestions)}
+          data-emoji-suggestions=""
+          className="fixed z-3000 flex w-max max-w-72 flex-col"
+          style={{
+            left: typedEmoji.anchor.left,
+            top: typedEmoji.anchor.top + typedEmoji.anchor.height + 4,
+          }}
+        >
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={suggestion.emoji}
+              role="option"
+              aria-selected={index === typedEmoji.index}
+              tabIndex={-1}
+              data-highlighted={index === typedEmoji.index || undefined}
+              className={cx(
+                'flex cursor-default items-center gap-2 rounded-sm px-2 py-1 text-sm select-none',
+                'data-highlighted:bg-primary data-highlighted:text-primary-contrast',
+              )}
+              // Before the editor would lose the caret to the click.
+              onMouseDown={(event) => {
+                event.preventDefault();
+                pickEmoji(suggestion);
+              }}
+              onMouseEnter={() => setTypedEmoji({ ...typedEmoji, index })}
+            >
+              <span aria-hidden>{suggestion.emoji}</span>
+              <span dir="ltr" className="text-match-parent">
+                :{suggestion.names[0]}:
+              </span>
+            </div>
+          ))}
+        </Surface>
+      )}
+      {offersEmoji && (
+        // The keyboard is in the text, not in the list, so the emoji
+        // highlighted is said here.
+        <span role="status" aria-live="polite" className="sr-only">
+          {highlighted === undefined
+            ? ''
+            : `${highlighted.emoji} ${highlighted.names[0] ?? ''}`}
+        </span>
       )}
       {hasToolbar && (
         <FieldUnavailableContext.Provider value={isDisabled}>

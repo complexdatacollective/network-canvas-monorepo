@@ -1281,13 +1281,16 @@ export const InsertMenuWithAnUnavailableItem: Story = {
 };
 
 /**
- * Every editor offers a menu of emoji, from the toolbar button and by typing
- * a colon and the first two letters of an emoji's name (`:ro`). The menu is
- * searched by name and tag, and an emoji is inserted as the character
- * itself, so the stored text is unchanged. A colon in a sentence ("Note: …",
- * "10:30") never opens it. `emojiMenu={false}` leaves it out.
+ * Every editor offers emoji. Typing a colon and the start of an emoji's name
+ * (`:ro`) suggests emoji beside the caret while the keyboard stays in the
+ * text: what is typed next narrows the list, the arrow keys move through
+ * it, Enter or Tab takes the one highlighted, and Escape puts it away. A
+ * colon in a sentence ("Note: …", "10:30") suggests nothing. The toolbar's
+ * button opens the same emoji as a menu to search. An emoji is inserted as
+ * the character itself, so the stored text is unchanged.
+ * `emojiMenu={false}` leaves both out.
  */
-export const EmojiMenu: Story = {
+export const Emoji: Story = {
   render: () => <EditorWithValue initial={undefined} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -1295,22 +1298,27 @@ export const EmojiMenu: Story = {
     const editor = await canvas.findByRole('textbox', { name: 'Question' });
     await userEvent.click(editor);
 
+    // Typed: suggestions beside the caret, the keyboard still in the text.
+    await userEvent.keyboard(':ro');
+    const list = await canvas.findByRole('listbox', {
+      name: 'Emoji suggestions',
+    });
+    await expect(editor).toHaveFocus();
+    await userEvent.keyboard('cket');
+    await waitFor(() =>
+      expect(within(list).getAllByRole('option')[0]).toHaveTextContent(
+        '🚀:rocket:',
+      ),
+    );
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(editor).toHaveTextContent('🚀'));
+    await expect(canvas.queryByRole('listbox')).toBeNull();
+
+    // From the toolbar: the same emoji, as a menu to search.
     await userEvent.click(canvas.getByRole('button', { name: 'Insert emoji' }));
     const search = await body.findByRole('combobox', { name: 'Search' });
     await userEvent.type(search, 'hospital');
     await userEvent.click(await body.findByRole('option', { name: /🏥/ }));
-    await waitFor(() => expect(editor).toHaveTextContent('🏥'));
-
-    // Typed: the menu opens on the second letter, already searching.
-    await waitFor(() => expect(editor).toHaveFocus());
-    await userEvent.keyboard(' :ro');
-    const typed = await body.findByRole('combobox', { name: 'Search' });
-    await expect(typed).toHaveValue('ro');
-    // The search goes on narrowing as more of the name is typed.
-    await waitFor(() => expect(typed).toHaveFocus());
-    await userEvent.keyboard('cket');
-    await expect(typed).toHaveValue('rocket');
-    await userEvent.click(await body.findByRole('option', { name: /^🚀 / }));
-    await waitFor(() => expect(editor).toHaveTextContent('🏥 🚀'));
+    await waitFor(() => expect(editor).toHaveTextContent('🚀🏥'));
   },
 };
