@@ -738,3 +738,89 @@ export const SettingsMenuScalingOnly: Story = {
     ).toBeInTheDocument();
   },
 };
+
+// A form with one required question, so the screen is ready to continue only
+// while that question is answered.
+function buildRequiredAnswerPayload(): string {
+  const si = new SyntheticInterview();
+
+  const stage = si.addStage('EgoForm', {
+    label: 'About you',
+    introductionPanel: { title: 'About you' },
+  });
+  const nameVar = si.addEgoVariable({
+    type: 'text',
+    component: 'Text',
+    name: 'fullName',
+    validation: { required: true },
+  });
+  stage.addFormField({
+    variable: nameVar.id,
+    component: 'Text',
+    prompt: 'What is your name?',
+  });
+
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'Thank you for taking part.',
+  });
+
+  return SuperJSON.stringify(si.getInterviewPayload({ currentStep: 0 }));
+}
+
+let requiredAnswerPayload: string | undefined;
+const getRequiredAnswerPayload = () =>
+  (requiredAnswerPayload ??= buildRequiredAnswerPayload());
+
+const READY_TO_CONTINUE = 'You can continue to the next step.';
+
+export const ReadyToContinue: Story = {
+  name: 'Ready to continue (screen reader announcement)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRequiredAnswerPayload()}
+        navigationOrientation="vertical"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const next = await canvas.findByRole('button', { name: 'Next Step' });
+    const announcer = canvas.getByTestId('ready-to-continue-announcer');
+    const name = await canvas.findByRole('textbox', {
+      name: /what is your name/i,
+    });
+
+    await expect(announcer).toHaveRole('status');
+
+    // The synthetic interview fills the answer in, so clear it first.
+    await userEvent.clear(name);
+    await waitFor(() => expect(next).not.toHaveAccessibleDescription());
+    await expect(announcer).toBeEmptyDOMElement();
+
+    await userEvent.type(name, 'Ada');
+    await userEvent.tab();
+    await waitFor(() =>
+      expect(next).toHaveAccessibleDescription(READY_TO_CONTINUE),
+    );
+    await expect(next).toHaveAccessibleName('Next Step');
+    await expect(announcer).toHaveTextContent(READY_TO_CONTINUE);
+    const firstAnnouncement = announcer.firstElementChild;
+    await expect(firstAnnouncement).not.toBeNull();
+
+    await userEvent.clear(name);
+    await waitFor(() => expect(next).not.toHaveAccessibleDescription());
+    await expect(announcer).toBeEmptyDOMElement();
+
+    await userEvent.type(name, 'Grace');
+    await waitFor(() =>
+      expect(next).toHaveAccessibleDescription(READY_TO_CONTINUE),
+    );
+    await expect(announcer).toHaveTextContent(READY_TO_CONTINUE);
+    // A new node, not the first one left in place, so it is announced again.
+    await expect(announcer.firstElementChild).not.toBeNull();
+    await expect(announcer.firstElementChild).not.toBe(firstAnnouncement);
+  },
+};
