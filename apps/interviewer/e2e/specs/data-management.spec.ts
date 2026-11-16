@@ -53,6 +53,43 @@ async function importAndSeed(
   await seed.synthetic(SYNTHETIC_SESSION_COUNT);
 }
 
+// The case ids of the rows the table shows, in display order, read from each
+// row's selection checkbox ("Select <caseId>").
+async function readCaseIds(page: Page): Promise<string[]> {
+  const labels = await page
+    .getByRole('checkbox', { name: /^Select synthetic-/ })
+    .evaluateAll((boxes) =>
+      boxes.map((box) => box.getAttribute('aria-label') ?? ''),
+    );
+  return labels.map((label) => label.replace(/^Select /, ''));
+}
+
+// The N in a status chip's "Label · N".
+async function chipCount(page: Page, label: string): Promise<number> {
+  const name = await page
+    .getByRole('button', { name: new RegExp(`^${label} ·`) })
+    .textContent();
+  const count = /·\s*(\d+)/.exec(name ?? '')?.[1];
+  if (count === undefined) throw new Error(`no count on the ${label} chip`);
+  return Number(count);
+}
+
+// Waits until every seeded session is listed, so later reads see the full
+// table rather than a partial first load.
+async function waitForAllRows(page: Page): Promise<string[]> {
+  await expect
+    .poll(async () => (await readCaseIds(page)).length)
+    .toBe(SYNTHETIC_SESSION_COUNT);
+  await expect.poll(() => chipCount(page, 'All')).toBe(SYNTHETIC_SESSION_COUNT);
+  return readCaseIds(page);
+}
+
+const collator = new Intl.Collator('en');
+const sortedCaseIds = (ids: string[], dir: 'asc' | 'desc') => {
+  const sorted = ids.toSorted((a, b) => collator.compare(a, b));
+  return dir === 'asc' ? sorted : sorted.toReversed();
+};
+
 test.describe('interview data management', () => {
   test('status chips filter the table by completion state', async ({
     protocol,
@@ -61,24 +98,43 @@ test.describe('interview data management', () => {
   }) => {
     await importAndSeed(protocol, seed, page);
     await page.goto('/data');
-    // Chips read "All · N", "In progress · N", "Complete · N".
-    await expect(page.getByRole('button', { name: /^All ·/ })).toBeVisible();
+    await waitForAllRows(page);
+    // The seed's complete/in-progress split is random, but both are present.
+    const complete = await chipCount(page, 'Complete');
+    const inProgress = await chipCount(page, 'In progress');
+    expect(complete).toBeGreaterThan(0);
+    expect(inProgress).toBeGreaterThan(0);
+    expect(complete + inProgress).toBe(SYNTHETIC_SESSION_COUNT);
+
     await page.getByRole('button', { name: /^Complete ·/ }).click();
     await expect(page).toHaveURL(/status=complete/);
+    await expect
+      .poll(async () => (await readCaseIds(page)).length)
+      .toBe(complete);
+    await expect(page.getByTestId('data-review')).toHaveCount(complete);
+    await expect(page.getByTestId('data-resume')).toHaveCount(0);
+
+    await page.getByRole('button', { name: /^In progress ·/ }).click();
+    await expect
+      .poll(async () => (await readCaseIds(page)).length)
+      .toBe(inProgress);
+    await expect(page.getByTestId('data-resume')).toHaveCount(inProgress);
+    await expect(page.getByTestId('data-review')).toHaveCount(0);
     // No visual snapshot here: the /data table shows random synthetic case ids
     // and a Math.random-driven complete/in-progress split, so the status-chip
-    // counts ("Complete · N") are non-deterministic between seeds. The table is
-    // covered functionally by the tests in this file.
+    // counts ("Complete · N") are non-deterministic between seeds.
   });
 
   test('search narrows rows by case id', async ({ protocol, seed, page }) => {
     await importAndSeed(protocol, seed, page);
     await page.goto('/data');
-    const search = page.getByTestId('data-search');
-    await search.fill('synthetic-');
-    await expect(page).toHaveURL(/q=synthetic/);
-    // Every synthetic case id begins with "synthetic-", so rows remain.
-    await expect(page.getByRole('row')).not.toHaveCount(1); // header + rows
+    const ids = await waitForAllRows(page);
+    const target = ids[ids.length - 1];
+    if (target === undefined) throw new Error('no rows to search for');
+
+    await page.getByTestId('data-search').fill(target);
+    await expect(page).toHaveURL(/q=synthetic-/);
+    await expect.poll(() => readCaseIds(page)).toEqual([target]);
   });
 
   test('column headers toggle sort and reflect it in the URL', async ({
@@ -88,8 +144,19 @@ test.describe('interview data management', () => {
   }) => {
     await importAndSeed(protocol, seed, page);
     await page.goto('/data');
+    const ids = await waitForAllRows(page);
+
     await page.getByRole('button', { name: 'Case ID' }).click();
-    await expect(page).toHaveURL(/sort=caseId/);
+    await expect(page).toHaveURL(/sort=caseId&dir=asc/);
+    await expect
+      .poll(() => readCaseIds(page))
+      .toEqual(sortedCaseIds(ids, 'asc'));
+
+    await page.getByRole('button', { name: 'Case ID' }).click();
+    await expect(page).toHaveURL(/sort=caseId&dir=desc/);
+    await expect
+      .poll(() => readCaseIds(page))
+      .toEqual(sortedCaseIds(ids, 'desc'));
   });
 
   test('a deep link restores filter + sort state', async ({
@@ -102,6 +169,16 @@ test.describe('interview data management', () => {
     await expect(
       page.getByRole('button', { name: /^Complete ·/ }),
     ).toHaveAttribute('aria-pressed', 'true');
+    await expect
+      .poll(() => chipCount(page, 'All'))
+      .toBe(SYNTHETIC_SESSION_COUNT);
+    const complete = await chipCount(page, 'Complete');
+    await expect
+      .poll(async () => (await readCaseIds(page)).length)
+      .toBe(complete);
+    const ids = await readCaseIds(page);
+    expect(ids).toEqual(sortedCaseIds(ids, 'asc'));
+    await expect(page.getByTestId('data-resume')).toHaveCount(0);
   });
 
   test('exports selected sessions and the archive contains GraphML + CSV', async ({

@@ -392,10 +392,19 @@ test.describe('installed app catalog availability', () => {
         page.evaluate(() => navigator.serviceWorker.controller !== null),
       )
       .toBe(true);
-    const catalogRequests: string[] = [];
-    page.on('request', (request) => {
-      if (/locales\/.*\.json|catalog/i.test(request.url()))
-        catalogRequests.push(request.url());
+    // The build ships each language's catalog as an
+    // `assets/locale-<tag>-<hash>.js` chunk. Offline, every one must come from
+    // the service worker's precache; one that reached for the network fails.
+    const isCatalog = (url: string) => /\/assets\/locale-[^/]+\.js$/.test(url);
+    const catalogsFromCache: string[] = [];
+    const catalogsNotFromCache: string[] = [];
+    page.on('response', (response) => {
+      if (!isCatalog(response.url())) return;
+      if (response.fromServiceWorker()) catalogsFromCache.push(response.url());
+      else catalogsNotFromCache.push(response.url());
+    });
+    page.on('requestfailed', (request) => {
+      if (isCatalog(request.url())) catalogsNotFromCache.push(request.url());
     });
     await context.setOffline(true);
     await chooseLanguage(page, 'es');
@@ -428,7 +437,11 @@ test.describe('installed app catalog availability', () => {
       }),
     ).toBeVisible();
     expect((await storedResearch(page)).protocols).toHaveLength(1);
-    expect(catalogRequests).toEqual([]);
+    // Spanish was loaded, so the matcher above is seeing catalog chunks.
+    expect(catalogsFromCache.some((url) => url.includes('/locale-es-'))).toBe(
+      true,
+    );
+    expect(catalogsNotFromCache).toEqual([]);
     await chooseLanguage(page, 'en-GB', 'es');
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -445,7 +458,7 @@ test.describe('installed app catalog availability', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
     await interviewNav.exitInterview();
     expect((await storedResearch(page)).sessions).toHaveLength(1);
-    expect(catalogRequests).toEqual([]);
+    expect(catalogsNotFromCache).toEqual([]);
   });
 });
 
