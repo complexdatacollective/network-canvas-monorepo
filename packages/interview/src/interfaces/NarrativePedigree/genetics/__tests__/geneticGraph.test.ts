@@ -165,10 +165,11 @@ describe('buildGeneticGraph — consanguinity loop termination', () => {
     expect(result.has('C')).toBe(true);
   });
 
-  it('propagate does not throw a stack overflow on a cyclic graph', () => {
-    expect(() =>
-      cyclicGraph.propagate(['A'], (id) => cyclicGraph.childrenOf(id)),
-    ).not.toThrow();
+  it('propagate without a visited set still covers the whole loop once', () => {
+    const result = cyclicGraph.propagate(['A'], (id) =>
+      cyclicGraph.childrenOf(id),
+    );
+    expect(result).toEqual(new Set(['A', 'B', 'C']));
   });
 });
 

@@ -312,8 +312,11 @@ describe('computeYLinked', () => {
     const graph = buildGraph(nodes, edges, resolveSex);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic all-male pedigree', () => {
-      expect(() => computeYLinked(graph, affected, resolveSex)).not.toThrow();
+    it('terminates on a cyclic all-male pedigree and still marks the lineage', () => {
+      const result = computeYLinked(graph, affected, resolveSex);
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'B')).toBe('obligateAffected');
+      expect(status(result, 'C')).toBe('obligateAffected');
     });
   });
 });
@@ -571,10 +574,11 @@ describe('computeMitochondrial', () => {
     const graph = buildGraph(nodes, edges, resolveSex);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic all-female pedigree', () => {
-      expect(() =>
-        computeMitochondrial(graph, affected, resolveSex),
-      ).not.toThrow();
+    it('terminates on a cyclic all-female pedigree and still marks the lineage', () => {
+      const result = computeMitochondrial(graph, affected, resolveSex);
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'B')).toBe('atRiskAffected');
+      expect(status(result, 'C')).toBe('atRiskAffected');
     });
   });
 });

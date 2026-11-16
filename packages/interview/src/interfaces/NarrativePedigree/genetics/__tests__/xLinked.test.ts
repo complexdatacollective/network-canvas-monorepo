@@ -592,14 +592,16 @@ describe('computeXLinkedRecessive', () => {
       makeGeneticEdge('B', 'C'),
       makeGeneticEdge('C', 'A'),
     ];
-    const resolveSex = sexResolver({ A: 'female', B: 'female', C: 'female' });
+    // An affected male, so the X passes down through the loop.
+    const resolveSex = sexResolver({ A: 'male', B: 'female', C: 'female' });
     const graph = buildGraph(nodes, edges, resolveSex);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic pedigree', () => {
-      expect(() =>
-        computeXLinkedRecessive(graph, affected, resolveSex),
-      ).not.toThrow();
+    it('terminates on a cyclic pedigree and still marks the lineage', () => {
+      const result = computeXLinkedRecessive(graph, affected, resolveSex);
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'B')).toBe('obligateCarrier');
+      expect(status(result, 'C')).toBe('atRiskCarrier');
     });
   });
 });
@@ -767,10 +769,11 @@ describe('computeXLinkedDominant', () => {
     const graph = buildGraph(nodes, edges, resolveSex);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic pedigree', () => {
-      expect(() =>
-        computeXLinkedDominant(graph, affected, resolveSex),
-      ).not.toThrow();
+    it('terminates on a cyclic pedigree and still marks the lineage', () => {
+      const result = computeXLinkedDominant(graph, affected, resolveSex);
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'B')).toBe('atRiskAffected');
+      expect(status(result, 'C')).toBe('atRiskAffected');
     });
   });
 });

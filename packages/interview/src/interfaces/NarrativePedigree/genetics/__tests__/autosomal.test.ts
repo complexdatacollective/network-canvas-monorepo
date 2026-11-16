@@ -255,8 +255,13 @@ describe('computeAutosomalDominant', () => {
     const graph = buildGraph(nodes, edges);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic pedigree', () => {
-      expect(() => computeAutosomalDominant(graph, affected)).not.toThrow();
+    it('terminates on a cyclic pedigree and still marks the lineage', () => {
+      const result = computeAutosomalDominant(graph, affected);
+      expect(status(result, 'A')).toBe('affected');
+      // B and C are both descendants and ancestors of A; obligate carrier
+      // outranks at risk.
+      expect(status(result, 'B')).toBe('obligateCarrier');
+      expect(status(result, 'C')).toBe('obligateCarrier');
     });
   });
 });
@@ -571,8 +576,11 @@ describe('computeAutosomalRecessive', () => {
     const graph = buildGraph(nodes, edges);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic pedigree', () => {
-      expect(() => computeAutosomalRecessive(graph, affected)).not.toThrow();
+    it('terminates on a cyclic pedigree and still marks the lineage', () => {
+      const result = computeAutosomalRecessive(graph, affected);
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'B')).toBe('obligateCarrier');
+      expect(status(result, 'C')).toBe('obligateCarrier');
     });
   });
 });
