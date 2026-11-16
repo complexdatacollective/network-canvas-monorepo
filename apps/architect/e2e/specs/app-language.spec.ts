@@ -467,12 +467,16 @@ test('renders British spelling in the actual type dialog and in the stage editor
   await page
     .getByRole('button', { name: 'Create node type', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', { name: 'Create Node Type' });
+  const dialog = page.getByRole('dialog', { name: 'Create new node type' });
   const name = dialog.getByRole('textbox', { name: 'Node type name' });
   await expect(name).toHaveAccessibleDescription(/"Organisation"/);
   await name.fill('Organization_authored');
   await expect(name).toHaveValue('Organization_authored');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Discard changes', exact: true })
+    .click();
+  await expect(dialog).toBeHidden();
   // Two stage editors, because the copy in them is the protocol-builder
   // package's and its British overrides are a catalog of its own: a stage
   // editor reading American English is the failure this catches.

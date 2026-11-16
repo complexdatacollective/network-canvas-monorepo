@@ -44,6 +44,7 @@ import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import { LocalizedOptionLabelField } from '../../fields/LocalizedStringField.tsx';
 import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
 import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
+import { focusFirstInvalidControl } from '../../form/focusFirstInvalidControl.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
 import {
   useLocalizedText,
@@ -215,6 +216,9 @@ const messages = defineMessages({
       'Column heading over what the export records for each allowed answer, in the read-only list of answers an interview step owns.',
   },
 });
+
+/** The title of a dialog this editor is hosted in while it creates. */
+export const createVariableTitle = messages.createTitle;
 
 const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
 
@@ -443,6 +447,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const [busy, setBusy] = useState(false);
   const { hasEdited, markEdited } = useEditedCells();
   const failureRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const optionKeySequence = useRef(0);
   // The rows the editor opens with, and the host's choice on each of them: one
   // reading, so a key and the choice filed under it cannot come from two.
@@ -591,9 +596,20 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     });
   }, [options.length]);
 
+  // A refused save takes the researcher to the first field it marked, and to
+  // the alert only when no field carries the refusal. Issues are cleared by
+  // the next edit and set by nothing but a submit, so a non-empty list is
+  // always a refusal that has just happened.
   useEffect(() => {
-    if (failure !== undefined) failureRef.current?.focus();
+    if (failure === undefined) return;
+    if (!focusFirstInvalidControl(formRef.current)) {
+      failureRef.current?.focus();
+    }
   }, [failure]);
+
+  useEffect(() => {
+    if (issues.length > 0) focusFirstInvalidControl(formRef.current);
+  }, [issues]);
 
   const typeOptions = useMemo(() => {
     const allowed = new Set(
@@ -943,6 +959,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         )}
 
         <form
+          ref={formRef}
           id={formId}
           className="mt-8"
           onSubmit={(event) => void handleSubmit(event)}
@@ -957,6 +974,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             autoFocus={!readOnly}
             required
             readOnly={interactionDisabled}
+            aria-invalid={nameErrors.length > 0 || undefined}
             errors={nameErrors}
             showErrors={nameErrors.length > 0}
           />
@@ -972,6 +990,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                   ?.label ?? ''
               }
               readOnly
+              aria-invalid={typeErrors.length > 0 || undefined}
               errors={typeErrors}
               showErrors={typeErrors.length > 0}
             />
@@ -986,6 +1005,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               onChange={handleTypeChange}
               required
               readOnly={interactionDisabled || optionsLocked}
+              aria-invalid={typeErrors.length > 0 || undefined}
               errors={typeErrors}
               showErrors={typeErrors.length > 0}
             />

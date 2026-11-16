@@ -101,9 +101,9 @@ const DialogFormBody = ({
 
   /**
    * Every dialog form is guarded by construction. The previous arrangement was
-   * opt-in per caller (`DirtyProbe` + a hand-written confirm in
-   * `NewVariableWindow` and `EntityTypeDialog`), and the array-row editor —
-   * the one in the bug report — simply never opted in.
+   * opt-in per caller (`DirtyProbe` + a hand-written confirm in each dialog
+   * that remembered to), and the array-row editor — the one in the bug
+   * report — simply never opted in.
    *
    * The registration and the confirm-before-dismissal both live in
    * `useNestedDraftDialog`, which the Geospatial API-key browser — a dialog

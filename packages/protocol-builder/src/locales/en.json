@@ -891,6 +891,10 @@
     "defaultMessage": "Type identity",
     "description": "Heading of the group of the entity editor holding the name this type is known by."
   },
+  "protocolBuilder.codebookEntity.imageUnavailable": {
+    "defaultMessage": "An image added to this node type is no longer available. Remove the shape that uses it, then add the shape again.",
+    "description": "Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified."
+  },
   "protocolBuilder.codebookEntity.issuesTitle": {
     "defaultMessage": "Some codebook data could not be displayed",
     "description": "Heading of the warning listing parts of the stored codebook this page could not read."
@@ -986,6 +990,10 @@
   "protocolBuilder.codebookEntity.shapeHint": {
     "defaultMessage": "Choose a default shape for this node type.",
     "description": "Guidance under the shape field. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.shapeImageUnavailable": {
+    "defaultMessage": "The image for the shape \"{name}\" is no longer available. Remove this shape and add it again.",
+    "description": "Refusal shown under the custom shapes field of the node type editor when saving fails because the SVG image one custom shape is drawn from can no longer be kept with the protocol. name is the name the researcher gave that shape."
   },
   "protocolBuilder.codebookEntity.shapeLabel": {
     "defaultMessage": "Shape",
@@ -1585,11 +1593,11 @@
   },
   "protocolBuilder.entitySelect.edgeCreateLabel": {
     "defaultMessage": "Create new edge type",
-    "description": "Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens. An edge type is a kind of relationship between two network members, such as a friendship."
+    "description": "Button that opens an editor for inventing a kind of relationship. Also the title of the dialog it opens. An edge type is a kind of relationship between two network members, such as a friendship."
   },
   "protocolBuilder.entitySelect.edgeEditLabel": {
     "defaultMessage": "Edit this edge type",
-    "description": "Button that opens an editor for the kind of relationship a stage is already configured for, so its name or colour can be changed without leaving the stage. Also the title of the dialog it opens."
+    "description": "Button that opens an editor for an existing kind of relationship, so its name or colour can be changed. Also the title of the dialog it opens."
   },
   "protocolBuilder.entitySelect.edgeEmptyState": {
     "defaultMessage": "No edge types currently defined",
@@ -1613,11 +1621,11 @@
   },
   "protocolBuilder.entitySelect.nodeCreateLabel": {
     "defaultMessage": "Create new node type",
-    "description": "Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens. A node type is a kind of network member the study records, such as a person or a place."
+    "description": "Button that opens an editor for inventing a kind of network member. Also the title of the dialog it opens. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.entitySelect.nodeEditLabel": {
     "defaultMessage": "Edit this node type",
-    "description": "Button that opens an editor for the kind of network member a stage is already configured for, so its name, colour, shape or icon can be changed without leaving the stage. Also the title of the dialog it opens."
+    "description": "Button that opens an editor for an existing kind of network member, so its name, colour, shape or icon can be changed. Also the title of the dialog it opens."
   },
   "protocolBuilder.entitySelect.nodeEmptyState": {
     "defaultMessage": "No node types currently defined",

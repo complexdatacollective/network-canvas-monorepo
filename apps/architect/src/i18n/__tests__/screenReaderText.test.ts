@@ -34,10 +34,6 @@ const SHOWN_AS_WELL: Record<string, string> = {
     'a toolbar icon button shows its name as a tooltip',
   'components/Screens/NewStageScreen/NewStageScreen.tsx: messages.clearSearch':
     'the same text is the button title and tooltip',
-  'components/TypeEditor/ShapeVariableMapping.tsx: messages.thresholds':
-    'the same text is the visible heading above the list',
-  'components/TypeEditor/ShapeVariableMapping.tsx: messages.mapAttributeToShape':
-    'the same text is the toggle visible label',
   'components/VariablePill.tsx: messages.editAttributeName':
     'the same text is the pill tooltip',
 };

@@ -1,12 +1,11 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import type { VariableOption, VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import VariableEditor from '../../codebook/components/VariableEditor.tsx';
+import VariableEditorDialog from '../../codebook/components/VariableEditorDialog.tsx';
 import {
   documentWithRebasedVariable,
   sectionIdForCodebookSubject,
@@ -164,20 +163,6 @@ export function useCreateVariableEditor({
   const writeCodebookSection = useCodebookSectionWrite();
   const { session, openSession, closeSession, onSessionExited } =
     useDialogSession<EditorSession>();
-  /**
-   * Whether the editor's save is with the host right now.
-   *
-   * Held HERE rather than inside the editor because it is the DIALOG that has
-   * to answer for it: what a dismissal mid-flight unmounts is the editor, and
-   * a state living there would go with it. See `submitEdit`.
-   */
-  const [submitting, setSubmitting] = useState(false);
-  /**
-   * Where the editor paints its own actions: the dialog's fixed footer. Held
-   * in state rather than a ref because the editor renders INTO it, and a ref
-   * set during the dialog's render does not re-render the editor beside it.
-   */
-  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
   const authoritativeDocument =
     subject === null
       ? undefined
@@ -272,13 +257,8 @@ export function useCreateVariableEditor({
   }
 
   /**
-   * The codebook write the editor asks for, with the dialog held shut while it
-   * is in flight.
-   *
-   * The write outlives the dialog: dismissed mid-flight, the editor is
-   * unmounted but the handler awaiting the host is still alive, so a refusal
-   * is shown to nobody and a success still runs `onComplete` — binding a slot
-   * to an attribute the researcher watched no editor finish.
+   * The codebook write the editor asks for. `VariableEditorDialog` holds the
+   * dialog shut while it is in flight.
    *
    * Only the attribute being created crosses into the write, for the reason
    * `documentWithRebasedVariable` gives: the section the lock hands back may
@@ -286,35 +266,26 @@ export function useCreateVariableEditor({
    * does not.
    */
   const submitEdit =
-    (target: CodebookSubject, variableId: string) =>
-    async (document: SectionDoc) => {
-      setSubmitting(true);
-      try {
-        return await writeCodebookSection(target, (authoritative) =>
-          documentWithRebasedVariable({
-            subject: target,
-            authoritativeDocument: authoritative,
-            variableId,
-            submittedDocument: document,
-          }),
-        );
-      } finally {
-        setSubmitting(false);
-      }
-    };
+    (target: CodebookSubject, variableId: string) => (document: SectionDoc) =>
+      writeCodebookSection(target, (authoritative) =>
+        documentWithRebasedVariable({
+          subject: target,
+          authoritativeDocument: authoritative,
+          variableId,
+          submittedDocument: document,
+        }),
+      );
 
   /**
-   * Every way out of the editor, which is one handler.
-   *
-   * Escape, a press outside and the close button all arrive at `closeDialog`,
-   * so refusing here covers all three — and `dismissible` takes the close
-   * button away rather than leaving a control on screen that does nothing.
+   * What closing the editor without saving does. `VariableEditorDialog` sends
+   * every way out here, once a save is no longer in flight and the researcher
+   * has agreed to lose what they changed.
    *
    * A dismissal wrote nothing, which is exactly what the create that opened
    * this was waiting to hear: the name is still the researcher's to correct.
    */
   const requestClose = () => {
-    if (submitting || session === null) return;
+    if (session === null) return;
     session.settle({ status: 'refused' });
     closeSession();
   };
@@ -331,67 +302,52 @@ export function useCreateVariableEditor({
 
   const editor =
     session === null ? null : (
-      <Dialog
+      <VariableEditorDialog
+        mode="create"
         open={session.open}
         onExitComplete={onSessionExited}
         title={title}
-        // Wider for a host that adds a choice to every option row, which
-        // then needs the room for a third field beside the label and value.
-        size={
-          editorOptions?.optionRowChoice === undefined ? 'readable' : 'editor'
-        }
-        dismissible={!submitting}
-        closeDialog={requestClose}
-        // The editor paints Cancel and its own submit in here, so the dialog's
-        // actions are where every other dialog keeps them.
-        footer={<div ref={setFooterSlot} className="contents" />}
-      >
-        <VariableEditor
-          mode="create"
-          openId={session.key}
-          subject={session.subject}
-          authoritativeDocument={openedSection ?? session.openedDocument}
-          readOnly={editorReadOnly}
-          variableId={session.variableId}
-          initialDraft={{
-            name: session.name,
-            ...(onlyType === undefined ? {} : { type: onlyType }),
-            ...(seedOptions === undefined
-              ? {}
-              : { options: seedOptions.map((option) => ({ ...option })) }),
-            ...(seedValidation === undefined
-              ? {}
-              : { validation: seedValidation }),
-          }}
-          allowedVariableTypes={variableTypes}
-          lockedOptions={lockedOptions ?? null}
-          protocolContext={protocolContext}
-          chrome="dialog"
-          footerSlot={footerSlot}
-          onCancel={requestClose}
-          onSubmitDocument={submitEdit(session.subject, session.variableId)}
-          {...editorOptions}
-          onComplete={(variableId, _variableName, optionRowChoices) => {
-            // Bound only while the slot still names attributes of the type the
-            // attribute was created on. An answer that arrives after the type
-            // has moved would otherwise put a reference to the old type's
-            // attribute into a slot the type change has just cleared.
-            //
-            // Asked of the LIVE answer rather than of this closure's own
-            // `editorReadOnly`: the editor calls the callback it captured
-            // before it awaited the host, so a closure read would answer for
-            // the render that started the request. See `writable`.
-            if (writable()) {
-              onCreated(variableId, optionRowChoices);
-              session.settle({ status: 'created' });
-            } else {
-              // The codebook holds it, and the slot it was for has moved on.
-              session.settle({ status: 'unassigned' });
-            }
-            closeSession();
-          }}
-        />
-      </Dialog>
+        onClose={requestClose}
+        openId={session.key}
+        subject={session.subject}
+        authoritativeDocument={openedSection ?? session.openedDocument}
+        readOnly={editorReadOnly}
+        variableId={session.variableId}
+        initialDraft={{
+          name: session.name,
+          ...(onlyType === undefined ? {} : { type: onlyType }),
+          ...(seedOptions === undefined
+            ? {}
+            : { options: seedOptions.map((option) => ({ ...option })) }),
+          ...(seedValidation === undefined
+            ? {}
+            : { validation: seedValidation }),
+        }}
+        allowedVariableTypes={variableTypes}
+        lockedOptions={lockedOptions ?? null}
+        protocolContext={protocolContext}
+        onSubmitDocument={submitEdit(session.subject, session.variableId)}
+        {...editorOptions}
+        onComplete={(variableId, _variableName, optionRowChoices) => {
+          // Bound only while the slot still names attributes of the type the
+          // attribute was created on. An answer that arrives after the type
+          // has moved would otherwise put a reference to the old type's
+          // attribute into a slot the type change has just cleared.
+          //
+          // Asked of the LIVE answer rather than of this closure's own
+          // `editorReadOnly`: the editor calls the callback it captured
+          // before it awaited the host, so a closure read would answer for
+          // the render that started the request. See `writable`.
+          if (writable()) {
+            onCreated(variableId, optionRowChoices);
+            session.settle({ status: 'created' });
+          } else {
+            // The codebook holds it, and the slot it was for has moved on.
+            session.settle({ status: 'unassigned' });
+          }
+          closeSession();
+        }}
+      />
     );
 
   return { launchable: launchable !== undefined, createOption, editor };

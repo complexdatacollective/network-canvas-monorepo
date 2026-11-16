@@ -286,6 +286,51 @@ export const WithCustomShapes: Story = {
 };
 
 /**
+ * A save refused because the image behind one custom shape has gone: the
+ * refusal is shown under the custom shapes field and names the shape, and
+ * focus moves to that field.
+ */
+export const ShapeImageUnavailable: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-place-image-unavailable-1"
+      dialog={{ title: 'Edit this node type', open: true }}
+      subject={{ entity: 'node', type: 'place' }}
+      initialDraft={PLACE_WITH_CUSTOM_SHAPES}
+      authoritativeDocument={PLACE_WITH_CUSTOM_SHAPES}
+      existingEntityNames={['Person']}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'promotionFailed' }),
+          refusal: {
+            kind: 'promotionFailed',
+            resourceId: 'school-image',
+          } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await userEvent.type(
+      dialog.getByRole('textbox', { name: /Node type name/ }),
+      ' (changed)',
+    );
+    await userEvent.click(dialog.getByRole('button', { name: 'Save entity' }));
+
+    await expect(
+      await dialog.findByText(
+        'The image for the shape "School" is no longer available. Remove this shape and add it again.',
+      ),
+    ).toBeVisible();
+  },
+};
+
+/**
  * Adding a shape: "Add a shape" opens a browser where the researcher imports
  * an SVG file or picks an SVG image the protocol already holds. Choosing one
  * adds a shape named after the image.
