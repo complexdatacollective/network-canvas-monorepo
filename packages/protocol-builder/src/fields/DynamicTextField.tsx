@@ -364,7 +364,11 @@ const namingFor = (intl: IntlShape): Naming => ({
   valueLabel: (choice) => {
     if (choice.role === undefined) return intl.formatMessage(messages.today);
     if (choice.kind === 'condition') {
-      return choice.condition?.name ?? choice.condition?.id ?? '';
+      // The researcher's name for the condition, not the interface's words.
+      return {
+        text: choice.condition?.name ?? choice.condition?.id ?? '',
+        dir: 'auto',
+      };
     }
     if (choice.kind === 'connectivity') {
       const edgeType = choice.edgeType?.name ?? choice.edgeType?.id;
@@ -556,7 +560,7 @@ const messageLabelsFor = ({
     if (flag?.kind === 'connectivity' || flag?.kind === 'condition') {
       return key === 'other'
         ? intl.formatMessage(messages.versionOtherwise)
-        : naming.valueLabel(flag);
+        : presentationalTextValue(naming.valueLabel(flag));
     }
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
