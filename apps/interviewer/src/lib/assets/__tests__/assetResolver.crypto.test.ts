@@ -88,10 +88,11 @@ describe('assetResolver decrypts encrypted-at-rest assets', () => {
       const url = await resolver('img-1');
       expect(url).toBe('blob:mock-url');
       expect(URL.createObjectURL).toHaveBeenCalledOnce();
-      const [passedBlob] = (
-        URL.createObjectURL as unknown as { mock: { calls: [Blob][] } }
-      ).mock.calls[0]!;
-      expect(passedBlob).toBeInstanceOf(Blob);
+      const [passed] = vi.mocked(URL.createObjectURL).mock.calls[0] ?? [];
+      if (!(passed instanceof Blob)) {
+        throw new Error('createObjectURL was not given a Blob');
+      }
+      expect([...new Uint8Array(await passed.arrayBuffer())]).toEqual([7, 7]);
     },
   );
 

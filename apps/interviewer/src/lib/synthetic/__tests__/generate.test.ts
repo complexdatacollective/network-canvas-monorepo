@@ -267,7 +267,7 @@ describe('generateSyntheticSessions', () => {
     expect(store.size).toBe(0);
   });
 
-  it('does not attempt a rollback when nothing was written yet', async () => {
+  it('rolls back an empty batch, naming no session, when the first draw is refused', async () => {
     throwAfter(0);
 
     await expect(

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect } from 'storybook/test';
 
 import { BrandHeader } from './BrandHeader';
 
@@ -17,19 +18,90 @@ const meta: Meta<typeof BrandHeader> = {
           'The Home header brand scales down in tablet landscape to preserve vertical space, then returns to its larger presentation at laptop widths.',
       },
     },
+    viewport: {
+      options: {
+        compact: {
+          name: 'Below tablet landscape (900px)',
+          styles: { width: '900px', height: '700px' },
+          type: 'tablet',
+        },
+        tabletLandscape: {
+          name: 'Tablet landscape (1112px)',
+          styles: { width: '1112px', height: '834px' },
+          type: 'tablet',
+        },
+        laptop: {
+          name: 'Laptop (1440px)',
+          styles: { width: '1440px', height: '900px' },
+          type: 'desktop',
+        },
+      },
+    },
   },
 };
 
 export default meta;
 type Story = StoryObj;
 
+function brandParts(canvasElement: HTMLElement) {
+  const mark = canvasElement.querySelector('img');
+  const heading = canvasElement.querySelector('h1');
+  if (!mark || !heading) throw new Error('brand mark or heading not found');
+  return { mark: getComputedStyle(mark), heading: getComputedStyle(heading) };
+}
+
+// The type scale is fluid, so the expected size is read from a probe set in
+// the same token at the same viewport.
+function tokenFontSize(
+  canvasElement: HTMLElement,
+  className: 'text-2xl' | 'text-3xl',
+) {
+  const probe = document.createElement('span');
+  probe.className = className;
+  canvasElement.append(probe);
+  const size = getComputedStyle(probe).fontSize;
+  probe.remove();
+  return size;
+}
+
 export const Default: Story = {};
 
+/** Below tablet landscape the wordmark is visually hidden beside a 64px mark. */
+export const Compact: Story = {
+  globals: { viewport: { value: 'compact', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    // The width comes from the runner applying the viewport global.
+    await expect(window.innerWidth).toBe(900);
+    const { mark, heading } = brandParts(canvasElement);
+    await expect(mark.height).toBe('64px');
+    await expect(heading.position).toBe('absolute');
+  },
+};
+
+/** Tablet landscape shrinks the mark to 56px and shows the wordmark at text-2xl. */
 export const TabletLandscape: Story = {
-  globals: {
-    viewport: {
-      value: 'tablet',
-      isRotated: true,
-    },
+  globals: { viewport: { value: 'tabletLandscape', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBe(1112);
+    const { mark, heading } = brandParts(canvasElement);
+    await expect(mark.height).toBe('56px');
+    await expect(heading.position).toBe('static');
+    await expect(heading.fontSize).toBe(
+      tokenFontSize(canvasElement, 'text-2xl'),
+    );
+  },
+};
+
+/** Laptop widths return to an 80px mark and a text-3xl wordmark. */
+export const Laptop: Story = {
+  globals: { viewport: { value: 'laptop', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBe(1440);
+    const { mark, heading } = brandParts(canvasElement);
+    await expect(mark.height).toBe('80px');
+    await expect(heading.position).toBe('static');
+    await expect(heading.fontSize).toBe(
+      tokenFontSize(canvasElement, 'text-3xl'),
+    );
   },
 };

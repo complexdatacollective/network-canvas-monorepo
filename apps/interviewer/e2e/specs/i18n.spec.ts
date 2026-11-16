@@ -374,7 +374,7 @@ test.describe('automatic language and setup', () => {
 test.describe('installed app catalog availability', () => {
   // The interview takes its language from the browser, never from the app.
   test.use({ serviceWorkers: 'allow', locale: 'en-GB' });
-  test('first switches to Spanish offline, reloads, and imports without fetching a catalog', async ({
+  test('first switches to Spanish offline, reloads, and imports, with every catalog answered by the service worker from Cache Storage', async ({
     page,
     context,
     interviewNav,
@@ -392,11 +392,31 @@ test.describe('installed app catalog availability', () => {
         page.evaluate(() => navigator.serviceWorker.controller !== null),
       )
       .toBe(true);
-    const catalogRequests: string[] = [];
-    page.on('request', (request) => {
-      if (/locales\/.*\.json|catalog/i.test(request.url()))
-        catalogRequests.push(request.url());
+    // The build ships each language's catalog as an
+    // `assets/locale-<tag>-<hash>.js` chunk. With the network off, each one
+    // must be answered by the service worker; a catalog request that fails
+    // (the worker had nothing to answer with) is recorded too.
+    const isCatalog = (url: string) => /\/assets\/locale-[^/]+\.js$/.test(url);
+    const catalogsFromWorker: string[] = [];
+    const catalogsFailedOrDirect: string[] = [];
+    page.on('response', (response) => {
+      if (!isCatalog(response.url())) return;
+      if (response.fromServiceWorker()) catalogsFromWorker.push(response.url());
+      else catalogsFailedOrDirect.push(response.url());
     });
+    page.on('requestfailed', (request) => {
+      if (isCatalog(request.url())) catalogsFailedOrDirect.push(request.url());
+    });
+    // Whether Cache Storage holds each URL: the worker can only have answered
+    // offline from there.
+    const cached = (urls: string[]) =>
+      page.evaluate(
+        (keys) =>
+          Promise.all(
+            keys.map(async (key) => (await caches.match(key)) !== undefined),
+          ),
+        urls,
+      );
     await context.setOffline(true);
     await chooseLanguage(page, 'es');
     await page.reload();
@@ -428,7 +448,12 @@ test.describe('installed app catalog availability', () => {
       }),
     ).toBeVisible();
     expect((await storedResearch(page)).protocols).toHaveLength(1);
-    expect(catalogRequests).toEqual([]);
+    // Spanish was loaded, so the matcher above is seeing catalog chunks.
+    expect(catalogsFromWorker.some((url) => url.includes('/locale-es-'))).toBe(
+      true,
+    );
+    expect(catalogsFailedOrDirect).toEqual([]);
+    expect(await cached(catalogsFromWorker)).not.toContain(false);
     await chooseLanguage(page, 'en-GB', 'es');
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -445,7 +470,8 @@ test.describe('installed app catalog availability', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
     await interviewNav.exitInterview();
     expect((await storedResearch(page)).sessions).toHaveLength(1);
-    expect(catalogRequests).toEqual([]);
+    expect(catalogsFailedOrDirect).toEqual([]);
+    expect(await cached(catalogsFromWorker)).not.toContain(false);
   });
 });
 

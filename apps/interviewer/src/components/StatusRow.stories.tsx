@@ -163,3 +163,60 @@ export const DownloadingOffline: Story = {
     );
   },
 };
+
+const widthViewports = {
+  belowTabletLandscape: {
+    name: 'Below tablet landscape (900px)',
+    styles: { width: '900px', height: '700px' },
+    type: 'tablet',
+  },
+  tabletLandscape: {
+    name: 'Tablet landscape (1112px)',
+    styles: { width: '1112px', height: '834px' },
+    type: 'tablet',
+  },
+};
+
+function countsLink(canvasElement: HTMLElement) {
+  const link = canvasElement.querySelector('a[href="/data"]');
+  if (!(link instanceof HTMLElement)) throw new Error('counts link not found');
+  return link;
+}
+
+/**
+ * Below tablet landscape the counts link is hidden and each chip keeps only
+ * its icon, with the label left for assistive technology.
+ */
+export const BelowTabletLandscape: Story = {
+  parameters: { viewport: { options: widthViewports } },
+  globals: { viewport: { value: 'belowTabletLandscape', isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    // The width comes from the runner applying the viewport global.
+    await expect(window.innerWidth).toBe(900);
+    await expect(getComputedStyle(countsLink(canvasElement)).display).toBe(
+      'none',
+    );
+    const trigger = canvas.getByTestId('encryption-status-trigger');
+    await expect(trigger).toHaveAccessibleName(/Encrypted/);
+    await expect(
+      getComputedStyle(within(trigger).getByText('Encrypted')).position,
+    ).toBe('absolute');
+  },
+};
+
+/** From tablet landscape up the counts and the chip labels are shown. */
+export const TabletLandscapeAndUp: Story = {
+  parameters: { viewport: { options: widthViewports } },
+  globals: { viewport: { value: 'tabletLandscape', isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(window.innerWidth).toBe(1112);
+    // inline-flex computes to flex because the row is a flex container.
+    await expect(getComputedStyle(countsLink(canvasElement)).display).toBe(
+      'flex',
+    );
+    const trigger = canvas.getByTestId('encryption-status-trigger');
+    await expect(
+      getComputedStyle(within(trigger).getByText('Encrypted')).position,
+    ).toBe('static');
+  },
+};
