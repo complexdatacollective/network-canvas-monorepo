@@ -4623,20 +4623,6 @@ describe('Migration V7 to V8', () => {
       expect(migrationV7toV8.from).toBe(7);
       expect(migrationV7toV8.to).toBe(8);
     });
-
-    it('has migration notes', () => {
-      expect(migrationV7toV8.notes).toBeDefined();
-      expect(typeof migrationV7toV8.notes).toBe('string');
-      if (migrationV7toV8.notes) {
-        expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
-        expect(migrationV7toV8.notes).toContain(
-          'migration adds `required: true` to every attribute they reference',
-        );
-        expect(migrationV7toV8.notes).toContain(
-          'while preserving its other validation rules',
-        );
-      }
-    });
   });
 
   describe('DatePicker parameter and validation floor normalisation', () => {

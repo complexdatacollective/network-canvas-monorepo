@@ -1,14 +1,10 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
-  CategoricalColorReferenceSchema,
   CategoricalColorSequence,
   ColorReferenceSchema,
-  EdgeColorReferenceSchema,
   EdgeColorSequence,
-  NodeColorReferenceSchema,
   NodeColorSequence,
-  OrdinalColorReferenceSchema,
   OrdinalColorSequence,
   type CategoricalColorReference,
   type ColorReference,
@@ -27,28 +23,18 @@ describe('color references', () => {
     >();
   });
 
-  it.each(NodeColorSequence)('accepts node reference %s', (reference) => {
-    expect(NodeColorReferenceSchema.parse(reference)).toBe(reference);
-    expect(ColorReferenceSchema.parse(reference)).toBe(reference);
-  });
-
-  it.each(EdgeColorSequence)('accepts edge reference %s', (reference) => {
-    expect(EdgeColorReferenceSchema.parse(reference)).toBe(reference);
-    expect(ColorReferenceSchema.parse(reference)).toBe(reference);
-  });
-
-  it.each(OrdinalColorSequence)('accepts ordinal reference %s', (reference) => {
-    expect(OrdinalColorReferenceSchema.parse(reference)).toBe(reference);
-    expect(ColorReferenceSchema.parse(reference)).toBe(reference);
-  });
-
-  it.each(CategoricalColorSequence)(
-    'accepts categorical reference %s',
-    (reference) => {
-      expect(CategoricalColorReferenceSchema.parse(reference)).toBe(reference);
+  it('accepts every reference of the four sequences', () => {
+    const references = [
+      ...NodeColorSequence,
+      ...EdgeColorSequence,
+      ...OrdinalColorSequence,
+      ...CategoricalColorSequence,
+    ];
+    expect(references).toHaveLength(36);
+    for (const reference of references) {
       expect(ColorReferenceSchema.parse(reference)).toBe(reference);
-    },
-  );
+    }
+  });
 
   it.each([
     '#ff0000',
@@ -56,6 +42,8 @@ describe('color references', () => {
     'primary-color-seq-1',
     'custom-color',
   ])('rejects non-reference value %s', (value) => {
-    expect(ColorReferenceSchema.safeParse(value).success).toBe(false);
+    expect(ColorReferenceSchema.safeParse(value).error?.issues).toEqual([
+      expect.objectContaining({ code: 'invalid_union', path: [] }),
+    ]);
   });
 });

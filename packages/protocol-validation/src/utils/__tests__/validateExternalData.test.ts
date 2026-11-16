@@ -221,26 +221,21 @@ describe('validateExternalData', () => {
     it('should return false for valid variable names', () => {
       const validNames = [
         'name',
-        'age',
-        'location',
+        'ABC',
+        'field123',
         'user_id',
         'data.value',
         'ns:field',
         'item-type',
+        'item-type.sub_field:name',
+        'first name',
+        'name!',
+        'data#field',
+        'a/b (c)',
       ];
 
       const result = validateNames(validNames);
       expect(result).toBe(false);
-    });
-
-    it('should allow spaces inside names', () => {
-      expect(validateNames(['first name', 'last name'])).toBe(false);
-    });
-
-    it('should allow punctuation and symbols', () => {
-      expect(validateNames(['name!', 'age@', 'data#field', 'a/b (c)'])).toBe(
-        false,
-      );
     });
 
     it('should return error message for names that start or end with a space', () => {
@@ -248,41 +243,6 @@ describe('validateExternalData', () => {
       expect(result).toBe(
         'Attribute name not allowed (" first name", "last name "). Names must not be empty, start or end with a space, or contain control characters.',
       );
-    });
-
-    it('should allow underscores', () => {
-      const validNames = ['user_name', 'first_name', 'user_id'];
-
-      const result = validateNames(validNames);
-      expect(result).toBe(false);
-    });
-
-    it('should allow dots', () => {
-      const validNames = ['user.name', 'data.value', 'obj.prop'];
-
-      const result = validateNames(validNames);
-      expect(result).toBe(false);
-    });
-
-    it('should allow hyphens', () => {
-      const validNames = ['user-name', 'data-value', 'item-type'];
-
-      const result = validateNames(validNames);
-      expect(result).toBe(false);
-    });
-
-    it('should allow colons', () => {
-      const validNames = ['ns:field', 'xml:lang', 'prefix:name'];
-
-      const result = validateNames(validNames);
-      expect(result).toBe(false);
-    });
-
-    it('should allow alphanumeric characters', () => {
-      const validNames = ['name1', 'item2', 'field123', 'ABC', 'abc123'];
-
-      const result = validateNames(validNames);
-      expect(result).toBe(false);
     });
 
     it('should return false for empty array', () => {
@@ -339,18 +299,6 @@ describe('validateExternalData', () => {
 
       const result = validateNames(invalidNames);
       expect(result).toContain('Attribute name not allowed');
-    });
-
-    it('should allow complex valid combinations', () => {
-      const validNames = [
-        'user.first-name',
-        'data_value_123',
-        'xml:ns:field',
-        'item-type.sub_field:name',
-      ];
-
-      const result = validateNames(validNames);
-      expect(result).toBe(false);
     });
   });
 });
