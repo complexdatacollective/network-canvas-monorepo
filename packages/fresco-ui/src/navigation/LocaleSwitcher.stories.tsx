@@ -385,7 +385,8 @@ export const HostTrigger: Story = {
   play: async ({ canvasElement }) => {
     const trigger = within(canvasElement).getByRole('combobox');
     await expect(trigger).toHaveAccessibleName('Interface language: Español');
-    await expect(trigger).toHaveClass('font-semibold');
+    // The host's semibold link treatment, not the Button's own weight.
+    await expect(getComputedStyle(trigger).fontWeight).toBe('600');
     await expect(trigger.querySelector('svg.lucide-globe')).toBeVisible();
   },
 };

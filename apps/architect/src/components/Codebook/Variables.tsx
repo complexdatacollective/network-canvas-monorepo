@@ -31,12 +31,6 @@ import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import ControlsColumn from './ControlsColumn';
 import UsageColumn from './UsageColumn';
 const messages = defineMessages({
-  tableLabel: {
-    id: 'architect.codebook.variables.tableLabel',
-    defaultMessage: 'Attributes',
-    description:
-      'Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached.',
-  },
   unknown: {
     id: 'architect.codebook.variables.unknown',
     defaultMessage: 'Unknown',
@@ -67,12 +61,6 @@ const messages = defineMessages({
     defaultMessage: 'Used In',
     description:
       'Column header of the codebook variables table, above the stages that use each variable. Clicking it sorts the table.',
-  },
-  actions: {
-    id: 'architect.codebook.variables.actions',
-    defaultMessage: 'Actions',
-    description:
-      'Accessible name of the last column of the codebook variables table, which holds each row delete button; read only by screen readers, not shown visually.',
   },
   noAttributes: {
     id: 'architect.codebook.variables.noAttributes',
@@ -154,12 +142,12 @@ const UsageCell = ({ row }: CellContext<DataTableFeatures, Variable>) => (
   <UsageColumn inUse={row.original.inUse} usage={row.original.usage} />
 );
 
-const ActionsHeader = () => {
-  const intl = useAppIntl();
-  return (
-    <span className="sr-only">{intl.formatMessage(messages.actions)}</span>
-  );
-};
+const ActionsHeader = () => (
+  <span className="sr-only" lang="en">
+    {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+    {'Actions'}
+  </span>
+);
 
 /**
  * The actions cell is the one renderer that has to close over a value the
@@ -291,7 +279,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
     <div className="@container mt-7">
       <DataTable
         table={table}
-        aria-label={intl.formatMessage(messages.tableLabel)}
+        aria-label="Attributes"
         showPagination={false}
         emptyText={intl.formatMessage(messages.noAttributes)}
       />

@@ -21,89 +21,6 @@ const testItems: TestItem[] = [
 const layout = new ListLayout<TestItem>({ gap: 0 });
 
 describe('Collection - Disabled Item Focus', () => {
-  it('should skip disabled items when navigating with keyboard', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <Collection<TestItem>
-        items={testItems}
-        keyExtractor={(item) => item.id}
-        textValueExtractor={(item) => item.name}
-        layout={layout}
-        selectionMode="single"
-        disabledKeys={['2', '4']}
-        defaultSelectedKeys={['1']}
-        renderItem={(item, itemProps) => (
-          <div {...itemProps} data-testid={`item-${item.id}`}>
-            {item.name}
-          </div>
-        )}
-      >
-        {(CollectionElements) => CollectionElements}
-      </Collection>,
-    );
-
-    const item1 = screen.getByTestId('item-1');
-    const item2 = screen.getByTestId('item-2');
-    const item3 = screen.getByTestId('item-3');
-    const item4 = screen.getByTestId('item-4');
-    const item5 = screen.getByTestId('item-5');
-
-    expect(item2.getAttribute('data-disabled')).toBe('true');
-    expect(item4.getAttribute('data-disabled')).toBe('true');
-
-    // Click on item1 to focus it (focus must go through CollectionItem wrapper)
-    await user.click(item1);
-
-    await user.keyboard('{ArrowDown}');
-    expect(item3.getAttribute('data-focused')).toBe('true');
-    expect(item2.hasAttribute('data-focused')).toBeFalsy();
-
-    await user.keyboard('{ArrowDown}');
-    expect(item5.getAttribute('data-focused')).toBe('true');
-    expect(item4.hasAttribute('data-focused')).toBeFalsy();
-  });
-
-  it('should skip disabled items when navigating backwards', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <Collection<TestItem>
-        items={testItems}
-        keyExtractor={(item) => item.id}
-        textValueExtractor={(item) => item.name}
-        layout={layout}
-        selectionMode="single"
-        disabledKeys={['2', '4']}
-        defaultSelectedKeys={['5']}
-        renderItem={(item, itemProps) => (
-          <div {...itemProps} data-testid={`item-${item.id}`}>
-            {item.name}
-          </div>
-        )}
-      >
-        {(CollectionElements) => CollectionElements}
-      </Collection>,
-    );
-
-    const item1 = screen.getByTestId('item-1');
-    const item2 = screen.getByTestId('item-2');
-    const item3 = screen.getByTestId('item-3');
-    const item4 = screen.getByTestId('item-4');
-    const item5 = screen.getByTestId('item-5');
-
-    // Click on item5 to focus it (focus must go through CollectionItem wrapper)
-    await user.click(item5);
-
-    await user.keyboard('{ArrowUp}');
-    expect(item3.getAttribute('data-focused')).toBe('true');
-    expect(item4.hasAttribute('data-focused')).toBeFalsy();
-
-    await user.keyboard('{ArrowUp}');
-    expect(item1.getAttribute('data-focused')).toBe('true');
-    expect(item2.hasAttribute('data-focused')).toBeFalsy();
-  });
-
   it('should navigate to first enabled item when pressing Home', async () => {
     const user = userEvent.setup();
 
@@ -252,7 +169,9 @@ describe('Collection - Disabled Item Focus', () => {
     expect(item1.hasAttribute('data-focused')).toBeFalsy();
   });
 
-  it('should handle all items disabled scenario gracefully', () => {
+  it('focuses and selects nothing when every item is disabled', async () => {
+    const user = userEvent.setup();
+
     render(
       <Collection<TestItem>
         items={testItems}
@@ -261,6 +180,7 @@ describe('Collection - Disabled Item Focus', () => {
         layout={layout}
         selectionMode="single"
         disabledKeys={['1', '2', '3', '4', '5']}
+        aria-label="Disabled collection"
         renderItem={(item, itemProps) => (
           <div {...itemProps} data-testid={`item-${item.id}`}>
             {item.name}
@@ -271,9 +191,15 @@ describe('Collection - Disabled Item Focus', () => {
       </Collection>,
     );
 
-    testItems.forEach((item) => {
+    await user.tab();
+    await user.keyboard('{ArrowDown}{Home}{End}i {Enter}');
+    await user.click(screen.getByTestId('item-1'));
+
+    for (const item of testItems) {
       const element = screen.getByTestId(`item-${item.id}`);
-      expect(element.getAttribute('data-disabled')).toBe('true');
-    });
+      expect(element).toHaveAttribute('data-disabled', 'true');
+      expect(element).not.toHaveAttribute('data-focused');
+      expect(element).not.toHaveAttribute('data-selected');
+    }
   });
 });

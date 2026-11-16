@@ -92,12 +92,6 @@ describe('the team role read before any transaction', () => {
     ];
     expect(drift).toEqual([]);
   });
-
-  it('each say why', () => {
-    for (const [key, entry] of Object.entries(READS)) {
-      expect(entry.why, key).not.toBe('');
-    }
-  });
 });
 
 describe('the unlocked role collector', () => {

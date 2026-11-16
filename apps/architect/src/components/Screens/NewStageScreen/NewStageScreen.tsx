@@ -30,12 +30,6 @@ const messages = defineMessages({
     description:
       'Title of the full-screen dialog, opened by adding a stage to the timeline, in which the researcher picks the interface type (the kind of screen) for the new stage.',
   },
-  searchInterfaces: {
-    id: 'architect.screens.newStageScreen.newStageScreen.searchInterfaces',
-    defaultMessage: 'Search interfaces',
-    description:
-      'Accessible name of the search field in the dialog for choosing a new stage type; read only by screen readers.',
-  },
   searchInterfacesByNameOrKeyword: {
     id: 'architect.screens.newStageScreen.newStageScreen.searchInterfacesByNameOrKeyword',
     defaultMessage: 'Search interfaces by name or keyword...',
@@ -53,12 +47,6 @@ const messages = defineMessages({
     defaultMessage: 'Filter by capabilities:',
     description:
       'Heading beside the row of toggleable capability tags that narrow the list of interface types in the dialog for choosing a new stage type.',
-  },
-  interfaceCapabilityFilters: {
-    id: 'architect.screens.newStageScreen.newStageScreen.interfaceCapabilityFilters',
-    defaultMessage: 'Interface capability filters',
-    description:
-      'Accessible name of the group of capability filter tags in the dialog for choosing a new stage type; read only by screen readers.',
   },
 });
 
@@ -295,7 +283,7 @@ const NewStageScreen = ({
           <div className="w-full">
             <InputField
               type="search"
-              aria-label={intl.formatMessage(messages.searchInterfaces)}
+              aria-label={'Search interfaces'}
               placeholder={intl.formatMessage(
                 messages.searchInterfacesByNameOrKeyword,
               )}
@@ -329,9 +317,7 @@ const NewStageScreen = ({
             </Heading>
             <fieldset
               className="flex min-w-0 flex-wrap gap-1"
-              aria-label={intl.formatMessage(
-                messages.interfaceCapabilityFilters,
-              )}
+              aria-label={'Interface capability filters'}
             >
               {tags.map(({ value, selected, disabled }) => (
                 <Tag

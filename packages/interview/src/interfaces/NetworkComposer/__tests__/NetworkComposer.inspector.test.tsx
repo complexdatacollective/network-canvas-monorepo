@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -362,10 +363,11 @@ describe('NetworkComposer inspector — node', () => {
       tapNode(nodeA);
     });
 
-    // Inspector should appear with the node form field prompt.
-    await waitFor(() => {
-      expect(screen.getByTestId('inspector-panel')).toBeTruthy();
-    });
+    // The inspector shows the node's form, filled with its stored answer.
+    const panel = await screen.findByTestId('inspector-panel');
+    expect(await within(panel).findByLabelText(/full name/i)).toHaveValue(
+      'Alice Smith',
+    );
   });
 
   it('editing a node field in the inspector auto-saves the value', async () => {
@@ -952,9 +954,11 @@ describe('NetworkComposer inspector — edge', () => {
 
     await clickEdge(EDGE_ID);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('inspector-panel')).toBeTruthy();
-    });
+    // The inspector shows the edge's form, filled with its stored answer.
+    const panel = await screen.findByTestId('inspector-panel');
+    expect(await within(panel).findByLabelText(/strength/i)).toHaveValue(
+      'strong',
+    );
   });
 
   it('editing an edge field in the inspector auto-saves the value', async () => {

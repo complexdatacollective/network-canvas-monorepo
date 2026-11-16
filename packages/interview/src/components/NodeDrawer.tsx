@@ -4,7 +4,6 @@ import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
 import NodeDropAnimation from '@codaco/fresco-ui/NodeDropAnimation';
@@ -12,8 +11,6 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
-import { useStageSubjectName } from '../hooks/useStageSubjectName';
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import DrawerNode from '../interfaces/Sociogram/DrawerNode';
 
 type NodeDrawerProps = {
@@ -75,8 +72,6 @@ export default function NodeDrawer({
   onNodeClick,
   selectionKey,
 }: NodeDrawerProps) {
-  const intl = useAppIntl();
-  const subject = useStageSubjectName();
   const unplacedId = useId();
   const toggleLabelId = useId();
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
@@ -92,8 +87,7 @@ export default function NodeDrawer({
   const { dropProps, isOver, willAccept } = useDropTarget({
     id: 'node-drawer',
     accepts: dropTarget?.accepts ?? [],
-    announcedName:
-      dropTarget?.announcedName ?? intl.formatMessage(messages.drawer),
+    announcedName: dropTarget?.announcedName ?? 'Drawer',
     onDrop: dropTarget?.onDrop,
     disabled: !dropTarget,
     focusBehaviorOnDrop: 'none',
@@ -239,27 +233,20 @@ export default function NodeDrawer({
                 aria-hidden
                 animate={{ rotate: isExpandedEffective ? 0 : 180 }}
               />
-              <span id={unplacedId} className="sr-only">
-                <AppMessage
-                  message={messages.unplacedCount}
-                  values={{ count: nodes.length }}
-                />
+              <span id={unplacedId} className="sr-only" lang="en">
+                {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+                {`${nodes.length} unplaced`}
               </span>
-              <span id={toggleLabelId} className="sr-only">
-                {intl.formatMessage(
-                  isExpandedEffective
-                    ? messages.collapseDrawer
-                    : messages.expandDrawer,
-                )}
+              <span id={toggleLabelId} className="sr-only" lang="en">
+                {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+                {isExpandedEffective ? 'Collapse drawer' : 'Expand drawer'}
               </span>
             </motion.button>
           </motion.div>
         ) : (
-          <span className="sr-only">
-            <AppMessage
-              message={messages.unplacedCount}
-              values={{ count: nodes.length }}
-            />
+          <span className="sr-only" lang="en">
+            {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+            {`${nodes.length} unplaced`}
           </span>
         )}
 
@@ -307,11 +294,9 @@ export default function NodeDrawer({
               <div className="flex min-h-24 w-full items-center justify-center px-8 text-sm opacity-70">
                 {/* Only loop while the drawer is open to be seen. */}
                 {isExpandedEffective && <NodeDropAnimation />}
-                <span className="sr-only">
-                  <AppMessage
-                    message={messages.dropToRemove}
-                    values={{ subject }}
-                  />
+                <span className="sr-only" lang="en">
+                  {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+                  {'Drop here to remove'}
                 </span>
               </div>
             ) : (

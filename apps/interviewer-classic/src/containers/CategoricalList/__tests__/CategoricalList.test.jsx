@@ -1,4 +1,4 @@
-import { mount, shallow } from 'enzyme';
+import { mount } from 'enzyme';
 import { Provider } from 'react-redux';
 
 import { CategoricalList } from '../CategoricalList';
@@ -22,12 +22,6 @@ const mockProps = {
 };
 
 describe('CategoricalList component', () => {
-  it('renders categorical list', () => {
-    const component = shallow(<CategoricalList {...mockProps} />);
-
-    expect(component).toMatchSnapshot();
-  });
-
   it('items match the number of bins', () => {
     const component = mount(
       <Provider store={mockStore}>

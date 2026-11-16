@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 import Node from './Node';
 
 describe('Node label layout', () => {
-  it('keeps an unbroken label inside fixed square node geometry', () => {
+  // The geometry itself (a square node, the label inside it) is measured by
+  // the LongLabels story play in a real browser.
+  it('does not make word-breaking a base style of an unbroken label', () => {
     const label = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
     render(<Node label={label} shape="circle" size="sm" />);
@@ -12,10 +14,6 @@ describe('Node label layout', () => {
     const node = screen.getByRole('button', { name: label });
     const visibleLabel = within(node).getByText(label);
 
-    expect(node).toHaveClass('aspect-square', 'min-w-0', 'shrink-0', 'size-24');
-    // line-clamp itself hides overflow, so containment needs no separate
-    // overflow class.
-    expect(visibleLabel).toHaveClass('w-[80%]', 'min-w-0', 'line-clamp-3');
     // Word-breaking is not a base style: it would hide a too-long word from
     // the fit ladder. Only the ladder's own floor rungs may break words.
     expect(visibleLabel).not.toHaveClass('wrap-anywhere');

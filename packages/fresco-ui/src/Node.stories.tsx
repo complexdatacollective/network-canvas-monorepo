@@ -562,11 +562,10 @@ export const LongLabels: Story = {
       const bounds = node.getBoundingClientRect();
       await expect(Math.abs(bounds.width - bounds.height)).toBeLessThan(1);
 
-      // Found by its clamp rather than its text: a label that needed breaking
-      // carries invisible break points in its text.
-      const visibleLabel = node.querySelector<HTMLElement>(
-        'span[class*="line-clamp"]',
-      )!;
+      // Found by its own direction rather than its text: a label that needed
+      // breaking carries invisible break points in its text.
+      const visibleLabel = node.querySelector('span[dir="auto"]');
+      if (!visibleLabel) throw new Error('node label not rendered');
       await expect(visibleLabel.textContent?.replaceAll(SOFT_HYPHEN, '')).toBe(
         node.getAttribute('aria-label'),
       );
@@ -575,7 +574,9 @@ export const LongLabels: Story = {
       // hyphenation or emergency breaking — varies by label and environment;
       // the invariants are that every rung clamps and none may spill out of
       // the node.
-      await expect(visibleLabel.className).toMatch(/line-clamp-\d/);
+      await expect(
+        getComputedStyle(visibleLabel).getPropertyValue('-webkit-line-clamp'),
+      ).toMatch(/^\d+$/);
       const labelBounds = visibleLabel.getBoundingClientRect();
       await expect(labelBounds.height).toBeLessThanOrEqual(bounds.height);
       await expect(labelBounds.width).toBeLessThanOrEqual(bounds.width);

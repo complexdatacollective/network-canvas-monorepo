@@ -1,6 +1,14 @@
 {
   "type": "section",
   "slug": "design-protocols",
-  "localeLabels": { "en": "Design Protocols", "es": "Diseñar protocolos" },
-  "localeIndexFiles": { "en": "index.en.mdx", "es": "index.es.mdx" }
+  "localeLabels": {
+    "en": "Design Protocols",
+    "es": "Diseñar protocolos",
+    "fr": "Concevoir des protocoles"
+  },
+  "localeIndexFiles": {
+    "en": "index.en.mdx",
+    "es": "index.es.mdx",
+    "fr": "index.fr.mdx"
+  }
 }

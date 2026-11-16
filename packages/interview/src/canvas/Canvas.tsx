@@ -9,7 +9,6 @@ import {
   useRef,
 } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -20,7 +19,6 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import CanvasNode, { type NodeActivationDetails } from './CanvasNode';
 import EdgeLayer from './EdgeLayer';
 import type { CanvasStoreApi } from './useCanvasStore';
@@ -102,7 +100,6 @@ export default function Canvas({
   nodeDragItemType,
   onNodeRemove = null,
 }: CanvasProps) {
-  const intl = useAppIntl();
   const canvasRef = useRef<HTMLDivElement>(null);
   const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null);
   const dndStore = useDndStoreApi();
@@ -159,7 +156,7 @@ export default function Canvas({
   const { dropProps } = useDropTarget({
     id: 'sociogram-canvas',
     accepts: ['UNPOSITIONED_NODE'],
-    announcedName: intl.formatMessage(messages.canvas),
+    announcedName: 'Placement area',
     onDrop: handleDrop,
     focusBehaviorOnDrop: 'follow-item',
     disabled,

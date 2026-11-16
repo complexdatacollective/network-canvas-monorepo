@@ -65,18 +65,6 @@ const messages = defineMessages({
     description:
       'Button beside a failure notice, which repeats the import of the same file. Named rather than generic because several parts of the dialog can be failing at once.',
   },
-  importingAnnouncement: {
-    id: 'protocolBuilder.resourceUpload.importingAnnouncement',
-    defaultMessage: 'Importing the file…',
-    description:
-      'Announced to assistive technology while a chosen file is being imported.',
-  },
-  importedAnnouncement: {
-    id: 'protocolBuilder.resourceUpload.importedAnnouncement',
-    defaultMessage: '{name} was imported.',
-    description:
-      'Announced to assistive technology once a file has been imported. name is the filename the researcher chose.',
-  },
 });
 
 /**
@@ -258,10 +246,8 @@ export default function ResourceUploadControl({
    */
   const [rejected, setRejected] = useState<string | undefined>(undefined);
   /**
-   * What was announced last, encoded for the same reason the refusal above is:
-   * an announcement stays in its live region until another replaces it, so a
-   * sentence formatted when the import landed would be the one thing left in
-   * the old language after the application changes its own.
+   * What was announced last. English in every language, because it is read
+   * only by a screen reader.
    */
   const [status, setStatus] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -322,11 +308,7 @@ export default function ResourceUploadControl({
             bytes,
           }),
         (descriptor) => {
-          setStatus(
-            createMessageError(messages.importedAnnouncement, {
-              name: Redacted.value(descriptor.name),
-            }),
-          );
+          setStatus(`${Redacted.value(descriptor.name)} was imported.`);
           onStaged(descriptor, nodeShape);
         },
         // The import landed with nothing left to hand it to: another file
@@ -404,10 +386,8 @@ export default function ResourceUploadControl({
         />
       )}
 
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {busy
-          ? intl.formatMessage(messages.importingAnnouncement)
-          : (formatMessageError(status, intl) ?? status)}
+      <span className="sr-only" aria-live="polite" aria-atomic="true" lang="en">
+        {busy ? 'Importing the file…' : status}
       </span>
     </div>
   );

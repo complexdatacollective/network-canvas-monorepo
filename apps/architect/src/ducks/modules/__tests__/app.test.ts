@@ -75,7 +75,7 @@ describe('app slice — preview preferences', () => {
 });
 
 describe('app slice — protocol lock state', () => {
-  it('defaults to false when unset', () => {
+  it('defaults to this tab owning the protocol', () => {
     const store = createStore();
     expect(getProtocolLockState(store.getState())).toBe('owned');
     expect(getProtocolOwnedHere(store.getState())).toBe(true);

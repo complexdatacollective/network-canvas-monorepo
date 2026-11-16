@@ -1,0 +1,35 @@
+---
+title: Choisir entre Architect et Architect Classic
+navOrder: 10
+translatedFrom: 9ded02ea0b54614c5acfc85d0c43de7bd828ba35
+---
+
+Architect est l’outil de conception de protocoles de Network Canvas : c’est avec lui que vous créez les protocoles d’entretien exécutés dans Interviewer et Fresco. Il existe en deux versions : une application web qui fonctionne dans votre navigateur et peut être installée pour une utilisation hors ligne, et **Architect Classic**, l’ancienne application de bureau à télécharger (Windows, macOS, Linux). Dans toute cette documentation, « Architect » employé seul désigne l’application web, et « Architect Classic » désigne toujours la version à télécharger. Les deux ont la même interface et la même façon de construire un protocole, mais elles **ne sont pas interchangeables** : chacune produit une version différente du format de fichier de protocole (le « schéma »), et c’est cette version qui détermine l’application dans laquelle vous pourrez mener vos entretiens. Le tableau ci-dessous les compare ; le choix dépend surtout de l’endroit où vous mènerez vos entretiens.
+
+<KeyConcept title="Vous ne savez pas laquelle choisir ?">
+
+Choisissez **Architect** pour les nouvelles études : c’est la version par défaut, et elle ne demande aucune configuration. Ses protocoles (schéma 9) s’exécutent dans **Fresco** et dans la nouvelle application **Interviewer**.
+
+Choisissez **Architect Classic** uniquement si vous devez continuer à utiliser **Interviewer Classic**, l’ancienne application pour ordinateur et tablette. Il crée des protocoles en schéma 7 et ne peut pas ouvrir les protocoles créés dans Architect.
+
+[Ouvrir Architect →](https://architect.networkcanvas.com)
+
+</KeyConcept>
+
+|                         | Architect                                                                | Architect Classic                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Installation            | Aucune : fonctionne dans le navigateur                                   | À télécharger et installer (Windows, macOS, Linux)                                                                            |
+| Schéma de protocole     | Schéma 9 (le plus récent)                                                | Schéma 7 et versions antérieures                                                                                              |
+| Entretiens menés dans   | Fresco et Interviewer                                                    | Interviewer Classic (Interviewer et Fresco migrent automatiquement un protocole créé dans Architect Classic vers le schéma 8) |
+| Sauvegarde et transfert | Téléchargez un fichier `.netcanvas` pour conserver ou partager une copie | Votre fichier `.netcanvas` est déjà sur le disque : copiez-le où vous voulez                                                  |
+| Mises à jour            | Toujours la dernière version, automatiquement                            | Vous téléchargez vous-même chaque nouvelle version                                                                            |
+| Recommandé pour         | Les nouvelles études (menées dans Fresco ou Interviewer)                 | Les études qui doivent continuer à utiliser l’ancienne application Interviewer Classic                                        |
+| État                    | Développement actif                                                      | Mode maintenance : corrections de bogues uniquement                                                                           |
+
+<TipBox>
+
+Une **PWA** (application web progressive) est un site web que vous pouvez, si vous le souhaitez, installer sur votre appareil. Architect fonctionne dans n’importe quel navigateur web récent sans rien installer ; l’installer comme PWA vous permet d’y accéder rapidement depuis votre appareil et de l’utiliser hors ligne.
+
+</TipBox>
+
+Architect ouvre les protocoles créés pour des versions antérieures du schéma, y compris les protocoles en schéma 7 créés dans Architect Classic. Il propose de mettre à niveau un ancien protocole vers la dernière version du schéma, ou de continuer à le modifier en schéma 8 dans la version précédente d’Architect, intégrée à Architect lui-même. La mise à niveau est irréversible : un protocole mis à niveau ne peut pas être reconverti ni ouvert dans Architect Classic. Pour une explication complète des versions du schéma et de la compatibilité, consultez [Informations sur le schéma de protocole](/fr/get-started/protocol-schema-information). Si vous revenez à Network Canvas après avoir utilisé les applications Classic, la page [Migrer depuis les applications Classic](/fr/get-started/migrating-from-classic) présente tout le passage de bout en bout : le protocole, les données et ce qui change au quotidien.

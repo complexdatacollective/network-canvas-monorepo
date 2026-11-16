@@ -17,13 +17,18 @@ import RichTextEditorField, {
   type RichTextInsertMenuItem,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
+import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
   ALLOWED_MARKDOWN_SECTION_TAGS,
   DEFAULT_MARKDOWN_REHYPE_PLUGINS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
-import { TokenPill } from '@codaco/fresco-ui/TokenPill';
+import {
+  TokenPill,
+  type TokenPillLabel,
+  useTokenPillLanguage,
+} from '@codaco/fresco-ui/TokenPill';
 import {
   type DynamicValueBinding,
   type DynamicValues,
@@ -179,24 +184,6 @@ const messages = defineMessages({
     description:
       'Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with a version for each kind of number (such as one or several), so the words agree with the number, as in “1 child” and “3 children”.',
   },
-  versionsByPresence: {
-    id: 'protocolBuilder.dynamicText.versionsByPresence',
-    defaultMessage: 'Wording depending on whether {value} is known',
-    description:
-      'Accessible name of a piece of text with two versions: one shown when a value is known, one when it is not. value is the value’s name, such as “nickname”.',
-  },
-  versionsByAnswer: {
-    id: 'protocolBuilder.dynamicText.versionsByAnswer',
-    defaultMessage: 'Wording for each answer to {value}',
-    description:
-      'Accessible name of a piece of text with one version for each answer to an attribute. value is the attribute’s name.',
-  },
-  versionsByNumber: {
-    id: 'protocolBuilder.dynamicText.versionsByNumber',
-    defaultMessage: 'Wording that fits the number {value}',
-    description:
-      'Accessible name of a piece of text with a version for each kind of number, so the words agree with the number. value is the name of the number.',
-  },
   versionMissing: {
     id: 'protocolBuilder.dynamicText.versionMissing',
     defaultMessage: 'If not known',
@@ -246,11 +233,23 @@ const messages = defineMessages({
 const EXAMPLE_COUNT = 3;
 
 type Naming = Readonly<{
-  /** What a value is called where it shows in the text. */
-  valueLabel: (choice: DynamicValueChoice) => string;
+  /**
+   * What a value is called where it shows in the text: the interface's words,
+   * or an attribute's own name, which reads in its own direction.
+   */
+  valueLabel: (choice: DynamicValueChoice) => TokenPillLabel;
   /** The heading it is listed under in the insert menu. */
   groupLabel: (choice: DynamicValueChoice) => string;
 }>;
+
+/**
+ * A value the stage cannot offer, called by the name the text records for
+ * it, as it was written.
+ */
+const recordedName = (name: string): TokenPillLabel => ({
+  text: name,
+  dir: 'auto',
+});
 
 const namingFor = (intl: IntlShape): Naming => ({
   valueLabel: (choice) => {
@@ -278,7 +277,8 @@ const namingFor = (intl: IntlShape): Naming => ({
     if (choice.role === 'dyadTarget') {
       return intl.formatMessage(messages.secondNodeValue, { attribute });
     }
-    return attribute;
+    // The researcher's name for the attribute, not the interface's words.
+    return { text: attribute, dir: 'auto' };
   },
   // Everything the text is shown with, one node, a pair or an edge's two
   // ends, is listed together; a value of a pair's node says which node.
@@ -332,8 +332,7 @@ export const isBlankMessage = (nodes: readonly MessageNode[]): boolean =>
  * wording (`LocalizedMessageVersions`), whose numbers switch the same way.
  */
 export const numberSwitchLabels = (intl: IntlShape, locale: LocaleTag) => ({
-  switchLabel: (value: string) =>
-    intl.formatMessage(messages.versionsByNumber, { value }),
+  switchLabel: (value: string) => `Wording that fits the number ${value}`,
   versionLabel: (key: string) => {
     const exact = /^=(\d+)$/.exec(key);
     const counts = exact
@@ -379,22 +378,25 @@ const messageLabelsFor = ({
 }: MessageLabelInputs): MessageDocumentLabels => ({
   switchSummary: (node) => {
     const choice = choiceByName.get(node.argument);
-    return choice === undefined ? node.argument : naming.valueLabel(choice);
+    return choice === undefined
+      ? recordedName(node.argument)
+      : naming.valueLabel(choice);
   },
   switchLabel: (node) => {
     const choice = choiceByName.get(node.argument);
     const value =
-      choice === undefined ? node.argument : naming.valueLabel(choice);
+      choice === undefined
+        ? node.argument
+        : presentationalTextValue(naming.valueLabel(choice));
     if (node.type === 'plural') {
       return numberSwitchLabels(intl, locale).switchLabel(value);
     }
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
     );
-    return intl.formatMessage(
-      presence ? messages.versionsByPresence : messages.versionsByAnswer,
-      { value },
-    );
+    return presence
+      ? `Wording depending on whether ${value} is known`
+      : `Wording for each answer to ${value}`;
   },
   versionLabel: (node, key) => {
     if (node.type === 'plural') {
@@ -687,8 +689,12 @@ export function DynamicMessageEditor({
   ]
     .filter((bindingName) => !choiceByName.has(bindingName))
     .flatMap((bindingName) => [
-      { id: bindingName, label: bindingName, inToolbar: false },
-      { id: countTokenId(bindingName), label: bindingName, inToolbar: false },
+      { id: bindingName, label: recordedName(bindingName), inToolbar: false },
+      {
+        id: countTokenId(bindingName),
+        label: recordedName(bindingName),
+        inToolbar: false,
+      },
     ]);
   const tokens = [...offeredTokens, ...unofferedTokens];
 
@@ -1034,9 +1040,9 @@ export function MessageNodesSummary({
    */
   blockMarkdown?: BlockMarkdown;
   /** What a value's pill says, by the name the message gives it. */
-  valueLabel: (argument: string) => string;
+  valueLabel: (argument: string) => TokenPillLabel;
   /** What a set of versions' pill says. */
-  switchSummary: (node: MessageSwitch) => string;
+  switchSummary: (node: MessageSwitch) => TokenPillLabel;
   /**
    * What a version of a set is called, for a set that is the whole of the
    * message, or of one version of it: that set is written out, one labelled
@@ -1048,6 +1054,7 @@ export function MessageNodesSummary({
 }>) {
   const elements = multiline ? blockMarkdown : LABEL_MARKDOWN;
   const allowedElements = [...elements.allowedElements, 'span'];
+  const labelLanguage = useTokenPillLanguage();
 
   const renderSwitch = (node: MessageSwitch, key: number): ReactNode => (
     <TokenPill key={key} token={node.argument} label={switchSummary(node)} />
@@ -1072,7 +1079,11 @@ export function MessageNodesSummary({
               data-version-summary={version.key}
               className="flex flex-col"
             >
-              <span className="text-xs font-semibold text-current/70">
+              {/* The interface's words, inside the protocol's text. */}
+              <span
+                {...labelLanguage}
+                className="text-xs font-semibold text-current/70"
+              >
                 {versionLabel(whole, version.key)}
               </span>
               <span
@@ -1190,7 +1201,9 @@ export function DynamicMessageSummary({
   });
   const valueLabel = (argument: string) => {
     const choice = choiceByName.get(argument);
-    return choice === undefined ? argument : naming.valueLabel(choice);
+    return choice === undefined
+      ? recordedName(argument)
+      : naming.valueLabel(choice);
   };
 
   return (
@@ -1258,7 +1271,10 @@ export function useDynamicValueNames(
     }
     return (argument: string) => {
       const choice = choiceByName.get(argument);
-      return choice === undefined ? argument : naming.valueLabel(choice);
+      // Written into the preview's text, so the words alone.
+      return choice === undefined
+        ? argument
+        : presentationalTextValue(naming.valueLabel(choice));
     };
   }, [intl, context, bindings]);
 }

@@ -45,23 +45,6 @@ function endDraw(div: HTMLElement) {
 }
 
 describe('Annotations', () => {
-  it('renders an svg element inside the container div', () => {
-    const { container } = render(
-      <Annotations isFrozen={false} onChangeActiveAnnotations={vi.fn()} />,
-    );
-    const div = getContainerDiv(container);
-    const svg = div.querySelector('svg');
-    expect(svg).not.toBeNull();
-  });
-
-  it('container div does not have z-10 class', () => {
-    const { container } = render(
-      <Annotations isFrozen={false} onChangeActiveAnnotations={vi.fn()} />,
-    );
-    const div = getContainerDiv(container);
-    expect(div.classList.contains('z-10')).toBe(false);
-  });
-
   it('creates a path element inside svg while drawing is active', () => {
     const { container } = render(
       <Annotations isFrozen={false} onChangeActiveAnnotations={vi.fn()} />,

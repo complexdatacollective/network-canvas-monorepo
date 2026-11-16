@@ -41,11 +41,5 @@ describe('SociogramPrompts', () => {
 
       expect(result).toMatchSnapshot();
     });
-
-    it('get edge filters', () => {
-      const result = getEdgesForSubject(mockState, subject);
-
-      expect(result).toMatchSnapshot();
-    });
   });
 });

@@ -65,12 +65,6 @@ const messages = defineMessages({
     description:
       'Conjunction displayed on its own line between two filter conditions that both apply.',
   },
-  removeCondition: {
-    id: 'frescoUi.operatorFilter.removeCondition',
-    defaultMessage: 'Remove condition',
-    description:
-      'Accessible name of the button that deletes one filter condition.',
-  },
   selectType: {
     id: 'frescoUi.operatorFilter.selectType',
     defaultMessage: 'Select type...',
@@ -199,7 +193,8 @@ export default function OperatorFilter({
                 <IconButton
                   size="sm"
                   variant="text"
-                  aria-label={intl.formatMessage(messages.removeCondition)}
+                  aria-label="Remove condition"
+                  lang="en"
                   onClick={() => handleRemoveCondition(index)}
                   icon={<X />}
                   className="size-5! shrink-0"

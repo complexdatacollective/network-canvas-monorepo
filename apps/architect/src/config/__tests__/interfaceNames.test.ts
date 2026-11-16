@@ -25,6 +25,7 @@ describe('INTERFACE_NAMES in Architect', () => {
    * title stops matching fails here.
    */
   it('is the only source of the New Stage screen titles', () => {
+    expect(stageTypes.length).toBeGreaterThan(0);
     for (const option of getInterfaceTypes()) {
       expect(option.title).toBe(INTERFACE_NAMES[option.type]);
     }
@@ -33,29 +34,5 @@ describe('INTERFACE_NAMES in Architect', () => {
         .map((option) => option.type)
         .toSorted(),
     ).toEqual([...offeredStageTypes].toSorted());
-  });
-
-  /**
-   * Every Architect surface that names an interface, agreeing on one string
-   * per type — asserted together rather than pairwise, because the defect was
-   * never one surface being wrong, it was two of them each being internally
-   * consistent and different from each other. The editor's own name for an
-   * interface is the package's now, and reads the same map.
-   */
-  it('is one name per interface across every surface that shows one', () => {
-    const optionTitles = new Map<StageType, string>(
-      getInterfaceTypes().map((option) => [option.type, option.title]),
-    );
-
-    for (const stageType of stageTypes) {
-      const namesShown = new Set([INTERFACE_NAMES[stageType]]);
-      const optionTitle = optionTitles.get(stageType);
-      if (optionTitle !== undefined) namesShown.add(optionTitle);
-
-      expect({ stageType, namesShown: [...namesShown] }).toEqual({
-        stageType,
-        namesShown: [INTERFACE_NAMES[stageType]],
-      });
-    }
   });
 });

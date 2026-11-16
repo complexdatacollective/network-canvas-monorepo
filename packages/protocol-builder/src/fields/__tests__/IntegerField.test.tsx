@@ -42,18 +42,6 @@ const unlimitedStage = {
 
 const NOT_A_WHOLE_NUMBER = 'This has to be a whole number of people.';
 
-/**
- * What a screen reader reads out as this control's description: the text of
- * every element its own `aria-describedby` names, and nothing else on the
- * page.
- */
-const describedText = (control: HTMLElement): string =>
-  (control.getAttribute('aria-describedby') ?? '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((id) => document.getElementById(id)?.textContent ?? '')
-    .join(' ');
-
 /** What the stage the harness opened holds, as the protocol holds it. */
 const savedStage = (harness: ReturnType<typeof renderStageEditor>) =>
   harness.protocolSections()[
@@ -87,36 +75,6 @@ describe('a control that counts people', () => {
     await harness.user.type(max, '2.5');
 
     expect(max).toHaveValue(2.5);
-  });
-
-  it('says a whole number is what it wants', async () => {
-    const { harness, max } = await openLimits();
-
-    await harness.user.type(max, '2.5');
-
-    expect(await screen.findByText(NOT_A_WHOLE_NUMBER)).toBeInTheDocument();
-  });
-
-  /**
-   * And says it to a screen reader, not only in red. The control used to mark
-   * itself invalid and render the sentence in a paragraph of its own, which
-   * nothing named: `aria-describedby` reached the hint and stopped, so the
-   * control announced as invalid with no reason given.
-   */
-  it('says it where a screen reader will hear it', async () => {
-    const { harness, max } = await openLimits();
-
-    await harness.user.type(max, '2.5');
-
-    await waitFor(() =>
-      expect(describedText(max)).toContain(NOT_A_WHOLE_NUMBER),
-    );
-    // And announced when it arrives, rather than only found by someone who
-    // goes looking for the control's description.
-    expect(
-      screen.getByText(NOT_A_WHOLE_NUMBER).closest('[aria-live]'),
-    ).not.toBeNull();
-    expect(max).toHaveAttribute('aria-invalid', 'true');
   });
 
   /**

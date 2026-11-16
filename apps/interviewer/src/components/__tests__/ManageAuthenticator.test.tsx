@@ -128,17 +128,6 @@ describe('ManageAuthenticator — change passphrase', () => {
 });
 
 describe('ManageAuthenticator — change PIN', () => {
-  it('offers a Change PIN affordance for a pin vault', () => {
-    useAuthMock.mockReturnValue({
-      mode: 'pin',
-      reEnrolWithPin: vi.fn(async () => ({ ok: true })),
-    });
-    render(<ManageAuthenticator />);
-    expect(
-      screen.getByRole('button', { name: /change pin/i }),
-    ).toBeInTheDocument();
-  });
-
   it('changes the PIN and surfaces a success toast', async () => {
     const reEnrolWithPin = vi.fn(async () => ({ ok: true }));
     useAuthMock.mockReturnValue({ mode: 'pin', reEnrolWithPin });

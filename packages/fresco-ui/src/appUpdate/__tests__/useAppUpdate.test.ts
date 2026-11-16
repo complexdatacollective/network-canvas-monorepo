@@ -66,43 +66,34 @@ describe('version-change detection', () => {
 });
 
 describe('manual installation', () => {
-  it('preserves deprecated auto-apply options as inert patch-compatible inputs', async () => {
-    const installUpdate = vi.fn().mockResolvedValue(true);
-    const checkUnsavedWork = vi.fn().mockReturnValue(false);
-    const { result } = renderHook(() =>
-      useAppUpdate({
-        app: 'architect',
-        currentVersion: '2.0.0',
-        needRefresh: true,
-        installUpdate,
-        hasUnsavedWork: false,
-        checkUnsavedWork,
-        autoApplyWindowMs: 0,
-      }),
-    );
+  it('never installs an available update without a user request, even with the deprecated auto-apply options', async () => {
+    // The removed behaviour installed on a timer after a fresh load, so the
+    // negative check has to outlast that window.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const installUpdate = vi.fn().mockResolvedValue(true);
+      const checkUnsavedWork = vi.fn().mockReturnValue(false);
+      const { result } = renderHook(() =>
+        useAppUpdate({
+          app: 'architect',
+          currentVersion: '2.0.0',
+          needRefresh: true,
+          installUpdate,
+          hasUnsavedWork: false,
+          checkUnsavedWork,
+          autoApplyWindowMs: 0,
+        }),
+      );
 
-    await waitFor(() => expect(result.current.status).toBe('available'));
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-    expect(FRESH_LOAD_AUTO_APPLY_MS).toBe(20_000);
-    expect(checkUnsavedWork).not.toHaveBeenCalled();
-    expect(installUpdate).not.toHaveBeenCalled();
-  });
+      await waitFor(() => expect(result.current.status).toBe('available'));
+      await vi.advanceTimersByTimeAsync(FRESH_LOAD_AUTO_APPLY_MS * 2);
 
-  it('never installs an available update without a user request', async () => {
-    const installUpdate = vi.fn().mockResolvedValue(true);
-    const { result } = renderHook(() =>
-      useAppUpdate({
-        app: 'interviewer',
-        currentVersion: '2.0.0',
-        needRefresh: true,
-        installUpdate,
-      }),
-    );
-
-    await waitFor(() => expect(result.current.status).toBe('available'));
-    await Promise.resolve();
-    expect(installUpdate).not.toHaveBeenCalled();
-    expect(result.current.status).toBe('available');
+      expect(checkUnsavedWork).not.toHaveBeenCalled();
+      expect(installUpdate).not.toHaveBeenCalled();
+      expect(result.current.status).toBe('available');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('records a pending update before invoking the user-requested install', async () => {
@@ -162,6 +153,7 @@ describe('manual installation', () => {
   it('reports recently updated after a requested reload even when the recorded version already matches', async () => {
     localStorage.setItem('nc:lastLaunchedVersion:architect', '2.0.0');
     localStorage.setItem('nc:pendingAppUpdate:architect', '2.0.0');
+    localStorage.setItem('nc:pendingAppUpdate:interviewer', '1.0.0');
 
     const { result } = renderHook(() =>
       useAppUpdate({
@@ -174,7 +166,9 @@ describe('manual installation', () => {
 
     await waitFor(() => expect(result.current.status).toBe('updated'));
     expect(localStorage.getItem('nc:pendingAppUpdate:architect')).toBeNull();
-    expect(localStorage.getItem('nc:pendingAppUpdate:interviewer')).toBeNull();
+    expect(localStorage.getItem('nc:pendingAppUpdate:interviewer')).toBe(
+      '1.0.0',
+    );
   });
 
   it('keeps pending update markers isolated by app', async () => {

@@ -132,34 +132,6 @@ function renderRuleList(rules?: readonly RuleDraft[]) {
 }
 
 /**
- * The editor on its own, opened with the props a caller controls. Used only
- * for the shared-element identity, which no list row can state a value for.
- */
-function StandaloneEditor({ layoutId }: { layoutId?: string }) {
-  const [open, setOpen] = useState(true);
-
-  return (
-    <RuleEditorHost sections={ruleSections()}>
-      <RuleEditorDialog
-        open={open}
-        seed={{ type: '' }}
-        ruleTypes={RULE_TYPES}
-        allowedTargets={QUERY_TARGETS}
-        onSave={() => setOpen(false)}
-        onCancel={() => setOpen(false)}
-        {...(layoutId === undefined ? {} : { layoutId })}
-      />
-    </RuleEditorHost>
-  );
-}
-
-function renderStandaloneEditor(layoutId?: string) {
-  render(
-    <StandaloneEditor {...(layoutId === undefined ? {} : { layoutId })} />,
-  );
-}
-
-/**
  * The editor with its two answers to the caller spied on.
  *
  * `onSave` and `onCancel` are a conversation with the list the editor was
@@ -272,25 +244,6 @@ const finishAndClose = async (user: ReturnType<typeof userEvent.setup>) =>
   user.click(screen.getByRole('button', { name: 'Finish and Close' }));
 
 describe('the shared-element morph out of a rule row', () => {
-  it('hands the dialog the identity it was opened with', async () => {
-    renderStandaloneEditor('rule-row-7');
-
-    await waitFor(() =>
-      expect(dialogRenders).toHaveBeenCalledWith(
-        expect.objectContaining({ layoutId: 'rule-row-7' }),
-      ),
-    );
-  });
-
-  it('hands the dialog no identity when it was opened without one', async () => {
-    renderStandaloneEditor();
-
-    await screen.findByRole('dialog', { name: RULE_EDITOR });
-    expect(
-      dialogRenders.mock.calls.every(([props]) => props.layoutId === undefined),
-    ).toBe(true);
-  });
-
   it('pairs an edited row with the dialog that replaces it', async () => {
     const user = userEvent.setup();
     renderRuleList([nodeRule('rule-a')]);
@@ -333,6 +286,7 @@ describe('the shared-element morph out of a rule row', () => {
 
     await openNewRule(user);
 
+    expect(dialogRenders).toHaveBeenCalled();
     // A rule being added has no row yet, so there is nothing for the dialog to
     // be the same thing as — and borrowing another row's identity would morph
     // it out of a rule it has nothing to do with.

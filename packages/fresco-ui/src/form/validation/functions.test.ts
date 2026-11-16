@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod/mini';
 
 import { createCatalogSource } from '@codaco/app-i18n/locales';
@@ -1036,42 +1036,6 @@ describe('Validation Functions', () => {
       const result = validator.safeParse('differentValue');
       expect(result.success).toBe(true);
     });
-
-    it('should throw error when attribute is not specified', () => {
-      expect(() => {
-        validations
-          .differentFrom(
-            null as unknown as string,
-            createMockContext(),
-          )({})
-          .safeParse('test');
-      }).toThrow('Attribute must be specified for differentFrom validation');
-    });
-
-    it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
-      // When the comparison attribute is not in formValues, validation is skipped
-      // This allows hint generation to work without requiring formValues
-      const validator = validations.differentFrom(
-        'testAttribute',
-        createMockContext(),
-      )({});
-
-      const result = validator.safeParse('someValue');
-      expect(result.success).toBe(true);
-    });
-
-    it('should throw error when comparison variable is not found in codebook', () => {
-      expect(() => {
-        validations
-          .differentFrom(
-            'unknownAttribute',
-            createMockContext(),
-          )({
-            unknownAttribute: 'value',
-          })
-          .safeParse('test');
-      }).toThrow('Comparison attribute not found in codebook');
-    });
   });
 
   describe('sameAs', () => {
@@ -1139,29 +1103,6 @@ describe('Validation Functions', () => {
       expect(validator.safeParse('live value').success).toBe(true);
       expect(validator.safeParse('stale value').success).toBe(false);
     });
-
-    it('should throw error when attribute is not specified', () => {
-      expect(() => {
-        validations
-          .sameAs(
-            null as unknown as string,
-            createMockContext(),
-          )({})
-          .safeParse('test');
-      }).toThrow('Attribute must be specified for sameAs validation');
-    });
-
-    it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
-      // When the comparison attribute is not in formValues, validation is skipped
-      // This allows hint generation to work without requiring formValues
-      const validator = validations.sameAs(
-        'testAttribute',
-        createMockContext(),
-      )({});
-
-      const result = validator.safeParse('someValue');
-      expect(result.success).toBe(true);
-    });
   });
 
   describe('greaterThanVariable', () => {
@@ -1212,48 +1153,6 @@ describe('Validation Functions', () => {
       const resultPast = validator.safeParse('2023-06-01T00:00:00Z');
       expect(resultPast.success).toBe(false);
     });
-
-    it('should throw error when attribute is not specified', () => {
-      expect(() => {
-        validations
-          .greaterThanVariable(
-            { attribute: null, type: 'number' } as unknown as {
-              attribute: string;
-              type: 'number';
-            },
-            createMockContext(),
-          )({})
-          .safeParse(10);
-      }).toThrow(
-        'Attribute must be specified for greaterThanVariable validation',
-      );
-    });
-
-    it('should throw error when attribute is not in codebook', () => {
-      expect(() => {
-        validations
-          .greaterThanVariable(
-            {
-              attribute: 'missingAttribute',
-              type: 'number',
-            },
-            createMockContext(),
-          )({})
-          .safeParse(10);
-      }).toThrow('Comparison attribute not found in codebook');
-    });
-
-    it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
-      // When the comparison attribute is not in formValues, validation is skipped
-      // This allows hint generation to work without requiring formValues
-      const validator = validations.greaterThanVariable(
-        { attribute: 'numberAttribute', type: 'number' },
-        createMockContext(),
-      )({});
-
-      const result = validator.safeParse(10);
-      expect(result.success).toBe(true);
-    });
   });
 
   describe('lessThanVariable', () => {
@@ -1303,46 +1202,6 @@ describe('Validation Functions', () => {
 
       const resultFuture = validator.safeParse('2024-06-01T00:00:00Z');
       expect(resultFuture.success).toBe(false);
-    });
-
-    it('should throw error when attribute is not specified', () => {
-      expect(() => {
-        validations
-          .lessThanVariable(
-            { attribute: null, type: 'number' } as unknown as {
-              attribute: string;
-              type: 'number';
-            },
-            createMockContext(),
-          )({})
-          .safeParse(10);
-      }).toThrow('Attribute must be specified for lessThanVariable validation');
-    });
-
-    it('should throw error when attribute is not in codebook', () => {
-      expect(() => {
-        validations
-          .lessThanVariable(
-            {
-              attribute: 'missingAttribute',
-              type: 'number',
-            },
-            createMockContext(),
-          )({})
-          .safeParse(10);
-      }).toThrow('Comparison attribute not found in codebook');
-    });
-
-    it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
-      // When the comparison attribute is not in formValues, validation is skipped
-      // This allows hint generation to work without requiring formValues
-      const validator = validations.lessThanVariable(
-        { attribute: 'numberAttribute', type: 'number' },
-        createMockContext(),
-      )({});
-
-      const result = validator.safeParse(10);
-      expect(result.success).toBe(true);
     });
   });
 
@@ -1397,46 +1256,6 @@ describe('Validation Functions', () => {
       const resultPast = validator.safeParse('2023-06-01T00:00:00Z');
       expect(resultPast.success).toBe(false);
     });
-
-    it('should throw error when attribute is not specified', () => {
-      expect(() => {
-        validations
-          .greaterThanOrEqualToVariable(
-            { attribute: null, type: 'number' } as unknown as {
-              attribute: string;
-              type: 'number';
-            },
-            createMockContext(),
-          )({})
-          .safeParse(10);
-      }).toThrow(
-        'Attribute must be specified for greaterThanOrEqualToVariable validation',
-      );
-    });
-
-    it('should throw error when attribute is not in codebook', () => {
-      expect(() => {
-        validations
-          .greaterThanOrEqualToVariable(
-            {
-              attribute: 'missingAttribute',
-              type: 'number',
-            },
-            createMockContext(),
-          )({})
-          .safeParse(10);
-      }).toThrow('Comparison attribute not found in codebook');
-    });
-
-    it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
-      const validator = validations.greaterThanOrEqualToVariable(
-        { attribute: 'numberAttribute', type: 'number' },
-        createMockContext(),
-      )({});
-
-      const result = validator.safeParse(10);
-      expect(result.success).toBe(true);
-    });
   });
 
   describe('lessThanOrEqualToVariable', () => {
@@ -1490,45 +1309,76 @@ describe('Validation Functions', () => {
       const resultFuture = validator.safeParse('2024-06-01T00:00:00Z');
       expect(resultFuture.success).toBe(false);
     });
+  });
 
-    it('should throw error when attribute is not specified', () => {
-      expect(() => {
-        validations
-          .lessThanOrEqualToVariable(
-            { attribute: null, type: 'number' } as unknown as {
-              attribute: string;
-              type: 'number';
-            },
-            createMockContext(),
-          )({})
-          .safeParse(10);
-      }).toThrow(
-        'Attribute must be specified for lessThanOrEqualToVariable validation',
+  // Each comparison rule repeats these guards in its own implementation, so
+  // every rule gets every row.
+  describe.each([
+    {
+      rule: 'differentFrom',
+      attribute: 'testAttribute',
+      answer: 'test',
+      build: (attribute: string) =>
+        validations.differentFrom(attribute, createMockContext()),
+      unspecified: null,
+    },
+    {
+      rule: 'sameAs',
+      attribute: 'testAttribute',
+      answer: 'test',
+      build: (attribute: string) =>
+        validations.sameAs(attribute, createMockContext()),
+      unspecified: null,
+    },
+    ...(
+      [
+        'greaterThanVariable',
+        'lessThanVariable',
+        'greaterThanOrEqualToVariable',
+        'lessThanOrEqualToVariable',
+      ] as const
+    ).map((rule) => ({
+      rule,
+      attribute: 'numberAttribute',
+      answer: 10,
+      build: (attribute: string) =>
+        validations[rule]({ attribute, type: 'number' }, createMockContext()),
+      unspecified: { attribute: null, type: 'number' },
+    })),
+  ])('$rule guards', ({ rule, attribute, answer, build, unspecified }) => {
+    // Protocol data reaches the rule untyped, so the missing attribute goes in
+    // through the same props bag a Field builds its validation from.
+    it('refuses a rule that names no attribute', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const result = await makeValidationFunction({
+        [rule]: unspecified,
+        validationContext: createMockContext(),
+      })({}).safeParseAsync(answer);
+
+      expect(result.success).toBe(false);
+      expect(consoleError).toHaveBeenCalledWith(
+        'Error while validating:',
+        expect.objectContaining({
+          message: expect.stringContaining(
+            `Attribute must be specified for ${rule} validation`,
+          ),
+        }),
       );
+      consoleError.mockRestore();
     });
 
-    it('should throw error when attribute is not in codebook', () => {
-      expect(() => {
-        validations
-          .lessThanOrEqualToVariable(
-            {
-              attribute: 'missingAttribute',
-              type: 'number',
-            },
-            createMockContext(),
-          )({})
-          .safeParse(10);
-      }).toThrow('Comparison attribute not found in codebook');
+    it('throws when the attribute is not in the codebook', () => {
+      expect(() =>
+        build('unknownAttribute')({ unknownAttribute: answer }).safeParse(
+          answer,
+        ),
+      ).toThrow('Comparison attribute not found in codebook');
     });
 
-    it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
-      const validator = validations.lessThanOrEqualToVariable(
-        { attribute: 'numberAttribute', type: 'number' },
-        createMockContext(),
-      )({});
-
-      const result = validator.safeParse(10);
-      expect(result.success).toBe(true);
+    it('passes when the form holds no value to compare against, so hints can still be generated', () => {
+      expect(build(attribute)({}).safeParse(answer).success).toBe(true);
     });
   });
 

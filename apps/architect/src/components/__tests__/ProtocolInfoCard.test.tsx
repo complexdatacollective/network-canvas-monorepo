@@ -164,8 +164,9 @@ describe('ProtocolInfoCard', () => {
   // heading size tier, the remaining-character readout, the counter's
   // visibility) describes a name that was never saved.
   it('resyncs the control when a whitespace-only edit trims back to the stored name', () => {
-    // 64 graphemes sits exactly on the text-2xl/text-lg tier boundary, so one
-    // phantom space is enough to move the heading a whole size tier.
+    // 64 graphemes sits exactly on a heading size step, so one phantom space
+    // left in the value would move the heading a whole size (see the
+    // ProtocolInfoCard story).
     const name = 'A'.repeat(64);
     const store = renderCard(name);
 
@@ -176,7 +177,6 @@ describe('ProtocolInfoCard', () => {
     expect(allowanceText()).toBe(
       `${PROTOCOL_NAME_MAX_LENGTH - 64} of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
     );
-    expect(nameControl()).toHaveClass('text-2xl');
     expect(store.getState().activeProtocol.present?.name).toBe(name);
   });
 
@@ -260,48 +260,13 @@ describe('ProtocolInfoCard', () => {
   // the control's height a pure function of the stored value, so a 342-character
   // name measured 703px inside a 720px viewport and put the timeline's first row
   // at y=1189. jsdom does no layout, so the pixel proof lives in
-  // `e2e/specs/responsive.spec.ts`; these pin the two rules that produce it.
-  describe('bounding the name against the viewport', () => {
-    it('always carries the three-line height bound, whatever the value', () => {
-      renderCard('Short name');
-      expect(nameControl()).toHaveClass('max-h-[3lh]');
-      expect(nameControl()).toHaveClass('overflow-hidden');
-      expect(nameControl()).not.toHaveClass('overflow-y-auto');
-
-      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(90) } });
-      expect(nameControl()).toHaveClass('max-h-[3lh]');
-      expect(nameControl()).toHaveClass('overflow-hidden');
-    });
-
-    it('lays an RTL name out in its own direction', () => {
-      renderCard('مشروع بحث الشبكات الاجتماعية');
-      expect(nameControl()).toHaveClass('text-own-direction');
-      expect(nameControl()).not.toHaveAttribute('dir');
-    });
-
-    it('steps the heading down so a name at the limit fits that bound', () => {
-      renderCard('Short name');
-      // Up to 32 graphemes the page-heading size is untouched.
-      expect(nameControl()).toHaveClass('text-4xl');
-
-      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(50) } });
-      expect(nameControl()).toHaveClass('text-2xl');
-      expect(nameControl()).not.toHaveClass('text-4xl');
-
-      // Past 64 graphemes — the only tier in which a name at the 100-grapheme
-      // limit fits three lines at 390px, the narrowest supported width.
-      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(80) } });
-      expect(nameControl()).toHaveClass('text-lg');
-      expect(nameControl()).not.toHaveClass('text-2xl');
-    });
-
-    it('bounds and steps down a legacy name the cap never saw', () => {
-      // Arrives from IndexedDB / an imported .netcanvas, over the limit.
-      renderCard('م'.repeat(342));
-      expect(nameControl()).toHaveValue('م'.repeat(342));
-      expect(nameControl()).toHaveClass('max-h-[3lh]');
-      expect(nameControl()).toHaveClass('text-lg');
-    });
+  // `e2e/specs/responsive.spec.ts`, along with the height bound and the name's
+  // own text direction; the size steps, as stored and as typed, are measured
+  // by the "Name Size Steps" stories. What is left here is the stored value.
+  it('keeps a legacy name the cap never saw whole', () => {
+    // Arrives from IndexedDB / an imported .netcanvas, over the limit.
+    renderCard('م'.repeat(342));
+    expect(nameControl()).toHaveValue('م'.repeat(342));
   });
 
   describe('the protocol name length limit', () => {
@@ -358,19 +323,13 @@ describe('ProtocolInfoCard', () => {
 
       expect(nameControl()).toHaveValue('Wave 2 pilot');
       expect(allowanceElement()).not.toHaveClass(SCREEN_READER_ONLY);
-      // Reads as an error rather than as a statistic, in the boxed treatment
-      // that clears WCAG AA on this card's platinum ground (4.94:1, against
-      // 4.39:1 for plain destructive text at this size).
       expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
-      expect(allowanceElement()).toHaveClass('bg-destructive');
-      expect(allowanceElement()).toHaveClass('text-destructive-contrast');
 
       // The next accepted edit resolves it: the message goes, and the line
       // falls back to being the control's silent description rather than
       // leaving a refusal sitting under a name that is now perfectly fine.
       fireEvent.change(nameControl(), { target: { value: 'Wave 3 pilot' } });
       expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
-      expect(allowanceElement()).not.toHaveClass('bg-destructive');
       expect(allowanceText()).toBe(
         `${PROTOCOL_NAME_MAX_LENGTH - 12} of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
       );

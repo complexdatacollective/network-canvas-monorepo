@@ -199,20 +199,10 @@ const EMPTY_MESSAGES = defineMessages({
  * label of its own — the accessible name a screen reader announces for the
  * whole choice, not a heading anybody sees.
  */
-const GROUP_LABELS = defineMessages({
-  node: {
-    id: 'protocolBuilder.entitySelect.nodeGroupLabel',
-    defaultMessage: 'Node type options',
-    description:
-      'Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place.',
-  },
-  edge: {
-    id: 'protocolBuilder.entitySelect.edgeGroupLabel',
-    defaultMessage: 'Edge type options',
-    description:
-      'Accessible name of the group of chips a researcher picks an edge type from. An edge type is a kind of relationship between two network members, such as a friendship.',
-  },
-}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
+const GROUP_LABELS: Readonly<Record<RuleEntityTarget, string>> = {
+  node: 'Node type options',
+  edge: 'Edge type options',
+};
 
 /**
  * What making a type from inside a stage is called — Architect's own words
@@ -475,7 +465,10 @@ function EdgeChip({
       style={chipStyle}
     >
       <Icon name="links" className="me-2.5 size-6" style={iconStyle} />
-      {label}
+      {/* The researcher's name for the type reads in its own direction. */}
+      <span dir="auto" className="text-match-parent">
+        {label}
+      </span>
     </span>
   );
 }
@@ -1078,9 +1071,7 @@ export default function EntityTypePickerField({
         id={id}
         role="radiogroup"
         aria-label={
-          ariaLabelledBy === undefined
-            ? intl.formatMessage(GROUP_LABELS[entityType])
-            : undefined
+          ariaLabelledBy === undefined ? GROUP_LABELS[entityType] : undefined
         }
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}

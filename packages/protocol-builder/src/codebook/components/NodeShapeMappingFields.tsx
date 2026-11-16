@@ -88,12 +88,6 @@ const messages = defineMessages({
     description:
       'Said on the fixed first threshold row, after the shape it shows. Lower case because it completes the row rather than beginning a sentence.',
   },
-  shapeBelowFirstThresholdFixed: {
-    id: 'protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed',
-    defaultMessage: 'Below first threshold cannot be removed',
-    description:
-      'Accessible name of the unavailable remove button on the fixed first threshold row, saying why nothing happens.',
-  },
   shapeThresholdValue: {
     id: 'protocolBuilder.codebookEntity.shapeThresholdValue',
     defaultMessage: 'Threshold {value1, number} value',
@@ -105,12 +99,6 @@ const messages = defineMessages({
     defaultMessage: 'Shape at threshold {value}',
     description:
       'Label of the control choosing the shape used from one threshold upwards. value is the threshold number itself, already formatted for the reader.',
-  },
-  shapeRemoveThreshold: {
-    id: 'protocolBuilder.codebookEntity.shapeRemoveThreshold',
-    defaultMessage: 'Remove threshold {value1, number}',
-    description:
-      'Accessible name of the button that deletes one threshold row. value1 is the threshold’s own position in the list, counting from one.',
   },
   shapeAddThreshold: {
     id: 'protocolBuilder.codebookEntity.shapeAddThreshold',
@@ -296,9 +284,8 @@ function ThresholdRow({
         variant="text"
         disabled={disabled}
         onClick={onRemove}
-        aria-label={intl.formatMessage(messages.shapeRemoveThreshold, {
-          value1: index + 1,
-        })}
+        aria-label={`Remove threshold ${index + 1}`}
+        lang="en"
       />
     </div>
   );
@@ -495,9 +482,8 @@ export default function NodeShapeMappingFields({
                   color="destructive"
                   variant="text"
                   disabled
-                  aria-label={intl.formatMessage(
-                    messages.shapeBelowFirstThresholdFixed,
-                  )}
+                  aria-label="Below first threshold cannot be removed"
+                  lang="en"
                 />
               </div>
 

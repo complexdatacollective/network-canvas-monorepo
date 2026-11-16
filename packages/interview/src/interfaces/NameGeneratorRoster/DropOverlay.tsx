@@ -63,7 +63,9 @@ const DropOverlay = ({
         <UINode label="" color={nodeColor} shape={nodeShape} presentational />
       </motion.div>
       <ArrowDownToLine aria-hidden className="mt-4 size-8" />
-      <span className="sr-only">{message}</span>
+      <span className="sr-only" lang="en">
+        {message}
+      </span>
     </motion.div>
   );
 };

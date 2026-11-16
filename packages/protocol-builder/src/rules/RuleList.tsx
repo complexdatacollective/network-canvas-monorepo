@@ -22,18 +22,6 @@ import RuleEditorDialog, { type RuleTypeOption } from './RuleEditorDialog.tsx';
 import RulePreview from './RulePreview.tsx';
 
 const messages = defineMessages({
-  editAction: {
-    id: 'protocolBuilder.ruleList.editAction',
-    defaultMessage: 'Edit rule:',
-    description:
-      'Read out before the rule itself to name the control that opens one row of a rule list for editing, so a screen reader says "Edit rule: Person where Age is greater than 30". Not shown on screen.',
-  },
-  deleteAction: {
-    id: 'protocolBuilder.ruleList.deleteAction',
-    defaultMessage: 'Delete rule:',
-    description:
-      'Read out before the rule itself to name the control that removes one row of a rule list, so a screen reader says "Delete rule: Person where Age is greater than 30". Not shown on screen.',
-  },
   emptyState: {
     id: 'protocolBuilder.ruleList.emptyState',
     defaultMessage: 'No rules have been created yet.',
@@ -160,11 +148,11 @@ function RuleListItem({
         action words remain hidden because `aria-labelledby` can compose them
         with the visible preview without duplicating content visually.
       */}
-      <span id={editActionId} hidden>
-        {intl.formatMessage(messages.editAction)}
+      <span id={editActionId} hidden lang="en">
+        Edit rule:
       </span>
-      <span id={deleteActionId} hidden>
-        {intl.formatMessage(messages.deleteAction)}
+      <span id={deleteActionId} hidden lang="en">
+        Delete rule:
       </span>
       <div className="@container w-full">
         <div className="flex w-full min-w-0 flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-center">

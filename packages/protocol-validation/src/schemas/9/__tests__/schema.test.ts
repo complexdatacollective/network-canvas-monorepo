@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
@@ -58,11 +59,20 @@ const protocolWithNames = (renames: {
   };
 };
 
-const issuePaths = (result: {
-  error?: { issues: { path: PropertyKey[] }[] };
-}) => result.error?.issues.map(({ path }) => path.join('.'));
-
 describe('Schema 9 attribute names', () => {
+  const namePath = 'codebook.node.person.variables.name.name';
+  const refused = (message: string) => ({
+    path: namePath,
+    code: 'custom',
+    message,
+  });
+  const padded = refused('A name cannot start or end with whitespace');
+  const control = refused(
+    'A name cannot contain control characters, U+FFFE or U+FFFF',
+  );
+  const nfc = refused('A name must be in Unicode normalization form C (NFC)');
+  const surrogate = refused('A name cannot contain a lone surrogate');
+
   it('accepts the base protocol', () => {
     expect(
       ProtocolSchemaV9.safeParse(withFinishStage(protocolWithNames({})))
@@ -92,22 +102,20 @@ describe('Schema 9 attribute names', () => {
   });
 
   it.each([
-    ['empty', ''],
-    ['leading space', ' name'],
-    ['trailing space', 'name '],
-    ['tab', 'first\tname'],
-    ['line break', 'first\nname'],
-    ['null character', 'name\u0000'],
-    ['decomposed accent', 'namé'],
-    ['noncharacter', 'name￿'],
-    ['lone surrogate', 'name\uD800'],
-  ])('rejects a name with a %s', (_description, name) => {
+    ['empty', '', { path: namePath, code: 'too_small' }],
+    ['leading space', ' name', padded],
+    ['trailing space', 'name ', padded],
+    ['tab', 'first\tname', control],
+    ['line break', 'first\nname', control],
+    ['null character', 'name\u0000', control],
+    ['decomposed accent', 'namé', nfc],
+    ['noncharacter', 'name￿', control],
+    ['lone surrogate', 'name\uD800', surrogate],
+  ])('rejects a name with a %s', (_description, name, issue) => {
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(protocolWithNames({ node: { name } })),
     );
-    expect(issuePaths(result)).toContain(
-      'codebook.node.person.variables.name.name',
-    );
+    expect(parseIssues(result)).toEqual([issue]);
   });
 
   it('still rejects two attributes of one entity with the same name', () => {
@@ -116,7 +124,13 @@ describe('Schema 9 attribute names', () => {
         protocolWithNames({ node: { name: '名前', age: '名前' } }),
       ),
     );
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'codebook.node.person.variables',
+        code: 'custom',
+        message: 'Duplicate attribute name "名前"',
+      },
+    ]);
   });
 
   it('keeps attribute record keys to the id alphabet', () => {
@@ -143,7 +157,12 @@ describe('Schema 9 attribute names', () => {
         },
       }),
     );
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'codebook.node.person.variables.nombre completo',
+        code: 'invalid_key',
+      },
+    ]);
   });
 });
 
@@ -213,8 +232,13 @@ describe('Schema 9 passphrase length rules', () => {
       ({ type }) => type === 'Anonymisation',
     );
 
-    expect(issuePaths(ProtocolSchemaV9.safeParse(protocol))).toEqual([
-      `stages.${stageIndex}.validation.minLength`,
+    expect(parseIssues(ProtocolSchemaV9.safeParse(protocol))).toEqual([
+      {
+        path: `stages.${stageIndex}.validation.minLength`,
+        code: 'custom',
+        message:
+          'The minimum passphrase length (9) is longer than the maximum (6), so no participant could choose a passphrase.',
+      },
     ]);
   });
 

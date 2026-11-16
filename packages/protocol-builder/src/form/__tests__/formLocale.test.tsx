@@ -1,11 +1,9 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { loadCatalog } from '@codaco/app-i18n/locales';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { esIntl, readMessage } from '../../testing/i18n.ts';
 import {
@@ -15,8 +13,6 @@ import {
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import Options, { optionsValidationFor } from '../arrayFields/Options.tsx';
 import { READ_ONLY_MESSAGE } from '../readOnlyRefusal.ts';
-
-const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
 /**
  * An options list and the shell around it, read in Spanish.
@@ -28,8 +24,8 @@ const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
  *
  * - the shell's own markup, which formats with `useAppIntl()` (the fallback
  *   save control it fills its action slot with);
- * - a list's markup, which does the same and also splices the researcher's own
- *   row number into it (`Editar opción 1`);
+ * - a list's markup, which does the same; the row controls' accessible names
+ *   are screen-reader-only text and stay English (`Edit option 1`);
  * - a refusal, which is encoded where it is decided and decoded where it is
  *   read — the only route where an English word could survive a translated
  *   sentence, because the row noun travels inside it as a nested reference.
@@ -77,19 +73,6 @@ const renderInSpanish = (fields: SectionDoc = optionsFields) =>
   });
 
 describe('a stage form read in Spanish', () => {
-  it('ships Spanish for the ids this directory declares', () => {
-    // Checked first so a merge that has not landed this directory's catalog
-    // entries fails saying so, rather than as an unexplained English string.
-    expect(Object.keys(spanishMessages)).toEqual(
-      expect.arrayContaining([
-        'protocolBuilder.shell.saveStage',
-        'protocolBuilder.option.editOption',
-        'protocolBuilder.option.emptyState',
-        'protocolBuilder.shell.readOnlyRefusal',
-      ]),
-    );
-  });
-
   it('names the shell and the rows of a list in Spanish', async () => {
     renderInSpanish();
 
@@ -99,10 +82,10 @@ describe('a stage form read in Spanish', () => {
     // The row's own number is spliced into the row's name, so this also fails
     // if the position stops reaching the message.
     expect(
-      screen.getByRole('button', { name: 'Editar opción 1' }),
+      screen.getByRole('button', { name: 'Edit option 1' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Eliminar opción 2' }),
+      screen.getByRole('button', { name: 'Remove option 2' }),
     ).toBeInTheDocument();
     // The assertions above name what this surface is supposed to say; the sweep
     // reports whatever else it said — including a sentence rebuilt out of an

@@ -1,4 +1,7 @@
+import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ANALYTICS_DECISION_META_NAME } from '~/lib/analyticsDecision';
 
 const { mockGetDisableAnalytics, mockGetInstallationId } = vi.hoisted(() => ({
   mockGetDisableAnalytics: vi.fn(),
@@ -14,33 +17,48 @@ vi.mock('~/queries/appSettings', () => ({
   getInstallationId: mockGetInstallationId,
 }));
 
+// Renders the decision it was handed, so the test can read it from markup.
+vi.mock('~/components/Providers/ApplyAnalyticsDecision', () => ({
+  default: ({ decision }: { decision: unknown }) => (
+    <output data-applied-decision={JSON.stringify(decision)} />
+  ),
+}));
+
 import AnalyticsLoader from '../AnalyticsLoader';
 
-type RenderedChild = { props?: { name?: unknown; content?: unknown } };
+async function renderLoader() {
+  const markup = renderToStaticMarkup(await AnalyticsLoader());
+  const container = document.createElement('div');
+  container.innerHTML = markup;
+  return { markup, container };
+}
 
-/** The decision the rendered tag publishes, for instrumentation-client. */
+/** The decision the rendered tag publishes, read as instrumentation-client reads it. */
 async function publishedDecision() {
-  const element = await AnalyticsLoader();
-  const children: RenderedChild[] = element.props.children;
-
-  const tag = children.find(
-    (child) => child.props?.name === 'fresco-analytics',
-  );
-  const content = tag?.props?.content;
+  const { container } = await renderLoader();
+  const content = container
+    .querySelector(`meta[name="${ANALYTICS_DECISION_META_NAME}"]`)
+    ?.getAttribute('content');
 
   if (typeof content !== 'string') {
     throw new TypeError('no decision was published');
   }
 
-  return JSON.parse(content) as Record<string, unknown>;
+  return JSON.parse(content);
 }
 
 /** The decision handed to the component that follows later changes. */
 async function appliedDecision() {
-  const element = await AnalyticsLoader();
-  const children: { props?: { decision?: unknown } }[] = element.props.children;
+  const { container } = await renderLoader();
+  const applied = container
+    .querySelector('[data-applied-decision]')
+    ?.getAttribute('data-applied-decision');
 
-  return children.find((child) => child.props?.decision)?.props?.decision;
+  if (typeof applied !== 'string') {
+    throw new TypeError('no decision was applied');
+  }
+
+  return JSON.parse(applied);
 }
 
 describe('AnalyticsLoader', () => {
@@ -81,10 +99,6 @@ describe('AnalyticsLoader', () => {
     await expect(publishedDecision()).resolves.toEqual({ enabled: false });
   });
 
-  // The value reaches the browser as an attribute, so it is escaped by React
-  // rather than being parsed as code. Recorded here because publishing it as
-  // an inline script instead — the obvious alternative — would not have this
-  // property.
   // The tag is read once, at page load. A researcher turning analytics off in
   // a tab that is already open re-renders this, and the tab has to stop
   // capturing without waiting for a reload.
@@ -97,15 +111,21 @@ describe('AnalyticsLoader', () => {
     });
   });
 
+  // The value reaches the browser as an attribute, so it is escaped rather
+  // than being parsed as code. Publishing it as an inline script instead, the
+  // obvious alternative, would not have this property.
   it('cannot be broken out of by an installation ID', async () => {
+    const hostile = '"></meta></script><script>alert(1)</script>';
     mockGetDisableAnalytics.mockResolvedValue(false);
-    mockGetInstallationId.mockResolvedValue(
-      '</script><script>alert(1)</script>',
-    );
+    mockGetInstallationId.mockResolvedValue(hostile);
 
+    const { markup, container } = await renderLoader();
+
+    expect(markup).not.toContain('<script');
+    expect(container.querySelector('script')).toBeNull();
     await expect(publishedDecision()).resolves.toEqual({
       enabled: true,
-      installationId: '</script><script>alert(1)</script>',
+      installationId: hostile,
     });
   });
 });

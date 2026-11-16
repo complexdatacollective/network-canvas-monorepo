@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  ListKeyboardDelegate,
-  RowKeyboardDelegate,
-} from '../keyboard/ListKeyboardDelegate';
+import { RowKeyboardDelegate } from '../keyboard/ListKeyboardDelegate';
 import { ListLayout } from '../layout/ListLayout';
 import type { Collection, Key, Node } from '../types';
 
@@ -76,15 +73,6 @@ describe('ListLayout', () => {
   });
 
   describe('getKeyboardDelegate', () => {
-    it('should return a ListKeyboardDelegate', () => {
-      const layout = new ListLayout();
-      const collection = createMockCollection(5);
-
-      const delegate = layout.getKeyboardDelegate(collection, new Set());
-
-      expect(delegate).toBeInstanceOf(ListKeyboardDelegate);
-    });
-
     it('should provide correct sequential navigation', () => {
       const layout = new ListLayout();
       const collection = createMockCollection(5);

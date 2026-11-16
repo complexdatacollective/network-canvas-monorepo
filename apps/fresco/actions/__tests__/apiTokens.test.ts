@@ -47,8 +47,6 @@ describe('verifyApiToken', () => {
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { token: sha256('plaintext-token'), isActive: true },
     });
-    // Sanity: the stored lookup key is a hash, not the raw bearer token.
-    expect(sha256('plaintext-token')).not.toBe('plaintext-token');
   });
 
   it('returns invalid when no matching token hash exists', async () => {

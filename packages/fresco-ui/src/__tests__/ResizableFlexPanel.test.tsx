@@ -4,30 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { ResizableFlexPanel } from '../ResizableFlexPanel';
 
 describe('ResizableFlexPanel', () => {
-  it.each(['horizontal', 'vertical'] as const)(
-    'stretches its panes and handle across the %s cross axis',
-    (orientation) => {
-      render(
-        <ResizableFlexPanel
-          storageKey={`cross-axis-${orientation}`}
-          orientation={orientation}
-          className="items-start"
-        >
-          <div>First pane</div>
-          <div>Second pane</div>
-        </ResizableFlexPanel>,
-      );
-
-      expect(screen.getByText('First pane').parentElement).toHaveClass(
-        'self-stretch',
-      );
-      expect(screen.getByText('Second pane').parentElement).toHaveClass(
-        'self-stretch',
-      );
-      expect(screen.getByRole('slider')).toHaveClass('self-stretch');
-    },
-  );
-
   it.each([
     {
       orientation: 'horizontal' as const,

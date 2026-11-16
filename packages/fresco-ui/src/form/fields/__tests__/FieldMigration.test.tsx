@@ -113,41 +113,6 @@ describe('Select migration contracts', () => {
     expect(onChange).toHaveBeenCalledWith(2);
   });
 
-  it('constrains and wraps long options when the select is in a narrow container', async () => {
-    const user = userEvent.setup();
-    const longLabel =
-      'Stage 12 — A-deliberately-unbroken-destination-label-that-must-wrap-within-the-available-width';
-
-    render(
-      <div data-testid="narrow-select" style={{ width: '8rem' }}>
-        <StyledSelectField
-          name="destination"
-          options={[{ value: 'destination', label: longLabel }]}
-          value="destination"
-          onChange={() => undefined}
-        />
-      </div>,
-    );
-
-    expect(screen.getByTestId('narrow-select').style.width).toBe('8rem');
-    await user.click(screen.getByRole('combobox'));
-
-    const option = await screen.findByRole('option', { name: longLabel });
-    const optionText = within(option).getByText(longLabel);
-    const popup = option.parentElement?.parentElement;
-
-    expect(optionText).toHaveClass(
-      'min-w-0',
-      'wrap-break-word',
-      'whitespace-normal',
-    );
-    expect(popup).toHaveClass(
-      'max-w-(--available-width)',
-      'w-max',
-      'min-w-[min(var(--anchor-width),var(--available-width))]',
-    );
-  });
-
   it.each([NativeSelectField, StyledSelectField])(
     'prevents interaction and exposes readonly state for %s',
     (Component) => {
@@ -368,24 +333,20 @@ describe('composite field semantics', () => {
   });
 });
 
-describe('ToggleField DOM forwarding', () => {
-  it('forwards button props and merges consumer styles', () => {
-    const onFocus = vi.fn();
+describe('ToggleField styles', () => {
+  it('merges consumer styles with its own thumb alignment', () => {
     render(
       <ToggleField
         value={false}
         onChange={() => undefined}
-        title="Toggle feature"
-        data-testid="feature-toggle"
-        onFocus={onFocus}
+        aria-label="Feature"
         style={{ opacity: 0.5 }}
       />,
     );
 
-    const toggle = screen.getByTestId('feature-toggle');
-    expect(toggle).toHaveAttribute('title', 'Toggle feature');
-    expect(toggle).toHaveStyle({ opacity: '0.5' });
-    fireEvent.focus(toggle);
-    expect(onFocus).toHaveBeenCalledOnce();
+    expect(screen.getByRole('switch', { name: 'Feature' })).toHaveStyle({
+      opacity: '0.5',
+      justifyContent: 'flex-start',
+    });
   });
 });

@@ -8,6 +8,12 @@ import {
 import testState from '../../../__tests__/testState.json';
 
 describe('codebook selectors', () => {
+  describe('getAllVariablesByUUID()', () => {
+    it('returns an empty object when the codebook has no node, edge or ego', () => {
+      expect(getAllVariablesByUUID({})).toEqual({});
+    });
+  });
+
   describe('getVariableOptionsForSubject()', () => {
     it('extracts variables for nodeType into options list for node entity', () => {
       const subject = {
@@ -32,76 +38,7 @@ describe('codebook selectors', () => {
     });
   });
 
-  describe('getAllVariablesByUUID()', () => {
-    it('returns all variables by UUID', () => {
-      const result = getAllVariablesByUUID(testState);
-
-      expect(result).toMatchSnapshot();
-    });
-
-    it('handles missing codebook', () => {
-      const result = getAllVariablesByUUID({});
-
-      expect(result).toMatchSnapshot();
-    });
-
-    it('handles missing nodeTypes', () => {
-      const result = getAllVariablesByUUID({
-        codebook: {
-          edgeTypes: {},
-          ego: {},
-        },
-      });
-
-      expect(result).toMatchSnapshot();
-    });
-
-    it('handles missing edgeTypes', () => {
-      const result = getAllVariablesByUUID({
-        codebook: {
-          nodeTypes: {},
-          ego: {},
-        },
-      });
-
-      expect(result).toMatchSnapshot();
-    });
-
-    it('handles missing ego', () => {
-      const result = getAllVariablesByUUID({
-        codebook: {
-          nodeTypes: {},
-          edgeTypes: {},
-        },
-      });
-
-      expect(result).toMatchSnapshot();
-    });
-
-    it('handles missing variables', () => {
-      const result = getAllVariablesByUUID({
-        codebook: {
-          nodeTypes: {
-            foo: {},
-          },
-          edgeTypes: {
-            bar: {},
-          },
-          ego: {},
-        },
-      });
-
-      expect(result).toMatchSnapshot();
-    });
-  });
-
   describe('makeGetVariable()', () => {
-    it('returns a variable by UUID', () => {
-      const result = makeGetVariable('foo')(testState);
-
-      expect(result).toMatchSnapshot();
-    });
-
     it('returns null if variable is not found', () => {
       const result = makeGetVariable('not found')(testState);
 

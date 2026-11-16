@@ -32,6 +32,13 @@ import {
   stageCosts,
   type Burden,
 } from './design/burden.ts';
+import {
+  applyCritique,
+  critiqueEdits,
+  CritiqueSchema,
+  type Critique,
+  type CritiqueIssue,
+} from './design/critique.ts';
 import { buildWordingRequest } from './design/feedback.ts';
 import { toProviderJsonSchema } from './design/json-schema.ts';
 import type { DesignIssue } from './design/rules.ts';
@@ -43,9 +50,9 @@ import {
   type Wording,
 } from './design/schema.ts';
 import { costUsd, getStepModels, type StepModels } from './models.ts';
+import { buildCritiqueMessages, CRITIC_SYSTEM } from './prompts/critic.ts';
 import {
   buildDesignMessages,
-  buildReviewMessage,
   DESIGN_SYSTEM,
   UNPARSEABLE_FEEDBACK,
 } from './prompts/design.ts';
@@ -70,6 +77,7 @@ const SCHEMAS = {
   screening: toProviderJsonSchema(ScreeningSchema),
   design: toProviderJsonSchema(StudyDesignSchema),
   wording: toProviderJsonSchema(WordingSchema),
+  critique: toProviderJsonSchema(CritiqueSchema),
 };
 
 const LIMITS = {
@@ -189,7 +197,8 @@ type PipelineTag =
   | 'firstAttemptShipped'
   | 'screeningFailed'
   | 'reviewed'
-  | 'reviewDiscarded';
+  | 'reviewDiscarded'
+  | 'reviewFailed';
 
 type PipelineLog = {
   models: StepModels;
@@ -203,6 +212,13 @@ type PipelineLog = {
   durationsMs: Partial<Record<StepId, number>>;
   // The compiled interview's burden before and after the review.
   burden?: { before: Burden; after?: Burden };
+  // The critic's findings and which of its edits were applied.
+  review?: {
+    verdict: string;
+    issues: CritiqueIssue[];
+    applied: string[];
+    skipped: string[];
+  };
   // Set when the run threw; the outcome is then 'failed'.
   crash?: string;
 };
@@ -288,6 +304,40 @@ const compileDetail = (b: BuildResult) => {
   if (b.assets.some((a) => a.mimeType === 'application/geo+json'))
     parts.push('a world map');
   return listJoin(parts);
+};
+
+// The review's findings, for the researcher-notes screen: what it changed
+// and what it left for the researcher.
+const reviewNotesFor = (critique: Critique, skipped: string[]): string[] => [
+  ...critique.issues.map(
+    (i) =>
+      `${i.severity === 'minor' ? '' : `**${i.severity}:** `}${i.problem}${i.change ? ` ${skipped.length ? '*Proposed (check it was applied):*' : '*Changed:*'} ${i.change}` : ' *For you to decide.*'}`,
+  ),
+  ...(skipped.length
+    ? [
+        `Sketch could not apply the review's edits to ${listJoin(skipped)}; check those parts by hand.`,
+      ]
+    : []),
+];
+
+const issueKey = (i: BuildResult['issues'][number]) =>
+  `${i.code}\n${i.message}`;
+/**
+ * Whether build has a degraded issue that baseline does not. Issues are
+ * matched by code and message, which name stages and attributes by id, so a
+ * removed stage that shifts the others does not make their issues new.
+ */
+export const addsDegradation = (build: BuildResult, baseline: BuildResult) => {
+  const remaining = new Map<string, number>();
+  for (const i of baseline.issues)
+    if (i.severity === 'degraded')
+      remaining.set(issueKey(i), (remaining.get(issueKey(i)) ?? 0) + 1);
+  return build.issues.some((i) => {
+    if (i.severity !== 'degraded') return false;
+    const left = remaining.get(issueKey(i)) ?? 0;
+    remaining.set(issueKey(i), left - 1);
+    return left <= 0;
+  });
 };
 
 const issueMessages = (b: BuildResult) => [
@@ -513,9 +563,8 @@ export const runPipeline = async (
     const runAttempt = async (
       attempt: number,
       messages: ChatMessage[],
-      role: 'design' | 'review' = 'design',
     ): Promise<Attempt> => {
-      const response = await call(role, attempt, {
+      const response = await call('design', attempt, {
         model: models.design,
         system: DESIGN_SYSTEM,
         messages,
@@ -721,66 +770,87 @@ export const runPipeline = async (
         return failActive(DESIGN_FAILED);
       }
     }
-    // ---- Burden review ------------------------------------------------------
+    // ---- Review ------------------------------------------------------------
+    // A critic reads the chosen design and returns findings and edits. Code
+    // applies the edits, keeping only those that leave the design building
+    // cleanly, so the review can improve a design but never break it.
     if (deps.review) {
-      await setStep(
-        'design',
-        'active',
-        'Reviewing the design for participant burden',
-      );
+      await setStep('design', 'active', 'Reviewing the design');
       const people =
         chosen.raw.burdenEstimate?.expectedPeople || DEFAULT_PEOPLE;
       const before = estimateBurden(chosen.build.protocol, people);
       log.burden = { before };
-      const reviewed = await runAttempt(
-        attempts + 1,
-        [
-          ...firstMessages,
-          { role: 'assistant', content: JSON.stringify(chosen.raw) },
-          {
-            role: 'user',
-            content: buildReviewMessage(
-              before,
-              chosen.raw.burdenEstimate ?? {
-                screens: 0,
-                itemsPerPerson: 0,
-              },
-              stageCosts(chosen.build.protocol, people),
-            ),
-          },
-        ],
-        'review',
-      );
-      // A review is meant to lighten the interview: one that adds work is
-      // discarded like one that does not build cleanly.
-      const reviewedBurden = reviewed.ok
-        ? estimateBurden(reviewed.build.protocol, people)
-        : null;
-      if (
-        reviewed.ok &&
-        !reviewed.build.retry &&
-        !reviewed.build.fatal &&
-        reviewed.build.validation.success &&
-        reviewedBurden &&
-        reviewedBurden.answers <= before.answers &&
-        reviewedBurden.screens <= before.screens
-      ) {
-        // The review starts from a salvaged design when salvage ran, so its
-        // notes still apply to what ships.
-        let build = reviewed.build;
-        if (designOptions !== buildOptions) {
+      const response = await call('review', 1, {
+        model: models.design,
+        system: CRITIC_SYSTEM,
+        messages: buildCritiqueMessages(
+          input.description,
+          chosen.raw,
+          before,
+          stageCosts(chosen.build.protocol, people),
+        ),
+        schema: SCHEMAS.critique,
+        schemaName: 'critique',
+        effort: 'high',
+        thinking: true,
+      });
+      const parsed =
+        response?.stopReason === 'complete'
+          ? CritiqueSchema.safeParse(response.json)
+          : null;
+      if (parsed?.success) {
+        const critique = parsed.data;
+        const baseline = chosen.build;
+        const builds = new Map<StudyDesign, BuildResult>();
+        const acceptable = async (design: StudyDesign) => {
+          const parsedDesign = StudyDesignSchema.safeParse(design);
+          if (!parsedDesign.success) return false;
+          let build: BuildResult;
           try {
-            build = await preflight(reviewed.raw, designOptions);
-          } catch (error) {
-            log.tags.push('compilerBug');
-            log.crash = errorMessage(error);
-            return failActive(DESIGN_FAILED);
+            build = await preflight(parsedDesign.data, designOptions);
+          } catch {
+            return false;
           }
+          builds.set(design, build);
+          return (
+            !build.fatal &&
+            build.validation.success &&
+            !addsDegradation(build, baseline)
+          );
+        };
+        const outcome = await applyCritique(
+          chosen.raw,
+          critiqueEdits(critique),
+          acceptable,
+        );
+        log.review = {
+          verdict: critique.verdict,
+          issues: critique.issues,
+          applied: outcome.applied,
+          skipped: outcome.skipped,
+        };
+        const build = builds.get(outcome.design);
+        if (outcome.applied.length && build) {
+          chosen = { raw: outcome.design, build };
+          log.burden.after = estimateBurden(build.protocol, people);
+          log.tags.push('reviewed');
+        } else if (outcome.skipped.length) log.tags.push('reviewDiscarded');
+        designOptions = {
+          ...designOptions,
+          reviewNotes: reviewNotesFor(critique, outcome.skipped),
+        };
+        // Rebuilt so the researcher notes carry the review.
+        try {
+          chosen = {
+            raw: chosen.raw,
+            build: await preflight(chosen.raw, designOptions),
+          };
+        } catch (error) {
+          log.tags.push('compilerBug');
+          log.crash = errorMessage(error);
+          return failActive(DESIGN_FAILED);
         }
-        chosen = { raw: reviewed.raw, build };
-        log.burden.after = reviewedBurden;
-        log.tags.push('reviewed');
-      } else log.tags.push('reviewDiscarded');
+      } else log.tags.push('reviewFailed');
     }
     const pre = chosen.build;
     log.shippedIssues = pre.issues

@@ -29,7 +29,10 @@ const EntityBadge = ({
   const name = get(codebook, [entity, type, 'name']);
   const nodeType = entity === 'node' ? codebook.node?.[type] : undefined;
   const size = iconSize ?? (tiny ? 'tiny' : small ? 'small' : 'default');
-  const label = small || tiny ? name : <Heading level="h2">{name}</Heading>;
+  // The researcher's name for the type reads in its own direction.
+  const ownName = <bdi>{name}</bdi>;
+  const label =
+    small || tiny ? ownName : <Heading level="h2">{ownName}</Heading>;
   const badge = (
     <EntityIcon
       color={color}

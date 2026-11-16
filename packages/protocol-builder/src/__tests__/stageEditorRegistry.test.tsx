@@ -11,7 +11,6 @@ import type {
   StageEditorProps,
 } from '../stage-editor-contract.ts';
 import {
-  AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
   DuplicateStageEditorError,
   stageEditorRegistry,
@@ -63,38 +62,14 @@ describe('composing the registry from family parts', () => {
   });
 
   /**
-   * The list is also a compile-time fact — see
-   * `UnregisteredStageTypesAreListed`, which stops a stage type being added to
-   * the schema with nothing rendering it. This is the other half: that the
-   * list describes the registry the package actually ships.
+   * The runtime half of `EveryStageTypeHasAnEditor`: the registry the package
+   * ships has an editor for every schema stage type and nothing else.
    */
-  it('says the same thing at runtime as the type system says at build time', () => {
-    expect(missingStageEditors(stageEditorRegistry)).toEqual([
-      ...AWAITING_STAGE_EDITORS,
-    ]);
-  });
-
-  it('accounts for every schema stage type exactly once', () => {
-    expect(
-      [
-        ...AWAITING_STAGE_EDITORS,
-        ...Object.keys(stageEditorRegistry),
-      ].toSorted(),
-    ).toEqual([...STAGE_TYPES].toSorted());
-  });
-
-  /**
-   * The state PR 3 reaches, asserted rather than inferred from the pair above.
-   *
-   * Those two hold the runtime list, the type-level list and the schema to each
-   * other — which they would go on doing if a merge dropped an editor and its
-   * stage type reappeared in `AWAITING_STAGE_EDITORS` together. This says the
-   * only thing that pair cannot: there is nothing in either list.
-   */
-  it('leaves no interface without an editor', () => {
-    expect([...AWAITING_STAGE_EDITORS]).toEqual([]);
+  it('ships an editor for every schema stage type and nothing else', () => {
     expect(missingStageEditors(stageEditorRegistry)).toEqual([]);
-    expect(Object.keys(stageEditorRegistry)).toHaveLength(STAGE_TYPES.length);
+    expect(Object.keys(stageEditorRegistry).toSorted()).toEqual(
+      [...STAGE_TYPES].toSorted(),
+    );
   });
 
   /**
@@ -128,8 +103,8 @@ describe('composing the registry from family parts', () => {
    * `undefined` like any other value. A part carrying an empty entry AFTER the
    * family that owns the interface therefore erased that family's editor, and
    * left the key present with nothing under it: the one state that renders as
-   * `UnregisteredStageTypeError` while `AWAITING_STAGE_EDITORS` and every
-   * claim test still say the interface has an editor.
+   * `UnregisteredStageTypeError` while every claim test still says the
+   * interface has an editor.
    */
   it.each([
     {
@@ -168,42 +143,28 @@ describe('composing the registry from family parts', () => {
 });
 
 /**
- * Editors are still landing, on branches of their own, and each of them
- * edits the same two lists in `stageEditorRegistry.ts`. Written as one
- * entry per line in a fixed alphabetical order, three concurrent one-line
- * changes touch three different lines and merge; written any other way — a
- * list collapsed onto one line, two entries sharing a line, an order nobody
- * agrees on — every one of those merges is a conflict somebody resolves by
- * hand, in the file whose whole job is to say which interfaces have an editor.
+ * Written as one entry per line in a fixed alphabetical order, two concurrent
+ * one-line additions to `REGISTRY_PARTS` touch different lines and merge;
+ * written any other way, every such merge is a conflict somebody resolves by
+ * hand.
  *
  * Read out of the source rather than out of the values, because the shape is
  * the point: the values are identical either way.
  */
-describe('the two lists a family edits', () => {
+describe('the list an editor is added to', () => {
   const source = readFileSync(
     join(process.cwd(), 'src', 'stageEditorRegistry.ts'),
     'utf8',
   );
 
-  /**
-   * The lines between a list's own brackets, comments and blanks dropped.
-   *
-   * A list with nothing in it is written `[]`, because there are no entries to
-   * keep on lines of their own — which is what `AWAITING_STAGE_EDITORS` is now
-   * that every interface has an editor. Only empty brackets are allowed
-   * through, with the whitespace the formatter chooses to put around them: a
-   * list that HAS entries and was collapsed onto one line still fails, which
-   * is the merge the shape is for.
-   */
-  const entriesOf = (name: string): string[] => {
-    if (new RegExp(`const ${name} =\\s*\\[\\] as const`).test(source))
-      return [];
-    const body = new RegExp(
-      `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
-    ).exec(source)?.[1];
+  /** The lines between the list's own brackets, comments and blanks dropped. */
+  const entries = (): string[] => {
+    const body = /const REGISTRY_PARTS = \[\n([\s\S]*?)\n\] as const/.exec(
+      source,
+    )?.[1];
     if (body === undefined) {
       throw new Error(
-        `${name} is not written as a list whose bracket opens on its own line, so a family adding an entry to it cannot be merged with another family doing the same.`,
+        'REGISTRY_PARTS is not written as a list whose bracket opens on its own line, so two editors added on separate branches cannot be merged.',
       );
     }
     return body
@@ -212,39 +173,19 @@ describe('the two lists a family edits', () => {
       .filter((line) => line !== '' && !line.startsWith('//'));
   };
 
-  it.each([
-    {
-      name: 'REGISTRY_PARTS',
+  it('writes one imported part per line', () => {
+    const lines = entries();
+    expect(lines).toHaveLength(STAGE_TYPES.length);
+    for (const line of lines) {
       // An imported part, never an inline object: a part is declared in the
       // editor's own module, and one identifier is one line.
-      entry: /^[A-Za-z_$][\w$]*,$/,
-      shape: 'an imported part name followed by a comma',
-    },
-    {
-      name: 'AWAITING_STAGE_EDITORS',
-      entry: /^'[A-Za-z]+',$/,
-      shape: 'a quoted stage type followed by a comma',
-    },
-  ])('writes one entry per line in $name', ({ name, entry, shape }) => {
-    for (const line of entriesOf(name)) {
-      expect(line, `${name} lines hold ${shape}`).toMatch(entry);
+      expect(line).toMatch(/^[A-Za-z_$][\w$]*,$/);
     }
   });
 
-  it.each(['REGISTRY_PARTS', 'AWAITING_STAGE_EDITORS'])(
-    'keeps %s in one agreed order',
-    (name) => {
-      const entries = entriesOf(name);
-      expect(entries).toEqual([...entries].toSorted());
-    },
-  );
-
-  it('says how to add an editor, where whoever adds one will look', () => {
-    // Two lines, and which two. A recipe that stops matching the file is worse
-    // than none, so it is checked rather than trusted.
-    expect(source).toMatch(/ADDING AN EDITOR IS TWO LINES/);
-    expect(source).toMatch(/add it to `REGISTRY_PARTS`/);
-    expect(source).toMatch(/from `AWAITING_STAGE_EDITORS`/);
+  it('keeps the parts in alphabetical order', () => {
+    const lines = entries();
+    expect(lines).toEqual([...lines].toSorted());
   });
 });
 
@@ -256,10 +197,10 @@ describe('the two lists a family edits', () => {
  *
  * The controls matter as much as the probes: `valid.ts` proves the machinery
  * is not simply refusing everything, and its `ClaimsExactlyTheseTwo` proves
- * `defineStageEditor` keeps a part's exact key set — the fact all three
- * registry probes rest on, and the one an annotated `const part:
+ * `defineStageEditor` keeps a part's exact key set — the fact both coverage
+ * probes rest on, and the one an annotated `const part:
  * StageEditorRegistryPart` destroys. `actionsSlot.ts` is the control for the
- * fourth probe: an editor may ignore the host's action chrome or forward it,
+ * `requiredActions.ts` probe: an editor may ignore the host's action chrome or forward it,
  * and only one that INSISTS on it is refused.
  *
  * `partFromRegistry.ts` is a probe about the import graph rather than about
@@ -270,7 +211,7 @@ describe('the two lists a family edits', () => {
  * `editors/defineStageEditor.tsx` and all compile.
  */
 describe('the compile-time coverage checks', () => {
-  it('refuses a missing entry, a stale entry, a duplicate claim, an editor that insists on chrome, and a part helper read from the registry', () => {
+  it('refuses a missing entry, a duplicate claim, an editor that insists on chrome, and a part helper read from the registry', () => {
     const packageRoot = join(import.meta.dirname, '..', '..');
     let output = '';
     try {
@@ -291,7 +232,6 @@ describe('the compile-time coverage checks', () => {
       'type-tests/missingEntry.ts',
       'type-tests/partFromRegistry.ts',
       'type-tests/requiredActions.ts',
-      'type-tests/staleEntry.ts',
     ]);
   });
 });

@@ -1,35 +1,7 @@
 {
-  "interview.contentItem.audioLabel": {
-    "defaultMessage": "Audio",
-    "description": "Accessible name of an audio player in protocol content that the researcher has not described."
-  },
-  "interview.contentItem.videoLabel": {
-    "defaultMessage": "Video",
-    "description": "Accessible name of a video player in protocol content that the researcher has not described."
-  },
-  "interview.familyPedigree.actionsLabel": {
-    "defaultMessage": "{isYou, select, true {Add your relatives} other {Add relatives of {name}}}",
-    "description": "Accessible name of the group of buttons that appears around a selected family member, used to add their parent, sibling, partner or child."
-  },
-  "interview.familyPedigree.addedAnnouncement": {
-    "defaultMessage": "{name} added to your family.",
-    "description": "Screen reader announcement after a family member is added. {name} is their name or, when it is not known, how they are related to the participant."
-  },
-  "interview.familyPedigree.canvasLabel": {
-    "defaultMessage": "Your family",
-    "description": "Accessible name for the area showing the family members the participant has added, drawn as a family tree."
-  },
-  "interview.familyPedigree.childrenAnsweredAnnouncement": {
-    "defaultMessage": "{isYou, select, true {Recorded that you have no biological children.} other {Recorded that {name} has no biological children.}}",
-    "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no children. name is the person’s name or how they are related to the participant."
-  },
   "interview.familyPedigree.connectHint": {
     "defaultMessage": "Select a person, then select another to connect them.",
     "description": "Shown over the family tree while the Connect tool is chosen, telling the participant how to join two people already in the tree."
-  },
-  "interview.familyPedigree.connectHintLinking": {
-    "defaultMessage": "{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to {name}.}}",
-    "description": "Read out to screen reader users, not shown, once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.connectTool": {
     "defaultMessage": "Connect",
@@ -39,17 +11,9 @@
     "defaultMessage": "Select two family members to connect them and say how they are related.",
     "description": "Tooltip text, under the heading “Connect” (or the stage’s own name for it), of the family tree toolbar tool that joins two people already in the tree: the participant selects one, then another, then chooses how they are related, such as parent or partner. Read by participants."
   },
-  "interview.familyPedigree.connectedParentAnnouncement": {
-    "defaultMessage": "{relationship} ({kind})",
-    "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example Julie is a parent of Rob); kind is the kind of parent chosen (for example Adoptive parent)."
-  },
   "interview.familyPedigree.disconnectHint": {
     "defaultMessage": "Select a person, then select someone they are connected to, to remove that connection.",
     "description": "Shown over the family tree while the Disconnect tool is chosen, telling the participant how to remove a relationship line."
-  },
-  "interview.familyPedigree.disconnectHintLinking": {
-    "defaultMessage": "{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from {name}.}}",
-    "description": "Read out to screen reader users, not shown, once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.disconnectTool": {
     "defaultMessage": "Disconnect",
@@ -59,10 +23,6 @@
     "defaultMessage": "Select two connected family members to remove the connection between them.",
     "description": "Tooltip text, under the heading “Disconnect” (or the stage’s own name for it), of the family tree toolbar tool that removes a relationship line: the participant selects one person, then someone they are connected to, and confirms. Read by participants."
   },
-  "interview.familyPedigree.disconnectedAnnouncement": {
-    "defaultMessage": "{firstIsYou, select, true {The connection between you and {second} was removed.} other {The connection between {first} and {second} was removed.}}",
-    "description": "Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant."
-  },
   "interview.familyPedigree.framingChoiceDescription": {
     "defaultMessage": "Choose the words you would like us to use for the people in your family. You can change this at any time.",
     "description": "Explanation under the question asking which set of words for relatives the family tree should use."
@@ -71,10 +31,6 @@
     "defaultMessage": "How should we describe your family?",
     "description": "Question over the choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent."
   },
-  "interview.familyPedigree.framingChosenAnnouncement": {
-    "defaultMessage": "{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}",
-    "description": "Screen-reader announcement after the participant chooses the words used to describe family members, which changes the labels of everyone they have not named. {framing} is \"gamete\" for the words that do not depend on gender, otherwise the words that follow gender."
-  },
   "interview.familyPedigree.framingControlDescription": {
     "defaultMessage": "Choose the relationship words your family tree uses for your relatives.",
     "description": "Tooltip text, under the heading “Wording” (or the stage’s own name for it), of the family tree toolbar button that opens a choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent. Read by participants."
@@ -82,18 +38,6 @@
   "interview.familyPedigree.framingControlLabel": {
     "defaultMessage": "Wording",
     "description": "Name of the family tree toolbar button that opens a choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent. Shown as its tooltip heading and read as its accessible name."
-  },
-  "interview.familyPedigree.personAccessibleName": {
-    "defaultMessage": "{isYou, select, true {You} other {{name}}}",
-    "description": "Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant."
-  },
-  "interview.familyPedigree.personAdoptedDescription": {
-    "defaultMessage": "Adopted.",
-    "description": "Read out after the name of a family member’s symbol in the family tree when the person was adopted, which the tree shows by drawing brackets around their symbol."
-  },
-  "interview.familyPedigree.personMissingDetailsDescription": {
-    "defaultMessage": "Some details are missing.",
-    "description": "Read out after the name of a family member’s symbol in the family tree when required details about the person have not been given yet, which the tree shows with a warning icon."
   },
   "interview.familyPedigree.pointerTool": {
     "defaultMessage": "Add and edit",
@@ -107,26 +51,6 @@
     "defaultMessage": "Bring back the change you undid.",
     "description": "Tooltip text, under the heading “Redo”, of the family tree toolbar button that makes again a change to the family tree that Undo reversed. Read by participants."
   },
-  "interview.familyPedigree.redoneAnnouncement": {
-    "defaultMessage": "Change redone.",
-    "description": "Screen reader announcement after the participant redoes a change to the family tree they had undone."
-  },
-  "interview.familyPedigree.removedAnnouncement": {
-    "defaultMessage": "{name} removed from your family.",
-    "description": "Screen reader announcement after a family member is removed. {name} is their name or, when it is not known, how they are related to the participant."
-  },
-  "interview.familyPedigree.removedWithOthersAnnouncement": {
-    "defaultMessage": "{count, plural, one {{name} and one other person removed from your family.} other {{name} and # other people removed from your family.}}",
-    "description": "Screen reader announcement after a family member is removed along with the people who were connected to the participant only through them. {name} is the name of the person the participant chose to remove or, when it is not known, how they are related to the participant; count is how many other people were removed with them."
-  },
-  "interview.familyPedigree.reproductiveRoleDescription": {
-    "defaultMessage": "{role, select, donor {egg or sperm donor} traditionalSurrogate {egg donor who carried the pregnancy} other {surrogate}}",
-    "description": "Read out with a family member’s symbol in the family tree, for each part they played in someone else’s conception or birth (the tree draws no mark for these). \"donor\" is someone who donated an egg or sperm; \"traditionalSurrogate\" is an egg donor who also carried the pregnancy; \"other\" is a surrogate who carried the pregnancy without a genetic tie to the child. When someone has more than one role, the phrases are joined into a list, so write each as it would appear inside a sentence (lower case in English)."
-  },
-  "interview.familyPedigree.savedAnnouncement": {
-    "defaultMessage": "Details saved.",
-    "description": "Screen reader announcement after a family member’s details are saved."
-  },
   "interview.familyPedigree.showWholeFamily": {
     "defaultMessage": "Show the whole family",
     "description": "Accessible name of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Also the heading of the button’s tooltip."
@@ -135,45 +59,17 @@
     "defaultMessage": "Fit your whole family tree on the screen.",
     "description": "Tooltip text, under the heading “Show the whole family”, of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Read by participants."
   },
-  "interview.familyPedigree.siblingsAnsweredAnnouncement": {
-    "defaultMessage": "{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that {name} has no biological brothers or sisters.}}",
-    "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings. name is the person’s name or how they are related to the participant."
-  },
   "interview.familyPedigree.skipStep": {
     "defaultMessage": "Skip",
     "description": "Button in the side panel where a new family member’s details are given, one group of questions at a time. Shown while some questions in the group are left unanswered; it moves on to the next group without answering them. They can still be answered by going back."
-  },
-  "interview.familyPedigree.toolGroupLabel": {
-    "defaultMessage": "What clicking a person does",
-    "description": "Accessible name of the pair of buttons in the toolbar that choose what selecting a person does."
-  },
-  "interview.familyPedigree.toolsLabel": {
-    "defaultMessage": "Family tree tools",
-    "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people."
   },
   "interview.familyPedigree.trackerAllDetails": {
     "defaultMessage": "Add required details for all family members",
     "description": "An item at the end of the family tree’s progress list, read by the participant, standing for the details the researcher requires of every person in the family (such as sex assigned at birth). It is shown while nobody already in the family is missing any, as a plain item while other relatives still have to be added, and ticked and struck through once nothing else is needed. While some are missing, the list instead names each person whose details are missing."
   },
-  "interview.familyPedigree.trackerItemDone": {
-    "defaultMessage": "Done:",
-    "description": "Read out by screen readers before an item in the family tree’s progress list that is already done, which is shown ticked and struck through. The item follows, for example “Add your parents”."
-  },
-  "interview.familyPedigree.trackerProgressLabel": {
-    "defaultMessage": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",
-    "description": "Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1."
-  },
   "interview.familyPedigree.undoDescription": {
     "defaultMessage": "Undo your last change to your family tree.",
     "description": "Tooltip text, under the heading “Undo”, of the family tree toolbar button that reverses the most recent change: adding, editing or removing a family member, connecting or disconnecting two people, or selecting someone for a question. Read by participants."
-  },
-  "interview.familyPedigree.undoneAnnouncement": {
-    "defaultMessage": "Change undone.",
-    "description": "Screen reader announcement after the participant undoes their most recent change to the family tree."
-  },
-  "interview.familyPedigree.viewToolsLabel": {
-    "defaultMessage": "View controls",
-    "description": "Accessible name of the small toolbar beside the family tree tools that zooms the family tree out and in, and fits the whole family on the screen."
   },
   "interview.familyPedigree.zoomInDescription": {
     "defaultMessage": "Make your family tree bigger, to see part of it more closely.",
@@ -299,61 +195,9 @@
     "defaultMessage": "Type a name, then press Enter",
     "description": "Placeholder in the network-composer name field; pressing Enter adds the named item."
   },
-  "interview.interfaces.addedNodes": {
-    "defaultMessage": "Added Nodes",
-    "description": "Accessible name used by drag-and-drop announcements for the list of people already added to the network."
-  },
-  "interview.interfaces.availableItems": {
-    "defaultMessage": "List of available items to add",
-    "description": "Accessible name of the collection containing external roster entries that can be added."
-  },
-  "interview.interfaces.availableRosterNodes": {
-    "defaultMessage": "Available Roster Nodes",
-    "description": "Accessible name used by drag-and-drop announcements for the external roster entries that can still be added."
-  },
-  "interview.interfaces.binSelectComplete": {
-    "defaultMessage": "Nothing left to place.",
-    "description": "Announced to screen readers on a sorting screen once everything the participant was sorting (usually people, but it can be places, organisations or anything else) has been put in a group."
-  },
-  "interview.interfaces.binSelectInstruction": {
-    "defaultMessage": "Choose where {name} belongs.",
-    "description": "Announced to screen readers when the item a participant is placing changes, on a sorting screen that asks them to tap a group instead of dragging. Sighted participants see that item shown as selected. An item is whatever the researcher has the participant sort: usually a person, but it can be a place, an organisation or anything else. name is the item’s unchanged participant-entered or authored display name. The groups are researcher-authored and shown on the same screen."
-  },
   "interview.interfaces.binSelectPlaceHere": {
     "defaultMessage": "Place here",
     "description": "Button inside an opened group on a sorting screen that puts the item the participant is placing (usually a person) into that group."
-  },
-  "interview.interfaces.binSelectPlaceIn": {
-    "defaultMessage": "Place {name} in {label}",
-    "description": "Accessible name of a group a participant taps to put an item (usually a person) in it. name is the item’s unchanged participant-entered or authored display name; label is the unchanged researcher-authored group label."
-  },
-  "interview.interfaces.binSelectShowContents": {
-    "defaultMessage": "Show what is in {label}, {count, plural, one {# item} other {# items}}",
-    "description": "Accessible name of the small button on a group that opens it to show what is already in it. label is the unchanged researcher-authored group label; count is the number of items currently in the group."
-  },
-  "interview.interfaces.categoryContents": {
-    "defaultMessage": "Category {label}, {count, plural, one {# item} other {# items}}",
-    "description": "Accessible name of a collapsed category container. label is its authored category label; count is the number of items currently in the container."
-  },
-  "interview.interfaces.categoryContentsExpanded": {
-    "defaultMessage": "Category {label}, {count, plural, one {# item} other {# items}}, expanded",
-    "description": "Accessible name of an expanded category container. label is its authored label; count is the number of items currently in it."
-  },
-  "interview.interfaces.categoryDrop": {
-    "defaultMessage": "Category: {label}",
-    "description": "Drag target announcement for a categorical response. label is the unchanged researcher-authored category label."
-  },
-  "interview.interfaces.categoryList": {
-    "defaultMessage": "{label} category",
-    "description": "Accessible name of the item list inside an expanded category. label is the unchanged researcher-authored category label."
-  },
-  "interview.interfaces.clearSearch": {
-    "defaultMessage": "Clear search",
-    "description": "Accessible action that clears the current geospatial search query."
-  },
-  "interview.interfaces.closeSearch": {
-    "defaultMessage": "Close search",
-    "description": "Accessible name of the toggle while the geospatial place-search panel is open."
   },
   "interview.interfaces.composerAddNode": {
     "defaultMessage": "Add node",
@@ -371,25 +215,9 @@
     "defaultMessage": "Groups",
     "description": "Name of the network-composer tool that puts nodes in groups, shown in its tooltip and read as its accessible name."
   },
-  "interview.interfaces.composerRedo": {
-    "defaultMessage": "Redo",
-    "description": "Accessible name of the network composer toolbar button that makes again a change that was undone. The button shows only an icon and no tooltip, so only screen readers read this, and it stays in English whatever the interview language."
-  },
-  "interview.interfaces.composerTools": {
-    "defaultMessage": "Network composer tools",
-    "description": "Accessible name of the vertical toolbar used to create and edit a network."
-  },
-  "interview.interfaces.composerUndo": {
-    "defaultMessage": "Undo",
-    "description": "Accessible name of the network composer toolbar button that reverses the most recent change. The button shows only an icon and no tooltip, so only screen readers read this, and it stays in English whatever the interview language."
-  },
   "interview.interfaces.confirmPassphrase": {
     "defaultMessage": "Confirm Passphrase",
     "description": "Label of the second anonymisation password field; this is confirmation of the passphrase, not a separate password."
-  },
-  "interview.interfaces.deselect": {
-    "defaultMessage": "Deselect",
-    "description": "Action that clears the current outside-map-area selection so the participant can choose another location."
   },
   "interview.interfaces.discardChangesDescription": {
     "defaultMessage": "Do you want to discard your changes?",
@@ -403,105 +231,17 @@
     "defaultMessage": "Don’t know",
     "description": "Answer option a participant picks when they do not know the answer to a question about a family member, such as whether twins are identical."
   },
-  "interview.interfaces.dragToReposition": {
-    "defaultMessage": "Drag to reposition",
-    "description": "Accessible name of the handle that moves the floating narrative preset toolbar."
-  },
-  "interview.interfaces.drawingControls": {
-    "defaultMessage": "Drawing controls",
-    "description": "Accessible name of the narrative toolbar group for freehand annotations."
-  },
-  "interview.interfaces.editingTools": {
-    "defaultMessage": "Editing tools",
-    "description": "Accessible name of the toolbar group for selection, adding people, creating connections, and group membership."
-  },
-  "interview.interfaces.emptyValue": {
-    "defaultMessage": "No value",
-    "description": "Shown in place of a roster detail that has no value: a blank field or an empty list. Replaces a bare dash so screen readers announce it."
-  },
-  "interview.interfaces.errorHeading": {
-    "defaultMessage": "Something went wrong",
-    "description": "Short heading above an external-list loading error. This heading intentionally has no final period."
-  },
   "interview.interfaces.externalDataError": {
     "defaultMessage": "External data could not be loaded.",
     "description": "Shown under the error heading when a list of people from a file the study provides could not be loaded."
-  },
-  "interview.interfaces.finishingInterview": {
-    "defaultMessage": "Finishing the interview…",
-    "description": "Announced to screen readers, not shown, while an interview that ends without asking the participant is being finished and its answers saved; sighted participants see only a loading animation. It can take a few seconds on a slow connection."
-  },
-  "interview.interfaces.groupMembershipOptions": {
-    "defaultMessage": "Group membership options",
-    "description": "Accessible name of the popover containing group membership choices in the network composer."
-  },
-  "interview.interfaces.groupMembershipPeople": {
-    "defaultMessage": "Group membership for selected people",
-    "description": "Accessible name of the controls that set group membership for the currently selected people."
-  },
-  "interview.interfaces.hideInstructions": {
-    "defaultMessage": "Hide instructions",
-    "description": "Accessible action that collapses the floating instructions panel above a network view."
-  },
-  "interview.interfaces.historyTools": {
-    "defaultMessage": "History tools",
-    "description": "Accessible name of the toolbar group containing undo and redo actions."
-  },
-  "interview.interfaces.layoutAndDrawing": {
-    "defaultMessage": "Layout and drawing tools",
-    "description": "Accessible name of the narrative toolbar for automatic positioning and freehand annotations."
-  },
-  "interview.interfaces.layoutControls": {
-    "defaultMessage": "Layout controls",
-    "description": "Accessible name of the narrative toolbar group that pauses or resumes automatic positioning."
-  },
-  "interview.interfaces.layoutTools": {
-    "defaultMessage": "Layout tools",
-    "description": "Accessible name of the network-composer toolbar group that controls automatic positioning."
-  },
-  "interview.interfaces.mapMoveFailed": {
-    "defaultMessage": "Search could not be completed. Try again in a moment.",
-    "description": "Screen-reader announcement when the map could not be moved to the search result the participant chose. Only screen readers read it, so it stays in English whatever the interview language."
-  },
-  "interview.interfaces.mapMoved": {
-    "defaultMessage": "Map moved to {place}.",
-    "description": "Screen-reader announcement after a selected search result moves the map. place is the unchanged place name returned by the map service."
   },
   "interview.interfaces.mapOffline": {
     "defaultMessage": "You are offline — the map will not load until you reconnect.",
     "description": "Notice over a Geospatial map while the device is offline and the map cannot load."
   },
-  "interview.interfaces.mapTitle": {
-    "defaultMessage": "Map",
-    "description": "Accessible region name of the native Mapbox canvas in the geospatial interface."
-  },
   "interview.interfaces.mapUnavailable": {
     "defaultMessage": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
     "description": "Explanation shown when a Geospatial map cannot be drawn at all."
-  },
-  "interview.interfaces.mapZoomIn": {
-    "defaultMessage": "Zoom in",
-    "description": "Accessible name of the Geospatial map button that increases magnification. The button shows only an icon, so only screen readers read this, and it stays in English whatever the interview language."
-  },
-  "interview.interfaces.mapZoomOut": {
-    "defaultMessage": "Zoom out",
-    "description": "Accessible name of the Geospatial map button that decreases magnification. The button shows only an icon, so only screen readers read this, and it stays in English whatever the interview language."
-  },
-  "interview.interfaces.mapboxHomepage": {
-    "defaultMessage": "Mapbox homepage",
-    "description": "Accessible name of the native map logo link that opens the Mapbox homepage; preserve the Mapbox brand name."
-  },
-  "interview.interfaces.namedReturnedToDrawer": {
-    "defaultMessage": "{name} returned to the drawer.",
-    "description": "Screen-reader announcement after an item is returned to the unplaced-items panel. name is its unchanged participant-entered or authored display name."
-  },
-  "interview.interfaces.nextPreset": {
-    "defaultMessage": "Next preset",
-    "description": "Action that selects the next researcher-configured narrative view."
-  },
-  "interview.interfaces.ordinalContainer": {
-    "defaultMessage": "Container for the value ''{label}''",
-    "description": "Drag-and-drop name of a rating container. label is the unchanged researcher-authored ordinal response label; keep it as a value, not a translation key."
   },
   "interview.interfaces.overtakenEditNotice": {
     "defaultMessage": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
@@ -515,29 +255,9 @@
     "defaultMessage": "Pause automatic layout",
     "description": "Tooltip and accessible name of the toggle that stops the people on a network diagram from moving into place by themselves."
   },
-  "interview.interfaces.presetNavigation": {
-    "defaultMessage": "Preset navigation",
-    "description": "Accessible name of the toolbar group that switches between researcher-configured narrative views."
-  },
-  "interview.interfaces.presets": {
-    "defaultMessage": "Presets",
-    "description": "Accessible name of the narrative toolbar for switching between researcher-configured network views."
-  },
-  "interview.interfaces.previousPreset": {
-    "defaultMessage": "Previous preset",
-    "description": "Action that selects the previous researcher-configured narrative view."
-  },
   "interview.interfaces.quickAddHint": {
     "defaultMessage": "Press Enter when you are finished.",
     "description": "Tooltip that opens over the quick-add name field after about five seconds without typing, until the first name is added, telling the participant how to add what they typed."
-  },
-  "interview.interfaces.quickAddInput": {
-    "defaultMessage": "Quick add input",
-    "description": "Accessible name of the active quick-add toggle while its name-entry field is open."
-  },
-  "interview.interfaces.recenterMap": {
-    "defaultMessage": "Recenter Map",
-    "description": "Accessible name of the map button that restores the researcher-configured starting center and zoom."
   },
   "interview.interfaces.redo": {
     "defaultMessage": "Redo",
@@ -547,61 +267,13 @@
     "defaultMessage": "Reset annotations",
     "description": "Accessible name and tooltip of the Narrative button that clears everything drawn on the canvas."
   },
-  "interview.interfaces.resizePanel": {
-    "defaultMessage": "Resize panel",
-    "description": "Accessible name of the draggable divider that changes the width of the network-composer editing panel."
-  },
-  "interview.interfaces.resizePanels": {
-    "defaultMessage": "Resize panel and node list areas",
-    "description": "Accessible name of the divider between the source panel and the list of added people; dragging or keyboard controls resize the two areas."
-  },
   "interview.interfaces.resumeLayout": {
     "defaultMessage": "Resume automatic layout",
     "description": "Tooltip and accessible name of the toggle that lets the people on a network diagram move into place by themselves again."
   },
-  "interview.interfaces.returnedToDrawer": {
-    "defaultMessage": "Returned to the drawer.",
-    "description": "Screen-reader announcement after an item without a usable name is removed from the canvas and returned to the unplaced-items panel."
-  },
-  "interview.interfaces.scrollForQuestions": {
-    "defaultMessage": "Scroll to see more questions",
-    "description": "Accessible name and announcement of the arrows at the bottom of a long personal-information form, which show that more questions are below the visible area. Only screen readers read it, so it stays in English whatever the interview language."
-  },
   "interview.interfaces.searchFailed": {
     "defaultMessage": "Search could not be completed. Try again in a moment.",
     "description": "Notice under the Geospatial map search when a search could not run."
-  },
-  "interview.interfaces.searchLocation": {
-    "defaultMessage": "Search location",
-    "description": "Accessible name of the toggle that opens the geospatial place-search panel."
-  },
-  "interview.interfaces.searchSuggestions": {
-    "defaultMessage": "Search suggestions",
-    "description": "Accessible name of the list of places returned by geospatial search, including its loading and empty states."
-  },
-  "interview.interfaces.select": {
-    "defaultMessage": "Select",
-    "description": "Network-composer tool that selects existing people or connections for editing."
-  },
-  "interview.interfaces.showInstructions": {
-    "defaultMessage": "Show instructions",
-    "description": "Accessible action that expands the floating instructions panel above a network view."
-  },
-  "interview.interfaces.stubMap": {
-    "defaultMessage": "Stubbed map (click to select test feature)",
-    "description": "Accessible name of the test-only map placeholder used by automated interface tests; clicking it selects a fixture feature."
-  },
-  "interview.interfaces.submit": {
-    "defaultMessage": "Submit",
-    "description": "Accessible name of icon-only or visually hidden form submit buttons in anonymisation and slide forms."
-  },
-  "interview.interfaces.targetNodes": {
-    "defaultMessage": "Target nodes",
-    "description": "Accessible name of the collection of people that can be selected in a one-to-many relationship question."
-  },
-  "interview.interfaces.toggleAttribution": {
-    "defaultMessage": "Toggle attribution",
-    "description": "Accessible name and tooltip of the native map control that expands or collapses map source credits; source credit text remains unchanged."
   },
   "interview.interfaces.toggleDrawing": {
     "defaultMessage": "Toggle drawing",
@@ -623,33 +295,9 @@
     "defaultMessage": "Zoom out",
     "description": "Name of the family tree toolbar button that decreases magnification, on the Family Pedigree and Narrative Pedigree stages, shown in its tooltip. Sentence case."
   },
-  "interview.narrativePedigree.affected": {
-    "defaultMessage": "Affected",
-    "description": "Clinical status tooltip and screen-reader label for a person recorded as affected by the condition; the stable model key remains affected."
-  },
-  "interview.narrativePedigree.atRiskAffected": {
-    "defaultMessage": "At risk (affected)",
-    "description": "Clinical status label for uncertain risk of being affected or developing the condition; shown only when probabilistic statuses are enabled."
-  },
-  "interview.narrativePedigree.atRiskCarrier": {
-    "defaultMessage": "At risk (carrier)",
-    "description": "Clinical status label for uncertain carrier status, distinct from uncertain risk of developing the condition."
-  },
   "interview.narrativePedigree.clearFocus": {
     "defaultMessage": "Clear focus",
     "description": "Accessible name and tooltip of the button that stops focusing the family tree on one person."
-  },
-  "interview.narrativePedigree.conditionKey": {
-    "defaultMessage": "Condition key",
-    "description": "Accessible name of the side panel listing protocol-authored conditions and explaining the pedigree status symbols."
-  },
-  "interview.narrativePedigree.diseaseStatus": {
-    "defaultMessage": "{condition}: {status}",
-    "description": "One entry in a locale-formatted screen-reader list of conditions and statuses. condition is an authored condition name; status is an already localized clinical status label."
-  },
-  "interview.narrativePedigree.focusOn": {
-    "defaultMessage": "Focus on {name}",
-    "description": "Accessible action focusing the inheritance view on a person. name is entered research text or a localized relationship fallback; do not alter it."
   },
   "interview.narrativePedigree.keyCarries": {
     "defaultMessage": "Carries this condition",
@@ -679,50 +327,6 @@
     "defaultMessage": "Will develop this condition",
     "description": "Key row: what the symbol with a vertical line means. condition is the name of the condition the key shows, which the protocol may use."
   },
-  "interview.narrativePedigree.obligateAffected": {
-    "defaultMessage": "Obligate affected",
-    "description": "Clinical status label for a person inferred to be necessarily affected, including presymptomatic disease. This is stronger than an at-risk status."
-  },
-  "interview.narrativePedigree.obligateCarrier": {
-    "defaultMessage": "Obligate carrier",
-    "description": "Clinical status label for a person inferred to necessarily carry the inherited variant. It does not itself say that they have symptoms."
-  },
-  "interview.narrativePedigree.resizeKey": {
-    "defaultMessage": "Resize the condition key panel",
-    "description": "Accessible name for the splitter resizing the condition-legend panel beside the diagram."
-  },
-  "interview.narrativePedigree.showingAll": {
-    "defaultMessage": "Showing all conditions",
-    "description": "Live announcement when no single condition is selected and the interface shows all protocol conditions."
-  },
-  "interview.narrativePedigree.showingAllFocused": {
-    "defaultMessage": "Showing all conditions. Focused on {name}. Showing who contributes to their inheritance.",
-    "description": "Whole live announcement for an all-conditions view with a focused person. name is entered text or a localized fallback; preserve the explanation of contributor highlighting."
-  },
-  "interview.narrativePedigree.showingCondition": {
-    "defaultMessage": "Showing {condition}",
-    "description": "Live announcement after selecting a condition. condition is its unchanged protocol-authored name."
-  },
-  "interview.narrativePedigree.showingFocused": {
-    "defaultMessage": "Showing {condition}. Focused on {name}. Showing who contributes to their inheritance.",
-    "description": "Whole live announcement naming the selected condition and focused person, then explaining the inheritance-contributor highlight. condition and name remain separate, unchanged values."
-  },
-  "interview.narrativePedigree.statusUnknown": {
-    "defaultMessage": "Status unknown",
-    "description": "Clinical status tooltip and screen-reader label when the inheritance information does not establish a displayed genetic status."
-  },
-  "interview.narrativePedigree.toolbarLabel": {
-    "defaultMessage": "Family tree controls",
-    "description": "Accessible name for the toolbar under the family tree. It holds the menu that chooses which medical condition the tree shows, the buttons that zoom out, zoom in and show the whole family, and the button that saves a picture of the tree."
-  },
-  "interview.navigation.currentTextSize": {
-    "defaultMessage": "Current text size: {size, number, ::percent}",
-    "description": "Screen-reader announcement after the participant changes text size; size is a multiplier."
-  },
-  "interview.navigation.decreaseTextSize": {
-    "defaultMessage": "Decrease text size",
-    "description": "Accessible action that decreases interview text size."
-  },
   "interview.navigation.exitFailed": {
     "defaultMessage": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.",
     "description": "Recoverable exit-dialog error when pending answers or the interview language could not be saved before leaving; the interview stays open."
@@ -747,37 +351,13 @@
     "defaultMessage": "Exit this review?",
     "description": "Confirmation title before leaving an interview review."
   },
-  "interview.navigation.goToScreen": {
-    "defaultMessage": "Go to another screen",
-    "description": "Accessible name for opening the interview screen navigation drawer."
-  },
   "interview.navigation.hiddenScreen": {
     "defaultMessage": "This screen is hidden based on the answers given so far. Do you want to show it anyway?",
     "description": "Explains why an interview screen is hidden before overriding that navigation rule."
   },
-  "interview.navigation.increaseTextSize": {
-    "defaultMessage": "Increase text size",
-    "description": "Accessible action that increases interview text size."
-  },
-  "interview.navigation.interviewSettings": {
-    "defaultMessage": "Interview settings",
-    "description": "Accessible name of the settings popover inside a running interview."
-  },
-  "interview.navigation.nextStep": {
-    "defaultMessage": "Next Step",
-    "description": "Accessible name of the arrow that moves to the next interview screen."
-  },
   "interview.navigation.outsidePath": {
     "defaultMessage": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?",
     "description": "Explains that a screen is outside the current answer-dependent path before opening it."
-  },
-  "interview.navigation.previousStep": {
-    "defaultMessage": "Previous Step",
-    "description": "Accessible name of the arrow that moves to the previous interview screen."
-  },
-  "interview.navigation.settings": {
-    "defaultMessage": "Settings",
-    "description": "Accessible name of the interview settings button."
   },
   "interview.navigation.showScreen": {
     "defaultMessage": "Show screen",
@@ -787,14 +367,6 @@
     "defaultMessage": "Show this screen?",
     "description": "Confirmation title before opening an interview screen hidden by earlier answers."
   },
-  "interview.navigation.textSize": {
-    "defaultMessage": "Text size<hidden> percentage</hidden>",
-    "description": "Legend for the text-size input; hidden adds the percentage unit for screen readers."
-  },
-  "interview.runtime.addPerson": {
-    "defaultMessage": "Add a person",
-    "description": "Accessible action that adds a person to the current interview task."
-  },
   "interview.runtime.answerUnavailable": {
     "defaultMessage": "Answer unavailable",
     "description": "Shown in place of a protected answer, such as a name, that was saved earlier but can no longer be shown."
@@ -803,21 +375,9 @@
     "defaultMessage": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer.",
     "description": "Explains, under a question whose earlier protected answer can no longer be shown, that the earlier answer is kept unless the participant enters a new one to replace it. Shown in both the read-only and the replacing state."
   },
-  "interview.runtime.canvas": {
-    "defaultMessage": "Placement area",
-    "description": "Announced name of the area where items can be positioned."
-  },
-  "interview.runtime.checkingPassphrase": {
-    "defaultMessage": "Checking your passphrase…",
-    "description": "Announced beside a spinner while an entered passphrase is being checked, which can take a few seconds. Only screen readers read it, so it stays in English whatever the interview language."
-  },
   "interview.runtime.choosePassphraseHelp": {
     "defaultMessage": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.",
     "description": "Instructions in the passphrase dialog and on the passphrase screen, whether the participant is choosing the interview passphrase or entering the one already chosen. It must not suggest that anyone can recover or reset a forgotten passphrase, because no one can."
-  },
-  "interview.runtime.collapseDrawer": {
-    "defaultMessage": "Collapse drawer",
-    "description": "Accessible action that folds the item tray closed."
   },
   "interview.runtime.connection": {
     "defaultMessage": "Connection",
@@ -831,53 +391,17 @@
     "defaultMessage": "Copy",
     "description": "Label of the button under the interview error message that copies the debug information the participant can send to the study organizer. The message above it calls this “the button below”."
   },
-  "interview.runtime.deleteBin": {
-    "defaultMessage": "Delete bin",
-    "description": "Announced name of the drop target that deletes an item."
-  },
-  "interview.runtime.drawer": {
-    "defaultMessage": "Drawer",
-    "description": "Announced name of the tray containing items that can be placed."
-  },
-  "interview.runtime.dropToRemove": {
-    "defaultMessage": "Drop here to remove",
-    "description": "Read by screen readers over a list while dropping a dragged item there removes it: the roster list, or a Sociogram’s empty tray. Only screen readers read it, so it stays in English whatever the interview language. subject is the name of the kind of item, such as Person."
-  },
-  "interview.runtime.expandDrawer": {
-    "defaultMessage": "Expand drawer",
-    "description": "Accessible action that expands the item tray."
-  },
-  "interview.runtime.firstNode": {
-    "defaultMessage": "First item",
-    "description": "Fallback accessible name for the first item when its name is missing."
-  },
   "interview.runtime.hiddenByAnswers": {
     "defaultMessage": "Hidden by answers",
     "description": "Status on a screen unavailable because of answers given so far."
-  },
-  "interview.runtime.interviewScreens": {
-    "defaultMessage": "Interview screens",
-    "description": "Accessible name of the interview screen navigation list."
   },
   "interview.runtime.itemUnavailable": {
     "defaultMessage": "This item could not be displayed.",
     "description": "Fallback when protocol-provided media cannot be displayed."
   },
-  "interview.runtime.loadingStatus": {
-    "defaultMessage": "Loading…",
-    "description": "Announced while something is loading beside a spinner that shows no words, such as a search filtering its list. Only screen readers read this, so it stays in English whatever the interview language."
-  },
   "interview.runtime.noSearchMatch": {
     "defaultMessage": "Nothing matched your search term.",
     "description": "Empty result after searching the interview screen list."
-  },
-  "interview.runtime.nodeList": {
-    "defaultMessage": "Item list",
-    "description": "Accessible name for a list of people or other items."
-  },
-  "interview.runtime.notifications": {
-    "defaultMessage": "Interview notifications",
-    "description": "Accessible name of the interview notification region."
   },
   "interview.runtime.outsideCurrentPath": {
     "defaultMessage": "Outside current path",
@@ -886,10 +410,6 @@
   "interview.runtime.passphrase": {
     "defaultMessage": "Passphrase",
     "description": "Label of the secret phrase input used to decrypt interview data."
-  },
-  "interview.runtime.passphraseButton": {
-    "defaultMessage": "Passphrase",
-    "description": "Accessible name of the key button in the navigation bar that opens the passphrase dialog. The button shows only a key, so only screen readers read this, and it stays in English whatever the interview language."
   },
   "interview.runtime.passphraseIncorrect": {
     "defaultMessage": "This passphrase does not match the one used earlier in this interview. Check it and try again.",
@@ -903,14 +423,6 @@
     "defaultMessage": "Your answers have not been saved. Enter your passphrase, then try again.",
     "description": "Error when answers protected by the interview passphrase could not be saved because no working passphrase has been entered."
   },
-  "interview.runtime.replaceUnavailableAnswer": {
-    "defaultMessage": "Enter a new answer",
-    "description": "Button beside an earlier answer that can no longer be shown, which lets the participant type a new answer to replace it."
-  },
-  "interview.runtime.secondNode": {
-    "defaultMessage": "second item",
-    "description": "Fallback accessible name for the second item when its name is missing."
-  },
   "interview.runtime.taskErrorDescription": {
     "defaultMessage": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
     "description": "Recovery instructions when an interview screen cannot be displayed, whether from a crash or a lost connection, written in markdown: a heading line starting with “# ” and three paragraphs separated by blank lines. Keep the markdown. The copy button is shown below this text."
@@ -918,10 +430,6 @@
   "interview.runtime.unnamed": {
     "defaultMessage": "Unnamed",
     "description": "Label shown on, and read out for, a person or other item the participant added without giving it a name."
-  },
-  "interview.runtime.unplacedCount": {
-    "defaultMessage": "{count, number} unplaced",
-    "description": "Number of items in the tray that have not yet been placed on the canvas."
   },
   "interview.stageWording.bins.unplacedNodesNotice": {
     "defaultMessage": "You must place every item before you can continue.",

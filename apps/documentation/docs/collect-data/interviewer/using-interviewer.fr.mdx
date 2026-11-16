@@ -1,0 +1,731 @@
+---
+title: Utiliser Interviewer
+navOrder: 2
+wip: false
+toc: true
+date: 7th October 2026
+translatedFrom: 152e30fb7afb2978f9460948e6492d80a6d6fed9
+---
+
+<SummaryCard duration="30 minutes">
+<SummarySection>
+
+Ce tutoriel vous présente Interviewer en parcourant un exemple fondé sur notre
+protocole d’exemple. Nous explorerons l’entretien tel que le vit la personne
+participante, et nous présenterons certaines des fonctionnalités de
+l’application destinées à l’équipe de recherche. Le protocole d’exemple que
+nous allons utiliser illustre toutes les principales fonctionnalités de recueil
+de données de l’outil, ce qui, nous l’espérons, vous aidera à imaginer les
+nombreux types d’études qu’il est possible de créer avec Network Canvas.
+
+</SummarySection>
+<PrerequisitesSection>
+
+Pour tirer le meilleur parti de ce tutoriel, vous devez d’abord :
+
+- Avoir lu et compris la [présentation du projet](/fr/get-started/project-information/project-overview).
+- Pour suivre le tutoriel sur votre propre ordinateur ou appareil, ouvrir [Interviewer](/fr/collect-data/interviewer) dans votre navigateur web, ou [télécharger et installer Interviewer Classic](https://networkcanvas.com/fr/get-started).
+
+Notez qu’un tutoriel distinct explique comment créer un protocole : [Prise en main d’Architect](/fr/design-protocols/getting-started). Nous vous conseillons de suivre le présent tutoriel avant d’aborder les notions plus avancées de la création de protocoles, mais vous pouvez lire ces articles dans l’ordre que vous souhaitez.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+## Présentation d’Interviewer {#introducing-interviewer}
+
+Network Canvas Interviewer est un outil de passation d’entretiens conçu pour être simple et intuitif pour les personnes participantes, et pour s’intégrer au reste de la suite d’outils Network Canvas. C’est la pierre angulaire du projet Network Canvas.
+
+Interviewer fonctionne aussi bien sur des tablettes à écran tactile que sur des ordinateurs de bureau, avec un écran tactile ou avec un clavier et une souris classiques. Ses interfaces sont optimisées pour les besoins propres aux entretiens sur les réseaux, et sont très flexibles et personnalisables. Interviewer utilise les fichiers de protocole Network Canvas pour se configurer et afficher les écrans et les étapes que vous avez conçus pour votre étude.
+
+Une fois les données recueillies avec Interviewer, vous pouvez exporter des fichiers de données de réseau vers votre appareil ou votre ordinateur.
+
+Interviewer existe en deux versions, toutes deux maintenues. Choisissez ci-dessous celle que vous utilisez : les captures d’écran et les remarques propres à chaque version tout au long de ce tutoriel s’adaptent en conséquence.
+
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
+</AppSwitch>
+
+<AppOnly axis="interviewer" app="classic">
+
+**Interviewer Classic** est l’application éprouvée pour ordinateur et tablette. Elle exécute les protocoles en schéma 7 et fonctionne entièrement hors ligne.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+**Interviewer** fonctionne dans votre navigateur web, sans rien à installer, et peut être installé comme application web progressive (PWA) sur un appareil dont vous avez la maîtrise. Il repose sur la même plateforme web que Fresco 4.0. Il prend en charge les **schémas 8 et 9** (il peut donc exécuter les protocoles créés dans [Architect](/fr/design-protocols/getting-started)) et est compatible avec vos protocoles existants, tout en offrant une meilleure expérience d’entretien, une meilleure exportation des données et une meilleure sécurité sur l’appareil. Comme certaines interfaces du schéma 8 (par exemple l’[interface géospatiale](/fr/design-protocols/interface-documentation/geospatial)) nécessitent une connexion Internet, un recueil entièrement hors ligne n’est pas toujours possible. C’est la version **recommandée pour les nouvelles études**.
+
+</AppOnly>
+
+La présentation du logiciel qui suit décrit certaines de ses fonctionnalités et notions clés. Pour la suivre, ouvrez Interviewer sur votre propre ordinateur ou appareil.
+
+<AppOnly axis="interviewer" app="current">
+
+## Sécurité et verrouillage {#security-and-locking}
+
+Interviewer conserve tout ce qu’il stocke (protocoles, entretiens et paramètres) sur l’appareil, sans synchronisation dans le cloud ni composant serveur. Lorsque vous configurez un verrouillage de l’application (un code PIN, une phrase secrète ou la biométrie), ces données stockées sur l’appareil sont **chiffrées au repos** avec une clé dérivée de vos données d’authentification, et l’authentification qui déverrouille l’application libère aussi la clé qui sert à les déchiffrer.
+
+### Configurer la sécurité {#setting-up-security}
+
+La toute première fois que vous ouvrez Interviewer, un écran de bienvenue vous accueille, puis un court assistant de configuration vous guide avant que vous n’arriviez au tableau de bord. La plupart des réglages qu’il configure peuvent être modifiés plus tard dans **Paramètres** (à l’exception de votre méthode de sécurité ; voir ci-dessous).
+
+![L’écran de bienvenue d’Interviewer](/assets/img/interviewer-guide/welcome.png)
+
+L’écran de bienvenue, ainsi que chaque étape de l’assistant de configuration, comporte une liste déroulante **Langue de l’application**, qui vous permet de changer la langue de l’interface avant d’aller plus loin (voir [Langue de l’interface](#interface-language) ci-dessous).
+
+L’assistant commence par un bref aperçu de ce qu’il va aborder : la sécurisation de vos données et le réglage de vos préférences pour l’application.
+
+![L’introduction de l’assistant de configuration](/assets/img/interviewer-guide/setup-intro.png)
+
+Il présente ensuite les deux niveaux de protection de vos données de recherche : le **stockage sécurisé des données** et l’**autorisation de l’application**, des fonctionnalités à utiliser _en plus_ des protections de l’appareil lui-même, comme le chiffrement du stockage et un mot de passe robuste pour l’appareil.
+
+![L’étape « Sécurisation de vos données » de l’assistant de configuration](/assets/img/interviewer-guide/securing-data.png)
+
+Vous choisissez ensuite la manière dont vous déverrouillerez l’application. Selon votre appareil, les options sont les suivantes :
+
+- **Biométrie** : Touch ID, Face ID ou l’équivalent sur votre appareil (option proposée uniquement si l’appareil dispose d’un capteur).
+- **Code PIN** : un code à huit chiffres.
+- **Phrase secrète** : une phrase d’au moins douze caractères.
+- **Aucune sécurité** : aucune protection au niveau de l’application (vos données ne reposent alors que sur les protections de l’appareil lui-même).
+
+![Choisir une méthode d’authentification](/assets/img/interviewer-guide/auth-method.png)
+
+<TipBox danger={true}>
+
+Un **code PIN ou une phrase secrète** oubliés ne peuvent pas être récupérés : les données qu’ils protègent deviennent définitivement inaccessibles sur cet appareil. La configuration de la **biométrie** enregistre aussi une **phrase secrète de récupération** obligatoire : si vous perdez seulement l’accès à la biométrie (capteur, empreinte ou visage enregistrés), vous pouvez vous rabattre sur cette phrase secrète de récupération ; si vous perdez les deux, la perte est tout aussi définitive. Remplacer votre code PIN ou votre phrase secrète (après avoir saisi le code ou la phrase actuels) préserve l’accès à vos données, mais passer à une autre méthode de déverrouillage (d’un code PIN à une phrase secrète, par exemple, ou vers la biométrie ou depuis celle-ci) impose de **révoquer le verrouillage de l’appareil**, ce qui efface **tous les protocoles, toutes les sessions d’entretien et toutes les données d’authentification enregistrées sur cet appareil**. Quelle que soit la méthode utilisée, **exportez régulièrement vos entretiens**, pour que la perte d’un appareil, ou un changement de sa méthode de déverrouillage, ne signifie jamais la perte de vos données.
+
+</TipBox>
+
+Enfin, l’assistant vous demande si vous souhaitez partager des données d’utilisation anonymes pour aider à améliorer l’application. Aucune donnée concernant les personnes participantes ni aucune donnée personnelle (données de réseau, réponses aux entretiens, identifiants de cas ou contenu des protocoles) ne quitte jamais l’appareil, et vous pouvez modifier ce choix à tout moment dans **Paramètres → Confidentialité**.
+
+![L’étape de l’assistant de configuration consacrée aux statistiques d’utilisation](/assets/img/interviewer-guide/analytics.png)
+
+### Verrouiller et déverrouiller {#locking-and-unlocking}
+
+Lorsque l’application est verrouillée, vous ne voyez que l’écran de verrouillage : jamais de noms de protocoles, de nombres de sessions ni d’autres informations sur ce qui est stocké.
+
+<Screenshot axis="interviewer" name="lock-screen" alt="L’écran de verrouillage d’Interviewer"></Screenshot>
+
+Interviewer se verrouille automatiquement après une période d’inactivité (réglable dans **Paramètres**, d’une minute à une heure), ainsi qu’à la fermeture de l’application. Vous pouvez aussi le verrouiller immédiatement avec le bouton **Verrouiller l’application** (l’icône de cadenas) de la barre supérieure du tableau de bord.
+
+Pour une protection supplémentaire, vous pouvez exiger une nouvelle authentification aux points d’entrée et de sortie des entretiens : à l’**ouverture** d’un entretien (option activée par défaut), à la **sortie** vers le tableau de bord et lors de l’**exportation** des données ; chacune de ces options s’active séparément dans **Paramètres**.
+
+### Paramètres {#settings}
+
+L’écran **Paramètres** vous permet de gérer les préférences de l’application, de contrôler le contenu de vos exportations et de vérifier l’état de l’application elle-même. Ouvrez-le depuis l’icône d’engrenage du tableau de bord. Il est organisé en sept rubriques : **À propos**, **Langue**, **Entretien**, **Exportation des données**, **Confidentialité**, **Sécurité** et **Données synthétiques**.
+
+![L’écran des paramètres d’Interviewer](/assets/img/interviewer-guide/settings.png)
+
+**À propos** indique des informations de base sur l’application et sur cet appareil : la version de l’application, l’espace de stockage utilisé (affiché sous forme de barre d’utilisation ; sur ordinateur, l’espace disque libre est aussi indiqué) et votre identifiant d’installation, un identifiant unique propre à chaque appareil. La version et l’identifiant d’installation sont les informations à nous communiquer lorsque vous nous contactez pour obtenir de l’aide. Cette rubrique vous permet aussi d’afficher à nouveau sur l’écran d’accueil la carte du protocole d’exemple installable en un clic, si vous l’aviez masquée.
+
+**Langue** contient la liste déroulante **Langue de l’application**, qui définit la langue des écrans d’Interviewer lui-même sur cet appareil. Choisissez une langue, ou **Automatique** pour suivre les préférences linguistiques de votre navigateur ; cette entrée indique aussi la langue qui en découle actuellement, par exemple _Automatique (Français)_. Voir [Langue de l’interface](#interface-language) ci-dessous.
+
+**Entretien** comporte un seul interrupteur, **Autoriser la navigation entre les étapes**, activé par défaut. Tant qu’il est activé, toucher la barre de progression pendant un entretien ouvre un menu des étapes, à partir duquel vous pouvez accéder directement à n’importe quelle étape. Lorsqu’il est désactivé, la barre de progression n’ouvre plus ce menu ; les flèches vers le haut et vers le bas permettent toujours de se déplacer d’un écran à la fois, ce qui, sur une étape comportant plusieurs consignes, signifie une consigne et non une étape entière. Pouvoir accéder directement à n’importe quelle étape est utile pendant l’étude pilote d’un protocole, mais cette option est généralement désactivée pour les entretiens réels.
+
+**Exportation des données** détermine le contenu de chaque exportation. Vous le réglez ici, une seule fois, au lieu de choisir à chaque exportation :
+
+- **Exporter en GraphML** et **Exporter en CSV** déterminent les formats de fichier inclus dans l’archive d’exportation. Les deux sont activés par défaut, et vous pouvez inclure ou exclure chacun d’eux séparément.
+- **Exporter les positions des nœuds en pixels (coordonnées d’écran)** est désactivé par défaut : les positions du sociogramme sont donc exportées sous forme de coordonnées normalisées. Activez cette option pour exporter plutôt des coordonnées en pixels, calculées d’après la **Largeur de la disposition d’écran** et la **Hauteur de la disposition d’écran** que vous définissez (1 920 × 1 080 pixels par défaut). C’est utile lorsque vous voulez que les positions correspondent à une taille d’écran précise.
+
+**Confidentialité** comporte un seul interrupteur, **Activer les statistiques d’utilisation**. Lorsqu’il est activé (c’est le cas par défaut), l’application envoie une petite quantité d’informations anonymes sur l’utilisation et les erreurs (les étapes d’entretien et les fonctionnalités utilisées, le moment où des protocoles sont importés ou des données exportées, et le détail des éventuels plantages) pour nous aider à améliorer l’application. Aucune donnée concernant les personnes participantes ne quitte jamais l’appareil : les données de réseau, les réponses, les identifiants de cas, le contenu des protocoles et les fichiers de ressources ne sont jamais collectés, et les statistiques d’utilisation ne contiennent rien qui permette de vous identifier. Vous pouvez modifier ce réglage à tout moment.
+
+**Sécurité** est toujours présente. Sur un appareil utilisé sans verrouillage, elle propose **Activer la sécurité de l’application**, qui lance l’assistant de configuration (**Commencer**) pour que vous puissiez définir un verrouillage de l’appareil. L’ajout de ce premier verrouillage conserve tout ce qui se trouve déjà sur l’appareil : les protocoles et les sessions qui y sont stockés sont alors chiffrés à nouveau avec une clé dérivée de vos nouvelles données d’authentification, et non effacés. Un appareil qui a servi à recueillir des données sans verrouillage peut donc être sécurisé à tout moment. Une fois qu’une méthode de sécurité est définie, cette rubrique affiche votre méthode actuelle et la date à laquelle elle a été définie et, pour un code PIN ou une phrase secrète, vous permet de modifier l’un ou l’autre avec **Modifier le code PIN** ou **Modifier la phrase secrète** sans perdre de données. Passer à une autre méthode de déverrouillage implique de réinitialiser l’appareil et de refaire la configuration. Cette rubrique contient aussi le délai de verrouillage automatique et les options de nouvelle authentification décrites plus haut dans [Verrouiller et déverrouiller](#locking-and-unlocking). Enfin, elle propose une option **Révoquer / Réinitialiser l’appareil** : comme vos données stockées sont liées à votre méthode de sécurité, l’utiliser **efface tous les protocoles et toutes les sessions de l’appareil** et vous ramène à la configuration initiale.
+
+**Données synthétiques** génère de fausses sessions d’entretien pour que vous puissiez répéter et valider votre chaîne d’exportation avant de recueillir des données réelles. Choisissez un **Protocole**, définissez le **Nombre de sessions** à créer (de 1 à 1 000, 10 par défaut) et, si vous le souhaitez, réglez les options **Simuler l’abandon de personnes participantes** (activée par défaut, ce qui laisse certaines sessions inachevées pour refléter les données réelles) et **Respecter la logique de saut et le filtrage** (désactivée par défaut). Les sessions générées apparaissent dans votre vue **Données** et s’exportent exactement comme des sessions réelles ; **Tout supprimer** supprime toutes les sessions synthétiques en une seule fois. Pour savoir comment les données synthétiques s’inscrivent dans une répétition complète de votre étude, consultez [Mener une étude pilote](/fr/get-started/planning-a-study/piloting-your-study).
+
+### Langue de l’interface {#interface-language}
+
+L’interface d’Interviewer (ses menus, ses boutons et ses messages) est disponible en anglais, en anglais britannique, en espagnol, en allemand, en français, en italien, en néerlandais, en portugais du Brésil, en chinois simplifié et en chinois traditionnel. Chaque langue est indiquée dans cette langue même : **English**, **English (UK)**, **Español**, **Deutsch**, **Français**, **Italiano**, **Nederlands**, **Português (Brasil)**, **简体中文** et **繁體中文**. Une option **Automatique**, sélectionnée par défaut, suit les préférences linguistiques définies dans votre navigateur.
+
+Vous pouvez changer de langue depuis chacun de ces endroits :
+
+- Le **bouton en forme de globe** de la barre supérieure du tableau de bord, qui ouvre la liste de toutes les langues. L’entrée **Automatique** indique la langue qui découle actuellement des réglages de votre navigateur, et le choix d’une entrée l’applique immédiatement.
+- La liste déroulante **Langue de l’application** de l’écran de bienvenue et de chaque étape de l’assistant de configuration.
+- **Paramètres → Langue**.
+
+Le choix est enregistré dans le navigateur de chaque appareil : chaque appareil d’entretien conserve donc sa propre langue. Si le navigateur bloque le stockage sur l’appareil, la langue choisie s’applique tout de même tant que la page reste ouverte, mais elle n’est pas mémorisée : la liste du bouton en forme de globe signale que l’enregistrement a échoué et propose un bouton **Réessayer**, et **Paramètres → Langue** indique que la préférence n’a pas pu être enregistrée. Toutes les langues restent disponibles hors ligne dans l’application installée.
+
+<TipBox>
+
+La langue de l’interface ne modifie jamais votre protocole, vos entretiens ni vos données. Tout ce qui a été rédigé dans Architect (consignes, libellés des formulaires, options de réponse et écrans « Information ») s’affiche tel que l’équipe de recherche l’a rédigé, et les données recueillies comme les valeurs exportées restent inchangées.
+
+</TipBox>
+
+### La langue des entretiens {#language-in-interviews}
+
+Un protocole peut être rédigé en plusieurs langues (voir [Traduire votre protocole](/fr/design-protocols/translating-your-protocol)). Un entretien n’utilise pas la **Langue de l’application**. À son ouverture, il utilise la première des langues préférées de l’appareil ou du navigateur dans laquelle le protocole est rédigé (une variante régionale proche compte aussi) ou, à défaut, la langue par défaut du protocole. Un texte qui n’est pas traduit dans cette langue s’affiche dans la meilleure autre traduction disponible : dans une autre des langues préférées de l’appareil ou du navigateur dans laquelle ce texte est traduit, sinon dans la langue par défaut, sinon dans n’importe quelle langue du protocole dans laquelle il est traduit. Voir [La langue par défaut et la traduction que voient les personnes participantes](/fr/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
+
+Tout ce qu’affiche un entretien, y compris ses boutons et ses messages comme « Retour », « Continuer » et les messages de validation, s’affiche dans la langue de l’entretien : avec la formulation du protocole là où la personne qui l’a conçu l’a modifiée, et avec celle de Network Canvas ailleurs (voir [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Le réglage **Langue de l’application** d’Interviewer ne modifie pas la langue de l’entretien.
+
+Le seul moyen pour une personne participante de changer de langue pendant un entretien est une étape [« Choix de la langue »](/fr/design-protocols/interface-documentation/language-chooser) dans le protocole. Son choix est conservé jusqu’à la fermeture de l’onglet du navigateur : il est donc réutilisé si la page est rechargée ou si l’entretien est repris dans le même onglet. Il n’est ni enregistré avec l’entretien ni inclus dans les données exportées : un entretien repris dans un nouvel onglet repart des langues de l’appareil ou du navigateur.
+
+</AppOnly>
+
+## L’écran d’accueil {#the-start-screen}
+
+Lorsque vous ouvrez Interviewer, la première chose que vous voyez est l’« écran d’accueil ». Il s’agit des « coulisses » d’Interviewer, conçues pour la personne qui mène l’étude (et non pour la personne participante). Cet écran vous permet de configurer le logiciel, de lancer un nouvel entretien, de reprendre un entretien existant et de gérer vos données.
+
+<Screenshot axis="interviewer" name="start-screen" alt="L’écran d’accueil d’Interviewer"></Screenshot>
+
+<AppOnly axis="interviewer" app="classic">
+
+L’écran d’accueil est divisé en sections qui regroupent des tâches apparentées, comme « commencer un entretien » ou « exporter et gérer les données d’entretien ». Toutes les sections ne sont pas visibles en permanence : l’écran d’accueil n’affiche intelligemment les options que lorsqu’elles sont utilisables. Par exemple, la section d’exportation des données n’apparaît qu’une fois que vous avez mené au moins un entretien.
+
+Lorsque vous ouvrez Interviewer pour la première fois, vous voyez trois sections par défaut.
+
+La **section de bienvenue**, qui contient des liens web pour installer le protocole d’exemple, consulter le site de documentation ou regarder notre vidéo de présentation.
+
+![La section de bienvenue](/assets/img/sample-protocol/welcome-section.png)
+
+La section de bienvenue contient aussi un bouton (l’icône d’engrenage) qui ouvre l’écran principal des paramètres de l’appareil. Nous vous encourageons à ouvrir l’écran des paramètres et à en explorer les différentes options.
+
+<TipBox>
+
+La section de bienvenue peut être masquée lorsque vous n’en avez plus besoin, à
+l’aide de l’interrupteur situé dans le coin supérieur droit.
+
+</TipBox>
+
+La **section des protocoles**, qui vous permet d’importer rapidement un [fichier de protocole Network Canvas](/fr/design-protocols/key-concepts/the-protocol-file) depuis une URL ou en choisissant un fichier. Une fois qu’un ou plusieurs fichiers de protocole sont installés, cette section vous permet aussi de gérer les protocoles installés.
+
+![La section des protocoles](/assets/img/sample-protocol/protocols-section.png)
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Interviewer présente cet écran sous la forme d’un tableau de bord. Vous passez d’une vue à l’autre, **Protocoles** et **Données**, à l’aide du sélecteur situé en haut de l’écran, à côté duquel se trouve une rangée de boutons :
+
+- **Protocoles** : vos protocoles installés, présentés sous forme d’une pile de cartes que vous pouvez faire défiler, à côté d’une carte permettant d’importer un nouveau protocole.
+- **Données** : toutes les sessions recueillies, prêtes à être reprises, consultées ou exportées (voir [Reprendre, exporter et gérer les sessions d’entretien](#resuming-exporting-and-managing-interview-sessions) ci-dessous).
+- **Langue de l’interface** (l’icône de globe) : change la langue des écrans d’Interviewer lui-même (voir [Langue de l’interface](#interface-language) ci-dessus).
+- **Verrouiller l’application** (l’icône de cadenas) : verrouille immédiatement Interviewer. Ce bouton n’apparaît qu’une fois que vous avez configuré un verrouillage de l’application.
+- **Paramètres** (l’icône d’engrenage) : les préférences et les diagnostics de l’application, regroupés en À propos, Langue, Entretien, Exportation des données, Confidentialité, Sécurité et Données synthétiques (voir [Paramètres](#settings) ci-dessus).
+
+</AppOnly>
+
+## Installer et gérer des protocoles {#installing-and-managing-protocols}
+
+Avant de pouvoir servir à recueillir des données, Interviewer doit être configuré avec un ou plusieurs protocoles d’entretien Network Canvas.
+
+<AppOnly axis="interviewer" app="classic">
+
+Il existe deux façons d’importer un protocole sur les appareils qui exécutent Interviewer. Votre choix dépendra des besoins de votre étude.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Les protocoles sont importés dans Interviewer à partir d’un fichier `.netcanvas` présent sur l’appareil. Chaque protocole est validé lors de l’importation. Un protocole en schéma 8 reste en schéma 8, et ses entretiens s’exécutent dans le moteur d’entretien du schéma 8 intégré à Interviewer. Un protocole en schéma 7 issu des applications Classic est automatiquement migré vers le schéma 8. Interviewer ne met jamais un protocole à niveau vers le schéma 9 : pour utiliser les fonctionnalités du schéma 9, mettez-le à niveau dans Architect et importez la copie mise à niveau (voir [Migrer un protocole](/fr/get-started/protocol-schema-information#migrating-a-protocol)).
+
+![La boîte de dialogue « Importer un protocole » d’Interviewer](/assets/img/interviewer-guide/import-protocol.png)
+
+<TipBox>
+
+Interviewer refuse un fichier `.netcanvas` auquel il manque l’un de ses fichiers de ressources, et le message indique la ressource manquante. Un fichier dont le contenu est endommagé est signalé comme endommagé. Pour réparer un protocole auquel il manque des ressources, ouvrez-le dans Architect (qui peut l’ouvrir malgré les fichiers manquants), ajoutez à nouveau les fichiers depuis **Ressources**, puis téléchargez une nouvelle copie du protocole. Voir [Ressources](/fr/design-protocols/key-concepts/resources).
+
+</TipBox>
+
+</AppOnly>
+
+### Importer directement un fichier {#importing-a-file-directly}
+
+Cette option offre un moyen simple d’importer un fichier de protocole déjà enregistré sur votre appareil.
+
+<AppOnly axis="interviewer" app="classic">
+
+Elle est accessible soit depuis le menu **File** (fichier) (si vous utilisez Interviewer sur un système d’exploitation d’ordinateur), soit depuis la section des protocoles de l’écran d’accueil.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Cliquez sur la carte **Importer un protocole**, à la fin de la pile de protocoles de la vue **Protocoles**, pour ouvrir un sélecteur de fichiers, ou faites glisser un fichier `.netcanvas` sur cette carte.
+
+</AppOnly>
+
+<TipBox>
+
+Nous recommandons cette méthode pour les études de petite taille, et lorsque l’appareil
+qui exécute Interviewer est aussi celui qui sert à créer les protocoles dans Architect.
+
+</TipBox>
+
+<AppOnly axis="interviewer" app="classic">
+
+### Importer depuis une URL {#importing-from-a-url}
+
+Cette option vous permet de télécharger un fichier de protocole directement depuis n’importe quelle URL accessible depuis l’appareil qui exécute Interviewer. Elle peut être utile lorsque vous disposez d’un site web pour votre étude ou d’une connexion Internet, et que vous devez installer rapidement un protocole sur un appareil. Elle est accessible depuis la section des protocoles de l’écran d’accueil.
+
+<TipBox>
+
+Nous recommandons cette méthode pour les appareils qui utilisent un site web de projet ou un service de
+stockage dans le cloud pour distribuer des fichiers de protocole sur plusieurs appareils.
+
+</TipBox>
+
+</AppOnly>
+
+### Importer le protocole d’exemple {#import-the-sample-protocol}
+
+Pour ce tutoriel, nous allons utiliser le protocole d’exemple intégré.
+
+<AppOnly axis="interviewer" app="classic">
+
+Pour suivre le tutoriel sur votre propre appareil, **cliquez sur le bouton « Install sample protocol » (installer le protocole d’exemple) dans la section de bienvenue de l’application** pour installer le protocole que nous allons utiliser. Vous pouvez aussi <DownloadLink href="/protocols/Sample Protocol v4.netcanvas">cliquer ici</DownloadLink> pour télécharger le fichier, puis l’importer dans Interviewer avec la méthode d’importation depuis un fichier décrite ci-dessus.
+
+Une fois un protocole importé, une nouvelle section apparaît sur l’écran d’accueil : la **section de nouvel entretien**. Elle contient une carte de protocole, qui représente le protocole que vous avez importé.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Le protocole d’exemple est intégré à Interviewer : sélectionnez-le dans la pile de protocoles de la vue **Protocoles** pour suivre le tutoriel. Vous pouvez aussi <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">cliquer ici</DownloadLink> pour télécharger le fichier, puis l’importer avec la carte **Importer un protocole**, à la fin de la pile.
+
+Une fois installé, un protocole apparaît sous forme de carte dans la pile de protocoles ; cette carte représente le protocole que vous avez importé.
+
+</AppOnly>
+
+<KeyConcept title="Anatomie d’une carte de protocole">
+
+La carte de protocole est un élément visuel qui représente un protocole d’entretien Network Canvas. Elle est utilisée dans tout Architect et Interviewer, chaque fois qu’un protocole intervient.
+
+<Screenshot axis="interviewer" name="protocol-card" alt="Une carte de protocole"></Screenshot>
+
+Il est souvent possible de cliquer sur la carte de protocole, de la toucher ou de la faire glisser pour effectuer une action liée au protocole. La carte elle-même comporte trois éléments visuels principaux :
+
+- Le nom du protocole, qui est défini par le nom d’origine du fichier de protocole lui-même
+- La description du protocole, qui peut contenir toute information descriptive de votre choix, et qui est définie dans Architect
+- Les métadonnées du protocole, qui résument quand le protocole a été installé et modifié, ainsi que le nombre d’entretiens recueillis avec ce protocole
+
+<AppOnly axis="interviewer" app="current">
+
+Au-dessus du nom du protocole, la carte indique la version du schéma pour laquelle le protocole a été conçu, par exemple **Schéma 9**. Un protocole conçu pour une version antérieure du schéma affiche **Schéma 8 · version antérieure**. Ses entretiens s’exécutent dans le moteur d’entretien du schéma 8 intégré à Interviewer, et vous l’utilisez de la même manière que n’importe quel autre protocole.
+
+</AppOnly>
+
+Elle comporte aussi un bouton **Commencer un nouvel entretien**, un indicateur **Connexion Internet requise** (affiché lorsque le protocole utilise des interfaces qui nécessitent Internet, comme l’interface géospatiale) et une icône de corbeille pour supprimer le protocole de l’appareil.
+
+<AppOnly axis="interviewer" app="classic">
+
+Dans Interviewer Classic, les métadonnées de la carte indiquent la [version du schéma](/fr/get-started/protocol-schema-information) du protocole au lieu du nombre d’entretiens, et vous commencez les entretiens et gérez les protocoles depuis l’écran d’accueil plutôt qu’à l’aide de boutons sur la carte elle-même.
+
+</AppOnly>
+
+</KeyConcept>
+
+### Supprimer ou gérer les protocoles installés {#removing-or-managing-installed-protocols}
+
+<AppOnly axis="interviewer" app="classic">
+
+Pour vous aider à gérer les protocoles installés dans Interviewer, une fenêtre superposée dédiée est disponible. Vous pouvez l’ouvrir depuis la section des protocoles, qui affiche désormais un bouton **Manage Installed Protocols** (gérer les protocoles installés).
+
+![La section des protocoles avec le bouton `manage installed protocols`](/assets/img/sample-protocol/manage-installed-protocols.png)
+
+Dans cette fenêtre superposée, vous pouvez trier vos protocoles installés et les filtrer par nom. Pour supprimer un fichier de protocole de votre appareil, faites glisser sa carte dans la corbeille qui apparaît en bas de l’écran.
+
+![Supprimer un protocole en le faisant glisser dans la corbeille](/assets/img/sample-protocol/delete-protocol.png)
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Chaque protocole installé sur l’appareil dispose d’une carte dans la pile de la vue **Protocoles**, qui indique sa version du schéma, sa date d’importation et le nombre d’entretiens recueillis avec ce protocole. Pour supprimer un protocole, utilisez l’icône de corbeille de sa carte. La suppression d’un protocole demande d’abord une confirmation, car elle est irréversible, et tous les entretiens enregistrés avec ce protocole sont supprimés en même temps que lui.
+
+![Confirmer la suppression d’un protocole dans Interviewer](/assets/img/interviewer-guide/delete-protocol.png)
+
+</AppOnly>
+
+## Commencer un nouvel entretien {#starting-a-new-interview}
+
+<AppOnly axis="interviewer" app="classic">
+
+Par défaut, la section de nouvel entretien affiche le dernier protocole que vous avez installé (ou avec lequel vous avez commencé un entretien). Vous pouvez le toucher ou cliquer dessus pour commencer immédiatement un entretien.
+
+<Screenshot axis="interviewer" name="start-new-section" alt="Commencer un nouvel entretien"></Screenshot>
+
+Si plusieurs protocoles sont installés dans Interviewer, une pile de cartes apparaît à droite de la section de nouvel entretien. Pour accéder à tous les protocoles disponibles, touchez cette pile de cartes ou cliquez dessus. Une fenêtre superposée s’ouvre avec la liste des protocoles actuellement enregistrés dans l’application. Faites défiler, filtrez ou triez la liste des cartes de protocole pour trouver le protocole que vous souhaitez utiliser pour votre entretien, puis touchez-le ou cliquez dessus pour commencer. Ce protocole apparaîtra ensuite dans la section de nouvel entretien, pour un accès plus rapide par la suite.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Pour commencer un entretien, trouvez le protocole dans la pile de la vue **Protocoles** et cliquez sur **Commencer un nouvel entretien** sur sa carte (voir l’anatomie de la carte ci-dessus). La pile s’ouvre sur la carte que vous avez utilisée le plus récemment, pour un accès rapide ; si plusieurs protocoles sont installés, faites défiler la pile pour trouver celui que vous voulez.
+
+</AppOnly>
+
+### Saisir un identifiant de cas {#entering-a-case-id}
+
+Lorsque vous lancez un nouvel entretien, une boîte de dialogue vous demande immédiatement de saisir un « identifiant de cas ». Il s’agit d’un mécanisme simple, conçu pour vous aider à suivre et à identifier les sessions d’entretien d’une manière qui ait du sens pour vous et pour votre étude. L’identifiant de cas est visible dans Interviewer partout où des sessions d’entretien sont affichées, et il est aussi inclus dans toutes les données exportées.
+
+<Screenshot axis="interviewer" name="case-id" alt="Le formulaire de l’identifiant de cas"></Screenshot>
+
+Un identifiant de cas peut contenir n’importe quelle combinaison de chiffres et de lettres (espaces compris), jusqu’à 30 caractères. Il n’est pas obligatoire qu’un identifiant de cas soit unique, car il serait impossible de l’imposer sur plusieurs appareils. Nous vous conseillons néanmoins vivement d’adopter un système cohérent de dénomination des cas qui vous permette de les identifier de manière unique.
+
+Vous pourriez par exemple envisager :
+
+- `INTERVIEWER_INITIALS PARTICIPANT_ID DATE` (par exemple `JRM 12345 December 5th`)
+- `STUDY_ID-PARTICIPANT_NAME-VISIT_NUMBER` (par exemple `NetCanvas-Joshua-4`)
+- …ou simplement `PARTICIPANT_NAME` (par exemple `James Montgomery Williams`)
+
+<AppOnly axis="interviewer" app="classic">
+
+<TipBox>
+
+L’identifiant de cas d’un entretien peut être modifié depuis l’entretien lui-même.
+Il suffit de cliquer sur l’icône du menu, puis sur le bouton **Edit** (modifier) de
+la carte blanche de résumé de la session qui apparaît à droite.
+
+</TipBox>
+
+</AppOnly>
+
+## Parcours de l’entretien d’exemple {#sample-interview-walkthrough}
+
+La suite de ce tutoriel consiste en un parcours du protocole d’entretien d’exemple, afin de montrer l’expérience d’Interviewer du point de vue de la personne participante.
+
+Si vous suivez le tutoriel sur votre propre appareil, assurez-vous d’avoir installé le protocole d’exemple, commencé un nouvel entretien et saisi un identifiant de cas, et d’être sur le premier écran.
+
+### L’interface utilisateur d’Interviewer {#interviewer-user-interface}
+
+L’interface utilisateur principale des entretiens dans Interviewer est conçue pour être simple, discrète et intuitive pour les personnes participantes. Cela a deux conséquences dont vous devez avoir conscience dès le départ :
+
+1. Une grande partie des fonctionnalités auxquelles _l’équipe de recherche_ peut vouloir accéder sont un peu moins visibles que dans les logiciels que vous connaissez peut-être. Prévoyez du temps pour apprendre l’outil et pour former les personnes qui mènent les entretiens, afin qu’elles sachent utiliser les différentes fonctions du logiciel.
+2. Très peu de place est consacrée à des éléments d’interface qui expliquent comment accomplir une tâche. En effet, nous partons du principe qu’un membre de l’équipe de recherche sera présent pendant l’entretien et pourra donc guider la personne participante tout au long de celui-ci.
+
+#### Principaux éléments de navigation {#key-navigation-elements}
+
+Parmi les éléments d’interface toujours visibles pendant l’entretien, plusieurs méritent d’être signalés.
+
+<Screenshot axis="interviewer" name="interviewer-ui" alt="Les éléments de navigation de l’entretien toujours visibles"></Screenshot>
+
+<AppOnly axis="interviewer" app="classic">
+
+Le **bouton du menu**, tout en haut de l’écran, ouvre le menu principal de l’application, qui vous permet de :
+
+- Quitter l’entretien
+- Voir un résumé de la session, notamment le nombre de nœuds et de liens et la durée écoulée
+- Ouvrir le menu des paramètres de l’appareil
+- Ouvrir le menu des étapes (voir ci-dessous)
+
+![Le menu principal de l’application](/assets/img/sample-protocol/primary-menu.png)
+
+La grande barre verticale est la **chronologie** de l’entretien, un indicateur visuel de la progression dans l’entretien. À mesure que la personne participante avance, la barre se remplit, puis devient verte lorsque l’entretien est terminé. Toucher la chronologie fait apparaître le « menu des étapes », qui permet à la personne de l’équipe de recherche de voir rapidement où en est précisément l’entretien, et de se rendre à un autre endroit. Le menu des étapes peut aussi être ouvert depuis le menu principal de l’application.
+
+![Le menu des étapes](/assets/img/sample-protocol/stages-menu.png)
+
+Pour avancer et reculer dans l’entretien, on utilise les boutons **suivant** (flèche vers le bas, en bas de la chronologie) et **précédent** (flèche vers le haut, en haut de la chronologie) ; la personne participante comme la personne de l’équipe de recherche peuvent s’en servir pour faire avancer l’entretien.
+
+<TipBox>
+
+Il est particulièrement important d’expliquer le bouton **suivant**, en bas à gauche de l’écran,
+à la personne participante si vous souhaitez qu’elle ait l’appareil en main,
+ce qui peut favoriser son implication.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Interviewer réduit volontairement au minimum les éléments d’interface qui entourent l’entretien. La navigation s’adapte à l’appareil (une barre latérale sur les écrans plus larges, en mode paysage, et une barre en bas de l’écran sur les écrans hauts, en mode portrait) et ne contient que quelques commandes :
+
+- Une commande de **paramètres** (l’icône d’engrenage) qui ouvre un petit menu contenant :
+  - **Text size** (taille du texte), qui permet à la personne participante d’agrandir ou de réduire l’ensemble de l’entretien, ce qui est utile sur les tablettes.
+  - **Quitter l’entretien**, qui quitte l’entretien et revient au tableau de bord après une confirmation.
+- Une flèche vers le **haut** pour revenir à l’étape ou à la consigne précédente.
+- Une flèche vers le **bas** pour passer à l’étape ou à la consigne suivante.
+
+Entre les flèches vers le haut et vers le bas, une **barre de progression** se remplit à mesure que la personne participante avance dans l’entretien. Tant que l’option **Autoriser la navigation entre les étapes** est activée dans **Paramètres → Entretien** (c’est le cas par défaut), la barre de progression est aussi un bouton (que les lecteurs d’écran annoncent sous le nom anglais **Go to another screen**, c’est-à-dire « aller à un autre écran ») qui ouvre un menu des étapes permettant d’accéder directement à n’importe quelle étape. La progression est enregistrée en continu : vous pouvez donc quitter un entretien et le reprendre plus tard depuis la vue **Données** sans perdre de données.
+
+Le menu des paramètres ne contient que ces options destinées à la personne participante ; tous les autres paramètres de l’application se trouvent dans l’écran **Paramètres** du tableau de bord, accessible après avoir quitté l’entretien.
+
+![Le menu des paramètres de l’entretien, avec « Text size » et « Quitter l’entretien »](/assets/img/interviewer-guide/interview-settings.png)
+
+<TipBox danger={true}>
+
+Si vous confiez l’appareil à la personne participante pendant un entretien, activez d’abord **Exiger le déverrouillage à la sortie d’un entretien** dans **Paramètres**. Sinon, une personne participante qui choisit **Quitter l’entretien** dans le menu des paramètres arrive sur le tableau de bord, où elle pourrait voir les données d’autres personnes participantes.
+
+</TipBox>
+
+</AppOnly>
+
+## Étapes et interfaces {#stages-and-interfaces}
+
+Dans un protocole d’entretien Network Canvas, chaque entretien se compose d’une série d’écrans appelés « étapes », sur chacun desquels une tâche précise est accomplie. Votre entretien peut comporter autant d’étapes que nécessaire et, comme vous le verrez dans d’autres tutoriels, il existe de nombreuses manières de structurer votre entretien en combinant différents écrans et en plaçant les tâches les plus lourdes plutôt au début ou plutôt à la fin de l’entretien.
+
+Chaque étape est une _instance_ d’un écran spécialisé, organisé autour d’une tâche, appelé [« interface »](/fr/design-protocols/key-concepts/interfaces). Une interface est la « catégorie » générale de tâche, et une étape est la version de cette tâche spécifiquement configurée dans votre entretien. Chaque interface est conçue pour une tâche de recueil de données précise, comme générer des noms, recueillir des données ordinales ou afficher un formulaire. Chaque interface dispose de sa propre documentation (voir la section « Documentation des interfaces », à gauche), qui en explique les fonctionnalités et donne des conseils sur le moment et la manière de l’utiliser.
+
+## L’interface « Information » {#the-information-interface}
+
+Les premiers écrans du protocole d’entretien d’exemple utilisent tous l’interface [« Information »](/fr/design-protocols/interface-documentation/information), le tout premier étant l’étape de bienvenue.
+
+<Screenshot axis="interviewer" name="welcome-info" alt="L’étape de bienvenue"></Screenshot>
+
+L’interface « Information » permet de créer des étapes qui communiquent des informations à la personne participante, par exemple une description de l’étude ou des instructions pour accomplir une tâche sur un écran suivant. Elle peut aussi contenir des médias, comme de l’audio, des images ou de la vidéo. Ce protocole d’exemple utilise de nombreuses étapes « Information » pour expliquer les principales tâches réalisées dans Interviewer, mais cet article ne les décrit pas, pour éviter les redites.
+
+## Recueil des données d’ego {#ego-data-collection}
+
+Après avoir cliqué sur **suivant** pour passer deux autres étapes « Information », vous arrivez à la première étape de recueil de données du protocole d’exemple.
+
+Si Interviewer est optimisé pour recueillir des données sur les membres du réseau dans une perspective égocentrée, il permet aussi à l’équipe de recherche de recueillir des données sur l’ego (la personne participante, au centre de son réseau) grâce à l’interface [« Formulaire ego »](/fr/design-protocols/interface-documentation/ego-form). Cette interface permet à l’équipe de recherche de présenter à la personne participante un [formulaire](/fr/design-protocols/key-concepts/forms) de son choix, dont les réponses sont stockées dans une partie du modèle de données de l’entretien consacrée aux données d’ego.
+
+Le premier cas d’usage du recueil des données d’ego présenté ici est un exemple de formulaire de consentement de la personne participante.
+
+<Screenshot axis="interviewer" name="consent-form" alt="Un formulaire de consentement de la personne participante créé avec l’interface « Formulaire ego »"></Screenshot>
+
+Ce formulaire affiche un seul champ, qui représente un attribut booléen correspondant au statut du consentement de la personne participante. Une fois que la personne participante a répondu à la question, l’attribut est intégré au modèle de données du réseau et exporté avec les données de l’entretien. Vous pouvez vous en servir pour orienter le déroulement de l’entretien à l’aide de la [logique de saut](/fr/design-protocols/key-concepts/skip-logic).
+
+L’étape « Formulaire ego » suivante présente un exemple plus complet de cette interface. Dans cette étape, le formulaire demande diverses données individuelles à l’aide de nombreux types de commandes de saisie (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…).
+
+<Screenshot axis="interviewer" name="ego-form" alt="Un formulaire plus complet de recueil des données d’ego, avec diverses commandes de saisie"></Screenshot>
+
+Le formulaire comporte une [validation](/fr/design-protocols/key-concepts/field-validation), qui vous oblige à saisir le prénom et le nom avant de passer à l’écran suivant.
+
+## Générateurs de noms {#name-generators}
+
+Après avoir passé un autre écran « Information », vous arrivez à la première étape de type générateur de noms de l’entretien d’exemple. La génération de noms est une tâche fondamentale de tout entretien sur les réseaux, et le logiciel Network Canvas propose des comportements configurables et personnalisables, adaptés à différents plans de recherche. Cette section les présente brièvement l’un après l’autre, dans le contexte du protocole d’exemple.
+
+### Ajout rapide {#quick-add}
+
+La première étape de type générateur de noms utilise l’interface [« Générateur de noms (ajout rapide) »](/fr/design-protocols/interface-documentation/name-generator-using-quick-add). Elle est conçue pour réduire au strict minimum la charge de réponse, et demande seulement à la personne participante d’indiquer un nom ou un libellé pour créer un nœud.
+
+Pour ajouter des nœuds, cliquez sur le bouton **ajouter** en bas à droite, ce qui fait apparaître le champ du libellé. Saisissez un nom et appuyez sur Entrée (ou cliquez sur l’icône du nœud) : un nœud apparaît alors dans la liste principale des nœuds. Lorsque vous avez terminé, cliquez à nouveau sur le bouton ou cliquez ailleurs pour fermer le champ.
+
+<Screenshot axis="interviewer" name="quick-add" alt="Une étape « Générateur de noms (ajout rapide) »"></Screenshot>
+
+Cette étape est configurée avec une seule [consigne](/fr/design-protocols/key-concepts/prompts) :
+
+> Within the past 6 months, who have you felt close to, or discussed important personal matters with?
+
+Les consignes sont définies par l’équipe de recherche et encadrent la tâche de recueil de données. De nombreuses interfaces permettent d’utiliser plusieurs consignes dans une même étape. Si une étape est configurée avec plusieurs consignes, les boutons « suivant » et « précédent » passent automatiquement de l’une à l’autre.
+
+### Panneaux latéraux {#side-panels}
+
+Si vous avancez au-delà d’une étape « Information » jusqu’à l’étape de type générateur de noms suivante, un panneau latéral apparaît ; il contient tous les nœuds nommés lors de la première étape. Vous pouvez faire glisser des nœuds depuis ce panneau latéral vers la zone de la liste des nœuds, ou créer de nouveaux nœuds en cliquant sur le bouton d’ajout en bas à droite, comme précédemment.
+
+<Screenshot axis="interviewer" name="side-panel" alt="Un générateur de noms avec un panneau latéral"></Screenshot>
+
+La fonctionnalité de panneau latéral est disponible dans nos deux interfaces de type générateur de noms qui ne reposent pas sur une liste prédéfinie (une liste importée comme fichier de données, dans laquelle la personne participante fait son choix). Elle est conçue pour deux situations précises :
+
+1. Permettre aux personnes participantes de citer _à nouveau_, en réponse à des consignes ultérieures, des alters (chaque personne que la personne participante cite pendant l’entretien) qu’elles ont déjà mentionnés. Par exemple, si une première consigne demande « Qui vous est proche ? » et une deuxième « Qui sont les membres de votre famille ? », la personne participante peut vouloir désigner des alters proches déjà cités comme étant aussi des membres de sa famille. C’est particulièrement efficace en combinaison avec la fonctionnalité [Attributs supplémentaires](/fr/design-protocols/key-concepts/additional-variables) : cette combinaison permet de réunir la génération de noms et l’interprétation de noms (les questions posées sur chaque alter déjà cité) en une seule étape.
+
+2. Comme conteneur pour afficher de petites quantités de données de liste, lorsque vous devez tout de même laisser à la personne participante la possibilité d’ajouter des membres du réseau qui ne figurent pas dans la liste.
+
+Vous pouvez afficher jusqu’à deux panneaux sur un générateur de noms, avec un contenu différent dans chacun.
+
+### Formulaires {#forms}
+
+En avançant au-delà d’un autre écran « Information », vous arrivez au générateur de noms suivant, qui commence par la consigne suivante :
+
+> Within the **past 12 months**, which **clinics or healthcare providers** have you visited?
+
+Bien que cette étape soit elle aussi un générateur de noms, elle utilise une [interface distincte](/fr/design-protocols/interface-documentation/name-generator-using-forms) qui la fait se comporter différemment. Cette fois, lorsque vous cliquez sur le bouton d’ajout en bas à droite, une boîte de dialogue s’ouvre. Network Canvas peut être configuré pour recueillir des informations plus approfondies sur les nœuds au moment où ils sont cités, grâce à la notion de « [formulaires](/fr/design-protocols/key-concepts/forms) ». Dans cet exemple, cliquer sur le bouton « ajouter » affiche un formulaire comportant trois champs (nom, date de la visite et résumé du traitement).
+
+<Screenshot axis="interviewer" name="using-forms" alt="Un générateur de noms qui utilise des formulaires pour recueillir des données supplémentaires"></Screenshot>
+
+Les formulaires que vous concevez peuvent recueillir tous les attributs que vous souhaitez. C’est l’un des principaux leviers dont dispose l’équipe de recherche pour moduler la charge de réponse immédiate que représente le fait de citer des alters. Recueillir un grand nombre d’attributs au moment de la création du nœud peut permettre de réduire le nombre total d’étapes de votre entretien, mais peut aussi dissuader la personne participante de citer un grand nombre d’alters.
+
+Essayez d’ajouter des alters dans cette étape, et remarquez que ces nœuds sont d’une couleur différente de celle des nœuds créés précédemment. En effet, les entretiens Network Canvas peuvent recueillir des données sur autant de types de nœuds que l’équipe de recherche le souhaite.
+
+<Screenshot axis="interviewer" name="blue-nodes" alt="Les différents types de nœuds reçoivent automatiquement des styles visuellement distincts, pour que les personnes participantes puissent toujours les différencier"></Screenshot>
+
+Dans ce cas, notre générateur de noms crée des nœuds « clinic » (clinique), affichés en bleu, contrairement aux nœuds « person » (personne) rouges vus précédemment. C’est un aspect de la flexibilité ontologique décrite dans notre [présentation du projet](/fr/get-started/project-information/project-overview#ontological-flexibility), qui rend possibles des dispositifs de recherche puissants, capables de modéliser les réseaux de manière sophistiquée.
+
+### Utiliser des données de liste {#using-roster-data}
+
+Continuez à avancer dans le protocole d’exemple jusqu’à une étape de type générateur de noms comportant la consigne suivante :
+
+> Please indicate any members of your class that you spend time with **other than when studying**. Drag a card from the side panel to add it to the network, and press the **down arrow** when you are finished.
+
+Cette étape se comporte elle aussi différemment des générateurs de noms précédents, car elle repose sur une autre interface. Elle permet à la personne participante de citer des alters à partir d’une liste prédéfinie. Ici, des nœuds « classmate » (camarade de classe) sont ajoutés en sélectionnant la « carte » correspondante dans la liste, que l’on peut faire défiler. Plusieurs alters peuvent être ajoutés à la fois. Notez que vous pouvez filtrer et trier la liste, ce qui aide à trouver une personne précise de la liste. Les propriétés de tri, ainsi que les informations affichées sur les cartes, sont entièrement personnalisables dans Architect.
+
+<Screenshot axis="interviewer" name="small-roster" alt="Une étape « Générateur de noms à partir d’une liste » affichant une petite liste"></Screenshot>
+
+Une fois qu’une personne de la liste a été citée en sélectionnant sa carte, Interviewer crée un nœud dans le modèle de réseau à partir des données de la liste. On obtient ainsi des fichiers de données qui ne contiennent que les nœuds cités par la personne participante. Cette étape est un exemple de l’interface [« Générateur de noms à partir d’une liste »](/fr/design-protocols/interface-documentation/name-generator-roster).
+
+Cliquer à nouveau sur **suivant** vous mène à une deuxième étape de type générateur de noms fondée sur une liste, qui utilise cette fois la même interface avec une liste extrêmement longue. Nous y demandons quelles universités la personne a visitées ou fréquentées pour ses études. Notre fichier de données de liste au format CSV contient environ 9 300 nœuds.
+
+<Screenshot axis="interviewer" name="large-roster" alt="Une étape « Générateur de noms à partir d’une liste » affichant une longue liste"></Screenshot>
+
+Cette liste étant très longue, l’interface ne l’affiche pas en entier. Elle propose à la place un champ de recherche et des niveaux de correspondance approximative personnalisables, pour aider la personne participante à trouver rapidement les nœuds qu’elle souhaite citer. C’est un exemple de la manière dont le « Générateur de noms à partir d’une liste » adapte sa présentation à la taille de la liste.
+
+## Interfaces de formulaire polyvalentes {#general-purpose-form-interfaces}
+
+Lorsqu’un recueil de données polyvalent est nécessaire, les interfaces à base de formulaires affichent un formulaire pour chaque alter ou pour chaque lien.
+
+En cliquant sur **suivant** depuis l’étape de la liste des universités, vous arrivez immédiatement à une étape qui utilise l’interface [« Formulaire par alter »](/fr/design-protocols/interface-documentation/per-alter-form) (un formulaire pour chaque alter) pour poser des questions complémentaires de type interpréteur de noms (une question posée sur chaque alter déjà cité) sur tous les alters cités à l’écran précédent.
+
+<Screenshot axis="interviewer" name="per-alter-form" alt="L’interface « Formulaire par alter »"></Screenshot>
+
+Comme tous les [formulaires](/fr/design-protocols/key-concepts/forms) utilisés par Interviewer, le « Formulaire par alter » vous permet de recueillir différents types de données dans une série de champs utilisant diverses commandes de saisie. Toutes les données de ces formulaires sont stockées directement sur l’alter, sous forme d’attributs. L’étape « Formulaire par alter » passe en revue tous les alters d’un type donné dans le réseau de l’entretien, en présentant le formulaire pour chacun d’eux.
+
+Il existe aussi une version de cette interface consacrée aux _liens_, le « Formulaire par lien entre alters » (un formulaire pour chaque lien entre deux alters), identique à ceci près qu’elle porte sur les liens entre alters plutôt que sur les alters eux-mêmes. Vous pouvez l’utiliser pour poser des questions d’interprétation des liens sur la qualité d’une relation donnée.
+
+## L’interface « Sociogramme » {#the-sociogram-interface}
+
+Après avoir passé une étape « Information », vous arrivez ensuite à un exemple de l’[interface « Sociogramme »](/fr/design-protocols/interface-documentation/sociogram).
+
+Network Canvas s’inspire largement de la longue tradition des méthodes visuelles dans la recherche sur les réseaux sociaux, qui recourt souvent au sociogramme pour présenter le réseau d’une manière intuitive pour les personnes participantes.
+
+<Screenshot axis="interviewer" name="sociogram-positioning" alt="L’interface « Sociogramme »"></Screenshot>
+
+L’interface « Sociogramme » d’Interviewer permet d’accomplir trois tâches principales :
+
+1. **Positionner les nœuds dans l’espace** : la personne participante peut faire glisser les nœuds sur l’écran (au toucher ou à la souris) et les placer selon un critère donné. Le protocole d’exemple illustre l’utilisation de différents types d’arrière-plan : la première étape affiche des cercles concentriques, et la deuxième utilise une image de la « boussole politique ».
+2. **Créer des liens entre les nœuds** : en touchant successivement un nœud puis un autre, on crée un trait visuel qui représente un lien. Le sociogramme peut créer et afficher plusieurs types de liens.
+3. **Désigner les nœuds qui possèdent un attribut** : en dehors du mode de création de liens, le sociogramme peut être configuré pour que toucher un nœud bascule la valeur d’un attribut booléen. Cette fonctionnalité puissante vous permet d’exploiter les dimensions spatiales et structurelles du réseau définies par la personne participante pour réduire la charge de réponse que représente le fait de repérer et de désigner des membres du réseau.
+
+Comme pour les autres interfaces, chaque aspect de ces trois comportements est personnalisé par l’équipe de recherche dans Architect lors de la création de l’étape.
+
+## Mener un recensement des dyades {#conducting-a-dyad-census}
+
+Certaines recherches ont privilégié des approches plus systématiques pour évaluer la présence de liens entre alters dans les réseaux personnels. Juste après l’étape « Sociogramme » consacrée à la création de liens, le protocole d’exemple présente une illustration de l’interface [« Recensement des dyades »](/fr/design-protocols/interface-documentation/dyad-census), conçue pour ces méthodes.
+
+<Screenshot axis="interviewer" name="dyad-census" alt="Un exemple de l’interface « Recensement des dyades »"></Screenshot>
+
+Dans cette étape, tous les alters cités précédemment sont présentés sous une consigne définie par l’équipe de recherche, avec une interface simple « oui »/« non ». Cliquer sur le bouton « oui » crée un lien entre les alters. Cliquer sur le bouton « non » ne crée aucun lien. Toutes les paires possibles du réseau pour un type de nœud donné apparaissent. Notez que donner une réponse fait immédiatement passer à la paire suivante, ce qui accélère considérablement le processus.
+
+## Données ordinales et catégorielles {#ordinal-and-categorical-data}
+
+Outre les interfaces de formulaire polyvalentes, Interviewer comprend aussi diverses interfaces spécialisées de type interpréteur de noms, conçues pour améliorer le recueil d’un seul type de variable pour chaque alter.
+
+En poursuivant dans le protocole d’exemple jusqu’à l’étape « contact frequency » (fréquence des contacts), vous trouverez un exemple de l’interface [« Classement ordinal »](/fr/design-protocols/interface-documentation/ordinal-bin) qui, comme son nom l’indique, porte spécifiquement sur les variables ordinales.
+
+<Screenshot axis="interviewer" name="ordinal-bin" alt="L’étape de fréquence des contacts, qui utilise l’interface « Classement ordinal »"></Screenshot>
+
+L’interface « Classement ordinal » vous permet de faire glisser des nœuds dans une « case » (chacune des zones où l’on dépose les nœuds pour les classer) qui représente une valeur d’un attribut ordinal, ce qui attribue cette valeur à l’alter. Ici, nous demandons :
+
+> When was the last time that you communicated with each of the people you named?
+
+Cela allège considérablement la charge de réponse des questions « en matrice », où la même question est posée pour chaque alter cité. La nature visuelle de l’interface permet aussi à la personne participante de revenir sur ses réponses précédentes, et éventuellement d’améliorer la qualité de ses réponses. Si la personne participante estime qu’un nœud a été placé dans la mauvaise case, elle peut facilement le déplacer dans la bonne case.
+
+Là encore, les éléments clés de l’interface sont configurables par l’équipe de recherche, notamment le type d’alter, l’attribut ordinal (et ses catégories), le jeu de couleurs des cases et le texte de la ou des consignes.
+
+L’étape suivante utilise l’interface [« Classement par catégories »](/fr/design-protocols/interface-documentation/categorical-bin), qui suit un principe similaire, mais pour des données non ordonnées.
+
+<Screenshot axis="interviewer" name="cat-bin" alt="Un exemple d’étape « Classement par catégories »"></Screenshot>
+
+Elle vous permet de faire glisser des nœuds dans des cercles colorés, chacun représentant une valeur d’un attribut catégoriel. Lorsqu’un nœud est placé dans un cercle, la valeur de l’attribut est attribuée à cet alter. Vous pouvez voir quels nœuds ont été placés dans quel cercle en sélectionnant le cercle. Cette action vous permet de déplacer des nœuds d’un cercle à un autre, ce qui peut être nécessaire pour corriger une erreur.
+
+## Gérer le déroulement de l’entretien avec la logique de saut et le filtrage du réseau {#managing-interview-flow-with-skip-logic-and-network-filtering}
+
+L’un des moyens les plus simples de réduire la charge de réponse d’un entretien est d’éviter de présenter à la personne participante des questions qui ne la concernent pas (ou qui sont redondantes) compte tenu de ses réponses précédentes. Dans les logiciels d’enquête classiques, des sections d’un entretien peuvent être sautées en fonction des réponses. Interviewer étend cette notion et permet à l’équipe de recherche de construire des requêtes puissantes fondées sur la structure même du réseau de l’entretien, qui peuvent ensuite servir à déterminer le déroulement de l’entretien ainsi que les membres du réseau de l’entretien à afficher dans une étape. Vous pouvez appliquer ces requêtes à la fois à la [logique de saut](/fr/design-protocols/key-concepts/skip-logic) et au filtrage du réseau au niveau de l’étape.
+
+Après l’étape « Classement par catégories » ci-dessus, vient une autre étape « Classement par catégories ». Cependant, des règles de logique de saut y ont été définies pour que l’étape ne s’affiche que si la personne participante a cité des alters de type « Person » avec lesquels elle discute de recherche sur les réseaux sociaux. Souvenez-vous de l’étape « Générateur de noms (ajout rapide) », plus tôt dans l’entretien, qui demandait aux personnes participantes d’indiquer les personnes avec lesquelles elles ont discuté de recherche sur les réseaux sociaux : les nœuds cités dans cette étape ont reçu un attribut qui a servi à créer cette requête de logique de saut. Si aucun alter n’a été cité dans cette étape d’ajout rapide, l’étape « Classement par catégories » suivante est sautée.
+
+De même, le filtrage du réseau est configuré avec une règle qui exclut de cette étape tous les alters, sauf ceux avec lesquels la personne participante a discuté de recherche sur les réseaux sociaux. Cela limite la portée de la tâche et évite d’avoir à ajouter une catégorie « sans objet ».
+
+<TipBox>
+
+Pour en savoir plus sur le filtrage du réseau, consultez le [guide du filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering).
+
+</TipBox>
+
+Vous pouvez faire des allers-retours entre l’étape « Générateur de noms (ajout rapide) » et cette étape pour voir la logique de saut et le filtrage du réseau à l’œuvre.
+
+<AppOnly axis="interviewer" app="classic">
+
+<TipBox>
+
+N’oubliez pas qu’à tout moment de l’entretien, vous pouvez afficher un menu de toutes
+les étapes du protocole en touchant la chronologie. Toucher une étape permet de
+s’y rendre.
+
+</TipBox>
+
+</AppOnly>
+
+## L’interface « Narration » {#the-narrative-interface}
+
+La dernière étape du protocole d’exemple présente une interface conçue pour la recherche qualitative sur les réseaux personnels. L’interface [« Narration »](/fr/design-protocols/interface-documentation/narrative) ne recueille aucune donnée supplémentaire, mais associe les données recueillies ailleurs dans l’entretien à des aspects de la représentation visuelle du réseau. Elle vise à présenter en retour à la personne participante certains aspects de son réseau, afin de faciliter un questionnement narratif des données dans le cadre de l’entretien.
+
+<Screenshot axis="interviewer" name="narrative" alt="L’interface « Narration »"></Screenshot>
+
+Le menu des préréglages (des configurations d’affichage du réseau définies dans une étape « Narration »), en bas à droite, permet à la personne de l’équipe de recherche ou à la personne participante de passer d’un style visuel prédéfini à un autre. Dans cet exemple, vous pouvez voir les deux types de liens créés précédemment (« know » [se connaître] et « conflict » [conflit]) ainsi que les attributs booléens attribués lors de la tâche de basculement d’attribut dans l’interface « Sociogramme ». Vous pouvez aussi voir les regroupements par catégories recueillis dans l’interface « Classement par catégories ». Chaque préréglage peut être activé ou désactivé en touchant l’attribut ou le lien dans le menu.
+
+L’interface « Narration » permet aussi d’annoter librement à la souris, au doigt ou au stylet. L’annotation disparaît au bout de cinq secondes, sauf si vous cliquez sur l’icône qui fige les annotations, à gauche du menu des préréglages. Lorsque les annotations sont figées, elles restent affichées jusqu’à ce que vous désactiviez cette option ou que vous utilisiez le bouton de réinitialisation des annotations. Bien que ces annotations ne soient pas encore enregistrées par le logiciel, vous pouvez, si vous le souhaitez, utiliser un logiciel d’enregistrement d’écran et d’enregistrement audio pour conserver une trace des interactions dans cette interface.
+
+## L’étape « Écran de fin » {#the-finish-screen}
+
+<AppOnly axis="interviewer" app="classic">
+
+Interviewer insère automatiquement un écran de « fin » dans chaque protocole d’entretien. Cet écran présente un bouton unique qui permet de quitter l’entretien. Cliquer sur ce bouton définit aussi, ou met à jour, la propriété « finished at » (terminé le) de la session d’entretien. Cette propriété est exportée avec vos données d’entretien et peut servir à calculer la durée de l’entretien.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Chaque protocole se termine par une étape [« Écran de fin »](/fr/design-protocols/interface-documentation/finish-screen). Celle-ci affiche généralement le texte de clôture rédigé par la personne qui a conçu le protocole, ainsi qu’un bouton **Terminer**. La personne qui conçoit le protocole peut, à la place, faire en sorte que l’entretien se termine dès qu’il atteint l’étape « Écran de fin », sans texte de clôture ni bouton. Terminer l’entretien définit, ou met à jour, la propriété « finished at » (terminé le) de la session d’entretien. Cette propriété est exportée avec vos données d’entretien et peut servir à calculer la durée de l’entretien. Interviewer enregistre aussi avec la session l’étape « Écran de fin » qui a terminé l’entretien, et le résultat que la personne qui a conçu le protocole lui a associé. Ce résultat est inclus dans les données exportées (voir [Comment l’entretien s’est terminé](/fr/analyze-data/data-export#how-the-interview-ended)).
+
+</AppOnly>
+
+<Screenshot axis="interviewer" name="finish" alt="L’écran de fin"></Screenshot>
+
+<AppOnly axis="interviewer" app="current">
+
+Lorsque l’étape « Écran de fin » comporte un bouton **Terminer**, Interviewer vous demande une confirmation avant de terminer, car les réponses ne peuvent plus être modifiées une fois l’entretien marqué comme terminé. Jusque-là, vous pouvez revenir en arrière et modifier des réponses.
+
+![Confirmer que vous voulez terminer l’entretien](/assets/img/interviewer-guide/finish-confirm.png)
+
+Une fois l’entretien terminé, Interviewer affiche le texte saisi dans le champ « Texte après la fin de l’entretien » de l’étape « Écran de fin », rédigé par la personne qui a conçu le protocole. Il n’y a plus de navigation ni de retour possible. La seule action disponible est **Quitter**, qui vous ramène au tableau de bord. Ouvrir un entretien terminé depuis le tableau de bord affiche à nouveau ce texte.
+
+![L’écran d’entretien terminé](/assets/img/interviewer-guide/interview-complete.png)
+
+</AppOnly>
+
+Pour l’instant, cliquez sur **Terminer** (**Finish** dans Interviewer Classic) pour terminer l’entretien.
+
+## Reprendre, exporter et gérer les sessions d’entretien {#resuming-exporting-and-managing-interview-sessions}
+
+<AppOnly axis="interviewer" app="classic">
+
+Maintenant que vous avez mené un entretien à son terme, de nouvelles sections et options apparaissent sur l’écran d’accueil pour gérer et reprendre les sessions d’entretien.
+
+<Screenshot axis="interviewer" name="resume-section" alt="La section de reprise"></Screenshot>
+
+La **section de reprise** (ci-dessus) s’affiche juste sous la section de nouvel entretien et fonctionne de la même manière. Cliquer sur la carte d’une session d’entretien reprend immédiatement l’entretien là où vous l’aviez laissé. Lorsque plusieurs sessions existent sur l’appareil qui exécute Interviewer, une icône de pile de cartes apparaît ; un clic sur celle-ci vous permet de choisir la session d’entretien à reprendre parmi toutes celles qui existent.
+
+La gestion et l’exportation des données d’entretien se font dans une section dédiée, la section **d’exportation et de gestion des données d’entretien** (ci-dessous). Pour supprimer une session d’entretien de l’appareil, sélectionnez-la, puis cliquez sur le bouton **Delete Selected** (supprimer la sélection).
+
+<Screenshot axis="interviewer" name="export-section" alt="La section d’exportation et de gestion des données"></Screenshot>
+
+Pour exporter des données, il suffit de sélectionner une ou plusieurs sessions dans cette section, puis de cliquer sur **Export Selected To File** (exporter la sélection dans un fichier). Les paramètres des données exportées se trouvent dans l’écran des paramètres de l’appareil, accessible depuis le bouton en forme d’engrenage de la section de bienvenue.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Chaque session que vous recueillez, qu’elle soit en cours, terminée ou déjà exportée, figure dans le tableau **Entretiens** de la vue **Données**. Chaque ligne indique l’identifiant de cas, le protocole utilisé, la date de début de l’entretien et son statut.
+
+<Screenshot axis="interviewer" name="resume-section" alt="La liste des entretiens"></Screenshot>
+
+Sélectionnez une session pour reprendre un entretien en cours ou consulter un entretien terminé. Lorsque vous consultez un entretien terminé, ses étapes s’affichent en lecture seule. L’étape « Écran de fin » ne fait pas partie de la consultation et ne figure pas dans le menu des étapes. Vous pouvez aussi sélectionner plusieurs sessions à la fois pour les **exporter** ou les **supprimer** en bloc. La procédure d’exportation des données est décrite ci-dessous ; les formats d’exportation se configurent dans **Paramètres**, et non au moment de l’exportation.
+
+</AppOnly>
+
+## La procédure d’exportation {#the-export-process}
+
+<AppOnly axis="interviewer" app="classic">
+
+Après avoir cliqué sur **Export Selected To File**, il vous est demandé de choisir un type de fichier pour l’exportation (CSV, GraphML ou les deux) et de configurer les options d’exportation. Les fichiers sont produits par session et regroupés dans un seul fichier `.zip`, enregistré à l’emplacement de votre choix. Notez que l’ancien paramètre **Merge Sessions** (fusionner les sessions), disponible jusqu’à la version 6.5, a été supprimé dans la version 6.6 : les exportations sont toujours produites par session. Les paramètres des données exportées se trouvent aussi dans l’écran des paramètres de l’appareil, accessible depuis le bouton en forme d’engrenage de la section de bienvenue.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Interviewer regroupe les sessions que vous sélectionnez dans une seule archive `.zip`, en indiquant la progression au fur et à mesure et en marquant chaque session comme exportée une fois l’opération terminée. Rien n’est à choisir au moment de l’exportation : les formats de fichier inclus (CSV, GraphML ou les deux) et les options de coordonnées d’écran se configurent à l’avance dans **Paramètres → Exportation des données** (voir [Paramètres](#settings) ci-dessus).
+
+</AppOnly>
+
+Pour savoir ce que contiennent les fichiers CSV et GraphML exportés (les fichiers par entité et leurs colonnes, les identifiants qui servent à les relier entre eux, et l’effet de chaque option d’exportation), consultez le [guide d’exportation des données](/fr/analyze-data/data-export).
+
+## Pour aller plus loin {#next-steps}
+
+Maintenant que vous avez découvert le déroulement général d’un entretien dans Network Canvas Interviewer du point de vue de la personne participante, vous pouvez :
+
+- Apprendre à créer votre propre protocole avec [Prise en main d’Architect](/fr/design-protocols/getting-started)
+- Exporter vos données d’entretien à l’aide du [guide d’exportation des données](/fr/analyze-data/data-export)
+- Découvrir l’ensemble des [Flux de travail des protocoles et des données](/fr/collect-data/protocol-and-data-workflows) pour mener une recherche
+- Prévoir comment les protocoles et les données seront transférés vers vos appareils et depuis ceux-ci avec [Flux de travail en ligne et hors ligne d’Interviewer](/fr/collect-data/interviewer-online-and-offline-workflows)

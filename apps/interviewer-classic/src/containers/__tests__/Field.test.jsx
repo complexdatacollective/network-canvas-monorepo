@@ -44,12 +44,6 @@ describe('getInputComponent()', () => {
 });
 
 describe('<Field />', () => {
-  it('should render', () => {
-    const subject = shallow(<Field {...attributes} />);
-
-    expect(subject).toMatchSnapshot();
-  });
-
   it('Loads validations from the register', () => {
     const field = shallow(<Field {...attributes} validation={validation} />);
 
@@ -57,6 +51,4 @@ describe('<Field />', () => {
 
     expect(validate.length).toBe(2);
   });
-
-  it('Loads options with optionsSelector', () => {});
 });

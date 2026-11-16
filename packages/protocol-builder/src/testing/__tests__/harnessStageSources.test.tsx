@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { assertType, describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -83,14 +83,17 @@ describe('the stage a harness call opens', () => {
    * independent optionals and stopped saying anything.
    */
   it('does not compile a call giving two of them', () => {
-    // Written out first and assigned second, so each refusal is reported
+    // Written out first and asserted second, so each refusal is reported
     // against the whole value rather than against whichever property inside it
     // the compiler happened to reach for. An object literal written straight
     // into the annotation is checked member by member against the union, and
     // the diagnostic lands on a line the directive below is not on.
-    const idAndStage = { stageId: 'ego-form-1', stage: BUILT_STAGE };
+    // Each id is one the Information editor may open, so the only thing
+    // wrong with the call is that it names two stages.
+    const idAndStage: { stageId: 'information-1'; stage: typeof BUILT_STAGE } =
+      { stageId: 'information-1', stage: BUILT_STAGE };
     const idAndCreate = {
-      stageId: 'ego-form-1',
+      stageId: 'information-1',
       create: { type: 'Information', position: 0 },
     } as const;
     const stageAndCreate = {
@@ -99,16 +102,11 @@ describe('the stage a harness call opens', () => {
     } as const;
 
     // @ts-expect-error `stageId` and `stage` are alternatives
-    const asIdAndStage: RenderStageEditorOptions<'Information'> = idAndStage;
+    assertType<RenderStageEditorOptions<'Information'>>(idAndStage);
     // @ts-expect-error `stageId` and `create` are alternatives
-    const asIdAndCreate: RenderStageEditorOptions<'Information'> = idAndCreate;
+    assertType<RenderStageEditorOptions<'Information'>>(idAndCreate);
     // @ts-expect-error `stage` and `create` are alternatives
-    const asStageAndCreate: RenderStageEditorOptions<'Information'> =
-      stageAndCreate;
-
-    expect(asIdAndStage.stageId).toBe('ego-form-1');
-    expect(asIdAndCreate.stageId).toBe('ego-form-1');
-    expect(asStageAndCreate.stage).toBe(BUILT_STAGE);
+    assertType<RenderStageEditorOptions<'Information'>>(stageAndCreate);
   });
 
   /**

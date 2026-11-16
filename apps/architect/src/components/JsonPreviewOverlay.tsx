@@ -4,12 +4,6 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { useJsonPreview } from '~/hooks/useJsonPreview';
 const messages = defineMessages({
-  closePreview: {
-    id: 'architect.jsonPreviewOverlay.closePreview',
-    defaultMessage: 'Close preview',
-    description:
-      'Accessible name of the full-screen backdrop button that closes the developer JSON preview overlay; read only by screen readers.',
-  },
   altShiftJToClose: {
     id: 'architect.jsonPreviewOverlay.altShiftJToClose',
     defaultMessage: 'Alt+Shift+J to close',
@@ -51,7 +45,8 @@ export function JsonPreviewOverlay() {
         type="button"
         className="absolute inset-0 cursor-default"
         onClick={close}
-        aria-label={intl.formatMessage(messages.closePreview)}
+        aria-label="Close preview"
+        lang="en"
       />
       <div className="relative flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-white/10 px-7 py-5">

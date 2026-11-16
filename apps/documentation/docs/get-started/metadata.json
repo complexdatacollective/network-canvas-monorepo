@@ -4,10 +4,12 @@
   "navOrder": 0,
   "localeLabels": {
     "en": "Get Started",
-    "es": "Primeros pasos"
+    "es": "Primeros pasos",
+    "fr": "Premiers pas"
   },
   "localeIndexFiles": {
     "en": "network-canvas.en.mdx",
-    "es": "network-canvas.es.mdx"
+    "es": "network-canvas.es.mdx",
+    "fr": "network-canvas.fr.mdx"
   }
 }

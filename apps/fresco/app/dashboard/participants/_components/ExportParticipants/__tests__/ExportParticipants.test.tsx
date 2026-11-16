@@ -57,8 +57,7 @@ describe('useExportParticipants', () => {
 
     expect(unparse).toHaveBeenCalledTimes(1);
     const rows = unparse.mock.calls[0]?.[0];
-    expect(rows).toBeDefined();
-    if (!rows) return;
+    if (!rows) throw new Error('Expected unparse to receive rows');
 
     // The onboard route reads `participantIdentifier`, not the participant's
     // database id, and the identifier must be URL encoded.

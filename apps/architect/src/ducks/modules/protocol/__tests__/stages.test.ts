@@ -502,10 +502,9 @@ describe('protocol.stages', () => {
   });
 
   describe('sync action creators', () => {
-    it('moveStage', () => {
-      const action = actionCreators.moveStage(2, 1);
-      expect(action.type).toBe('stages/moveStage');
-      expect(action.payload).toEqual({ oldIndex: 2, newIndex: 1 });
+    it('moveStage moves the stage at its first index to its second', () => {
+      const moved = reducer(mockStages, actionCreators.moveStage(2, 0));
+      expect(moved.map(({ id }) => id)).toEqual(['5', '3', '9']);
     });
   });
 });

@@ -1,5 +1,46 @@
 # @codaco/documentation
 
+## 0.8.0
+
+### Minor Changes
+
+- The documentation is now available in French. Readers whose browser asks for
+  French, or who chose French on any Network Canvas website, get the French
+  pages, and the language switcher in the footer offers French. Search shows
+  results in the page's language. The text inside the documentation's own
+  components (interface summaries, the compatibility and workflow tables, code
+  examples, the "not found" page) is translated too, and an interface summary's
+  requirements keep their icons in French.
+
+### Patch Changes
+
+- Cache fonts and other build assets in the browser, and start the fonts downloading sooner.
+
+  The site's stylesheets, scripts and fonts were served with `Cache-Control: public, max-age=0, must-revalidate`, so every page load re-checked each of them with the server before text could settle into its typeface, and pages briefly showed a fallback font. Their filenames already change whenever their contents do, so they are now cached for a year and repeat visits load them from disk.
+
+  The two fonts the site starts with are also preloaded, so they begin downloading alongside the stylesheet rather than once it has been parsed.
+
+- The summary at the top of each interface page is easier to scan. The screenshot lines up with the facts beside it instead of floating in the middle, and the facts no longer sit inside heavy coloured badges. A new panel shows which apps you configure the interface in and which apps run it, including the apps it is not available in, and links its schema requirement to the page about protocol schema versions.
+- The heading of the table of contents on each page, and the placeholder in the search box, now appear in the language you are reading in.
+- Corrected several statements in the documentation, in every language. The GDPR
+  guide now says a breach must be reported to the supervisory authority within 72
+  hours unless it is unlikely to put people's rights and freedoms at risk. The
+  privacy answers now say that Architect's usage and error statistics have no
+  setting to turn them off (Interviewer's and Fresco's do). The data dictionary
+  lists every character that puts an apostrophe in front of a column name. The
+  protocol tutorial uses the current Architect labels for edge creation and
+  attribute toggling, with the Architect Classic labels shown to Classic readers.
+  A contributor's name is now spelled correctly.
+- Translating Your Protocol explains the fallback language: which protocols
+  need one, what participants see in it, and where to choose it on Architect's
+  Languages page.
+- The interface documentation pages now show the current Architect stage editor instead of Architect Classic, and the name generator pages show the current interview instead of Interviewer 6.x.
+- The documentation site is ready for a right-to-left language: pages take the
+  language's direction, and the navigation, contents list, breadcrumb, workflow
+  steps and mobile menu mirror with it. Collapsible sections now turn their
+  arrow when opened, and a search box placeholder too long for its box is cut
+  short rather than running under the keyboard shortcut.
+
 ## 0.7.0
 
 ### Minor Changes

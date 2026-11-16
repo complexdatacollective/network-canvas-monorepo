@@ -75,10 +75,6 @@
     "defaultMessage": "Protocol not compatible with current version",
     "description": "Title of the error dialog shown when the protocol being opened was made for a newer schema than this version of Architect supports."
   },
-  "architect.additional.protocolOpenDialogs.protocolValidationErrors": {
-    "defaultMessage": "Protocol validation errors",
-    "description": "Accessible name of the list of protocol validation errors; read only by screen readers."
-  },
   "architect.additional.protocolOpenDialogs.protocolValidationFailed": {
     "defaultMessage": "Protocol Validation Failed",
     "description": "Title of the error dialog shown when a protocol file could not be opened because it failed validation against the protocol schema."
@@ -139,10 +135,6 @@
     "defaultMessage": "Cannot delete this resource because it is used within your interview. Remove any uses of the resource, and try again.",
     "description": "Body of the dialog explaining that a resource used by a stage cannot be deleted until its uses are removed. Also the fallback message when adding the missing file for a resource fails without a specific error."
   },
-  "architect.assetBrowser.assetBrowser.chooseTheMissingFile": {
-    "defaultMessage": "Choose the missing file for this resource",
-    "description": "Accessible name of the hidden file picker that opens when the researcher supplies a file for a resource whose file is missing from the protocol; read only by screen readers."
-  },
   "architect.assetBrowser.assetBrowser.couldNotAddTheFile": {
     "defaultMessage": "Could not add the file",
     "description": "Title of the error dialog shown when the file the researcher chose to replace a missing resource file could not be added."
@@ -167,41 +159,21 @@
     "defaultMessage": "Resource library",
     "description": "Heading of the section listing all resources (uploaded files and API keys) stored in the protocol."
   },
-  "architect.assetBrowser.assetCard.delete": {
-    "defaultMessage": "Delete {name}",
-    "description": "Accessible name of the icon button on a resource card that deletes the resource; read only by screen readers. name is the resource name."
-  },
   "architect.assetBrowser.assetCard.deleteResource": {
     "defaultMessage": "Delete resource",
     "description": "Tooltip of the icon button on a resource card that deletes the resource. Delete here is a verb."
-  },
-  "architect.assetBrowser.assetCard.download": {
-    "defaultMessage": "Download {name}",
-    "description": "Accessible name of the icon button on a resource card that downloads the resource file; read only by screen readers. name is the resource name."
   },
   "architect.assetBrowser.assetCard.downloadResource": {
     "defaultMessage": "Download resource",
     "description": "Tooltip of the icon button on a resource card that downloads the resource file. Download here is a verb."
   },
-  "architect.assetBrowser.assetCard.isInUseAndCannot": {
-    "defaultMessage": "{name} is in use and cannot be deleted",
-    "description": "Accessible name of the delete button on a resource card when a stage still uses the resource, so it cannot be deleted; read only by screen readers. name is the resource name."
-  },
   "architect.assetBrowser.assetCard.missing": {
     "defaultMessage": "File missing",
     "description": "Badge on a resource card showing that the protocol lists this resource but its file is not stored, because the imported protocol file did not contain it."
   },
-  "architect.assetBrowser.assetCard.preview": {
-    "defaultMessage": "Preview {name}",
-    "description": "Accessible name of the icon button on a resource card that opens a preview of the resource; read only by screen readers. name is the resource name."
-  },
   "architect.assetBrowser.assetCard.previewResource": {
     "defaultMessage": "Preview resource",
     "description": "Tooltip of the icon button on a resource card that opens a preview of the resource. Preview here is a verb."
-  },
-  "architect.assetBrowser.assetCard.replace": {
-    "defaultMessage": "Add the file for {name}",
-    "description": "Accessible name of the icon button on a resource card that lets the researcher choose the missing file for the resource; read only by screen readers. name is the resource name."
   },
   "architect.assetBrowser.assetCard.replaceResource": {
     "defaultMessage": "Add the missing file",
@@ -214,10 +186,6 @@
   "architect.assetBrowser.assetCard.unused": {
     "defaultMessage": "Unused",
     "description": "Badge on a resource card showing that no stage in the protocol uses this resource."
-  },
-  "architect.assetBrowser.assetCard.videoPreview": {
-    "defaultMessage": "{name} video preview",
-    "description": "Accessible name of the video thumbnail on a resource card; read only by screen readers. name is the researcher-given name of the video resource."
   },
   "architect.assetBrowser.assets.config.aPIKey": {
     "defaultMessage": "API key",
@@ -247,17 +215,9 @@
     "defaultMessage": "Video",
     "description": "Option in the filter switcher above the resource library that shows only video resources. Names the kind of file."
   },
-  "architect.assetBrowser.assets.filterResourcesByType": {
-    "defaultMessage": "Filter resources by type",
-    "description": "Accessible name of the switcher above the resource library that filters resources by kind; read only by screen readers."
-  },
   "architect.assetBrowser.assets.noResourcesToDisplay": {
     "defaultMessage": "No resources to display.",
     "description": "Message shown in place of the resource cards when no resources match the selected filter or the protocol has none."
-  },
-  "architect.assetBrowser.assets.resourceLibrary": {
-    "defaultMessage": "Resource library",
-    "description": "Accessible name of the grid of resource cards in the resource library; read only by screen readers."
   },
   "architect.assetBrowser.duplicateRowsWarning.oK": {
     "defaultMessage": "OK",
@@ -339,10 +299,6 @@
     "defaultMessage": "Toggle SortBy",
     "description": "Tooltip on a column header of the data table in a resource preview. Clicking the header cycles the table between ascending, descending and unsorted order by that column."
   },
-  "architect.brand.returnToStartScreen": {
-    "defaultMessage": "Return to start screen",
-    "description": "Accessible name of the Architect logo button in the app header; read only by screen readers. Activating it closes the current protocol and returns to the start screen."
-  },
   "architect.builtInWording.missingInDefaultLanguage": {
     "defaultMessage": "Network Canvas has no built-in wording, such as button labels and messages, in {language}. Translate it into {language}, or make a language that has built-in wording the default. The protocol can’t be downloaded until then.",
     "description": "Shown while the protocol’s default language is one Network Canvas has no built-in wording in (for example Mexican Spanish or Japanese), so the wording Network Canvas supplies (button labels, messages and similar) has no text in it. The researcher can translate that wording into the language in the translation table, or make another of the protocol’s languages that Network Canvas has wording in (for example Spanish) the default. language is the name of the default language, for example “Spanish (Mexico)”."
@@ -423,10 +379,6 @@
     "defaultMessage": "This protocol is open in another tab, which holds the saved copy, so it is read-only here. You can look through every page, but nothing can be changed. Close the other tab to edit it in this one.",
     "description": "Text of the informational banner across the protocol editor when another browser tab holds the saved copy of the protocol. This tab can only be browsed, not edited, until the other tab is closed."
   },
-  "architect.chrome.protocolRouteGuard.editingRestored": {
-    "defaultMessage": "The other tab is no longer editing this protocol, so you can edit it here again.",
-    "description": "Screen-reader announcement made when a tab that was showing a protocol read-only, because another tab was editing it, becomes able to edit it."
-  },
   "architect.chrome.protocolSummary.assetBadge.assetNotFound": {
     "defaultMessage": "Asset {id} not found",
     "description": "Shown in the printable protocol summary in place of a resource's details when a stage refers to an uploaded resource that is missing from the protocol. id is the missing resource's identifier."
@@ -446,22 +398,6 @@
   "architect.chrome.stageEditor.stageEditor.preview": {
     "defaultMessage": "Preview",
     "description": "Label of the button in the stage editor toolbar that opens the interview preview in a new window, starting at the stage being edited. The verb, not the name of the window."
-  },
-  "architect.chrome.timeline.timelineStageRow.editStage": {
-    "defaultMessage": "Edit stage {position, number}: {stageName}, {interfaceName}",
-    "description": "Accessible name of the control on a timeline stage that opens the stage for editing; read only by screen readers. position is its number in the timeline, stageName its title, interfaceName the name of its interface type."
-  },
-  "architect.chrome.timeline.timelineStageRow.editStage76e56": {
-    "defaultMessage": "Edit stage {position, number}: {stageName}",
-    "description": "Accessible name of the control on a timeline stage that opens the stage for editing, used when the stage type has no known name. position is its number in the timeline; stageName is its title."
-  },
-  "architect.chrome.timeline.timelineStageRow.viewStage": {
-    "defaultMessage": "View stage {position, number}: {stageName}, {interfaceName}",
-    "description": "Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it."
-  },
-  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": {
-    "defaultMessage": "View stage {position, number}: {stageName}",
-    "description": "Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it. Used when the stage type has no known name."
   },
   "architect.codebook.codebook.createEdgeType": {
     "defaultMessage": "Create edge type",
@@ -687,14 +623,6 @@
     "defaultMessage": "No attributes.",
     "description": "Message shown in place of the rows of the table of a network resource attributes when the resource file has none."
   },
-  "architect.codebook.variableList.tableLabel": {
-    "defaultMessage": "Attributes",
-    "description": "Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached."
-  },
-  "architect.codebook.variables.actions": {
-    "defaultMessage": "Actions",
-    "description": "Accessible name of the last column of the codebook variables table, which holds each row delete button; read only by screen readers, not shown visually."
-  },
   "architect.codebook.variables.areYouSureYouWantTo": {
     "defaultMessage": "Are you sure you want to delete the attribute “{name}”? You can restore it with Undo while this protocol remains open.",
     "description": "Body of the confirmation dialog for deleting a codebook variable (attribute). name is the variable name, shown in quotation marks. Notes that Undo can restore it while the protocol stays open."
@@ -710,10 +638,6 @@
   "architect.codebook.variables.noAttributes": {
     "defaultMessage": "No attributes.",
     "description": "Message shown in place of the rows of the codebook variables table when the node type, edge type or ego has no variables (attributes)."
-  },
-  "architect.codebook.variables.tableLabel": {
-    "defaultMessage": "Attributes",
-    "description": "Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached."
   },
   "architect.codebook.variables.unknown": {
     "defaultMessage": "Unknown",
@@ -959,18 +883,6 @@
     "defaultMessage": "These changes cannot be saved over the version the other tab saved. Choose whether to keep them or discard them first.",
     "description": "Error in the stage editor when finishing editing is refused: the other tab saved the protocol meanwhile and this tab has unsaved stage changes. The researcher must choose to keep or discard them first."
   },
-  "architect.defaults.components.ProjectNav.ActionToolbar.ariaLabel": {
-    "defaultMessage": "Page actions",
-    "description": "Default researcher-facing copy when the caller does not supply its own ariaLabel."
-  },
-  "architect.defaults.components.ProjectNav.ActionToolbar.leadingAriaLabel": {
-    "defaultMessage": "History actions",
-    "description": "Default researcher-facing copy when the caller does not supply its own leadingAriaLabel."
-  },
-  "architect.dialogForm.dialogForm.resizeFormAndPreviewPanes": {
-    "defaultMessage": "Resize form and preview panes",
-    "description": "Accessible name of the draggable divider between the form and the preview beside it in an editor dialog; read only by screen readers. Dragging it changes how much width each side gets."
-  },
   "architect.document.previewTitle": {
     "defaultMessage": "Architect Preview",
     "description": "Browser tab title for the separate interview preview window. Architect is the product name."
@@ -1035,18 +947,6 @@
     "defaultMessage": "Protocol name is required",
     "description": "Validation error below the protocol name field when the dialog is submitted with a blank or whitespace-only name."
   },
-  "architect.final.components.ProjectNav.ProjectNav.assetsWarning": {
-    "defaultMessage": "has unused resources",
-    "description": "Warning, read only by screen readers, completing the sentence after the Resources tab name: some uploaded resources are not used by any stage."
-  },
-  "architect.final.components.ProjectNav.ProjectNav.attributesWarning": {
-    "defaultMessage": "has unused attributes",
-    "description": "Warning, read only by screen readers, completing the sentence after the Codebook tab name: some variables are not used by any stage."
-  },
-  "architect.final.components.ProjectNav.ProjectNav.roleWarning": {
-    "defaultMessage": "has attributes written both with and without validation",
-    "description": "Warning, read only by screen readers, completing the sentence after the Stages tab name: some variables are filled in by some stages with validation and by others without."
-  },
   "architect.final.components.StageEditor.StageEditor.newStage": {
     "defaultMessage": "New stage",
     "description": "Name used for a timeline stage that is being created and has not been given a label yet. Shown in the stage editor navigation bar and as the page heading."
@@ -1058,10 +958,6 @@
   "architect.final.components.Timeline.Timeline.untitledStage": {
     "defaultMessage": "Untitled stage",
     "description": "Name shown for a stage on the timeline that has no title yet."
-  },
-  "architect.final.components.Timeline.TimelineStageRow.untitledStage": {
-    "defaultMessage": "Untitled stage",
-    "description": "Name used in a timeline stage's accessible labels when the stage has no title yet."
   },
   "architect.final.components.Timeline.skipDestinationGuards.untitledStage": {
     "defaultMessage": "Untitled stage",
@@ -1107,10 +1003,6 @@
     "defaultMessage": "Are you sure you want to remove this option?",
     "description": "Body of the confirmation dialog shown before removing one option from a categorical or ordinal variable."
   },
-  "architect.form.arrayFields.option.editOption": {
-    "defaultMessage": "Edit option {value1, number}",
-    "description": "Accessible edit-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value."
-  },
   "architect.form.arrayFields.option.enterALabel": {
     "defaultMessage": "Enter a label...",
     "description": "Placeholder in the label field of the inline option editor for a categorical or ordinal variable."
@@ -1118,10 +1010,6 @@
   "architect.form.arrayFields.option.enterAValue": {
     "defaultMessage": "Enter a value...",
     "description": "Placeholder in the value field of the inline option editor for a categorical or ordinal variable."
-  },
-  "architect.form.arrayFields.option.finishEditingOption": {
-    "defaultMessage": "Finish editing option",
-    "description": "Accessible name of the check-mark button that closes the inline editor of one option in a variable's option list; read only by screen readers."
   },
   "architect.form.arrayFields.option.label": {
     "defaultMessage": "Label",
@@ -1134,14 +1022,6 @@
   "architect.form.arrayFields.option.removeOption": {
     "defaultMessage": "Remove option",
     "description": "Title and confirm button of the dialog that asks the researcher to confirm removing one option from a categorical or ordinal variable. Remove is the action."
-  },
-  "architect.form.arrayFields.option.removeOption45a9b": {
-    "defaultMessage": "Remove option {value1, number}",
-    "description": "Accessible remove-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value."
-  },
-  "architect.form.arrayFields.option.reorderOptionOf": {
-    "defaultMessage": "Reorder option {value1, number} of {itemCount, number}",
-    "description": "Accessible name of the drag handle that moves an option up or down in the list of a variable's options; read only by screen readers. value1 is the option's position, itemCount is how many options there are."
   },
   "architect.form.arrayFields.option.untitledOption": {
     "defaultMessage": "Untitled option",
@@ -1183,14 +1063,6 @@
     "defaultMessage": "Drag and drop a file here to import it, or <span> click here to select a file from your computer </span> .",
     "description": "Instruction inside the file drop area for importing a resource. span wraps the words that work as a click target to open the computer's file picker."
   },
-  "architect.form.dropzone.dropzone.importingFile": {
-    "defaultMessage": "Importing file…",
-    "description": "Status announced only to screen readers while a dropped file is being imported."
-  },
-  "architect.form.dropzone.dropzone.uploadFile": {
-    "defaultMessage": "Upload file",
-    "description": "Accessible name of the file drop area used to import a resource file; read only by screen readers."
-  },
   "architect.form.fields.variablePicker.variablePicker.changeAttribute": {
     "defaultMessage": "Change attribute",
     "description": "Button on the variable picker field, shown when a variable is already chosen; opens the search window to choose a different codebook variable."
@@ -1202,10 +1074,6 @@
   "architect.form.fields.variablePicker.variablePicker.selectAttribute": {
     "defaultMessage": "Select attribute",
     "description": "Button on the variable picker field, shown when no variable is chosen yet; opens the search window to choose a codebook variable."
-  },
-  "architect.form.fields.variablePicker.variableSpotlight.attributeResults": {
-    "defaultMessage": "Attribute results",
-    "description": "Accessible name of the list of matching variables in the variable search window; read only by screen readers."
   },
   "architect.form.fields.variablePicker.variableSpotlight.cannotCreateAttributeNamed": {
     "defaultMessage": "Cannot create attribute named \"{filterTerm}\"",
@@ -1226,10 +1094,6 @@
   "architect.form.fields.variablePicker.variableSpotlight.findAnAttribute": {
     "defaultMessage": "Find an attribute...",
     "description": "Placeholder in the search box of the variable search window, used when only existing codebook variables can be chosen and none can be created."
-  },
-  "architect.form.fields.variablePicker.variableSpotlight.findOrCreateAnAttribute": {
-    "defaultMessage": "Find or create an attribute",
-    "description": "Accessible name of the search box in the variable search window; read only by screen readers."
   },
   "architect.form.fields.variablePicker.variableSpotlight.noAttributesExistForYouTo": {
     "defaultMessage": "No attributes exist for you to select, and you cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.",
@@ -1275,10 +1139,6 @@
     "defaultMessage": "Welcome to <span>Architect</span>",
     "description": "Main heading of the start screen. span wraps the product name Architect, which is shown in an accent colour and is not translated."
   },
-  "architect.home.libraryPanel.actionsFor": {
-    "defaultMessage": "Actions for {name}",
-    "description": "Accessible name of the three-dot menu button on a row of the protocol list on the start screen; read only by screen readers. name is the protocol's name."
-  },
   "architect.home.libraryPanel.added": {
     "defaultMessage": "Added",
     "description": "Row label in the protocol info dialog, followed by the date the protocol was created."
@@ -1322,10 +1182,6 @@
   "architect.home.libraryPanel.deleteProtocol": {
     "defaultMessage": "Delete protocol?",
     "description": "Title of the dialog that asks the researcher to confirm deleting a protocol from the start screen list."
-  },
-  "architect.home.libraryPanel.dismiss": {
-    "defaultMessage": "Dismiss",
-    "description": "Accessible name of the close button on the Protocol Gallery card of the start screen; it hides the card. Read only by screen readers."
   },
   "architect.home.libraryPanel.download": {
     "defaultMessage": "Download",
@@ -1371,29 +1227,13 @@
     "defaultMessage": "Property",
     "description": "Column heading for protocol metadata property names."
   },
-  "architect.home.libraryPanel.protocolGallery": {
-    "defaultMessage": "Protocol gallery",
-    "description": "Accessible name of the card on the start screen that links to the online Protocol Gallery of example protocols; read only by screen readers."
-  },
-  "architect.home.libraryPanel.protocolLibrary": {
-    "defaultMessage": "Protocol library",
-    "description": "Accessible name of the tab group on the start screen that switches between Recent protocols and Templates; read only by screen readers."
-  },
   "architect.home.libraryPanel.protocolStorage": {
     "defaultMessage": "Protocol Storage",
     "description": "Title of the dialog, opened from the info button above the Recent list, that explains where protocols are stored."
   },
-  "architect.home.libraryPanel.protocolTemplates": {
-    "defaultMessage": "Protocol templates",
-    "description": "Accessible name of the list of template protocols on the start screen; read only by screen readers."
-  },
   "architect.home.libraryPanel.recent": {
     "defaultMessage": "Recent",
     "description": "Tab label on the start screen for the list of protocols the researcher has recently opened or created."
-  },
-  "architect.home.libraryPanel.recentProtocols": {
-    "defaultMessage": "Recent protocols",
-    "description": "Accessible name of the list of recent protocols on the start screen; read only by screen readers."
   },
   "architect.home.libraryPanel.removeAll": {
     "defaultMessage": "Remove all",
@@ -1430,10 +1270,6 @@
   "architect.home.libraryPanel.wasDownloadedButThese": {
     "defaultMessage": "These resources could not be read, so \"{value1}\" was not downloaded: {assetList}. Open the protocol and add the files again in Resources, then download it.",
     "description": "Body of the dialog shown when downloading a protocol is stopped because some resource files could not be read. value1 is the protocol name; assetList is the list of unreadable resource files."
-  },
-  "architect.home.libraryPanel.whereYourProtocolsAreStored": {
-    "defaultMessage": "Where your protocols are stored",
-    "description": "Accessible name of the info button above the Recent list that opens the Protocol Storage dialog; read only by screen readers."
   },
   "architect.home.libraryPanel.yourProtocolsAreSavedOnlyOn": {
     "defaultMessage": "Your protocols are saved only on this device. They are never uploaded to a server.",
@@ -1542,10 +1378,6 @@
   "architect.importSize.expanded": {
     "defaultMessage": "This protocol file expands to more data than can be opened safely ({size, number} MB). It may be corrupt. The maximum supported size is {maximum, number} MB.",
     "description": "Import refusal before media inflation when the archive declares an excessive expanded size."
-  },
-  "architect.installBanner.installArchitect": {
-    "defaultMessage": "Install Architect",
-    "description": "Accessible name of the banner warning that stored protocols could be deleted by the browser unless Architect is installed; read only by screen readers."
   },
   "architect.interface.capability.createEdges": {
     "defaultMessage": "Create edges",
@@ -1674,10 +1506,6 @@
   "architect.jsonPreviewOverlay.altShiftJToClose": {
     "defaultMessage": "Alt+Shift+J to close",
     "description": "Hint in the header of the developer JSON preview overlay naming the keyboard shortcut that closes it."
-  },
-  "architect.jsonPreviewOverlay.closePreview": {
-    "defaultMessage": "Close preview",
-    "description": "Accessible name of the full-screen backdrop button that closes the developer JSON preview overlay; read only by screen readers."
   },
   "architect.jsonPreviewOverlay.copied": {
     "defaultMessage": "Copied!",
@@ -1871,10 +1699,6 @@
     "defaultMessage": "{translated, number} of {total, plural, one {# string} other {# strings}} translated",
     "description": "How much of a protocol is translated into one language. total is the number of localized strings in the protocol."
   },
-  "architect.localization.languageList.coverageLabel": {
-    "defaultMessage": "{language} translation progress",
-    "description": "Accessible name of the progress bar of one language."
-  },
   "architect.localization.languageList.defaultBadge": {
     "defaultMessage": "Default",
     "description": "Badge marking the default language of a protocol."
@@ -1930,10 +1754,6 @@
   "architect.localization.languageList.openTable": {
     "defaultMessage": "Open translation table",
     "description": "Link under the list of protocol languages to the translation table, which shows every participant-facing localized string beside its translation into each language."
-  },
-  "architect.localization.languageList.removeLanguage": {
-    "defaultMessage": "Remove {language}",
-    "description": "Accessible name of the delete button at the end of a protocol language’s row, which removes that language from the protocol. language is the language name."
   },
   "architect.localization.languageList.strandedNote": {
     "defaultMessage": "{count, plural, one {# string has a translation only in {language}. Translate it into another language before removing {language}.} other {# strings have a translation only in {language}. Translate them into another language before removing {language}.}}",
@@ -2027,10 +1847,6 @@
     "defaultMessage": "Everything is translated into {language}.",
     "description": "Shown in the translation table when only localized strings with no translation into one language are shown and there are none. language is the language’s name, such as “French”."
   },
-  "architect.localization.translationTable.caption": {
-    "defaultMessage": "Everything participants see, with its translation into each of the protocol’s languages",
-    "description": "Caption of the translation table, read by screen readers. Each row is one localized string, each column one language."
-  },
   "architect.localization.translationTable.defaultLanguage": {
     "defaultMessage": "Default",
     "description": "Badge beside the name of the protocol’s default language, in the heading of its column in the translation table."
@@ -2043,10 +1859,6 @@
     "defaultMessage": "Another option of this attribute has the same label in {language}. Give each option a label participants can tell apart.",
     "description": "Shown in a cell of the translation table holding the label of one of an attribute’s answer options (including the two answers of a yes-or-no attribute), when participants reading the cell’s language would see the same label for another option of the same attribute, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language."
   },
-  "architect.localization.translationTable.filter": {
-    "defaultMessage": "Translations to show",
-    "description": "Accessible name of the menu above the translation table that chooses whether it shows every localized string or only those with a translation missing."
-  },
   "architect.localization.translationTable.groupHeading": {
     "defaultMessage": "<muted>{place}</muted> · <title>{name}</title>",
     "description": "Heading of a group of rows in the translation table, naming the codebook entry that holds their localized strings. place is the kind of entry, such as “Node type”; name is its name, which links to it. Keep the tags around the same parts."
@@ -2054,10 +1866,6 @@
   "architect.localization.translationTable.groupHeadingDetail": {
     "defaultMessage": "<muted>{place}</muted> · <title>{name}</title> · <muted>{detail}</muted>",
     "description": "Heading of a group of rows in the translation table, naming the stage that holds their localized strings. place is the stage’s position, such as “Stage 4”; name is the stage’s name, which links to it; detail is the kind of stage, such as “Name Generator”. Keep the tags around the same parts."
-  },
-  "architect.localization.translationTable.help": {
-    "defaultMessage": "Help",
-    "description": "Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it."
   },
   "architect.localization.translationTable.interfaceTextWithoutDefaultLanguage": {
     "defaultMessage": "This text needs words in {language}, the protocol’s default language.",
@@ -2119,17 +1927,9 @@
     "defaultMessage": "Saving these translations would leave a problem in {place}, so nothing was saved. Details: {details}",
     "description": "Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names that place, such as “Stage 3” or “Node type”. details is the technical description of the problem, in English, kept for support."
   },
-  "architect.localization.translationTable.progress": {
-    "defaultMessage": "{translated, number} of {total, number} translated",
-    "description": "Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s localized strings have a translation into it."
-  },
   "architect.localization.translationTable.progressCount": {
     "defaultMessage": "{translated, number} of {total, number}",
     "description": "Shown beside a language’s name and progress bar in the heading of its column in the translation table: how many of the protocol’s localized strings have a translation into it. Keep it as short as possible, since it shares one line with the language’s name."
-  },
-  "architect.localization.translationTable.progressLabel": {
-    "defaultMessage": "{language} translation progress",
-    "description": "Accessible name of the progress bar in the heading of a language’s column in the translation table."
   },
   "architect.localization.translationTable.search": {
     "defaultMessage": "Search translations",
@@ -2355,10 +2155,6 @@
     "defaultMessage": "<property></property> <direction>({directionLabel})</direction>",
     "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
   },
-  "architect.presentation.warning": {
-    "defaultMessage": "({warning})",
-    "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
-  },
   "architect.preview.constraints.thisType": {
     "defaultMessage": "This type",
     "description": "Fallback subject in a conflict list item on the preview error page, standing in for the node type name when it cannot be found."
@@ -2427,14 +2223,6 @@
     "defaultMessage": "Preview language",
     "description": "Label of the menu above an Architect preview that chooses which of the protocol’s languages the interview is shown in. The choice lasts while the preview window is open and is never saved."
   },
-  "architect.projectNav.breadcrumb.breadcrumb": {
-    "defaultMessage": "Breadcrumb",
-    "description": "Accessible name of the breadcrumb navigation in the top bar, which shows the name of the open protocol; read only by screen readers."
-  },
-  "architect.projectNav.historyToolbarItems.historyControls": {
-    "defaultMessage": "History controls",
-    "description": "Accessible name of the group of Undo and Redo buttons in the toolbar; read only by screen readers."
-  },
   "architect.projectNav.historyToolbarItems.redo": {
     "defaultMessage": "Redo",
     "description": "Accessible name of the icon button that redoes the change to the protocol that was last undone; read only by screen readers."
@@ -2443,29 +2231,9 @@
     "defaultMessage": "Undo",
     "description": "Accessible name of the icon button that undoes the last change to the protocol; read only by screen readers."
   },
-  "architect.projectNav.navShell.closeMenu": {
-    "defaultMessage": "Close menu",
-    "description": "Accessible name of the icon button that closes the navigation drawer; read only by screen readers."
-  },
-  "architect.projectNav.navShell.mobileNavigation": {
-    "defaultMessage": "Mobile navigation",
-    "description": "Accessible name of the navigation list inside the drawer opened on narrow screens; read only by screen readers."
-  },
-  "architect.projectNav.navShell.navigation": {
-    "defaultMessage": "Main navigation",
-    "description": "Accessible name of the main navigation bar at the top of the screen, which links to the protocol pages (Stages, Resources, Codebook and so on); read only by screen readers."
-  },
-  "architect.projectNav.navShell.openMenu": {
-    "defaultMessage": "Open menu",
-    "description": "Accessible name of the icon button, shown on narrow screens, that opens the navigation drawer; read only by screen readers."
-  },
   "architect.projectNav.printProtocolAction.print": {
     "defaultMessage": "Print",
     "description": "Label of the toolbar button on the Summary page that prints the protocol summary or saves it as a PDF. Print is a verb."
-  },
-  "architect.projectNav.projectActions.additionalActions": {
-    "defaultMessage": "Additional actions",
-    "description": "Accessible name of the toolbar group holding page-specific buttons; read only by screen readers."
   },
   "architect.projectNav.projectActions.couldNotBeSaved": {
     "defaultMessage": "\"{protocolName}\" could not be saved to source. Check the source files and your write permissions, then try again.",
@@ -2486,14 +2254,6 @@
   "architect.projectNav.projectActions.export": {
     "defaultMessage": "Export",
     "description": "Toolbar button that opens a menu of ways to get the protocol out of Architect: Download (save it as a file) and Send to Interviewer."
-  },
-  "architect.projectNav.projectActions.exportActions": {
-    "defaultMessage": "Export actions",
-    "description": "Accessible name, read by screen readers, of the toolbar group holding the Export button."
-  },
-  "architect.projectNav.projectActions.navigationActions": {
-    "defaultMessage": "Navigation actions",
-    "description": "Accessible name of the toolbar group holding the button that returns to the previous page; read only by screen readers."
   },
   "architect.projectNav.projectActions.oK": {
     "defaultMessage": "OK",
@@ -2531,10 +2291,6 @@
     "defaultMessage": "Sent",
     "description": "Label of the Export toolbar button for a moment after Interviewer received the protocol from Send to Interviewer."
   },
-  "architect.projectNav.projectActions.sourceActions": {
-    "defaultMessage": "Source actions",
-    "description": "Accessible name of the toolbar group holding the Save to source button; read only by screen readers."
-  },
   "architect.projectNav.projectActions.sourceSaveFailed": {
     "defaultMessage": "Source save failed",
     "description": "Title of the error dialog shown when writing the protocol to the source files failed."
@@ -2571,14 +2327,6 @@
     "defaultMessage": "Read only",
     "description": "Badge in the top bar next to the protocol name, shown when the protocol is open for viewing only and cannot be edited."
   },
-  "architect.projectNav.projectNav.translationsWarning": {
-    "defaultMessage": "has missing translations",
-    "description": "Screen-reader warning on the Languages tab when some text is not translated into every language of the protocol."
-  },
-  "architect.projectNav.stageEditorNav.editingActions": {
-    "defaultMessage": "Editing actions",
-    "description": "Accessible name of the group of toolbar buttons that cancel or finish editing the stage; read only by screen readers."
-  },
   "architect.projectNav.stageEditorNav.finishedEditing": {
     "defaultMessage": "Finished Editing",
     "description": "Button in the stage editor toolbar that saves the stage and returns to the timeline. Finished is the past tense: the researcher has finished editing."
@@ -2587,21 +2335,9 @@
     "defaultMessage": "Preview",
     "description": "Label of the stage editor toolbar button that opens a preview of the interview at the stage being edited. Preview is the action here."
   },
-  "architect.projectNav.stageEditorNav.previewActions": {
-    "defaultMessage": "Preview actions",
-    "description": "Accessible name of the group of toolbar buttons that preview the stage and open the preview settings; read only by screen readers."
-  },
   "architect.projectNav.stageEditorNav.previewSettings": {
     "defaultMessage": "Preview settings",
     "description": "Accessible name of the icon button next to the Preview button that opens the preview settings; read only by screen readers."
-  },
-  "architect.projectNav.stageEditorNav.stageEditorActions": {
-    "defaultMessage": "Stage editor actions",
-    "description": "Accessible name of the toolbar at the bottom of the stage editor, which holds the editing and preview buttons; read only by screen readers."
-  },
-  "architect.protocol.stages": {
-    "defaultMessage": "Stages",
-    "description": "Heading of the Stages page, visible only to screen readers; the same word as the Stages tab in the top navigation, the page showing the stage timeline."
   },
   "architect.protocolActions.failed": {
     "defaultMessage": "Failed to Open Protocol",
@@ -2646,14 +2382,6 @@
   "architect.protocolInfoCard.node": {
     "defaultMessage": "{nodeTypeCount, plural, one {# node type} other {# node types}}",
     "description": "Count of node types in the codebook, shown on the protocol card of the Stages page. nodeTypeCount is the number of node types."
-  },
-  "architect.protocolInfoCard.protocolDescription": {
-    "defaultMessage": "Protocol description",
-    "description": "Accessible name of the editable protocol description field on the protocol card of the Stages page; read only by screen readers."
-  },
-  "architect.protocolInfoCard.protocolName": {
-    "defaultMessage": "Protocol name",
-    "description": "Accessible name of the editable protocol name field on the protocol card of the Stages page; read only by screen readers."
   },
   "architect.protocolInfoCard.requiresInternet": {
     "defaultMessage": "Requires Internet",
@@ -2742,10 +2470,6 @@
   "architect.protocolSummary.contents.stages": {
     "defaultMessage": "Stages",
     "description": "Group heading in the table of contents of the printable protocol summary, above the list of the protocol's timeline stages."
-  },
-  "architect.protocolSummary.cover.aNetworkCanvasProject": {
-    "defaultMessage": "A Network Canvas project",
-    "description": "Accessible name of the Network Canvas logo on the cover page of the printable protocol summary; read only by screen readers."
   },
   "architect.protocolSummary.cover.documentCreated": {
     "defaultMessage": "Document Created: {now}",
@@ -3103,10 +2827,6 @@
     "defaultMessage": "Misconfigured Protocol",
     "description": "Title of the dialog shown when the latest change left the open protocol invalid and editing cannot continue."
   },
-  "architect.protocolValidationDialogReporter.protocolValidationErrors": {
-    "defaultMessage": "Protocol validation errors",
-    "description": "Accessible name of the scrollable box that lists the technical validation errors in the Misconfigured Protocol dialog; read only by screen readers."
-  },
   "architect.protocolValidationDialogReporter.returnToStartScreen": {
     "defaultMessage": "Return to Start Screen",
     "description": "Button that leaves the current screen for Architect's start screen."
@@ -3199,14 +2919,6 @@
     "defaultMessage": "Filter by capabilities:",
     "description": "Heading beside the row of toggleable capability tags that narrow the list of interface types in the dialog for choosing a new stage type."
   },
-  "architect.screens.newStageScreen.newStageScreen.interfaceCapabilityFilters": {
-    "defaultMessage": "Interface capability filters",
-    "description": "Accessible name of the group of capability filter tags in the dialog for choosing a new stage type; read only by screen readers."
-  },
-  "architect.screens.newStageScreen.newStageScreen.searchInterfaces": {
-    "defaultMessage": "Search interfaces",
-    "description": "Accessible name of the search field in the dialog for choosing a new stage type; read only by screen readers."
-  },
   "architect.screens.newStageScreen.newStageScreen.searchInterfacesByNameOrKeyword": {
     "defaultMessage": "Search interfaces by name or keyword...",
     "description": "Placeholder inside the search field of the dialog for choosing a new stage type. Interfaces are the available stage types, searched by their name or keywords."
@@ -3270,34 +2982,6 @@
   "architect.stageEditor.languages.title": {
     "defaultMessage": "Languages",
     "description": "Heading of the stage editor section listing the languages a participant can choose between on a language chooser stage."
-  },
-  "architect.stageEditor.sectionOutline.completeStatus": {
-    "defaultMessage": "Finished",
-    "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."
-  },
-  "architect.stageEditor.sectionOutline.errorStatus": {
-    "defaultMessage": "Has a problem",
-    "description": "Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a color and an icon."
-  },
-  "architect.stageEditor.sectionOutline.incompleteStatus": {
-    "defaultMessage": "Not finished",
-    "description": "Spoken state of one section of a stage editor: it still has required fields the researcher has not filled in. Read out after the section’s own name, and never shown on screen."
-  },
-  "architect.stageEditor.sectionOutline.landmarkLabel": {
-    "defaultMessage": "Stage sections",
-    "description": "Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview."
-  },
-  "architect.stageEditor.sectionOutline.statusWithProblems": {
-    "defaultMessage": "{status}. {problems}",
-    "description": "Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state (\"Has a problem\"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them."
-  },
-  "architect.stageEditor.sectionOutline.switchedOffStatus": {
-    "defaultMessage": "Switched off",
-    "description": "Spoken state of one section of a stage editor: the researcher has turned this optional part of the stage off, so it asks for nothing. Read out after the section’s own name, and never shown on screen."
-  },
-  "architect.stageEditor.sectionOutline.unavailableStatus": {
-    "defaultMessage": "Not available yet",
-    "description": "Spoken state of one section of a stage editor: it cannot be filled in until something else in the stage has been chosen. Read out after the section’s own name, and never shown on screen."
   },
   "architect.stageEditor.stageDraftConflictDialog.decideLater": {
     "defaultMessage": "Decide Later",
@@ -3699,14 +3383,6 @@
     "defaultMessage": "Using a testing Mapbox token",
     "description": "Title of a warning alert at the top of the timeline, shown when the protocol uses Network Canvas's shared Mapbox testing token."
   },
-  "architect.timeline.announcement.deleted": {
-    "defaultMessage": "Deleted stage {position, number}. {remaining, plural, =0 {No stages remain.} one {1 stage remains.} other {# stages remain.}}",
-    "description": "Live announcement after a timeline operation succeeds."
-  },
-  "architect.timeline.announcement.moved": {
-    "defaultMessage": "Moved stage {fromPosition, number} to position {toPosition, number} of {total, number}.",
-    "description": "Live announcement after a timeline operation succeeds."
-  },
   "architect.timeline.finishStageGuards.cannotMoveStage": {
     "defaultMessage": "Cannot move stage",
     "description": "Title of the notice shown when a move would put a stage after a stage that ends the interview."
@@ -3722,10 +3398,6 @@
   "architect.timeline.insertButton.addStageHere": {
     "defaultMessage": "Add stage here",
     "description": "Visible label of the button between two stages on the timeline that adds a new stage at that point. It appears when the button is hovered or focused."
-  },
-  "architect.timeline.insertButton.addStageHereBeforeStage": {
-    "defaultMessage": "Add stage here, before stage {position, number}: {nextStageName}",
-    "description": "Accessible name of the button between two stages on the timeline that adds a new stage there; read only by screen readers. position is the number the new stage would take; nextStageName is the name of the stage it would be inserted before."
   },
   "architect.timeline.timeline.addNewStage": {
     "defaultMessage": "Add new stage",
@@ -3747,17 +3419,9 @@
     "defaultMessage": "OK",
     "description": "Button that dismisses the warning dialogs on the timeline, such as the ones for a stage that cannot be deleted."
   },
-  "architect.timeline.timeline.protocolStages": {
-    "defaultMessage": "Protocol stages",
-    "description": "Accessible name of the list of stages on the timeline; read only by screen readers."
-  },
   "architect.timeline.timeline.thisFamilyPedigreeStageIsUsed": {
     "defaultMessage": "{stageCount, plural, one {This Family Pedigree stage is used by the Narrative Pedigree stage {names}. Remove that stage or change its source before deleting this stage.} other {This Family Pedigree stage is used by the Narrative Pedigree stages {names}. Remove those stages or change their source before deleting this stage.}}",
     "description": "Body of the Cannot delete stage dialog. stageCount is the number of Narrative Pedigree stages that use this Family Pedigree stage as their source; names is the list of those stages."
-  },
-  "architect.timeline.timelineStageRow.deleteStage": {
-    "defaultMessage": "Delete stage {position, number}: {stageName}",
-    "description": "Accessible name of the trash button on a timeline stage that deletes the stage, after confirmation. position is its number in the timeline; stageName is its title."
   },
   "architect.timeline.timelineStageRow.hasFilter": {
     "defaultMessage": "Has filter",
@@ -3775,14 +3439,6 @@
     "defaultMessage": "Below first threshold",
     "description": "Label of the fixed first row in the thresholds list of the shape mapping. It covers values lower than the lowest threshold, which use the default shape."
   },
-  "architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved": {
-    "defaultMessage": "Below first threshold cannot be removed",
-    "description": "Accessible name of the disabled delete button in the fixed Below first threshold row; read only by screen readers. The row always exists and cannot be removed."
-  },
-  "architect.typeEditor.shapeVariableMapping.defaultShape": {
-    "defaultMessage": "Default shape",
-    "description": "Accessible name of the disabled shape picker in the fixed Below first threshold row; it shows the node type's default shape. Read only by screen readers."
-  },
   "architect.typeEditor.shapeVariableMapping.false": {
     "defaultMessage": "False",
     "description": "Label of the False value of a yes/no variable in the shape mapping of the node type editor, beside the picker for the shape used when the variable is false."
@@ -3795,25 +3451,9 @@
     "defaultMessage": "Override the default shape based on the value of a node's attribute.",
     "description": "Hint below the Map attribute to shape toggle. Attribute means a variable recorded about each node of this type."
   },
-  "architect.typeEditor.shapeVariableMapping.removeThreshold": {
-    "defaultMessage": "Remove threshold {value1, number}",
-    "description": "Accessible remove-button label for a shape-mapping threshold. value1 is its one-based position in the threshold list."
-  },
-  "architect.typeEditor.shapeVariableMapping.shapeAtThreshold": {
-    "defaultMessage": "Shape at threshold {value}",
-    "description": "Accessible label for the shape chosen at a numeric breakpoint. value is the complete locale-formatted threshold number; its precision must be preserved."
-  },
   "architect.typeEditor.shapeVariableMapping.shapeForEachValue": {
     "defaultMessage": "Shape for each value",
     "description": "Heading above the list of a categorical, ordinal or yes/no variable's values in the shape mapping, each with a picker for the shape used for that value."
-  },
-  "architect.typeEditor.shapeVariableMapping.shapeMapping": {
-    "defaultMessage": "Shape mapping",
-    "description": "Hidden field label (accessible name only) of the shape mapping editor, which holds the chosen variable and its value-to-shape rules."
-  },
-  "architect.typeEditor.shapeVariableMapping.thresholdValue": {
-    "defaultMessage": "Threshold {value1, number} value",
-    "description": "Accessible name of a numeric shape-mapping threshold input. value1 is the one-based threshold position, not the numeric breakpoint value."
   },
   "architect.typeEditor.shapeVariableMapping.thresholds": {
     "defaultMessage": "Thresholds",
@@ -3938,46 +3578,6 @@
   "architect.utility.hooks.useProtocolNavGuard.returnToStartScreenb2364": {
     "defaultMessage": "Return to start screen?",
     "description": "Title of the confirmation dialog shown when the researcher leaves the protocol editor to return to the start screen and nothing is unsaved."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeRedone": {
-    "defaultMessage": "Change redone.",
-    "description": "Screen-reader announcement after redo changed the protocol without moving the researcher to another page."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToCodebookTo": {
-    "defaultMessage": "Change redone. Moved to Codebook to show the result.",
-    "description": "Screen-reader announcement after redo moved the researcher to the Codebook page to show the result. \"Codebook\" is the name of that page in the project navigation."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToLanguages": {
-    "defaultMessage": "Change redone. Moved to Languages to show the result.",
-    "description": "Screen-reader announcement after a redo moved the researcher to the Languages page. \"Languages\" is the name of that page in the project navigation."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToResourcesTo": {
-    "defaultMessage": "Change redone. Moved to Resources to show the result.",
-    "description": "Screen-reader announcement after redo moved the researcher to the Resources page to show the result. \"Resources\" is the name of that page in the project navigation."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToStagesTo": {
-    "defaultMessage": "Change redone. Moved to Stages to show the result.",
-    "description": "Screen-reader announcement after redo moved the researcher to the Stages page to show the result. \"Stages\" is the name of that page in the project navigation."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeUndone": {
-    "defaultMessage": "Change undone.",
-    "description": "Screen-reader announcement after undo changed the protocol without moving the researcher to another page."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToCodebookTo": {
-    "defaultMessage": "Change undone. Moved to Codebook to show the result.",
-    "description": "Screen-reader announcement after undo moved the researcher to the Codebook page to show the result. \"Codebook\" is the name of that page in the project navigation."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToLanguages": {
-    "defaultMessage": "Change undone. Moved to Languages to show the result.",
-    "description": "Screen-reader announcement after an undo moved the researcher to the Languages page. \"Languages\" is the name of that page in the project navigation."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToResourcesTo": {
-    "defaultMessage": "Change undone. Moved to Resources to show the result.",
-    "description": "Screen-reader announcement after undo moved the researcher to the Resources page to show the result. \"Resources\" is the name of that page in the project navigation."
-  },
-  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToStagesTo": {
-    "defaultMessage": "Change undone. Moved to Stages to show the result.",
-    "description": "Screen-reader announcement after undo moved the researcher to the Stages page to show the result. \"Stages\" is the name of that page in the project navigation."
   },
   "architect.utility.installBanner.after7DaysOfInactivity": {
     "defaultMessage": "{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Architect now to protect your protocols from being deleted: choose Share → Add to Dock.",
@@ -4147,37 +3747,13 @@
     "defaultMessage": "{min, plural, one {You must choose a minimum of # option} other {You must choose a minimum of # options}}",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
   },
-  "architect.variablePill.attribute": {
-    "defaultMessage": "{type} attribute",
-    "description": "Alt text of the small icon on an attribute (codebook variable) pill, read only by screen readers. type is the lowercase name of the attribute type, such as text or number."
-  },
-  "architect.variablePill.attributeName": {
-    "defaultMessage": "Attribute name",
-    "description": "Accessible name of the text field in the attribute rename dialog; read only by screen readers."
-  },
-  "architect.variablePill.cancelled": {
-    "defaultMessage": "Attribute name edit cancelled",
-    "description": "Live announcement after cancelling an attribute rename."
-  },
   "architect.variablePill.editAttributeName": {
     "defaultMessage": "Edit attribute name: {label}",
     "description": "Accessible name and tooltip of the pill button that opens the attribute rename editor. label is the current attribute name."
   },
-  "architect.variablePill.editAttributeName62aa3": {
-    "defaultMessage": "Edit attribute name",
-    "description": "Accessible name of the dialog in which the researcher renames an attribute (codebook variable); read only by screen readers."
-  },
-  "architect.variablePill.editing": {
-    "defaultMessage": "Editing attribute {name}",
-    "description": "Live announcement when the attribute name editor opens."
-  },
   "architect.variablePill.enterAnAttributeName": {
     "defaultMessage": "Enter an attribute name...",
     "description": "Placeholder shown in the empty text field of the attribute rename dialog."
-  },
-  "architect.variablePill.renamed": {
-    "defaultMessage": "Attribute renamed to {name}",
-    "description": "Live announcement after an attribute rename. Name is authored data."
   },
   "architect.variablePill.saveChanges": {
     "defaultMessage": "Save Changes",

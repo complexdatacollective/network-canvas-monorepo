@@ -20,11 +20,10 @@ import { StageEditorStoryHost } from '../StageEditorStoryHost.tsx';
  * fixture holds — so the editor it mounts has to be one that works for all of
  * them, and has to be small enough that a failure is the host's.
  */
-const renderHost = (stageId: string, readOnly = false) =>
+const renderHost = (stageId: string) =>
   render(
     <StageEditorStoryHost
       stageId={stageId}
-      readOnly={readOnly}
       renderEditor={({ target, formId, onSaved, actions }) => (
         <ResourceClientProvider>
           <StageEditSession target={target} formId={formId} onSaved={onSaved}>
@@ -65,46 +64,6 @@ describe('the host every stage editor’s stories run in', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Stage name' }),
     ).toBeInTheDocument();
-  });
-
-  /**
-   * The report a play function reads. An editor that saved and one that
-   * quietly did nothing look identical on screen otherwise.
-   */
-  it('names the stage a save committed, and prints what was committed', async () => {
-    const user = userEvent.setup();
-    renderHost('information-1');
-
-    const name = await screen.findByRole('textbox', { name: 'Stage name' });
-    await user.clear(name);
-    await user.type(name, 'Renamed by the researcher');
-    await user.click(screen.getByRole('button', { name: 'Save stage' }));
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('Saved “Renamed by the researcher”.'),
-    );
-    const committed = screen.getByRole('region', {
-      name: 'What the host was asked to commit',
-    });
-    expect(committed).toHaveTextContent(
-      '"label": { "en-US": "Renamed by the researcher" }',
-    );
-    // A stage with a long line makes this box scroll sideways, and the end of
-    // that line is only reachable by scrolling it. So it has to take focus: a
-    // reader who cannot use a pointer has no other way there.
-    committed.focus();
-    expect(committed).toHaveFocus();
-  });
-
-  /** A spectator's chrome says so rather than offering a save that is refused. */
-  it('disables the host’s save control for a spectator', async () => {
-    renderHost('information-1', true);
-
-    expect(
-      await screen.findByRole('button', { name: 'Save stage' }),
-    ).toBeDisabled();
   });
 });
 

@@ -57,15 +57,6 @@ const utilityMessages = defineMessages({
       'Warning banner at the top of the screen shown when Architect is running in a browser tab rather than installed, because the browser could delete the stored protocols. browserName is the browser, e.g. Chrome. For WebKit browsers on iPhone, iPad or other non-Mac devices that delete data after 7 days of inactivity; usesWebKit is true or false. The last sentence names the menu steps to install.',
   },
 });
-const messages = defineMessages({
-  installArchitect: {
-    id: 'architect.installBanner.installArchitect',
-    defaultMessage: 'Install Architect',
-    description:
-      'Accessible name of the banner warning that stored protocols could be deleted by the browser unless Architect is installed; read only by screen readers.',
-  },
-});
-
 const SESSION_DISMISS_KEY = 'architect:install-banner-dismissed';
 
 const readSessionDismissed = () => {
@@ -132,7 +123,7 @@ function InstallBannerView({
   const intl = useAppIntl();
   return (
     <StorageRiskBanner
-      aria-label={intl.formatMessage(messages.installArchitect)}
+      aria-label={'Install Architect'}
       risk={profile.risk}
       installAction={canPromptInstall ? onInstall : undefined}
       onDismiss={onDismiss}

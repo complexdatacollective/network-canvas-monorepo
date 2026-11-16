@@ -164,7 +164,7 @@ const Contents = () => {
                         {typeAssets.map(([id, asset]) => (
                           <li key={id}>
                             <DualLink to={`#asset-${id}`}>
-                              {(asset as Asset).name}
+                              <bdi>{(asset as Asset).name}</bdi>
                             </DualLink>
                           </li>
                         ))}

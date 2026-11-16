@@ -1,0 +1,79 @@
+---
+title: Formulaires
+navOrder: 6
+translatedFrom: 73be169f2fd60439281ded4cd56a5d46174f4cf1
+---
+
+<Definition>
+  Les formulaires vous permettent d’attribuer des variables à l’ego (la personne
+  participante, au centre de son réseau), aux nœuds ou aux liens, au moyen
+  d’un format familier et simple à utiliser.
+</Definition>
+
+## Détails {#details}
+
+Les formulaires sont l’un des principaux moyens d’attribuer des valeurs à vos [variables](/fr/design-protocols/key-concepts/variables) dans Interviewer. Ils associent chaque **variable** à une **[commande de saisie](/fr/design-protocols/key-concepts/input-controls)** (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…), à une **question** et à des **[options de validation](/fr/design-protocols/key-concepts/field-validation)** pour former un **champ**. Chaque formulaire peut comporter autant de champs que vous le souhaitez, dans l’ordre de votre choix.
+
+![](/assets/img/key-concepts/forms/preview.png)
+
+Lorsque vous concevez votre protocole avec Architect, vous rencontrerez plusieurs endroits où vous pouvez construire un formulaire, en particulier lors de la création d’étapes qui utilisent des [interfaces](/fr/design-protocols/key-concepts/interfaces) comme « Générateur de noms », « Formulaire par alter » (un formulaire pour chaque alter, c’est-à-dire chaque personne que la personne participante cite pendant l’entretien) et « Formulaire ego ».
+
+## Construire un formulaire {#constructing-a-form}
+
+Les formulaires se composent d’un ou de plusieurs champs, que vous pouvez réordonner pour qu’ils apparaissent dans n’importe quel ordre. L’ordre dans lequel ils apparaissent dans Architect est celui dans lequel ils seront affichés dans Interviewer. Pour commencer à créer un formulaire, repérez la section du formulaire dans l’interface que vous configurez.
+
+![](/assets/img/key-concepts/forms/form.png)
+
+<AppOnly app="current">
+
+Définissez le **Titre du formulaire**, puis créez un champ pour chacun des attributs que vous souhaitez recueillir dans ce formulaire en cliquant sur **Créer un champ de formulaire**.
+
+La boîte de dialogue du champ comporte deux volets. À gauche se trouvent les paramètres du champ. À droite, un **Aperçu interactif** montre la question telle que la personne participante la verra, avec le thème propre à l’entretien. L’aperçu suit ce que vous saisissez et choisissez, et vous pouvez y répondre : **Vérifier la réponse** applique à votre réponse les règles de validation de l’attribut, pour que vous voyiez ce qui serait indiqué à une personne participante. Ce sont les règles que l’attribut porte déjà dans le livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) : lorsqu’un champ crée un nouvel attribut, les règles que vous définissez à côté ne s’appliquent qu’une fois le champ enregistré ; d’ici là, **Vérifier la réponse** accepte n’importe quelle réponse. Répondre dans l’aperçu ne modifie rien dans votre protocole. Sur un écran étroit, les deux volets s’empilent en une seule colonne.
+
+Les paramètres sont présentés dans cet ordre :
+
+1. **Sélection de l’attribut** : choisissez un attribut existant, ou créez-en un nouveau, dans la fenêtre des attributs.
+2. **Configuration du champ** : le **Texte de la question** (la [consigne](/fr/design-protocols/key-concepts/prompts) affichée à la personne participante, qui accepte la mise en forme Markdown), un **Texte de l’indication** facultatif, l’interrupteur **Afficher les indications de validation** et enfin la **Commande de saisie**. Pour un nouvel attribut, la commande de saisie que vous choisissez détermine le type de l’attribut.
+3. Viennent ensuite les options de réponse propres à l’attribut, pour les types d’attributs qui en ont, et sa section **Validation**. Pour un attribut que vous créez dans ce champ, vous pouvez définir ici ses règles de validation avant d’enregistrer le champ, et elles sont créées avec lui.
+
+L’indication est un texte d’aide, mis en forme en Markdown, affiché sous la question pour aider les personnes participantes à comprendre comment répondre (par exemple, « Sélectionnez toutes les réponses qui s’appliquent… »). Laissez-la vide si aucune aide supplémentaire n’est nécessaire.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Définissez l’en-tête du formulaire, puis créez un champ pour chacune des variables que vous souhaitez recueillir dans ce formulaire en cliquant sur le bouton **create new** (créer un nouveau champ).
+
+Lorsque vous créez un nouveau champ, vous commencez par créer une nouvelle variable ou par en sélectionner une existante dans le sélecteur de variables. Ensuite, vous saisissez la [consigne](/fr/design-protocols/key-concepts/prompts) à afficher à côté de la commande de saisie. La consigne accepte la mise en forme Markdown.
+
+Vous pouvez aussi fournir une indication (**hint**) facultative pour le champ. L’indication est un texte d’aide, mis en forme en Markdown, affiché sous la question pour aider les personnes participantes à comprendre comment répondre (par exemple, « Sélectionnez toutes les réponses qui s’appliquent… »). Laissez-la vide si aucune aide supplémentaire n’est nécessaire.
+
+Vous devez ensuite choisir la [commande de saisie](/fr/design-protocols/key-concepts/input-controls) à utiliser. Pour les nouvelles variables, ce choix détermine le type de la variable.
+
+</AppOnly>
+
+<TipBox danger>
+
+Une fois le type d’une variable défini (en choisissant sa commande de saisie lors de sa première utilisation), vous ne pouvez plus le modifier. Vous pouvez toutefois changer par la suite la commande de saisie précise de votre formulaire, à condition qu’elle soit compatible avec le type de la variable.
+
+</TipBox>
+
+Après avoir défini la commande de saisie, réglez les options propres à la variable et configurez les [options de validation](/fr/design-protocols/key-concepts/field-validation) dont vous avez besoin. La validation contribue à la qualité des données en imposant des règles comme les champs obligatoires, les contraintes de format et les plages de valeurs. Vous pouvez aussi activer **Afficher les indications de validation** pour le champ : des indications tirées des règles de validation du champ s’affichent alors automatiquement, ce qui aide les personnes participantes à comprendre ce qui est attendu sans que vous ayez à le rédiger vous-même.
+
+![](/assets/img/key-concepts/forms/field.png)
+
+## Points à prendre en compte {#considerations}
+
+Lorsque vous concevez des formulaires, gardez ces points à l’esprit :
+
+- Même s’il peut être tentant de créer des formulaires longs et élaborés, comme c’est l’usage dans d’autres logiciels d’enquête plus traditionnels, tenez compte de la charge que des formulaires surchargés imposent aux personnes participantes et de leur effet sur la qualité des données. Par exemple, même si vous pouvez recueillir des données catégorielles dans un formulaire, vous pouvez choisir d’utiliser plutôt l’interface « Classement par catégories ». Network Canvas Interviewer n’a pas vocation à remplacer les méthodes d’enquête existantes.
+- Un usage stratégique des formulaires vous permet de recueillir des données d’attributs de façon systématique. En revanche, vous perdez les qualités interactives (par exemple le glisser-déposer) d’autres interfaces, qui peuvent améliorer l’expérience de l’entretien pour les personnes participantes et produire des données de meilleure qualité.
+- Si vous utilisez la même variable à plusieurs endroits de votre entretien (par exemple dans différents formulaires), toute modification de la commande de saisie ou des options de validation s’appliquera à _toutes_ les utilisations de la variable.
+
+## Concepts associés {#related-concepts}
+
+- [Commandes de saisie](/fr/design-protocols/key-concepts/input-controls) : choisir les commandes de saisie adaptées à vos variables
+- [Validation des champs](/fr/design-protocols/key-concepts/field-validation) : garantir la qualité des données grâce aux règles de validation
+- [Variables](/fr/design-protocols/key-concepts/variables) : comprendre les types de variables et leur configuration
+- [Interfaces](/fr/design-protocols/key-concepts/interfaces) : découvrir toutes les interfaces disponibles, y compris celles qui reposent sur des formulaires
+- [Consignes](/fr/design-protocols/key-concepts/prompts) : configurer les questions présentées aux personnes participantes

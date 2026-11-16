@@ -23,12 +23,6 @@ import NodeShapeSvgs from '../codebook/NodeShapeSvgs.tsx';
 import { shapeOptions } from '../codebook/shapeMapping.ts';
 
 const messages = defineMessages({
-  selectShape: {
-    id: 'protocolBuilder.shapePicker.selectShape',
-    defaultMessage: 'Select shape {value1}',
-    description:
-      'Accessible name of one swatch of the node-shape picker, where {value1} is the shape’s own name — “Select shape Circle”. A node is a member of the interview network.',
-  },
   unnamedShape: {
     id: 'protocolBuilder.shapePicker.unnamedShape',
     defaultMessage: 'Custom shape {position, number}',
@@ -63,9 +57,7 @@ export const shapeTileOptions = (
     }),
   ].map((option) => ({
     ...option,
-    ariaLabel: intl.formatMessage(messages.selectShape, {
-      value1: option.label,
-    }),
+    ariaLabel: `Select shape ${option.label}`,
   }));
 
 /**

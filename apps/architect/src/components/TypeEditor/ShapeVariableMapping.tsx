@@ -53,24 +53,6 @@ const additionalMessages = defineMessages({
   },
 });
 const messages = defineMessages({
-  thresholdValue: {
-    id: 'architect.typeEditor.shapeVariableMapping.thresholdValue',
-    defaultMessage: 'Threshold {value1, number} value',
-    description:
-      'Accessible name of a numeric shape-mapping threshold input. value1 is the one-based threshold position, not the numeric breakpoint value.',
-  },
-  shapeAtThreshold: {
-    id: 'architect.typeEditor.shapeVariableMapping.shapeAtThreshold',
-    defaultMessage: 'Shape at threshold {value}',
-    description:
-      'Accessible label for the shape chosen at a numeric breakpoint. value is the complete locale-formatted threshold number; its precision must be preserved.',
-  },
-  removeThreshold: {
-    id: 'architect.typeEditor.shapeVariableMapping.removeThreshold',
-    defaultMessage: 'Remove threshold {value1, number}',
-    description:
-      'Accessible remove-button label for a shape-mapping threshold. value1 is its one-based position in the threshold list.',
-  },
   true: {
     id: 'architect.typeEditor.shapeVariableMapping.true',
     defaultMessage: 'True',
@@ -107,23 +89,11 @@ const messages = defineMessages({
     description:
       'Label of the fixed first row in the thresholds list of the shape mapping. It covers values lower than the lowest threshold, which use the default shape.',
   },
-  defaultShape: {
-    id: 'architect.typeEditor.shapeVariableMapping.defaultShape',
-    defaultMessage: 'Default shape',
-    description:
-      "Accessible name of the disabled shape picker in the fixed Below first threshold row; it shows the node type's default shape. Read only by screen readers.",
-  },
   usesDefaultShape: {
     id: 'architect.typeEditor.shapeVariableMapping.usesDefaultShape',
     defaultMessage: 'uses default shape',
     description:
       "Small note at the end of the fixed Below first threshold row, saying that values below the first threshold use the node type's default shape.",
-  },
-  belowFirstThresholdCannotBeRemoved: {
-    id: 'architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved',
-    defaultMessage: 'Below first threshold cannot be removed',
-    description:
-      'Accessible name of the disabled delete button in the fixed Below first threshold row; read only by screen readers. The row always exists and cannot be removed.',
   },
   mapAttributeToShape: {
     id: 'architect.typeEditor.shapeVariableMapping.mapAttributeToShape',
@@ -137,12 +107,6 @@ const messages = defineMessages({
       "Override the default shape based on the value of a node's attribute.",
     description:
       'Hint below the Map attribute to shape toggle. Attribute means a variable recorded about each node of this type.',
-  },
-  shapeMapping: {
-    id: 'architect.typeEditor.shapeVariableMapping.shapeMapping',
-    defaultMessage: 'Shape mapping',
-    description:
-      'Hidden field label (accessible name only) of the shape mapping editor, which holds the chosen variable and its value-to-shape rules.',
   },
 });
 
@@ -228,7 +192,6 @@ const ThresholdItem = ({
   onUpdate,
   onDelete,
 }: ArrayFieldItemProps<ShapeThreshold>) => {
-  const intl = useAppIntl();
   const { config, nodeColor, customShapes } = useContext(ThresholdItemContext);
   const value = item.value ?? 0;
   const shape = item.shape;
@@ -257,9 +220,8 @@ const ThresholdItem = ({
         min={config.min}
         max={config.max}
         size="sm"
-        aria-label={intl.formatMessage(messages.thresholdValue, {
-          value1: index + 1,
-        })}
+        aria-label={`Threshold ${index + 1} value`}
+        lang="en"
         className="w-36"
         value={draft}
         onChange={(nextValue) => setDraft(nextValue ?? '')}
@@ -274,9 +236,7 @@ const ThresholdItem = ({
         small
         nodeColor={nodeColor}
         customShapes={customShapes}
-        aria-label={intl.formatMessage(messages.shapeAtThreshold, {
-          value: intl.formatNumber(value, { maximumSignificantDigits: 21 }),
-        })}
+        aria-label={`Shape at threshold ${value}`}
         value={shape}
         onChange={(nextShape) =>
           onUpdate?.({
@@ -292,9 +252,8 @@ const ThresholdItem = ({
         variant="text"
         className="ms-auto"
         onClick={onDelete}
-        aria-label={intl.formatMessage(messages.removeThreshold, {
-          value1: index + 1,
-        })}
+        aria-label={`Remove threshold ${index + 1}`}
+        lang="en"
       />
     </>
   );
@@ -467,7 +426,7 @@ const ShapeMappingEditor = ({
               nodeColor={nodeColor}
               customShapes={customShapes}
               value={defaultShape}
-              aria-label={intl.formatMessage(messages.defaultShape)}
+              aria-label="Default shape"
             />
             <span className="ms-auto text-xs text-current/70">
               {intl.formatMessage(messages.usesDefaultShape)}
@@ -478,9 +437,8 @@ const ShapeMappingEditor = ({
               color="destructive"
               variant="text"
               disabled
-              aria-label={intl.formatMessage(
-                messages.belowFirstThresholdCannotBeRemoved,
-              )}
+              aria-label="Below first threshold cannot be removed"
+              lang="en"
             />
           </Surface>
           <ThresholdItemContext.Provider
@@ -583,7 +541,8 @@ const ShapeVariableMapping = ({
         <div className="mt-5">
           <ArchitectField
             name={SHAPE_MAPPING_FIELD}
-            label={intl.formatMessage(messages.shapeMapping)}
+            // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+            label="Shape mapping"
             labelHidden
             component={ShapeMappingEditor}
             initialValue={initialMapping ?? EMPTY_MAPPING}

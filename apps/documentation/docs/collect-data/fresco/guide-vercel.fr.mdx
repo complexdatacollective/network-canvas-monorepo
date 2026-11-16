@@ -1,0 +1,307 @@
+---
+title: Guide de déploiement sur Vercel
+date: 22nd July 2026
+navOrder: 5
+hidden: true
+translatedFrom: 7be4ee64cd5ee029104f3de19da83ceb6e33024f
+---
+
+<TipBox danger>
+
+**Ce guide de déploiement est obsolète.** Il est conservé pour les équipes de recherche qui ont déjà une instance de Fresco déployée sur Vercel, et il n’est plus mis à jour. Pour un nouveau déploiement, suivez le [guide de déploiement](/fr/collect-data/fresco/guide) officiellement pris en charge, qui déploie Fresco avec Netlify.
+
+</TipBox>
+
+<SummaryCard duration="60 minutes">
+
+<SummarySection>
+Ce guide vous accompagne pas à pas dans le déploiement de votre instance de Fresco.
+
+</SummarySection>
+
+<PrerequisitesSection>
+Avant de commencer, vous devez :
+
+- Lire l’article [À propos de Fresco](/fr/collect-data/fresco/about) pour comprendre ce qu’est Fresco et comment il fonctionne.
+- Créer un compte sur [GitHub](https://github.com/) (en anglais) si vous n’en avez pas déjà un.
+- Prévoir suffisamment de temps pour effectuer tout le déploiement en une seule fois.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+Merci de prendre le temps de déployer Fresco ! Nous espérons qu’il vous sera utile pour vos recherches et votre collecte de données. Ce guide vous accompagne pas à pas dans le déploiement de votre instance de Fresco.
+
+Fresco ne ressemble pas aux autres logiciels que vous avez peut-être déjà installés. C’est une application web : vous ne l’installez donc pas sur un ordinateur portable ou de bureau. Vous la « déployez » plutôt sur un ou plusieurs serveurs (votre « infrastructure »), auxquels vous accédez ensuite depuis votre navigateur web.
+
+Cette approche permet aux équipes de recherche de gérer leurs propres données et d’adapter leur infrastructure à leurs besoins.
+
+Cela signifie _aussi_ que vous êtes responsable de la sécurité et de la maintenance de votre propre déploiement ! Par conception, l’équipe du projet Network Canvas n’a aucun accès à vos données ni à votre infrastructure.
+
+Pour déployer Fresco, nous utiliserons les services et technologies suivants :
+
+- **GitHub** : une plateforme d’hébergement et de partage de code, détenue et exploitée par Microsoft. Le code de Fresco est partagé sur GitHub, et vous aurez besoin d’un compte GitHub pour le déployer. Si vous n’avez pas de compte GitHub, vous pouvez en créer un gratuitement sur <a href="https://github.com/" target="_blank">github.com</a>.
+- **PostgreSQL** : un système de base de données relationnelle puissant et open source. Fresco utilise PostgreSQL pour stocker les données de votre étude, des personnes participantes et de leurs réponses.
+- **Stockage objet** : Fresco stocke les ressources des protocoles (comme les fichiers multimédias) dans un stockage objet compatible S3. Vous pouvez utiliser **UploadThing**, un service géré qui est l’option la plus simple, ou fournir votre propre **bucket compatible S3** (AWS S3, Cloudflare R2, MinIO ou Backblaze B2).
+
+Pour simplifier le plus possible le déploiement, nous avons conçu Fresco pour qu’il soit déployé avec <a href="https://vercel.com" target="_blank">Vercel</a> (en anglais), une plateforme cloud spécialisée dans le déploiement d’applications web. Elle est conçue pour être facile à utiliser et propose une offre gratuite généreuse, suffisante pour
+la plupart des projets de recherche. Il n’est pas obligatoire d’utiliser Vercel pour héberger Fresco, mais c’est la façon la plus simple de commencer, et c’est la méthode que nous suivrons dans ce guide.
+
+## Combien coûte le déploiement de Fresco ? {#how-much-does-deploying-fresco-cost}
+
+Vous pouvez déployer Fresco pour votre étude entièrement gratuitement en suivant les étapes détaillées dans ce guide. Nous l’avons conçu ainsi pour que le logiciel soit accessible au plus grand nombre. La méthode de déploiement gratuite comporte toutefois certaines limites, par exemple la quantité de données que vous pouvez stocker et transférer, et les performances générales de l’application.
+
+Si vous menez une étude de grande ampleur, si vous avez besoin de niveaux de performance garantis ou si votre comité d’éthique (IRB) vous impose des exigences particulières concernant les données des personnes participantes, il peut être préférable d’utiliser une offre payante ou une autre approche de déploiement. Consultez la page [Tarifs des services cloud](/fr/collect-data/fresco/cloud-pricing) pour en savoir plus. Notez que l’équipe Network Canvas ne tire aucun avantage financier du fournisseur cloud que vous choisissez.
+
+Il est aussi possible de déployer Fresco sur n’importe quelle infrastructure à laquelle vous avez accès. Pour en savoir plus, consultez notre guide de [déploiement avancé](./advanced).
+
+## Créer un fork de Fresco {#create-a-fork-of-fresco}
+
+Déployer Fresco consiste à mettre en place votre propre version unique du projet, que nous appelons votre **instance**. La première étape pour créer cette instance consiste à créer une copie (ou « fork ») du code de Fresco sur GitHub.
+
+Pour cela, vérifiez que vous avez un compte GitHub et que votre session y est ouverte, puis :
+
+1. Rendez-vous sur le <a href="https://github.com/complexdatacollective/Fresco" target="_blank">dépôt de Fresco sur GitHub</a> (en anglais), puis cliquez sur **« Fork »**.
+
+   ![](/assets/img/fresco-images/github-fork1.png)
+
+2. Saisissez un nom de dépôt (ce sera le nom de votre instance de Fresco ; vous pouvez donc utiliser le nom de votre étude ou de votre projet), ainsi qu’une description, puis cliquez sur **« Create Fork »**. Laissez l’option « copy main branch » cochée.
+
+   ![](/assets/img/fresco-images/github-fork2.png)
+
+Une fois cette étape terminée, GitHub vous redirige vers votre fork du dépôt. Cette copie du code de Fresco vous appartient désormais : vous pouvez la déployer ou la modifier comme vous le souhaitez.
+
+## Créer une base de données {#create-a-database}
+
+Fresco utilise une base de données PostgreSQL pour stocker les données de votre étude, des personnes participantes et de leurs réponses. Nous allons maintenant créer une nouvelle base de données sur la plateforme Vercel.
+
+1. Rendez-vous sur le <a href="https://vercel.com" target="_blank">site de Vercel</a> et cliquez sur **Continue with GitHub** pour vous connecter. Le site vous redirige vers le tableau de bord de Vercel.
+
+2. Dans votre tableau de bord, sélectionnez **Storage** dans la barre de navigation supérieure. Sélectionnez ensuite l’option **Neon Serverless Postgres**.
+
+   ![Créer une base de données Neon](/assets/img/fresco-images/vercel-db-1.png)
+
+3. Choisissez une région dans la liste déroulante. Nous vous recommandons de choisir la région la plus proche de vous. Par défaut, la base de données est créée dans l’offre gratuite (Free). Pour en savoir plus sur les tarifs des offres de base de données, consultez la page [Tarifs des services cloud](/fr/collect-data/fresco/cloud-pricing). Cliquez ensuite sur **Continue**.
+
+   ![Choisir une région et une offre tarifaire](/assets/img/fresco-images/vercel-db-2.png)
+
+4. Donnez un nom à votre base de données, puis cliquez sur **Create**. Votre base de données est générée. Cliquez sur **Done** pour revenir au tableau de bord de la base de données.
+
+   ![Créer la base de données](/assets/img/fresco-images/vercel-db-3.png)
+
+5. Sous l’en-tête « quickstart », vous voyez une chaîne de connexion à la base de données. Cliquez sur l’onglet `.env.local`, puis sur **« Copy Snippet »** pour copier les variables d’environnement dans votre presse-papiers.
+
+   ![Cliquer sur l’onglet `.env.local` et copier les variables d’environnement](/assets/img/fresco-images/vercel-storage-env.png)
+
+6. Collez les variables d’environnement dans un fichier texte ou une application de notes pour les conserver. Vous aurez besoin de ces variables d’environnement plus tard au cours du déploiement. Le fichier doit ressembler à ceci :
+
+   ```bash
+
+   # Recommended for most uses
+   DATABASE_URL=******************
+
+   # For uses requiring a connection without pgbouncer
+   DATABASE_URL_UNPOOLED=******************
+
+   # Parameters for constructing your own connection string
+   PGHOST=******************
+   PGHOST_UNPOOLED=******************
+   PGUSER=default
+   PGDATABASE=******************
+   PGPASSWORD******************
+
+   # Parameters for Vercel Postgres Templates
+   POSTGRES_URL=******************
+   POSTGRES_URL_NON_POOLING=******************
+   POSTGRES_USER=******************
+   POSTGRES_HOST=******************
+   POSTGRES_PASSWORD=******************
+   POSTGRES_DATABASE=******************
+   POSTGRES_URL_NO_SSL=******************
+   POSTGRES_PRISMA_URL=******************
+
+   # Neon Auth environment variables for Next.js
+   NEXT_PUBLIC_STACK_PROJECT_ID=****************************
+   NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=****************************************
+   STACK_SECRET_SERVER_KEY=***********************
+   ```
+
+## Créer un projet sur Vercel {#create-a-project-on-vercel}
+
+Nous allons ensuite déployer votre fork sur la plateforme Vercel, avec les services que nous avons créés précédemment. Vous pouvez utiliser l’offre « hobby » (gratuite) ou une offre payante (pour en savoir plus sur les tarifs des services cloud, lisez notre documentation [Tarifs des services cloud](/fr/collect-data/fresco/cloud-pricing)), mais dans ce guide, nous utiliserons l’offre gratuite.
+
+<TipBox>
+
+Si vous rencontrez un problème, consultez le guide de [résolution des problèmes](/fr/collect-data/fresco/deployment-troubleshooting) ou écrivez sur le <a href="https://community.networkcanvas.com" target="_blank">forum de la communauté</a> (en anglais).
+
+</TipBox>
+
+1. Cliquez <a href="https://vercel.com/new" target="_blank">ici</a> pour créer un nouveau projet sur Vercel. Connectez-vous avec GitHub si ce n’est pas déjà fait.
+
+2. Trouvez le nom de votre instance de Fresco dans la liste de vos dépôts Git, puis cliquez sur **« Import »**. Vous arrivez sur l’écran « Configure Project ».
+
+   ![Importer le dépôt Git](/assets/img/fresco-images/vercel2.png)
+
+3. Ouvrez l’éditeur de texte ou l’application de notes dans laquelle vous avez conservé vos variables d’environnement d’UploadThing et de la base de données. Sélectionnez **tout** le texte et copiez-le dans votre presse-papiers.
+
+4. Sur l’écran « Configure Project », développez la section « Environment Variables ». Collez vos variables dans la zone de texte « key » (celle qui contient le texte indicatif `EXAMPLE_NAME`). Vos variables sont automatiquement ajoutées en dessous.
+
+   ![Lorsque vous collez vos variables, elles sont ajoutées automatiquement](/assets/img/fresco-images/vercel-paste-env.png)
+
+5. Cliquez sur le bouton **« Deploy »** et attendez la fin du déploiement. Vercel construit maintenant votre instance de Fresco ! Cela prend de 2 à 5 minutes.
+
+6. Cliquez sur **« Continue to Dashboard »**, puis sur l’un des noms de domaine ou sur le bouton **« Visit »**.
+
+   ![Continuer vers le tableau de bord](/assets/img/fresco-images/vercel3.png)
+
+Cliquez ensuite sur le bouton **« Visit »** ou sur le domaine.
+
+![Ouvrir le domaine](/assets/img/fresco-images/vercel4.png)
+
+## Configuration initiale {#configuration-and-setup}
+
+Pour utiliser Fresco, vous devez créer un compte d’administration, qui vous permet d’accéder aux parties protégées de l’application pour gérer l’étude. C’est le premier compte de votre instance ; vous pourrez ajouter d’autres comptes plus tard depuis le tableau de bord.
+
+<TipBox danger>
+
+Pour garantir la sécurité de votre déploiement, vous disposez de **2 heures** à partir du déploiement de l’application pour effectuer la configuration initiale. Si ce délai s’écoule avant que toutes les étapes de configuration soient terminées, votre configuration expire. Pour redéployer, suivez notre guide pour [réinitialiser votre base de données](/fr/collect-data/fresco/deployment-troubleshooting#reset-your-database).
+
+</TipBox>
+
+### Créer un compte utilisateur {#create-a-user-account}
+
+Ouvrez votre application déployée et créez votre premier compte. Vous pouvez le protéger par un nom d’utilisateur et un mot de passe (choisissez un mot de passe aussi robuste que possible), ou bien par une clé d’accès (passkey). Dans **Fresco v4 et versions ultérieures**, vous pouvez ajouter d’autres comptes, activer l’authentification à deux facteurs et enregistrer des clés d’accès plus tard depuis le tableau de bord. Consultez [Comptes et sécurité](/fr/collect-data/fresco/accounts).
+
+<TipBox>
+
+Dans **Fresco v4 et versions ultérieures**, si plusieurs membres de l’équipe ont besoin d’un accès, créez un compte pour chaque personne depuis **Paramètres → Gestion des comptes** plutôt que de partager les mêmes identifiants de connexion. Notez que tous les comptes sont des comptes d’administration aux droits identiques, avec un accès complet à l’étude.
+
+</TipBox>
+
+![Créer un compte d’administration](/assets/img/fresco-images/fresco1.png)
+
+<TipBox danger>
+
+Fresco ne propose pas de réinitialisation du mot de passe par e-mail. Si vous oubliez votre mot de passe, vous pouvez retrouver l’accès avec un code de récupération, en demandant à une autre personne disposant d’un compte d’administration de réinitialiser l’authentification de votre compte ou, en dernier recours, en réinitialisant la base de données (ce qui détruit toutes les données). Conservez vos identifiants de connexion en lieu sûr et créez plusieurs comptes d’administration. Consultez [Comptes et sécurité](/fr/collect-data/fresco/accounts) pour en savoir plus.
+
+</TipBox>
+
+### Configurer le stockage {#configure-storage}
+
+Fresco stocke les ressources des protocoles (images, fichiers audio, vidéos, fichiers de réseau, etc.) dans un stockage objet compatible S3. Vous pouvez utiliser l’un de ces deux fournisseurs de stockage :
+
+- **UploadThing** : un service de stockage géré. C’est l’option la plus simple, et celle que nous recommandons pour la plupart des études : vous créez un compte, générez un jeton et le collez.
+- **Un bucket compatible S3** : AWS S3, Cloudflare R2, MinIO, Backblaze B2 ou tout point de terminaison compatible S3. Envisagez cette option si vous devez maîtriser la région de stockage et la localisation des données, si vous souhaitez garder tous les composants dans votre propre infrastructure ou si vous disposez déjà d’un stockage S3.
+
+<TipBox danger>
+
+Choisissez soigneusement votre fournisseur de stockage pendant la configuration initiale. Par la suite, le tableau de bord vous permet de mettre à jour les identifiants du fournisseur choisi, mais **il ne vous permet pas de changer de type de fournisseur**.
+
+</TipBox>
+
+<TipBox>
+
+La taille maximale d’un fichier de protocole `.netcanvas` téléversé (envoyé vers le serveur) est de **256 Mo**, quel que soit le fournisseur de stockage choisi.
+
+</TipBox>
+
+#### Créer un bucket de stockage avec UploadThing {#create-a-storage-bucket-using-uploadthing}
+
+Fresco peut utiliser un service tiers appelé « UploadThing » pour stocker les fichiers multimédias, notamment les ressources des protocoles. Pour utiliser ce service, vous créez un compte UploadThing qui vous permet de générer un jeton d’API, grâce auquel Fresco communique avec le service de façon sécurisée.
+
+<TipBox>
+
+Votre compte UploadThing vous est propre : personne d’autre n’aura accès aux fichiers stockés dans votre instance de Fresco. Pour en savoir plus sur UploadThing, consultez la <a href="https://docs.uploadthing.com" target="_blank">documentation d’UploadThing</a> (en anglais).
+
+</TipBox>
+
+Pour créer une application sur UploadThing :
+
+1. Rendez-vous sur <a href="https://uploadthing.com" target="_blank">uploadthing.com</a> (en anglais).
+
+2. Cliquez sur **« Get started »**.
+
+   ![Sélectionner « Get Started »](/assets/img/fresco-images/uploadthing1.png)
+
+3. Connectez-vous avec GitHub.
+
+4. Autorisez UploadThing en cliquant sur **« Authorize pingdotgg »**.
+
+5. Le site vous propose d’accéder à votre tableau de bord. Dans le tableau de bord, cliquez sur **« Create a new app »**.
+
+   ![Créer une nouvelle application](/assets/img/fresco-images/uploadthing4.png)
+
+6. Donnez un nom à votre application, puis cliquez sur **« Create App »**. Ne changez pas la région.
+
+   ![Créer l’application](/assets/img/fresco-images/uploadthing5.png)
+
+7. Dans votre tableau de bord, ouvrez la section **« API Keys »** depuis la barre latérale et copiez votre variable d’environnement avec le bouton de copie.
+
+   ![Copier vos clés d’API](/assets/img/fresco-images/uploadthing6.png)
+
+8. Collez votre variable d’environnement dans le champ UPLOADTHING_TOKEN du formulaire. Elle doit ressembler à ceci :
+
+   ```bash
+   UPLOADTHING_TOKEN='abCdefGHiJkLmNopQrsTuvWxYz.......'
+   ```
+
+   ![Coller votre variable d’environnement dans le formulaire](/assets/img/fresco-images/fresco2.png)
+
+#### Utiliser un bucket compatible S3 {#use-an-s3-compatible-bucket}
+
+Si vous préférez utiliser votre propre stockage, sélectionnez **S3 / compatible S3** à l’étape de stockage au lieu d’UploadThing.
+
+Avant de commencer, créez un bucket chez votre fournisseur S3 (AWS S3, Cloudflare R2, MinIO, Backblaze B2, etc.), générez une clé d’accès S3 (un ID de clé d’accès et sa clé d’accès secrète) avec des droits de lecture et d’écriture sur ce bucket, et configurez la politique CORS du bucket pour autoriser les requêtes provenant du domaine de votre instance de Fresco.
+
+Remplissez ensuite le formulaire :
+
+1. **URL du point de terminaison** : le point de terminaison S3 de votre fournisseur (par exemple `https://s3.amazonaws.com`).
+2. **URL publique** : l’URL que les navigateurs utilisent pour accéder au stockage. Pour AWS S3 ou Cloudflare R2, c’est généralement la même que l’URL du point de terminaison.
+3. **Nom du bucket**, **Région**, **ID de clé d’accès** et **Clé d’accès secrète** de votre bucket.
+
+Cliquez sur **Enregistrer et continuer**. Fresco vérifie la connexion avant de passer à la suite.
+
+![Sélection d’un bucket compatible S3 à l’étape de stockage](/assets/img/fresco-images/configure-storage-s3.png)
+
+### Téléverser un protocole {#upload-a-protocol}
+
+Vous pouvez, si vous le souhaitez, téléverser un protocole. Il est aussi possible de téléverser des protocoles depuis la page « Protocoles » une fois les étapes de configuration terminées.
+
+![Téléverser un protocole](/assets/img/fresco-images/fresco3.png)
+
+### Terminer la configuration {#finish-setup}
+
+La dernière étape de l’assistant confirme que votre instance est prête et renvoie vers la documentation. Cliquez sur **Accéder au tableau de bord !** pour commencer à utiliser Fresco.
+
+![La dernière étape de la configuration renvoie vers la documentation et ouvre le tableau de bord](/assets/img/fresco-images/fresco4.png)
+
+Tout le reste se gère depuis le tableau de bord. En particulier, **ajoutez des personnes participantes** depuis la page **Personnes participantes** (une par une ou en important un fichier CSV), et, depuis **Paramètres**, **activez le recrutement anonyme**, qui permet aux personnes participantes de rejoindre votre étude en ouvrant une URL. Consultez le guide [Utiliser Fresco](/fr/collect-data/fresco/using-fresco) pour ces deux opérations.
+
+<TipBox>
+
+Nous recueillons des statistiques d’utilisation anonymes (données d’usage et d’erreurs) sur les instances de Fresco afin de résoudre les problèmes. Les événements propres à Fresco ne contiennent aucune donnée de personne participante ni aucun identifiant d’entretien. Le seul contenu saisi par vous qui peut nous parvenir est un terme de recherche du tableau de bord : une recherche dans le tableau des personnes participantes, des entretiens ou du journal d’activité ajoute le texte saisi à l’adresse de la page, et les événements de consultation de page envoyés par la bibliothèque logicielle de statistiques d’utilisation contiennent cette adresse. Consultez [Fresco envoie-t-il des données à des tiers ?](/fr/collect-data/fresco/it-faq#does-fresco-send-data-to-third-parties) pour tous les détails, et désactivez les statistiques d’utilisation dans **Paramètres → Confidentialité** ou avec `DISABLE_ANALYTICS` si cela pose problème pour votre déploiement.
+
+Si vous souhaitez désactiver toutes les statistiques d’utilisation, activez **Désactiver la collecte de données analytiques** dans la section **Confidentialité** de la page des paramètres. Vous pouvez aussi ajouter une variable d’environnement `DISABLE_ANALYTICS` définie sur `true` aux variables d’environnement de votre projet Vercel, puis redéployer : les statistiques d’utilisation sont alors désactivées et le paramètre est verrouillé.
+
+En laissant « Désactiver la collecte de données analytiques » sur `false` (la valeur par défaut), vous nous aidez à repérer les bogues et à améliorer l’application.
+
+</TipBox>
+
+## Configurer un domaine personnalisé (facultatif) {#set-up-a-custom-domain-optional}
+
+Si vous préférez utiliser un domaine personnalisé pour votre instance de Fresco, vous pouvez le configurer dans le tableau de bord de Vercel en suivant ces étapes :
+
+1. Ouvrez le tableau de bord de votre projet. Repérez le bouton **« Domains »** et cliquez dessus.
+
+   ![Ouvrir la section des domaines](/assets/img/fresco-images/set-domain1.png)
+
+2. Dans la section Domains, deux options s’offrent à vous :
+   - Si vous avez acheté un domaine, vous pouvez l’ajouter ici.
+   - Vous pouvez aussi modifier le domaine Vercel par défaut selon vos besoins.
+
+   ![Options de configuration du domaine](/assets/img/fresco-images/set-domain2.png)
+
+   <TipBox danger>
+
+   Lorsque vous modifiez le domaine actuel, veillez à ne pas supprimer la partie **.vercel.app**. Vercel impose ce format pour tous les domaines gratuits.
+
+   </TipBox>

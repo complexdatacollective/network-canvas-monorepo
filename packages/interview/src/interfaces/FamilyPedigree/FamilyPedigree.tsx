@@ -908,9 +908,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     askFramingOnLoad.current = false;
     writePedigreeMetadata({ framing: chosen });
     setAnnouncement(
-      intl.formatMessage(messages.framingChosenAnnouncement, {
-        framing: chosen,
-      }),
+      chosen === 'gamete'
+        ? 'Family members are now described with words like egg parent, sperm parent and sibling.'
+        : 'Family members are now described with words like mother, father, sister and brother.',
     );
   };
   // Everyone the participant has not named is shown by the label that will
@@ -1093,11 +1093,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   if (justAddedId && family.byId.has(justAddedId)) {
     setJustAddedId(null);
-    setAnnouncement(
-      intl.formatMessage(messages.addedAnnouncement, {
-        name: displayName(justAddedId),
-      }),
-    );
+    setAnnouncement(`${displayName(justAddedId)} added to your family.`);
   }
 
   // Announce a connection once it is in the family, in the words people have
@@ -1114,7 +1110,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         describeConnection(
           justConnected,
           words,
-          intl,
           family,
           displayName,
           optionLabels.parentKind,
@@ -1600,16 +1595,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       ),
     );
+    const relatives =
+      item.kind === 'siblings' ? 'brothers or sisters' : 'children';
     setAnnouncement(
-      intl.formatMessage(
-        item.kind === 'siblings'
-          ? messages.siblingsAnsweredAnnouncement
-          : messages.childrenAnsweredAnnouncement,
-        {
-          isYou: person.isEgo ? 'true' : 'false',
-          name: displayName(person.id),
-        },
-      ),
+      person.isEgo
+        ? `Recorded that you have no biological ${relatives}.`
+        : `Recorded that ${displayName(person.id)} has no biological ${relatives}.`,
     );
   };
 
@@ -2368,7 +2359,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           }),
         );
       }
-      setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
+      setAnnouncement('Details saved.');
       // Said to have the siblings or children the list asked for, the
       // participant goes on to adding one, to the person as the family now
       // stores them, with the answers just saved.
@@ -2545,16 +2536,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (chosenPair) return;
     if (!linkingId) {
       setLinkingId(personId);
+      const [verb, preposition] =
+        tool === 'connect' ? ['connect', 'to'] : ['disconnect', 'from'];
       setAnnouncement(
-        intl.formatMessage(
-          tool === 'connect'
-            ? messages.connectHintLinking
-            : messages.disconnectHintLinking,
-          {
-            isYou: family.byId.get(personId)?.isEgo ? 'true' : 'false',
-            name: displayName(personId),
-          },
-        ),
+        family.byId.get(personId)?.isEgo
+          ? `Now select the person to ${verb} ${preposition} you.`
+          : `Now select the person to ${verb} ${preposition} ${displayName(personId)}.`,
       );
       return;
     }
@@ -2619,13 +2606,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     endConnecting();
     setConnectNotice(null);
     await undoStore.getState()[direction]();
-    setAnnouncement(
-      intl.formatMessage(
-        direction === 'undo'
-          ? messages.undoneAnnouncement
-          : messages.redoneAnnouncement,
-      ),
-    );
+    setAnnouncement(direction === 'undo' ? 'Change undone.' : 'Change redone.');
   };
   // Ctrl+Z (⌘Z) undoes, and Ctrl+Shift+Z (⌘⇧Z) or Ctrl+Y redoes, anywhere on
   // the stage but in a text field, which keeps its own undo.
@@ -2728,7 +2709,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         reportRefusedStandIn(await keepStandInRule());
       });
       setAnnouncement(
-        intl.formatMessage(messages.disconnectedAnnouncement, args),
+        args.firstIsYou === 'true'
+          ? `The connection between you and ${args.second} was removed.`
+          : `The connection between ${args.first} and ${args.second} was removed.`,
       );
     }
   };
@@ -2783,11 +2766,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }
         setAnnouncement(
           cutOffIds.length === 0
-            ? intl.formatMessage(messages.removedAnnouncement, { name })
-            : intl.formatMessage(messages.removedWithOthersAnnouncement, {
-                name,
-                count: cutOffIds.length,
-              }),
+            ? `${name} removed from your family.`
+            : `${name} and ${cutOffIds.length === 1 ? 'one other person' : `${cutOffIds.length} other people`} removed from your family.`,
         );
       },
     });
@@ -3093,14 +3073,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               }}
             >
               <SegmentedToolbar
-                aria-label={intl.formatMessage(messages.toolsLabel)}
+                aria-label="Family tree tools"
                 size="lg"
                 className="pointer-events-auto"
               >
                 {/* Answering a nomination prompt, selecting is all there is. */}
                 {!nomination && (
                   <ToolbarToggleGroup
-                    aria-label={intl.formatMessage(messages.toolGroupLabel)}
+                    aria-label="What clicking a person does"
                     disabled={detailsLocked || wordingForced}
                     value={[tool]}
                     onValueChange={(value) => {
@@ -3163,9 +3143,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 )}
                 {(!nomination || participantFraming) && <ToolbarSeparator />}
                 <ToolbarGroup
-                  aria-label={intl.formatMessage(
-                    interfaceMessages.historyTools,
-                  )}
+                  aria-label="History tools"
                   disabled={historyLocked}
                 >
                   <ToolbarIconButton
@@ -3223,7 +3201,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 )}
               </SegmentedToolbar>
               <SegmentedToolbar
-                aria-label={intl.formatMessage(messages.viewToolsLabel)}
+                aria-label="View controls"
                 size="lg"
                 className="pointer-events-auto"
               >
@@ -3244,7 +3222,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           onConnect={(connection) => void handleConnect(connection)}
           onClose={endConnecting}
         />
-        <div aria-live="polite" className="sr-only">
+        <div aria-live="polite" className="sr-only" lang="en">
           {announcement}
         </div>
         <PassphraseOverlay

@@ -284,10 +284,12 @@ describe('recordCrypto — encrypted mode', () => {
     expect(row._enc?.data).toBeDefined();
 
     const back = await decryptAsset(row);
-    expect(back.data).toBeInstanceOf(Blob);
-    const bytes = new Uint8Array(await (back.data as Blob).arrayBuffer());
+    const { data } = back;
+    if (!(data instanceof Blob))
+      throw new Error('decrypted data is not a Blob');
+    const bytes = new Uint8Array(await data.arrayBuffer());
     expect([...bytes]).toEqual([1, 2, 3, 4]);
-    expect((back.data as Blob).type).toBe('image/png');
+    expect(data.type).toBe('image/png');
   });
 
   it('round-trips a string asset', async () => {

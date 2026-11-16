@@ -84,8 +84,9 @@ import useItems, { type UseItemElement } from './useItems';
 const ErrorMessage = () => (
   <div className="flex flex-1 flex-col items-center justify-center gap-2">
     <Icon name="warning" aria-hidden />
-    <Heading level="h2" className="sr-only">
-      <AppMessage message={interfaceMessages.errorHeading} />
+    <Heading level="h2" className="sr-only" lang="en">
+      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+      {'Something went wrong'}
     </Heading>
     <Paragraph>
       <AppMessage message={interfaceMessages.externalDataError} />
@@ -133,7 +134,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   }).text;
   // The protocol's interface text words the search (`search.searchLabel`).
   const searchLabel = intl.formatMessage(commonMessages.search);
-  const loadingStatus = intl.formatMessage(runtimeMessages.loadingStatus);
+  const loadingStatus = 'Loading…';
 
   const { isLastPrompt } = usePrompts();
 
@@ -402,7 +403,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const sourceCollectionId = `source-nodes-${useId()}`;
 
   const { dragAndDropHooks } = useDragAndDrop<UseItemElement>({
-    announcedName: intl.formatMessage(interfaceMessages.availableRosterNodes),
+    announcedName: 'Available Roster Nodes',
     getItems: (keys) => [{ type: 'SOURCE_NODES', keys }],
     acceptTypes: ['ADDED_NODES'],
     onDrop: (e) => {
@@ -469,7 +470,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         defaultBasis={50}
         minSizePx={SOURCE_PANEL_MIN_WIDTH}
         className="min-h-0 w-full flex-1 basis-full"
-        aria-label={intl.formatMessage(interfaceMessages.resizePanels)}
+        aria-label="Resize panel and node list areas"
       >
         <Panel title={panelTitle} panelNumber={0} noCollapse>
           {/*
@@ -502,9 +503,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                 disabledKeys={disabledKeys}
                 virtualized
                 emptyState={emptyState}
-                aria-label={intl.formatMessage(
-                  interfaceMessages.availableItems,
-                )}
+                aria-label="List of available items to add"
                 id={sourceCollectionId}
               >
                 {(CollectionElements) => (
@@ -551,9 +550,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                       nodeTypeDefinition?.customShapes,
                       shapeSvgs,
                     )}
-                    message={intl.formatMessage(runtimeMessages.dropToRemove, {
-                      subject,
-                    })}
+                    message="Drop here to remove"
                   />
                 )}
               </AnimatePresence>
@@ -567,7 +564,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           accepts={['SOURCE_NODES']}
           onDrop={handleAddNode}
           items={nodesForPrompt}
-          announcedName={intl.formatMessage(interfaceMessages.addedNodes)}
+          announcedName="Added Nodes"
         />
       </ResizableFlexPanel>
     </div>

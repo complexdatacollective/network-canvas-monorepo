@@ -1,7 +1,10 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { LocaleTag } from '@codaco/protocol-validation';
+import {
+  dynamicValuePathFor,
+  type LocaleTag,
+} from '@codaco/protocol-validation';
 
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
@@ -139,5 +142,47 @@ describe('DynamicMessageSummary', () => {
     expect(summary.querySelector('strong')).toBe(null);
     expect(summary.textContent).toBe('Hi **name**');
     expect(summary.querySelector('[data-token="name"]')).toBeInTheDocument();
+  });
+});
+
+describe('DynamicMessageSummary pills', () => {
+  it('gives an attribute’s own name its own direction, and the interface’s words the interface’s language', () => {
+    const { getByTestId } = render(
+      <ProtocolLocalizationProvider localization={ENGLISH}>
+        <div data-testid="summary">
+          <DynamicMessageSummary
+            message="{team} {today}"
+            markdown={false}
+            locale={LOCALE}
+            site={{
+              context: {
+                roles: new Set(['ego']),
+                variablesFor: (role) =>
+                  role === 'ego'
+                    ? { v1: { name: 'team-b!', type: 'text' } }
+                    : undefined,
+              },
+              bindings: {
+                team: { path: dynamicValuePathFor('ego', 'v1') },
+                today: { path: 'now' },
+              },
+            }}
+          />
+        </div>
+      </ProtocolLocalizationProvider>,
+    );
+    const summary = getByTestId('summary');
+
+    // The researcher's name, which reads in its own direction whatever the
+    // interface's is.
+    const attribute = summary.querySelector('[data-token="team"]');
+    expect(attribute).toHaveTextContent('team-b!');
+    expect(attribute).toHaveAttribute('dir', 'auto');
+    expect(attribute).not.toHaveAttribute('lang');
+
+    // A value the interface names, in the interface's language.
+    const today = summary.querySelector('[data-token="today"]');
+    expect(today).toHaveAttribute('lang', 'en');
+    expect(today).toHaveAttribute('dir', 'ltr');
   });
 });

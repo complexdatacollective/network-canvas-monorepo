@@ -37,15 +37,18 @@ describe('ThemedRegion', () => {
     expect(screen.getByTestId('child')).toHaveTextContent('hello');
   });
 
-  it('provides a portal container in every theme', () => {
-    const { result } = renderHook(() => usePortalContainer(), {
-      wrapper: ({ children }) => (
-        <ThemedRegion theme="studio">{children}</ThemedRegion>
-      ),
-    });
+  it.each(['interview', 'studio'] as const)(
+    'provides a portal container to descendants in the %s theme',
+    (theme) => {
+      const { result } = renderHook(() => usePortalContainer(), {
+        wrapper: ({ children }) => (
+          <ThemedRegion theme={theme}>{children}</ThemedRegion>
+        ),
+      });
 
-    expect(result.current).toBeInstanceOf(HTMLElement);
-  });
+      expect(result.current).toBeInstanceOf(HTMLElement);
+    },
+  );
 
   it('forwards className and other HTML props to the wrapper', () => {
     const { container } = render(
@@ -75,15 +78,5 @@ describe('ThemedRegion', () => {
     expect(wrapper).toHaveClass('shell');
     expect(wrapper).toHaveClass('scheme-dark');
     expect(screen.getByTestId('child')).toBeInTheDocument();
-  });
-
-  it('provides a portal container to descendants via context', () => {
-    const { result } = renderHook(() => usePortalContainer(), {
-      wrapper: ({ children }) => (
-        <ThemedRegion theme="interview">{children}</ThemedRegion>
-      ),
-    });
-
-    expect(result.current).toBeInstanceOf(HTMLElement);
   });
 });

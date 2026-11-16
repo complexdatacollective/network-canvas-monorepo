@@ -51,18 +51,6 @@ const renderVariables = ({ readOnly = false } = {}) =>
   );
 
 describe('Codebook attribute table', () => {
-  /** The orbiting border marks a picker's held value, and a row holds none. */
-  it('gives the name cell the static border, not the animated picker one', () => {
-    renderVariables();
-
-    const pill = screen.getByRole('button', {
-      name: 'Edit attribute name: last_name',
-    });
-
-    expect(pill).toHaveClass('bg-(--variable-pill-accent)');
-    expect(pill).not.toHaveClass('variable-pill-effect-border');
-  });
-
   it('offers a rename trigger and an enabled delete outside read-only', () => {
     renderVariables();
 

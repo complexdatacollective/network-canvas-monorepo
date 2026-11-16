@@ -68,7 +68,7 @@ it.each([
     expect(alert).toHaveTextContent(
       'Este tipo de recurso no admite estas extensiones: .txt. Extensiones admitidas: .json, .csv y .geojson.',
     );
-    expect(control).toHaveAccessibleName('Subir archivo');
+    expect(control).toHaveAccessibleName('Upload file');
     expect(control).toHaveAttribute('aria-describedby', alert.id);
     expect(onDrop).not.toHaveBeenCalled();
     expect(file.name).toBe('Research_Á.txt');

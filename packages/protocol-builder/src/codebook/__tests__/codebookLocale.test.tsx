@@ -130,9 +130,6 @@ const SPANISH = await loadCatalog(
   protocolValidationCatalogLoaders,
 );
 
-/** This package's own Spanish alone, for the checks about what it ships. */
-const SPANISH_OWN = await loadCatalog('es', protocolBuilderCatalogLoaders);
-
 /**
  * `testing/i18n.ts`'s `esIntl` carries only this package's own catalog, which
  * is right for a plain `defineMessages` id but not for a rule name — those
@@ -160,19 +157,6 @@ const inSpanish = () => (
 );
 
 describe('the codebook read in Spanish', () => {
-  it('ships Spanish for the ids this directory declares', () => {
-    // Checked first so a merge that has not landed this directory's catalog
-    // entries fails saying so, rather than as an unexplained missing string.
-    expect(Object.keys(SPANISH_OWN)).toEqual(
-      expect.arrayContaining([
-        'protocolBuilder.codebookEntity.codebookTitle',
-        'protocolBuilder.codebookEntity.subjectDescription',
-        'protocolBuilder.codebookEntity.editAttributeLabel',
-        'protocolBuilder.variableValidation.incompleteValueRule',
-      ]),
-    );
-  });
-
   it('names the surface, its sections and its empty states in Spanish', () => {
     renderInSpanish(inSpanish());
 
@@ -211,20 +195,20 @@ describe('the codebook read in Spanish', () => {
       screen.getByRole('article', { name: 'Atributos de ego' }),
     ).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Editar tipo de vínculo: Knows' }),
+      screen.getByRole('button', { name: 'Edit Edge type: Knows' }),
     ).toBeVisible();
     expect(
       screen.getByRole('button', {
-        name: 'Crear atributo para el tipo de nodo: Person',
+        name: 'Create attribute for Node type: Person',
       }),
     ).toBeVisible();
     expect(
       screen.getByRole('button', {
-        name: 'Editar el atributo Consent de los atributos de ego',
+        name: 'Edit attribute Consent for Ego attributes',
       }),
     ).toBeVisible();
     expect(
-      screen.getByRole('list', { name: 'Atributos de Person' }),
+      screen.getByRole('list', { name: 'Person attributes' }),
     ).toHaveTextContent('Age');
   });
 
@@ -345,7 +329,7 @@ describe('the codebook editors swept for English', () => {
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeVisible();
     expect(
-      screen.getByRole('radio', { name: 'Seleccionar forma Círculo' }),
+      screen.getByRole('radio', { name: 'Select shape Círculo' }),
     ).toBeInTheDocument();
     expectNoLocaleLeaks('the entity editor', protocolStrings(PERSON_DOCUMENT));
 

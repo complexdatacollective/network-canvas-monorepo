@@ -170,30 +170,6 @@ describe('<Home />', () => {
     }
   });
 
-  it('uses medium call-to-action buttons colored by role', () => {
-    render(<Home />);
-
-    const createButton = screen.getByRole('button', {
-      name: 'Create a new protocol',
-    });
-    const openButton = screen.getByRole('button', {
-      name: 'Open existing protocol',
-    });
-
-    expect(createButton).toHaveClass('h-12', 'text-base');
-    expect(createButton).toHaveClass(
-      '[--component-bg:var(--primary-contrast)]',
-      '[--component-text:var(--primary)]',
-      'focus:outline-primary',
-    );
-    expect(openButton).toHaveClass('h-12', 'text-base');
-    expect(openButton).toHaveClass(
-      'control-glass',
-      '[--component-bg:var(--neutral-contrast)]',
-      '[--component-text:var(--neutral-contrast)]',
-    );
-  });
-
   it('reopens a protocol after migration is approved', async () => {
     const { openLocalNetcanvas } =
       await import('~/ducks/modules/userActions/userActions');

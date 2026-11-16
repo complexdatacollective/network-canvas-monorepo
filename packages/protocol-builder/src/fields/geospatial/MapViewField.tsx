@@ -213,12 +213,8 @@ export default function MapViewField({
             // field's "Increase value" is the same name on both halves of the
             // pair and on the zoom beside them.
             stepperLabels={{
-              increase: intl.formatMessage(
-                geospatialMessages.longitudeIncrease,
-              ),
-              decrease: intl.formatMessage(
-                geospatialMessages.longitudeDecrease,
-              ),
+              increase: 'Increase longitude',
+              decrease: 'Decrease longitude',
             }}
           />
         </div>
@@ -234,8 +230,8 @@ export default function MapViewField({
             aria-invalid={ariaInvalid}
             onChange={(next) => setCoordinate(1, next)}
             stepperLabels={{
-              increase: intl.formatMessage(geospatialMessages.latitudeIncrease),
-              decrease: intl.formatMessage(geospatialMessages.latitudeDecrease),
+              increase: 'Increase latitude',
+              decrease: 'Decrease latitude',
             }}
           />
         </div>

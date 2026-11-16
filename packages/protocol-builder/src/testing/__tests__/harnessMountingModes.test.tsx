@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { assertType, describe, expect, it } from 'vitest';
 
 import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
 import type {
@@ -85,28 +85,30 @@ describe('the harness mounting modes', () => {
    * independent optionals and stopped saying anything.
    */
   it('does not compile a call giving two of them', () => {
-    // @ts-expect-error `editor` and `sections` are alternatives
-    const editorAndSections: RenderStageEditorOptions<'Information'> = {
+    // Written out first and asserted second, so each refusal is reported
+    // against the whole value, on the line its directive is on.
+    const editorAndSections = {
       stageId: 'information-1',
       editor: InformationEditor,
       sections: <></>,
-    };
-    // @ts-expect-error `editor` and `registry` are alternatives
-    const editorAndRegistry: RenderStageEditorOptions<'Information'> = {
+    } as const;
+    const editorAndRegistry = {
       stageId: 'information-1',
       editor: InformationEditor,
       registry: { Information: InformationEditor },
-    };
-    // @ts-expect-error `sections` and `registry` are alternatives
-    const sectionsAndRegistry: RenderStageEditorOptions<'Information'> = {
+    } as const;
+    const sectionsAndRegistry = {
       stageId: 'information-1',
       sections: <></>,
       registry: { Information: InformationEditor },
-    };
+    } as const;
 
-    expect(editorAndSections.editor).toBe(InformationEditor);
-    expect(editorAndRegistry.editor).toBe(InformationEditor);
-    expect(sectionsAndRegistry.sections).toBeDefined();
+    // @ts-expect-error `editor` and `sections` are alternatives
+    assertType<RenderStageEditorOptions<'Information'>>(editorAndSections);
+    // @ts-expect-error `editor` and `registry` are alternatives
+    assertType<RenderStageEditorOptions<'Information'>>(editorAndRegistry);
+    // @ts-expect-error `sections` and `registry` are alternatives
+    assertType<RenderStageEditorOptions<'Information'>>(sectionsAndRegistry);
   });
 
   /**

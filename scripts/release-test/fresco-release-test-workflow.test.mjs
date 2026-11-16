@@ -3966,7 +3966,7 @@ test('a check reported twice is not a check reported once', async () => {
   );
 });
 
-test('a check with an unrecognised status counts as nothing', async () => {
+test("a script lane's check cannot be skipped", async () => {
   const r = happyPath();
   r['two-factor-lane'].checks[2].status = 'skipped';
   const { result } = await run(r);
