@@ -72,5 +72,18 @@ describe('API auth helpers', () => {
       expect(result).toEqual({ valid: true });
       expect(mockVerifyApiToken).toHaveBeenCalledWith('valid-token');
     });
+
+    it('accepts a valid token sent without the Bearer prefix', async () => {
+      mockVerifyApiToken.mockResolvedValue({ valid: true });
+
+      const request = new NextRequest('http://localhost:3000/api/v1/test', {
+        headers: { Authorization: 'valid-token' },
+      });
+
+      const result = await requireApiTokenAuth(request);
+
+      expect(result).toEqual({ valid: true });
+      expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith('valid-token');
+    });
   });
 });
