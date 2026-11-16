@@ -11,6 +11,7 @@ import {
   isAuthorizedSourceSaveRequest,
   saveProtocolSource,
   type SourceSaveRequest,
+  type SourceSaveResponse,
 } from '../protocol-source-authoring';
 
 const sourceRef = { kind: 'template' as const, id: 'test-template' };
@@ -80,6 +81,15 @@ const makeProtocol = (
     },
     assetManifest,
   });
+
+const refused = (result: SourceSaveResponse) => {
+  if (result.ok) throw new Error('expected the save to be refused');
+  return result;
+};
+
+// Resolves to the asset directory's parent for both the temporary and the
+// final file, so a save that ignored it would leave a file there to find.
+const ESCAPING_SOURCE = 'a/../../image.png';
 
 const makeRequest = (
   protocol: CurrentProtocol,
@@ -204,9 +214,9 @@ describe('protocol source authoring', () => {
 
     const result = await saveProtocolSource(repoRoot, makeRequest(protocol));
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.issues).toContain('Asset image has no uploaded data.');
+    expect(refused(result).issues).toContain(
+      'Asset image has no uploaded data.',
+    );
   });
 
   it('rejects path-like asset sources', async () => {
@@ -215,7 +225,7 @@ describe('protocol source authoring', () => {
         id: 'image',
         name: 'Image',
         type: 'image',
-        source: '../image.png',
+        source: ESCAPING_SOURCE,
       },
     });
 
@@ -225,16 +235,48 @@ describe('protocol source authoring', () => {
         {
           id: 'image',
           name: 'Image',
-          source: '../image.png',
+          source: ESCAPING_SOURCE,
           dataBase64: btoa('new image'),
         },
       ]),
     );
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.issues).toContain(
+    expect(refused(result).issues).toContain(
       'assetManifest.image.source: Asset source must be a filename without path separators or ".."',
+    );
+    await expect(readFile(join(assetDir, '../image.png'))).rejects.toThrow();
+  });
+
+  // Schema 8 documents carry no asset-source rule, so only the save's own
+  // filename check stands between them and the file system.
+  it('rejects path-like asset sources in a schema 8 document', async () => {
+    const result = await saveProtocolSource(repoRoot, {
+      sourceRef,
+      protocol: {
+        schemaVersion: 8,
+        stages: [],
+        codebook: { node: {}, edge: {}, ego: {} },
+        assetManifest: {
+          image: {
+            id: 'image',
+            name: 'Image',
+            type: 'image',
+            source: ESCAPING_SOURCE,
+          },
+        },
+      },
+      assets: [
+        {
+          id: 'image',
+          name: 'Image',
+          source: ESCAPING_SOURCE,
+          dataBase64: btoa('new image'),
+        },
+      ],
+    });
+
+    expect(refused(result).issues).toContain(
+      'Asset image has an unsafe source filename.',
     );
     await expect(readFile(join(assetDir, '../image.png'))).rejects.toThrow();
   });
@@ -273,9 +315,7 @@ describe('protocol source authoring', () => {
       ]),
     );
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.issues).toContain(
+    expect(refused(result).issues).toContain(
       'Asset source shared.png is used more than once.',
     );
   });

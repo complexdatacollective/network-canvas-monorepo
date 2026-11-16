@@ -1,3 +1,7 @@
+import { statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -52,6 +56,20 @@ describe('warmBundledTemplateAssets', () => {
     );
     expect(matched.every((paths) => paths.length === 1)).toBe(true);
     expect(new Set(matched.flat()).size).toBe(fileUrls.length);
+
+    // Only a file under Vite's default 4 KiB inline limit can come back as a
+    // data URL, so there can be no more of those than there are such files.
+    const protocolsRoot = join(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../../../packages/protocols',
+    );
+    const inlinable = expectedPaths.filter(
+      (path) => statSync(join(protocolsRoot, path)).size < 4096,
+    );
+    const dataUrls = bundledTemplateAssetUrls.filter((url) =>
+      url.startsWith('data:'),
+    );
+    expect(dataUrls.length).toBeLessThanOrEqual(inlinable.length);
   });
 
   describe('with a controlling service worker', () => {
