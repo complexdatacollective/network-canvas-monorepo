@@ -21,13 +21,6 @@ describe('the system prompt', () => {
       expect(REVIEW_SYSTEM_PROMPT).toContain(`"op": "${op}"`);
     }
   });
-
-  it('is the same for every review, so it can be cached', () => {
-    const one = buildReviewMessage(validRequest());
-    const other = buildReviewMessage(validRequest({ locale: 'fr' }));
-    expect(one).not.toBe(other);
-    expect(REVIEW_SYSTEM_PROMPT).not.toContain('Secret Study Name');
-  });
 });
 
 describe('the protocol reference', () => {

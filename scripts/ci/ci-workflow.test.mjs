@@ -13,16 +13,29 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { test } from 'vitest';
-import { parse } from 'yaml';
 
 import { GATED_PRODUCT_RELEASE_LANES } from '../release/changeset-app-utils.mjs';
 import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
 import { STORYBOOK_SHARDS, TEST_SHARDS } from './test-shards.mjs';
+import {
+  codeOf,
+  findSteps,
+  getJob,
+  getStep,
+  hasJob,
+  liveSteps,
+  needsOf,
+  raw,
+  readActionsYaml,
+  readWorkflow,
+  scriptsOf,
+  stepIndex,
+  WORKFLOW_DIR,
+  workflowFiles,
+} from './workflow-model.mjs';
 
-const workflow = readFileSync(
-  new URL('../../.github/workflows/ci-and-release.yml', import.meta.url),
-  'utf8',
-);
+const parsedWorkflow = readWorkflow('ci-and-release.yml');
+const ciJob = (name) => getJob(parsedWorkflow, name);
 const deadLinkChecker = readFileSync(
   new URL('../dead-links/dead-link-checker.mjs', import.meta.url),
   'utf8',
@@ -30,37 +43,11 @@ const deadLinkChecker = readFileSync(
 const rootPackage = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
 );
-const deadLinkAction = parse(
-  readFileSync(
-    new URL(
-      '../../.github/actions/dead-link-check/action.yml',
-      import.meta.url,
-    ),
-    'utf8',
-  ),
+const deadLinkAction = readActionsYaml(
+  new URL('../../.github/actions/dead-link-check/action.yml', import.meta.url),
 );
-const refreshWorkflow = parse(
-  readFileSync(
-    new URL(
-      '../../.github/workflows/dead-link-cache-refresh.yml',
-      import.meta.url,
-    ),
-    'utf8',
-  ),
-);
-const WORKFLOW_DIR = new URL('../../.github/workflows/', import.meta.url);
-// Every turbo invocation in CI is capped by this, set at the top of each
-// workflow, rather than by a flag at each call site.
-const TURBO_CAP =
-  /^env:\n(?:[^\S\n][^\n]*\n)*?[^\S\n]+TURBO_CONCURRENCY: '1'$/m;
-const parsedWorkflow = parse(workflow);
-const snapshotWorkflow = readFileSync(
-  new URL(
-    '../../.github/workflows/open-e2e-snapshot-update-pr.yml',
-    import.meta.url,
-  ),
-  'utf8',
-);
+const refreshWorkflow = readWorkflow('dead-link-cache-refresh.yml');
+const snapshotWorkflow = readWorkflow('open-e2e-snapshot-update-pr.yml');
 const frescoPackage = JSON.parse(
   readFileSync(
     new URL('../../apps/fresco/package.json', import.meta.url),
@@ -68,30 +55,24 @@ const frescoPackage = JSON.parse(
   ),
 );
 
-const topLevelConcurrency = workflow.match(
-  /^concurrency:\n(?<config>[\s\S]*?)\n\njobs:/m,
-)?.groups?.config;
-
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-function job(name) {
-  return workflow.match(
-    new RegExp(
-      `^ {2}${name}:\\n(?<body>[\\s\\S]*?)(?=^ {2}\\S|$(?![\\s\\S]))`,
-      'm',
-    ),
-  )?.groups?.body;
-}
+// PART-LOCAL HELPERS
+const RELEASE_PUSH_ONLY =
+  "github.ref == 'refs/heads/main' && github.event_name == 'push'";
 
 test('full CI runs on PRs to main and integration branches while merge groups request only quality', () => {
-  assert.match(
-    workflow,
-    /^ {2}pull_request:\n(?: {4}#.*\n)*? {4}branches: \[main, 'integration\/\*\*', 'schema-\*'\]$/m,
-  );
+  assert.deepEqual(parsedWorkflow.on.pull_request.branches, [
+    'main',
+    'integration/**',
+    'schema-*',
+  ]);
   // Pushes stay main-only: the release, publish, deploy and mirror jobs are
   // reached from this trigger, and an integration branch must never release.
-  assert.match(workflow, /^ {2}push:\n {4}branches: \[main\]$/m);
-  assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
+  assert.deepEqual(parsedWorkflow.on.push, { branches: ['main'] });
+  assert.deepEqual(parsedWorkflow.on.merge_group, {
+    types: ['checks_requested'],
+  });
 
   for (const jobName of [
     'detect',
@@ -100,19 +81,21 @@ test('full CI runs on PRs to main and integration branches while merge groups re
     'quality-support',
     'test',
   ]) {
-    const body = job(jobName);
-    assert.ok(body, `${jobName} exists`);
     assert.match(
-      body,
+      ciJob(jobName).if,
       /github\.event_name != 'merge_group'/,
       `${jobName} skips merge groups`,
     );
   }
 
-  const quality = job('quality');
-  assert.ok(quality, 'quality job exists');
-  assert.match(quality, /if \[\[ "\$EVENT_NAME" == "merge_group" \]\]; then/);
-  assert.match(quality, /PR quality verdicts are authoritative/);
+  const verify = getStep(ciJob('quality'), {
+    name: 'Verify all quality checks passed',
+  });
+  assert.equal(verify.env.EVENT_NAME, '${{ github.event_name }}');
+  assert.match(
+    verify.run,
+    /if \[\[ "\$EVENT_NAME" == "merge_group" \]\]; then\n\s+echo "PR quality verdicts are authoritative[^\n]*"\n\s+exit 0\n\s*fi/,
+  );
 });
 
 test('release, publish, deploy and mirror jobs never run for an integration base', () => {
@@ -124,15 +107,15 @@ test('release, publish, deploy and mirror jobs never run for an integration base
     'product-release-pr',
     'apps-release-detect',
   ]) {
-    assert.match(
-      job(jobName),
-      /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'push'/,
+    assert.equal(
+      ciJob(jobName).if,
+      RELEASE_PUSH_ONLY,
       `${jobName} runs only for a push to main`,
     );
   }
   assert.match(
-    job('legacy-release-detect'),
-    /github\.ref == 'refs\/heads\/main'\n\s+&& \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)/,
+    ciJob('legacy-release-detect').if,
+    /^github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)(?: && |$)/,
   );
   for (const [jobName, root] of [
     ['apps-release-architect', 'apps-release-detect'],
@@ -151,14 +134,18 @@ test('release, publish, deploy and mirror jobs never run for an integration base
     ['interviewer-release-publish', 'legacy-release-detect'],
     ['architect-release-publish', 'legacy-release-detect'],
   ]) {
-    const body = job(jobName);
-    assert.ok(body, `${jobName} exists`);
-    assert.match(body, new RegExp(`needs[:\\s\\[][^]*?${root}`));
+    const releaseJob = ciJob(jobName);
+    assert.ok(needsOf(releaseJob).includes(root), `${jobName} needs ${root}`);
+    // The release decision must be a conjunct of the job's own condition: an
+    // `||` would let the job run without it.
     assert.match(
-      body,
-      new RegExp(`needs\\.${root}\\.outputs\\.\\w+_released == 'true'`),
+      releaseJob.if,
+      new RegExp(
+        `^needs\\.${escapeRegExp(root)}\\.outputs\\.\\w+_released == 'true'(?: && |$)`,
+      ),
       `${jobName} is gated on ${root}'s release decision`,
     );
+    assert.doesNotMatch(releaseJob.if, /\|\|/);
   }
 });
 
@@ -168,8 +155,9 @@ test('release, publish, deploy and mirror jobs never run for an integration base
 // GitHub, and fail if a verdict or a report crosses from one pull request to
 // the other.
 test('carry-forward-statuses copies a verdict only from runs of the same pull request and base', async () => {
-  const script =
-    parsedWorkflow.jobs['carry-forward-statuses'].steps[0].with.script;
+  const { script } = getStep(ciJob('carry-forward-statuses'), {
+    uses: 'actions/github-script',
+  }).with;
   const AsyncFunction = async function () {}.constructor;
   // The title GitHub gives a pull request run, rendered from the workflow's
   // own `run-name` format string.
@@ -279,9 +267,7 @@ test('carry-forward-statuses copies a verdict only from runs of the same pull re
 });
 
 test('e2e-report keys a pull request report by its number and sweeps by open pull request', () => {
-  const meta = parsedWorkflow.jobs['e2e-report'].steps.find(
-    ({ id }) => id === 'meta',
-  );
+  const meta = getStep(ciJob('e2e-report'), { id: 'meta' });
   const dir = mkdtempSync(join(tmpdir(), 'e2e-report-meta-'));
   try {
     const bin = join(dir, 'bin');
@@ -356,9 +342,7 @@ test('e2e-report keys a pull request report by its number and sweeps by open pul
     rmSync(dir, { recursive: true, force: true });
   }
 
-  const merge = parsedWorkflow.jobs['e2e-report'].steps.find(
-    ({ id }) => id === 'merge',
-  );
+  const merge = getStep(ciJob('e2e-report'), { id: 'merge' });
   assert.match(merge.env.LEGACY_SLUG, /steps\.meta\.outputs\.legacy_slug/);
   assert.match(
     merge.run,
@@ -368,9 +352,7 @@ test('e2e-report keys a pull request report by its number and sweeps by open pul
 });
 
 test('a rerun of an older run never updates reports or the comment for a retargeted pull request', () => {
-  const guard = parsedWorkflow.jobs['e2e-report'].steps.find(
-    ({ id }) => id === 'guard',
-  );
+  const guard = getStep(ciJob('e2e-report'), { id: 'guard' });
   const dir = mkdtempSync(join(tmpdir(), 'e2e-report-guard-'));
   try {
     const bin = join(dir, 'bin');
@@ -427,57 +409,55 @@ test('every reader of earlier runs, releases or release PRs is scoped to the bas
     'version-packages-freshness',
   ]) {
     assert.match(
-      job(jobName),
+      ciJob(jobName).if,
       /github\.base_ref == 'main'/,
       `${jobName} requires the release PR's base`,
     );
   }
-  assert.match(
-    parsedWorkflow.jobs['e2e-policy'].steps.find(({ id }) => id === 'policy')
-      .env.BASE_REF,
-    /github\.base_ref/,
+  assert.equal(
+    getStep(ciJob('e2e-policy'), { id: 'policy' }).env.BASE_REF,
+    '${{ github.base_ref }}',
     'the E2E policy is told the pull request base',
   );
   // Lookups of "the" release PR by head branch name.
   assert.match(
-    job('version-packages-freshness'),
+    getStep(ciJob('version-packages-freshness'), { id: 'head' }).run,
     /pulls\?state=open&base=main&head=/,
   );
-  assert.match(job('release'), /--base main --head changeset-release\/main/);
+  assert.match(
+    getStep(ciJob('release'), {
+      name: 'Close a release PR the tip no longer needs',
+    }).run,
+    /--base main --head changeset-release\/main/,
+  );
 });
 
 test('superseded CI runs are cancelled for every pull request', () => {
-  assert.ok(
-    topLevelConcurrency,
-    'top-level CI concurrency configuration exists',
-  );
+  const { concurrency } = parsedWorkflow;
+  assert.ok(concurrency, 'top-level CI concurrency configuration exists');
   assert.match(
-    topLevelConcurrency,
-    /cancel-in-progress: >-\n\s+\$\{\{ github\.event_name == 'pull_request'/,
+    concurrency['cancel-in-progress'],
+    /^\$\{\{ github\.event_name == 'pull_request' \|\|/,
   );
-  assert.doesNotMatch(topLevelConcurrency, /github\.head_ref/);
+  assert.doesNotMatch(concurrency.group, /github\.head_ref/);
+  assert.doesNotMatch(concurrency['cancel-in-progress'], /github\.head_ref/);
 });
 
 test('detect never runs on push-to-main (its consumers are PR/dispatch only)', () => {
-  const detectJob = job('detect');
-  assert.ok(detectJob, 'detect job exists');
+  const detectIf = ciJob('detect').if;
   assert.match(
-    detectJob,
-    /github\.event_name != 'merge_group'\n\s+&& github\.event_name != 'push'/,
+    detectIf,
+    /^github\.event_name != 'merge_group' && github\.event_name != 'push'(?: && |$)/,
   );
-  assert.match(detectJob, /inputs\.interview_e2e_benchmark == true/);
+  assert.match(detectIf, /inputs\.interview_e2e_benchmark == true/);
 });
 
 test('both public sites are crawled only for their generated release PRs', () => {
-  const detectJob = job('detect');
-  assert.ok(detectJob, 'detect job exists');
-  assert.match(detectJob, /docs: \$\{\{ steps\.flags\.outputs\.docs \}\}/);
+  const detectJob = ciJob('detect');
+  assert.equal(detectJob.outputs.docs, '${{ steps.flags.outputs.docs }}');
+  assert.equal(detectJob.outputs.website, '${{ steps.flags.outputs.website }}');
   assert.match(
-    detectJob,
-    /website: \$\{\{ steps\.flags\.outputs\.website \}\}/,
-  );
-  assert.match(
-    detectJob,
+    getStep(detectJob, { id: 'flags' }).run,
     /if \[\[ "\$docs" == "true" \|\| "\$website" == "true" \]\]; then\n\s+docs=true\n\s+website=true/,
     'a change to either public site triggers both preview crawls',
   );
@@ -498,53 +478,57 @@ test('both public sites are crawled only for their generated release PRs', () =>
       'website-dead-link-report',
     ],
   ]) {
-    const previewJob = job(jobName);
-    assert.ok(previewJob, `${jobName} exists`);
+    const previewJob = ciJob(jobName);
+    assert.ok(
+      needsOf(previewJob).includes('detect'),
+      `${jobName} needs detect`,
+    );
     assert.match(
-      previewJob,
+      previewJob.if,
       new RegExp(`needs\\.detect\\.outputs\\.${flag} == 'true'`),
     );
     assert.match(
-      previewJob,
+      previewJob.if,
       /github\.head_ref == 'changeset-release\/documentation'/,
       `${jobName} runs for a Documentation release PR`,
     );
     assert.match(
-      previewJob,
+      previewJob.if,
       /github\.head_ref == 'changeset-release\/website'/,
       `${jobName} runs for a Website release PR`,
     );
     assert.doesNotMatch(
-      previewJob,
+      previewJob.if,
       /startsWith\(github\.head_ref, 'changeset-release\/'\)/,
       `${jobName} does not run for unrelated release lanes`,
     );
-    assert.match(previewJob, new RegExp(`const siteName = '${siteName}'`));
+    const waitScript = getStep(previewJob, { id: 'netlify-preview' }).with
+      .script;
+    assert.match(waitScript, new RegExp(`const siteName = '${siteName}'`));
     assert.match(
-      previewJob,
-      new RegExp(
-        `deploy-preview-\\$\\{context\\.issue\\.number\\}--\\$\\{siteName\\}\\.netlify\\.app`,
-      ),
+      waitScript,
+      /deploy-preview-\$\{context\.issue\.number\}--\$\{siteName\}\.netlify\.app/,
     );
     assert.match(
-      previewJob,
+      waitScript,
       /status\.description === 'Deploy Preview canceled\.'/,
       'a successful ignored Netlify deploy may reuse the stable PR alias',
     );
     assert.match(
-      previewJob,
+      waitScript,
       /previewUrl\.hostname === 'app\.netlify\.com'/,
       'the ignored-deploy fallback only accepts Netlify dashboard URLs',
     );
-    assert.match(previewJob, /uses: actions\/checkout@/);
-    assert.match(previewJob, /uses: pnpm\/setup@/);
-    assert.match(previewJob, /uses: actions\/setup-node@/);
-    assert.match(previewJob, /pnpm install --frozen-lockfile --ignore-scripts/);
+    getStep(previewJob, { uses: 'actions/checkout' });
+    getStep(previewJob, { uses: 'pnpm/setup' });
+    getStep(previewJob, { uses: 'actions/setup-node' });
+    getStep(previewJob, {
+      run: /^pnpm install --frozen-lockfile --ignore-scripts$/m,
+    });
 
-    const deadLinkStep = parsedWorkflow.jobs[jobName].steps.find(
-      ({ uses }) => uses === './.github/actions/dead-link-check',
-    );
-    assert.ok(deadLinkStep, `${jobName} runs the dead-link-check action`);
+    const deadLinkStep = getStep(previewJob, {
+      uses: './.github/actions/dead-link-check',
+    });
     assert.equal(deadLinkStep.with?.url, crawlURL);
     assert.equal(deadLinkStep.with?.['report-name'], reportName);
 
@@ -557,18 +541,26 @@ test('both public sites are crawled only for their generated release PRs', () =>
       `${jobName} does not publish a branch-scoped cache`,
     );
     assert.ok(
-      previewJob.indexOf('uses: actions/checkout@') <
-        previewJob.indexOf('uses: ./.github/actions/dead-link-check'),
+      stepIndex(previewJob, { uses: 'actions/checkout' }) <
+        stepIndex(previewJob, { uses: './.github/actions/dead-link-check' }),
       `${jobName} checks out the local checker and action before running them`,
     );
   }
 
-  const carryForward = job('carry-forward-statuses');
-  assert.ok(carryForward, 'carry-forward-statuses job exists');
-  assert.match(carryForward, /- docs-preview-checks/);
-  assert.match(carryForward, /- website-preview-checks/);
-  assert.match(carryForward, /FLAG_DOCS: \["docs-preview-checks"\]/);
-  assert.match(carryForward, /FLAG_WEBSITE: \["website-preview-checks"\]/);
+  const carryForward = ciJob('carry-forward-statuses');
+  assert.ok(needsOf(carryForward).includes('docs-preview-checks'));
+  assert.ok(needsOf(carryForward).includes('website-preview-checks'));
+  const carryStep = getStep(carryForward, { uses: 'actions/github-script' });
+  assert.equal(carryStep.env.FLAG_DOCS, '${{ needs.detect.outputs.docs }}');
+  assert.equal(
+    carryStep.env.FLAG_WEBSITE,
+    '${{ needs.detect.outputs.website }}',
+  );
+  assert.match(carryStep.with.script, /FLAG_DOCS: \["docs-preview-checks"\]/);
+  assert.match(
+    carryStep.with.script,
+    /FLAG_WEBSITE: \["website-preview-checks"\]/,
+  );
 });
 
 test('the dead-link checker drives a browser and never an HTTP client', () => {
@@ -586,20 +578,22 @@ test('the dead-link checker drives a browser and never an HTTP client', () => {
 });
 
 test('the dead-link action runs headed Chrome and reads a shared cache', () => {
-  const steps = deadLinkAction.runs.steps;
-  const check = steps.find(({ name }) => name === 'Dead-link check');
-  assert.ok(check, 'the action runs the checker');
+  const actionRuns = deadLinkAction.runs;
+  const check = getStep(actionRuns, { name: 'Dead-link check' });
   // Headed is the load-bearing part: challenge providers reject automated
   // headless Chrome whatever User-Agent it sends, so a crawl that quietly
   // lost its display server would report live links as dead.
   assert.match(check.run, /xvfb-run --auto-servernum/);
-  assert.doesNotMatch(check.run, /--headless/);
+  assert.doesNotMatch(raw(check).run, /--headless/);
   // A spoofed User-Agent is what publishers fingerprint against, and sending
   // one from real Chrome is what broke the Zenodo citations.
-  assert.doesNotMatch(check.run, /--user-agent/);
+  assert.doesNotMatch(raw(check).run, /--user-agent/);
   assert.match(check.run, /--github-actions/);
   assert.match(check.run, /--cache=/);
-  assert.doesNotMatch(check.run, /dead-link-checker\.mjs[^\n]* (-v|--yes)/);
+  assert.doesNotMatch(
+    raw(check).run,
+    /dead-link-checker\.mjs[^\n]* (-v|--yes)/,
+  );
   // The HTTP-client crawl ran serially so a cluster of links on one publisher
   // could not look like a bot burst. A browser is slower per link, so this
   // trades some of that back — pin the value rather than letting it drift,
@@ -616,10 +610,10 @@ test('the dead-link action runs headed Chrome and reads a shared cache', () => {
   assert.match(check.run, /--allow-refused="\$CHECK_ALLOW_REFUSED"/);
   assert.match(check.run, /--concurrent="\$CHECK_CONCURRENT"/);
 
-  const restore = steps.find(
-    ({ name }) => name === 'Restore external-link cache',
-  );
-  const save = steps.find(({ name }) => name === 'Save external-link cache');
+  const restore = getStep(actionRuns, {
+    name: 'Restore external-link cache',
+  });
+  const save = getStep(actionRuns, { name: 'Save external-link cache' });
   assert.match(restore.uses, /^actions\/cache\/restore@/);
   assert.equal(restore.with['restore-keys'], 'dead-link-cache-v1-');
   assert.match(save.uses, /^actions\/cache\/save@/);
@@ -629,7 +623,7 @@ test('the dead-link action runs headed Chrome and reads a shared cache', () => {
   assert.match(save.if, /always\(\)/);
   assert.equal(restore.with.path, save.with.path);
 
-  const upload = steps.find(({ name }) => name === 'Upload dead-link report');
+  const upload = getStep(actionRuns, { name: 'Upload dead-link report' });
   assert.equal(upload.if, 'always()');
   assert.match(upload.uses, /^actions\/upload-artifact@/);
   assert.equal(upload.with['if-no-files-found'], 'error');
@@ -641,10 +635,10 @@ test('the weekly refresh publishes the cache every pull request reads', () => {
   assert.ok(refreshWorkflow.on.schedule?.[0]?.cron, 'the refresh is scheduled');
   assert.ok(refreshWorkflow.on.workflow_dispatch !== undefined);
 
-  const steps = refreshWorkflow.jobs.refresh.steps;
-  const crawls = steps.filter(
-    ({ uses }) => uses === './.github/actions/dead-link-check',
-  );
+  const refresh = getJob(refreshWorkflow, 'refresh');
+  const crawls = findSteps(refresh, {
+    uses: './.github/actions/dead-link-check',
+  });
   assert.equal(crawls.length, 2, 'both public sites are refreshed');
   for (const crawl of crawls) {
     // A dead link on one site must not skip the other site's crawl, nor the
@@ -664,8 +658,12 @@ test('the weekly refresh publishes the cache every pull request reads', () => {
   assert.equal(website.with['save-cache'], 'true');
   assert.notEqual(documentation.with['save-cache'], 'true');
 
-  const gate = steps.at(-1);
-  assert.match(gate.run, /dead-link-refresh-gate\.mjs/);
+  const gate = getStep(refresh, { run: /dead-link-refresh-gate\.mjs/ });
+  assert.equal(
+    liveSteps(refresh).at(-1),
+    gate,
+    'the gate is the last step, after both crawls',
+  );
   assert.ok(
     !gate['continue-on-error'],
     'the gate is what fails the run when a link is dead',
@@ -673,9 +671,9 @@ test('the weekly refresh publishes the cache every pull request reads', () => {
 });
 
 test('an ignored Netlify deploy reuses only its verified PR preview alias', async () => {
-  const previewScript = parsedWorkflow.jobs['docs-preview-checks'].steps.find(
-    ({ id }) => id === 'netlify-preview',
-  )?.with?.script;
+  const previewScript = getStep(ciJob('docs-preview-checks'), {
+    id: 'netlify-preview',
+  }).with?.script;
   assert.equal(
     typeof previewScript,
     'string',
@@ -746,26 +744,47 @@ test('website dead-link crawl waits for the documentation preview it links to', 
   // The website preview rewrites docs links to the documentation deploy
   // preview (apps/networkcanvas.com/next.config.ts), so the crawl must not
   // start until that preview is live too.
-  const previewJob = job('website-preview-checks');
-  assert.ok(previewJob, 'website-preview-checks job exists');
-  assert.match(
-    previewJob,
-    /- id: docs-preview\n\s+name: Wait for Netlify documentation preview\n\s+if: needs\.detect\.outputs\.docs == 'true'/,
-    'the documentation deploy-preview wait exists and is gated on the docs flag',
+  const previewJob = ciJob('website-preview-checks');
+  const docsWait = getStep(previewJob, { id: 'docs-preview' });
+  assert.equal(
+    docsWait.name,
+    'Wait for Netlify documentation preview',
+    'the documentation deploy-preview wait exists',
   );
-  assert.match(previewJob, /const siteName = 'documentation-dev'/);
-  assert.match(previewJob, /Confirm documentation preview is reachable/);
+  assert.equal(
+    docsWait.if,
+    "needs.detect.outputs.docs == 'true'",
+    'the documentation deploy-preview wait is gated on the docs flag',
+  );
+  assert.match(docsWait.with.script, /const siteName = 'documentation-dev'/);
+  getStep(previewJob, { name: 'Confirm documentation preview is reachable' });
 
-  const docsWaitIndex = previewJob.indexOf('- id: docs-preview');
-  const crawlIndex = previewJob.indexOf(
-    'uses: ./.github/actions/dead-link-check',
-  );
-  assert.ok(crawlIndex !== -1, 'website dead-link check exists');
   assert.ok(
-    docsWaitIndex < crawlIndex,
+    stepIndex(previewJob, { id: 'docs-preview' }) <
+      stepIndex(previewJob, { uses: './.github/actions/dead-link-check' }),
     'the documentation wait runs before the dead-link crawl',
   );
 });
+
+// PART-LOCAL HELPERS
+
+// The first live step whose uncommented `run` script matches `pattern`.
+const stepRunning = (job, pattern) =>
+  getStep(
+    job,
+    (step) => typeof step.run === 'string' && pattern.test(step.run),
+  );
+
+const liveJobs = (parsed) =>
+  Object.keys(parsed.jobs ?? {})
+    .filter((name) => hasJob(parsed, name))
+    .map((name) => parsed.jobs[name]);
+
+// Jobs that call a reusable workflow have no steps of their own.
+const liveStepsOf = (parsed) =>
+  liveJobs(parsed)
+    .filter((job) => Array.isArray(job.steps))
+    .flatMap((job) => liveSteps(job));
 
 test('each E2E suite gates on its own policy flag', () => {
   for (const [jobName, flag] of [
@@ -778,10 +797,13 @@ test('each E2E suite gates on its own policy flag', () => {
     ['pick-e2e-runner', 'interview'],
     ['e2e-queue-watchdog', 'interview'],
   ]) {
-    const body = job(jobName);
-    assert.ok(body, `${jobName} job exists`);
+    const suiteJob = ciJob(jobName);
+    assert.ok(
+      needsOf(suiteJob).includes('e2e-policy'),
+      `${jobName} needs e2e-policy`,
+    );
     assert.match(
-      body,
+      suiteJob.if,
       new RegExp(`needs\\.e2e-policy\\.outputs\\.${flag} == 'true'`),
       `${jobName} is gated on the ${flag} suite flag`,
     );
@@ -789,20 +811,26 @@ test('each E2E suite gates on its own policy flag', () => {
 });
 
 test('automatic private E2E routing is idle-aware and normal-release-lane only', () => {
-  const picker = job('pick-e2e-runner');
-  assert.ok(picker, 'pick-e2e-runner job exists');
-  assert.match(picker, /\.busy == false/);
-  assert.match(picker, /RELEASE_REF.*changeset-release\/main/s);
-  assert.match(picker, /RUNNER_OVERRIDE/);
-  assert.match(picker, /WORKER_OVERRIDE/);
+  const picker = ciJob('pick-e2e-runner');
+  const pick = getStep(picker, { id: 'pick' });
+  const code = pick.run;
+  assert.match(code, /\.busy == false/);
+  assert.equal(
+    pick.env.RELEASE_REF,
+    '${{ needs.e2e-policy.outputs.release_ref }}',
+  );
+  assert.match(code, /"\$RELEASE_REF" == "changeset-release\/main"/);
+  assert.match(pick.env.RUNNER_OVERRIDE, /inputs\.interview_e2e_runner/);
+  assert.match(code, /"\$RUNNER_OVERRIDE"/);
+  assert.match(pick.env.WORKER_OVERRIDE, /inputs\.interview_e2e_workers/);
+  assert.match(code, /"\$WORKER_OVERRIDE"/);
+  assert.equal(picker.outputs.runs_on, '${{ steps.pick.outputs.runs_on }}');
 });
 
 test('manual Interview E2E benchmarks cannot enter the legacy release lane', () => {
-  const detect = job('legacy-release-detect');
-  assert.ok(detect, 'legacy-release-detect job exists');
   assert.match(
-    detect,
-    /!\(github\.event_name == 'workflow_dispatch'\n\s+&& inputs\.interview_e2e_benchmark == true\)/,
+    ciJob('legacy-release-detect').if,
+    /!\(github\.event_name == 'workflow_dispatch'\s+&& inputs\.interview_e2e_benchmark == true\)/,
   );
 
   for (const jobName of [
@@ -813,11 +841,13 @@ test('manual Interview E2E benchmarks cannot enter the legacy release lane', () 
     'architect-mirror',
     'architect-release-publish',
   ]) {
-    const downstream = job(jobName);
-    assert.ok(downstream, `${jobName} exists`);
-    assert.match(downstream, /needs:[\s\S]*?legacy-release-detect/);
+    const downstream = ciJob(jobName);
+    assert.ok(
+      needsOf(downstream).includes('legacy-release-detect'),
+      `${jobName} needs legacy-release-detect`,
+    );
     assert.match(
-      downstream,
+      downstream.if,
       /needs\.legacy-release-detect\.outputs\.(?:architect|interviewer)_released == 'true'/,
     );
   }
@@ -828,13 +858,20 @@ test('classic release builds use the proven macOS signing secrets', () => {
     'interviewer-release-build',
     'architect-release-build',
   ]) {
-    const releaseBuild = job(jobName);
-    assert.ok(releaseBuild, `${jobName} exists`);
-    assert.match(releaseBuild, /secrets\.MAC_CSC_LINK/);
-    assert.match(releaseBuild, /secrets\.MAC_CSC_KEY_PASSWORD/);
-    assert.match(releaseBuild, /secrets\.APPLE_ID/);
-    assert.match(releaseBuild, /secrets\.APPLE_APP_SPECIFIC_PASSWORD/);
-    assert.match(releaseBuild, /secrets\.APPLE_TEAM_ID/);
+    const packageStep = stepRunning(ciJob(jobName), /electron-builder/);
+    for (const [variable, secret] of [
+      ['CSC_LINK', 'MAC_CSC_LINK'],
+      ['CSC_KEY_PASSWORD', 'MAC_CSC_KEY_PASSWORD'],
+      ['APPLE_ID', 'APPLE_ID'],
+      ['APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_APP_SPECIFIC_PASSWORD'],
+      ['APPLE_TEAM_ID', 'APPLE_TEAM_ID'],
+    ]) {
+      assert.match(
+        packageStep.env?.[variable] ?? '',
+        new RegExp(`secrets\\.${secret}\\b`),
+        `${jobName} packages with ${variable} from secrets.${secret}`,
+      );
+    }
   }
 });
 
@@ -843,15 +880,19 @@ test('Classic release names remain bare semver for legacy update checks', () => 
     ['interviewer-mirror', 'interviewer'],
     ['architect-mirror', 'architect'],
   ]) {
-    const mirrorJob = job(jobName);
-    assert.ok(mirrorJob, `${jobName} exists`);
-    assert.match(
-      mirrorJob,
-      new RegExp(
-        `name: \\$\\{\\{ needs\\.legacy-release-detect\\.outputs\\.${app}_version \\}\\}`,
-      ),
+    const mirrorJob = ciJob(jobName);
+    const release = getStep(mirrorJob, {
+      uses: 'softprops/action-gh-release',
+    });
+    assert.equal(
+      release.with.name,
+      `\${{ needs.legacy-release-detect.outputs.${app}_version }}`,
     );
-    assert.doesNotMatch(mirrorJob, /name: Network Canvas/);
+    for (const step of liveSteps(mirrorJob)) {
+      for (const name of [step.name, step.with?.name]) {
+        assert.doesNotMatch(String(name ?? ''), /^Network Canvas/);
+      }
+    }
   }
 });
 
@@ -872,110 +913,137 @@ test('published Classic releases advance latest and rebuild the website', () => 
     ['interviewer-release-publish', 'interviewer'],
     ['architect-release-publish', 'architect'],
   ]) {
-    const publishJob = job(jobName);
-    assert.ok(publishJob, `${jobName} exists`);
-    assert.match(
-      publishJob,
-      new RegExp(`repository: complexdatacollective/${repository}`),
+    const publish = getStep(ciJob(jobName), {
+      uses: 'softprops/action-gh-release',
+    });
+    assert.equal(
+      publish.with.repository,
+      `complexdatacollective/${repository}`,
     );
-    assert.match(publishJob, /draft: false[\s\S]*?make_latest: 'true'/);
+    assert.equal(publish.with.draft, false);
+    assert.equal(publish.with.make_latest, 'true');
   }
 
-  const websiteRelease = job('apps-release-website');
-  assert.ok(websiteRelease, 'apps-release-website exists');
-  assert.match(
-    websiteRelease,
-    /group: apps-release-networkcanvas\.com-production/,
+  assert.equal(
+    ciJob('apps-release-website').concurrency.group,
+    'apps-release-networkcanvas.com-production',
   );
 
-  const websiteRefresh = job('refresh-website-after-classic-release');
-  assert.ok(websiteRefresh, 'Classic website refresh job exists');
-  assert.match(websiteRefresh, /- apps-release-website/);
-  assert.match(websiteRefresh, /- interviewer-release-publish/);
-  assert.match(websiteRefresh, /- architect-release-publish/);
-  assert.match(websiteRefresh, /always\(\)/);
+  const websiteRefresh = ciJob('refresh-website-after-classic-release');
+  for (const need of [
+    'apps-release-website',
+    'interviewer-release-publish',
+    'architect-release-publish',
+  ]) {
+    assert.ok(
+      needsOf(websiteRefresh).includes(need),
+      `the website refresh needs ${need}`,
+    );
+  }
+  assert.match(websiteRefresh.if, /always\(\)/);
   assert.match(
-    websiteRefresh,
+    websiteRefresh.if,
     /needs\.interviewer-release-publish\.result == 'success'/,
   );
   assert.match(
-    websiteRefresh,
+    websiteRefresh.if,
     /needs\.architect-release-publish\.result == 'success'/,
   );
-  assert.match(
-    websiteRefresh,
-    /group: apps-release-networkcanvas\.com-production/,
+  assert.equal(
+    websiteRefresh.concurrency.group,
+    'apps-release-networkcanvas.com-production',
   );
-  assert.match(websiteRefresh, /TURBO_FORCE: 'true'/);
-  assert.match(websiteRefresh, /ref: main/);
-  assert.match(
+  assert.equal(websiteRefresh.env.TURBO_FORCE, 'true');
+  assert.equal(
+    getStep(websiteRefresh, { uses: 'actions/checkout' }).with.ref,
+    'main',
+  );
+  stepRunning(
     websiteRefresh,
     /netlify-cli@\d+ deploy --build --prod[\s\S]*?--filter=networkcanvas\.com/,
   );
 });
 
 test('lint runs the whole repository through turbo and merge groups skip it', () => {
-  const lint = job('lint');
-  assert.ok(lint, 'lint job exists');
-  assert.match(lint, /github\.event_name != 'merge_group'/);
-  assert.match(lint, /pnpm exec turbo run \/\/#lint/);
+  const lint = ciJob('lint');
+  assert.match(lint.if, /github\.event_name != 'merge_group'/);
+  stepRunning(lint, /pnpm exec turbo run \/\/#lint/);
 });
 
 test('short quality checks share one setup without joining the critical path', () => {
-  const support = job('quality-support');
-  assert.ok(support, 'quality-support job exists');
-  assert.match(support, /uses: \.\/\.github\/actions\/turbo-ci-setup/);
-  assert.match(support, /pnpm exec turbo run \/\/#knip/);
-  assert.match(support, /pnpm check:changesets/);
-  assert.match(support, /pnpm check:compat-protocols/);
-  assert.match(support, /pnpm check:mapbox-tokens/);
-  assert.match(support, /pnpm --filter @codaco\/studio-api check:schema-docs/);
-  // Through turbo, so the guard suite is cached like every other test task.
-  assert.match(support, /turbo run \/\/#test:scripts/);
-  assert.match(support, /turbo run \/\/#test:invariants/);
-  assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
-  assert.match(support, /turbo run typecheck/);
+  const support = ciJob('quality-support');
+  getStep(support, { uses: './.github/actions/turbo-ci-setup' });
+  for (const command of [
+    /pnpm exec turbo run \/\/#knip/,
+    /pnpm check:changesets/,
+    /pnpm check:compat-protocols/,
+    /pnpm check:mapbox-tokens/,
+    /pnpm --filter @codaco\/studio-api check:schema-docs/,
+    // Through turbo, so the guard suite is cached like every other test task.
+    /turbo run \/\/#test:scripts/,
+    /turbo run \/\/#test:invariants/,
+    /turbo run build --filter='\.\/packages\/\*'/,
+    /turbo run typecheck/,
+  ]) {
+    stepRunning(support, command);
+  }
 
-  const quality = job('quality');
-  assert.ok(quality, 'quality job exists');
-  assert.match(quality, /- quality-support/);
+  assert.ok(
+    needsOf(ciJob('quality')).includes('quality-support'),
+    'quality needs quality-support',
+  );
 });
 
 test('the quality gate verifies each required E2E suite individually', () => {
-  const qualityJob = job('quality');
-  assert.ok(qualityJob, 'quality job exists');
+  const verify = getStep(ciJob('quality'), {
+    name: 'Verify all quality checks passed',
+  });
+  const code = verify.run;
   for (const suite of ['interview', 'interviewer', 'architect']) {
-    assert.match(
-      qualityJob,
-      new RegExp(
-        `E2E_${suite.toUpperCase()}_REQUIRED: \\$\\{\\{ needs\\.e2e-policy\\.outputs\\.${suite} \\}\\}`,
-      ),
+    const variable = `E2E_${suite.toUpperCase()}_REQUIRED`;
+    assert.equal(
+      verify.env[variable],
+      `\${{ needs.e2e-policy.outputs.${suite} }}`,
       `quality receives the ${suite} requirement flag`,
+    );
+    assert.match(
+      code,
+      new RegExp(`verify_required_e2e ${suite}-e2e "\\$${variable}"`),
+      `quality checks the ${suite} suite against its own flag`,
     );
   }
 });
 
 test('e2e-policy can query the Actions API for release-PR reuse', () => {
-  const policyJob = job('e2e-policy');
-  assert.ok(policyJob, 'e2e-policy job exists');
-  assert.match(policyJob, /GH_TOKEN: \$\{\{ github\.token \}\}/);
-  assert.match(policyJob, /fetch-depth: 0/);
+  const policyJob = ciJob('e2e-policy');
+  assert.equal(
+    getStep(policyJob, { id: 'policy' }).env.GH_TOKEN,
+    '${{ github.token }}',
+  );
+  assert.equal(
+    getStep(policyJob, { uses: 'actions/checkout' }).with['fetch-depth'],
+    0,
+  );
 });
 
 test('unit tests use affected task selection for PRs and skip merge groups', () => {
-  const testJob = job('test');
-  assert.ok(testJob, 'test job exists');
-  assert.match(
+  const testJob = ciJob('test');
+  const runStep = stepRunning(
     testJob,
-    /DIFF_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+    /node scripts\/ci\/test-shards\.mjs filters/,
+  );
+  const code = runStep.run;
+  assert.equal(
+    runStep.env.DIFF_BASE_SHA,
+    '${{ github.event.pull_request.base.sha }}',
     'test job diffs the PR against its full base',
   );
-  assert.match(testJob, /github\.event_name != 'merge_group'/);
-  assert.match(
-    testJob,
-    /if \[\[ "\$GITHUB_EVENT_NAME" == "pull_request" \]\] \\/,
+  assert.match(testJob.if, /github\.event_name != 'merge_group'/);
+  assert.match(code, /if \[\[ "\$GITHUB_EVENT_NAME" == "pull_request" \]\] \\/);
+  assert.doesNotMatch(
+    `${testJob.if}\n${scriptsOf(raw(testJob))}`,
+    /pull_request\|merge_group/,
   );
-  assert.doesNotMatch(testJob, /pull_request\|merge_group/);
   // Deliberately not `--affected`. Turbo 2.10.4 ignores every `--filter`
   // for task selection when `--affected` is present, while still printing a
   // "Packages in scope" line that honours it — so the Studio-server
@@ -987,7 +1055,7 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // invocation that reaches for `--affected` again, so neither the exclusion
   // nor the sharding can be quietly re-broken.
   assert.match(
-    testJob,
+    code,
     /pnpm exec turbo run test \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
     'the affected path scopes to the PR base and to this shard',
   );
@@ -998,14 +1066,16 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // running the whole workspace, and no other assertion
   // would have looked at the line.
   assert.match(
-    testJob,
+    code,
     /pnpm exec turbo run test "\$\{SHARD_FILTERS\[@\]\}"/,
     'the full-suite fallback is scoped to this shard too',
   );
   // Both invocations, and no others: a third turbo run without the shard
   // restriction would be an unrestricted workspace run on five runners.
   const shardedRuns =
-    testJob.match(/pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g) ?? [];
+    scriptsOf(testJob).match(
+      /pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g,
+    ) ?? [];
   assert.equal(shardedRuns.length, 2, 'exactly two turbo invocations');
   for (const run of shardedRuns) {
     assert.match(
@@ -1015,22 +1085,24 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
     );
   }
   assert.match(
-    testJob,
+    code,
     /if ! node scripts\/ci\/test-shards\.mjs filters "\$SHARD" >/,
     'the shard filters are gated on the exit status, not on the output being non-empty',
   );
+  // Over the raw scripts, comments included: a comment can only make this
+  // stricter.
   assert.doesNotMatch(
-    testJob,
+    scriptsOf(raw(testJob)),
     /turbo run [^\n]*--affected/,
     'turbo ignores --filter under --affected, so no invocation here may use it',
   );
   assert.match(
-    testJob,
+    code,
     /git cat-file -e "\$DIFF_BASE_SHA\^\{commit\}"/,
     'a missing diff base fails closed to the full suite',
   );
   assert.match(
-    testJob,
+    code,
     /':\(exclude\)scripts\/\*\.test\.mjs'/,
     'repository script tests do not invalidate workspace unit tests',
   );
@@ -1041,7 +1113,8 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   // by every shard that DOES run, so nothing executes them and CI stays
   // green while those suites silently stop running.
   // A split bucket needs one leg per part, or a part's files never run.
-  const legs = parsedWorkflow.jobs.test.strategy.matrix.include;
+  const testJob = ciJob('test');
+  const legs = testJob.strategy.matrix.include;
   assert.deepEqual(
     legs
       .map((leg) => `${leg.shard}${leg.part ? ` ${leg.part}` : ''}`)
@@ -1058,7 +1131,7 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   );
 
   assert.equal(
-    parsedWorkflow.jobs.test.strategy['fail-fast'],
+    testJob.strategy['fail-fast'],
     false,
     'a red shard must not cancel its siblings and hide their verdicts',
   );
@@ -1073,7 +1146,7 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
     'the Postgres leg is the bucket that holds the Postgres-dependent suite',
   );
   assert.ok(
-    !('services' in parsedWorkflow.jobs.test),
+    !('services' in testJob),
     'no leg pays the 24s container init it does not need',
   );
 
@@ -1089,44 +1162,119 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
     'the env leg is the bucket that holds @codaco/protocol-validation',
   );
 
-  const testJob = job('test');
-  assert.match(
+  const runCode = stepRunning(
     testJob,
     /node scripts\/ci\/test-shards\.mjs filters "\$SHARD"/,
-    'each shard derives its bucket from the one source of truth',
-  );
+  ).run;
   assert.match(
-    testJob,
+    runCode,
     /PART_ARGS=\(-- "--shard=\$PART"\)/,
     'a split leg passes its part through turbo to vitest',
   );
-  assert.match(
-    testJob,
-    /- name: Write protocol-validation \.env[\s\S]*?if: matrix\.protocolValidation/,
+  assert.equal(
+    getStep(testJob, { name: /^Write protocol-validation \.env/ }).if,
+    'matrix.protocolValidation',
     'the secret-writing step is gated on that leg',
   );
+
+  // The runner image ships no R, and the background-creator suite that runs
+  // its generated R script refuses to skip under CI.
+  const rLegs = legs.filter((leg) => leg.rscript === true);
+  assert.equal(rLegs.length, 1, 'one leg installs R');
+  assert.equal(
+    rLegs[0].shard,
+    TEST_SHARDS.find((s) =>
+      s.packages.some((p) => p.name === '@codaco/background-creator'),
+    )?.shard,
+    'the R leg is the bucket that holds @codaco/background-creator',
+  );
+  const setupR = getStep(testJob, { uses: 'r-lib/actions/setup-r' });
+  assert.equal(setupR.if, 'matrix.rscript');
+  assert.match(setupR.uses, /^r-lib\/actions\/setup-r@[0-9a-f]{40}$/);
+  assert.ok(
+    testJob.steps.indexOf(setupR) <
+      stepIndex(testJob, { run: /node scripts\/ci\/test-shards\.mjs filters/ }),
+    'R is on PATH before the suites run',
+  );
+  // The image has no Latin-1 locale either, and the suite's Latin-1 case
+  // refuses to skip under CI. The name must be one the suite tries.
+  const generatesLatin1 =
+    /^sudo localedef -i en_US -f ISO-8859-1 en_US\.ISO-8859-1\nlocale -a \| grep -qx 'en_US\.iso88591'\n?$/;
+  const latin1 = getStep(testJob, { run: /localedef/ });
+  assert.equal(latin1.if, 'matrix.rscript');
+  assert.match(latin1.run, generatesLatin1);
+  assert.ok(
+    stepIndex(testJob, { run: /localedef/ }) <
+      stepIndex(testJob, { run: /node scripts\/ci\/test-shards\.mjs filters/ }),
+    'the locale exists before the suites run',
+  );
+  assert.match(
+    readFileSync(
+      new URL(
+        '../../apps/background-creator/src/scripts/__tests__/r-exec.test.ts',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+    /'en_US\.iso88591'/,
+    'the generated locale is one of the suite candidates',
+  );
+
+  // The seed installs both too, but a failed download must not end the seed
+  // before anything is cached: each is reported by name instead, and the
+  // suite then fails in the seeding test run.
+  const seed = ciJob('seed-turbo-cache');
+  const report = getStep(seed, { name: 'Report seed step outcomes' });
+  const seedTestIndex = stepIndex(seed, { run: /turbo run[^\n]*test/ });
+  const seedR = getStep(seed, { uses: 'r-lib/actions/setup-r' });
+  assert.equal(seedR.if, undefined, 'the all-package seeding run always has R');
+  assert.equal(seedR.uses, setupR.uses, 'both jobs pin the same setup-r');
+  const seedLatin1 = getStep(seed, { run: /localedef/ });
+  assert.equal(seedLatin1.if, undefined);
+  assert.equal(
+    seedLatin1.run,
+    latin1.run,
+    'both jobs generate the same locale',
+  );
+  for (const [step, outcome] of [
+    [seedR, 'R_OUTCOME'],
+    [seedLatin1, 'LATIN1_LOCALE_OUTCOME'],
+  ]) {
+    assert.ok(
+      seed.steps.indexOf(step) < seedTestIndex,
+      `${step.name} runs first`,
+    );
+    assert.equal(step['continue-on-error'], true);
+    assert.equal(report.env[outcome], `\${{ steps.${step.id}.outcome }}`);
+    assert.match(report.run, new RegExp(`"[^"=]+=\\$${outcome}" \\\\`));
+  }
 
   // Ordering, not just presence. The `services:` block this replaced made
   // Actions block every step on the container's healthcheck, so a container
   // that could not start failed the job before a checkout or an install had
   // been paid for. Both Postgres steps must therefore precede turbo-ci-setup.
-  const setupAt = testJob.indexOf('uses: ./.github/actions/turbo-ci-setup');
-  const startAt = testJob.indexOf('- name: Start Postgres');
-  const waitAt = testJob.indexOf('- name: Wait for Postgres');
-  assert.ok(startAt !== -1 && waitAt !== -1 && setupAt !== -1);
+  const start = getStep(testJob, { name: /^Start Postgres/ });
+  const wait = getStep(testJob, { name: 'Wait for Postgres' });
+  assert.equal(start.if, 'matrix.postgres');
+  assert.equal(wait.if, 'matrix.postgres');
+  const startAt = stepIndex(testJob, { name: /^Start Postgres/ });
+  const waitAt = stepIndex(testJob, { name: 'Wait for Postgres' });
+  const setupAt = stepIndex(testJob, {
+    uses: './.github/actions/turbo-ci-setup',
+  });
   assert.ok(
     startAt < waitAt && waitAt < setupAt,
     'a Postgres that cannot start fails the shard before the install is paid for',
   );
   assert.match(
-    testJob,
+    wait.run,
     /The Postgres container stopped before accepting connections/,
     'a stopped container is reported at once rather than waited out',
   );
 });
 
 test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defines', () => {
-  const storybook = parsedWorkflow.jobs['test-storybook'];
+  const storybook = ciJob('test-storybook');
   const legs = storybook.strategy.matrix.include;
   assert.deepEqual(
     legs.map((leg) => [leg.shard, leg.browsers, leg.releaseBrowsers]),
@@ -1139,9 +1287,9 @@ test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defi
     storybook.env.STORYBOOK_FIREFOX,
     "${{ startsWith(github.head_ref, 'changeset-release/') }}",
   );
-  const install = storybook.steps.find(
-    (step) => step.uses === './.github/actions/playwright-browsers',
-  );
+  const install = getStep(storybook, {
+    uses: './.github/actions/playwright-browsers',
+  });
   assert.match(
     install.with.browsers,
     /env\.STORYBOOK_FIREFOX == 'true'\s+&& matrix\.releaseBrowsers/,
@@ -1156,15 +1304,19 @@ test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defi
     ).map((s) => s.shard),
     "Fresco's codegen runs on the leg that holds its stories",
   );
+  assert.equal(
+    stepRunning(storybook, /turbo run fresco#codegen/).if,
+    'matrix.frescoCodegen',
+  );
 
-  const body = job('test-storybook');
+  const code = scriptsOf(storybook);
   assert.match(
-    body,
+    code,
     /if ! node scripts\/ci\/test-shards\.mjs filters "\$SHARD" storybook >/,
     'each leg derives its bucket from the one source of truth, gated on the exit status',
   );
   const runs =
-    body.match(/pnpm exec turbo run test:storybook\b(?:[^\n]*\\\n)*[^\n]*/g) ??
+    code.match(/pnpm exec turbo run test:storybook\b(?:[^\n]*\\\n)*[^\n]*/g) ??
     [];
   assert.equal(runs.length, 2, 'exactly two turbo invocations');
   for (const run of runs) {
@@ -1174,8 +1326,10 @@ test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defi
       `every turbo run is leg-restricted: ${run}`,
     );
   }
+  // Over the raw scripts, comments included: a comment can only make this
+  // stricter.
   assert.doesNotMatch(
-    body,
+    scriptsOf(raw(storybook)),
     /turbo run [^\n]*--affected/,
     'turbo ignores --filter under --affected, so no invocation here may use it',
   );
@@ -1184,7 +1338,8 @@ test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defi
 // One shared step installs every browser, so the time limit and retries in
 // .github/actions/playwright-browsers cover all of them.
 test('every CI browser install goes through the shared install action', () => {
-  for (const file of readdirSync(WORKFLOW_DIR)) {
+  for (const file of workflowFiles()) {
+    // Raw text: a comment naming the command can only make this stricter.
     const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
     assert.doesNotMatch(
       source,
@@ -1192,9 +1347,11 @@ test('every CI browser install goes through the shared install action', () => {
       `${file} installs browsers without the time limit and retries`,
     );
   }
+  const installs = liveStepsOf(parsedWorkflow).filter(
+    (step) => step.uses === './.github/actions/playwright-browsers',
+  );
   assert.ok(
-    (workflow.match(/uses: \.\/\.github\/actions\/playwright-browsers/g) ?? [])
-      .length >= 6,
+    installs.length >= 6,
     'the native E2E lanes, Storybook, Studio and the cache warm use the action',
   );
 });
@@ -1209,7 +1366,7 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
   // request that invalidated six packages at once (#2023). The cap is now one
   // variable per workflow, so this guards that rather than each call site.
   let capped = 0;
-  for (const file of readdirSync(WORKFLOW_DIR)) {
+  for (const file of workflowFiles()) {
     const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
 
     // A per-invocation flag would override the workflow's variable and drift
@@ -1217,16 +1374,32 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
     // matters: these commands are routinely wrapped across `\`-continued
     // lines, and `test:storybook` was written that way until this change, so a
     // line-bounded pattern would miss the most likely way the flag comes back.
+    // Raw text: a comment can only make this stricter.
     assert.doesNotMatch(
       source,
       /turbo run(?:[^\n]*\\\n)*[^\n]*--concurrency/,
       `${file} passes --concurrency at a call site instead of setting TURBO_CONCURRENCY`,
     );
 
-    if (!/exec turbo run/.test(source)) continue;
-    assert.match(
-      source,
-      TURBO_CAP,
+    const parsed = readWorkflow(file);
+    // A job or step value would override the workflow's for that scope.
+    for (const scope of [...liveJobs(parsed), ...liveStepsOf(parsed)]) {
+      if (scope.env && 'TURBO_CONCURRENCY' in scope.env) {
+        assert.equal(
+          String(scope.env.TURBO_CONCURRENCY),
+          '1',
+          `${file} overrides TURBO_CONCURRENCY below the workflow`,
+        );
+      }
+    }
+
+    const runsTurbo = liveStepsOf(parsed).some(
+      (step) => typeof step.run === 'string' && /exec turbo run/.test(step.run),
+    );
+    if (!runsTurbo) continue;
+    assert.equal(
+      parsed.env?.TURBO_CONCURRENCY,
+      '1',
       `${file} runs turbo without setting TURBO_CONCURRENCY`,
     );
     capped += 1;
@@ -1237,14 +1410,15 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
     `expected every turbo workflow to be capped, saw ${capped}`,
   );
 
-  const seedJob = job('seed-turbo-cache');
-  assert.ok(seedJob, 'seed-turbo-cache job exists');
-  assert.match(seedJob, /pnpm exec turbo run test/);
-  assert.doesNotMatch(
-    seedJob,
-    /turbo run (?:build|typecheck)[^\n]*\btest\b/,
-    'the seed does not run tests in the same turbo invocation as build or typecheck',
-  );
+  const seedJob = ciJob('seed-turbo-cache');
+  stepRunning(seedJob, /pnpm exec turbo run test\b/);
+  for (const step of liveSteps(seedJob)) {
+    assert.doesNotMatch(
+      raw(step).run ?? '',
+      /turbo run (?:build|typecheck)[^\n]*\btest\b/,
+      'the seed does not run tests in the same turbo invocation as build or typecheck',
+    );
+  }
 });
 
 test('turbo runs at the one version the root package.json pins', () => {
@@ -1268,13 +1442,14 @@ test('turbo runs at the one version the root package.json pins', () => {
     .map((app) => new URL(`${app}/netlify.toml`, appsDir))
     .filter((url) => existsSync(url));
   const sources = [
-    ...readdirSync(WORKFLOW_DIR).map((file) => new URL(file, WORKFLOW_DIR)),
+    ...workflowFiles().map((file) => new URL(file, WORKFLOW_DIR)),
     ...readdirSync(actionDir, { recursive: true })
       .filter((file) => file.endsWith('.yml'))
       .map((file) => new URL(file, actionDir)),
     dockerfile,
     ...netlifyConfigs,
   ];
+  // Raw text: a comment naming a version can only make this stricter.
   for (const url of sources) {
     assert.doesNotMatch(
       readFileSync(url, 'utf8'),
@@ -1285,16 +1460,18 @@ test('turbo runs at the one version the root package.json pins', () => {
 
   // The callers without an install must read the pin, not drop turbo.
   const readsPin = /require\('\.\/package\.json'\)\.devDependencies\.turbo/;
-  assert.match(readFileSync(dockerfile, 'utf8'), readsPin);
-  assert.match(readFileSync(dockerfile, 'utf8'), /dlx "turbo@\$\(node -p/);
-  assert.match(job('detect'), readsPin);
-  assert.match(job('detect'), /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
+  const dockerCode = codeOf(readFileSync(dockerfile, 'utf8'));
+  assert.match(dockerCode, readsPin);
+  assert.match(dockerCode, /dlx "turbo@\$\(node -p/);
+  const detectCode = getStep(ciJob('detect'), { id: 'flags' }).run;
+  assert.match(detectCode, readsPin);
+  assert.match(detectCode, /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
 
   // Each ignore command has already changed to the repository root, so
   // ./package.json is the root manifest.
   let ignoreCommands = 0;
   for (const url of netlifyConfigs) {
-    const source = readFileSync(url, 'utf8');
+    const source = codeOf(readFileSync(url, 'utf8'));
     if (!source.includes('query affected')) continue;
     assert.match(
       source,
@@ -1310,16 +1487,25 @@ test('turbo runs at the one version the root package.json pins', () => {
   );
 });
 
-test('release job prunes ignored-lane changesets before changesets/action', () => {
-  const releaseJob = job('release');
-  assert.ok(releaseJob, 'release job exists');
+// PART-LOCAL HELPERS
 
-  const pruneIndex = releaseJob.indexOf(
-    'run: node scripts/release/prune-ignored-changesets.mjs',
-  );
-  const actionIndex = releaseJob.indexOf('uses: changesets/action@');
-  assert.ok(pruneIndex !== -1, 'release job runs prune-ignored-changesets.mjs');
-  assert.ok(actionIndex !== -1, 'release job uses changesets/action');
+// The scripts of every live step of the jobs as written, comments included,
+// for checks that something must never appear in them.
+const everyRun = (...jobs) =>
+  jobs
+    .flatMap((job) => liveSteps(job))
+    .map((step) => raw(step).run ?? '')
+    .join('\n');
+const stepNamed = (job, name) => getStep(job, { name });
+const indexNamed = (job, name) => stepIndex(job, { name });
+
+test('release job prunes ignored-lane changesets before changesets/action', () => {
+  const releaseJob = ciJob('release');
+
+  const pruneIndex = stepIndex(releaseJob, {
+    run: /^node scripts\/release\/prune-ignored-changesets\.mjs\s*$/,
+  });
+  const actionIndex = stepIndex(releaseJob, { uses: 'changesets/action' });
   assert.ok(
     pruneIndex < actionIndex,
     'prune step must run before changesets/action reads changeset state',
@@ -1329,126 +1515,148 @@ test('release job prunes ignored-lane changesets before changesets/action', () =
   // because the action's Git CLI push path opens with `git reset --hard`. The
   // v2 default (GitHub API push) commits the whole diff against the pushed SHA,
   // which would delete the gated-product changesets for real.
-  assert.match(
-    releaseJob,
-    /push-with-git-cli: true/,
+  assert.equal(
+    getStep(releaseJob, { uses: 'changesets/action' }).with[
+      'push-with-git-cli'
+    ],
+    true,
     "the working-tree prune depends on the Git CLI push path's reset",
   );
 });
 
 test('release job uses the changesets/action v2 input names', () => {
-  const releaseJob = job('release');
-  assert.ok(releaseJob, 'release job exists');
+  const action = getStep(ciJob('release'), { uses: 'changesets/action' });
 
-  assert.match(releaseJob, /version-script: pnpm run version-packages/);
-  assert.match(releaseJob, /publish-script: pnpm run publish-packages/);
-  assert.match(releaseJob, /create-github-releases: true/);
+  assert.equal(action.with['version-script'], 'pnpm run version-packages');
+  assert.equal(action.with['publish-script'], 'pnpm run publish-packages');
+  assert.equal(action.with['create-github-releases'], true);
   // v1 spellings are silently ignored by v2, so a stale name would quietly
   // fall back to `changeset version` and skip publishing altogether.
   for (const legacyInput of [
-    'version:',
-    'publish:',
-    'createGithubReleases:',
-    'commit:',
-    'title:',
-    'branch:',
-    'cwd:',
+    'version',
+    'publish',
+    'createGithubReleases',
+    'commit',
+    'title',
+    'branch',
+    'cwd',
   ]) {
     assert.ok(
-      !releaseJob.includes(`\n          ${legacyInput}`),
+      !Object.hasOwn(action.with, legacyInput),
       `release job must not use the v1 input \`${legacyInput}\``,
     );
   }
 });
 
 test('generated release PRs use the dedicated PAT and rely on native PR CI', () => {
-  const releaseJob = job('release');
-  assert.ok(releaseJob, 'release job exists');
+  const releaseJob = ciJob('release');
   // changesets/action v2 ignores the GITHUB_TOKEN environment variable; the
   // PAT only takes effect through the `github-token` input.
-  assert.match(
-    releaseJob,
-    /github-token: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/,
+  assert.equal(
+    getStep(releaseJob, { uses: 'changesets/action' }).with['github-token'],
+    '${{ secrets.RELEASE_PR_TOKEN }}',
   );
-  assert.doesNotMatch(releaseJob, /gh workflow run ci-and-release\.yml/);
-  assert.doesNotMatch(releaseJob, /actions: write/);
+  assert.doesNotMatch(
+    everyRun(releaseJob),
+    /gh workflow run ci-and-release\.yml/,
+  );
+  assert.equal(releaseJob.permissions?.actions, undefined);
+  assert.doesNotMatch(JSON.stringify(raw(releaseJob)), /"actions":"write"/);
 
-  const productReleaseJob = job('product-release-pr');
-  assert.ok(productReleaseJob, 'product release PR job exists');
-  assert.match(
-    productReleaseJob,
-    /token: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/,
+  const productReleaseJob = ciJob('product-release-pr');
+  assert.equal(
+    getStep(productReleaseJob, { uses: 'peter-evans/create-pull-request' }).with
+      .token,
+    '${{ secrets.RELEASE_PR_TOKEN }}',
   );
-  assert.doesNotMatch(productReleaseJob, /gh workflow run ci-and-release\.yml/);
-  assert.doesNotMatch(productReleaseJob, /actions: write/);
+  assert.doesNotMatch(
+    everyRun(productReleaseJob),
+    /gh workflow run ci-and-release\.yml/,
+  );
+  assert.equal(productReleaseJob.permissions?.actions, undefined);
+  assert.doesNotMatch(
+    JSON.stringify(raw(productReleaseJob)),
+    /"actions":"write"/,
+  );
 });
 
 test('product release PR matrix covers every gated release lane completely', () => {
   // The matrix and GATED_PRODUCT_RELEASE_LANES must not drift: a lane missing
   // here never gets a release PR, and a lane package missing from package_args
   // makes version-gated-products.mjs reject the invocation as incomplete.
-  const productReleaseJob = job('product-release-pr');
-  assert.ok(productReleaseJob, 'product release PR job exists');
+  const productReleaseJob = ciJob('product-release-pr');
+  const entries = productReleaseJob.strategy.matrix.include;
   for (const [lane, packages] of Object.entries(GATED_PRODUCT_RELEASE_LANES)) {
-    assert.match(
-      productReleaseJob,
-      new RegExp(`slug: ${lane}\\b`),
-      `matrix has an entry for the ${lane} lane`,
-    );
+    const entry = entries.find(({ slug }) => slug === lane);
+    assert.ok(entry, `matrix has an entry for the ${lane} lane`);
     for (const pkg of packages) {
       assert.ok(
-        productReleaseJob.includes(`--package '${pkg}'`),
+        entry.package_args.includes(`--package '${pkg}'`),
         `${lane} lane passes --package '${pkg}'`,
       );
     }
   }
+  assert.match(
+    getStep(productReleaseJob, {
+      run: /node scripts\/release\/version-gated-products\.mjs/,
+    }).run,
+    /version-gated-products\.mjs \$\{\{ matrix\.package_args \}\}/,
+    'the lane packages reach the versioning script',
+  );
 });
 
 test('normal-lane apps do not get separate generated release PRs', () => {
-  const releaseJob = job('release');
-  const productReleaseJob = job('product-release-pr');
-  assert.ok(releaseJob, 'release job exists');
-  assert.ok(productReleaseJob, 'product release PR job exists');
-  assert.match(releaseJob, /uses: changesets\/action@/);
-  assert.doesNotMatch(productReleaseJob, /slug: apps/);
-  assert.doesNotMatch(productReleaseJob, /@codaco\/architect/);
-  assert.doesNotMatch(productReleaseJob, /@codaco\/background-creator/);
-  assert.doesNotMatch(productReleaseJob, /@codaco\/interviewer/);
-  assert.match(
-    productReleaseJob,
-    /branch: changeset-release\/\$\{\{ matrix\.slug \}\}/,
+  const releaseJob = ciJob('release');
+  const productReleaseJob = ciJob('product-release-pr');
+  getStep(releaseJob, { uses: 'changesets/action' });
+  assert.ok(
+    !productReleaseJob.strategy.matrix.include.some(
+      ({ slug }) => slug === 'apps',
+    ),
+  );
+  const definition = JSON.stringify(raw(productReleaseJob));
+  assert.doesNotMatch(definition, /@codaco\/architect/);
+  assert.doesNotMatch(definition, /@codaco\/background-creator/);
+  assert.doesNotMatch(definition, /@codaco\/interviewer/);
+  assert.equal(
+    getStep(productReleaseJob, { uses: 'peter-evans/create-pull-request' }).with
+      .branch,
+    'changeset-release/${{ matrix.slug }}',
   );
 });
 
 test('release-sensitive app builds run before merge', () => {
-  const supportJob = job('quality-support');
-  assert.ok(supportJob, 'quality support job exists');
+  const build = getStep(ciJob('quality-support'), { id: 'build' });
   assert.match(
-    supportJob,
-    /turbo run build --filter='\.\/packages\/\*' --filter=@codaco\/background-creator/,
+    build.run,
+    /^pnpm exec turbo run build --filter='\.\/packages\/\*' --filter=@codaco\/background-creator$/m,
   );
   // Architect and Interviewer take the source-map upload path only when both
   // credentials are non-empty; the values themselves are dummies.
-  assert.match(supportJob, /POSTHOG_PERSONAL_API_KEY: \S+/);
-  assert.match(supportJob, /POSTHOG_PROJECT_ID: \S+/);
+  assert.match(String(build.env.POSTHOG_PERSONAL_API_KEY), /\S+/);
+  assert.match(String(build.env.POSTHOG_PROJECT_ID), /\S+/);
   assert.match(
-    supportJob,
-    /POSTHOG_CLI_BINARY_PATH: .*posthog-cli-upload-stub\.mjs/,
+    build.env.POSTHOG_CLI_BINARY_PATH,
+    /posthog-cli-upload-stub\.mjs$/,
   );
-  assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
-  assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
-  assert.match(supportJob, /pnpm --filter=@codaco\/studio-web build/);
+  assert.match(build.run, /^pnpm --filter=@codaco\/architect build$/m);
+  assert.match(build.run, /^pnpm --filter=@codaco\/interviewer build$/m);
+  assert.match(build.run, /^pnpm --filter=@codaco\/studio-web build$/m);
 });
 
 // Every check in quality-support is `continue-on-error`, so the job's own
 // conclusion says nothing about them: the final step is what fails the job.
 // A check added without a line there passes silently forever.
 test('every quality-support check is consulted by the step that fails the job', () => {
-  const steps = parsedWorkflow.jobs['quality-support'].steps;
-  const verify = steps.at(-1);
-  assert.equal(verify.name, 'Verify support checks passed');
+  const supportJob = ciJob('quality-support');
+  const verify = getStep(supportJob, { name: 'Verify support checks passed' });
+  assert.equal(supportJob.steps.at(-1), verify);
+  assert.equal(verify.if, 'always()');
 
-  const checks = steps.filter((step) => step['continue-on-error'] === true);
+  const checks = findSteps(
+    supportJob,
+    (step) => step['continue-on-error'] === true,
+  );
   assert.ok(checks.length >= 8, 'quality-support runs the short checks');
 
   for (const { id, name } of checks) {
@@ -1466,63 +1674,73 @@ test('every quality-support check is consulted by the step that fails the job', 
 });
 
 test('changed public npm versions are checked against the registry before merge', () => {
-  const supportJob = job('quality-support');
-  assert.ok(supportJob, 'quality support job exists');
-  assert.match(supportJob, /fetch-depth: 0/);
-  assert.match(
-    supportJob,
-    /id: npm_versions[\s\S]*?continue-on-error: true[\s\S]*?BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  const supportJob = ciJob('quality-support');
+  assert.equal(
+    getStep(supportJob, { uses: 'actions/checkout' }).with['fetch-depth'],
+    0,
   );
+  const check = getStep(supportJob, { id: 'npm_versions' });
+  assert.equal(check['continue-on-error'], true);
+  assert.equal(check.env.BASE_SHA, '${{ github.event.pull_request.base.sha }}');
   assert.match(
-    supportJob,
+    check.run,
     /if \[\[ "\$GITHUB_EVENT_NAME" != "pull_request" \]\]; then[\s\S]*?node scripts\/release\/check-npm-version-collisions\.mjs --base "\$BASE_SHA"/,
   );
 });
 
 test('stable app versions deploy to their Netlify production sites', () => {
-  const detectJob = job('apps-release-detect');
-  assert.ok(detectJob, 'apps release detector exists');
+  const detectJob = ciJob('apps-release-detect');
   for (const [app, siteSecret] of [
     ['architect', 'ARCHITECT'],
     ['background-creator', 'BACKGROUND_CREATOR'],
     ['interviewer', 'INTERVIEWER'],
   ]) {
-    assert.match(
-      detectJob,
-      new RegExp(
-        `PKG_JSON: apps/${app}/package\\.json[\\s\\S]*?RELEASE_CHANNEL: stable-tagged`,
-      ),
-    );
+    const detect = getStep(detectJob, (step) => {
+      return step.env?.PKG_JSON === `apps/${app}/package.json`;
+    });
+    assert.equal(detect.env.RELEASE_CHANNEL, 'stable-tagged');
+    assert.equal(detect.run, 'bash .github/scripts/detect-app-release.sh');
 
-    const releaseJob = job(`apps-release-${app}`);
-    assert.ok(releaseJob, `${app} production release job exists`);
+    const releaseJob = ciJob(`apps-release-${app}`);
     assert.match(
-      releaseJob,
+      getStep(releaseJob, { run: /netlify-cli@\d+ deploy/ }).run,
       new RegExp(
         `netlify-cli@\\d+ deploy --no-build --prod[\\s\\S]*?--site="\\$\\{\\{ secrets\\.NETLIFY_SITE_ID_${siteSecret} \\}\\}"`,
       ),
     );
-    assert.match(releaseJob, /prerelease: false/);
-    assert.match(releaseJob, /make_latest: 'true'/);
-    assert.match(
-      releaseJob,
-      new RegExp(`group: apps-release-@codaco/${app}$`, 'm'),
+    const release = getStep(releaseJob, {
+      uses: 'softprops/action-gh-release',
+    });
+    assert.equal(release.with.prerelease, false);
+    assert.equal(release.with.make_latest, 'true');
+    assert.equal(
+      releaseJob.concurrency.group,
+      `apps-release-@codaco/${app}`,
       `${app} releases must serialize across versions`,
     );
-    assert.match(releaseJob, /fetch-depth: 0/);
-    assert.match(releaseJob, /bash \.github\/scripts\/app-release-guard\.sh/);
-    assert.match(releaseJob, /--since "\$SINCE"/);
+    assert.equal(
+      getStep(releaseJob, { uses: 'actions/checkout' }).with['fetch-depth'],
+      0,
+    );
+    const guard = getStep(releaseJob, { id: 'guard' });
+    assert.equal(guard.run, 'bash .github/scripts/app-release-guard.sh');
+    assert.ok(
+      stepIndex(releaseJob, { id: 'guard' }) <
+        stepIndex(releaseJob, { run: /netlify-cli@\d+ deploy/ }),
+      `${app} is guarded before it deploys`,
+    );
+    const notes = getStep(releaseJob, {
+      run: /scripts\/release\/release-notes\.mjs/,
+    });
+    assert.match(notes.run, /--since "\$SINCE"/);
+    assert.equal(notes.env.SINCE, '${{ steps.guard.outputs.newest }}');
   }
 });
-
-const readWorkflow = (file) =>
-  parse(readFileSync(new URL(file, WORKFLOW_DIR), 'utf8'));
-const runText = (steps) => steps.map((step) => step.run ?? '').join('\n');
 
 // Architect 9 bundles Architect 8 at /v8/ from a tarball attached to the 8.x
 // release (apps/architect/RELEASING.md, "Sub-path dist tarball").
 test('Architect 8.x releases in either lane chain the sub-path dist after the release', () => {
-  const architect = parsedWorkflow.jobs['apps-release-architect'];
+  const architect = ciJob('apps-release-architect');
   assert.equal(
     architect.outputs.released,
     "${{ steps.guard.outputs.skip != 'true' }}",
@@ -1534,13 +1752,13 @@ test('Architect 8.x releases in either lane chain the sub-path dist after the re
   // The tag is created at the commit built and deployed, not at whatever
   // main's tip is when the release is published.
   assert.equal(architect.outputs.sha, '${{ github.sha }}');
-  const architectRelease = architect.steps.find(({ uses }) =>
-    uses?.startsWith('softprops/action-gh-release@'),
-  );
+  const architectRelease = getStep(architect, {
+    uses: 'softprops/action-gh-release',
+  });
   assert.equal(architectRelease.with.target_commitish, '${{ github.sha }}');
 
-  const chained = parsedWorkflow.jobs['apps-release-architect-subpath-dist'];
-  assert.deepEqual(chained.needs, [
+  const chained = ciJob('apps-release-architect-subpath-dist');
+  assert.deepEqual(needsOf(chained), [
     'apps-release-detect',
     'apps-release-architect',
   ]);
@@ -1560,15 +1778,15 @@ test('Architect 8.x releases in either lane chain the sub-path dist after the re
     expected_sha: '${{ needs.apps-release-architect.outputs.sha }}',
   });
   // A dist failure must not fail the release job it follows.
-  assert.doesNotMatch(JSON.stringify(architect.steps), /subpath-dist/);
+  assert.doesNotMatch(JSON.stringify(raw(architect).steps), /subpath-dist/);
 
   const hotfix = readWorkflow('hotfix-release.yml');
   assert.equal(
-    hotfix.jobs['hotfix-release'].outputs.tag,
+    getJob(hotfix, 'hotfix-release').outputs.tag,
     '${{ steps.version.outputs.tag }}',
   );
-  const hotfixDist = hotfix.jobs['architect-subpath-dist'];
-  assert.equal(hotfixDist.needs, 'hotfix-release');
+  const hotfixDist = getJob(hotfix, 'architect-subpath-dist');
+  assert.deepEqual(needsOf(hotfixDist), ['hotfix-release']);
   assert.match(hotfixDist.if, /inputs\.app == 'architect'/);
   assert.match(
     hotfixDist.if,
@@ -1610,45 +1828,52 @@ test('the app sub-path dist lane builds a released tag without a write token', (
   assert.equal(dist.on.workflow_call.inputs.expected_sha.default, '');
   assert.equal(dist.on.workflow_dispatch.inputs.expected_sha, undefined);
 
-  const { resolve, build, publish } = dist.jobs;
-  const resolveRun = runText(resolve.steps);
-  assert.match(resolveRun, /"\$DISPATCH_REF" != 'refs\/heads\/main'/);
+  const resolve = getJob(dist, 'resolve');
+  const build = getJob(dist, 'build');
+  const publish = getJob(dist, 'publish');
+  assert.match(
+    stepNamed(resolve, 'Validate the dispatch').run,
+    /"\$DISPATCH_REF" != 'refs\/heads\/main'/,
+  );
   // A called workflow's app is a free string: it is checked against the two
   // apps before it names anything, and reaches the shell only through env.
-  const validate = resolve.steps.find(({ id }) => id === 'app');
+  const validate = getStep(resolve, { id: 'app' });
   assert.equal(validate.env.APP, '${{ inputs.app }}');
   assert.match(validate.run, /architect\) label=Architect ;;/);
   assert.match(validate.run, /interviewer\) label=Interviewer ;;/);
   assert.match(validate.run, /\*\)\n\s+echo "::error::/);
   assert.ok(
-    resolve.steps.indexOf(validate) <
-      resolve.steps.findIndex(({ id }) => id === 'guard'),
+    stepIndex(resolve, { id: 'app' }) < stepIndex(resolve, { id: 'guard' }),
   );
   assert.doesNotMatch(
-    resolveRun,
+    everyRun(resolve),
     /\$\{\{\s*inputs\.app\s*\}\}/,
     'the app never reaches a script by interpolation',
   );
-  const guard = resolve.steps.find(({ id }) => id === 'guard');
+  const guard = getStep(resolve, { id: 'guard' });
   assert.equal(guard.run, 'bash .github/scripts/release-line-tag-guard.sh');
   assert.equal(guard.env.APP, '${{ inputs.app }}');
   assert.equal(guard.env.FORCE, 'false');
   // Major-generic: /vN/ and <app>-vN-dist.tgz from the tag's own major.
-  assert.match(resolveRun, /echo "base=\/v\$\{MAJOR\}\/"/);
-  assert.match(resolveRun, /echo "asset=\$\{APP\}-v\$\{MAJOR\}-dist\.tgz"/);
+  const eligible = getStep(resolve, { id: 'eligible' });
+  assert.match(eligible.run, /echo "base=\/v\$\{MAJOR\}\/"/);
+  assert.match(eligible.run, /echo "asset=\$\{APP\}-v\$\{MAJOR\}-dist\.tgz"/);
   // Eligible only when the tag's build reads the app's base-path variable.
-  assert.match(resolveRun, /git grep -q -F -e "\$BASE_VARIABLE" "\$TAG" --/);
-  assert.match(resolveRun, /if \[\[ "\$REPLACE" == 'true' \]\]; then/);
-  assert.match(resolveRun, /echo "skip=true"/);
+  assert.match(eligible.run, /git grep -q -F -e "\$BASE_VARIABLE" "\$TAG" --/);
+  const existing = getStep(resolve, { id: 'existing' });
+  assert.equal(existing.env.REPLACE, '${{ inputs.replace }}');
+  assert.match(existing.run, /if \[\[ "\$REPLACE" == 'true' \]\]; then/);
+  assert.match(existing.run, /echo "skip=true"/);
   // Skipped only when both assets are there: a run that stopped between the
   // uploads fails loudly instead of skipping without a checksum or a pin.
   assert.match(
-    resolveRun,
+    existing.run,
     /"\$has_tarball" == 'true' && "\$has_checksum" == 'true'/,
   );
-  assert.match(resolveRun, /has only part of its sub-path dist/);
-  const commitCheck = resolve.steps.find(
-    ({ name }) => name === 'Check the tag names the released commit',
+  assert.match(existing.run, /has only part of its sub-path dist/);
+  const commitCheck = stepNamed(
+    resolve,
+    'Check the tag names the released commit',
   );
   assert.equal(commitCheck.if, "inputs.expected_sha != ''");
   assert.equal(commitCheck.env.TAGGED, '${{ steps.guard.outputs.sha }}');
@@ -1658,19 +1883,15 @@ test('the app sub-path dist lane builds a released tag without a write token', (
     /if \[\[ "\$TAGGED" != "\$EXPECTED" \]\]; then/,
   );
   assert.match(commitCheck.run, /exit 1/);
-  const resolveStepIndex = (name) =>
-    resolve.steps.findIndex((step) => step.name === name);
   assert.ok(
-    resolveStepIndex('Resolve and guard tag') <
-      resolveStepIndex('Check the tag names the released commit'),
+    indexNamed(resolve, 'Resolve and guard tag') <
+      indexNamed(resolve, 'Check the tag names the released commit'),
   );
 
   assert.deepEqual(build.permissions, { contents: 'read' });
   assert.match(build.if, /needs\.resolve\.outputs\.eligible == 'true'/);
   assert.match(build.if, /needs\.resolve\.outputs\.skip != 'true'/);
-  const buildStep = build.steps.find(
-    ({ name }) => name === 'Build the app under its sub-path',
-  );
+  const buildStep = stepNamed(build, 'Build the app under its sub-path');
   assert.equal(buildStep.env.BASE, '${{ needs.resolve.outputs.base }}');
   assert.equal(
     buildStep.env.BASE_VARIABLE,
@@ -1682,23 +1903,24 @@ test('the app sub-path dist lane builds a released tag without a write token', (
     buildStep.run,
     'env "${BASE_VARIABLE}=${BASE}" pnpm --filter "@codaco/${APP}" build',
   );
-  const buildSource = JSON.stringify(build);
+  const buildSource = JSON.stringify(raw(build));
   assert.doesNotMatch(buildSource, /secrets\.|GH_TOKEN|github\.token/);
   assert.doesNotMatch(buildSource, /POSTHOG/);
+  const pack = getStep(build, { id: 'pack' });
   assert.match(
-    runText(build.steps),
+    pack.run,
     /node \.dist-tooling\/scripts\/release\/package-app-subpath-dist\.mjs \\\n\s+--app "\$APP"/,
   );
-  // The packer imports the shared base-path helper.
-  const tooling = build.steps.find(
-    ({ name }) => name === 'Check out the packing tooling',
+  assert.ok(
+    indexNamed(build, 'Build the app under its sub-path') <
+      stepIndex(build, { id: 'pack' }),
   );
+  // The packer imports the shared base-path helper.
+  const tooling = stepNamed(build, 'Check out the packing tooling');
   assert.match(tooling.with['sparse-checkout'], /^scripts\/buildtime$/m);
   // Only Architect's sub-path tarball carries a build-info stamp;
   // Interviewer's sub-path build writes its own dist-info.json.
-  const stamp = build.steps.find(
-    ({ name }) => name === 'Stamp the built commit',
-  );
+  const stamp = stepNamed(build, 'Stamp the built commit');
   assert.equal(stamp.if, "inputs.app == 'architect'");
   assert.match(
     stamp.run,
@@ -1710,26 +1932,34 @@ test('the app sub-path dist lane builds a released tag without a write token', (
     !publish.steps.some((step) => step.uses?.startsWith('actions/checkout@')),
     'publish never checks out code',
   );
-  const publishRun = runText(publish.steps);
-  assert.match(publishRun, /sha256sum -c "\$\{ASSET\}\.sha256"/);
-  assert.match(publishRun, /if \[\[ "\$REPLACE" != 'true' \]\]; then/);
-  assert.match(publishRun, /https:\/\/uploads\.github\.com\/repos\//);
-  assert.match(publishRun, /"sha256:\$\{SHA256\}"/);
-  assert.match(publishRun, /GITHUB_STEP_SUMMARY/);
-  assert.match(publishRun, /apps\/\$\{APP\}\/legacy-\$\{APP\}\.json/);
+  assert.match(
+    stepNamed(publish, 'Verify the downloaded tarball').run,
+    /sha256sum -c "\$\{ASSET\}\.sha256"/,
+  );
+  const upload = getStep(publish, { id: 'upload' });
+  assert.equal(upload.env.REPLACE, '${{ inputs.replace }}');
+  assert.match(upload.run, /if \[\[ "\$REPLACE" != 'true' \]\]; then/);
+  assert.match(upload.run, /https:\/\/uploads\.github\.com\/repos\//);
+  assert.match(
+    stepNamed(publish, 'Verify the uploaded tarball').run,
+    /"sha256:\$\{SHA256\}"/,
+  );
+  const summary = stepNamed(publish, 'Summary');
+  assert.match(summary.run, /GITHUB_STEP_SUMMARY/);
+  assert.match(summary.run, /apps\/\$\{APP\}\/legacy-\$\{APP\}\.json/);
   // One upload per app and major line at a time.
   assert.equal(
     publish.concurrency.group,
     '${{ inputs.app }}-subpath-dist-v${{ needs.resolve.outputs.major }}',
   );
 
-  const definition = JSON.stringify(dist);
+  const definition = JSON.stringify(raw(dist));
   assert.doesNotMatch(definition, /netlify/i);
   assert.doesNotMatch(definition, /softprops\/action-gh-release/);
 });
 
 test('Interviewer 8.x releases in either lane chain the sub-path dist after the release', () => {
-  const interviewer = parsedWorkflow.jobs['apps-release-interviewer'];
+  const interviewer = ciJob('apps-release-interviewer');
   assert.equal(
     interviewer.outputs.released,
     "${{ steps.guard.outputs.skip != 'true' }}",
@@ -1741,13 +1971,13 @@ test('Interviewer 8.x releases in either lane chain the sub-path dist after the 
   // The tag is created at the commit built and deployed, not at whatever
   // main's tip is when the release is published.
   assert.equal(interviewer.outputs.sha, '${{ github.sha }}');
-  const interviewerRelease = interviewer.steps.find(({ uses }) =>
-    uses?.startsWith('softprops/action-gh-release@'),
-  );
+  const interviewerRelease = getStep(interviewer, {
+    uses: 'softprops/action-gh-release',
+  });
   assert.equal(interviewerRelease.with.target_commitish, '${{ github.sha }}');
 
-  const chained = parsedWorkflow.jobs['apps-release-interviewer-subpath-dist'];
-  assert.deepEqual(chained.needs, [
+  const chained = ciJob('apps-release-interviewer-subpath-dist');
+  assert.deepEqual(needsOf(chained), [
     'apps-release-detect',
     'apps-release-interviewer',
   ]);
@@ -1767,11 +1997,11 @@ test('Interviewer 8.x releases in either lane chain the sub-path dist after the 
     expected_sha: '${{ needs.apps-release-interviewer.outputs.sha }}',
   });
   // A dist failure must not fail the release job it follows.
-  assert.doesNotMatch(JSON.stringify(interviewer.steps), /subpath-dist/);
+  assert.doesNotMatch(JSON.stringify(raw(interviewer).steps), /subpath-dist/);
 
   const hotfix = readWorkflow('hotfix-release.yml');
-  const hotfixDist = hotfix.jobs['interviewer-subpath-dist'];
-  assert.equal(hotfixDist.needs, 'hotfix-release');
+  const hotfixDist = getJob(hotfix, 'interviewer-subpath-dist');
+  assert.deepEqual(needsOf(hotfixDist), ['hotfix-release']);
   assert.match(hotfixDist.if, /inputs\.app == 'interviewer'/);
   assert.match(
     hotfixDist.if,
@@ -1790,17 +2020,11 @@ test('Interviewer 8.x releases in either lane chain the sub-path dist after the 
 // tag, release and tarball, never a deploy, never "Latest", and never holding
 // the normal lane's lock.
 test('the app maintenance lane releases an older line without deploying it', () => {
-  const source = readFileSync(
-    new URL('app-maintenance-release.yml', WORKFLOW_DIR),
-    'utf8',
-  );
-  const maintenance = parse(source);
-  const definition = JSON.stringify(maintenance);
+  const maintenance = readWorkflow('app-maintenance-release.yml');
+  const definition = JSON.stringify(raw(maintenance));
   assert.deepEqual(Object.keys(maintenance.on), ['workflow_dispatch']);
-  assert.deepEqual(maintenance.on.workflow_dispatch.inputs.app.options, [
-    'interviewer',
-    'architect',
-  ]);
+  const apps = maintenance.on.workflow_dispatch.inputs.app.options;
+  assert.deepEqual(apps, ['interviewer', 'architect']);
   assert.deepEqual(maintenance.permissions, { contents: 'read' });
   assert.equal(
     maintenance.concurrency.group,
@@ -1808,60 +2032,74 @@ test('the app maintenance lane releases an older line without deploying it', () 
   );
   assert.doesNotMatch(definition, /netlify/i);
   assert.doesNotMatch(definition, /secrets\./);
-  assert.match(source, /`interviewer-maintenance-release`/);
-  assert.match(source, /`architect-maintenance-release`/);
   assert.notEqual(
     maintenance.concurrency.group,
     'apps-release-@codaco/${{ inputs.app }}',
   );
 
-  const { verify, release } = maintenance.jobs;
-  const verifyRun = runText(verify.steps);
-  assert.match(verifyRun, /"\$DISPATCH_REF" != 'refs\/heads\/main'/);
+  const verify = getJob(maintenance, 'verify');
+  const release = getJob(maintenance, 'release');
+  // Each app releases through its own reviewer-gated environment.
+  assert.equal(release.environment, '${{ inputs.app }}-maintenance-release');
+
+  const dispatch = stepNamed(verify, 'Validate the dispatch');
+  assert.match(dispatch.run, /"\$DISPATCH_REF" != 'refs\/heads\/main'/);
   assert.match(
-    verifyRun,
+    dispatch.run,
     /if \[\[ "\$APP" != 'interviewer' && "\$APP" != 'architect' \]\]; then/,
   );
-  assert.match(verifyRun, /"\$SOURCE_REF" != "maintenance\/\$\{APP\}-"\*/);
-  assert.match(verifyRun, /git merge-base --is-ancestor "\$sha" origin\/main/);
+  assert.match(dispatch.run, /"\$SOURCE_REF" != "maintenance\/\$\{APP\}-"\*/);
+  assert.match(
+    getStep(verify, { id: 'commit' }).run,
+    /git merge-base --is-ancestor "\$sha" origin\/main/,
+  );
   assert.deepEqual(verify.permissions, { contents: 'read' });
   assert.equal(verify.env.SCOPE, 'line');
   assert.equal(verify.env.APP, '${{ inputs.app }}');
   assert.doesNotMatch(
-    runText([...verify.steps, ...release.steps]),
+    everyRun(verify, release),
     /\$\{\{\s*inputs\./,
     'inputs reach the scripts only through env',
   );
-  assert.match(
-    verifyRun,
-    /node \.maintenance-lane\/\.github\/scripts\/resolve-hotfix-release\.mjs/,
+  assert.equal(
+    getStep(verify, { id: 'version' }).run,
+    'node .maintenance-lane/.github/scripts/resolve-hotfix-release.mjs',
   );
   assert.match(
-    verifyRun,
+    stepNamed(verify, 'Verify the app and its workspace dependencies').run,
     /pnpm exec turbo run typecheck test --filter="@codaco\/\$\{APP\}\.\.\."/,
   );
   assert.match(
-    verifyRun,
+    stepNamed(verify, 'Verify the sub-path build').run,
     /env "\$\{APP\^\^\}_BASE_PATH=\/v\$\{VERSION%%\.\*\}\/" pnpm --filter "@codaco\/\$\{APP\}" build/,
   );
 
-  assert.equal(release.environment, '${{ inputs.app }}-maintenance-release');
   assert.deepEqual(release.permissions, { contents: 'write' });
   assert.equal(release.env.SCOPE, 'line');
   assert.equal(release.env.APP, '${{ inputs.app }}');
-  assert.doesNotMatch(runText(release.steps), /pnpm/);
-  assert.equal(release.steps[0].with.ref, '${{ needs.verify.outputs.sha }}');
-  const releaseRun = runText(release.steps);
-  assert.match(releaseRun, /git fetch --tags --force origin/);
+  assert.doesNotMatch(everyRun(release), /pnpm/);
+  const releaseCheckout = getStep(
+    release,
+    (step) =>
+      step.uses?.startsWith('actions/checkout@') &&
+      step.with?.path === undefined,
+  );
+  assert.equal(release.steps[0], releaseCheckout);
+  assert.equal(releaseCheckout.with.ref, '${{ needs.verify.outputs.sha }}');
+  const recheck = getStep(release, { id: 'version' });
+  assert.match(recheck.run, /git fetch --tags --force origin/);
   assert.match(
-    releaseRun,
+    recheck.run,
+    /node \.maintenance-lane\/\.github\/scripts\/resolve-hotfix-release\.mjs/,
+  );
+  assert.match(
+    getStep(release, { id: 'claim' }).run,
     /gh api -X POST "repos\/\$GITHUB_REPOSITORY\/git\/refs"/,
   );
-  assert.match(releaseRun, /--since "\$SINCE"/);
-  assert.match(releaseRun, /--pkg "\$\{PACKAGE\}"/);
-  const create = release.steps.find(
-    ({ name }) => name === 'Create the release',
-  );
+  const notes = stepNamed(release, 'Release notes');
+  assert.match(notes.run, /--since "\$SINCE"/);
+  assert.match(notes.run, /--pkg "\$\{PACKAGE\}"/);
+  const create = stepNamed(release, 'Create the release');
   assert.match(create.uses, /^softprops\/action-gh-release@[0-9a-f]{40}$/);
   assert.equal(create.with.make_latest, 'false');
   assert.equal(create.with.prerelease, false);
@@ -1872,18 +2110,18 @@ test('the app maintenance lane releases an older line without deploying it', () 
   );
   // Nothing that can fail runs between the claim and the release, and a claim
   // left without a release is given up so a re-run is not blocked by its tag.
-  const stepIndex = (name) =>
-    release.steps.findIndex((step) => step.name === name);
   assert.ok(
-    stepIndex('Release notes') < stepIndex('Claim the release tag'),
+    indexNamed(release, 'Release notes') <
+      indexNamed(release, 'Claim the release tag'),
     'release notes are written before the tag is claimed',
   );
   assert.equal(
-    stepIndex('Create the release'),
-    stepIndex('Claim the release tag') + 1,
+    indexNamed(release, 'Create the release'),
+    indexNamed(release, 'Claim the release tag') + 1,
   );
-  const rollback = release.steps.find(
-    ({ name }) => name === 'Release the claimed tag if no release was created',
+  const rollback = stepNamed(
+    release,
+    'Release the claimed tag if no release was created',
   );
   assert.match(rollback.if, /always\(\)/);
   assert.match(rollback.if, /steps\.claim\.outcome == 'success'/);
@@ -1897,13 +2135,12 @@ test('the app maintenance lane releases an older line without deploying it', () 
   // A re-run after a run that died between the claim and the release (so
   // the rollback never ran) gives up only a lightweight tag on the verified
   // commit with no release, before the re-check would refuse the version.
-  const reclaim = release.steps.find(
-    ({ name }) =>
-      name === 'Give up a claim an earlier attempt left without a release',
-  );
+  const reclaimName =
+    'Give up a claim an earlier attempt left without a release';
+  const reclaim = stepNamed(release, reclaimName);
   assert.ok(
-    stepIndex('Give up a claim an earlier attempt left without a release') <
-      stepIndex('Re-check the version against the newest releases'),
+    indexNamed(release, reclaimName) <
+      indexNamed(release, 'Re-check the version against the newest releases'),
   );
   assert.equal(reclaim.env.SHA, '${{ needs.verify.outputs.sha }}');
   assert.equal(
@@ -1924,16 +2161,12 @@ test('the app maintenance lane releases an older line without deploying it', () 
   // A fresh dispatch meets the same claim in verify, whose resolver would
   // refuse the version before the release job could give the claim up. It
   // sets aside only its own checkout's copy, under the same conditions.
-  const verifyStepIndex = (name) =>
-    verify.steps.findIndex((step) => step.name === name);
-  const setAside = verify.steps.find(
-    ({ name }) =>
-      name === 'Set aside a claim an earlier attempt left without a release',
-  );
+  const setAsideName =
+    'Set aside a claim an earlier attempt left without a release';
+  const setAside = stepNamed(verify, setAsideName);
   assert.ok(
-    verifyStepIndex(
-      'Set aside a claim an earlier attempt left without a release',
-    ) < verifyStepIndex('Resolve and validate the version'),
+    indexNamed(verify, setAsideName) <
+      indexNamed(verify, 'Resolve and validate the version'),
   );
   assert.equal(setAside.env.SHA, '${{ steps.commit.outputs.sha }}');
   assert.match(
@@ -1943,15 +2176,15 @@ test('the app maintenance lane releases an older line without deploying it', () 
   assert.match(setAside.run, /git rev-parse "refs\/tags\/\$tag"\)" != "\$SHA"/);
   assert.match(setAside.run, /"\$status" != HTTP\/\*' 404'\*/);
   assert.match(setAside.run, /git tag -d "\$tag"/);
-  assert.doesNotMatch(setAside.run, /-X DELETE/);
+  assert.doesNotMatch(raw(setAside).run, /-X DELETE/);
 
   // The set-aside reads the app's own package and tag, never Architect's.
   assert.match(setAside.run, /"apps\/\$\{APP\}\/package\.json"/);
   assert.match(setAside.run, /tag="@codaco\/\$\{APP\}@\$version"/);
-  assert.doesNotMatch(setAside.run, /architect/);
+  assert.doesNotMatch(raw(setAside).run, /architect/);
 
-  const dist = maintenance.jobs['subpath-dist'];
-  assert.deepEqual(dist.needs, ['verify', 'release']);
+  const dist = getJob(maintenance, 'subpath-dist');
+  assert.deepEqual(needsOf(dist), ['verify', 'release']);
   assert.equal(dist.uses, './.github/workflows/app-subpath-dist.yml');
   assert.deepEqual(dist.with, {
     app: '${{ inputs.app }}',
@@ -1962,56 +2195,79 @@ test('the app maintenance lane releases an older line without deploying it', () 
 });
 
 test('Fresco mirrors under the same release guard as the Netlify lanes', () => {
-  const detectJob = job('apps-release-detect');
-  assert.match(
-    detectJob,
-    /PKG_JSON: apps\/fresco\/package\.json[\s\S]*?PKG_NAME: 'fresco'[\s\S]*?RELEASE_CHANNEL: stable-tagged/,
-  );
+  const detect = getStep(ciJob('apps-release-detect'), { id: 'fresco' });
+  assert.deepEqual(detect.env, {
+    PKG_JSON: 'apps/fresco/package.json',
+    PKG_NAME: 'fresco',
+    RELEASE_CHANNEL: 'stable-tagged',
+  });
+  assert.equal(detect.run, 'bash .github/scripts/detect-app-release.sh');
 
-  const fresco = job('apps-release-fresco');
-  assert.ok(fresco, 'apps-release-fresco exists');
-  assert.match(fresco, /needs: \[apps-release-detect, release\]/);
+  const fresco = ciJob('apps-release-fresco');
+  assert.deepEqual(needsOf(fresco), ['apps-release-detect', 'release']);
   // One group per app, not per version: two concurrent main runs holding
   // different untagged versions must serialise over check → mirror → tag, or
   // an older version can be pushed on top of the newer one (2026-09-02).
-  assert.match(
-    fresco,
-    /group: apps-release-fresco$/m,
+  assert.equal(
+    fresco.concurrency.group,
+    'apps-release-fresco',
     'Fresco releases must serialise across versions',
   );
-  assert.doesNotMatch(fresco, /group: apps-release-fresco@/);
-  assert.match(fresco, /fetch-depth: 0/);
-  assert.match(
-    fresco,
-    /id: guard\n\s+env:\n\s+PKG_NAME: fresco\n\s+VERSION: \$\{\{ needs\.apps-release-detect\.outputs\.fresco_version \}\}\n\s+run: bash \.github\/scripts\/app-release-guard\.sh/,
+  assert.equal(
+    getStep(fresco, { uses: 'actions/checkout' }).with['fetch-depth'],
+    0,
   );
+  const guard = getStep(fresco, { id: 'guard' });
+  assert.deepEqual(guard.env, {
+    PKG_NAME: 'fresco',
+    VERSION: '${{ needs.apps-release-detect.outputs.fresco_version }}',
+  });
+  assert.equal(guard.run, 'bash .github/scripts/app-release-guard.sh');
   assert.doesNotMatch(
-    fresco,
+    everyRun(fresco),
     /git rev-parse -q --verify "refs\/tags\/\$TAG"/,
     'the inline tag-only check is gone',
   );
-  assert.match(fresco, /SINCE: \$\{\{ steps\.guard\.outputs\.newest \}\}/);
-  assert.match(fresco, /--since "\$SINCE"/);
+  const notes = stepNamed(fresco, 'fresco release notes');
+  assert.equal(notes.env.SINCE, '${{ steps.guard.outputs.newest }}');
+  assert.match(notes.run, /--since "\$SINCE"/);
+  const guardIndex = stepIndex(fresco, { id: 'guard' });
   for (const step of [
     'Mirror source to the Fresco repository',
     'fresco release notes',
     'Create the release on the Fresco repository',
     'Tag the released version in this repository',
   ]) {
-    assert.match(
-      fresco,
-      new RegExp(
-        `- name: ${escapeRegExp(step)}\\n(?:\\s+id: \\S+\\n)?\\s+if: steps\\.guard\\.outputs\\.skip != 'true'`,
-      ),
+    assert.equal(
+      stepNamed(fresco, step).if,
+      "steps.guard.outputs.skip != 'true'",
       `${step} is gated on the guard`,
+    );
+    assert.ok(
+      guardIndex < indexNamed(fresco, step),
+      `${step} follows the guard`,
     );
   }
 });
 
+// PART-LOCAL HELPERS
+
+// The superseded-push guard step, exactly as the release-side jobs run it.
+function assertTipGuard(job) {
+  const tip = getStep(job, { id: 'tip' });
+  assert.equal(tip.name, "Confirm this run still describes main's tip");
+  assert.deepEqual(tip.env, {
+    EXPECTED_SHA: '${{ github.sha }}',
+    REF: '${{ github.ref }}',
+  });
+  assert.equal(tip.run, 'bash .github/scripts/superseded-push-guard.sh');
+  return stepIndex(job, { id: 'tip' });
+}
+
 test('Studio releases publish signed, attested images under the app-lane guard', () => {
-  const detect = parsedWorkflow.jobs['apps-release-detect'];
+  const detect = ciJob('apps-release-detect');
   assert.equal(
-    detect.steps.find(({ id }) => id === 'studio')?.run,
+    getStep(detect, { id: 'studio' }).run,
     'node scripts/release/studio-release.mjs plan',
   );
   assert.equal(
@@ -2019,8 +2275,7 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     '${{ steps.studio.outputs.released }}',
   );
 
-  const studio = parsedWorkflow.jobs['apps-release-studio'];
-  assert.ok(studio, 'apps-release-studio exists');
+  const studio = ciJob('apps-release-studio');
   assert.deepEqual(studio.needs, ['apps-release-detect', 'studio-upgrade']);
   assert.equal(
     studio.if,
@@ -2044,7 +2299,13 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     'https://token.actions.githubusercontent.com',
   );
 
+  assert.equal(
+    liveSteps(studio).length,
+    studio.steps.length,
+    'no Studio release step is switched off',
+  );
   const [checkout, guard, ...rest] = studio.steps;
+  assert.match(checkout.uses, /^actions\/checkout@/);
   assert.equal(checkout.with['fetch-depth'], 0);
   assert.equal(checkout.with['fetch-tags'], true);
   assert.equal(guard.id, 'guard');
@@ -2062,7 +2323,7 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     ['api', 'studio-api'],
     ['web', 'studio-web'],
   ]) {
-    const build = studio.steps.find((step) => step.id === id);
+    const build = getStep(studio, { id });
     assert.match(build.uses, /^docker\/build-push-action@[0-9a-f]{40}$/);
     assert.equal(build.with.file, 'apps/studio/Dockerfile');
     assert.equal(build.with.target, target);
@@ -2079,7 +2340,6 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     assert.equal(build.with['build-args'], 'SOURCE_MAPS_TARGET=codaco-studio');
   }
 
-  const names = studio.steps.map(({ name }) => name);
   const order = [
     'Generate the SBOMs',
     'Sign the images and attest their SBOMs',
@@ -2088,18 +2348,14 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     'Write the release notes and studio-release.json',
     'Create the studio@${{ env.VERSION }} release',
     'Point latest at this release',
-  ].map((name) => {
-    const index = names.indexOf(name);
-    assert.notEqual(index, -1, `${name} exists`);
-    return index;
-  });
+  ].map((name) => stepIndex(studio, { name }));
   assert.deepEqual(
     order,
     order.toSorted((a, b) => a - b),
     'nothing is tagged before the images verify and pull anonymously, and latest moves only once the release is published',
   );
 
-  const step = (name) => studio.steps.find((each) => each.name === name).run;
+  const step = (name) => getStep(studio, { name }).run;
   assert.match(
     step('Sign the images and attest their SBOMs'),
     /cosign sign --yes --recursive "\$API_REF" "\$WEB_REF"/,
@@ -2117,7 +2373,8 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     );
   }
   assert.doesNotMatch(
-    step('Sign the images and attest their SBOMs'),
+    raw(getStep(studio, { name: 'Sign the images and attest their SBOMs' }))
+      .run,
     /--predicate "[^"]*\.cdx\.json"/,
     'no SBOM goes to the public transparency log whole',
   );
@@ -2163,83 +2420,96 @@ test('Studio releases publish signed, attested images under the app-lane guard',
 
   // On every pull request, so the Studio release PR is refused before it
   // merges rather than when the upgrade lane runs on main.
-  const support = parsedWorkflow.jobs['quality-support'].steps;
-  const check = support.findIndex(
-    ({ run }) => run === 'node scripts/release/studio-release.mjs check',
-  );
-  const setup = support.findIndex(
-    ({ uses }) => uses === './.github/actions/turbo-ci-setup',
-  );
+  const support = ciJob('quality-support');
+  const check = stepIndex(support, {
+    run: 'node scripts/release/studio-release.mjs check',
+  });
+  const setup = stepIndex(support, {
+    uses: './.github/actions/turbo-ci-setup',
+  });
   assert.ok(
-    check > setup && setup !== -1,
+    check > setup,
     'every pull request checks that studio-api moves with every Studio package, once Node is set up',
   );
-  assert.equal(support[check].id, 'studio-release');
+  assert.equal(support.steps[check].id, 'studio-release');
+  const verdict = getStep(support, { name: 'Verify support checks passed' });
+  assert.equal(
+    verdict.env.STUDIO_RELEASE_OUTCOME,
+    '${{ steps.studio-release.outcome }}',
+  );
   assert.match(
-    job('quality-support'),
+    verdict.run,
     /"studio-release=\$STUDIO_RELEASE_OUTCOME"/,
     'quality-support fails when the check fails',
   );
   // Full history: the check compares with the newest release tag.
-  assert.match(job('quality-support'), /fetch-depth: 0/);
+  assert.equal(
+    getStep(support, { uses: 'actions/checkout' }).with['fetch-depth'],
+    0,
+  );
 });
 
 test('release-side jobs stop once their main commit has been superseded', () => {
-  const guardStep =
-    /- name: Confirm this run still describes main's tip\n(?:\s+#[^\n]*\n)*\s+id: tip\n\s+env:\n\s+EXPECTED_SHA: \$\{\{ github\.sha \}\}\n\s+REF: \$\{\{ github\.ref \}\}\n\s+run: bash \.github\/scripts\/superseded-push-guard\.sh\n/;
-
-  const releaseJob = job('release');
-  const tipIndex = releaseJob.search(guardStep);
-  const actionIndex = releaseJob.indexOf('uses: changesets/action@');
-  assert.ok(tipIndex !== -1, 'release job runs the superseded-push guard');
+  const releaseJob = ciJob('release');
+  const tipIndex = assertTipGuard(releaseJob);
+  const actionIndex = stepIndex(releaseJob, { uses: 'changesets/action' });
   assert.ok(
     tipIndex < actionIndex,
     'the guard runs before changesets/action reads the tree',
   );
   // Last thing before the action: the build takes minutes, and a check made
   // any earlier would leave that whole window open again.
-  assert.match(
-    releaseJob,
-    /run: bash \.github\/scripts\/superseded-push-guard\.sh\n\s+- id: changesets\n\s+if: steps\.tip\.outputs\.current == 'true'\n\s+uses: changesets\/action@/,
-    'changesets/action is the next step and is gated on the guard',
+  const action = releaseJob.steps[actionIndex];
+  assert.equal(
+    actionIndex,
+    tipIndex + 1,
+    'changesets/action is the next step after the guard',
+  );
+  assert.equal(action.id, 'changesets');
+  assert.equal(
+    action.if,
+    "steps.tip.outputs.current == 'true'",
+    'changesets/action is gated on the guard',
   );
 
   // The check cannot lock main, so a push can land between it and the
   // action. Serialising the job makes the run for that push act last, and
   // that run — holding the tip with nothing left to version — closes any
   // release PR the superseded run left behind.
-  assert.match(
-    releaseJob,
-    /concurrency:\n\s+group: release-main\n\s+cancel-in-progress: false/,
+  assert.deepEqual(
+    releaseJob.concurrency,
+    { 'group': 'release-main', 'cancel-in-progress': false },
     'release jobs serialise without cancelling a publish mid-flight',
   );
-  const cleanupIndex = releaseJob.indexOf(
-    '- name: Close a release PR the tip no longer needs',
-  );
-  assert.ok(cleanupIndex !== -1, 'the tip run closes a stale release PR');
+  const cleanupName = 'Close a release PR the tip no longer needs';
+  const cleanupIndex = stepIndex(releaseJob, { name: cleanupName });
   assert.ok(cleanupIndex > actionIndex, 'cleanup runs after the action');
+  const cleanup = releaseJob.steps[cleanupIndex];
   assert.equal(
-    parsedWorkflow.jobs.release.steps.find(
-      ({ name }) => name === 'Close a release PR the tip no longer needs',
-    )?.if,
+    cleanup.if,
     "steps.tip.outputs.current == 'true' && steps.changesets.outputs['has-changesets'] == 'false'",
   );
   assert.match(
-    releaseJob,
+    cleanup.run,
     /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--base main --head changeset-release\/main --json number/,
   );
-  assert.match(releaseJob, /gh pr close "\$number"/);
+  assert.match(cleanup.run, /gh pr close "\$number"/);
 
-  const productReleaseJob = job('product-release-pr');
-  assert.match(productReleaseJob, guardStep);
-  assert.match(
-    productReleaseJob,
-    /- name: Compute \$\{\{ matrix\.product \}\} version bump\n\s+if: steps\.tip\.outputs\.current == 'true'/,
-  );
-  assert.match(
-    productReleaseJob,
-    /- name: Open\/update the \$\{\{ matrix\.product \}\} release PR\n\s+if: steps\.tip\.outputs\.current == 'true'/,
-  );
+  const productReleaseJob = ciJob('product-release-pr');
+  const productTip = assertTipGuard(productReleaseJob);
+  for (const name of [
+    'Compute ${{ matrix.product }} version bump',
+    'Open/update the ${{ matrix.product }} release PR',
+  ]) {
+    assert.equal(
+      getStep(productReleaseJob, { name }).if,
+      "steps.tip.outputs.current == 'true'",
+    );
+    assert.ok(
+      stepIndex(productReleaseJob, { name }) > productTip,
+      `${name} runs after the guard`,
+    );
+  }
 
   // The app lanes deliberately do not use it: app-release-guard.sh already
   // makes a superseded tree harmless, and skipping on supersession would
@@ -2251,14 +2521,16 @@ test('release-side jobs stop once their main commit has been superseded', () => 
     'fresco',
     'studio',
   ]) {
-    assert.doesNotMatch(job(`apps-release-${app}`), /superseded-push-guard/);
+    assert.doesNotMatch(
+      JSON.stringify(raw(ciJob(`apps-release-${app}`))),
+      /superseded-push-guard/,
+    );
   }
 });
 
 test('a stale Version Packages PR cannot merge', () => {
-  const freshness = job('version-packages-freshness');
-  assert.ok(freshness, 'version-packages-freshness exists');
-  const condition = parsedWorkflow.jobs['version-packages-freshness'].if;
+  const freshness = ciJob('version-packages-freshness');
+  const condition = freshness.if;
   // Every merge-group commit — it is the merged tree that matters, and the
   // queue entry does not say which branch it merges — plus the release PR's
   // own runs for early signal.
@@ -2270,83 +2542,87 @@ test('a stale Version Packages PR cannot merge', () => {
   // The queue batches entries, each built on the ones ahead of it, and a
   // group's ref names only its last PR — membership must come from ancestry
   // of the open release PR's head, never from the ref suffix.
+  const resolve = getStep(freshness, { id: 'head' });
   assert.match(
-    freshness,
+    resolve.run,
     /pulls\?state=open&base=main&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
   );
   assert.match(
-    freshness,
+    resolve.run,
     /compare\/\$\{vp_head\}\.\.\.\$\{GITHUB_SHA\}"[^\n]*\n\s+--jq \.status/,
   );
-  assert.match(freshness, /ahead \| identical\) release_pr=true/);
-  assert.doesNotMatch(freshness, /merge_group\.head_ref/);
-  assert.doesNotMatch(freshness, /head_commit\.message/);
+  assert.match(resolve.run, /ahead \| identical\) release_pr=true/);
+  assert.doesNotMatch(JSON.stringify(raw(freshness)), /merge_group\.head_ref/);
+  assert.doesNotMatch(JSON.stringify(raw(freshness)), /head_commit\.message/);
   // A judgement that cannot be made must fail the entry, not wave it through:
   // nothing in the resolving step may swallow a failed API call.
-  const resolve = parsedWorkflow.jobs['version-packages-freshness'].steps.find(
-    ({ id }) => id === 'head',
-  );
-  assert.ok(resolve?.run, 'the resolving step exists');
-  assert.doesNotMatch(resolve.run, /\|\| true|2>\/dev\/null|set \+e/);
-  assert.match(
-    freshness,
-    /if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/release\/check-version-packages-freshness\.mjs/,
-  );
+  assert.doesNotMatch(raw(resolve).run, /\|\| true|2>\/dev\/null|set \+e/);
+  assert.equal(resolve['continue-on-error'], undefined);
+  const check = getStep(freshness, {
+    run: /^node scripts\/release\/check-version-packages-freshness\.mjs\s*$/,
+  });
+  assert.equal(check.if, "steps.head.outputs.release_pr == 'true'");
 
-  const quality = job('quality');
-  assert.match(quality, /^      - version-packages-freshness$/m);
-  assert.match(
-    quality,
-    /FRESHNESS_RESULT: \$\{\{ needs\.version-packages-freshness\.result \}\}/,
+  const quality = ciJob('quality');
+  assert.ok(needsOf(quality).includes('version-packages-freshness'));
+  const gate = getStep(quality, { name: 'Verify all quality checks passed' });
+  assert.equal(
+    gate.env.FRESHNESS_RESULT,
+    '${{ needs.version-packages-freshness.result }}',
   );
-  const verdictIndex = quality.indexOf(
+  const verdictIndex = gate.run.indexOf(
     'if [[ "$FRESHNESS_RESULT" != "success" && "$FRESHNESS_RESULT" != "skipped" ]]; then',
   );
-  const mergeGroupExit = quality.indexOf(
+  const mergeGroupExit = gate.run.indexOf(
     'if [[ "$EVENT_NAME" == "merge_group" ]]; then',
   );
   assert.ok(verdictIndex !== -1, 'quality consults the freshness verdict');
   assert.ok(
-    verdictIndex < mergeGroupExit,
+    mergeGroupExit !== -1 && verdictIndex < mergeGroupExit,
     'the verdict is consulted before the merge-group early exit',
   );
 });
 
 test('closed snapshot PRs cannot leave permanent pending state', () => {
+  const snapshotJob = getJob(snapshotWorkflow, 'open-snapshot-update');
+  const source = getStep(snapshotJob, { id: 'snapshot_source' });
   assert.match(
-    snapshotWorkflow,
-    /id: snapshot_source[\s\S]*?state: 'open'[\s\S]*?base: 'main'[\s\S]*?head,/,
+    source.with.script,
+    /state: 'open'[\s\S]*?base: 'main'[\s\S]*?head,/,
   );
   assert.match(
-    snapshotWorkflow,
+    source.with.script,
     /pull\.head\.repo\?\.full_name === `\$\{context\.repo\.owner\}\/\$\{context\.repo\.repo\}` &&\n\s+pull\.head\.ref === snapshotBranch/,
   );
-  assert.match(
-    snapshotWorkflow,
-    /steps\.snapshot_source\.outputs\.open == 'true'/,
+  const consumer = { if: /steps\.snapshot_source\.outputs\.open == 'true'/ };
+  getStep(snapshotJob, consumer);
+  assert.ok(
+    stepIndex(snapshotJob, consumer) >
+      stepIndex(snapshotJob, { id: 'snapshot_source' }),
+    'the open verdict is read after it is computed',
   );
 });
 
 test('the informational Pages deploy has a bounded failure window', () => {
-  const reportJob = job('e2e-report');
-  assert.ok(reportJob, 'e2e-report job exists');
-  assert.match(
-    reportJob,
-    /- name: Deploy report to Pages\n\s+id: deploy\n\s+if: [^\n]+\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
-  );
+  const deploy = getStep(ciJob('e2e-report'), {
+    name: 'Deploy report to Pages',
+  });
+  assert.equal(deploy.id, 'deploy');
+  assert.equal(typeof deploy.if, 'string');
+  assert.notEqual(deploy.if.trim(), '');
+  assert.match(deploy.uses, /^actions\/deploy-pages@/);
+  assert.equal(deploy['timeout-minutes'], 3);
+  assert.equal(deploy['continue-on-error'], true);
 });
 
 test('the unified E2E report aggregates every suite job and publishes failures only', () => {
-  const reportJob = job('e2e-report');
-  assert.ok(reportJob, 'e2e-report job exists');
+  const reportJob = ciJob('e2e-report');
+  const meta = getStep(reportJob, { id: 'meta' });
+  const merge = getStep(reportJob, { id: 'merge' });
   for (const name of Object.values(E2E_JOB_NAMES).flat()) {
+    assert.ok(needsOf(reportJob).includes(name), `e2e-report needs ${name}`);
     assert.match(
-      reportJob,
-      new RegExp(`^ {6}- ${name}$`, 'm'),
-      `e2e-report needs ${name}`,
-    );
-    assert.match(
-      reportJob,
+      merge.run,
       new RegExp(`merge_report ${name} `),
       `${name} is mapped in the merge step`,
     );
@@ -2354,19 +2630,19 @@ test('the unified E2E report aggregates every suite job and publishes failures o
 
   // Reports go to Pages only for FAILED jobs, and a green job removes its
   // branch's stale failure report — only the latest run's report is kept.
-  assert.match(reportJob, /case "\$result" in\n\s+failure\)/);
+  assert.match(merge.run, /case "\$result" in\n\s+failure\)/);
 
   // Review hardening: distinct refs must never share a report directory
   // (lossy tr normalisation collides feature/foo with feature-foo), and the
   // published tree must never be empty (an empty state-branch commit fails
   // and leaves a deleted report live).
   assert.match(
-    reportJob,
+    meta.run,
     /printf '%s' "\$1" \| sha256sum \| cut -c1-8/,
     'the slug carries a digest of the raw ref',
   );
   assert.match(
-    reportJob,
+    merge.run,
     /> merged\/index\.html/,
     'a root marker keeps the published tree non-empty',
   );
@@ -2374,7 +2650,7 @@ test('the unified E2E report aggregates every suite job and publishes failures o
   // A failed job's previous report is removed even when this failure died
   // before producing a replacement artifact — the old rm must precede the
   // artifact-existence check.
-  const failureCase = reportJob.match(/failure\)([\s\S]*?);;/)?.[1] ?? '';
+  const failureCase = merge.run.match(/failure\)([\s\S]*?);;/)?.[1] ?? '';
   assert.ok(
     failureCase.indexOf('rm -rf "$dir"') !== -1 &&
       failureCase.indexOf('rm -rf "$dir"') <
@@ -2386,96 +2662,111 @@ test('the unified E2E report aggregates every suite job and publishes failures o
   // suite having run, so all-skipped runs still clean up deleted branches'
   // reports. Its only gate is the stale-head guard; the artifact download
   // stays failure-gated.
-  assert.match(
-    reportJob,
-    /- name: Merge failure reports into per-job branch subdirectories\n(?:\s+#[^\n]*\n)*\s+id: merge\n\s+if: steps\.guard\.outputs\.current == 'true'\n\s+env:/,
+  assert.equal(
+    merge.name,
+    'Merge failure reports into per-job branch subdirectories',
+  );
+  assert.equal(
+    merge.if,
+    "steps.guard.outputs.current == 'true'",
     'the merge step is gated only on the stale-head guard',
   );
 
   // A transiently failed Pages deploy must be retried: gh-pages-deployed
   // advances only on deploy success, and a mismatch versus gh-pages forces
   // needs_deploy on the next run.
-  assert.match(reportJob, /pending_deploy/);
+  assert.match(meta.run, /pending_deploy=%s/);
+  assert.equal(
+    merge.env.PENDING_DEPLOY,
+    '${{ steps.meta.outputs.pending_deploy }}',
+  );
+  assert.match(merge.run, /if \[ "\$PENDING_DEPLOY" = "true" \]; then/);
+  const record = getStep(reportJob, { name: 'Record the deployed state' });
   assert.match(
-    reportJob,
+    record.run,
     /gh-pages:refs\/heads\/gh-pages-deployed/,
     'the deployed pointer is recorded from the state branch',
   );
   assert.match(
-    reportJob,
-    /- name: Record the deployed state\n(?:\s+#[^\n]*\n)*\s+if: >-\n\s+\$\{\{ steps\.merge\.outputs\.needs_deploy == 'true'\n\s+&& steps\.deploy\.outcome == 'success' \}\}/,
+    record.if,
+    /^\$\{\{ steps\.merge\.outputs\.needs_deploy == 'true'\s+&& steps\.deploy\.outcome == 'success' \}\}$/,
     'the deployed pointer advances only when deploy-pages succeeded',
   );
 
   // A rerun of an outdated head must not rewrite the report site or the
   // sticky comment with obsolete results.
-  assert.match(
-    reportJob,
-    /- name: Confirm this run still describes the PR head\n(?:\s+#[^\n]*\n)*\s+id: guard\n/,
+  assert.equal(
+    getStep(reportJob, {
+      name: 'Confirm this run still describes the PR head',
+    }).id,
+    'guard',
     'the stale-head guard step exists',
   );
 
   // Orphan sweep: reports for branches that no longer exist are deleted on
   // every report run, and a failed live-branch listing skips the sweep
   // rather than deleting on doubt.
-  assert.match(reportJob, /git ls-remote --heads/);
+  assert.match(meta.run, /git ls-remote --heads/);
   assert.match(
-    reportJob,
+    merge.run,
     /if \[ -s "\$RUNNER_TEMP\/live-slugs\.txt" \]; then/,
     'the sweep only runs with a non-empty live-branch listing',
   );
   assert.ok(
-    reportJob.indexOf('merge_report architect-e2e-native') <
-      reportJob.indexOf('if [ -s "$RUNNER_TEMP/live-slugs.txt" ]'),
+    merge.run.indexOf('merge_report architect-e2e-native') <
+      merge.run.indexOf('if [ -s "$RUNNER_TEMP/live-slugs.txt" ]'),
     'the sweep runs after merging, so a branch deleted mid-run cannot re-publish its orphan',
   );
   assert.match(
-    reportJob,
+    merge.run,
     /grep -qxF -- /,
     'the slug pattern is terminated so dash-leading slugs cannot parse as grep options',
   );
   assert.match(
-    reportJob,
+    merge.run,
     /success \| skipped\)/,
     'a skipped job also drops its stale report',
   );
 
   // The status comment is a single sticky comment, updated in place, only
   // ever posted on pull requests, and never rewritten by an obsolete rerun.
-  assert.match(reportJob, /<!-- network-canvas-e2e-status -->/);
+  const comment = getStep(reportJob, { name: 'Upsert the E2E status comment' });
+  assert.match(comment.with.script, /<!-- network-canvas-e2e-status -->/);
   assert.match(
-    reportJob,
-    /\$\{\{ always\(\) && github\.event_name == 'pull_request'\n\s+&& steps\.guard\.outputs\.current == 'true' \}\}/,
+    comment.if,
+    /^\$\{\{ always\(\) && github\.event_name == 'pull_request'\s+&& steps\.guard\.outputs\.current == 'true' \}\}$/,
   );
-  assert.match(reportJob, /updateComment/);
-  assert.match(reportJob, /createComment/);
+  assert.match(comment.with.script, /updateComment/);
+  assert.match(comment.with.script, /createComment/);
 
   // The decision matrix comes from the policy job's reasons output.
-  assert.match(reportJob, /needs\.e2e-policy\.outputs\.reasons/);
-  const policyJob = job('e2e-policy');
-  assert.match(policyJob, /reasons=\$\(jq -c '\.reasons \/\/ \{\}'/);
+  assert.equal(comment.env.REASONS, '${{ needs.e2e-policy.outputs.reasons }}');
+  const policyJob = ciJob('e2e-policy');
   assert.match(
-    policyJob,
-    /reasons: \$\{\{ steps\.policy\.outputs\.reasons \}\}/,
+    getStep(policyJob, { id: 'policy' }).run,
+    /reasons=\$\(jq -c '\.reasons \/\/ \{\}'/,
+  );
+  assert.equal(
+    policyJob.outputs.reasons,
+    '${{ steps.policy.outputs.reasons }}',
   );
 });
 
 test('e2e-policy receives affected-PR and equivalence-reuse inputs', () => {
-  const policyJob = job('e2e-policy');
-  assert.ok(policyJob, 'e2e-policy job exists');
-  assert.match(
-    policyJob,
-    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  const policy = getStep(ciJob('e2e-policy'), { id: 'policy' });
+  assert.equal(
+    policy.env.BASE_SHA,
+    '${{ github.event.pull_request.base.sha }}',
     'policy step receives the PR base as BASE_SHA',
   );
-  assert.match(
-    policyJob,
-    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+  assert.equal(
+    policy.env.HEAD_SHA,
+    '${{ github.event.pull_request.head.sha }}',
     'policy step receives the PR tip as HEAD_SHA',
   );
-  assert.match(
-    policyJob,
-    /HEAD_REPO: \$\{\{ github\.event\.pull_request\.head\.repo\.full_name \}\}/,
+  assert.equal(
+    policy.env.HEAD_REPO,
+    '${{ github.event.pull_request.head.repo.full_name }}',
     'policy step receives the head repo for the fork guard',
   );
 });
@@ -2484,17 +2775,18 @@ test('e2e-policy receives affected-PR and equivalence-reuse inputs', () => {
 // `validated[key]` just becomes false, disabling reuse without failing
 // anything. Bind the map to the workflow so a rename cannot merge half-done.
 test('every job the E2E policy names is a real, gated workflow job', () => {
+  const quality = ciJob('quality');
+  const gate = getStep(quality, { name: 'Verify all quality checks passed' });
   for (const [suite, names] of Object.entries(E2E_JOB_NAMES)) {
     assert.ok(names.length > 0, `${suite} names at least one job`);
     for (const name of names) {
-      assert.ok(job(name), `${name} exists as a workflow job`);
-      assert.match(
-        workflow,
-        new RegExp(`^ {6}- ${name}$`, 'm'),
+      ciJob(name);
+      assert.ok(
+        needsOf(quality).includes(name),
         `${name} is in the quality gate's needs list`,
       );
       assert.match(
-        workflow,
+        gate.run,
         new RegExp(`verify_required_e2e ${name} `),
         `${name} is verified by the quality gate`,
       );
@@ -2505,9 +2797,7 @@ test('every job the E2E policy names is a real, gated workflow job', () => {
 // Feature PRs capture Interview's pixels in Chromium alone; the other two
 // engines capture on generated release PRs, which always run the lane in full.
 test('Interview captures Firefox and WebKit pixels on release PRs only', () => {
-  const run = parsedWorkflow.jobs['interview-e2e'].steps.find(
-    (step) => step.name === 'Run E2E tests',
-  );
+  const run = getStep(ciJob('interview-e2e'), { name: 'Run E2E tests' });
   assert.equal(
     run.env.RELEASE_BRANCH,
     "${{ startsWith(github.head_ref, 'changeset-release/') }}",
@@ -2524,26 +2814,19 @@ test('Interview captures Firefox and WebKit pixels on release PRs only', () => {
 // rasterised in the pinned image), and must never author one.
 test('the native E2E lane cannot touch pixel baselines', () => {
   for (const name of Object.values(E2E_JOB_NAMES).flat()) {
-    const body = job(name);
+    const body = ciJob(name);
     if (!name.endsWith('-native')) {
-      assert.match(
-        body,
-        /--grep @visual|--project=chromium-visual/,
-        `${name} runs only the visual half`,
-      );
+      getStep(body, { run: /--grep @visual|--project=chromium-visual/ });
       continue;
     }
-    assert.match(
-      body,
-      /E2E_PIXEL_LANE: native/,
+    assert.equal(
+      body.env?.E2E_PIXEL_LANE,
+      'native',
       `${name} arms the capture guard`,
     );
-    // Comments in these jobs legitimately cite run.sh to explain themselves,
-    // so judge the executable lines only.
-    const commands = body
-      .split('\n')
-      .filter((line) => !/^\s*#/.test(line))
-      .join('\n');
+    // The parsed job carries no YAML comments, but its scripts keep theirs: a
+    // comment that interpolates an expression is still substituted.
+    const commands = JSON.stringify(raw(body));
     assert.doesNotMatch(
       commands,
       /run\.sh/,
@@ -2559,17 +2842,17 @@ test('the native E2E lane cannot touch pixel baselines', () => {
 
 for (const app of ['architect', 'interviewer']) {
   test(`${app} E2E builds disable both animation systems`, () => {
-    const nativeJob = job(`${app}-e2e-native`);
-    assert.ok(nativeJob, `${app}-e2e-native job exists`);
-    assert.match(
-      nativeJob,
-      /VITE_DISABLE_ANIMATIONS: 'true'/,
+    assert.equal(
+      ciJob(`${app}-e2e-native`).env?.VITE_DISABLE_ANIMATIONS,
+      'true',
       'the native build disables Motion and Base UI animations',
     );
 
-    const dockerRunner = readFileSync(
-      new URL(`../../apps/${app}/e2e/scripts/run.sh`, import.meta.url),
-      'utf8',
+    const dockerRunner = codeOf(
+      readFileSync(
+        new URL(`../../apps/${app}/e2e/scripts/run.sh`, import.meta.url),
+        'utf8',
+      ),
     );
     assert.match(
       dockerRunner,
@@ -2580,48 +2863,42 @@ for (const app of ['architect', 'interviewer']) {
 }
 
 test('release job refuses a first publication on the publish path before changesets/action', () => {
-  const releaseJob = job('release');
-  assert.ok(releaseJob, 'release job exists');
-
-  const pruneIndex = releaseJob.indexOf(
-    'run: node scripts/release/prune-ignored-changesets.mjs',
-  );
-  const checkIndex = releaseJob.indexOf(
-    'run: node scripts/release/check-first-publications.mjs --publish-path-only',
-  );
-  const actionIndex = releaseJob.indexOf('uses: changesets/action@');
-  assert.ok(checkIndex !== -1, 'release job runs check-first-publications.mjs');
+  const releaseJob = ciJob('release');
+  const pruneIndex = stepIndex(releaseJob, {
+    run: 'node scripts/release/prune-ignored-changesets.mjs',
+  });
+  const checkIndex = stepIndex(releaseJob, {
+    run: 'node scripts/release/check-first-publications.mjs --publish-path-only',
+  });
+  const actionIndex = stepIndex(releaseJob, { uses: 'changesets/action' });
   // After the prune, so the publish-path decision sees only normal-lane
   // changesets; before the action, so nothing is published first.
   assert.ok(
-    pruneIndex !== -1 && pruneIndex < checkIndex,
+    pruneIndex < checkIndex,
     'the first-publication check runs after the ignored-lane prune',
   );
   assert.ok(
-    actionIndex !== -1 && checkIndex < actionIndex,
+    checkIndex < actionIndex,
     'the first-publication check runs before changesets/action publishes',
   );
 });
 
 test('the Version Packages merge check refuses a publish npm cannot make', () => {
-  const freshnessJob = job('version-packages-freshness');
-  assert.ok(freshnessJob, 'version-packages-freshness job exists');
-  assert.match(
-    freshnessJob,
-    /- name: Refuse a release PR whose publish needs a package npm does not know\n\s+if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/release\/check-first-publications\.mjs\n/,
+  const step = getStep(ciJob('version-packages-freshness'), {
+    name: 'Refuse a release PR whose publish needs a package npm does not know',
+  });
+  assert.equal(step.if, "steps.head.outputs.release_pr == 'true'");
+  assert.equal(
+    step.run,
+    'node scripts/release/check-first-publications.mjs',
     'the merge check runs check-first-publications.mjs on the tree that merges the release PR',
   );
 });
 
 test('the Version Packages merge check refuses generated app release notes', () => {
-  const freshnessJob = job('version-packages-freshness');
-  assert.ok(freshnessJob, 'version-packages-freshness job exists');
-  const step = parsedWorkflow.jobs['version-packages-freshness'].steps.find(
-    ({ name }) =>
-      name ===
-      'Refuse a release PR whose app release notes are still generated',
-  );
-  assert.ok(step, 'the release-notes step exists');
+  const step = getStep(ciJob('version-packages-freshness'), {
+    name: 'Refuse a release PR whose app release notes are still generated',
+  });
   assert.equal(step.if, "steps.head.outputs.release_pr == 'true'");
   // The base is the tree the release merges into in both modes; a merge-group
   // entry's first parent can be an earlier entry that already carries the
@@ -2664,36 +2941,45 @@ function legOf(step) {
 }
 
 function egressVariants() {
-  const list = job('studio-egress')?.match(
-    /^ {8}variant: \[(?<names>[^\]]*)\]$/m,
-  )?.groups?.names;
-  return (list ?? '')
-    .split(',')
-    .map((name) => name.trim())
-    .filter(Boolean)
-    .toSorted();
+  const variants = ciJob('studio-egress').strategy?.matrix?.variant;
+  assert.ok(Array.isArray(variants), 'studio-egress has a variant matrix');
+  return variants.map(String).toSorted((a, b) => a.localeCompare(b));
 }
 
+/** A live step of `job` runs `command` as a whole line of its script. */
+function runsLine(job, command) {
+  return (
+    findSteps(job, {
+      run: new RegExp(`^${escapeRegExp(command)}$`, 'm'),
+    }).length > 0
+  );
+}
+
+const qualityStep = () =>
+  getStep(ciJob('quality'), { name: 'Verify all quality checks passed' });
+
 test('the studio-stack job runs every stack-test script that exists', () => {
-  const studioStack = job('studio-stack');
-  assert.ok(studioStack, 'studio-stack job exists');
+  const studioStack = ciJob('studio-stack');
 
   for (const script of ['build.sh', 'up.sh', 'assert.sh', 'down.sh']) {
     assert.ok(
       existsSync(new URL(script, stackTestDirectory)),
       `apps/studio/stack-test/${script} exists on disk`,
     );
-    assert.match(
-      studioStack,
-      new RegExp(escapeRegExp(`apps/studio/stack-test/${script}`)),
+    assert.ok(
+      findSteps(studioStack, {
+        run: new RegExp(
+          `^${escapeRegExp(`apps/studio/stack-test/${script}`)}(?: |$)`,
+          'm',
+        ),
+      }).length > 0,
       `the studio-stack job runs ${script}`,
     );
   }
 });
 
 test('the studio-stack job runs every variant through up, assert and down', () => {
-  const studioStack = job('studio-stack');
-  assert.ok(studioStack, 'studio-stack job exists');
+  const studioStack = ciJob('studio-stack');
 
   const egress = egressVariants();
   const variants = stackTestVariants().filter(
@@ -2713,9 +2999,11 @@ test('the studio-stack job runs every variant through up, assert and down', () =
 
   for (const variant of variants) {
     for (const script of ['up.sh', 'assert.sh', 'down.sh']) {
-      assert.match(
-        studioStack,
-        new RegExp(escapeRegExp(`stack-test/${script} --variant ${variant}`)),
+      assert.ok(
+        runsLine(
+          studioStack,
+          `apps/studio/stack-test/${script} --variant ${variant}`,
+        ),
         `the studio-stack job runs ${script} for the ${variant} variant`,
       );
     }
@@ -2725,10 +3013,15 @@ test('the studio-stack job runs every variant through up, assert and down', () =
   // half way through otherwise leaves containers holding the fixed subnets and
   // ports the next one needs, and every later variant then fails for a reason
   // that is not its own.
-  const teardowns = studioStack.match(/down\.sh --variant \S+/g) ?? [];
+  const teardowns = findSteps(studioStack, { run: /down\.sh --variant \S+/ });
   assert.equal(teardowns.length, variants.length);
+  for (const step of teardowns) {
+    assert.match(step.if ?? '', /^always\(\)/, `${step.name} is if: always()`);
+  }
   assert.equal(
-    (studioStack.match(/if: always\(\)/g) ?? []).length,
+    liveSteps(studioStack).filter((step) =>
+      String(step.if ?? '').startsWith('always()'),
+    ).length,
     variants.length,
     'each down.sh step is if: always()',
   );
@@ -2738,12 +3031,13 @@ test('the studio-stack job runs every variant through up, assert and down', () =
 // turns. A variant whose steps name no leg, or a leg the matrix lacks, would
 // never run, and the up/assert/down test above would still pass.
 test('every studio-stack variant runs on exactly one leg, with its teardown', () => {
-  const { strategy, steps } = parsedWorkflow.jobs['studio-stack'];
+  const studioStack = ciJob('studio-stack');
+  const { strategy } = studioStack;
   assert.equal(strategy['fail-fast'], false, 'a failed leg hides no other');
   const legs = strategy.matrix.include.map((entry) => entry.leg);
 
   const ran = new Map();
-  for (const step of steps) {
+  for (const step of liveSteps(studioStack)) {
     const variant = /--variant (?<v>\S+)/.exec(step.run ?? '')?.groups?.v;
     if (!variant) continue;
     const leg = legOf(step);
@@ -2768,16 +3062,22 @@ test('every studio-stack variant runs on exactly one leg, with its teardown', ()
   // The walk-through is the one step that needs the workspace and a browser,
   // so the leg that runs it is the one that installs them.
   const participantsLeg = legOf(
-    steps.find((step) => /participants\.sh/.test(step.run ?? '')),
+    getStep(studioStack, { run: /participants\.sh/ }),
   );
-  for (const step of steps.filter(
-    (candidate) =>
-      candidate.uses === './.github/actions/turbo-ci-setup' ||
-      candidate.uses === './.github/actions/playwright-browsers',
-  )) {
-    assert.equal(legOf(step), participantsLeg);
+  assert.ok(participantsLeg, 'the walk-through runs on one named leg');
+  for (const action of [
+    './.github/actions/turbo-ci-setup',
+    './.github/actions/playwright-browsers',
+  ]) {
+    const installs = findSteps(studioStack, { uses: action });
+    assert.ok(installs.length > 0, `studio-stack uses ${action}`);
+    for (const step of installs) {
+      assert.equal(legOf(step), participantsLeg);
+    }
   }
 });
+
+const writesCache = (step) => step.env?.BUILD_CACHE_TO !== undefined;
 
 // Pull requests read the Studio image cache and never write it: a write from a
 // pull request is readable by that pull request alone, and the Actions cache
@@ -2785,9 +3085,7 @@ test('every studio-stack variant runs on exactly one leg, with its teardown', ()
 // version 1 service, which refuses every import and export.
 test('pull requests read the Studio image cache that only main writes', () => {
   for (const name of ['studio-stack', 'studio-egress']) {
-    const build = parsedWorkflow.jobs[name].steps.find(
-      (step) => step.name === 'Build the stack images',
-    );
+    const build = getStep(ciJob(name), { name: 'Build the stack images' });
     assert.equal(
       build.env.BUILD_CACHE_FROM,
       'type=gha,version=2,scope=studio-stack-{target}',
@@ -2796,10 +3094,10 @@ test('pull requests read the Studio image cache that only main writes', () => {
     assert.ok(!('BUILD_CACHE_TO' in build.env), `${name} does not write it`);
   }
 
-  const warm = parsedWorkflow.jobs['warm-studio-image-cache'];
+  const warm = ciJob('warm-studio-image-cache');
   assert.match(warm.if, /github\.ref == 'refs\/heads\/main'/);
   assert.equal(warm['continue-on-error'], true);
-  const write = warm.steps.find((step) => step.env?.BUILD_CACHE_TO);
+  const write = getStep(warm, writesCache);
   assert.equal(
     write.env.BUILD_CACHE_TO,
     'type=gha,version=2,scope=studio-stack-{target},mode=max',
@@ -2808,18 +3106,21 @@ test('pull requests read the Studio image cache that only main writes', () => {
 
   // The marker that stops later pushes rewriting the cache is saved only
   // after the export, so an export that failed is retried on the next push.
-  const decide = warm.steps.find((step) => step.id === 'decide');
+  const decide = getStep(warm, { id: 'decide' });
   assert.match(decide.env.MARKER, /^studio-image-deps-\$\{\{ hashFiles\(/);
-  const save = warm.steps.findIndex((step) =>
-    step.uses?.startsWith('actions/cache/save@'),
+  const save = { uses: 'actions/cache/save' };
+  assert.ok(
+    stepIndex(warm, save) > stepIndex(warm, writesCache),
+    'the marker follows the export',
   );
-  assert.ok(save > warm.steps.indexOf(write), 'the marker follows the export');
-  assert.equal(warm.steps[save].with.key, '${{ steps.decide.outputs.marker }}');
+  assert.equal(
+    getStep(warm, save).with.key,
+    '${{ steps.decide.outputs.marker }}',
+  );
 });
 
 test('the studio-egress job runs each egress variant through up, egress and down', () => {
-  const egressJob = job('studio-egress');
-  assert.ok(egressJob, 'studio-egress job exists');
+  const egressJob = ciJob('studio-egress');
   assert.deepEqual(egressVariants(), ['telemetry-off', 'telemetry-on']);
 
   const lib = readFileSync(new URL('lib.sh', stackTestDirectory), 'utf8');
@@ -2835,51 +3136,62 @@ test('the studio-egress job runs each egress variant through up, egress and down
       `apps/studio/stack-test/${script} exists on disk`,
     );
   }
-  assert.match(egressJob, /apps\/studio\/stack-test\/build\.sh/);
+  assert.ok(
+    runsLine(egressJob, 'apps/studio/stack-test/build.sh'),
+    'the studio-egress job builds the images',
+  );
   for (const script of ['up.sh', 'egress.sh', 'down.sh']) {
-    assert.match(
-      egressJob,
-      new RegExp(
-        escapeRegExp(
-          `apps/studio/stack-test/${script} --variant \${{ matrix.variant }}`,
-        ),
+    assert.ok(
+      runsLine(
+        egressJob,
+        `apps/studio/stack-test/${script} --variant \${{ matrix.variant }}`,
       ),
       `the studio-egress job runs ${script} for its variant`,
     );
   }
-  assert.match(
-    egressJob,
-    /- name: Tear down\n {8}if: always\(\)\n {8}run: apps\/studio\/stack-test\/down\.sh/,
+  const teardown = getStep(egressJob, { name: 'Tear down' });
+  assert.equal(
+    teardown.if,
+    'always()',
     'the teardown runs whatever the egress proof did',
   );
-  assert.match(egressJob, /fail-fast: false/);
+  assert.match(teardown.run, /^apps\/studio\/stack-test\/down\.sh /);
+  assert.ok(
+    stepIndex(egressJob, { run: /^apps\/studio\/stack-test\/egress\.sh /m }) <
+      stepIndex(egressJob, { name: 'Tear down' }),
+    'the teardown follows the egress proof',
+  );
+  assert.equal(egressJob.strategy['fail-fast'], false);
 });
 
 test('studio-egress is selected by the studio flag and required by the quality gate', () => {
-  const egressJob = job('studio-egress');
+  const egressJob = ciJob('studio-egress');
   assert.match(
-    egressJob,
+    egressJob.if,
     /needs\.detect\.outputs\.studio == 'true'/,
     'the job is gated on the studio flag',
   );
   for (const excluded of ['merge_group', 'push']) {
     assert.match(
-      egressJob,
+      egressJob.if,
       new RegExp(`github\\.event_name != '${excluded}'`),
       `the job never runs on ${excluded}`,
     );
   }
 
-  const qualityJob = job('quality');
-  assert.match(qualityJob, /^ {6}- studio-egress$/m, 'quality needs the job');
-  assert.match(
-    qualityJob,
-    /STUDIO_EGRESS_RESULT: \$\{\{ needs\.studio-egress\.result \}\}/,
+  assert.ok(
+    needsOf(ciJob('quality')).includes('studio-egress'),
+    'quality needs the job',
+  );
+  const verify = qualityStep();
+  assert.equal(
+    verify.env.STUDIO_EGRESS_RESULT,
+    '${{ needs.studio-egress.result }}',
     'quality receives the job result',
   );
   assert.match(
-    qualityJob,
-    /if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_EGRESS_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
+    verify.run,
+    /^if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_EGRESS_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed[^\n]*\n\s+exit 1$/m,
     'quality fails when a required studio-egress did not succeed',
   );
 });
@@ -2889,14 +3201,13 @@ test('studio-egress is selected by the studio flag and required by the quality g
 // and Azurite before it — in the job, ahead of the suite, not merely somewhere.
 test('every job running the Studio server suite starts its object stores first', () => {
   for (const name of ['test-studio-server', 'seed-turbo-cache']) {
-    const body = job(name);
-    assert.ok(body, `${name} job exists`);
-    const start = body.indexOf(
-      'pnpm --filter @codaco/studio-api dev:object-stores',
-    );
-    const suite = body.indexOf("turbo run '@codaco/studio-api#test'");
-    assert.ok(suite > -1, `${name} runs the Studio server suite`);
-    assert.ok(start > -1, `${name} starts the dev object stores`);
+    const body = ciJob(name);
+    const start = stepIndex(body, {
+      run: /^pnpm --filter @codaco\/studio-api dev:object-stores$/m,
+    });
+    const suite = stepIndex(body, {
+      run: /^pnpm exec turbo run '@codaco\/studio-api#test'$/m,
+    });
     assert.ok(start < suite, `${name} starts them before the suite runs`);
   }
 });
@@ -2939,10 +3250,12 @@ test('own-proxy has a guide block to extract its configuration from', () => {
   }
 });
 
+/** The script of detect's `flags` step, which computes every detect output. */
+const detectFlagsScript = () => getStep(ciJob('detect'), { id: 'flags' }).run;
+
 function runDetectFlag(pkg, env) {
-  const detectJob = job('detect');
-  const definition = detectJob.match(
-    /^(?<indent> +)flag\(\) \{\n[\s\S]*?^\k<indent>\}$/m,
+  const definition = detectFlagsScript().match(
+    /^(?<indent> *)flag\(\) \{\n[\s\S]*?^\k<indent>\}$/m,
   );
   assert.ok(definition, 'detect defines flag()');
   const body = definition[0]
@@ -3011,27 +3324,29 @@ test('detect fails closed on a flag naming no workspace package', () => {
 // `runGateSelection` below.
 const GATE_FLAGS = ['studio'];
 
+const detectOutputsIn = (text) =>
+  [...String(text ?? '').matchAll(/needs\.detect\.outputs\.(\w+)/g)].map(
+    ([, flag]) => flag,
+  );
+
 test('every job quality requires on a detect flag is decided by a cumulative flag', () => {
-  const qualityJob = job('quality');
-  const needs = qualityJob
-    .match(/^ {4}needs:\n(?<list>(?: {6}- \S+\n)+)/m)
-    ?.groups?.list.match(/(?<=- )\S+/g);
-  assert.ok(needs?.length, 'quality lists its needs');
+  const qualityJob = ciJob('quality');
+  const needs = needsOf(qualityJob);
+  assert.ok(needs.length > 0, 'quality lists its needs');
   // Flags read by the `if:` of a job quality needs, and flags quality itself
   // reads to decide whether a job is required.
   const selecting = new Set();
   for (const name of needs) {
-    const condition = job(name)?.match(/^ {4}if: [\s\S]*?(?=^ {4}\S)/m)?.[0];
-    for (const [, flag] of condition?.matchAll(
-      /needs\.detect\.outputs\.(\w+)/g,
-    ) ?? []) {
-      selecting.add(flag);
-    }
+    for (const flag of detectOutputsIn(ciJob(name).if)) selecting.add(flag);
   }
   const required = new Set(
-    [...qualityJob.matchAll(/needs\.detect\.outputs\.(\w+)/g)].map(
-      ([, flag]) => flag,
+    detectOutputsIn(
+      JSON.stringify([qualityJob.if, qualityJob.env, liveSteps(qualityJob)]),
     ),
+  );
+  assert.ok(
+    required.has('studio'),
+    'quality reads the studio flag from its live steps',
   );
   assert.deepEqual(
     [...selecting].toSorted((a, b) => a.localeCompare(b)),
@@ -3052,9 +3367,8 @@ test('every job quality requires on a detect flag is decided by a cumulative fla
 // Each entry of `pushes` is one commit; PREV is the last push's parent, as on
 // a `synchronize`, and origin/main is the commit before the first push.
 function runGateSelection({ pushes = [] }) {
-  const detectJob = job('detect');
-  const block = detectJob.match(
-    /^(?<indent> +)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio=false\n[\s\S]*?^\k<indent>fi$/m,
+  const block = detectFlagsScript().match(
+    /^(?<indent> *)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio=false\n[\s\S]*?^\k<indent>fi$/m,
   );
   assert.ok(block, 'detect computes the gate flags in one block');
   const stub = [
@@ -3166,16 +3480,30 @@ test('detect selects studio-stack on the whole pull request', () => {
 }, 120_000);
 
 test('studio-stack is selected by detect and required by the quality gate', () => {
-  const detectJob = job('detect');
-  assert.ok(detectJob, 'detect job exists');
-  assert.match(
-    detectJob,
-    /studio: \$\{\{ steps\.flags\.outputs\.studio \}\}/,
+  const detectJob = ciJob('detect');
+  assert.equal(
+    detectJob.outputs?.studio,
+    '${{ steps.flags.outputs.studio }}',
     'detect publishes the studio flag',
+  );
+  assert.match(
+    detectFlagsScript(),
+    /^echo "studio=\$studio" >> "\$GITHUB_OUTPUT"$/m,
+    'the flags step writes the studio output',
   );
   // The package flag alone cannot see these: none of them is inside a package
   // `turbo ls` walks, so a change confined to one would leave the job unrun on
   // exactly the commit that needed it.
+  const stackPaths = /^studio_stack_paths=\(\n(?<list>[\s\S]*?)\n\)$/m
+    .exec(detectFlagsScript())
+    ?.groups?.list.split('\n')
+    .map((line) => line.trim());
+  assert.ok(stackPaths, 'detect lists the stack paths in studio_stack_paths');
+  assert.match(
+    detectFlagsScript(),
+    /git diff --quiet "\$gate_base" "\$CURR" -- \\\n\s+"\$\{studio_stack_paths\[@\]\}"/,
+    'the studio flag diffs the listed paths',
+  );
   for (const path of [
     'apps/studio/Dockerfile',
     "'apps/studio/docker-compose*.yml'",
@@ -3183,44 +3511,46 @@ test('studio-stack is selected by detect and required by the quality gate', () =
     'apps/studio/stack-test',
     'apps/studio/docs/self-host',
   ]) {
-    assert.match(
-      detectJob,
-      new RegExp(escapeRegExp(path)),
+    assert.ok(
+      stackPaths.includes(path),
       `detect watches ${path} for the studio flag`,
     );
   }
 
-  const studioStack = job('studio-stack');
+  const studioStack = ciJob('studio-stack');
   assert.match(
-    studioStack,
+    studioStack.if,
     /needs\.detect\.outputs\.studio == 'true'/,
     'the job is gated on the flag',
   );
   for (const excluded of ['merge_group', 'push']) {
     assert.match(
-      studioStack,
+      studioStack.if,
       new RegExp(`github\\.event_name != '${excluded}'`),
       `the job never runs on ${excluded}`,
     );
   }
 
-  const qualityJob = job('quality');
-  assert.match(qualityJob, /^ {6}- studio-stack$/m, 'quality needs the job');
-  assert.match(
-    qualityJob,
-    /STUDIO_STACK_REQUIRED: \$\{\{ needs\.detect\.outputs\.studio \}\}/,
+  assert.ok(
+    needsOf(ciJob('quality')).includes('studio-stack'),
+    'quality needs the job',
+  );
+  const verify = qualityStep();
+  assert.equal(
+    verify.env.STUDIO_STACK_REQUIRED,
+    '${{ needs.detect.outputs.studio }}',
     'quality receives the flag that selected the job',
   );
-  assert.match(
-    qualityJob,
-    /STUDIO_STACK_RESULT: \$\{\{ needs\.studio-stack\.result \}\}/,
+  assert.equal(
+    verify.env.STUDIO_STACK_RESULT,
+    '${{ needs.studio-stack.result }}',
     'quality receives the job result',
   );
   // Keyed on the flag, never on the result alone: a job that never ran must
   // not read as a pass on a change that needed it.
   assert.match(
-    qualityJob,
-    /if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_STACK_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
+    verify.run,
+    /^if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_STACK_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed[^\n]*\n\s+exit 1$/m,
     'quality fails when a required studio-stack did not succeed',
   );
 });
@@ -3247,52 +3577,57 @@ test('studio-upgrade deployments run with telemetry off', () => {
 });
 
 test('studio-upgrade runs the lane only once a Studio release is authorised, and gates its publish', () => {
-  const upgrade = job('studio-upgrade');
-  assert.ok(upgrade, 'studio-upgrade job exists');
+  const upgrade = ciJob('studio-upgrade');
   assert.ok(
     existsSync(
       new URL('../../apps/studio/release-test/run.sh', import.meta.url),
     ),
     'apps/studio/release-test/run.sh exists on disk',
   );
-  assert.match(
-    upgrade,
-    /run: apps\/studio\/release-test\/run\.sh --runs A,B\n/,
-  );
+  const lane = getStep(upgrade, {
+    run: 'apps/studio/release-test/run.sh --runs A,B',
+  });
   // apps-release-detect runs only on a push to main, and `studio_released`
   // is true only for a Studio version the release PR moved and no tag holds.
-  const { needs, if: condition } = parsedWorkflow.jobs['studio-upgrade'];
-  assert.equal(needs, 'apps-release-detect');
+  assert.deepEqual(needsOf(upgrade), ['apps-release-detect']);
   assert.equal(
-    condition,
+    upgrade.if,
     "needs.apps-release-detect.outputs.studio_released == 'true'",
   );
   assert.match(
-    job('apps-release-detect'),
-    /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'push'/,
+    ciJob('apps-release-detect').if,
+    /^github\.ref == 'refs\/heads\/main' && github\.event_name == 'push'$/,
   );
   // Run C pulls a tagged release's images from ghcr.io, logging in with the
   // job's token, which needs the permission to read packages.
-  assert.match(upgrade, /packages: read/);
-  assert.match(upgrade, /GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
+  assert.equal(upgrade.permissions?.packages, 'read');
+  assert.equal(lane.env?.GITHUB_TOKEN, '${{ secrets.GITHUB_TOKEN }}');
   // build-next.sh seals against history and run C checks out a tag.
-  assert.match(upgrade, /fetch-depth: 0/);
+  const checkout = getStep(upgrade, { uses: 'actions/checkout' });
+  assert.equal(checkout.with?.['fetch-depth'], 0);
+  assert.ok(
+    stepIndex(upgrade, { uses: 'actions/checkout' }) <
+      upgrade.steps.indexOf(lane),
+    'the lane runs on the full checkout',
+  );
 
   // Nothing is published until the lane has passed.
-  assert.deepEqual(parsedWorkflow.jobs['apps-release-studio'].needs, [
-    'apps-release-detect',
-    'studio-upgrade',
-  ]);
+  const release = ciJob('apps-release-studio');
+  assert.deepEqual(needsOf(release), ['apps-release-detect', 'studio-upgrade']);
   assert.doesNotMatch(
-    parsedWorkflow.jobs['apps-release-studio'].if,
+    release.if,
     /always\(\)|failure\(\)|cancelled\(\)/,
     'the release runs only when the lane succeeded',
   );
 
   // Never on a pull request, so the gate neither waits for it nor reads it.
-  const qualityJob = job('quality');
-  assert.doesNotMatch(qualityJob, /studio-upgrade|STUDIO_UPGRADE/);
-  assert.doesNotMatch(job('detect'), /studio_upgrade/);
+  const qualityJob = ciJob('quality');
+  assert.ok(!needsOf(qualityJob).includes('studio-upgrade'));
+  assert.doesNotMatch(
+    JSON.stringify(raw(qualityJob)),
+    /studio-upgrade|STUDIO_UPGRADE/,
+  );
+  assert.doesNotMatch(JSON.stringify(raw(ciJob('detect'))), /studio_upgrade/);
 });
 
 // PostHog resolves a minified stack frame by matching the chunk ID injected
@@ -3314,13 +3649,17 @@ test('every production build that uploads source maps gets the credentials', () 
   for (const [jobName, filter] of Object.entries(
     SOURCE_MAP_UPLOADING_RELEASES,
   )) {
-    const steps = parsedWorkflow.jobs[jobName]?.steps;
-    assert.ok(steps, `${jobName} exists`);
-
-    const buildStep = steps.find((step) =>
-      step.run?.includes(`--filter=${filter}`),
+    // A turbo build, or a netlify-cli deploy that runs the build itself; a
+    // `deploy --no-build` of an earlier build is not the build.
+    const buildStep = getStep(
+      ciJob(jobName),
+      (step) =>
+        typeof step.run === 'string' &&
+        new RegExp(`--filter=${escapeRegExp(filter)}(?:\\s|$)`, 'm').test(
+          step.run,
+        ) &&
+        /^\s*(?:pnpm exec turbo run build|.*deploy --build)\b/m.test(step.run),
     );
-    assert.ok(buildStep, `${jobName} builds ${filter}`);
 
     assert.equal(
       buildStep.env?.POSTHOG_PERSONAL_API_KEY,
@@ -3381,9 +3720,7 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     );
   }
 
-  const previewWorkflow = parse(
-    readFileSync(new URL('fresco-preview-database.yml', WORKFLOW_DIR), 'utf8'),
-  );
+  const previewWorkflow = readWorkflow('fresco-preview-database.yml');
   assert.deepEqual(previewWorkflow.on.pull_request.types, [
     'opened',
     'reopened',
@@ -3391,12 +3728,14 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     'edited',
     'closed',
   ]);
-  const steps = [
-    ...previewWorkflow.jobs.provision.steps,
-    ...previewWorkflow.jobs.teardown.steps,
-  ].filter((step) => step.run?.includes('fresco-preview-database.mjs'));
-  assert.equal(steps.length, 2, 'one provision step and one teardown step');
-  for (const step of steps) {
+  const provision = getJob(previewWorkflow, 'provision');
+  const teardown = getJob(previewWorkflow, 'teardown');
+  const runsScript = { run: /fresco-preview-database\.mjs/ };
+  const provisionSteps = findSteps(provision, runsScript);
+  const teardownSteps = findSteps(teardown, runsScript);
+  assert.equal(provisionSteps.length, 1, 'one provision step');
+  assert.equal(teardownSteps.length, 1, 'one teardown step');
+  for (const step of [...provisionSteps, ...teardownSteps]) {
     assert.equal(
       step.env.NETLIFY_SITE_ID,
       '${{ secrets.NETLIFY_SITE_ID_FRESCO }}',
@@ -3410,16 +3749,10 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     assert.match(step.run, /--pr "\$PR_NUMBER"/);
     // Branch names reach the script through the environment, never inlined
     // into the shell, where a crafted name could run commands.
-    assert.doesNotMatch(step.run, /\$\{\{/);
+    assert.doesNotMatch(raw(step).run, /\$\{\{/);
   }
-  assert.match(
-    previewWorkflow.jobs.provision.if,
-    /github\.event\.action != 'closed'/,
-  );
-  assert.match(
-    previewWorkflow.jobs.teardown.if,
-    /github\.event\.action == 'closed'/,
-  );
+  assert.match(provision.if, /github\.event\.action != 'closed'/);
+  assert.match(teardown.if, /github\.event\.action == 'closed'/);
 });
 
 // Architect 9 and Interviewer 9 each serve their 8.x line at /v8/ from their
@@ -3441,71 +3774,76 @@ for (const { app, label, envName } of [
   },
 ]) {
   test(`every ${app} production build requires the bundled ${label}`, () => {
-    const hotfixWorkflow = parse(
-      readFileSync(new URL('hotfix-release.yml', WORKFLOW_DIR), 'utf8'),
-    );
+    const hotfixWorkflow = readWorkflow('hotfix-release.yml');
     const lanes = [
       {
         name: `apps-release-${app}`,
-        steps: parsedWorkflow.jobs[`apps-release-${app}`].steps,
+        job: ciJob(`apps-release-${app}`),
         required: 'true',
         firstOutward: `Deploy ${app} to production`,
       },
       {
         name: 'hotfix-release',
-        steps: hotfixWorkflow.jobs['hotfix-release'].steps,
+        job: getJob(hotfixWorkflow, 'hotfix-release'),
         required: `\${{ inputs.app == '${app}' && hashFiles('apps/${app}/legacy-${app}.json') != '' && 'true' || '' }}`,
         // The tag is claimed before the deploy; neither may happen first.
         firstOutward: 'Claim the release tag',
       },
     ];
 
-    for (const { name, steps, required, firstOutward } of lanes) {
-      const buildIndex = steps.findIndex((step) =>
+    for (const { name, job, required, firstOutward } of lanes) {
+      const builds = (step) =>
         new RegExp(
           `turbo run build --filter="?@codaco\\/(?:${app}|\\$APP)"?$`,
-        ).test(step.run?.trim() ?? ''),
-      );
-      assert.notEqual(buildIndex, -1, `${name} builds ${app}`);
+        ).test(step.run?.trim() ?? '');
+      const buildIndex = stepIndex(job, builds);
       assert.equal(
-        steps[buildIndex].env?.[envName],
+        getStep(job, builds).env?.[envName],
         required,
         `${name}'s build requires ${label}`,
       );
 
-      const checkIndex = steps.findIndex(
-        (step) => step.name === `Check ${label} is bundled`,
-      );
-      const outwardIndex = steps.findIndex(
-        (step) => step.name === firstOutward,
-      );
+      const checkIndex = stepIndex(job, { name: `Check ${label} is bundled` });
+      const outwardIndex = stepIndex(job, { name: firstOutward });
       assert.ok(
         buildIndex < checkIndex && checkIndex < outwardIndex,
         `${name} checks dist/v8 after building and before "${firstOutward}"`,
       );
+      const check = getStep(job, { name: `Check ${label} is bundled` });
       assert.match(
-        steps[checkIndex].run,
-        /for file in index\.html sw\.js dist-info\.json; do/,
+        check.run,
+        /^for file in index\.html sw\.js dist-info\.json; do$/m,
       );
       assert.ok(
-        steps[checkIndex].run.includes(`-f "apps/${app}/dist/v8/$file"`),
+        check.run.includes(`-f "apps/${app}/dist/v8/$file"`),
         `${name} checks apps/${app}/dist/v8`,
       );
     }
   });
 }
 
+/** The names of the steps whose environment carries `secrets.<credential>`. */
+const stepsReading = (steps, credential) =>
+  steps
+    .filter((step) =>
+      Object.values(step.env ?? {}).includes(`\${{ secrets.${credential} }}`),
+    )
+    .map((step) => step.name);
+
 // The protocol review Worker spends money every time it is called, so what
 // deploys it, and what can read its credentials, are pinned here.
 test('the protocol review Worker deploys only from its own release lane', () => {
   const NAME = 'apps-release-protocol-review';
-  const worker = parsedWorkflow.jobs[NAME];
-  assert.ok(worker, `${NAME} exists`);
+  const worker = ciJob(NAME);
 
   // Diff-driven: only the push that moves the Worker's version deploys it.
-  assert.match(
-    job('apps-release-detect'),
-    /PKG_JSON: workers\/protocol-review\/package\.json\n\s+PKG_NAME: '@codaco\/protocol-review-worker'\n\s+RELEASE_CHANNEL: stable\n/,
+  assert.deepEqual(
+    getStep(ciJob('apps-release-detect'), { id: 'protocol_review' }).env,
+    {
+      PKG_JSON: 'workers/protocol-review/package.json',
+      PKG_NAME: '@codaco/protocol-review-worker',
+      RELEASE_CHANNEL: 'stable',
+    },
   );
   assert.equal(
     worker.if,
@@ -3531,7 +3869,7 @@ test('the protocol review Worker deploys only from its own release lane', () => 
     if (name === NAME) continue;
     for (const credential of CREDENTIALS) {
       assert.ok(
-        !JSON.stringify(other).includes(`secrets.${credential}`),
+        !JSON.stringify(raw(other)).includes(`secrets.${credential}`),
         `${name} must not read ${credential}`,
       );
     }
@@ -3539,18 +3877,17 @@ test('the protocol review Worker deploys only from its own release lane', () => 
 
   // No credential at job level: each reaches exactly the steps that use it.
   assert.equal(worker.env, undefined);
-  const stepsReading = (credential) =>
-    worker.steps
-      .filter((step) =>
-        Object.values(step.env ?? {}).includes(`\${{ secrets.${credential} }}`),
-      )
-      .map((step) => step.name);
   const DEPLOY = 'Deploy the Worker to Cloudflare';
   const WRITE = "Write the Worker's secrets file";
-  assert.deepEqual(stepsReading('CLOUDFLARE_API_TOKEN'), [DEPLOY]);
-  assert.deepEqual(stepsReading('CLOUDFLARE_ACCOUNT_ID'), [DEPLOY]);
-  assert.deepEqual(stepsReading('ANTHROPIC_API_KEY'), [WRITE]);
-  assert.deepEqual(stepsReading('OPENAI_API_KEY'), [WRITE]);
+  for (const [credential, reader] of [
+    ['CLOUDFLARE_API_TOKEN', DEPLOY],
+    ['CLOUDFLARE_ACCOUNT_ID', DEPLOY],
+    ['ANTHROPIC_API_KEY', WRITE],
+    ['OPENAI_API_KEY', WRITE],
+  ]) {
+    assert.deepEqual(stepsReading(worker.steps, credential), [reader]);
+    assert.deepEqual(stepsReading(liveSteps(worker), credential), [reader]);
+  }
 
   // Wrangler refuses to deploy a Worker without every secret it requires, so
   // each one the Worker declares is checked for and written to the file.
@@ -3561,8 +3898,8 @@ test('the protocol review Worker deploys only from its own release lane', () => 
     ).match(/"required":\s*(\[[^\]]*\])/)[1],
   );
   assert.deepEqual(required, ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY']);
-  const stepNamed = (name) => worker.steps.find((step) => step.name === name);
   const credentialCheck = stepNamed(
+    worker,
     'Check the deploy credentials are configured',
   );
   for (const secret of required) {
@@ -3578,20 +3915,16 @@ test('the protocol review Worker deploys only from its own release lane', () => 
       `${secret} is named when it is missing`,
     );
     assert.ok(
-      stepNamed(WRITE).run.includes(`${secret}: process.env.${secret}`),
+      stepNamed(worker, WRITE).run.includes(`${secret}: process.env.${secret}`),
       `${secret} is written to the secrets file`,
     );
   }
   // And never interpolated into a script, where the shell would parse it.
-  for (const step of worker.steps) {
+  for (const step of raw(worker).steps) {
     assert.doesNotMatch(step.run ?? '', /\$\{\{\s*secrets\./, step.name);
   }
 
-  const index = (name) => {
-    const found = worker.steps.findIndex((step) => step.name === name);
-    assert.notEqual(found, -1, `${NAME} has a "${name}" step`);
-    return found;
-  };
+  const index = (name) => stepIndex(worker, { name });
   const guard = index('Skip if this version should not be deployed');
   const check = index('Check the deploy credentials are configured');
   const write = index(WRITE);
@@ -3601,7 +3934,8 @@ test('the protocol review Worker deploys only from its own release lane', () => 
   const tag = index('Tag the deployed version');
 
   // The guard needs tags and full history, and runs before anything else.
-  const checkout = worker.steps[0];
+  assert.equal(stepIndex(worker, { uses: 'actions/checkout' }), 0);
+  const checkout = getStep(worker, { uses: 'actions/checkout' });
   assert.equal(checkout.with['fetch-depth'], 0);
   assert.equal(checkout.with['fetch-tags'], true);
   assert.equal(checkout.with['persist-credentials'], false);
@@ -3645,7 +3979,7 @@ test('the protocol review Worker deploys only from its own release lane', () => 
   );
   assert.match(
     worker.steps[deploy].run,
-    /pnpm exec wrangler deploy \\\n\s+--secrets-file "\$SECRETS_FILE"/,
+    /^pnpm exec wrangler deploy \\\n\s+--secrets-file "\$SECRETS_FILE"/m,
   );
   for (const position of [write, deploy, remove]) {
     assert.equal(
@@ -3665,9 +3999,12 @@ test('the protocol review Worker deploys only from its own release lane', () => 
 
   // Wrangler bundles the Worker only when it deploys, so the same bundle is
   // built before merge, without credentials.
-  assert.match(
-    job('quality-support'),
-    /pnpm --filter=@codaco\/protocol-review-worker bundle/,
+  assert.ok(
+    runsLine(
+      ciJob('quality-support'),
+      'pnpm --filter=@codaco/protocol-review-worker bundle',
+    ),
+    'quality-support bundles the Worker',
   );
   const manifest = JSON.parse(
     readFileSync(
