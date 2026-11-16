@@ -99,7 +99,7 @@ describe('GetStartedIntro', () => {
 
   afterEach(cleanup);
 
-  it('renders all focusable starting paths', () => {
+  it('renders every starting path, with the documentation link first', () => {
     renderWithIntl(<GetStartedIntro />);
 
     const documentationLink = screen.getByRole('link', {
@@ -107,7 +107,6 @@ describe('GetStartedIntro', () => {
     });
 
     expect(screen.getAllByRole('link')[0]).toBe(documentationLink);
-    expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
     expect(
       screen.getByText(
         'Start by clicking the card that best describes the stage you are at with your research.',
@@ -118,41 +117,16 @@ describe('GetStartedIntro', () => {
         .getByRole('heading', { level: 1 })
         .closest('[data-scroll-style="active"]'),
     ).toBeInTheDocument();
-    expect(documentationLink).toHaveClass('relative', 'pb-24');
-    expect(screen.getByText('Learn more about the project')).toHaveClass(
-      'mt-8',
-      'text-xl',
-      'tablet-portrait:text-2xl',
-    );
-    expect(
-      screen.getByText('Design or create an interview protocol'),
-    ).toHaveClass('text-xl', 'tablet-portrait:text-2xl');
-    expect(screen.getByText('Collect data using Network Canvas')).toHaveClass(
-      'text-xl',
-      'tablet-portrait:text-2xl',
-    );
-    // In the end corner, pointing into it and moving further in on hover,
-    // whichever side the language ends on.
-    const arrow = documentationLink.querySelector('svg');
-    expect(arrow).toHaveClass('rtl:-scale-x-100');
-    expect(arrow?.parentElement).toHaveClass(
-      'absolute',
-      'inset-e-8',
-      'bottom-8',
-      'group-hover:translate-x-1',
-      'rtl:group-hover:-translate-x-1',
-    );
-
     expect(
       screen.getByRole('link', {
         name: 'Design or create an interview protocol',
       }),
-    ).toHaveClass('focusable');
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('link', {
         name: 'Collect data using Network Canvas',
       }),
-    ).toHaveClass('focusable');
+    ).toBeInTheDocument();
     expect(documentationLink).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/',

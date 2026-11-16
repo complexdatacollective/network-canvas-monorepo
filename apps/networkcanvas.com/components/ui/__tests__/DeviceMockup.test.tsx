@@ -2,6 +2,7 @@ import { cleanup, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithIntl } from '~/test/renderWithIntl';
+import { expectFrameToMatchScreenshot } from '~/test/screenshotAspectRatio';
 
 import { DeviceMockup, type Variant } from '../DeviceMockup';
 
@@ -42,13 +43,17 @@ const cases: Array<{
 ];
 
 describe('DeviceMockup', () => {
-  it.each(cases)('renders the $variant screenshot', ({ variant, alt, src }) => {
-    renderWithIntl(<DeviceMockup variant={variant} />);
+  it.each(cases)(
+    'renders the $variant screenshot in a frame of its own aspect ratio',
+    ({ variant, alt, src }) => {
+      renderWithIntl(<DeviceMockup variant={variant} />);
 
-    const image = screen.getByRole('img', { name: alt });
+      const image = screen.getByRole('img', { name: alt });
 
-    expect(image).toHaveAttribute('src', src);
-  });
+      expect(image).toHaveAttribute('src', src);
+      expectFrameToMatchScreenshot(image);
+    },
+  );
 
   it('localizes descriptive screenshot alternative text', () => {
     renderWithIntl(<DeviceMockup variant="architect" />, 'es');

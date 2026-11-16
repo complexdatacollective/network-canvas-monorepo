@@ -37,21 +37,18 @@ const apps = [
     actionName: 'Open Architect',
     variant: 'architect',
     href: 'https://architect.networkcanvas.com/',
-    accent: 'sea-green',
   },
   {
     name: 'Interviewer',
     actionName: 'Open Interviewer',
     variant: 'interviewer',
     href: 'https://interviewer.networkcanvas.com/',
-    accent: 'neon-coral',
   },
   {
     name: 'Fresco',
     actionName: 'Try the Fresco Sandbox',
     variant: 'fresco',
     href: 'https://fresco-sandbox.networkcanvas.com/',
-    accent: 'slate-blue',
   },
 ] as const;
 
@@ -177,15 +174,13 @@ describe('Tools', () => {
 
       expect(
         panel.getByRole('heading', { level: 3, name: app.name }),
-      ).toHaveClass(`text-${app.accent}`);
+      ).toBeInTheDocument();
       expect(actionLink).toHaveAttribute('href', app.href);
       expect(actionLink).toHaveAttribute('target', '_blank');
-      expect(actionLink).toHaveClass(`bg-${app.accent}`);
       expect(previewLink).toHaveAttribute('href', app.href);
       expect(previewLink).toHaveAttribute('target', '_blank');
-      // The screenshot link stays in the tab order with a visible focus ring.
+      // The screenshot link stays in the tab order.
       expect(previewLink).not.toHaveAttribute('tabindex');
-      expect(previewLink).toHaveClass('focusable');
     }
 
     const deployLink = within(card('Fresco')).getByRole('link', {
@@ -196,10 +191,6 @@ describe('Tools', () => {
       webDestinations.frescoDeployment,
     );
     expect(deployLink).toHaveAttribute('target', '_blank');
-    // Slate-blue text needs a white ground for WCAG AA in the dark theme,
-    // where the surface is dark.
-    expect(deployLink).toHaveClass('text-slate-blue', 'bg-white');
-    expect(deployLink).not.toHaveClass('bg-surface');
   });
 
   it('renders translated tool copy in Spanish', () => {

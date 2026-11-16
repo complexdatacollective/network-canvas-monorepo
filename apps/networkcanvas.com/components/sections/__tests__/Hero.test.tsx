@@ -44,6 +44,25 @@ describe('Hero', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('marks each animated hero item for its pre-hydration entrance state', () => {
+    renderWithIntl(<Hero newsItems={newsItems} />);
+
+    const items = [
+      screen.getByRole('heading', {
+        name: 'Simplifying complex network data collection.',
+      }),
+      screen.getByText(/Network Canvas provides/),
+      screen.getAllByRole('link', {
+        name: '[Read more] Fixture-only hero news',
+      })[0],
+      screen.getByRole('link', { name: 'Get Started' }),
+    ].map((element) => element?.closest('.entrance-motion-item'));
+
+    for (const item of items) expect(item).not.toBeNull();
+    // Heading, media row, news and call to action each enter on their own.
+    expect(new Set(items).size).toBe(4);
+  });
+
   it('renders Spanish hero copy', () => {
     renderWithIntl(<Hero newsItems={newsItems} />, 'es');
 

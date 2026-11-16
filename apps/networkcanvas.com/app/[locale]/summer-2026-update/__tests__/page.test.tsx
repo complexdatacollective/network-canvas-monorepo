@@ -1,5 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import SummerUpdateRoute, { generateMetadata } from '../page';
 
@@ -44,6 +44,10 @@ vi.mock('next/navigation', () => ({
 vi.mock('~/components/summer-update/SummerUpdatePage', () => ({
   SummerUpdatePage: () => null,
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('localized Summer 2026 update route', () => {
   it('sets the request locale from the route', async () => {

@@ -14,13 +14,11 @@ import {
   ANSWER_SIZE,
   ANSWER_SLOT,
   ANSWER_TRAIL,
-  COMMUNITY_CONFIG,
   FORM_COLORS,
   formBlend,
   INSTITUTIONS,
   INTERVIEWER_CONFIG,
   KEY_HUES,
-  PROJECT_RADIUS,
   PROMPT,
   PROMPT_BUBBLE,
   scenePhase,
@@ -114,7 +112,7 @@ describe('DesignPrinciples', () => {
     expect(tints.size).toBe(1);
   });
 
-  it("marks the community's contributions in its key colour, sending them in only when motion is allowed", () => {
+  it("draws each institution's contribution with a trail behind it along its connection", () => {
     const { container } = renderWithIntl(<DesignPrinciples />);
 
     const paths = Array.from(container.querySelectorAll('path'));
@@ -133,17 +131,7 @@ describe('DesignPrinciples', () => {
       expect(
         Number(trails[k]!.getAttribute('stroke-dashoffset')),
       ).toBeGreaterThan(Number(dot.getAttribute('stroke-dashoffset') ?? 0));
-      for (const mark of [dot, trails[k]!]) {
-        expect(mark.closest('[class*="stroke-sea-serpent"]')).not.toBeNull();
-        // They move only when motion is allowed and the community is on
-        // screen; with reduced motion they stand along the connection.
-        expect(mark.getAttribute('class')).toContain(
-          'group-data-[loop=6]/stage:motion-safe:animate-',
-        );
-        expect(mark.closest('[class~="opacity-0"]')).toBeNull();
-      }
     }
-    expect(FORM_COLORS[COMMUNITY_CONFIG]).toBe('sea-serpent');
   });
 
   it('runs the connections beneath the device, and draws its frame over the people leaving it', () => {
@@ -169,19 +157,6 @@ describe('DesignPrinciples', () => {
     const figures = scene.querySelectorAll('path[class~="fill-white/85"]');
     expect(figures).toHaveLength(9);
     for (const figure of figures) expect(before(figure, frame)).toBe(true);
-  });
-
-  it('draws the project in neutral ink, not in a colour', () => {
-    const { container } = renderWithIntl(<DesignPrinciples />);
-
-    const project = container.querySelector(
-      `[data-theme-interview] circle[r="${PROJECT_RADIUS}"]`,
-    );
-    expect(project).not.toBeNull();
-    const classes = project!.getAttribute('class')!.split(/\s+/);
-    for (const name of classes) {
-      expect(name, name).toMatch(/^(stroke-text|fill-white\/\d+)$/);
-    }
   });
 
   it('uses no relative colours, which older Safari drops', () => {

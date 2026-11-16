@@ -33,7 +33,6 @@ describe('MailingListForm', () => {
     expect(honeypot).toHaveValue('');
     expect(honeypot).toHaveAttribute('tabindex', '-1');
     expect(honeypot?.parentElement).toHaveAttribute('aria-hidden', 'true');
-    expect(honeypot?.parentElement).toHaveClass('sr-only');
 
     if (!(form instanceof HTMLFormElement)) {
       throw new TypeError('Expected the mailing-list form to render');

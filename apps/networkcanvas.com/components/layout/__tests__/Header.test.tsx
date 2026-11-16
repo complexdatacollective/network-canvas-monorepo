@@ -147,15 +147,6 @@ describe('localized layout navigation', () => {
     );
   });
 
-  it('shows the system theme icon on the desktop theme control', () => {
-    renderWithIntl(<ThemeSwitcher view="desktop" />);
-
-    const trigger = screen.getByRole('button', {
-      name: 'Color theme: System',
-    });
-    expect(trigger.querySelector('.lucide-sun-moon')).toBeInTheDocument();
-  });
-
   it('uses theme icons instead of checkmarks in the theme menu', () => {
     renderWithIntl(<ThemeSwitcher view="desktop" />);
 

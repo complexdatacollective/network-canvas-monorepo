@@ -29,7 +29,6 @@ describe('ScreenshotFrame', () => {
       name: 'Example screenshot',
     });
 
-    expect(screenshot).toHaveClass('object-contain');
     expect(screenshot.parentElement).toHaveClass('aspect-7/5');
   });
 

@@ -1,4 +1,4 @@
-import { act, cleanup, screen } from '@testing-library/react';
+import { act, cleanup, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { NewsItem } from '~/lib/siteContent';
@@ -67,8 +67,14 @@ describe('NewsTicker', () => {
     const ticker = container.firstElementChild;
     if (!ticker) throw new Error('Expected the news ticker to render');
     const desktopTicker = ticker.children[0];
+    if (!(desktopTicker instanceof HTMLElement)) {
+      throw new Error('Expected the desktop ticker to render');
+    }
 
-    expect(container.querySelector('.animate-marquee')).not.toBeInTheDocument();
+    // The marquee would hold every story twice.
+    expect(
+      within(desktopTicker).getAllByText('Fixture-only research news'),
+    ).toHaveLength(1);
     expect(desktopTicker).toHaveTextContent('Fixture-only research news');
     expect(desktopTicker).not.toHaveTextContent(
       'Second fixture research story',

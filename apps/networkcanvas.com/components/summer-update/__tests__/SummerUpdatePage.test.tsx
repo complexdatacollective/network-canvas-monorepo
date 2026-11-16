@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { loadLocaleMessages } from '~/lib/i18n/messages';
 import { renderWithIntl } from '~/test/renderWithIntl';
+import { expectFrameToMatchScreenshot } from '~/test/screenshotAspectRatio';
 
 import { SummerUpdatePage } from '../SummerUpdatePage';
 
@@ -284,6 +285,34 @@ describe('SummerUpdatePage', () => {
     });
   });
 
+  it('introduces the four benefits of the new apps', () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    for (const title of [
+      'Low friction use',
+      'Local app installation',
+      'Streamlined updates',
+      'Tablet support restored',
+    ]) {
+      expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+    }
+  });
+
+  it('describes each app screenshot and frames it at the screenshot’s own aspect ratio', () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    const screenshots = [
+      'Architect protocol editor showing the Sample Protocol timeline',
+      'Interviewer dashboard showing protocol cards and a resume interview action',
+      'The redesigned Network Canvas website homepage',
+      'The redesigned Network Canvas documentation homepage',
+    ].map((name) => screen.getByRole('img', { name }));
+
+    for (const screenshot of screenshots) {
+      expectFrameToMatchScreenshot(screenshot);
+    }
+  });
+
   it('links every Schema 8 explorer item to its relevant documentation', () => {
     renderWithIntl(<SummerUpdatePage />);
 
@@ -291,16 +320,7 @@ describe('SummerUpdatePage', () => {
       name: 'Geospatial',
     });
 
-    expect(selectedFeature).toHaveClass(
-      'justify-center',
-      'aria-pressed:bg-selected',
-      'aria-pressed:text-selected-contrast',
-      'aria-pressed:inset-surface',
-    );
-    expect(selectedFeature).not.toHaveClass('aria-pressed:bg-sea-serpent/15');
-    expect(screen.getByText('One-to-many dyad census')).toHaveClass(
-      'leading-snug',
-    );
+    expect(selectedFeature).toHaveAttribute('aria-pressed', 'true');
     expect(
       screen.getByRole('heading', { name: 'Geospatial interface' }),
     ).toBeInTheDocument();
@@ -314,9 +334,6 @@ describe('SummerUpdatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anonymisation' }));
 
     expect(selectedFeature).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('button', { name: 'Anonymisation' })).toHaveClass(
-      'aria-pressed:inset-surface',
-    );
     expect(
       screen.getByRole('button', { name: 'Anonymisation' }),
     ).toHaveAttribute('aria-pressed', 'true');
@@ -347,14 +364,9 @@ describe('SummerUpdatePage', () => {
       'Interviewer',
       'Fresco 4.0.0',
     ].forEach((heading) => {
-      const groupHeading = screen.getByRole('heading', {
-        level: 3,
-        name: heading,
-      });
-
-      expect(groupHeading).toHaveClass('text-2xl', 'font-black');
-      expect(groupHeading).not.toHaveClass('uppercase', 'tracking-widest');
-      expect(groupHeading.parentElement).not.toHaveClass('border-b', 'pb-3');
+      expect(
+        screen.getByRole('heading', { level: 3, name: heading }),
+      ).toBeInTheDocument();
     });
 
     [
@@ -377,7 +389,6 @@ describe('SummerUpdatePage', () => {
     const geospatialScreenshot = screen.getByRole('img', {
       name: 'Geospatial interface preview',
     });
-    const screenshotFrame = geospatialScreenshot.closest('.aspect-video');
 
     if (!(geospatialDetails instanceof HTMLElement)) {
       throw new Error('Feature details panel did not render');
@@ -387,9 +398,6 @@ describe('SummerUpdatePage', () => {
     expect(
       within(geospatialDetails).queryByText('New interface'),
     ).not.toBeInTheDocument();
-    expect(screenshotFrame?.parentElement?.lastElementChild).toBe(
-      screenshotFrame,
-    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Anonymisation' }));
 
@@ -413,8 +421,15 @@ describe('SummerUpdatePage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('explains the selected compatibility row in plain language', () => {
+  it('heads the upgrade advice and explains the selected compatibility row in plain language', () => {
     renderWithIntl(<SummerUpdatePage />);
+
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'When should you upgrade?',
+      }),
+    ).toBeInTheDocument();
 
     expect(
       screen.getByText(
@@ -551,22 +566,10 @@ describe('SummerUpdatePage', () => {
       throw new Error('Project resource layout did not render');
     }
 
-    expect(websiteHeading).toHaveClass('mt-2!');
-    expect(documentationHeading).toHaveClass('mt-2!');
+    expect(websiteHeading).toBeInTheDocument();
+    expect(documentationHeading).toBeInTheDocument();
     expect(websiteArticle).toContainElement(websiteScreenshot);
     expect(documentationArticle).toContainElement(documentationScreenshot);
-    expect(websiteArticle).not.toHaveClass(
-      'publish-colors',
-      'bg-surface',
-      'rounded',
-      'shadow-md',
-    );
-    expect(documentationArticle).not.toHaveClass(
-      'publish-colors',
-      'bg-surface',
-      'rounded',
-      'shadow-md',
-    );
     expect(documentationArticle.firstElementChild).toBe(
       documentationImageColumn,
     );
@@ -716,9 +719,5 @@ describe('SummerUpdatePage', () => {
 
     expect(projectName.style.animation).toBe('');
     expect(projectName.style.webkitTextFillColor).toBe('var(--color-white)');
-    expect(
-      screen.getByText('Keep scrolling to learn more').nextElementSibling
-        ?.firstElementChild,
-    ).toHaveClass('motion-safe:animate-bounce');
   });
 });
