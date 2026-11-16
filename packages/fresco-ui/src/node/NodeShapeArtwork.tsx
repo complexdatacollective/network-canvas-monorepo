@@ -1,6 +1,7 @@
 import { createElement, type ReactNode } from 'react';
 
 import {
+  LABEL_PLATE_ID,
   type NodeShapeSvgElement,
   type ParsedNodeShapeSvg,
   parseNodeShapeSvg,
@@ -174,16 +175,18 @@ const renderChildren = (
   children: Array<NodeShapeSvgElement | string>,
   idPrefix: string,
   keepsText: boolean,
+  labelPlateGrowth: number,
 ): ReactNode[] =>
   children.map((child, index) => {
     if (typeof child === 'string') return keepsText ? child : null;
-    return renderElement(child, idPrefix, index);
+    return renderElement(child, idPrefix, index, labelPlateGrowth);
   });
 
 const renderElement = (
   element: NodeShapeSvgElement,
   idPrefix: string,
   key: number,
+  labelPlateGrowth: number,
 ): ReactNode => {
   if (!RENDERED_ELEMENTS.has(element.tag)) return null;
   const props: Record<string, string | number> = { key };
@@ -193,6 +196,13 @@ const renderElement = (
     const rendered = renderAttribute(element.tag, name, value, idPrefix);
     if (rendered !== undefined) props[reactName] = rendered;
   }
+  if (
+    labelPlateGrowth > 0 &&
+    element.tag === 'rect' &&
+    element.attributes.id === LABEL_PLATE_ID
+  ) {
+    props.height = Number(element.attributes.height) + labelPlateGrowth;
+  }
   return createElement(
     element.tag,
     props,
@@ -200,6 +210,7 @@ const renderElement = (
       element.children,
       idPrefix,
       TEXT_ELEMENTS.has(element.tag),
+      labelPlateGrowth,
     ),
   );
 };
@@ -211,9 +222,15 @@ export const toNodeShapeIdPrefix = (reactId: string) =>
 type NodeShapeArtworkProps = {
   shape: ParsedNodeShapeSvg;
   idPrefix: string;
+  /** Extra height, in viewBox units, for the artwork's label plate. */
+  labelPlateGrowth?: number;
 };
 
-export function NodeShapeArtwork({ shape, idPrefix }: NodeShapeArtworkProps) {
+export function NodeShapeArtwork({
+  shape,
+  idPrefix,
+  labelPlateGrowth = 0,
+}: NodeShapeArtworkProps) {
   const { x, y, width, height } = shape.viewBox;
   return (
     <svg
@@ -223,12 +240,17 @@ export function NodeShapeArtwork({ shape, idPrefix }: NodeShapeArtworkProps) {
       // direction.
       data-direction-exempt
       data-node-shape-artwork
-      className="pointer-events-none absolute inset-0 size-full"
+      className="pointer-events-none absolute inset-0 size-full overflow-visible"
       viewBox={`${x} ${y} ${width} ${height}`}
       preserveAspectRatio="xMidYMid meet"
       style={{ ...NODE_SHAPE_TOKEN_STYLE, color: 'var(--base)' }}
     >
-      {renderChildren(shape.children, idPrefix, false)}
+      {renderChildren(
+        shape.children,
+        idPrefix,
+        false,
+        shape.labelPlate ? labelPlateGrowth : 0,
+      )}
     </svg>
   );
 }

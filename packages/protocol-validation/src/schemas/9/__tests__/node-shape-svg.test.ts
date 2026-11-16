@@ -653,6 +653,34 @@ describe('parseNodeShapeSvg', () => {
       });
     });
 
+    it('notes a label plate only beside a label area', () => {
+      const plate = '<rect id="label-plate" width="20" height="12"/>';
+      const area = '<rect id="label-area" width="10" height="10"/>';
+      const withBoth = parsed(svg(`${plate}${area}`));
+      expect(codes(withBoth)).toEqual([]);
+      expect(withBoth.shape.labelPlate).toBe(true);
+      expect(parsed(svg(plate)).shape.labelPlate).toBeUndefined();
+    });
+
+    it.each([
+      [
+        'a transform',
+        '<rect id="label-plate" width="20" height="12" transform="scale(2)"/>',
+      ],
+      ['no height', '<rect id="label-plate" width="20"/>'],
+      [
+        'a second plate',
+        '<rect id="label-plate" width="20" height="12"/><rect id="label-plate" width="20" height="12"/>',
+      ],
+    ])('reports a label plate with %s', (_, plates) => {
+      const result = parsed(
+        svg(
+          `<circle r="1"/>${plates}<rect id="label-area" width="10" height="10"/>`,
+        ),
+      );
+      expect(codes(result)).toEqual(['invalid-label-area']);
+    });
+
     it('does not count the label area as drawable content', () => {
       const result = parseNodeShapeSvg(
         svg('<rect id="label-area" width="10" height="10"/>'),

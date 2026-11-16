@@ -128,6 +128,8 @@ export default function ShapePickerField({
       onFocus={onFocus}
       className={cx(
         'flex flex-wrap gap-3 rounded border-2',
+        // A custom shape's label plate grows below the swatch for a long name.
+        !small && customShapes !== undefined && 'gap-y-8 pb-8',
         !small && 'bg-input text-input-contrast p-4',
         ariaInvalid === true && 'border-destructive',
         disabled && 'opacity-50',

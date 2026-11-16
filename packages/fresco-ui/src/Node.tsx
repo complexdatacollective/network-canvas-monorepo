@@ -44,7 +44,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
 import { type CSSVariablesStyle } from './utils/cssVariables';
-import { cva, type VariantProps } from './utils/cva';
+import { cva, cx, type VariantProps } from './utils/cva';
 import { withLabelBreakPoints } from './utils/labelBreakPoints';
 
 export type NodeShape = 'circle' | 'square' | 'diamond';
@@ -258,12 +258,16 @@ const DIAMOND_LABEL_WIDTH = 'w-[60%]!';
 const buildFitSteps = (
   size: NodeSize,
   labelClassName?: string,
+  floorClassName = labelClassName,
 ): readonly [string, ...string[]] => {
   const floor = LABEL_FIT_OVERRIDES[size].at(-1) ?? '';
   const withLabelClass = (className?: string) =>
     [className, labelClassName].filter(Boolean).join(' ');
   const atFloor = (breaks: string) =>
-    labelVariants({ size, className: withLabelClass(`${floor} ${breaks}`) });
+    labelVariants({
+      size,
+      className: [floor, breaks, floorClassName].filter(Boolean).join(' '),
+    });
   return [
     // The first rung is the size's default, so a label that already fits
     // renders as it did before fitting existed.
@@ -274,6 +278,7 @@ const buildFitSteps = (
         className: withLabelClass(`${NO_BREAKS} ${className}`),
       }),
     ),
+    ...(floorClassName === labelClassName ? [] : [atFloor(NO_BREAKS)]),
     atFloor(HYPHENATED_BREAKS),
     atFloor(EMERGENCY_BREAKS),
   ];
@@ -311,6 +316,24 @@ const CUSTOM_LABEL_FIT_STEPS: Record<NodeSize, readonly [string, ...string[]]> =
     md: buildFitSteps('md', CUSTOM_LABEL_SIZE),
     lg: buildFitSteps('lg', CUSTOM_LABEL_SIZE),
   };
+
+// An artwork with a label plate lets the label outgrow its area: once no size
+// fits, the last three rungs set the label at the floor size with no height
+// limit but the floor's line clamp, and the plate is drawn taller to hold it.
+// Whole words come first, then the breaking rungs.
+const GROWN_LABEL_SIZE = 'w-full! max-h-none';
+const GROWN_RUNGS = 3;
+
+const GROWING_LABEL_FIT_STEPS: Record<
+  NodeSize,
+  readonly [string, ...string[]]
+> = {
+  xxs: buildFitSteps('xxs', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
+  xs: buildFitSteps('xs', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
+  sm: buildFitSteps('sm', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
+  md: buildFitSteps('md', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
+  lg: buildFitSteps('lg', CUSTOM_LABEL_SIZE, GROWN_LABEL_SIZE),
+};
 
 // `currentColor` in an artwork means the node's colour; on the HTML label it
 // would otherwise resolve to the root's white text.
@@ -522,8 +545,11 @@ export default function Node(props: UINodeProps) {
   const builtInShape: NodeShape =
     typeof shape === 'string' ? shape : customShape ? 'square' : 'circle';
   const shapeIdPrefix = toNodeShapeIdPrefix(useId());
+  const growsLabelPlate = customShape?.labelPlate === true;
   const fitSteps = customShape
-    ? CUSTOM_LABEL_FIT_STEPS[size ?? 'md']
+    ? (growsLabelPlate ? GROWING_LABEL_FIT_STEPS : CUSTOM_LABEL_FIT_STEPS)[
+        size ?? 'md'
+      ]
     : builtInShape === 'diamond'
       ? DIAMOND_LABEL_FIT_STEPS[size ?? 'md']
       : LABEL_FIT_STEPS[size ?? 'md'];
@@ -540,6 +566,7 @@ export default function Node(props: UINodeProps) {
     ref: labelRef,
     stepIndex,
     isTruncated,
+    wholeLines,
     fittedWatch,
   } = useFitText<HTMLSpanElement>({
     steps: fitSteps,
@@ -559,6 +586,41 @@ export default function Node(props: UINodeProps) {
   }
 
   // A keyboard drag already owns arrow keys and the node's position; revealing
+  const labelGrown =
+    growsLabelPlate && !loading && stepIndex >= fitSteps.length - GROWN_RUNGS;
+  // How far the grown label reaches past its area, in the artwork's viewBox
+  // units, which is what the plate is drawn in.
+  const [labelPlateGrowth, setLabelPlateGrowth] = useState(0);
+  useEffect(() => {
+    const labelElement = labelRef.current;
+    const box = labelBoxRef.current;
+    const root = box?.parentElement;
+    if (!labelGrown || !customShape || !labelElement || !box || !root) {
+      setLabelPlateGrowth(0);
+      return undefined;
+    }
+    const { width, height } = customShape.viewBox;
+    const measure = () => {
+      const overflow = labelElement.offsetHeight - box.clientHeight;
+      const unitsPerPixel = Math.max(width, height) / root.clientWidth;
+      setLabelPlateGrowth(
+        overflow > 0 && Number.isFinite(unitsPerPixel)
+          ? Math.round(overflow * unitsPerPixel * 10) / 10
+          : 0,
+      );
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(labelElement);
+    return () => observer.disconnect();
+  }, [labelGrown, customShape, labelRef]);
+
+  // A label area holds fewer lines than the ladder's clamps allow for, so a
+  // label cut short in one is clamped to the lines that are whole.
+  const labelLineClamp =
+    customShape && isTruncated && !labelGrown ? wholeLines : undefined;
+
   // the label on top of that is noise.
   const isGrabbed = buttonProps['data-dragging'] === true;
 
@@ -729,6 +791,11 @@ export default function Node(props: UINodeProps) {
           ref={labelRef}
           dir="auto"
           className={fitSteps[stepIndex] ?? fitSteps[0]}
+          style={
+            labelLineClamp === undefined
+              ? undefined
+              : { WebkitLineClamp: labelLineClamp }
+          }
         >
           {displayedLabel}
         </span>
@@ -790,7 +857,11 @@ export default function Node(props: UINodeProps) {
         aria-hidden
       >
         {customShape && (
-          <NodeShapeArtwork shape={customShape} idPrefix={shapeIdPrefix} />
+          <NodeShapeArtwork
+            shape={customShape}
+            idPrefix={shapeIdPrefix}
+            labelPlateGrowth={labelPlateGrowth}
+          />
         )}
         {/* Linking indicator - separate element so it can animate independently */}
         <AnimatePresence>
@@ -845,7 +916,12 @@ export default function Node(props: UINodeProps) {
           // Placed over the artwork's label area, which is drawn by
           // coordinates and does not mirror.
           data-direction-exempt
-          className="absolute flex min-w-0 items-center justify-center overflow-hidden"
+          className={cx(
+            'absolute flex min-w-0 justify-center',
+            labelGrown && labelPlateGrowth > 0
+              ? 'items-start overflow-visible'
+              : 'items-center overflow-hidden',
+          )}
           style={customLabelAreaStyle(customShape)}
         >
           {nodeContent}

@@ -44,7 +44,27 @@ const overflows = (element: HTMLElement) =>
 type Fitter = {
   element: HTMLElement;
   steps: readonly string[];
-  commit: (stepIndex: number, isTruncated: boolean) => void;
+  container: HTMLElement | null;
+  commit: (
+    stepIndex: number,
+    isTruncated: boolean,
+    wholeLines: number | undefined,
+  ) => void;
+};
+
+/**
+ * How many whole lines of the element's type its container can show. A
+ * line clamp set for more lines than that leaves a sliver of the next line
+ * showing and puts the ellipsis out of sight.
+ */
+const wholeLinesIn = (container: HTMLElement | null, element: HTMLElement) => {
+  if (!container) return undefined;
+  const lineBox = Number.parseFloat(getComputedStyle(element).lineHeight);
+  if (!Number.isFinite(lineBox) || lineBox <= 0) return undefined;
+  return Math.max(
+    1,
+    Math.floor((container.clientHeight + ROUNDING_SLACK) / lineBox),
+  );
 };
 
 const pending = new Set<Fitter>();
@@ -91,9 +111,15 @@ function flush() {
     }
   }
 
-  for (const state of states) {
-    state.fitter.commit(state.stepIndex, !state.fits);
-  }
+  // Read first, then commit: a commit may write to the page.
+  const wholeLines = states.map((state) =>
+    state.fits
+      ? undefined
+      : wholeLinesIn(state.fitter.container, state.fitter.element),
+  );
+  states.forEach((state, index) => {
+    state.fitter.commit(state.stepIndex, !state.fits, wholeLines[index]);
+  });
 }
 
 function enqueue(fitter: Fitter) {
@@ -132,6 +158,11 @@ type UseFitTextResult<T> = {
   /** Whether the text still overflows at the smallest rung. */
   isTruncated: boolean;
   /**
+   * For truncated text, the number of whole lines of the fitted type the
+   * container can show.
+   */
+  wholeLines: number | undefined;
+  /**
    * The `watch` value the reported rung was measured for. `stepIndex` is kept
    * until the next measurement lands, so right after `watch` changes it still
    * describes the previous text; a caller that acts on the rung compares this
@@ -157,12 +188,19 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
   const [state, setState] = useState<{
     stepIndex: number;
     isTruncated: boolean;
+    wholeLines: number | undefined;
     fittedWatch: UseFitTextOptions['watch'];
-  }>({ stepIndex: 0, isTruncated: false, fittedWatch: undefined });
+  }>({
+    stepIndex: 0,
+    isTruncated: false,
+    wholeLines: undefined,
+    fittedWatch: undefined,
+  });
 
   // Fits the current text, for whatever later finds the room has changed. A
   // fit left behind by an earlier text has been cancelled, so it does nothing.
   const refitRef = useRef<(() => void) | null>(null);
+  const containerElementRef = useRef<HTMLElement | null>(null);
 
   // Measured before paint, so the first frame already shows the fitted size.
   useLayoutEffect(() => {
@@ -174,7 +212,12 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
         !previous.isTruncated &&
         previous.fittedWatch === undefined
           ? previous
-          : { stepIndex: 0, isTruncated: false, fittedWatch: undefined },
+          : {
+              stepIndex: 0,
+              isTruncated: false,
+              wholeLines: undefined,
+              fittedWatch: undefined,
+            },
       );
       return undefined;
     }
@@ -184,14 +227,19 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     const fitter: Fitter = {
       element,
       steps,
-      commit: (stepIndex, isTruncated) => {
+      // Set by the passive effect below, which refits once it has.
+      get container() {
+        return containerElementRef.current;
+      },
+      commit: (stepIndex, isTruncated, wholeLines) => {
         if (cancelled) return;
         setState((previous) =>
           previous.stepIndex === stepIndex &&
           previous.isTruncated === isTruncated &&
+          previous.wholeLines === wholeLines &&
           previous.fittedWatch === watch
             ? previous
-            : { stepIndex, isTruncated, fittedWatch: watch },
+            : { stepIndex, isTruncated, wholeLines, fittedWatch: watch },
         );
       },
     };
@@ -227,6 +275,7 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
   // the observer's first report measures the box as it is then.
   useEffect(() => {
     const container = containerRef.current;
+    containerElementRef.current = container;
     if (!enabled || !container || typeof ResizeObserver === 'undefined') {
       return undefined;
     }
@@ -240,6 +289,7 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     ref,
     stepIndex: state.stepIndex,
     isTruncated: state.isTruncated,
+    wholeLines: state.wholeLines,
     fittedWatch: state.fittedWatch,
   };
 }

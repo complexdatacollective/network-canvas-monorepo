@@ -74,7 +74,7 @@ const messages = defineMessages({
   removedKind: {
     id: 'protocolBuilder.customShapes.removedKind',
     defaultMessage:
-      '{kind, select, scripts {scripts} images {embedded images} styles {style sheets and styles} filters {filters} animations {animations} links {links and references to other files} colors {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}',
+      '{kind, select, scripts {scripts} images {embedded images} styles {unsupported styles} filters {filters} animations {animations} links {links and references to other files} colors {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}',
     description:
       'Name of one kind of content removed from an SVG file added as a custom node shape. Used as one item of a list in the removedContent notice, so write it as a phrase that fits there.',
   },

@@ -12,6 +12,6 @@
   </g>
   <polygon points="50.0,15.0 52.9,22.0 60.5,22.6 54.8,27.5 56.5,34.9 50.0,31.0 43.5,34.9 45.2,27.5 39.5,22.6 47.1,22.0" fill="#ffd23f" stroke="#2b2340" stroke-width="2" stroke-linejoin="round"/>
   <circle cx="50" cy="40" r="2.5" fill="#2b2340"/>
-  <rect x="10" y="62" width="80" height="32" rx="9" fill="#ffffff" stroke="#2b2340" stroke-width="3"/>
+  <rect id="label-plate" x="10" y="62" width="80" height="32" rx="9" fill="#ffffff" stroke="#2b2340" stroke-width="3"/>
   <rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
 </svg>

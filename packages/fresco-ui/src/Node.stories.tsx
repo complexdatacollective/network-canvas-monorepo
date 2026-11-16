@@ -1670,6 +1670,69 @@ export const CustomShapesInterview: Story = {
   },
 };
 
+const platedPetSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="36" r="28" fill="var(--node-color)" stroke="var(--node-color-dark)" stroke-width="3"/><circle cx="41" cy="32" r="3" fill="#2b2340"/><circle cx="59" cy="32" r="3" fill="#2b2340"/><rect id="label-plate" x="10" y="62" width="80" height="32" rx="9" fill="#ffffff" stroke="#2b2340" stroke-width="3"/><rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/></svg>`;
+
+const growingLabels = [
+  'Jo',
+  'Auntie Priya',
+  'The big park by the river',
+  'The blanket grandad gave me when I was a baby',
+  'Everything I can remember about our old house in Lagos',
+] as const;
+
+/**
+ * An artwork whose label sits on a rect with the id `label-plate` gives a
+ * long name more room: once no size of type fits the label area, the plate is
+ * drawn taller, downwards, to hold up to the smallest size's line limit. A
+ * name longer than that ends in an ellipsis and is read by pressing and
+ * holding.
+ */
+export const CustomShapeGrowingLabelPlate: Story = {
+  render: () => (
+    <div className="flex flex-col gap-16">
+      {(['sm', 'md', 'lg'] as const).map((size) => (
+        <div key={size} className="flex flex-wrap items-start gap-8">
+          {growingLabels.map((label) => (
+            <Node
+              key={label}
+              label={label}
+              size={size}
+              shape={{ svg: platedPetSvg }}
+              color="node-color-seq-5"
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const plateHeight = (node: HTMLElement) =>
+      Number(
+        node.querySelector('rect[id$="label-plate"]')?.getAttribute('height'),
+      );
+    for (const node of canvas.getAllByRole('button', { name: 'Jo' })) {
+      await expect(plateHeight(node)).toBe(32);
+    }
+    for (const node of canvas.getAllByRole('button', {
+      name: growingLabels[3],
+    })) {
+      await waitFor(async () => {
+        await expect(plateHeight(node)).toBeGreaterThan(32);
+        const plate = node
+          .querySelector('rect[id$="label-plate"]')!
+          .getBoundingClientRect();
+        const text = node
+          .querySelector('span[class*="line-clamp"]')!
+          .getBoundingClientRect();
+        // The taller plate holds every line of the label.
+        await expect(text.bottom).toBeLessThanOrEqual(plate.bottom + 0.5);
+      });
+    }
+  },
+  parameters: { layout: 'padded' },
+};
+
 const customLongLabels = [
   'Alexandra Müller-Lüdenscheidt',
   'Alexandria Montgomery-Fitzgerald von Habsburg III of Great Britain and Ireland',

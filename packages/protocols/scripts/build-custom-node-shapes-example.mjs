@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Builds examples/custom-node-shapes/protocol.json from the SVG files in
-// examples/custom-node-shapes/shapes/{illustrated,accented,themed}. The SVG files are
+// examples/custom-node-shapes/shapes/{illustrated,accented}. The SVG files are
 // the source; the protocol stores each one in the canonical form Architect
 // stores after an upload.
 import { readFile, writeFile } from 'node:fs/promises';
@@ -150,7 +150,7 @@ async function buildProtocol() {
   return {
     name: 'Custom Node Shapes',
     description:
-      "An example of custom node shapes for a study with children. The things in a child's world are drawn with a picture chosen by a \"type\" attribute. One node type uses pictures with their own colours; a second uses the node type's colour for the main parts of each picture; a third uses only the theme colours and the node type's colour.",
+      'An example of custom node shapes for a study with children. The things in a child\'s world are drawn with a picture chosen by a "type" attribute. One node type uses pictures with their own colours; a second uses the node type\'s colour for the main parts of each picture.',
     schemaVersion: template.schemaVersion,
     localization: { defaultLocale: 'en', locales: ['en'] },
     lastModified: '2026-11-13T00:00:00.000Z',
@@ -169,22 +169,12 @@ async function buildProtocol() {
           color: 'node-color-seq-6',
           customShapes: await readShapes('accented'),
         }),
-        world_themed: nodeType({
-          key: 'world_themed',
-          name: 'Part of my world (theme colours)',
-          color: 'node-color-seq-4',
-          customShapes: await readShapes('themed'),
-        }),
       },
       edge: {
         goes_with: { name: 'Goes with', color: 'edge-color-seq-1' },
         goes_with_accented: {
           name: 'Goes with (node colour)',
           color: 'edge-color-seq-3',
-        },
-        goes_with_themed: {
-          name: 'Goes with (theme colours)',
-          color: 'edge-color-seq-2',
         },
       },
     },
@@ -244,34 +234,6 @@ async function buildProtocol() {
         type: 'world_accented',
         edge: 'goes_with_accented',
         label: 'Make another map',
-      }),
-      {
-        id: 'themed-introduction',
-        type: 'Information',
-        label: en('Theme-coloured shapes'),
-        title: en('The same shapes in theme colours'),
-        items: [
-          {
-            id: 'themed-introduction-text',
-            type: 'text',
-            content: en(
-              "_For researchers._ The next two screens repeat the task with a third node type. Its shapes are drawn with the theme colours and the node type's own colour (`var(--node-color)`), so they follow the interview theme.",
-            ),
-          },
-        ],
-      },
-      nameGenerator({
-        id: 'name-themed',
-        type: 'world_themed',
-        label: 'Add some more',
-        prompt:
-          'Add a few more things from your world, and choose what kind of thing each one is.',
-      }),
-      sociogram({
-        id: 'map-themed',
-        type: 'world_themed',
-        edge: 'goes_with_themed',
-        label: 'Make one more map',
       }),
       finish,
     ],

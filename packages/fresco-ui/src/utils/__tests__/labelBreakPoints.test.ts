@@ -38,6 +38,13 @@ describe('withLabelBreakPoints', () => {
     );
   });
 
+  it('breaks before a letter pair that begins a syllable', () => {
+    expect(withLabelBreakPoints('Something')).toBe(`Some${SOFT_HYPHEN}thing`);
+    expect(withLabelBreakPoints('Christopher')).toBe(
+      `Chri${SOFT_HYPHEN}sto${SOFT_HYPHEN}pher`,
+    );
+  });
+
   it('leaves short words, existing soft hyphens and other scripts alone', () => {
     expect(withLabelBreakPoints('Ash')).toBe('Ash');
     expect(withLabelBreakPoints('Maria')).toBe('Maria');

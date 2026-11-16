@@ -38,6 +38,9 @@ export type ParsedNodeShapeSvg = {
   labelColor?: string;
   /** The label-area rect in viewBox units, when the SVG declared one. */
   labelRect?: Box;
+  /** Whether the artwork has a `label-plate` rect, which the renderer makes
+   *  taller when a label needs more lines than the label area holds. */
+  labelPlate?: true;
 };
 
 type NodeShapeSvgIssueCode =
@@ -65,6 +68,7 @@ const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
 const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
 
 const LABEL_AREA_ID = 'label-area';
+export const LABEL_PLATE_ID = 'label-plate';
 const DEFAULT_LABEL_AREA: Box = { x: 0.1, y: 0.2, width: 0.8, height: 0.6 };
 
 const ALLOWED_ELEMENTS = new Set([
@@ -535,6 +539,7 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
   let hasDrawable = false;
   let labelRect: Box | undefined;
   let labelColor: string | undefined;
+  let hasLabelPlate = false;
 
   const parser = new SaxesParser({
     xmlns: true,
@@ -711,6 +716,30 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
     };
     parent.element.children.push(element);
     if (!nonRendered && DRAWABLE_ELEMENTS.has(localName)) hasDrawable = true;
+    if (localName === 'rect' && kept.get('id') === LABEL_PLATE_ID) {
+      const height = parseNumber(kept.get('height'));
+      if (hasLabelPlate) {
+        addIssue(
+          state,
+          'invalid-label-area',
+          'There is more than one label plate.',
+        );
+      } else if (transformed || nonRendered) {
+        addIssue(
+          state,
+          'invalid-label-area',
+          'The label plate has a transform, or is inside <defs>, <clipPath>, <mask> or <symbol>.',
+        );
+      } else if (height === undefined || !Number.isFinite(height)) {
+        addIssue(
+          state,
+          'invalid-label-area',
+          'The label plate needs a numeric height.',
+        );
+      } else {
+        hasLabelPlate = true;
+      }
+    }
     stack.push({
       element,
       keepsText: TEXT_ELEMENTS.has(localName),
@@ -814,6 +843,7 @@ export function parseNodeShapeSvg(source: string): NodeShapeSvgResult {
   };
   if (labelRect) shape.labelRect = labelRect;
   if (labelColor !== undefined) shape.labelColor = labelColor;
+  if (hasLabelPlate && labelRect) shape.labelPlate = true;
 
   return { success: true, shape, issues: state.issues };
 }

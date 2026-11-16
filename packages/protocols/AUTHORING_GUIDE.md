@@ -175,6 +175,11 @@ first problem it finds.
   `transform` on it or any ancestor, not inside `defs`/`clipPath`/`mask`/`symbol`, at most one)
   marks where the node's label goes. It is never drawn; its `fill` sets the label colour. Without
   one, the label sits in the central 80% × 60% of the node in the theme's `text` colour.
+- **Label plate**: an optional `<rect id="label-plate">` (numeric `height`, no `transform` on it
+  or any ancestor, at most one, and only with a label area) is the drawn backing behind the label.
+  When a label needs more lines than the label area holds, the plate is drawn taller, downwards,
+  and the label fills it, up to four lines. Put the plate and label area at the bottom of the
+  picture. Without a plate, a long label ends in an ellipsis at the last whole line that fits.
 
 ## 4. Variable definitions (strict per type)
 

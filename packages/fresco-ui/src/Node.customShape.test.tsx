@@ -1,7 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { isValidNodeShapeSvg } from '@codaco/protocol-validation';
+import {
+  isValidNodeShapeSvg,
+  parseNodeShapeSvg,
+} from '@codaco/protocol-validation';
 
 import Node, { resolveNodeShapeReference } from './Node';
 import { NodeShapeArtwork } from './node/NodeShapeArtwork';
@@ -258,6 +261,34 @@ describe('Node custom shapes', () => {
     expect(node.querySelector('[data-node-label-area]')).toBeNull();
     expect(node).toHaveClass('rounded-full');
     expect(node.querySelector('[class*="linear-gradient"]')).not.toBeNull();
+  });
+});
+
+describe('NodeShapeArtwork label plate', () => {
+  const platedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="30" r="20"/><rect id="label-plate" x="10" y="62" width="80" height="32" fill="#ffffff"/><rect id="label-area" x="16" y="64" width="68" height="28"/></svg>`;
+
+  const plateHeight = (svg: string, labelPlateGrowth: number) => {
+    const result = parseNodeShapeSvg(svg);
+    if (!result.success) throw new Error('fixture does not parse');
+    const { container } = render(
+      <NodeShapeArtwork
+        shape={result.shape}
+        idPrefix="p-"
+        labelPlateGrowth={labelPlateGrowth}
+      />,
+    );
+    return container.querySelector('#p-label-plate')?.getAttribute('height');
+  };
+
+  it('draws the plate taller by the growth it is given', () => {
+    expect(isValidNodeShapeSvg(platedSvg)).toBe(true);
+    expect(plateHeight(platedSvg, 0)).toBe('32');
+    expect(plateHeight(platedSvg, 12.5)).toBe('44.5');
+  });
+
+  it('leaves a plate alone in an artwork with no label area', () => {
+    const withoutArea = platedSvg.replace(/<rect id="label-area"[^>]*>/, '');
+    expect(plateHeight(withoutArea, 12.5)).toBe('32');
   });
 });
 

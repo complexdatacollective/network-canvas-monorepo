@@ -1552,7 +1552,7 @@
     "description": "Notice shown under a custom node shape that was added from an SVG file after unsupported content was removed from it. removed is a list of the kinds of content, such as \"scripts, embedded images and filters\"."
   },
   "protocolBuilder.customShapes.removedKind": {
-    "defaultMessage": "{kind, select, scripts {scripts} images {embedded images} styles {style sheets and styles} filters {filters} animations {animations} links {links and references to other files} colors {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}",
+    "defaultMessage": "{kind, select, scripts {scripts} images {embedded images} styles {unsupported styles} filters {filters} animations {animations} links {links and references to other files} colors {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}",
     "description": "Name of one kind of content removed from an SVG file added as a custom node shape. Used as one item of a list in the removedContent notice, so write it as a phrase that fits there."
   },
   "protocolBuilder.customShapes.tooLarge": {
