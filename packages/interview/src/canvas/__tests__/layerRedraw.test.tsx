@@ -86,6 +86,7 @@ describe.each([
       const line = container.querySelector('line[data-edge-id="a-b"]');
       return `${line?.getAttribute('x1')},${line?.getAttribute('y1')}`;
     },
+    drawn: (container: HTMLElement) => [...container.querySelectorAll('line')],
   },
   {
     layer: 'ConvexHullLayer',
@@ -100,8 +101,34 @@ describe.each([
     // A two-node hull is drawn through both centres, node a's first.
     drawnStart: (container: HTMLElement) =>
       container.querySelector('polygon')?.getAttribute('points')?.split(' ')[0],
+    drawn: (container: HTMLElement) => [
+      ...container.querySelectorAll('polygon'),
+    ],
   },
-])('$layer', ({ layerElement, drawnStart }) => {
+])('$layer', ({ layerElement, drawnStart, drawn }) => {
+  it('hides what has nobody placed, and leaves what it draws to inherit visibility', () => {
+    const store = createCanvasStore();
+    const { container } = render(layerElement(store));
+    expect(drawn(container).length).toBeGreaterThan(0);
+    for (const element of drawn(container)) {
+      expect(element.getAttribute('visibility')).toBe('hidden');
+    }
+
+    act(() =>
+      store.getState().setBatchPositions([
+        ['a', { x: 0.2, y: 0.3 }],
+        ['b', { x: 0.6, y: 0.7 }],
+      ]),
+    );
+    flushFrames();
+
+    // Forcing it visible would show it on a canvas that hides its contents
+    // while its first layout is computed.
+    for (const element of drawn(container)) {
+      expect(element.hasAttribute('visibility')).toBe(false);
+    }
+  });
+
   it('draws at mount and asks for no frames while nothing moves', () => {
     const { container } = render(layerElement(storeWithTwoNodes()));
 

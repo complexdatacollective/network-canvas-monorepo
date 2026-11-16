@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   entityAttributesProperty,
@@ -9,6 +9,10 @@ import {
 
 import { edgeInsetForNode, FALLBACK_NODE_RADIUS } from '../layoutGeometry';
 import { createCanvasStore } from '../useCanvasStore';
+
+vi.mock('../../store/modules/session', () => ({
+  updateNode: (patch: unknown) => patch,
+}));
 
 const DIMS = { width: 1000, height: 500 };
 
@@ -119,5 +123,34 @@ describe('useCanvasStore syncFromNodes', () => {
       );
 
     expect([...store.getState().positions.keys()]).toEqual(['placed']);
+  });
+});
+
+describe('useCanvasStore syncToRedux', () => {
+  it('clamps the positions it saves to the canvas inset', () => {
+    const store = createCanvasStore();
+    store.getState().setCanvasDimensions(DIMS);
+    const dispatch = vi.fn();
+
+    store
+      .getState()
+      .syncToRedux(
+        dispatch,
+        'layout',
+        0,
+        new Map([['a', { x: 1.2, y: -0.1 }]]),
+      );
+
+    const inset = edgeInsetForNode(FALLBACK_NODE_RADIUS);
+    expect(dispatch).toHaveBeenCalledWith({
+      nodeId: 'a',
+      attributePatch: {
+        set: {
+          layout: { x: 1 - inset / DIMS.width, y: inset / DIMS.height },
+        },
+        unset: [],
+      },
+      currentStep: 0,
+    });
   });
 });

@@ -176,7 +176,9 @@ export default function ConvexHullLayer({
           continue;
         }
 
-        el.setAttribute('visibility', 'visible');
+        // Inherit visibility rather than force it, so a canvas that hides its
+        // contents (while its first layout is computed) hides its hulls too.
+        el.removeAttribute('visibility');
 
         if (coords.length === 1) {
           // Single node: micro-triangle at node center.

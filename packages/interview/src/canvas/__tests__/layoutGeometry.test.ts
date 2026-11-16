@@ -60,7 +60,7 @@ describe('layoutGeometry', () => {
     const minCenterToCenter = 2 * collide;
     const minEdgeToEdge = minCenterToCenter - 2 * radius;
     expect(collide).toBeCloseTo(radius * (1 + EDGE_GAP_RATIO), 10);
-    // Edge-to-edge channel equals EDGE_GAP_RATIO * diameter (= 0.8 * radius).
+    // Edge-to-edge channel equals EDGE_GAP_RATIO * diameter (= one radius).
     expect(minEdgeToEdge).toBeCloseTo(2 * EDGE_GAP_RATIO * radius, 10);
     expect(minEdgeToEdge).toBeGreaterThan(0);
   });

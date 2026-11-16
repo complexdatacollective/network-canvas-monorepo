@@ -36,11 +36,8 @@ export const FALLBACK_NODE_RADIUS = 48;
 // Extra spacing between a node's visible EDGE and a neighbour's edge, expressed
 // as a fraction of the node radius, on top of the two radii. The center-to-center
 // minimum is 2*radius + 2*EDGE_GAP_RATIO*radius, so the edge-to-edge channel is
-// 2*EDGE_GAP_RATIO*radius (= 0.8*radius at 0.4). Lowered from 0.75 to bring
-// connected nodes ~twice as close (FIX 3): the collision floor is what stops
-// linked nodes touching, so a smaller ratio lets links pull them tighter. Tune
-// visually.
-export const EDGE_GAP_RATIO = 0.4;
+// 2*EDGE_GAP_RATIO*radius (= one radius at 0.5).
+export const EDGE_GAP_RATIO = 0.5;
 
 /**
  * Center-to-center collision radius (px) for one node. Two nodes both using this

@@ -22,11 +22,21 @@
 // before they reach the store. The collision radius derives from `nodeRadius`,
 // which the caller measures off-screen with `useNodeMeasurement` so it tracks the
 // live node size.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type AnimationPlaybackControls, animate } from 'motion/react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import {
   edgeSourceProperty,
   edgeTargetProperty,
+  entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
@@ -49,7 +59,7 @@ import {
   hasUsableDimensions,
   toSim,
 } from './layoutGeometry';
-import type { CanvasStoreApi } from './useCanvasStore';
+import { type CanvasStoreApi, isPosition } from './useCanvasStore';
 
 type SimLink = { source: number; target: number };
 
@@ -59,8 +69,14 @@ type SimNode = {
   y: number;
   fx?: number | null;
   fy?: number | null;
+  placed: boolean;
   groupKeys?: ReturnType<typeof getGroupKeys>;
 };
+
+const SETTLE_ANIMATION_SECONDS = 0.6;
+const CANVAS_CENTRE = { x: 0.5, y: 0.5 };
+// Normalized distance below which a settled node counts as not having moved.
+const MOVED_THRESHOLD = 0.002;
 
 /** Whether a node the worker reports has an id and a place to put it. */
 const isPlacedSimNode = (node: unknown): node is SimNode =>
@@ -131,11 +147,23 @@ export function useAutoLayout({
 }: UseAutoLayoutOptions): UseAutoLayoutResult {
   const { isE2E } = useContractFlags();
   const workerRef = useRef<Worker | null>(null);
+  const animationRef = useRef<AnimationPlaybackControls | null>(null);
+  const skipAnimations = useShouldSkipAnimations();
+  const skipAnimationsRef = useRef(skipAnimations);
+  skipAnimationsRef.current = skipAnimations;
   // The seeded node→index map, captured so continuous-mode link updates resolve
-  // edge endpoints against the same indices the worker was initialized with.
+  // edge endpoints against the same indices the worker was initialized with,
+  // and so a node added later is laid out as new even when its host gave it a
+  // starting position.
   const nodeIndexByIdRef = useRef<Map<string, number>>(new Map());
   const [isRunning, setIsRunning] = useState(false);
   const [simulationEnabled, setSimulationEnabled] = useState(true);
+  const frameRef = useRef<number | null>(null);
+  // Whether the canvas has shown people since it mounted. Until it has, a
+  // layout is computed out of sight and revealed, so nobody is seen moving.
+  const shownRef = useRef(false);
+  // People being dragged. The drag places them, so the layout leaves them be.
+  const heldRef = useRef(new Set<string>());
 
   // Keep refs updated so the effect can read latest values without re-running.
   const nodesRef = useRef(nodes);
@@ -153,6 +181,11 @@ export function useAutoLayout({
         : null,
     [persist, dispatch, currentStep],
   );
+  // Read when a layout run starts rather than being a reason to start one:
+  // moving to the next step changes it while this stage is still on screen
+  // for its exit transition, and the layout must not change or save then.
+  const persistArgsRef = useRef(persistArgs);
+  persistArgsRef.current = persistArgs;
 
   // Stable key that only changes when nodes are added or removed.
   const nodeIdsKey = useMemo(
@@ -223,8 +256,29 @@ export function useAutoLayout({
     store.getState().setNodeRadius(nodeRadius);
   }, [store, nodeRadius]);
 
+  // The canvas is measured, and its first layout started, only after its first
+  // paint. Hide people from that paint when a layout is about to move them.
+  useLayoutEffect(() => {
+    const starting = runMode === 'once' || simulationEnabled;
+    const moving = nodesRef.current.some(
+      (node) =>
+        !persistArgsRef.current ||
+        !isPosition(node[entityAttributesProperty][layoutVariable]),
+    );
+    if (enabled && starting && moving) {
+      store.getState().setLayoutPending(true);
+    }
+    // Only the first paint; each run then sets whether it is pending.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled) {
+      nodeIndexByIdRef.current = new Map();
+      shownRef.current = true;
+      store.getState().setLayoutPending(false);
+      return undefined;
+    }
     // Defer until the canvas has been measured: seeding against a 0-size canvas
     // would map every node to the origin. The dims subscription re-runs this
     // effect once real dimensions arrive (and again on each resize).
@@ -254,10 +308,20 @@ export function useAutoLayout({
       : createAutoLayoutWorker();
     workerRef.current = worker;
 
+    const cancelPlayback = () => {
+      animationRef.current?.stop();
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    };
+
     // A message the worker sent before it was terminated can still arrive.
     // The layout it reports is no longer this run's to show or save: saving
     // it could overwrite positions put back after the layout was turned off.
     let disposed = false;
+    // The step this stage was shown at, which settled positions are saved to.
+    const persistTo = persistArgsRef.current;
+    // Whether this run is the first the canvas shows and moves people, which
+    // it reveals once it arrives instead of showing it being computed.
+    let revealing = false;
 
     worker.addEventListener('message', (event: MessageEvent) => {
       if (disposed) return;
@@ -274,23 +338,81 @@ export function useAutoLayout({
       }
       const msgType = message.type;
 
+      const held = heldRef.current;
       const entries: [string, { x: number; y: number }][] = message.nodes
         .filter(isPlacedSimNode)
+        .filter((n) => !held.has(n.nodeId))
         .map((n) => [n.nodeId, fromSim(n, dims)]);
-      store.getState().setBatchPositions(entries);
-      setIsRunning(msgType === 'tick');
+      cancelPlayback();
+
+      // The layout settling while someone is still held is part of the drag:
+      // it is shown as it runs, and saved once they are let go.
+      if (msgType === 'tick' || held.size > 0) {
+        store.getState().setBatchPositions(entries);
+        setIsRunning(true);
+        return;
+      }
 
       // Persist on settle ONLY when persistence was constructed (persist:true +
-      // dispatch). Unreachable in the read-only (Narrative) configuration.
-      if (msgType === 'end' && persistArgs) {
+      // dispatch). Unreachable in the read-only (Narrative) configuration. The
+      // settled positions are saved before they are animated into place.
+      if (persistTo) {
         store
           .getState()
           .syncToRedux(
-            persistArgs.dispatch,
+            persistTo.dispatch,
             layoutVariable,
-            persistArgs.currentStep,
+            persistTo.currentStep,
+            new Map(entries),
           );
       }
+
+      const from = store.getState().positions;
+      const moved = entries.some(([nodeId, to]) => {
+        const start = from.get(nodeId);
+        return (
+          !start ||
+          Math.abs(start.x - to.x) > MOVED_THRESHOLD ||
+          Math.abs(start.y - to.y) > MOVED_THRESHOLD
+        );
+      });
+
+      if (revealing || !moved || skipAnimationsRef.current) {
+        if (revealing) store.getState().revealLayout(entries);
+        else store.getState().setBatchPositions(entries);
+        revealing = false;
+        shownRef.current = true;
+        // A run that is not animated is still reported, a frame later so its
+        // start is observed.
+        setIsRunning(moved);
+        if (moved) {
+          frameRef.current = requestAnimationFrame(() => setIsRunning(false));
+        }
+        return;
+      }
+
+      setIsRunning(true);
+      // Everyone moves in a straight line from where they are shown to where
+      // the layout settled; someone just added appears in place.
+      animationRef.current = animate(0, 1, {
+        duration: SETTLE_ANIMATION_SECONDS,
+        ease: [0.33, 1, 0.68, 1],
+        onUpdate: (progress) => {
+          store.getState().setBatchPositions(
+            entries.map(([nodeId, to]) => {
+              const start = from.get(nodeId) ?? to;
+              return [
+                nodeId,
+                {
+                  x: start.x + (to.x - start.x) * progress,
+                  y: start.y + (to.y - start.y) * progress,
+                },
+              ];
+            }),
+          );
+        },
+        onComplete: () => setIsRunning(false),
+      });
     });
 
     // Seed from the positions the store already holds, converting each
@@ -298,14 +420,24 @@ export function useAutoLayout({
     // worker's cohesion force can bucket nodes.
     const currentNodes = nodesRef.current;
     const { positions } = store.getState();
+    const previousIds = nodeIndexByIdRef.current;
+    const nodesChanged =
+      previousIds.size > 0 &&
+      (previousIds.size !== currentNodes.length ||
+        currentNodes.some(
+          (node) => !previousIds.has(node[entityPrimaryKeyProperty]),
+        ));
     const simNodes: SimNode[] = currentNodes.map((node) => {
       const nodeId = node[entityPrimaryKeyProperty];
-      const pos = positions.get(nodeId) ?? { x: 0.5, y: 0.5 };
-      const sim = toSim(pos, dims);
+      const pos = positions.get(nodeId);
+      const sim = toSim(pos ?? CANVAS_CENTRE, dims);
       return {
         nodeId,
         x: sim.x,
         y: sim.y,
+        placed:
+          pos !== undefined &&
+          (previousIds.size === 0 || previousIds.has(nodeId)),
         groupKeys: getGroupKeys(node, groupVariable),
       };
     });
@@ -328,6 +460,10 @@ export function useAutoLayout({
       type: 'initialize',
       nodes: simNodes,
       links: simLinks,
+      paused: runMode === 'continuous' && !simulationEnabled,
+      incremental: nodesChanged,
+      // Saved positions are this layout's own, so people keep them.
+      keepPlaced: persistTo !== null,
       options: {
         collideRadius,
         boundsInset,
@@ -343,12 +479,24 @@ export function useAutoLayout({
     // 'once' runs immediately and settles. 'continuous' starts only when the
     // user has the simulation enabled; the start/stop effect below also reacts
     // to toggles.
-    if (runMode === 'once' || simulationEnabled) {
+    const starting = runMode === 'once' || simulationEnabled;
+    // A layout that keeps saved positions moves only the people it places.
+    revealing =
+      starting &&
+      !shownRef.current &&
+      simNodes.some((simNode) => !simNode.placed || !persistTo);
+    // A canvas that shows its people without laying them out first has shown
+    // them, so later runs move them into place instead.
+    if (!revealing) shownRef.current = true;
+    store.getState().setLayoutPending(revealing);
+    if (starting) {
       worker.postMessage({ type: 'start' });
     }
 
     return () => {
       disposed = true;
+      cancelPlayback();
+      setIsRunning(false);
       worker.terminate();
       workerRef.current = null;
     };
@@ -370,7 +518,6 @@ export function useAutoLayout({
     nodeRadius,
     runMode,
     mockLayout,
-    persistArgs,
     store,
     dimensions,
   ]);
@@ -423,6 +570,7 @@ export function useAutoLayout({
       if (!workerRef.current) return;
       const dims = store.getState().canvasDimensions;
       if (!hasUsableDimensions(dims)) return;
+      heldRef.current.add(nodeId);
       const sim = toSim(normalizedPos, dims);
       workerRef.current.postMessage({
         type: 'update_node',
@@ -434,6 +582,7 @@ export function useAutoLayout({
   );
 
   const releaseNode = useCallback((nodeId: string) => {
+    heldRef.current.delete(nodeId);
     if (!workerRef.current) return;
     workerRef.current.postMessage({
       type: 'update_node',

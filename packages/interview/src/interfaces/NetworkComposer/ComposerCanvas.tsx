@@ -13,6 +13,10 @@ import {
 import CanvasNode from '../../canvas/CanvasNode';
 import EdgeLayer from '../../canvas/EdgeLayer';
 import { getGroupKeys } from '../../canvas/groupMembership';
+import {
+  LayoutPendingIndicator,
+  useLayoutReveal,
+} from '../../canvas/layoutReveal';
 import { type CanvasStoreApi } from '../../canvas/useCanvasStore';
 import {
   type ComposerStoreApi,
@@ -111,6 +115,7 @@ export default function ComposerCanvas({
   onNodeDragEnd,
 }: ComposerCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const layoutPending = useLayoutReveal(canvasRef, canvasStore);
   // Records the starting point of a background gesture (null when no gesture).
   const downRef = useRef<{ x: number; y: number } | null>(null);
   // Whether the current gesture started on the background (not a child node).
@@ -249,19 +254,24 @@ export default function ComposerCanvas({
       // either reading direction: the right-to-left mirror check leaves the
       // canvas out.
       data-direction-exempt
-      className="relative size-full overflow-hidden"
+      className="relative size-full overflow-hidden aria-busy:[&>:not([data-canvas-backdrop])]:invisible"
       role="application"
       onPointerDown={handleContainerPointerDown}
       onPointerMove={handleContainerPointerMove}
       onPointerUp={handleContainerPointerUp}
+      aria-busy={layoutPending || undefined}
     >
       {/* Decorative background must not capture pointer events, otherwise its
           full-canvas layer becomes the pointerdown target and the background-tap
           handler (which requires e.target === the canvas) never fires — breaking
           add-node, tap-to-deselect, and lasso selection. */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <div
+        data-canvas-backdrop
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      >
         {background}
       </div>
+      {layoutPending && <LayoutPendingIndicator />}
       {hulls}
       <EdgeLayer edges={edges} store={canvasStore} onEdgeSelect={onEdgeTap} />
       {nodes.map((node) => {
