@@ -135,11 +135,15 @@ export const EditingGenderIdentityOptions: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Edit options' }));
 
     // The dialog is drawn in a portal, outside the canvas.
-    const dialog = within(
-      await within(document.body).findByRole('dialog', {
-        name: 'Edit gender identity options',
-      }),
-    );
+    const dialogElement = await within(document.body).findByRole('dialog', {
+      name: 'Edit gender identity options',
+    });
+    const dialog = within(dialogElement);
+    // Wider than the readable dialog an options list opens in elsewhere, which
+    // stops at 42rem (672px) and has no room for the words beside each option.
+    await expect(
+      Number.parseFloat(getComputedStyle(dialogElement).maxWidth),
+    ).toBeGreaterThan(672);
     await expect(
       dialog.getByRole('textbox', { name: 'Attribute type' }),
     ).toHaveAttribute('readonly');
