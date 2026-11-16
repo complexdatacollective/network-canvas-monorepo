@@ -28,6 +28,7 @@ const PROTOCOL_SOURCE_ENDPOINT = '/__architect/protocol-source/save';
 const PROTOCOL_SOURCE_AUTHORING_HEADER =
   'x-architect-protocol-source-authoring';
 const MAX_BODY_BYTES = 128 * 1024 * 1024;
+const MAX_ECHOED_VERSION_LENGTH = 20;
 
 type ProtocolSourceKind = 'template' | 'sample' | 'development' | 'e2e';
 type ProtocolManifestKind = ProtocolSourceKind | 'documentation';
@@ -148,8 +149,12 @@ const parseRequest = (value: unknown): SourceSaveRequest => {
 
   const { schemaVersion } = value.protocol;
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) {
-    const received =
+    const serialized =
       schemaVersion === undefined ? 'none' : JSON.stringify(schemaVersion);
+    const received =
+      serialized.length > MAX_ECHOED_VERSION_LENGTH
+        ? `${serialized.slice(0, MAX_ECHOED_VERSION_LENGTH)}...`
+        : serialized;
     throw new Error(
       `Protocol sources must use schema version ${CURRENT_SCHEMA_VERSION}; received ${received}.`,
     );

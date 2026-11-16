@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
@@ -95,10 +95,12 @@ const refused = (result: SourceSaveResponse) => {
 // final file, so a save that ignored it would leave a file there to find.
 const ESCAPING_SOURCE = 'a/../../image.png';
 
-const listFiles = async (root: string): Promise<string[]> =>
+const listEntries = async (root: string): Promise<string[]> =>
   (await readdir(root, { recursive: true, withFileTypes: true }))
-    .filter((entry) => entry.isFile())
-    .map((entry) => join(entry.parentPath, entry.name))
+    .map(
+      (entry) =>
+        `${join(entry.parentPath, entry.name)}${entry.isDirectory() ? '/' : ''}`,
+    )
     .toSorted();
 
 const makeRequest = (
@@ -276,7 +278,7 @@ describe('protocol source authoring', () => {
     await expect(validateProtocol(schema8Protocol)).resolves.toMatchObject({
       success: true,
     });
-    const filesBefore = await listFiles(protocolsRoot);
+    const filesBefore = await listEntries(protocolsRoot);
 
     const result = await saveProtocolSource(repoRoot, {
       sourceRef,
@@ -294,7 +296,7 @@ describe('protocol source authoring', () => {
     expect(refused(result).error).toBe(
       `Protocol sources must use schema version ${CURRENT_SCHEMA_VERSION}; received 8.`,
     );
-    await expect(listFiles(protocolsRoot)).resolves.toEqual(filesBefore);
+    await expect(listEntries(protocolsRoot)).resolves.toEqual(filesBefore);
     await expect(readFile(join(assetDir, 'stale.png'), 'utf8')).resolves.toBe(
       'old',
     );
@@ -311,12 +313,20 @@ describe('protocol source authoring', () => {
       { schemaVersion: `${CURRENT_SCHEMA_VERSION}` },
       `"${CURRENT_SCHEMA_VERSION}"`,
     ],
+    ['a null schema version', { schemaVersion: null }, 'null'],
+    [
+      'an oversized schema version',
+      { schemaVersion: 'x'.repeat(1000) },
+      `"${'x'.repeat(19)}...`,
+    ],
     ['no schema version', { schemaVersion: undefined }, 'none'],
   ])('refuses a document with %s', async (_label, override, received) => {
-    const filesBefore = await listFiles(protocolsRoot);
+    const filesBefore = await listEntries(protocolsRoot);
 
+    // The sample source's directories do not exist yet, so creating them
+    // before the refusal would show up in the listing.
     const result = await saveProtocolSource(repoRoot, {
-      sourceRef,
+      sourceRef: sampleSourceRef,
       protocol: { ...makeProtocol(), ...override },
       assets: [],
     });
@@ -324,7 +334,45 @@ describe('protocol source authoring', () => {
     expect(refused(result).error).toBe(
       `Protocol sources must use schema version ${CURRENT_SCHEMA_VERSION}; received ${received}.`,
     );
-    await expect(listFiles(protocolsRoot)).resolves.toEqual(filesBefore);
+    await expect(listEntries(protocolsRoot)).resolves.toEqual(filesBefore);
+  });
+
+  describe('when a path-like asset source passes validation', () => {
+    beforeEach(() => {
+      vi.doMock('@codaco/protocol-validation', async (importOriginal) => ({
+        ...(await importOriginal<Record<string, unknown>>()),
+        validateProtocol: () => Promise.resolve({ success: true }),
+      }));
+    });
+
+    afterEach(() => {
+      vi.doUnmock('@codaco/protocol-validation');
+    });
+
+    it.each(['../image.png', 'a/image.png', 'a\\image.png'])(
+      "refuses %s with the save's own filename check",
+      async (source) => {
+        const filesBefore = await listEntries(protocolsRoot);
+
+        const result = await saveProtocolSource(
+          repoRoot,
+          makeRequest(
+            makeProtocol({
+              image: { id: 'image', name: 'Image', type: 'image', source },
+            }),
+            [{ id: 'image', name: 'Image', source, dataBase64: btoa('x') }],
+            sampleSourceRef,
+          ),
+        );
+
+        expect(refused(result)).toEqual({
+          ok: false,
+          error: 'Protocol assets could not be saved.',
+          issues: ['Asset image has an unsafe source filename.'],
+        });
+        await expect(listEntries(protocolsRoot)).resolves.toEqual(filesBefore);
+      },
+    );
   });
 
   it('rejects duplicate asset source filenames', async () => {
