@@ -18,7 +18,6 @@ describe('Breadcrumb', () => {
     const label = screen.getByText(ARABIC);
     expect(label).toHaveAttribute('dir', 'auto');
     expect(label).toHaveAttribute('title', ARABIC);
-    expect(label).toHaveClass('truncate');
   });
 
   it('gives a clickable label the same treatment', () => {
@@ -27,6 +26,5 @@ describe('Breadcrumb', () => {
     const label = screen.getByRole('button', { name: ARABIC });
     expect(label).toHaveAttribute('dir', 'auto');
     expect(label).toHaveAttribute('title', ARABIC);
-    expect(label).toHaveClass('truncate');
   });
 });

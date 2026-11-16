@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useState } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Mirrors StageTypeImage's real output closely enough for name computation:
@@ -17,19 +16,6 @@ beforeAll(() => {
 });
 
 import Interface from './Interface';
-
-const HighlightHarness = () => {
-  const [highlighted, setHighlighted] = useState(false);
-  return (
-    <Interface
-      type="NameGenerator"
-      onClick={vi.fn()}
-      highlighted={highlighted}
-      setHighlighted={() => setHighlighted(true)}
-      removeHighlighted={() => setHighlighted(false)}
-    />
-  );
-};
 
 describe('new-stage interface option', () => {
   it('is a keyboard-operable, named button', () => {
@@ -64,19 +50,40 @@ describe('new-stage interface option', () => {
     );
   });
 
-  it('clears the keyboard highlight on blur', () => {
-    render(<HighlightHarness />);
+  it('takes the keyboard highlight on focus and gives it up on blur', () => {
+    const setHighlighted = vi.fn();
+    const removeHighlighted = vi.fn();
+    render(
+      <Interface
+        type="NameGenerator"
+        onClick={vi.fn()}
+        setHighlighted={setHighlighted}
+        removeHighlighted={removeHighlighted}
+      />,
+    );
 
     const option = screen.getByRole('button', {
       name: /Name Generator \(using forms\)/,
     });
 
-    expect(option.className).not.toContain('bg-action');
-
     fireEvent.focus(option);
-    expect(option.className).toContain('bg-action');
+    expect(setHighlighted).toHaveBeenCalledTimes(1);
+    expect(removeHighlighted).not.toHaveBeenCalled();
 
     fireEvent.blur(option);
-    expect(option.className).not.toContain('bg-action');
+    expect(removeHighlighted).toHaveBeenCalledTimes(1);
+  });
+
+  it('scrolls itself into view when it becomes the highlighted option', () => {
+    const { rerender } = render(
+      <Interface type="NameGenerator" onClick={vi.fn()} />,
+    );
+    const option = screen.getByRole('button');
+    const scrollIntoView = vi.mocked(option.scrollIntoView);
+    scrollIntoView.mockClear();
+
+    rerender(<Interface type="NameGenerator" onClick={vi.fn()} highlighted />);
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
   });
 });

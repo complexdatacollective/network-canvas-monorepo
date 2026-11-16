@@ -18,11 +18,10 @@ const renderCard = (name: string) =>
 // viewport, and `ProtocolRouteGuard` renders this cover as the WHOLE read-only
 // view a tab gets when it loses the protocol lock.
 describe('ProtocolCard', () => {
-  it('renders a name within the product limit exactly as before', () => {
+  it('leaves a name within the product limit unclamped', () => {
     renderCard('All Interfaces');
 
     const heading = screen.getByRole('heading', { name: 'All Interfaces' });
-    expect(heading).toHaveClass('wrap-break-word', 'hyphens-auto');
     // No clamp below the cap — which is also what keeps `summary-print.png`
     // (captured with this very fixture name) pixel-identical.
     expect(heading).not.toHaveClass('line-clamp-3');

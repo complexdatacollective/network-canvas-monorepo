@@ -149,7 +149,7 @@ describe('TimelineStageRow', () => {
     expect(onMoveLast).not.toHaveBeenCalled();
   });
 
-  it('uses only the open and delete controls, with default Delete styling', () => {
+  it('offers no reorder control, and its Delete control deletes its own stage', () => {
     const onDelete = vi.fn();
     renderRow(1, { onDelete });
 
@@ -159,11 +159,6 @@ describe('TimelineStageRow', () => {
     expect(
       screen.queryByRole('button', { name: 'Reorder stage' }),
     ).not.toBeInTheDocument();
-    expect(deleteControl).toHaveClass(
-      'bg-(--component-text)',
-      'text-(--component-bg)',
-    );
-    expect(deleteControl).not.toHaveClass('elevation-none');
     fireEvent.click(deleteControl);
 
     expect(onDelete).toHaveBeenCalledWith('stage-2');

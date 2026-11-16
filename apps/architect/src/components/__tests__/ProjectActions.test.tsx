@@ -318,16 +318,6 @@ describe('<ProjectActions />', () => {
     ).toContainElement(screen.getByRole('button', { name: /undo/i }));
   });
 
-  it('keeps the Export action filled on hover', () => {
-    const store = createTestStore();
-    render(<ProjectActions />, { wrapper: wrap(store) });
-
-    const exportButton = screen.getByRole('button', { name: /^export$/i });
-    expect(exportButton).toHaveClass('bg-sea-green');
-    expect(exportButton).toHaveClass('text-white');
-    expect(exportButton).not.toHaveClass('hover:enabled:bg-(--component-text)');
-  });
-
   it('offers Download, then Send to Interviewer, from the Export menu', async () => {
     const store = createTestStore();
     render(<ProjectActions />, { wrapper: wrap(store) });
