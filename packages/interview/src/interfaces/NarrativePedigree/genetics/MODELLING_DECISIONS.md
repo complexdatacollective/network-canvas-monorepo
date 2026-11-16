@@ -443,7 +443,9 @@ Two conditions apply to every female a route passes down through: the woman's
 daughter, but equally her sister, aunt, niece or cousin.
 
 - Nothing passes through her when another genetic parent of hers is affected,
-  because that parent's X would explain everything below her.
+  because that parent's X would explain everything below her. The same holds
+  when her father is not recorded and an affected man is recorded as the father
+  of another of her mother's children, since he may be her father too.
 - If she is recorded affected and has no recorded male genetic parent other
   than her mother, nothing passes through her and she is not evidence herself.
   A female who only links to affected people further down needs no recorded
@@ -456,8 +458,8 @@ For every affected person on a side the engine also collects the men who could
 explain them: the fathers of each female on the route down to that person, the
 person included when she is female. The route starts at the woman's child, or,
 on her mother's side, at the mother's other child (the woman's sister, aunt and
-so on). An affected son of hers, her affected mother and her mother's affected
-father have no such men. A female with no recorded father stands for a man
+so on). An affected son of hers and her mother's affected father have no such
+men. Her affected mother has her own father, counted the same way. A female with no recorded father stands for a man
 unrecorded as the father of her mother's children and for every recorded father
 of her mother's other children, because her father may be any of them. When one
 man appears for every affected person, he alone could explain all of the sides,
@@ -481,7 +483,7 @@ relatives on her two sides are usually marked by the same rule, but not always.
 The mother of two sisters by one father, or of a sister by a recorded father and
 one with none, is not marked on their lines alone, and neither are those sisters
 when their affected children have one father. Nor is a woman marked through a
-daughter whose father is affected.
+daughter whose father, or a man who may be her father, is affected.
 
 ### Rationale
 
@@ -513,9 +515,9 @@ the route to every affected person cancels the rule. This covers the woman's
 daughters by one father, and also her own daughter and her sister's daughter
 when one man fathered both. Daughters with no recorded father may share one father,
 and that father may be one of the recorded men; in practice he is usually the
-same partner, not entered a second time. A father left out of the record of one
-mother's children is not the same man as a father left out of another
-mother's, so those two never cancel each other.
+same partner, not entered a second time. The engine assumes that a father left
+out of the record of one mother's children is not the same man as a father left
+out of another mother's, so those two never cancel each other.
 
 An affected daughter counts for her mother only inside this rule. On its own she
 adds nothing (§6), and a single line with any number of affected people in it is
@@ -531,9 +533,9 @@ from the pedigree.
 ### Recorded limits
 
 The relaxation for a female who only links further down can mark a woman whose
-evidence an unrecorded affected man would explain. It matters only for a woman
-with no affected son: with one, his condition still needs her or a new variant.
-In a family of a grandmother, a grandfather, their affected son, their daughter
+evidence an unrecorded affected man would explain. An affected man recorded as
+the father of another child of that female's mother blocks her line, so this
+applies only to a man who is missing from the pedigree. In a family of a grandmother, a grandfather, their affected son, their daughter
 (the woman), her daughter with no recorded father and that daughter's affected
 son, the woman is marked, although her daughter's unrecorded father could
 explain the grandson. This is accepted because the father of a woman whose son
@@ -546,6 +548,14 @@ her only sides are the lines of two daughters by one father, each heading a
 line the rule marks. Her daughters are marked obligate, but their father could
 explain both lines, and the at-risk markings of step 2 reach only the mother and
 maternal grandmother of an affected male. This is unchanged from `main`.
+
+A man's affected daughters by another woman are not on any of her sides, so they
+cannot show that he is the likely source of her own affected daughter. In a
+family of a woman, her partner, their affected son and affected daughter, and
+the partner's affected daughter by another woman, she is marked, although his
+other daughter makes him the likely source of their daughter. The rule still
+holds as stated: no one event explains every affected person, and two separate
+events are needed whether or not she carries it.
 
 One conservative case remains. An affected female with no recorded father gives
 nothing, so an affected sister with an unrecorded father does not corroborate an
