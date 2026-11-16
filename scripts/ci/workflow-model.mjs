@@ -3,27 +3,60 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { parse } from 'yaml';
 
 // Lookups over parsed GitHub Actions workflows for the guard suites. They
-// assert on job and step objects rather than on the YAML text, so a comment, an
-// `echo`, or a step switched off with `if: false` can never stand in for the
-// real thing, and a missing job or step throws instead of handing `undefined`
-// to an assertion.
+// assert on job and step objects rather than on the YAML text, and every
+// step's `run` and github-script `script` has its whole-line comments removed
+// when the file is read. So a YAML comment, a shell or JavaScript comment line,
+// or a step switched off with one of the `if` forms below cannot stand in for
+// the real thing, and a missing job or step throws instead of handing
+// `undefined` to an assertion. A condition that is false for a less obvious
+// reason (`if: ${{ !true }}`) is not recognised.
 
 export const WORKFLOW_DIR = new URL(
   '../../.github/workflows/',
   import.meta.url,
 );
 
+/** Source without its whole-line `#` (shell, Dockerfile) or `//` comments. */
+export function codeOf(source) {
+  return source
+    .split('\n')
+    .filter((line) => !/^\s*(?:#|\/\/)/.test(line))
+    .join('\n');
+}
+
+function stripStepComments(steps) {
+  if (!Array.isArray(steps)) return;
+  for (const step of steps) {
+    if (typeof step?.run === 'string') step.run = codeOf(step.run);
+    if (typeof step?.with?.script === 'string') {
+      step.with.script = codeOf(step.with.script);
+    }
+  }
+}
+
+/** A workflow or composite action, with step comments removed. */
+export function readActionsYaml(url) {
+  const document = parse(readFileSync(url, 'utf8'));
+  for (const job of Object.values(document?.jobs ?? {})) {
+    stripStepComments(job?.steps);
+  }
+  stripStepComments(document?.runs?.steps);
+  return document;
+}
+
 export function readWorkflow(file) {
-  return parse(readFileSync(new URL(file, WORKFLOW_DIR), 'utf8'));
+  return readActionsYaml(new URL(file, WORKFLOW_DIR));
 }
 
 export function workflowFiles() {
   return readdirSync(WORKFLOW_DIR).filter((file) => /\.ya?ml$/.test(file));
 }
 
-// `if: false`, `if: ${{ false }}` and a condition that starts `false &&` can
-// never be true, so the job or step they guard does not exist for our purposes.
-const NEVER = /^\s*(?:\$\{\{\s*)?(?:false|0)\s*(?:\}\}\s*$|&&)/;
+// `if: false`, `if: 'false'`, `if: ${{ false }}` and a condition that starts
+// `false &&` can never be true (GitHub evaluates a quoted scalar as an
+// expression too), so the job or step they guard does not exist for our
+// purposes.
+const NEVER = /^\s*(?:\$\{\{\s*)?(?:false|0)\s*(?:\}\}\s*$|&&|$)/;
 
 function isDisabled(entity) {
   const condition = entity?.if;

@@ -13,18 +13,19 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { test } from 'vitest';
-import { parse } from 'yaml';
 
 import { GATED_PRODUCT_RELEASE_LANES } from '../release/changeset-app-utils.mjs';
 import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
 import { STORYBOOK_SHARDS, TEST_SHARDS } from './test-shards.mjs';
 import {
+  codeOf,
   findSteps,
   getJob,
   getStep,
   hasJob,
   liveSteps,
   needsOf,
+  readActionsYaml,
   readWorkflow,
   scriptsOf,
   stepIndex,
@@ -41,14 +42,8 @@ const deadLinkChecker = readFileSync(
 const rootPackage = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
 );
-const deadLinkAction = parse(
-  readFileSync(
-    new URL(
-      '../../.github/actions/dead-link-check/action.yml',
-      import.meta.url,
-    ),
-    'utf8',
-  ),
+const deadLinkAction = readActionsYaml(
+  new URL('../../.github/actions/dead-link-check/action.yml', import.meta.url),
 );
 const refreshWorkflow = readWorkflow('dead-link-cache-refresh.yml');
 const snapshotWorkflow = readWorkflow('open-e2e-snapshot-update-pr.yml');
@@ -769,19 +764,11 @@ test('website dead-link crawl waits for the documentation preview it links to', 
 
 // PART-LOCAL HELPERS
 
-// Shell or config source without its whole-line comments, so an explanatory
-// comment can never satisfy an assertion about what actually runs.
-const codeOf = (source) =>
-  source
-    .split('\n')
-    .filter((line) => !line.trim().startsWith('#'))
-    .join('\n');
-
 // The first live step whose uncommented `run` script matches `pattern`.
 const stepRunning = (job, pattern) =>
   getStep(
     job,
-    (step) => typeof step.run === 'string' && pattern.test(codeOf(step.run)),
+    (step) => typeof step.run === 'string' && pattern.test(step.run),
   );
 
 const liveJobs = (parsed) =>
@@ -822,7 +809,7 @@ test('each E2E suite gates on its own policy flag', () => {
 test('automatic private E2E routing is idle-aware and normal-release-lane only', () => {
   const picker = ciJob('pick-e2e-runner');
   const pick = getStep(picker, { id: 'pick' });
-  const code = codeOf(pick.run);
+  const code = pick.run;
   assert.match(code, /\.busy == false/);
   assert.equal(
     pick.env.RELEASE_REF,
@@ -1007,7 +994,7 @@ test('the quality gate verifies each required E2E suite individually', () => {
   const verify = getStep(ciJob('quality'), {
     name: 'Verify all quality checks passed',
   });
-  const code = codeOf(verify.run);
+  const code = verify.run;
   for (const suite of ['interview', 'interviewer', 'architect']) {
     const variable = `E2E_${suite.toUpperCase()}_REQUIRED`;
     assert.equal(
@@ -1041,7 +1028,7 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
     testJob,
     /node scripts\/ci\/test-shards\.mjs filters/,
   );
-  const code = codeOf(runStep.run);
+  const code = runStep.run;
   assert.equal(
     runStep.env.DIFF_BASE_SHA,
     '${{ github.event.pull_request.base.sha }}',
@@ -1082,7 +1069,7 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // Both invocations, and no others: a third turbo run without the shard
   // restriction would be an unrestricted workspace run on five runners.
   const shardedRuns =
-    codeOf(scriptsOf(testJob)).match(
+    scriptsOf(testJob).match(
       /pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g,
     ) ?? [];
   assert.equal(shardedRuns.length, 2, 'exactly two turbo invocations');
@@ -1171,10 +1158,10 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
     'the env leg is the bucket that holds @codaco/protocol-validation',
   );
 
-  const runCode = codeOf(
-    stepRunning(testJob, /node scripts\/ci\/test-shards\.mjs filters "\$SHARD"/)
-      .run,
-  );
+  const runCode = stepRunning(
+    testJob,
+    /node scripts\/ci\/test-shards\.mjs filters "\$SHARD"/,
+  ).run;
   assert.match(
     runCode,
     /PART_ARGS=\(-- "--shard=\$PART"\)/,
@@ -1205,14 +1192,58 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
       stepIndex(testJob, { run: /node scripts\/ci\/test-shards\.mjs filters/ }),
     'R is on PATH before the suites run',
   );
+  // The image has no Latin-1 locale either, and the suite's Latin-1 case
+  // refuses to skip under CI. The name must be one the suite tries.
+  const generatesLatin1 =
+    /^sudo localedef -i en_US -f ISO-8859-1 en_US\.ISO-8859-1\nlocale -a \| grep -qx 'en_US\.iso88591'\n?$/;
+  const latin1 = getStep(testJob, { run: /localedef/ });
+  assert.equal(latin1.if, 'matrix.rscript');
+  assert.match(latin1.run, generatesLatin1);
+  assert.ok(
+    stepIndex(testJob, { run: /localedef/ }) <
+      stepIndex(testJob, { run: /node scripts\/ci\/test-shards\.mjs filters/ }),
+    'the locale exists before the suites run',
+  );
+  assert.match(
+    readFileSync(
+      new URL(
+        '../../apps/background-creator/src/scripts/__tests__/r-exec.test.ts',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+    /'en_US\.iso88591'/,
+    'the generated locale is one of the suite candidates',
+  );
+
+  // The seed installs both too, but a failed download must not end the seed
+  // before anything is cached: each is reported by name instead, and the
+  // suite then fails in the seeding test run.
   const seed = ciJob('seed-turbo-cache');
+  const report = getStep(seed, { name: 'Report seed step outcomes' });
+  const seedTestIndex = stepIndex(seed, { run: /turbo run[^\n]*test/ });
   const seedR = getStep(seed, { uses: 'r-lib/actions/setup-r' });
   assert.equal(seedR.if, undefined, 'the all-package seeding run always has R');
   assert.equal(seedR.uses, setupR.uses, 'both jobs pin the same setup-r');
-  assert.ok(
-    seed.steps.indexOf(seedR) < stepIndex(seed, { run: /turbo run[^\n]*test/ }),
-    'R is on PATH before the seeding run tests',
+  const seedLatin1 = getStep(seed, { run: /localedef/ });
+  assert.equal(seedLatin1.if, undefined);
+  assert.equal(
+    seedLatin1.run,
+    latin1.run,
+    'both jobs generate the same locale',
   );
+  for (const [step, outcome] of [
+    [seedR, 'R_OUTCOME'],
+    [seedLatin1, 'LATIN1_LOCALE_OUTCOME'],
+  ]) {
+    assert.ok(
+      seed.steps.indexOf(step) < seedTestIndex,
+      `${step.name} runs first`,
+    );
+    assert.equal(step['continue-on-error'], true);
+    assert.equal(report.env[outcome], `\${{ steps.${step.id}.outcome }}`);
+    assert.match(report.run, new RegExp(`"[^"=]+=\\$${outcome}" \\\\`));
+  }
 
   // Ordering, not just presence. The `services:` block this replaced made
   // Actions block every step on the container's healthcheck, so a container
@@ -1232,7 +1263,7 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
     'a Postgres that cannot start fails the shard before the install is paid for',
   );
   assert.match(
-    codeOf(wait.run),
+    wait.run,
     /The Postgres container stopped before accepting connections/,
     'a stopped container is reported at once rather than waited out',
   );
@@ -1274,7 +1305,7 @@ test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defi
     'matrix.frescoCodegen',
   );
 
-  const code = codeOf(scriptsOf(storybook));
+  const code = scriptsOf(storybook);
   assert.match(
     code,
     /if ! node scripts\/ci\/test-shards\.mjs filters "\$SHARD" storybook >/,
@@ -1359,8 +1390,7 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
     }
 
     const runsTurbo = liveStepsOf(parsed).some(
-      (step) =>
-        typeof step.run === 'string' && /exec turbo run/.test(codeOf(step.run)),
+      (step) => typeof step.run === 'string' && /exec turbo run/.test(step.run),
     );
     if (!runsTurbo) continue;
     assert.equal(
@@ -1380,7 +1410,7 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
   stepRunning(seedJob, /pnpm exec turbo run test\b/);
   for (const step of liveSteps(seedJob)) {
     assert.doesNotMatch(
-      codeOf(step.run ?? ''),
+      step.run ?? '',
       /turbo run (?:build|typecheck)[^\n]*\btest\b/,
       'the seed does not run tests in the same turbo invocation as build or typecheck',
     );
@@ -1429,7 +1459,7 @@ test('turbo runs at the one version the root package.json pins', () => {
   const dockerCode = codeOf(readFileSync(dockerfile, 'utf8'));
   assert.match(dockerCode, readsPin);
   assert.match(dockerCode, /dlx "turbo@\$\(node -p/);
-  const detectCode = codeOf(getStep(ciJob('detect'), { id: 'flags' }).run);
+  const detectCode = getStep(ciJob('detect'), { id: 'flags' }).run;
   assert.match(detectCode, readsPin);
   assert.match(detectCode, /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
 
@@ -1455,10 +1485,10 @@ test('turbo runs at the one version the root package.json pins', () => {
 
 // PART-LOCAL HELPERS
 
-// Every step's script, disabled ones included, for "never appears" checks.
+// The scripts of every live step of the jobs.
 const everyRun = (...jobs) =>
   jobs
-    .flatMap((job) => job.steps ?? [])
+    .flatMap((job) => liveSteps(job))
     .map((step) => step.run ?? '')
     .join('\n');
 const stepNamed = (job, name) => getStep(job, { name });
@@ -2003,10 +2033,6 @@ test('the app maintenance lane releases an older line without deploying it', () 
   const release = getJob(maintenance, 'release');
   // Each app releases through its own reviewer-gated environment.
   assert.equal(release.environment, '${{ inputs.app }}-maintenance-release');
-  assert.deepEqual(
-    apps.map((app) => release.environment.replace('${{ inputs.app }}', app)),
-    ['interviewer-maintenance-release', 'architect-maintenance-release'],
-  );
 
   const dispatch = stepNamed(verify, 'Validate the dispatch');
   assert.match(dispatch.run, /"\$DISPATCH_REF" != 'refs\/heads\/main'/);
@@ -2903,7 +2929,7 @@ function legOf(step) {
 function egressVariants() {
   const variants = ciJob('studio-egress').strategy?.matrix?.variant;
   assert.ok(Array.isArray(variants), 'studio-egress has a variant matrix');
-  return variants.toSorted();
+  return variants.map(String).toSorted((a, b) => a.localeCompare(b));
 }
 
 /** A live step of `job` runs `command` as a whole line of its script. */

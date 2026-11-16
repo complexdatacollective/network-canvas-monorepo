@@ -781,9 +781,19 @@ jobs:
         with:
           persist-credentials: false
       # The background-creator suite runs its generated R script and refuses to
-      # skip under CI, so this all-package run needs Rscript as the shard does.
+      # skip under CI, so this all-package run needs Rscript and the Latin-1
+      # locale as the shard does. A failed install is reported by name below;
+      # the suite then fails in the test step rather than ending the seed here.
       - name: Install R for the background-creator script suite
+        id: r
+        continue-on-error: true
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
+      - name: Generate the Latin-1 locale for the background-creator script suite
+        id: latin1-locale
+        continue-on-error: true
+        run: |
+          sudo localedef -i en_US -f ISO-8859-1 en_US.ISO-8859-1
+          locale -a | grep -qx 'en_US.iso88591'
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:
@@ -919,6 +929,8 @@ jobs:
       - name: Report seed step outcomes
         if: always()
         env:
+          R_OUTCOME: ${{ steps.r.outcome }}
+          LATIN1_LOCALE_OUTCOME: ${{ steps.latin1-locale.outcome }}
           OBJECT_STORES_OUTCOME: ${{ steps.object-stores.outcome }}
           STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
           BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
@@ -927,6 +939,8 @@ jobs:
           {
             echo "### Turbo cache seed outcomes"
             echo
+            echo "- R: $R_OUTCOME"
+            echo "- Latin-1 locale: $LATIN1_LOCALE_OUTCOME"
             echo "- object stores: $OBJECT_STORES_OUTCOME"
             echo "- studio-server: $STUDIO_SERVER_OUTCOME"
             echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
@@ -934,6 +948,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           failed=false
           for result in \
+            "R=$R_OUTCOME" \
+            "Latin-1 locale=$LATIN1_LOCALE_OUTCOME" \
             "object stores=$OBJECT_STORES_OUTCOME" \
             "studio-server=$STUDIO_SERVER_OUTCOME" \
             "build typecheck=$BUILD_TYPECHECK_OUTCOME" \
@@ -1746,6 +1762,13 @@ jobs:
       - name: Install R for the background-creator script suite
         if: matrix.rscript
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
+      # The runner image ships only UTF-8 locales; the suite's Latin-1 case
+      # needs this one and fails under CI without it.
+      - name: Generate the Latin-1 locale for the background-creator script suite
+        if: matrix.rscript
+        run: |
+          sudo localedef -i en_US -f ISO-8859-1 en_US.ISO-8859-1
+          locale -a | grep -qx 'en_US.iso88591'
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         # Only the shard whose bucket holds @codaco/protocol-validation. The

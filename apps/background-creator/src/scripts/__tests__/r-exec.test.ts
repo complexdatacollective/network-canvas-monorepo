@@ -409,6 +409,19 @@ const localeCases: { name: string; locale: string | undefined }[] = [
   },
 ];
 
+// CI installs every locale above, so a missing one there means the locale step
+// was lost, not that this machine simply lacks it.
+const missingLocales = rscriptMissing
+  ? []
+  : localeCases.filter(({ locale }) => locale === undefined);
+if (inCI && missingLocales.length > 0) {
+  throw new Error(
+    `The generated R script locale suites cannot run in CI without ${missingLocales
+      .map(({ name }) => name)
+      .join(', ')}`,
+  );
+}
+
 describe.skipIf(rscriptMissing)(
   'generated R script keeps non-ASCII text intact',
   () => {
