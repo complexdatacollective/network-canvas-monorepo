@@ -120,6 +120,10 @@ export default defineConfig({
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
+            // Loaded inside the node label worker, which the scanner never
+            // reaches.
+            '@jitl/quickjs-asmjs-mjs-release-sync',
+            'quickjs-emscripten-core',
             'd3-force',
             'zod',
             'zod/mini',

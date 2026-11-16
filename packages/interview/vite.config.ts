@@ -271,6 +271,10 @@ export default defineConfig({
           __dirname,
           'src/nodeLabelWorker/nodeLabelEvaluator.ts',
         ),
+        'quickjs-next-loader': resolve(
+          __dirname,
+          'src/nodeLabelWorker/quickjsNextLoader.ts',
+        ),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

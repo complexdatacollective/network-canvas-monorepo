@@ -61,7 +61,14 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   // Pin the workspace root: in a git worktree Next otherwise detects the parent
   // checkout's pnpm-workspace.yaml and infers the wrong root.
-  turbopack: { root: join(import.meta.dirname, '..', '..') },
+  turbopack: {
+    root: join(import.meta.dirname, '..', '..'),
+    rules: {
+      '**/@jitl/quickjs-asmjs-mjs-release-sync/dist/index.mjs': {
+        loaders: ['@codaco/interview/quickjs-next-loader'],
+      },
+    },
+  },
   // Ships untranspiled TSX from workspace source.
   transpilePackages: [
     '@codaco/app-i18n',

@@ -141,6 +141,10 @@ export default defineConfig({
             '@codaco/fresco-ui > zustand/react/shallow',
             '@codaco/fresco-ui > zustand/shallow',
             '@codaco/fresco-ui > zustand/vanilla',
+            // Loaded inside the node label worker, which the scanner never
+            // reaches.
+            '@codaco/interview > @jitl/quickjs-asmjs-mjs-release-sync',
+            '@codaco/interview > quickjs-emscripten-core',
             '@codaco/interview > @reduxjs/toolkit',
             '@codaco/interview > @use-gesture/react',
             '@codaco/interview > concaveman',

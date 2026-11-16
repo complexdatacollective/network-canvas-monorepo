@@ -152,6 +152,11 @@ export default defineConfig({
             // `readRosterCsv` loads it with a dynamic import, which the
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
+            '@codaco/protocol-utilities > @faker-js/faker',
+            // Loaded inside the node label worker, which the scanner never
+            // reaches.
+            '@codaco/interview > @jitl/quickjs-asmjs-mjs-release-sync',
+            '@codaco/interview > quickjs-emscripten-core',
             '@codaco/interview > @use-gesture/react',
             '@codaco/interview > concaveman',
             '@codaco/interview > html-to-image',

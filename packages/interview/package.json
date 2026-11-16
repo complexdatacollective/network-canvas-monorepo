@@ -25,6 +25,7 @@
     "./analytics-events": "./src/analytics/events.ts",
     "./supplied-wording": "./src/wording/suppliedWording.ts",
     "./node-label-worker": "./src/nodeLabelWorker/nodeLabelEvaluator.ts",
+    "./quickjs-next-loader": "./src/nodeLabelWorker/quickjsNextLoader.ts",
     "./styles.css": "./src/styles.css"
   },
   "publishConfig": {
@@ -56,6 +57,10 @@
       "./node-label-worker": {
         "types": "./dist/node-label-worker.d.ts",
         "default": "./dist/node-label-worker.js"
+      },
+      "./quickjs-next-loader": {
+        "types": "./dist/quickjs-next-loader.d.ts",
+        "default": "./dist/quickjs-next-loader.js"
       },
       "./styles.css": "./dist/styles.css"
     },

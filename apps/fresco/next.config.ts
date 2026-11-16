@@ -67,6 +67,9 @@ const config: NextConfig = {
         loaders: ['@codaco/app-i18n/next-loader'],
         as: '*.js',
       },
+      '**/@jitl/quickjs-asmjs-mjs-release-sync/dist/index.mjs': {
+        loaders: ['@codaco/interview/quickjs-next-loader'],
+      },
     },
   },
   transpilePackages: ['@codaco/shared-consts'],
