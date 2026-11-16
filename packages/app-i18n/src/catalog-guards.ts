@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import { extract } from '@formatjs/cli-lib';
 import { parse, TYPE } from '@formatjs/icu-messageformat-parser';
@@ -752,4 +752,48 @@ export function formatStampReport(stamps: readonly LocaleStamp[]): string {
     for (const id of dropped) lines.push(`  dropped ${id}`);
   }
   return lines.join('\n');
+}
+
+/**
+ * An accessible name, description or value text handed a formatted message.
+ *
+ * Text only a screen reader reads stays English in every language, written in
+ * the component rather than as a message (README, "Text only a screen reader
+ * reads is not a message"): keeping it in the catalogs is what makes it look
+ * like text to translate. This reads source for the shape that breaks the
+ * rule, `aria-label={intl.formatMessage(…)}` and its `aria-description`,
+ * `aria-valuetext` and `ariaLabel` forms.
+ *
+ * Some such attributes are also seen: a toolbar button that shows its name as
+ * a tooltip, a group a visible heading also names. Those are translated copy.
+ * `shownAsWell` lists them as `path: message`, `path` relative to `root`, with
+ * the reason; an entry the scan no longer finds is reported too, so the list
+ * cannot outlive what it excuses. Issues (empty = pass).
+ */
+export function checkScreenReaderText(
+  files: readonly string[],
+  root: string,
+  shownAsWell: Readonly<Record<string, string>>,
+): string[] {
+  const attribute =
+    /\b(?:aria-(?:label|description|valuetext)|ariaLabel)=\{\s*intl\.formatMessage\(\s*([\w.]+|\{[^}]*\})/g;
+  const excused = lookupTable(shownAsWell);
+  const found = new Set<string>();
+  const issues: string[] = [];
+  for (const file of files) {
+    const path = relative(root, file).replaceAll('\\', '/');
+    for (const [, message = ''] of readFileSync(file, 'utf8').matchAll(
+      attribute,
+    )) {
+      const entry = `${path}: ${message.replaceAll(/\s+/g, ' ')}`;
+      found.add(entry);
+      if (excused[entry] === undefined) {
+        issues.push(`screen-reader text is a message: ${entry}`);
+      }
+    }
+  }
+  for (const entry of Object.keys(excused)) {
+    if (!found.has(entry)) issues.push(`no longer found: ${entry}`);
+  }
+  return issues;
 }
