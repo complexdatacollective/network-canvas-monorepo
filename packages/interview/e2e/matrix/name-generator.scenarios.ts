@@ -712,7 +712,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         await expect(
           page.getByText(/You have completed this task/i),
         ).toBeVisible();
-        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
 
         // Force-clicking the disabled add control opens no dialog.
         await addButton.click({ force: true });

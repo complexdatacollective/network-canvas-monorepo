@@ -576,7 +576,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       run: async ({ page, interview, protocol }) => {
         // Pulse is driven by form validity: a required-empty field registers
         // invalid (formStore.ts:138), so no pulse before any input.
-        expect(await interview.nextButtonHasPulse()).toBe(false);
+        await interview.expectNotReadyToContinue();
 
         const nameError = page.getByTestId(`${requiredNameVarId}-field-error`);
 
@@ -590,9 +590,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         // Filling the (now-blurred) field validates on change → form valid →
         // pulse appears (EgoForm.tsx:192-199).
         await page.getByLabel('Name?').fill('Ada');
-        await expect
-          .poll(async () => interview.nextButtonHasPulse())
-          .toBe(true);
+        await interview.expectReadyToContinue();
 
         await interview.next();
         await expect(page).toHaveURL(/step=1/);
@@ -1499,9 +1497,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         await freshAge.blur();
         // Wait for the field to validate as valid (pulse appears) so beforeNext
         // sees a valid form and autosubmits instead of prompting.
-        await expect
-          .poll(async () => interview.nextButtonHasPulse())
-          .toBe(true);
+        await interview.expectReadyToContinue();
         await page.getByTestId('previous-button').click();
         await expect(page.getByRole('dialog')).toHaveCount(0);
         await expect(
