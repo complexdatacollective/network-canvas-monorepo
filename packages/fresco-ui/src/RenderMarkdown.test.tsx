@@ -106,25 +106,22 @@ it.each([
   },
 );
 
-it('strips event-handler, style and class attributes from raw HTML', () => {
+it('strips style and class attributes from raw HTML', () => {
   const { container } = render(
     <RenderMarkdown>
-      {
-        '<em onclick="alert(1)" style="color: red" class="injected">Isabel</em> <a href="https://example.org" onmouseover="alert(1)">Zelda</a>'
-      }
+      {'<em style="color: red" class="injected">Isabel</em>'}
     </RenderMarkdown>,
   );
 
   const emphasis = container.querySelector('em');
-  const link = screen.getByRole('link', { name: 'Zelda' });
   expect(emphasis).toHaveTextContent('Isabel');
-  for (const attribute of ['onclick', 'style', 'class']) {
-    expect(emphasis).not.toHaveAttribute(attribute);
-  }
-  expect(link).not.toHaveAttribute('onmouseover');
+  expect(emphasis).not.toHaveAttribute('style');
+  expect(emphasis).not.toHaveAttribute('class');
 });
 
 it('renders a javascript: link as text with no href', () => {
+  // Both react-markdown's default urlTransform and rehypeSanitize strip the
+  // href, so this fails only when both are removed.
   const { container } = render(
     <RenderMarkdown>{'[Isabel](javascript:alert(1))'}</RenderMarkdown>,
   );

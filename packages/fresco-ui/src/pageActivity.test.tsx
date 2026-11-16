@@ -57,6 +57,18 @@ describe('usePageActive', () => {
     expect(result.current).toBe(true);
   });
 
+  it('becomes true again on a focus event alone after a blur', () => {
+    const { result } = renderHook(() => usePageActive());
+    emulateWindow({ focused: false });
+    expect(result.current).toBe(false);
+
+    act(() => {
+      focused = true;
+      window.dispatchEvent(new Event('focus'));
+    });
+    expect(result.current).toBe(true);
+  });
+
   it('is false at mount on a page that is not in front of the user', () => {
     focused = false;
     const { result } = renderHook(() => usePageActive());
