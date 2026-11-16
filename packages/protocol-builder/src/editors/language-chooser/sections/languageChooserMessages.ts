@@ -35,12 +35,6 @@ export const languageChooserMessages = defineMessages({
     description:
       'Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages of the whole protocol. A stage is one step of an interview.',
   },
-  languagesListLabel: {
-    id: 'protocolBuilder.languageChooser.languagesListLabel',
-    defaultMessage: 'Languages participants can choose',
-    description:
-      'Accessible name of the list of languages a participant can choose between on this stage.',
-  },
   singleLanguage: {
     id: 'protocolBuilder.languageChooser.singleLanguage',
     defaultMessage:

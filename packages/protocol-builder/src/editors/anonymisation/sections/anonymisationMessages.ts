@@ -151,24 +151,6 @@ export const anonymisationMessages = defineMessages({
     description:
       'Shown under one node type’s heading in the encrypted-attributes section when that type has attributes but none of them hold text. Only text can be encrypted.',
   },
-  attributeGroupLabel: {
-    id: 'protocolBuilder.anonymisation.attributeGroupLabel',
-    defaultMessage: 'Encrypted attributes for {typeName}',
-    description:
-      'Accessible name of one node type’s group of checkboxes in the encrypted-attributes section — read aloud rather than shown, because the type’s name is already a heading above it. typeName is the researcher’s own name for the node type, such as "person".',
-  },
-  encryptedAnnouncement: {
-    id: 'protocolBuilder.anonymisation.encryptedAnnouncement',
-    defaultMessage: '{attributeName} is now encrypted.',
-    description:
-      'Announced to a screen reader after a checkbox in the encrypted-attributes section is ticked and the codebook change has been applied. Never shown on screen — the checkbox itself is the visible confirmation. attributeName is the researcher’s own name for the attribute.',
-  },
-  notEncryptedAnnouncement: {
-    id: 'protocolBuilder.anonymisation.notEncryptedAnnouncement',
-    defaultMessage: '{attributeName} is no longer encrypted.',
-    description:
-      'Announced to a screen reader after a checkbox in the encrypted-attributes section is cleared and the codebook change has been applied. Never shown on screen. attributeName is the researcher’s own name for the attribute.',
-  },
   attributeUsedByRule: {
     id: 'protocolBuilder.anonymisation.attributeUsedByRule',
     defaultMessage:
@@ -202,12 +184,5 @@ export const anonymisationMessages = defineMessages({
     defaultMessage: 'Clear encrypted attributes',
     description:
       'Label of the button that confirms un-encrypting every attribute of one node type at once.',
-  },
-  clearedTypeAnnouncement: {
-    id: 'protocolBuilder.anonymisation.clearedTypeAnnouncement',
-    defaultMessage:
-      'No attribute of the {typeName} type is encrypted any more.',
-    description:
-      'Announced to a screen reader once every attribute of one node type has stopped being encrypted. Never shown on screen — the section closing is the visible confirmation. typeName is the researcher’s own name for the type.',
   },
 });

@@ -114,24 +114,6 @@ const messages = defineMessages({
     description:
       'Body of the dialog confirming the protocol was written to the source files. protocolName is the protocol name, path is where the protocol file was written, writtenCount is the number of asset files written, removedCount is the number of outdated asset files removed.',
   },
-  navigationActions: {
-    id: 'architect.projectNav.projectActions.navigationActions',
-    defaultMessage: 'Navigation actions',
-    description:
-      'Accessible name of the toolbar group holding the button that returns to the previous page; read only by screen readers.',
-  },
-  additionalActions: {
-    id: 'architect.projectNav.projectActions.additionalActions',
-    defaultMessage: 'Additional actions',
-    description:
-      'Accessible name of the toolbar group holding page-specific buttons; read only by screen readers.',
-  },
-  exportActions: {
-    id: 'architect.projectNav.projectActions.exportActions',
-    defaultMessage: 'Export actions',
-    description:
-      'Accessible name, read by screen readers, of the toolbar group holding the Export button.',
-  },
   export: {
     id: 'architect.projectNav.projectActions.export',
     defaultMessage: 'Export',
@@ -173,12 +155,6 @@ const messages = defineMessages({
     defaultMessage: 'Sent',
     description:
       'Label of the Export toolbar button for a moment after Interviewer received the protocol from Send to Interviewer.',
-  },
-  sourceActions: {
-    id: 'architect.projectNav.projectActions.sourceActions',
-    defaultMessage: 'Source actions',
-    description:
-      'Accessible name of the toolbar group holding the Save to source button; read only by screen readers.',
   },
   saved: {
     id: 'architect.projectNav.projectActions.saved',
@@ -518,7 +494,7 @@ const ProjectActions = ({
       children: [
         <ToolbarGroup
           key="project-navigation"
-          aria-label={intl.formatMessage(messages.navigationActions)}
+          aria-label={'Navigation actions'}
         >
           <ToolbarButton
             icon={<ArrowLeftToLine className="rtl:rotate-180" />}
@@ -529,20 +505,14 @@ const ProjectActions = ({
         </ToolbarGroup>,
         <ToolbarSeparator key="project-navigation-separator" />,
         additionalActions ? (
-          <ToolbarGroup
-            key="additional"
-            aria-label={intl.formatMessage(messages.additionalActions)}
-          >
+          <ToolbarGroup key="additional" aria-label={'Additional actions'}>
             {additionalActions}
           </ToolbarGroup>
         ) : null,
         additionalActions ? (
           <ToolbarSeparator key="additional-separator" />
         ) : null,
-        <ToolbarGroup
-          key="export"
-          aria-label={intl.formatMessage(messages.exportActions)}
-        >
+        <ToolbarGroup key="export" aria-label={'Export actions'}>
           {/* Export stays last: it is the action an overflowing toolbar
               keeps in view. While an item runs, or just after, the button
               says how it went in place of its own name. */}
@@ -576,10 +546,7 @@ const ProjectActions = ({
         </ToolbarGroup>,
         canSaveToSource ? <ToolbarSeparator key="source-separator" /> : null,
         canSaveToSource ? (
-          <ToolbarGroup
-            key="source"
-            aria-label={intl.formatMessage(messages.sourceActions)}
-          >
+          <ToolbarGroup key="source" aria-label={'Source actions'}>
             <ToolbarButton
               icon={sourceSaveSuccess ? <Check /> : <Save />}
               disabled={isSavingSource}

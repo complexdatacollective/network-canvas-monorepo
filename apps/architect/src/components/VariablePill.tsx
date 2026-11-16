@@ -4,11 +4,8 @@ import { motion } from 'motion/react';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import {
-  type MessageDescriptor,
-  defineMessages,
-} from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -40,45 +37,11 @@ import {
 } from '~/utils/exportColumnConflicts';
 import { createValidations } from '~/utils/validations';
 const messages = defineMessages({
-  editing: {
-    id: 'architect.variablePill.editing',
-    defaultMessage: 'Editing attribute {name}',
-    description: 'Live announcement when the attribute name editor opens.',
-  },
-  cancelled: {
-    id: 'architect.variablePill.cancelled',
-    defaultMessage: 'Attribute name edit cancelled',
-    description: 'Live announcement after cancelling an attribute rename.',
-  },
-  renamed: {
-    id: 'architect.variablePill.renamed',
-    defaultMessage: 'Attribute renamed to {name}',
-    description:
-      'Live announcement after an attribute rename. Name is authored data.',
-  },
-  attribute: {
-    id: 'architect.variablePill.attribute',
-    defaultMessage: '{type} attribute',
-    description:
-      'Alt text of the small icon on an attribute (codebook variable) pill, read only by screen readers. type is the lowercase name of the attribute type, such as text or number.',
-  },
   editAttributeName: {
     id: 'architect.variablePill.editAttributeName',
     defaultMessage: 'Edit attribute name: {label}',
     description:
       'Accessible name and tooltip of the pill button that opens the attribute rename editor. label is the current attribute name.',
-  },
-  editAttributeName62aa3: {
-    id: 'architect.variablePill.editAttributeName62aa3',
-    defaultMessage: 'Edit attribute name',
-    description:
-      'Accessible name of the dialog in which the researcher renames an attribute (codebook variable); read only by screen readers.',
-  },
-  attributeName: {
-    id: 'architect.variablePill.attributeName',
-    defaultMessage: 'Attribute name',
-    description:
-      'Accessible name of the text field in the attribute rename dialog; read only by screen readers.',
   },
   enterAnAttributeName: {
     id: 'architect.variablePill.enterAnAttributeName',
@@ -245,11 +208,11 @@ function VariablePillContents({
           // oxlint-disable-next-line tailwindcss/no-unknown-classes -- icon selector hook for the parent
           className="icon opacity-80"
           src={icon}
-          alt={intl.formatMessage(messages.attribute, {
-            type: getVariableTypeLabel(type, intl).toLocaleLowerCase(
-              intl.locale,
-            ),
-          })}
+          // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+          alt={`${getVariableTypeLabel(type, intl).toLocaleLowerCase(
+            intl.locale,
+          )} attribute`}
+          lang="en"
         />
       </span>
       <span className="flex min-w-0 items-center justify-between">
@@ -284,10 +247,7 @@ export const VariablePill = ({
   const [closing, setClosing] = useState(false);
   const [editorAnchor, setEditorAnchor] =
     useState<VariablePillEditorAnchor | null>(null);
-  const [announcement, setAnnouncement] = useState<{
-    message: MessageDescriptor;
-    values?: { name: string };
-  } | null>(null);
+  const [announcement, setAnnouncement] = useState<string | null>(null);
 
   const [newName, setNewName] = useState(label);
   // What the rename would save: the draft as typed may carry padding or a
@@ -344,7 +304,7 @@ export const VariablePill = ({
       width: triggerBounds.width,
     });
     setNewName(label);
-    setAnnouncement({ message: messages.editing, values: { name: label } });
+    setAnnouncement(`Editing attribute ${label}`);
     restoreFocusRef.current = true;
     setEditing(true);
   };
@@ -353,7 +313,7 @@ export const VariablePill = ({
     announcement: nextAnnouncement,
     beforeClose,
   }: {
-    announcement: { message: MessageDescriptor; values?: { name: string } };
+    announcement: string;
     beforeClose?: () => void;
   }) => {
     if (closingRef.current) {
@@ -370,7 +330,7 @@ export const VariablePill = ({
 
   const handleCancel = () => {
     closeEditor({
-      announcement: { message: messages.cancelled },
+      announcement: 'Attribute name edit cancelled',
     });
   };
 
@@ -380,7 +340,7 @@ export const VariablePill = ({
     }
 
     closeEditor({
-      announcement: { message: messages.renamed, values: { name: savedName } },
+      announcement: `Attribute renamed to ${savedName}`,
       beforeClose: () => onLabelChange(savedName),
     });
   };
@@ -516,7 +476,7 @@ export const VariablePill = ({
         {editorFrame && (
           <ModalPopup
             key="variable-pill-editor"
-            aria-label={intl.formatMessage(messages.editAttributeName62aa3)}
+            aria-label="Edit attribute name"
             className="fixed z-40 flex flex-col items-center gap-6 p-6 outline-none"
             style={editorFrame.style}
             initial={{ opacity: 0.9999 }}
@@ -549,7 +509,7 @@ export const VariablePill = ({
               <VariablePillContents fill type={type}>
                 <InputField
                   autoFocus
-                  aria-label={intl.formatMessage(messages.attributeName)}
+                  aria-label="Attribute name"
                   aria-invalid={validation ? true : undefined}
                   aria-describedby={validation ? validationId : undefined}
                   className="h-full w-full rounded-s-none! outline-none!"
@@ -607,8 +567,8 @@ export const VariablePill = ({
         )}
       </Modal>
 
-      <span className="sr-only" aria-live="polite">
-        {announcement && <AppMessage {...announcement} />}
+      <span className="sr-only" aria-live="polite" lang="en">
+        {announcement}
       </span>
     </>
   );

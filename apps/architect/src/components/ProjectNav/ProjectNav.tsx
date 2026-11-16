@@ -69,12 +69,6 @@ const configMessages = defineMessages({
   },
 });
 const messages = defineMessages({
-  warning: {
-    id: 'architect.presentation.warning',
-    defaultMessage: '({warning})',
-    description:
-      'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
-  },
   readOnly: {
     id: 'architect.projectNav.projectNav.readOnly',
     defaultMessage: 'Read only',
@@ -82,33 +76,6 @@ const messages = defineMessages({
       'Badge in the top bar next to the protocol name, shown when the protocol is open for viewing only and cannot be edited.',
   },
 });
-const finalMessages = defineMessages({
-  roleWarning: {
-    id: 'architect.final.components.ProjectNav.ProjectNav.roleWarning',
-    defaultMessage: 'has attributes written both with and without validation',
-    description:
-      'Warning, read only by screen readers, completing the sentence after the Stages tab name: some variables are filled in by some stages with validation and by others without.',
-  },
-  assetsWarning: {
-    id: 'architect.final.components.ProjectNav.ProjectNav.assetsWarning',
-    defaultMessage: 'has unused resources',
-    description:
-      'Warning, read only by screen readers, completing the sentence after the Resources tab name: some uploaded resources are not used by any stage.',
-  },
-  attributesWarning: {
-    id: 'architect.final.components.ProjectNav.ProjectNav.attributesWarning',
-    defaultMessage: 'has unused attributes',
-    description:
-      'Warning, read only by screen readers, completing the sentence after the Codebook tab name: some variables are not used by any stage.',
-  },
-  translationsWarning: {
-    id: 'architect.projectNav.projectNav.translationsWarning',
-    defaultMessage: 'has missing translations',
-    description:
-      'Screen-reader warning on the Languages tab when some text is not translated into every language of the protocol.',
-  },
-});
-
 type Tab = {
   href: string;
   label: string;
@@ -149,16 +116,14 @@ const ProjectNav = () => {
   // warning indicator on that tab and provides its screen-reader label.
   const tabWarnings: Record<string, string | undefined> = {
     '/protocol': hasVariableRoleConflicts
-      ? intl.formatMessage(finalMessages.roleWarning)
+      ? 'has attributes written both with and without validation'
       : undefined,
-    '/protocol/assets': hasUnusedAssets
-      ? intl.formatMessage(finalMessages.assetsWarning)
-      : undefined,
+    '/protocol/assets': hasUnusedAssets ? 'has unused resources' : undefined,
     '/protocol/codebook': hasUnusedVariables
-      ? intl.formatMessage(finalMessages.attributesWarning)
+      ? 'has unused attributes'
       : undefined,
     '/protocol/localization': hasMissingTranslations
-      ? intl.formatMessage(finalMessages.translationsWarning)
+      ? 'has missing translations'
       : undefined,
   };
 
@@ -199,8 +164,9 @@ const ProjectNav = () => {
           </span>
           {label}
           {warning && (
-            <span className="sr-only">
-              {intl.formatMessage(messages.warning, { warning })}
+            <span className="sr-only" lang="en">
+              {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+              {`(${warning})`}
             </span>
           )}
         </span>

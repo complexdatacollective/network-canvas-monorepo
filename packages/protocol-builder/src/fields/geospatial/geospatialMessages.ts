@@ -378,12 +378,6 @@ export const geospatialMessages = defineMessages({
     description:
       'Refusal shown under the recorded-property control when a researcher saves while the chosen map layer is still being read. Nothing is wrong with what they chose: the check simply cannot be made until the layer arrives, and saying so is what stops a property the layer may not have from being saved unchecked.',
   },
-  propertyLoading: {
-    id: 'protocolBuilder.geospatial.propertyLoading',
-    defaultMessage: 'Reading the map layer.',
-    description:
-      'Announced to screen readers only, while the chosen GeoJSON layer is being fetched and parsed to find out which properties it offers. Never shown on screen.',
-  },
   propertyRetryLabel: {
     id: 'protocolBuilder.geospatial.propertyRetryLabel',
     defaultMessage: 'Try reading the map layer again',
@@ -403,42 +397,6 @@ export const geospatialMessages = defineMessages({
     description:
       'Label of the control holding the north-south half of the map’s starting centre.',
   },
-  longitudeIncrease: {
-    id: 'protocolBuilder.geospatial.longitudeIncrease',
-    defaultMessage: 'Increase longitude',
-    description:
-      'Accessible name of the button that steps the longitude up by one. Named for its own coordinate: a screen reader announces a button by its name alone, and three numbers describe one starting view, so a shared "Increase value" would be six buttons nobody could tell apart.',
-  },
-  longitudeDecrease: {
-    id: 'protocolBuilder.geospatial.longitudeDecrease',
-    defaultMessage: 'Decrease longitude',
-    description:
-      'Accessible name of the button that steps the longitude down by one.',
-  },
-  latitudeIncrease: {
-    id: 'protocolBuilder.geospatial.latitudeIncrease',
-    defaultMessage: 'Increase latitude',
-    description:
-      'Accessible name of the button that steps the latitude up by one.',
-  },
-  latitudeDecrease: {
-    id: 'protocolBuilder.geospatial.latitudeDecrease',
-    defaultMessage: 'Decrease latitude',
-    description:
-      'Accessible name of the button that steps the latitude down by one.',
-  },
-  zoomIncrease: {
-    id: 'protocolBuilder.geospatial.zoomIncrease',
-    defaultMessage: 'Increase zoom',
-    description:
-      'Accessible name of the button that steps the starting zoom up by one. Named for the number it moves, for the same reason as the two coordinate steppers beside it.',
-  },
-  zoomDecrease: {
-    id: 'protocolBuilder.geospatial.zoomDecrease',
-    defaultMessage: 'Decrease zoom',
-    description:
-      'Accessible name of the button that steps the starting zoom down by one.',
-  },
   openPreviewLabel: {
     id: 'protocolBuilder.geospatial.openPreviewLabel',
     defaultMessage: 'Set the starting view on a map',
@@ -452,12 +410,6 @@ export const geospatialMessages = defineMessages({
       'Pan and zoom to the view participants should see when the map first opens.',
     description:
       'Guidance at the top of the dialog that sets a stage’s starting view by moving a real map. Panning is dragging the map to move it.',
-  },
-  previewLoading: {
-    id: 'protocolBuilder.geospatial.previewLoading',
-    defaultMessage: 'Loading the map.',
-    description:
-      'Announced to screen readers only, while the host is asked for the API key the map is drawn with. Never shown on screen.',
   },
   previewMissingKey: {
     id: 'protocolBuilder.geospatial.previewMissingKey',
@@ -491,12 +443,6 @@ export const geospatialMessages = defineMessages({
     defaultMessage: 'Use this view',
     description:
       'Button that takes the centre and zoom the researcher has panned the map to and stores them as the stage’s starting view. Offered only once the map is readable and has actually been moved.',
-  },
-  previewMapLabel: {
-    id: 'protocolBuilder.geospatial.previewMapLabel',
-    defaultMessage: 'Interactive map',
-    description:
-      'Accessible name of the region holding the pannable map inside the starting-view dialog, so it is reachable and identifiable without sight of it.',
   },
 
   centerIncomplete: {

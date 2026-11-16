@@ -50,34 +50,6 @@ const messages = defineMessages({
     description:
       'Choice offered for how tall a picture or video on a page is drawn.',
   },
-  kindChosen: {
-    id: 'protocolBuilder.contentBlock.kindChosen',
-    defaultMessage:
-      'Content type set to {kind}. A content field for it has been added below.',
-    description:
-      'Announcement made when a researcher first says what kind of thing one piece of a page holds, which mounts a control for it. kind is that choice — Image, Video, Audio, Text — already in the reader’s language.',
-  },
-  kindChangedRestored: {
-    id: 'protocolBuilder.contentBlock.kindChangedRestored',
-    defaultMessage:
-      'Content type changed to {kind}. The content you entered for {kind} earlier has been restored.',
-    description:
-      'Announcement made when a researcher changes what kind of thing one piece of a page holds, back to a kind they had already filled in, so their earlier answer comes back. kind is that choice, already in the reader’s language.',
-  },
-  kindChangedKept: {
-    id: 'protocolBuilder.contentBlock.kindChangedKept',
-    defaultMessage:
-      'Content type changed to {kind}. The content you entered for the previous type is kept, and returns if you change back to it.',
-    description:
-      'Announcement made when a researcher changes what kind of thing one piece of a page holds, away from a kind they had filled in, which is kept rather than thrown away. kind is the new choice, already in the reader’s language.',
-  },
-  kindChangedEmpty: {
-    id: 'protocolBuilder.contentBlock.kindChangedEmpty',
-    defaultMessage:
-      'Content type changed to {kind}. Nothing has been entered for {kind} yet.',
-    description:
-      'Announcement made when a researcher changes what kind of thing one piece of a page holds and neither the old nor the new kind has anything in it. kind is the new choice, already in the reader’s language.',
-  },
 });
 
 import { asLocalizedString } from '../../localization/localizedText.ts';
@@ -333,14 +305,6 @@ export const contentBlockSlots = Object.freeze({
  */
 export type ContentDraftOutcome = 'restored' | 'kept' | 'empty';
 
-const OUTCOME_MESSAGES: Readonly<
-  Record<ContentDraftOutcome, MessageDescriptor>
-> = Object.freeze({
-  restored: messages.kindChangedRestored,
-  kept: messages.kindChangedKept,
-  empty: messages.kindChangedEmpty,
-});
-
 const kindLabel = (kind: ContentBlockKind, intl: IntlShape): string =>
   intl.formatMessage(CONTENT_BLOCK_KIND_LABELS[kind]);
 
@@ -363,11 +327,24 @@ export type ContentKindAnnouncement = Readonly<{
   outcome: ContentDraftOutcome | 'chosen';
 }>;
 
+/**
+ * The sentence for one announcement. English in every language, because it is
+ * read only by a screen reader; the kind's name is the one translated word in
+ * it.
+ */
 export const contentKindAnnouncement = (
   { kind, outcome }: ContentKindAnnouncement,
   intl: IntlShape,
-): string =>
-  intl.formatMessage(
-    outcome === 'chosen' ? messages.kindChosen : OUTCOME_MESSAGES[outcome],
-    { kind: kindLabel(kind, intl) },
-  );
+): string => {
+  const label = kindLabel(kind, intl);
+  if (outcome === 'chosen') {
+    return `Content type set to ${label}. A content field for it has been added below.`;
+  }
+  if (outcome === 'restored') {
+    return `Content type changed to ${label}. The content you entered for ${label} earlier has been restored.`;
+  }
+  if (outcome === 'kept') {
+    return `Content type changed to ${label}. The content you entered for the previous type is kept, and returns if you change back to it.`;
+  }
+  return `Content type changed to ${label}. Nothing has been entered for ${label} yet.`;
+};

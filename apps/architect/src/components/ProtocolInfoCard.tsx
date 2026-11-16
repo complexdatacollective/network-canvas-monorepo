@@ -66,18 +66,6 @@ const messages = defineMessages({
     description:
       'Placeholder inside the empty protocol name field on the protocol card of the Stages page.',
   },
-  protocolName: {
-    id: 'architect.protocolInfoCard.protocolName',
-    defaultMessage: 'Protocol name',
-    description:
-      'Accessible name of the editable protocol name field on the protocol card of the Stages page; read only by screen readers.',
-  },
-  protocolDescription: {
-    id: 'architect.protocolInfoCard.protocolDescription',
-    defaultMessage: 'Protocol description',
-    description:
-      'Accessible name of the editable protocol description field on the protocol card of the Stages page; read only by screen readers.',
-  },
   enterADescriptionForYourProtocol: {
     id: 'architect.protocolInfoCard.enterADescriptionForYourProtocol',
     defaultMessage: 'Enter a description for your protocol...',
@@ -549,7 +537,7 @@ const ProtocolInfoCard = () => {
               }
             }}
             placeholder={intl.formatMessage(messages.enterProtocolName)}
-            aria-label={intl.formatMessage(messages.protocolName)}
+            aria-label={'Protocol name'}
             aria-describedby={allowanceId}
           />
 
@@ -596,7 +584,7 @@ const ProtocolInfoCard = () => {
         </div>
 
         <TextAreaField
-          aria-label={intl.formatMessage(messages.protocolDescription)}
+          aria-label={'Protocol description'}
           className="[&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24"
           placeholder={intl.formatMessage(
             messages.enterADescriptionForYourProtocol,

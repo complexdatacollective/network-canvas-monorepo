@@ -87,7 +87,7 @@ describe('the canvas sections, read in Spanish', () => {
       sections: sociogramSections,
     });
 
-    const prompt = await openPrompt(harness, 0, 'Editar pregunta');
+    const prompt = await openPrompt(harness, 0, 'Edit pregunta');
     // The picker is a labelled field holding a trigger, so the label and the
     // words on the button are two separate translations and both are asserted.
     // This prompt already positions by an attribute, which is the state the
@@ -104,7 +104,7 @@ describe('the canvas sections, read in Spanish', () => {
       await createRowIn(
         harness.user,
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
-        'Busca o crea un atributo',
+        'Find or create an attribute',
         (term) => `Crear un atributo nuevo llamado «${term}».`,
       ),
     ).not.toBeNull();
@@ -138,7 +138,7 @@ describe('the canvas sections, read in Spanish', () => {
       sections: sociogramSections,
     });
 
-    const prompt = await openPrompt(harness, 0, 'Editar pregunta');
+    const prompt = await openPrompt(harness, 0, 'Edit pregunta');
     // Asserted on the whole rendered name, so a placeholder left out of the
     // Spanish fails here rather than rendering as `{edgeTypeId}`.
     expect(

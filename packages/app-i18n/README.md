@@ -100,6 +100,12 @@ button with a visible label. Marking it would mark that text as English too.
 A text that is also seen, whether as visible text, a placeholder, a tooltip
 or a `title`, is not screen-reader-only. It stays a translated message.
 
+`checkScreenReaderText` (`@codaco/app-i18n/catalog-guards`) reads a package's
+source for an `aria-label`, `aria-description`, `aria-valuetext` or `ariaLabel`
+handed `intl.formatMessage(…)`, and reports each one. The caller lists the
+attributes whose text is also shown, such as a toolbar button whose name is
+its tooltip. A package adopts it with a test that passes its own source files.
+
 ## Loading catalogs
 
 Every catalog-owning package exports a map of loaders: for each locale it

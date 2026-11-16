@@ -6,8 +6,6 @@ import type React from 'react';
 import { useCallback, useId, useState } from 'react';
 import { useLocation } from 'wouter';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
@@ -20,33 +18,6 @@ import { cx } from '~/utils/cva';
 import { NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 
 import { NAV_ITEM_CLASS_NAME } from './NavLink';
-const messages = defineMessages({
-  navigation: {
-    id: 'architect.projectNav.navShell.navigation',
-    defaultMessage: 'Main navigation',
-    description:
-      'Accessible name of the main navigation bar at the top of the screen, which links to the protocol pages (Stages, Resources, Codebook and so on); read only by screen readers.',
-  },
-  openMenu: {
-    id: 'architect.projectNav.navShell.openMenu',
-    defaultMessage: 'Open menu',
-    description:
-      'Accessible name of the icon button, shown on narrow screens, that opens the navigation drawer; read only by screen readers.',
-  },
-  mobileNavigation: {
-    id: 'architect.projectNav.navShell.mobileNavigation',
-    defaultMessage: 'Mobile navigation',
-    description:
-      'Accessible name of the navigation list inside the drawer opened on narrow screens; read only by screen readers.',
-  },
-  closeMenu: {
-    id: 'architect.projectNav.navShell.closeMenu',
-    defaultMessage: 'Close menu',
-    description:
-      'Accessible name of the icon button that closes the navigation drawer; read only by screen readers.',
-  },
-});
-
 // `publish-colors`: dynamic-color controls on the bar derive their hover
 // from the bar's published background.
 const NAV_SURFACE =
@@ -98,7 +69,6 @@ type NavShellProps = {
 };
 
 const NavShell = ({ leading, items, end }: NavShellProps) => {
-  const intl = useAppIntl();
   const shouldReduceMotion = usePrefersReducedMotion();
   const isFirstMount = useRunOnce('nav-bar-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
@@ -163,7 +133,8 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
           variant="text"
           color="dynamic"
           onClick={() => setMenuOpen(true)}
-          aria-label={intl.formatMessage(messages.openMenu)}
+          aria-label="Open menu"
+          lang="en"
           aria-expanded={menuOpen}
           icon={<Menu strokeWidth={2.5} />}
           className="tablet-portrait:hidden -me-2 [&>.lucide]:size-6"
@@ -178,14 +149,15 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
           >
             <NavigationMenu.Root
               orientation="vertical"
-              aria-label={intl.formatMessage(messages.mobileNavigation)}
+              aria-label={'Mobile navigation'}
               className="flex h-full flex-col"
             >
               <div className="flex items-center justify-end p-4">
                 <IconButton
                   variant="text"
                   onClick={closeMenu}
-                  aria-label={intl.formatMessage(messages.closeMenu)}
+                  aria-label="Close menu"
+                  lang="en"
                   icon={<X strokeWidth={2.5} />}
                   className="[&>.lucide]:size-6"
                 />
@@ -226,7 +198,7 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
         </Modal>
         <LayoutGroup id={inlineLayoutId}>
           <NavigationMenu.Root
-            aria-label={intl.formatMessage(messages.navigation)}
+            aria-label={'Main navigation'}
             className="tablet-portrait:block hidden shrink-0"
           >
             <NavigationMenu.List className="tablet-landscape:gap-10 flex items-center gap-7">

@@ -42,12 +42,6 @@ const messages = defineMessages({
     description:
       'Label above the box of technical validation errors in the Misconfigured Protocol dialog. The error text itself is always shown in English, which is what the word in brackets tells the reader.',
   },
-  protocolValidationErrors: {
-    id: 'architect.protocolValidationDialogReporter.protocolValidationErrors',
-    defaultMessage: 'Protocol validation errors',
-    description:
-      'Accessible name of the scrollable box that lists the technical validation errors in the Misconfigured Protocol dialog; read only by screen readers.',
-  },
 });
 
 type OpenEvent = Extract<ProtocolValidationDialogEvent, { type: 'open' }>;
@@ -143,7 +137,7 @@ const ProtocolValidationDialogReporter = () => {
       <section
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region has to take focus for keyboard users to scroll it.
         tabIndex={0}
-        aria-label={intl.formatMessage(messages.protocolValidationErrors)}
+        aria-label={'Protocol validation errors'}
         className="bg-surface-1 max-h-64 overflow-auto rounded-sm p-4 text-sm"
       >
         <pre lang="en" dir="ltr" className="whitespace-pre-wrap">

@@ -64,7 +64,7 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     expect(
       await screen.findByRole('group', {
-        name: 'Atributos cifrados de person',
+        name: 'Encrypted attributes for person',
       }),
     ).toBeInTheDocument();
     expect(
@@ -118,7 +118,9 @@ describe('the anonymisation sections, read in Spanish', () => {
     await waitFor(() =>
       expect(
         within(
-          screen.getByRole('group', { name: 'Atributos cifrados de person' }),
+          screen.getByRole('group', {
+            name: 'Encrypted attributes for person',
+          }),
         ).getByRole('checkbox', { name: 'name' }),
       ).toBeChecked(),
     );
@@ -169,7 +171,7 @@ describe('the anonymisation sections, read in Spanish', () => {
       await screen.findByRole('switch', { name: 'person' }),
     );
     const group = await screen.findByRole('group', {
-      name: 'Atributos cifrados de person',
+      name: 'Encrypted attributes for person',
     });
 
     await harness.user.click(

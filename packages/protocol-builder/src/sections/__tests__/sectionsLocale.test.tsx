@@ -480,7 +480,9 @@ const searchForAnAttribute = async (
     return found;
   });
   await harness.user.type(
-    within(window).getByRole('searchbox', { name: 'Busca o crea un atributo' }),
+    within(window).getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    }),
     term,
   );
   return window;
@@ -557,7 +559,7 @@ const addValue = async (
     value,
   );
   await harness.user.click(
-    screen.getByRole('button', { name: 'Finalizar edición de la opción' }),
+    screen.getByRole('button', { name: 'Finish editing option' }),
   );
 };
 
@@ -669,7 +671,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
     const harness = alterFormInSpanish();
     // The fixture's second field collects a boolean, whose two stored values
     // are fixed and whose WORDS are the researcher's.
-    const dialog = await openFieldDialog(harness, 'Editar campo', 1);
+    const dialog = await openFieldDialog(harness, 'Edit campo', 1);
 
     expect(screen.getByText('Editar campo de formulario')).toBeInTheDocument();
     expect(
@@ -735,7 +737,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await openFieldDialog(harness, 'Editar campo');
+    const dialog = await openFieldDialog(harness, 'Edit campo');
 
     expect(
       await dialog.findByText(
@@ -899,16 +901,17 @@ describe('a form a Spanish researcher cannot save', () => {
       sections: <FormFieldsSection subject="ego" />,
     });
 
-    // Twice: the first click asks, and the confirmation carries the same words.
+    // Twice: the first click asks (the row's own button is screen-reader-only
+    // text, so English), and the confirmation says it in Spanish.
     await harness.user.click(
-      screen.getByRole('button', { name: 'Eliminar campo' }),
+      screen.getByRole('button', { name: 'Delete campo' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Eliminar campo' }),
     );
     await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: 'Editar campo' }),
+        screen.queryByRole('button', { name: 'Edit campo' }),
       ).not.toBeInTheDocument(),
     );
 
@@ -961,7 +964,7 @@ describe('a form a Spanish researcher cannot save', () => {
       ),
     ).toBeInTheDocument();
 
-    const dialog = await openFieldDialog(harness, 'Editar campo', 1);
+    const dialog = await openFieldDialog(harness, 'Edit campo', 1);
     await harness.user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
     expect(

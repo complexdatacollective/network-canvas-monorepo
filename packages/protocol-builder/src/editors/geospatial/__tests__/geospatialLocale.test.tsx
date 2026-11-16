@@ -134,7 +134,7 @@ describe('the geospatial sections, read in Spanish', () => {
     // would have nothing to choose and the picker would not be drawn at all.
     // A row's own pick is always offered back, which is the state that has
     // both controls on screen to be named.
-    await openPrompt(harness, 'Editar pregunta');
+    await openPrompt(harness, 'Edit pregunta');
 
     // The picker is a labelled field holding a trigger, so the label and the
     // words on the button are two separate translations and both are asserted.
@@ -152,7 +152,7 @@ describe('the geospatial sections, read in Spanish', () => {
       await createRowIn(
         harness.user,
         attributeField('Atributo de ubicación', screen.getByRole('dialog')),
-        'Busca o crea un atributo',
+        'Find or create an attribute',
         (term) => `Crear un atributo nuevo llamado «${term}».`,
       ),
     ).not.toBeNull();

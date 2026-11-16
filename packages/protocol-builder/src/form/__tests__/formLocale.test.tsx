@@ -24,8 +24,8 @@ import { READ_ONLY_MESSAGE } from '../readOnlyRefusal.ts';
  *
  * - the shell's own markup, which formats with `useAppIntl()` (the fallback
  *   save control it fills its action slot with);
- * - a list's markup, which does the same and also splices the researcher's own
- *   row number into it (`Editar opción 1`);
+ * - a list's markup, which does the same; the row controls' accessible names
+ *   are screen-reader-only text and stay English (`Edit option 1`);
  * - a refusal, which is encoded where it is decided and decoded where it is
  *   read — the only route where an English word could survive a translated
  *   sentence, because the row noun travels inside it as a nested reference.
@@ -82,10 +82,10 @@ describe('a stage form read in Spanish', () => {
     // The row's own number is spliced into the row's name, so this also fails
     // if the position stops reaching the message.
     expect(
-      screen.getByRole('button', { name: 'Editar opción 1' }),
+      screen.getByRole('button', { name: 'Edit option 1' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Eliminar opción 2' }),
+      screen.getByRole('button', { name: 'Remove option 2' }),
     ).toBeInTheDocument();
     // The assertions above name what this surface is supposed to say; the sweep
     // reports whatever else it said — including a sentence rebuilt out of an

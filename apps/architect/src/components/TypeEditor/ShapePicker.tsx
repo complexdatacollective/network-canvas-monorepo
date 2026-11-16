@@ -12,14 +12,6 @@ import { type ConfigMessage, formatConfig } from '~/i18n/formatConfig';
 import { cx } from '~/utils/cva';
 
 import { isNodeShape } from './nodeAppearance';
-const remainingMessages = defineMessages({
-  selectShape: {
-    id: 'architect.remaining.typeEditor.shapePicker.selectShape',
-    defaultMessage: 'Select shape {value1}',
-    description:
-      'Accessible name of one option in the node shape picker; read only by screen readers. value1 is the name of the shape, such as Circle, Square or Diamond.',
-  },
-});
 const configMessages = defineMessages({
   circle: {
     id: 'architect.typeEditor.shapePicker.config.circle',
@@ -131,9 +123,7 @@ export const ShapePickerControl = ({
             <Node
               {...renderProps}
               label={small ? '' : shape.label}
-              ariaLabel={intl.formatMessage(remainingMessages.selectShape, {
-                value1: shape.label,
-              })}
+              ariaLabel={`Select shape ${shape.label}`}
               shape={shape.value}
               color={nodeColor}
               size={nodeSize}

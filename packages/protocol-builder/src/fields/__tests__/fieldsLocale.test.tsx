@@ -184,7 +184,7 @@ describe('the fields in this directory, read in Spanish', () => {
     render(inEditor(<EntityTypePickerField entityType="node" value="ghost" />));
 
     expect(
-      screen.getByRole('radiogroup', { name: 'Opciones de tipo de nodo' }),
+      screen.getByRole('radiogroup', { name: 'Node type options' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('radio', {
@@ -238,12 +238,12 @@ describe('the fields in this directory, read in Spanish', () => {
     // no label of its own, so the window falls back to its own name.
     await user.click(screen.getByRole('button', { name: 'Cambiar atributo' }));
     const dialog = await screen.findByRole('dialog', {
-      name: 'Selecciona un atributo',
+      name: 'Select an attribute',
     });
     // Named for what this window can do and no more: nothing was handed to it
     // to create with, so it only finds.
     expect(
-      within(dialog).getByRole('searchbox', { name: 'Busca un atributo' }),
+      within(dialog).getByRole('searchbox', { name: 'Find an attribute' }),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole('option', { name: 'Age' }),
@@ -267,7 +267,7 @@ describe('the fields in this directory, read in Spanish', () => {
 
     // Stated beside the pill for anyone who cannot read its colour, and the
     // type token itself is a protocol schema value that stays as it is.
-    expect(screen.getByText('Tipo de atributo: number')).toBeInTheDocument();
+    expect(screen.getByText('Attribute type: number')).toBeInTheDocument();
   });
 
   it('says there is nothing to choose from in Spanish', () => {

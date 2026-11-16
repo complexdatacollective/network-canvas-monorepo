@@ -10,12 +10,6 @@ import {
   type ToolbarGroupProps,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 const messages = defineMessages({
-  historyControls: {
-    id: 'architect.projectNav.historyToolbarItems.historyControls',
-    defaultMessage: 'History controls',
-    description:
-      'Accessible name of the group of Undo and Redo buttons in the toolbar; read only by screen readers.',
-  },
   undo: {
     id: 'architect.projectNav.historyToolbarItems.undo',
     defaultMessage: 'Undo',
@@ -53,10 +47,7 @@ export const HistoryToolbarControls = defineToolbarChild(
   }: HistoryToolbarControlsProps) {
     const intl = useAppIntl();
     return (
-      <ToolbarGroup
-        ref={ref}
-        aria-label={intl.formatMessage(messages.historyControls)}
-      >
+      <ToolbarGroup ref={ref} aria-label={'History controls'}>
         <ToolbarIconButton
           aria-label={intl.formatMessage(messages.undo)}
           icon={<Undo />}

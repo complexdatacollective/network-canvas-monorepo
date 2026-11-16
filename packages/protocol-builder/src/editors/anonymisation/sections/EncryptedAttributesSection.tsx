@@ -183,9 +183,7 @@ function NodeTypeAttributes({
           // says the type once for a reader who can see it, and a screen
           // reader meeting the group on its own has to be told which type's
           // attributes these are.
-          label={intl.formatMessage(anonymisationMessages.attributeGroupLabel, {
-            typeName: view.name,
-          })}
+          label={`Encrypted attributes for ${view.name}`}
           labelHidden
           options={[...view.options]}
           value={[...view.encrypted]}
@@ -229,10 +227,8 @@ export default function EncryptedAttributesSection() {
   const protocolContext = useProtocolContext();
   const writeCodebookSection = useCodebookSectionWrite();
   /**
-   * What was announced last, encoded rather than formatted: an announcement
-   * stays in its live region until another replaces it, so a sentence resolved
-   * when the choice was made would be the one thing left in the old language
-   * after the reader changes it.
+   * What was announced last. English, like every screen-reader-only string,
+   * so it is the sentence itself rather than an encoded message.
    */
   const [announcement, setAnnouncement] = useState('');
   /**
@@ -408,12 +404,9 @@ export default function EncryptedAttributesSection() {
         return;
       }
       setAnnouncement(
-        createMessageError(
-          encrypted
-            ? anonymisationMessages.encryptedAnnouncement
-            : anonymisationMessages.notEncryptedAnnouncement,
-          { attributeName: label },
-        ),
+        encrypted
+          ? `${label} is now encrypted.`
+          : `${label} is no longer encrypted.`,
       );
     } finally {
       setPending((count) => count - 1);
@@ -458,9 +451,7 @@ export default function EncryptedAttributesSection() {
         return false;
       }
       setAnnouncement(
-        createMessageError(anonymisationMessages.clearedTypeAnnouncement, {
-          typeName: view.name,
-        }),
+        `No attribute of the ${view.name} type is encrypted any more.`,
       );
       return true;
     } finally {
@@ -617,8 +608,8 @@ export default function EncryptedAttributesSection() {
 
       {/* Mounted with the section rather than with the message, so the first
           announcement updates a region that was already there. */}
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {formatMessageError(announcement, intl) ?? announcement}
+      <span className="sr-only" aria-live="polite" aria-atomic="true" lang="en">
+        {announcement}
       </span>
     </BuilderSection>
   );

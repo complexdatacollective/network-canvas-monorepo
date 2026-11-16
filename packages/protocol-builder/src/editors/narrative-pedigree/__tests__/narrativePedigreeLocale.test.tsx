@@ -95,7 +95,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
     // a word, so this is where an English noun in a Spanish sentence would
     // show up.
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Editar enfermedad' }),
+      await screen.findByRole('button', { name: 'Edit enfermedad' }),
     );
     // Scoped to the dialog: `screen` would compute an accessible name for
     // every control in the editor behind it to answer a question about one

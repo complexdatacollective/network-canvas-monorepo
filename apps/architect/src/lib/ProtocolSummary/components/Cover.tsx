@@ -22,12 +22,6 @@ const messages = defineMessages({
     description:
       'Title across the top of the cover page of the printable protocol summary.',
   },
-  aNetworkCanvasProject: {
-    id: 'architect.protocolSummary.cover.aNetworkCanvasProject',
-    defaultMessage: 'A Network Canvas project',
-    description:
-      'Accessible name of the Network Canvas logo on the cover page of the printable protocol summary; read only by screen readers.',
-  },
   documentCreated: {
     id: 'architect.protocolSummary.cover.documentCreated',
     defaultMessage: 'Document Created: {now}',
@@ -81,7 +75,9 @@ const Cover = () => {
           <img
             className="size-19"
             src={networkCanvasLogo}
-            alt={intl.formatMessage(messages.aNetworkCanvasProject)}
+            // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+            alt="A Network Canvas project"
+            lang="en"
           />
           <span className="font-heading text-xl leading-none font-bold">
             {/* Product name is an invariant brand. */}

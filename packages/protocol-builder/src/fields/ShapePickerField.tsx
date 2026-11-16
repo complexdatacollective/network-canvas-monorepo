@@ -1,7 +1,6 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Node, {
@@ -12,15 +11,6 @@ import Node, {
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { shapeOptions } from '../codebook/shapeMapping.ts';
-
-const messages = defineMessages({
-  selectShape: {
-    id: 'protocolBuilder.shapePicker.selectShape',
-    defaultMessage: 'Select shape {value1}',
-    description:
-      'Accessible name of one swatch of the node-shape picker, where {value1} is the shape’s own name — “Select shape Circle”. A node is a member of the interview network.',
-  },
-});
 
 const isNodeShape = (value: unknown): value is NodeShape =>
   value === 'circle' || value === 'square' || value === 'diamond';
@@ -124,9 +114,7 @@ export default function ShapePickerField({
             <Node
               {...renderProps}
               label={small ? '' : shape.label}
-              ariaLabel={intl.formatMessage(messages.selectShape, {
-                value1: shape.label,
-              })}
+              ariaLabel={`Select shape ${shape.label}`}
               shape={shape.value}
               color={isNodeColor(nodeColor) ? nodeColor : 'node-color-seq-1'}
               size={small ? 'xs' : 'sm'}

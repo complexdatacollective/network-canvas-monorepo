@@ -145,12 +145,6 @@ const additionalMessages = defineMessages({
     description:
       'Introductory sentence in the validation error dialog, shown above the technical details of the validation errors found in the protocol file.',
   },
-  protocolValidationErrors: {
-    id: 'architect.additional.protocolOpenDialogs.protocolValidationErrors',
-    defaultMessage: 'Protocol validation errors',
-    description:
-      'Accessible name of the list of protocol validation errors; read only by screen readers.',
-  },
   ifTheProblemPersistsReachOut: {
     id: 'architect.additional.protocolOpenDialogs.ifTheProblemPersistsReachOut',
     defaultMessage:
