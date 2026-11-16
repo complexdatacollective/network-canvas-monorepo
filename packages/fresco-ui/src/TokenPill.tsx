@@ -1,3 +1,5 @@
+'use client';
+
 import type { DOMOutputSpec } from '@tiptap/pm/model';
 import { Syringe } from 'lucide-react';
 import { type ComponentPropsWithoutRef, Fragment } from 'react';
