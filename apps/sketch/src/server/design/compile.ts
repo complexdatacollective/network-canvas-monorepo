@@ -1548,7 +1548,11 @@ export const compile = (
   if (!supplied) {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- relabel keeps the shape
     finished = relabel(finished, SKETCH_LOCALE, lang) as Json;
-    finished.localization = { defaultLocale: lang, locales: [lang] };
+    finished.localization = {
+      defaultLocale: lang,
+      locales: [lang],
+      fallbackLocale: 'en',
+    };
   }
   return {
     // None of the wording Network Canvas supplies is written in: the

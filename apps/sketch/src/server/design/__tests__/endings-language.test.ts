@@ -147,6 +147,7 @@ describe('language', () => {
     expect(protocol.localization).toEqual({
       defaultLocale: 'sw',
       locales: ['sw'],
+      fallbackLocale: 'en',
     });
     expect(protocol.stages[0]?.items?.[0]?.content.sw).toContain(
       'still in English',

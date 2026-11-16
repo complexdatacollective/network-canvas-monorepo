@@ -1666,15 +1666,6 @@
       "finishedContent": {
         "en": "# Thank you\n\nYou chose not to take part, so the interview has ended. Nothing more will be asked."
       },
-      "finishLabel": {
-        "en": "Finish"
-      },
-      "finishConfirmation": {
-        "en": "Are you sure you want to finish the interview?"
-      },
-      "finishFailed": {
-        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
-      },
       "outcome": "ineligible"
     }
   ]
