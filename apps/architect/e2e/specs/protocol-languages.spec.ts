@@ -306,24 +306,23 @@ test('adds a language, keeps the default language from being removed, translates
   expect(added.stages[0]).toEqual(before.stages[0]);
   const addedFinish = added.stages.at(-1);
   const beforeFinish = before.stages.at(-1);
-  expect(addedFinish?.type).toBe('FinishSession');
-  expect(beforeFinish?.type).toBe('FinishSession');
   if (
-    addedFinish?.type === 'FinishSession' &&
-    beforeFinish?.type === 'FinishSession'
+    addedFinish?.type !== 'FinishSession' ||
+    beforeFinish?.type !== 'FinishSession'
   ) {
-    for (const key of ['label', 'content', 'finishedContent'] as const) {
-      expect(addedFinish[key]).toEqual({
-        ...beforeFinish[key],
-        fr: DEFAULT_FINISH_SESSION_TEXT.fr[key],
-      });
-    }
-    // Adding French writes none of the wording Network Canvas supplies: the
-    // interview shows its French for a stage and protocol that hold none, and
-    // the English the protocol held read as Network Canvas's own.
-    for (const key of Object.keys(FINISHING_WORDS_FR)) {
-      expect(addedFinish).not.toHaveProperty(key);
-    }
+    throw new Error('the protocol must end with its finish stage');
+  }
+  for (const key of ['label', 'content', 'finishedContent'] as const) {
+    expect(addedFinish[key]).toEqual({
+      ...beforeFinish[key],
+      fr: DEFAULT_FINISH_SESSION_TEXT.fr[key],
+    });
+  }
+  // Adding French writes none of the wording Network Canvas supplies: the
+  // interview shows its French for a stage and protocol that hold none, and
+  // the English the protocol held read as Network Canvas's own.
+  for (const key of Object.keys(FINISHING_WORDS_FR)) {
+    expect(addedFinish).not.toHaveProperty(key);
   }
   expect(added.interfaceText).toBeUndefined();
 

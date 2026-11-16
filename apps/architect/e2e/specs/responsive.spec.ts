@@ -248,6 +248,95 @@ test('the stage editor’s section list stays below the navigation bar once the 
 });
 
 /**
+ * And it ends where the researcher can still see it. Stuck under the bar, a
+ * list as tall as the window would run its last rows off the bottom of the
+ * screen, out of reach for as long as the form is scrolled; it is bounded to
+ * the room below the bar and scrolls itself instead.
+ */
+test('the stage editor’s section list ends inside the viewport once it sticks under the navigation bar', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  // Short enough that the list is taller than the room below the bar.
+  const viewportHeight = 280;
+  await architectPage.setViewportSize({ width: 1280, height: viewportHeight });
+  await gotoProtocol(architectPage);
+  const [stage] = protocol.stages;
+  if (!stage) throw new Error('fixture has no stages');
+  await architectPage.goto(`/protocol/stage/${stage.id}`);
+
+  const outline = architectPage.getByRole('navigation', {
+    name: 'Stage sections',
+  });
+  await expect(outline.getByRole('listitem').first()).toBeVisible();
+  const bar = architectPage.getByRole('banner');
+  await expect(bar).toHaveCount(1);
+
+  // The install notice sits above the scroll port, outside the room the bound
+  // is computed from.
+  const install = architectPage.getByRole('status', {
+    name: 'Install Architect',
+  });
+  await install.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(install).toHaveCount(0);
+
+  // Part way down the form: past the column's top padding, so the list has
+  // come to rest under the bar, and short of the column's end, which would
+  // carry it back up the page.
+  const scrolled = await architectPage.evaluate(() => {
+    const ports = Array.from(document.querySelectorAll('*')).filter(
+      (element): element is HTMLElement => {
+        if (!(element instanceof HTMLElement)) return false;
+        const { overflowY } = getComputedStyle(element);
+        if (overflowY !== 'auto' && overflowY !== 'scroll') return false;
+        return element.clientHeight >= window.innerHeight * 0.5;
+      },
+    );
+    const [port] = ports.filter(
+      (element) =>
+        !ports.some((other) => other !== element && other.contains(element)),
+    );
+    if (!port) throw new Error('the app has no scroll port to scroll');
+    port.scrollTop = Math.min(300, port.scrollHeight - port.clientHeight - 1);
+    return port.scrollTop;
+  });
+  expect(scrolled).toBeGreaterThan(0);
+
+  const measure = async () => {
+    const banner = await bar.boundingBox();
+    const card = await outline.evaluate((nav) => {
+      const box = nav.firstElementChild;
+      if (!(box instanceof HTMLElement)) return null;
+      const { top, bottom } = box.getBoundingClientRect();
+      return {
+        top,
+        bottom,
+        scrollHeight: box.scrollHeight,
+        clientHeight: box.clientHeight,
+      };
+    });
+    if (!banner || !card) throw new Error('nothing to measure');
+    return { barBottom: banner.y + banner.height, ...card };
+  };
+
+  // Stuck under the bar, which is the position this bound is for.
+  await expect
+    .poll(async () => {
+      const { top, barBottom } = await measure();
+      return Math.abs(Math.round(top - barBottom));
+    })
+    .toBeLessThanOrEqual(1);
+
+  const { bottom, scrollHeight, clientHeight } = await measure();
+  expect(bottom).toBeLessThanOrEqual(viewportHeight + 1);
+  // The list holds more than the room it is given, so the bound above is the
+  // one doing the work rather than a list that happens to be short.
+  expect(scrollHeight).toBeGreaterThan(clientHeight);
+});
+
+/**
  * The band no other case in this file covers.
  *
  * The grid asks its container for 60rem before it splits, and the container
@@ -699,6 +788,36 @@ for (const viewport of NAME_VIEWPORTS) {
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
     expectNameWithinBound(metrics);
     await expect(new Timeline(architectPage).rows().first()).toBeInViewport();
+    expectNoHorizontalOverflow(await readScrollMetrics(architectPage));
+  });
+
+  // #1397: on the start screen's library the row name was already cut to two
+  // lines. Measured here so that cannot quietly stop.
+  test(`a long protocol name is cut to two lines in the library at ${viewport.name} width`, async ({
+    architectPage,
+    seed,
+  }) => {
+    // One unbroken word, the hardest name to keep inside the row.
+    const longRtlName = 'م'.repeat(400);
+    await seed(protocolWithStages(), { name: longRtlName });
+    await architectPage.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await architectPage.goto('/');
+
+    const label = architectPage.getByTitle(longRtlName);
+    await expect(label).toBeVisible();
+    const metrics = await label.evaluate((element) => ({
+      lineClamp: getComputedStyle(element).webkitLineClamp,
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+      right: element.getBoundingClientRect().right,
+    }));
+
+    expect(metrics.lineClamp).toBe('2');
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+    expect(metrics.right).toBeLessThanOrEqual(viewport.width);
     expectNoHorizontalOverflow(await readScrollMetrics(architectPage));
   });
 
