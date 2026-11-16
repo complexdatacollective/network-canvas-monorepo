@@ -1007,7 +1007,7 @@ export const WithVersionsAndInsertMenu: Story = {
     // back.
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(editor).toHaveFocus());
-    await expect(canvas.getByRole('button', { name: 'Name' })).toHaveAttribute(
+    await expect(canvas.getByRole('button', { name: /^Name/ })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
@@ -1130,7 +1130,7 @@ export const VersionsInASentenceStayFolded: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const pill = await canvas.findByRole('button', { name: 'Name' });
+    const pill = await canvas.findByRole('button', { name: /^Name/ });
     await expect(pill).toHaveAttribute('aria-expanded', 'false');
     await expect(
       canvas.queryByRole('textbox', { name: 'When Name is known' }),
