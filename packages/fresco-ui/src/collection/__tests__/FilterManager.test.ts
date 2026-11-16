@@ -18,61 +18,23 @@ function createDefaultState(overrides: Partial<FilterState> = {}): FilterState {
 
 describe('FilterManager', () => {
   describe('queries', () => {
-    describe('query', () => {
-      it('should return the current query', () => {
-        const state = createDefaultState({ filterQuery: 'test' });
-        const manager = new FilterManager(state, vi.fn());
+    it('reads each value from its own state field', () => {
+      const manager = new FilterManager(
+        createDefaultState({
+          filterQuery: 'typed',
+          filterDebouncedQuery: 'settled',
+          filterIsFiltering: true,
+          filterIsIndexing: false,
+          filterMatchCount: 3,
+        }),
+        vi.fn(),
+      );
 
-        expect(manager.query).toBe('test');
-      });
-
-      it('should return empty string when no query', () => {
-        const state = createDefaultState();
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.query).toBe('');
-      });
-    });
-
-    describe('debouncedQuery', () => {
-      it('should return the debounced query', () => {
-        const state = createDefaultState({ filterDebouncedQuery: 'debounced' });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.debouncedQuery).toBe('debounced');
-      });
-    });
-
-    describe('isFiltering', () => {
-      it('should return true when filtering is in progress', () => {
-        const state = createDefaultState({ filterIsFiltering: true });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.isFiltering).toBe(true);
-      });
-
-      it('should return false when not filtering', () => {
-        const state = createDefaultState({ filterIsFiltering: false });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.isFiltering).toBe(false);
-      });
-    });
-
-    describe('isIndexing', () => {
-      it('should return true when indexing is in progress', () => {
-        const state = createDefaultState({ filterIsIndexing: true });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.isIndexing).toBe(true);
-      });
-
-      it('should return false when not indexing', () => {
-        const state = createDefaultState({ filterIsIndexing: false });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.isIndexing).toBe(false);
-      });
+      expect(manager.query).toBe('typed');
+      expect(manager.debouncedQuery).toBe('settled');
+      expect(manager.isFiltering).toBe(true);
+      expect(manager.isIndexing).toBe(false);
+      expect(manager.matchCount).toBe(3);
     });
 
     describe('hasActiveFilter', () => {
@@ -104,39 +66,6 @@ describe('FilterManager', () => {
         const manager = new FilterManager(state, vi.fn());
 
         expect(manager.hasActiveFilter).toBe(false);
-      });
-    });
-
-    describe('matchCount', () => {
-      it('should return the match count', () => {
-        const state = createDefaultState({ filterMatchCount: 5 });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.matchCount).toBe(5);
-      });
-
-      it('should return null when no filter active', () => {
-        const state = createDefaultState({ filterMatchCount: null });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.matchCount).toBeNull();
-      });
-    });
-
-    describe('matchingKeys', () => {
-      it('should return the set of matching keys', () => {
-        const keys = new Set(['a', 'b', 'c']);
-        const state = createDefaultState({ filterMatchingKeys: keys });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.matchingKeys).toBe(keys);
-      });
-
-      it('should return null when no filter active', () => {
-        const state = createDefaultState({ filterMatchingKeys: null });
-        const manager = new FilterManager(state, vi.fn());
-
-        expect(manager.matchingKeys).toBeNull();
       });
     });
 

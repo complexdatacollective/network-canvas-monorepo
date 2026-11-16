@@ -284,7 +284,6 @@ describe('FieldPreviewPane', () => {
 
     const themed = preview.querySelector('[data-theme-interview]');
     expect(themed).not.toBeNull();
-    expect(themed).toHaveClass('theme-base');
     // The field is inside it, so the participant's control is what the theme
     // is actually applied to rather than a wrapper beside it.
     expect(

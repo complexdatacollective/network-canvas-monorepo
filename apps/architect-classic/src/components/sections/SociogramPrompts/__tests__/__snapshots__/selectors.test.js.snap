@@ -1,15 +1,5 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`SociogramPrompts > selectors > get edge filters 1`] = `
-[
-  {
-    "color": "blue",
-    "label": "an edge",
-    "value": "1234-5",
-  },
-]
-`;
-
 exports[`SociogramPrompts > selectors > get edges for node type 1`] = `
 [
   {

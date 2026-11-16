@@ -135,11 +135,15 @@ export const EditingGenderIdentityOptions: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Edit options' }));
 
     // The dialog is drawn in a portal, outside the canvas.
-    const dialog = within(
-      await within(document.body).findByRole('dialog', {
-        name: 'Edit gender identity options',
-      }),
-    );
+    const dialogElement = await within(document.body).findByRole('dialog', {
+      name: 'Edit gender identity options',
+    });
+    const dialog = within(dialogElement);
+    // Wider than the readable dialog an options list opens in elsewhere, which
+    // stops at 42rem (672px) and has no room for the words beside each option.
+    await expect(
+      Number.parseFloat(getComputedStyle(dialogElement).maxWidth),
+    ).toBeGreaterThan(672);
     await expect(
       dialog.getByRole('textbox', { name: 'Attribute type' }),
     ).toHaveAttribute('readonly');
@@ -149,6 +153,60 @@ export const EditingGenderIdentityOptions: Story = {
     await expect(
       dialog.getByRole('combobox', { name: 'Option 2 kinship words' }),
     ).toHaveValue('masculine');
+  },
+};
+
+/**
+ * A new gender identity attribute, invented from its slot. It starts from the
+ * suggested options, each with its words, so the codebook's editor opens as
+ * wide as the options dialog above.
+ */
+export const CreatingAGenderIdentityAttribute: Story = {
+  globals: { appLocale: 'en' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(document.body);
+    await awaitPassiveEffects();
+
+    const label = await canvas.findByText('Gender identity', {
+      selector: 'label[id$="-label"]',
+    });
+    const field = label.closest<HTMLElement>('[data-field-name]');
+    const trigger = field?.querySelector<HTMLElement>(
+      'button[data-field-focus-target]',
+    );
+    if (trigger === null || trigger === undefined) {
+      throw new Error('the gender identity slot has no attribute picker');
+    }
+    await userEvent.click(trigger);
+
+    // Found by its own marker: the window is titled after the slot's question.
+    const attributeWindow = await waitFor(() => {
+      const found = document.body.querySelector<HTMLElement>(
+        '[data-variable-spotlight]',
+      );
+      if (found === null) throw new Error('the attribute window did not open');
+      return found;
+    });
+    await userEvent.type(
+      within(attributeWindow).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+      'gender_new',
+    );
+    await userEvent.click(
+      within(attributeWindow).getByRole('option', {
+        name: 'Create new attribute called “gender_new”.',
+      }),
+    );
+
+    const editor = await body.findByRole('dialog', {
+      name: 'Create a new gender identity attribute',
+    });
+    // Wider than the readable dialog, which stops at 42rem (672px).
+    await expect(
+      Number.parseFloat(getComputedStyle(editor).maxWidth),
+    ).toBeGreaterThan(672);
   },
 };
 

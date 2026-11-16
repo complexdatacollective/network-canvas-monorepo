@@ -133,14 +133,9 @@ describe('Protocol Migration - Extended Tests', () => {
         schemaVersion: 7,
       };
 
-      try {
-        migrateProtocol(invalidDoc, undefined, { name: 'Test Protocol' });
-      } catch (e) {
-        expect(e).toBeInstanceOf(ValidationError);
-        if (e instanceof ValidationError) {
-          expect(e.message).toContain('version 7');
-        }
-      }
+      expect(() =>
+        migrateProtocol(invalidDoc, undefined, { name: 'Test Protocol' }),
+      ).toThrow(/^Validation failed for version 7: /);
     });
 
     it('rejects invalid current-version colors instead of repairing them', () => {
@@ -224,10 +219,10 @@ describe('Protocol Migration - Extended Tests', () => {
       expect(migrated.experiments).toEqual({});
     });
 
-    it('should handle null values in optional fields', () => {
+    it('rejects a null description, which schema 7 does not allow', () => {
       const v7Doc = {
         schemaVersion: 7,
-        description: null as never,
+        description: null,
         codebook: {
           node: {},
           edge: {},
@@ -236,15 +231,12 @@ describe('Protocol Migration - Extended Tests', () => {
         stages: [],
       };
 
-      // This should either migrate successfully or throw a clear validation error
-      try {
-        const migrated = migrateProtocol(v7Doc, undefined, {
-          name: 'Test Protocol',
-        });
-        expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-      } catch (e) {
-        expect(e).toBeInstanceOf(ValidationError);
-      }
+      expect(() =>
+        migrateProtocol(v7Doc, undefined, { name: 'Test Protocol' }),
+      ).toThrow(ValidationError);
+      expect(() =>
+        migrateProtocol(v7Doc, undefined, { name: 'Test Protocol' }),
+      ).toThrow(/^Validation failed for version 7: [\s\S]*"description"/);
     });
   });
 
@@ -301,7 +293,7 @@ describe('Protocol Migration - Extended Tests', () => {
         dependencies: { name: 'Test Protocol' },
       });
 
-      // Without cache key, results should be different instances
+      expect(result1).not.toBe(result2);
       expect(result1.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(result2.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
@@ -430,15 +422,19 @@ describe('Protocol Migration - Extended Tests', () => {
           cacheKey: 'error-test',
           dependencies: { name: 'Test Protocol' },
         }),
-      ).rejects.toThrow();
+      ).rejects.toThrow(ValidationError);
 
-      // Verify nothing was cached by attempting migration again
-      await expect(
-        protocolMigrator.migrate(invalidDoc, {
-          cacheKey: 'error-test',
-          dependencies: { name: 'Test Protocol' },
-        }),
-      ).rejects.toThrow();
+      const validDoc = {
+        schemaVersion: 7,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [],
+      };
+      const migrated = await protocolMigrator.migrate(validDoc, {
+        cacheKey: 'error-test',
+        dependencies: { name: 'Test Protocol' },
+      });
+
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
   });
 

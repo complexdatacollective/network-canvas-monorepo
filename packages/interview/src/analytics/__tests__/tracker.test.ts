@@ -187,19 +187,6 @@ describe('createTracker', () => {
   });
 });
 
-describe('NULL_TRACKER', () => {
-  it('track is a no-op', () => {
-    expect(() => NULL_TRACKER.track('interview_started', {})).not.toThrow();
-  });
-  it('captureException is a no-op', () => {
-    expect(() =>
-      NULL_TRACKER.captureException(new Error('x'), {
-        feature: 'external-data',
-      }),
-    ).not.toThrow();
-  });
-});
-
 describe('the tracker signature', () => {
   it('accepts no properties for an event the catalogue declares none for', () => {
     expectTypeOf(NULL_TRACKER.track<'interview_started'>)

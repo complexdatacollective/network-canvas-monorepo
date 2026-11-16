@@ -162,6 +162,8 @@ describe('localizedTextShapeAt', () => {
     expect(() => localizedTextShapeAt(schema, ['subtitle'])).toThrow(
       'No localized text is declared at subtitle.',
     );
-    expect(() => localizedTextShapeAt(schema, ['items'])).toThrow();
+    expect(() => localizedTextShapeAt(schema, ['items'])).toThrow(
+      'No localized text is declared at items.',
+    );
   });
 });

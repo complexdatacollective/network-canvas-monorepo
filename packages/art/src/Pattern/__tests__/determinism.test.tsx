@@ -90,5 +90,26 @@ describe('determinism', () => {
         expect(markup).toContain(expectedPrimitiveForVariant[variant]);
       },
     );
+
+    it.each(PATTERN_VARIANTS)(
+      'renders the %s primitive for 50 sequential seeds',
+      (variant) => {
+        for (let i = 0; i < 50; i++) {
+          const markup = renderToStaticMarkup(
+            <Pattern
+              seed={String(i)}
+              variant={variant}
+              width={400}
+              height={250}
+            />,
+          );
+          expect(markup.startsWith('<svg')).toBe(true);
+          expect(markup).toContain(expectedPrimitiveForVariant[variant]);
+        }
+      },
+      // 50 heavy renders per variant; the first case also absorbs the jsdom
+      // environment warmup, which can exceed the 5s default on cold CI runners.
+      30000,
+    );
   });
 });

@@ -4,9 +4,6 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
-
 import { type PresentationalText } from '../../PresentationalText';
 import {
   sliderControlVariants,
@@ -65,36 +62,9 @@ function formatVasValue(
   });
 }
 
-const messages = defineMessages({
-  sliderLabel: {
-    id: 'frescoUi.visualAnalogScale.sliderLabel',
-    defaultMessage: 'Visual analog scale value',
-    description:
-      'Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control.',
-  },
-  /**
-   * What the scale announces before anything has been chosen.
-   *
-   * A native `input[type=range]` always carries an `aria-valuenow`, and the
-   * thumb has to rest somewhere, so an unanswered scale would otherwise
-   * announce its resting midpoint as though the participant had chosen it —
-   * leaving a required scale sounding answered while validation still blocks
-   * the participant. Assistive technology announces `aria-valuetext` in
-   * preference to `aria-valuenow`, so this is what actually reaches a screen
-   * reader, and it matches the muted resting thumb a sighted participant sees.
-   */
-  unansweredValue: {
-    id: 'frescoUi.visualAnalogScale.unansweredValue',
-    defaultMessage: 'No value chosen yet',
-    description:
-      'Announced in place of a number while the participant has not yet chosen a position on the scale.',
-  },
-});
-
 export default function VisualAnalogScaleField(
   props: VisualAnalogScaleFieldProps,
 ) {
-  const intl = useAppIntl();
   const format = useFieldValueFormat();
   const {
     className,
@@ -239,14 +209,16 @@ export default function VisualAnalogScaleField(
                 aria-label={
                   ariaLabelledBy
                     ? undefined
-                    : (ariaLabel ?? intl.formatMessage(messages.sliderLabel))
+                    : (ariaLabel ?? 'Visual analog scale value')
                 }
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={(_, currentValue) =>
                   hasValue
                     ? formatVasValue(format, currentValue, min, max)
-                    : intl.formatMessage(messages.unansweredValue)
+                    : // aria-valuetext wins over aria-valuenow, so an unanswered
+                      // scale announces this instead of its resting midpoint.
+                      'No value chosen yet'
                 }
               >
                 <motion.div

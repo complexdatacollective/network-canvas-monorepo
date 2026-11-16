@@ -5,6 +5,11 @@ import type { ReactNode } from 'react';
  * own language; the object form names the language the text is actually
  * written in, so the element showing it can tell the browser and assistive
  * technology (pronunciation, hyphenation, font choice, bidirectional layout).
+ *
+ * `{ text, dir: 'auto' }` is text someone wrote whose language nobody
+ * recorded: a name a researcher gave a column, an option or a stage. It reads
+ * in the direction of its own letters, so "team-b!" keeps its "!" at its end
+ * in a right-to-left interface, and keeps the page's language otherwise.
  */
 export type PresentationalText =
   | string
@@ -12,22 +17,34 @@ export type PresentationalText =
       text: string;
       lang: string;
       dir: 'ltr' | 'rtl';
+    }>
+  | Readonly<{
+      text: string;
+      dir: 'auto';
     }>;
 
-type LanguageAttributes = Readonly<{ lang?: string; dir?: 'ltr' | 'rtl' }>;
+type LanguageAttributes = Readonly<{
+  lang?: string;
+  dir?: 'ltr' | 'rtl' | 'auto';
+}>;
 
 export function isPresentationalText(
   value: unknown,
 ): value is PresentationalText {
   if (typeof value === 'string') return true;
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('text' in value) ||
+    typeof value.text !== 'string' ||
+    !('dir' in value)
+  ) {
+    return false;
+  }
+  if (value.dir === 'auto') return !('lang' in value);
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    'text' in value &&
-    typeof value.text === 'string' &&
     'lang' in value &&
     typeof value.lang === 'string' &&
-    'dir' in value &&
     (value.dir === 'ltr' || value.dir === 'rtl')
   );
 }
@@ -47,7 +64,8 @@ export function presentationalTextValue(text: PresentationalText): string {
 export function presentationalTextProps(
   value: ReactNode | PresentationalText,
 ): LanguageAttributes {
-  return isPresentationalText(value) && typeof value !== 'string'
+  if (!isPresentationalText(value) || typeof value === 'string') return {};
+  return 'lang' in value
     ? { lang: value.lang, dir: value.dir }
-    : {};
+    : { dir: 'auto' };
 }

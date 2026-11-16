@@ -72,9 +72,8 @@ function UnavailableAnswer({
           size="sm"
           variant="text"
           icon={<Pencil aria-hidden />}
-          aria-label={intl.formatMessage(
-            runtimeMessages.replaceUnavailableAnswer,
-          )}
+          aria-label="Enter a new answer"
+          lang="en"
           onClick={onReplace}
         />
       }

@@ -187,6 +187,18 @@ export const ReadOnly: Story = {
     'defaultValue': ['option1'],
     'aria-label': 'ReadOnly Options',
   },
+  // The wrapping label must be pointer-inert as well as the control: a click
+  // on the label text is otherwise forwarded to the hidden native input.
+  play: async ({ canvasElement }) => {
+    const checkboxes = within(canvasElement).getAllByRole('checkbox');
+    await expect(checkboxes.length).toBeGreaterThan(0);
+    for (const checkbox of checkboxes) {
+      await expect(getComputedStyle(checkbox).pointerEvents).toBe('none');
+      const label = checkbox.closest('label');
+      if (!label) throw new Error('Expected each checkbox inside a label');
+      await expect(getComputedStyle(label).pointerEvents).toBe('none');
+    }
+  },
 };
 
 export const WithColumns: Story = {

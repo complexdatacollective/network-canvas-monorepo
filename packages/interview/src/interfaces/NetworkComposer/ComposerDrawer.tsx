@@ -9,8 +9,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 
-import { interfaceMessages } from '../messages';
-
 type ComposerDrawerProps = {
   open: boolean;
   /** Called whenever the drawer requests to close (Escape, close button). */
@@ -129,7 +127,8 @@ export default function ComposerDrawer({
               // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a focusable window splitter (separator widget with a value); <hr> is a static, unfocusable break.
               role="separator"
               aria-orientation="vertical"
-              aria-label={intl.formatMessage(interfaceMessages.resizePanel)}
+              aria-label="Resize panel"
+              lang="en"
               aria-valuemin={MIN_WIDTH}
               aria-valuemax={MAX_WIDTH}
               aria-valuenow={Math.round(width)}

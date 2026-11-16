@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { assertType, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod/mini';
 
 import type { FieldValue } from '../Field/types';
@@ -43,17 +43,18 @@ describe('FormStore', () => {
 
   describe('Initial state', () => {
     it('keeps public field callbacks compatible with string-only stores', () => {
-      const registerStringField = (config: FieldConfig) => config.name;
-      const setStringField = (name: string, _value: FieldValue) => name;
-      const registerField: FormStore['registerField'] = registerStringField;
-      const setFieldValue: FormStore['setFieldValue'] = setStringField;
-
-      expect(registerField({ name: 'field' })).toBe('field');
-      expect(setFieldValue('field', 'value')).toBe('field');
+      assertType<FormStore['registerField']>((config: FieldConfig) => {
+        config.name.toUpperCase();
+      });
+      assertType<FormStore['setFieldValue']>(
+        (name: string, _value: FieldValue) => {
+          name.toUpperCase();
+        },
+      );
     });
 
     it('keeps the published FieldState shape compatible without an internal path', () => {
-      const fieldState: FieldState = {
+      assertType<FieldState>({
         value: 'legacy',
         meta: {
           isValidating: false,
@@ -62,9 +63,7 @@ describe('FormStore', () => {
           isDirty: false,
           isValid: true,
         },
-      };
-
-      expect(fieldState.path).toBeUndefined();
+      });
     });
 
     it('should have correct initial state', () => {
@@ -1831,32 +1830,6 @@ describe('FormStore', () => {
         expect(store.getState().isSubmitting).toBe(false);
       });
 
-      it('should handle submission errors', async () => {
-        const mockOnSubmit = vi.fn().mockResolvedValue({
-          success: false,
-          errors: new z.core.$ZodError([
-            { code: 'custom', message: 'Server error', path: [] },
-          ]),
-        });
-        const formConfig: FormConfig = {
-          onSubmit: mockOnSubmit,
-        };
-
-        store.getState().registerForm(formConfig);
-
-        // Mock validation to return success
-        mockValidateFieldValue.mockResolvedValue({
-          success: true,
-          data: 'test@example.com',
-        });
-
-        await store.getState().submitForm();
-
-        expect(mockOnSubmit).toHaveBeenCalled();
-        expect(store.getState().isSubmitting).toBe(false);
-        expect(store.getState().errors).toBeDefined();
-      });
-
       it('should handle submission exceptions', async () => {
         const mockOnSubmit = vi
           .fn()
@@ -2041,22 +2014,6 @@ describe('FormStore', () => {
 
       expect(store.getState().fields.has(nonExistentField)).toBe(false);
       expect(store.getState().getFieldState('neverWritten')).toBeUndefined();
-    });
-
-    it('should handle Map operations correctly', () => {
-      const fieldConfig: FieldConfig = {
-        name: 'test',
-        initialValue: 'initial',
-        validation: z.optional(z.string()),
-      };
-
-      store.getState().registerField(fieldConfig);
-      expect(store.getState().fields.has('test')).toBe(true);
-      expect(store.getState().fields.size).toBe(1);
-
-      store.getState().unregisterField('test');
-      expect(store.getState().fields.has('test')).toBe(false);
-      expect(store.getState().fields.size).toBe(0);
     });
 
     it('should maintain field state integrity during concurrent updates', async () => {

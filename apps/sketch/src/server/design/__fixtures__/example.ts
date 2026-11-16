@@ -62,6 +62,8 @@ export const friendshipDesign: StudyDesign = {
     itemsPerPerson: 4,
     minutes: 20,
   },
+  language: 'en',
+  endings: [],
   includeConsent: true,
   consentText:
     'This study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time.',

@@ -15,7 +15,7 @@ test.use({ locale: 'es-MX' });
 /** The header's language pill, whatever language it is currently named in. */
 function languageSwitcher(page: Page) {
   return page.getByRole('combobox', {
-    name: /^(Idioma de la interfaz|Interface language):/,
+    name: /^Interface language:/,
   });
 }
 
@@ -58,7 +58,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(switcher).toHaveText(/^Español$/);
   await expect(switcher.locator('[lang]')).toHaveAttribute('lang', 'es');
   await expect(switcher).toHaveAccessibleName(
-    'Idioma de la interfaz: Automático (Español)',
+    'Interface language: Automático (Español)',
   );
   await switcher.click();
   const popover = languagePopover(page);
@@ -106,7 +106,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await expect(languageSwitcher(page)).toHaveText(/^Español$/);
   await expect(languageSwitcher(page)).toHaveAccessibleName(
-    'Idioma de la interfaz: Automático (Español)',
+    'Interface language: Automático (Español)',
   );
 });
 

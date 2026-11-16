@@ -1137,14 +1137,19 @@ export const BackgroundImage: Story = {
       const image = canvasElement.querySelector<HTMLImageElement>(
         '[data-testid="narrative"] [role="application"] img[aria-hidden="true"][alt=""]',
       );
-      expect(image).not.toBeNull();
+      if (!image) throw new Error('The background image has not rendered');
       return image;
     });
 
-    expect(backgroundImage).toHaveClass(
-      'size-full',
-      'object-contain',
-      'object-center',
+    // The whole image shows, filling the canvas it sits in.
+    await expect(getComputedStyle(backgroundImage).objectFit).toBe('contain');
+    const frame = backgroundImage.parentElement;
+    if (!frame) throw new Error('The background image has no container');
+    await expect(backgroundImage.getBoundingClientRect().width).toBe(
+      frame.getBoundingClientRect().width,
+    );
+    await expect(backgroundImage.getBoundingClientRect().height).toBe(
+      frame.getBoundingClientRect().height,
     );
   },
 };

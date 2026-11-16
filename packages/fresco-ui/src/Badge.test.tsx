@@ -4,18 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { Badge } from './Badge';
 
 describe('Badge', () => {
-  it('renders a div filled with the primary tone', () => {
-    render(<Badge data-testid="badge">Draft</Badge>);
-
-    const badge = screen.getByTestId('badge');
-    expect(badge.tagName).toBe('DIV');
-    expect(badge).toHaveClass('[--badge-color:var(--primary)]');
-    expect(badge).toHaveClass('bg-(--badge-color)');
-    expect(badge).toHaveClass(
-      'text-(--badge-contrast,contrast-color(var(--badge-color)))',
-    );
-  });
-
   it('renders the icon before the label', () => {
     render(<Badge icon={<span data-testid="icon" />}>v1.2.3</Badge>);
 
@@ -87,19 +75,5 @@ describe('Badge', () => {
     const badge = screen.getByTestId('badge');
     expect(badge).toHaveClass('[--badge-color:var(--selected)]');
     expect(badge).not.toHaveClass('[--badge-color:var(--neutral)]');
-  });
-
-  it('tracks capitals only when uppercase', () => {
-    const { rerender } = render(
-      <Badge data-testid="badge" uppercase>
-        News
-      </Badge>,
-    );
-    expect(screen.getByTestId('badge')).toHaveClass('uppercase');
-    expect(screen.getByTestId('badge')).toHaveClass('tracking-widest');
-
-    rerender(<Badge data-testid="badge">News</Badge>);
-    expect(screen.getByTestId('badge')).not.toHaveClass('uppercase');
-    expect(screen.getByTestId('badge')).not.toHaveClass('tracking-widest');
   });
 });

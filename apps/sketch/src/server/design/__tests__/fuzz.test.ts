@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import {
   findVariableRoleConflicts,
   type VersionedProtocol,
+  needsFallbackLanguage,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
@@ -171,6 +172,7 @@ describe('mutation fuzzer', () => {
             compiled++;
             const result = await validateProtocol(
               protocol as VersionedProtocol,
+              { draft: needsFallbackLanguage(design.language || 'en') },
             );
             if (!result.success)
               failures.push(

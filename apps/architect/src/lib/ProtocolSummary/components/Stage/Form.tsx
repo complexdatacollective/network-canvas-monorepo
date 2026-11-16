@@ -6,7 +6,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
-import { getVariableMeta } from '../helpers';
+import { ControlName, getVariableMeta } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
 import {
@@ -53,7 +53,7 @@ const Form = ({ form = null }: FormProps) => {
       const meta = getVariableMeta(index, variable);
       return [
         <Variable key={`var-${variable}`} id={variable} />,
-        <span key={`comp-${variable}`}>{meta.component ?? ''}</span>,
+        <ControlName key={`comp-${variable}`} component={meta.component} />,
         <SummaryMarkdown key={`prompt-${variable}`} value={prompt} />,
       ];
     }) ?? [];

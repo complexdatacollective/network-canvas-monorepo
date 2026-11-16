@@ -6,6 +6,12 @@ import type { NcNetwork } from '@codaco/shared-consts';
 declare module '*.css';
 
 declare global {
+  // Set by the e2e builds (run.sh, the CI job): turns off Motion and Base UI
+  // animations so every check sees the page where it comes to rest.
+  interface ImportMetaEnv {
+    readonly VITE_DISABLE_ANIMATIONS?: string;
+  }
+
   // Injected at build time by `vite.renderer.config.ts` (read from
   // apps/interviewer/package.json `version`). Renderer-only.
   const __APP_VERSION__: string;

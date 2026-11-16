@@ -66,7 +66,10 @@ const Asset = ({ id, size = null }: AssetProps) => {
         <MiniTable
           rotated
           rows={[
-            [intl.formatMessage(summaryMessages.name), name],
+            [
+              intl.formatMessage(summaryMessages.name),
+              <bdi key="name">{name}</bdi>,
+            ],
             ...(size
               ? [[intl.formatMessage(summaryMessages.blockSize), size]]
               : []),
@@ -94,7 +97,10 @@ const Asset = ({ id, size = null }: AssetProps) => {
         <MiniTable
           rotated
           rows={[
-            [intl.formatMessage(summaryMessages.name), name],
+            [
+              intl.formatMessage(summaryMessages.name),
+              <bdi key="name">{name}</bdi>,
+            ],
             ...(size
               ? [[intl.formatMessage(summaryMessages.blockSize), size]]
               : []),
@@ -129,7 +135,10 @@ const Asset = ({ id, size = null }: AssetProps) => {
         <MiniTable
           rotated
           rows={[
-            [intl.formatMessage(summaryMessages.name), name],
+            [
+              intl.formatMessage(summaryMessages.name),
+              <bdi key="name">{name}</bdi>,
+            ],
             ...(size
               ? [[intl.formatMessage(summaryMessages.blockSize), size]]
               : []),
@@ -161,14 +170,21 @@ const Asset = ({ id, size = null }: AssetProps) => {
         <MiniTable
           rotated
           rows={[
-            [intl.formatMessage(summaryMessages.name), name],
+            [
+              intl.formatMessage(summaryMessages.name),
+              <bdi key="name">{name}</bdi>,
+            ],
             [
               intl.formatMessage(summaryMessages.type),
               intl.formatMessage(summaryMessages.network),
             ],
             [
               intl.formatMessage(summaryMessages.attributes),
-              intl.formatList(variables),
+              intl.formatList(
+                variables.map((variable) => (
+                  <bdi key={variable}>{variable}</bdi>
+                )),
+              ),
             ],
           ]}
         />
@@ -178,7 +194,10 @@ const Asset = ({ id, size = null }: AssetProps) => {
         <MiniTable
           rotated
           rows={[
-            [intl.formatMessage(summaryMessages.name), name],
+            [
+              intl.formatMessage(summaryMessages.name),
+              <bdi key="name">{name}</bdi>,
+            ],
             [
               intl.formatMessage(summaryMessages.type),
               intl.formatMessage(summaryMessages.geoJSON),
@@ -191,7 +210,10 @@ const Asset = ({ id, size = null }: AssetProps) => {
         <MiniTable
           rotated
           rows={[
-            [intl.formatMessage(summaryMessages.name), name],
+            [
+              intl.formatMessage(summaryMessages.name),
+              <bdi key="name">{name}</bdi>,
+            ],
             [
               intl.formatMessage(summaryMessages.type),
               intl.formatMessage(summaryMessages.aPIKey),

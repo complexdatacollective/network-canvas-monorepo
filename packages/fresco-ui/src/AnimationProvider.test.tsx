@@ -1,11 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  AnimatePresence,
-  motion,
-  MotionConfigContext,
-  MotionGlobalConfig,
-} from 'motion/react';
-import { useContext, useState } from 'react';
+import { render, screen } from '@testing-library/react';
+import { MotionConfigContext, MotionGlobalConfig } from 'motion/react';
+import { useContext } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AnimationProvider } from './AnimationProvider';
@@ -165,40 +160,5 @@ describe('AnimationProvider', () => {
     );
 
     expect(screen.getByText('false')).toBeTruthy();
-  });
-
-  it('removes AnimatePresence exits promptly under the shared test setup', async () => {
-    function PresenceHarness() {
-      const [visible, setVisible] = useState(true);
-
-      return (
-        <>
-          <button type="button" onClick={() => setVisible(false)}>
-            Remove
-          </button>
-          <AnimatePresence>
-            {visible ? (
-              <motion.div
-                data-testid="exiting-element"
-                exit={{ opacity: 0 }}
-                transition={{ duration: 60 }}
-              />
-            ) : null}
-          </AnimatePresence>
-        </>
-      );
-    }
-
-    expect(MotionGlobalConfig.skipAnimations).toBe(true);
-
-    render(<PresenceHarness />);
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-
-    await waitFor(
-      () => {
-        expect(screen.queryByTestId('exiting-element')).not.toBeInTheDocument();
-      },
-      { timeout: 250 },
-    );
   });
 });

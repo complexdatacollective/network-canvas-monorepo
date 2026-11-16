@@ -108,8 +108,6 @@ export function PedigreeViewport({
   foreground,
   children,
 }: PedigreeViewportProps) {
-  const intl = useAppIntl();
-
   // Focus inside the family, or in what is drawn over it, is kept in view
   // as it zooms.
   const focusOf = (target: EventTarget): ZoomFocus | undefined => {
@@ -132,7 +130,7 @@ export function PedigreeViewport({
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegated: keys and clicks reach the region from the focusable people drawn inside it; the region itself is not a control.
     <section
       ref={viewportRef}
-      aria-label={intl.formatMessage(messages.canvasLabel)}
+      aria-label="Your family"
       className="relative min-h-0 w-full flex-1 cursor-grab touch-none overflow-clip select-none"
       onKeyDown={handleKeyDown}
       onBlur={onBlur}

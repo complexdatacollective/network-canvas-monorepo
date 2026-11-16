@@ -267,8 +267,6 @@ describe('filter', () => {
       expect(result.edges.length).toEqual(3);
     });
 
-    it.todo('can filter edges by type (not)');
-
     it('can filter edges by attribute', () => {
       const filterConfig = {
         rules: [
@@ -318,6 +316,4 @@ describe('Edge cases', () => {
     expect(names).toEqual(['Person 1', 'Person 2', 'Org 1', 'Org 2']);
     expect(result.edges.length).toEqual(2);
   });
-
-  it.todo('Handles rule order without changing the result');
 });

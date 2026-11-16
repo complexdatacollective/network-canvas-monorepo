@@ -24,6 +24,7 @@ export default defineConfig({
       'dist',
       'src/__tests__/testHelpers.js',
       'src/utils/netcanvasFile/__tests__/helpers.js',
+      'src/components/sections/CategoricalBinPrompts/__tests__/testPromptFields.jsx',
     ],
     css: true,
     server: {

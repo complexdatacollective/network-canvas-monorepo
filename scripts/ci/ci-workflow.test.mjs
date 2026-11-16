@@ -2840,23 +2840,27 @@ test('the native E2E lane cannot touch pixel baselines', () => {
   }
 });
 
-test('Architect E2E builds disable both animation systems', () => {
-  assert.equal(
-    ciJob('architect-e2e-native').env?.VITE_DISABLE_ANIMATIONS,
-    'true',
-    'the native build disables Motion and Base UI animations',
-  );
+for (const app of ['architect', 'interviewer']) {
+  test(`${app} E2E builds disable both animation systems`, () => {
+    assert.equal(
+      ciJob(`${app}-e2e-native`).env?.VITE_DISABLE_ANIMATIONS,
+      'true',
+      'the native build disables Motion and Base UI animations',
+    );
 
-  const dockerRunner = readFileSync(
-    new URL('../../apps/architect/e2e/scripts/run.sh', import.meta.url),
-    'utf8',
-  );
-  assert.match(
-    dockerRunner,
-    /-e VITE_DISABLE_ANIMATIONS=true/,
-    'the Docker build disables Motion and Base UI animations',
-  );
-});
+    const dockerRunner = codeOf(
+      readFileSync(
+        new URL(`../../apps/${app}/e2e/scripts/run.sh`, import.meta.url),
+        'utf8',
+      ),
+    );
+    assert.match(
+      dockerRunner,
+      /-e VITE_DISABLE_ANIMATIONS=true/,
+      'the Docker build disables Motion and Base UI animations',
+    );
+  });
+}
 
 test('release job refuses a first publication on the publish path before changesets/action', () => {
   const releaseJob = ciJob('release');

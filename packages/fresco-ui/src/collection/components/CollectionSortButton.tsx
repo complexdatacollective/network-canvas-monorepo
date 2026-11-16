@@ -4,9 +4,6 @@ import { ArrowUpIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useShallow } from 'zustand/shallow';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
-
 import { Button, type ButtonProps } from '../../Button';
 import { cx } from '../../utils/cva';
 import { useCollectionStore, useOptionalSortManager } from '../contexts';
@@ -16,18 +13,6 @@ import type {
   SortProperty,
   SortType,
 } from '../sorting/types';
-
-const messages = defineMessages({
-  // One whole message selected over the combined active/direction state —
-  // never assembled from a base string plus a parenthetical fragment.
-  accessibleName: {
-    id: 'frescoUi.collectionSortButton.accessibleName',
-    defaultMessage:
-      '{state, select, ascending {Sort by {label} (ascending)} descending {Sort by {label} (descending)} other {Sort by {label}}}',
-    description:
-      'Accessible name of a sort button; {state} is "ascending" or "descending" while this sort is active, and "inactive" otherwise. {label} is the host-supplied field name.',
-  },
-});
 
 const MotionArrowIcon = motion.create(ArrowUpIcon);
 
@@ -75,7 +60,6 @@ export function CollectionSortButton({
   variant = 'default',
   size = 'md',
 }: CollectionSortButtonProps) {
-  const intl = useAppIntl();
   const sortManager = useOptionalSortManager();
 
   // Subscribe directly to the sort state we render. SortManager is stable,
@@ -124,15 +108,11 @@ export function CollectionSortButton({
         className,
       )}
       aria-pressed={isActive}
-      aria-label={intl.formatMessage(messages.accessibleName, {
-        state:
-          direction === null
-            ? 'inactive'
-            : direction === 'asc'
-              ? 'ascending'
-              : 'descending',
-        label,
-      })}
+      aria-label={
+        direction === null
+          ? `Sort by ${label}`
+          : `Sort by ${label} (${direction === 'asc' ? 'ascending' : 'descending'})`
+      }
       icon={
         showDirectionIndicator && isActive ? (
           <MotionArrowIcon

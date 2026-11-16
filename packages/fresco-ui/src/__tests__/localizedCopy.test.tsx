@@ -1,21 +1,22 @@
-// The release note claims every piece of copy the components supply
-// themselves renders through @codaco/app-i18n. This is what holds it to that
-// for the strings with no caller-supplied alternative — accessible names,
-// live-region announcements and the two failure messages a person only sees
-// when something has already gone wrong, which are exactly the ones nobody
-// notices staying English.
+// The copy the components supply themselves, for the strings with no
+// caller-supplied alternative. Two rules hold it:
+//
+// - Text a person sees, such as the two failure messages they only meet when
+//   something has already gone wrong, renders through @codaco/app-i18n.
+// - Text only a screen reader reads (accessible names, value text, visually
+//   hidden markers, live-region announcements) stays English in every
+//   language, marked `lang="en"` where it does not share an element with
+//   translated text (`@codaco/app-i18n`'s README).
 //
 // The oracle is the pseudo-locale rather than a per-string catalog. `en-XA`
-// accents and brackets whatever `formatMessage` returns, so `[Prögréss
-// îñdîcåtör··]` is proof the string went through the formatter and `Progress
-// indicator` is proof it did not — one assertion shape for every site, and
-// one that cannot be satisfied by a literal that happens to match.
+// accents and brackets whatever `formatMessage` returns, so `[Sömé
+// tëxt··]` is proof a string went through the formatter, and plain English
+// under it is proof it did not.
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode, useEffect } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { pseudoAppLocale, PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
-import { createAppIntl } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
 import { Alert } from '../Alert';
@@ -57,7 +58,7 @@ function Pseudo({ children }: { children: ReactNode }) {
 }
 
 describe('the accessible names the components supply themselves', () => {
-  it('names an unlabelled progress bar through the formatter', () => {
+  it('names an unlabelled progress bar in English, whatever the interface language', () => {
     render(
       <Pseudo>
         <ProgressBar percentProgress={40} />
@@ -65,10 +66,11 @@ describe('the accessible names the components supply themselves', () => {
     );
 
     const bar = screen.getByRole('progressbar');
-    expect(wentThroughTheFormatter(bar.getAttribute('aria-label'))).toBe(true);
+    expect(bar).toHaveAttribute('aria-label', 'Progress indicator');
+    expect(bar).toHaveAttribute('lang', 'en');
   });
 
-  it('names an unlabelled panel separator through the formatter', () => {
+  it('names an unlabelled panel separator in English, whatever the interface language', () => {
     render(
       <Pseudo>
         <ResizableFlexPanel storageKey="localized-copy-test">
@@ -79,42 +81,39 @@ describe('the accessible names the components supply themselves', () => {
     );
 
     const handle = screen.getByRole('slider');
-    expect(wentThroughTheFormatter(handle.getAttribute('aria-label'))).toBe(
-      true,
-    );
+    expect(handle).toHaveAttribute('aria-label', 'Resize panels');
+    expect(handle).toHaveAttribute('lang', 'en');
   });
 
-  it('names the number steppers through the formatter', () => {
-    const { container } = render(
+  it('names the number steppers in English, whatever the interface language', () => {
+    render(
       <Pseudo>
         <InputField type="number" name="count" value="1" step={1} />
       </Pseudo>,
     );
 
-    const stepperLabels = Array.from(
-      container.querySelectorAll('button[aria-label]'),
-    ).map((button) => button.getAttribute('aria-label'));
-
-    expect(stepperLabels.length).toBe(2);
-    for (const label of stepperLabels) {
-      expect(wentThroughTheFormatter(label)).toBe(true);
+    for (const name of ['Decrease value', 'Increase value']) {
+      expect(screen.getByRole('button', { name })).toHaveAttribute(
+        'lang',
+        'en',
+      );
     }
   });
 
-  it('names an unlabelled analog scale thumb through the formatter', () => {
+  it('names an unlabelled analog scale thumb in English, whatever the interface language', () => {
     const { container } = render(
       <Pseudo>
         <VisualAnalogScaleField name="feeling" value={0.5} />
       </Pseudo>,
     );
 
-    const thumb = container.querySelector('[aria-label]');
-    expect(wentThroughTheFormatter(thumb?.getAttribute('aria-label'))).toBe(
-      true,
+    expect(container.querySelector('[aria-label]')).toHaveAttribute(
+      'aria-label',
+      'Visual analog scale value',
     );
   });
 
-  it('names an unlabelled Likert thumb, and its empty value, through the formatter', () => {
+  it('names an unlabelled Likert thumb, and its empty value, in English, whatever the interface language', () => {
     const { container } = render(
       <Pseudo>
         <LikertScaleField
@@ -127,20 +126,20 @@ describe('the accessible names the components supply themselves', () => {
       </Pseudo>,
     );
 
-    const thumb = container.querySelector('[aria-label]');
-    expect(wentThroughTheFormatter(thumb?.getAttribute('aria-label'))).toBe(
-      true,
+    expect(container.querySelector('[aria-label]')).toHaveAttribute(
+      'aria-label',
+      'Select value on scale',
     );
 
     // Nothing is selected, so the announced value is the component's own
     // "No selection" rather than an option label.
-    const slider = container.querySelector('[aria-valuetext]');
-    expect(
-      wentThroughTheFormatter(slider?.getAttribute('aria-valuetext')),
-    ).toBe(true);
+    expect(container.querySelector('[aria-valuetext]')).toHaveAttribute(
+      'aria-valuetext',
+      'No selection',
+    );
   });
 
-  it('announces an unanswered analog scale through the formatter', () => {
+  it('announces an unanswered analog scale in English, whatever the interface language', () => {
     const { container } = render(
       <Pseudo>
         <VisualAnalogScaleField name="feeling" />
@@ -149,38 +148,35 @@ describe('the accessible names the components supply themselves', () => {
 
     // With no value the thumb rests on the midpoint, so what stops the scale
     // sounding answered is this string rather than a number.
-    const slider = container.querySelector('[aria-valuetext]');
-    expect(
-      wentThroughTheFormatter(slider?.getAttribute('aria-valuetext')),
-    ).toBe(true);
+    expect(container.querySelector('[aria-valuetext]')).toHaveAttribute(
+      'aria-valuetext',
+      'No value chosen yet',
+    );
   });
 
-  it('names a code field, and every box in it, through the formatter', () => {
+  it('names a code field, and every box in it, in English, whatever the interface language', () => {
     const { container } = render(
       <Pseudo>
         <SegmentedCodeField name="pin" segments={3} sensitive />
       </Pseudo>,
     );
 
-    expect(
-      wentThroughTheFormatter(
-        container.querySelector('fieldset')?.getAttribute('aria-label'),
-      ),
-    ).toBe(true);
-
-    // The masked boxes are the harder case: a name assembled as a shared stem
-    // plus an appended ", hidden" would leave that suffix outside the
-    // brackets, so this also holds the two variants to being whole messages.
-    const boxes = Array.from(container.querySelectorAll('input')).map((input) =>
-      input.getAttribute('aria-label'),
+    expect(container.querySelector('fieldset')).toHaveAttribute(
+      'aria-label',
+      'Code input',
     );
-    expect(boxes.length).toBe(3);
-    for (const box of boxes) {
-      expect(wentThroughTheFormatter(box)).toBe(true);
-    }
+    expect(
+      Array.from(container.querySelectorAll('input')).map((input) =>
+        input.getAttribute('aria-label'),
+      ),
+    ).toEqual([
+      'Digit 1 of 3, hidden',
+      'Digit 2 of 3, hidden',
+      'Digit 3 of 3, hidden',
+    ]);
   });
 
-  it('names the split button’s icon-only segment through the formatter', () => {
+  it('names the split button’s icon-only segment in English, whatever the interface language', () => {
     render(
       <Pseudo>
         <SplitButton
@@ -193,17 +189,13 @@ describe('the accessible names the components supply themselves', () => {
     );
 
     // The segment shows no text, so this fallback is the only name it has.
-    const named = screen
-      .getAllByRole('button')
-      .map((button) => button.getAttribute('aria-label'))
-      .filter((label) => label !== null);
-    expect(named.length).toBe(1);
-    expect(wentThroughTheFormatter(named[0])).toBe(true);
+    const segment = screen.getByRole('button', { name: 'Open options' });
+    expect(segment).toHaveAttribute('lang', 'en');
   });
 });
 
 describe('the markers a field renders around its control', () => {
-  it('marks a required field through the formatter', () => {
+  it('marks a required field in English, whatever the interface language', () => {
     const { container } = render(
       <Pseudo>
         <BaseField id="pet" label="Pet" required>
@@ -215,12 +207,13 @@ describe('the markers a field renders around its control', () => {
     const marker = container.querySelector(
       `#${fieldElementIds('pet').required}`,
     );
-    expect(wentThroughTheFormatter(marker?.textContent)).toBe(true);
+    expect(marker?.textContent).toBe('Required');
+    expect(marker).toHaveAttribute('lang', 'en');
   });
 });
 
 describe('the kind an alert announces before its content', () => {
-  it('names the variant through the formatter', () => {
+  it('names the variant in English, whatever the interface language', () => {
     const { container } = render(
       <Pseudo>
         <Alert variant="warning">Careful</Alert>
@@ -229,9 +222,9 @@ describe('the kind an alert announces before its content', () => {
 
     // Sighted readers get this from the colour and icon; the visually hidden
     // prefix is where a screen-reader user gets it, separator and all.
-    expect(container.querySelector('.sr-only')?.textContent).toMatch(
-      /^\[.+\]: $/,
-    );
+    const prefix = container.querySelector('.sr-only');
+    expect(prefix?.textContent).toBe('Warning: ');
+    expect(prefix).toHaveAttribute('lang', 'en');
   });
 });
 
@@ -306,82 +299,27 @@ describe('the failure messages the form layer supplies itself', () => {
 });
 
 describe('the drag-and-drop live-region announcements', () => {
-  // These are pure functions rather than components, so they take the host's
-  // formatter as an argument. A catalog stands in for a translation here,
-  // because the pseudo-locale wrapper lives in the provider.
-  const TRANSLATED = 'ALGO EN OTRO IDIOMA';
-  const translating = (id: string) =>
-    createAppIntl({ locale: 'en', messages: { [id]: TRANSLATED } });
-
-  it('formats a drop-target description through the supplied formatter', () => {
-    expect(
-      getDropTargetDescription(
-        0,
-        3,
-        undefined,
-        translating('frescoUi.dragAndDrop.dropTarget'),
-      ),
-    ).toBe(TRANSLATED);
-  });
-
-  it('formats a named drop-target description through the supplied formatter', () => {
-    expect(
-      getDropTargetDescription(
-        0,
-        3,
-        'Bin',
-        translating('frescoUi.dragAndDrop.namedDropTarget'),
-      ),
-    ).toBe(TRANSLATED);
-  });
-
-  it('formats a cancelled drag through the supplied formatter', () => {
-    expect(
-      getKeyboardDragAnnouncement(
-        'cancel',
-        undefined,
-        translating('frescoUi.dragAndDrop.cancelled'),
-      ),
-    ).toBe(TRANSLATED);
-  });
-
-  it('formats a drop through the supplied formatter', () => {
-    expect(
-      getKeyboardDragAnnouncement(
-        'drop',
-        'somewhere',
-        translating('frescoUi.dragAndDrop.dropped'),
-      ),
-    ).toBe(TRANSLATED);
-  });
-
-  it('formats a navigation with no description through the supplied formatter', () => {
-    expect(
-      getKeyboardDragAnnouncement(
-        'navigate',
-        undefined,
-        translating('frescoUi.dragAndDrop.navigated'),
-      ),
-    ).toBe(TRANSLATED);
-  });
-
-  it('formats the start of a drag, and its instructions, through the supplied formatter', () => {
-    const started = getKeyboardDragAnnouncement(
-      'start',
-      'a thing',
-      translating('frescoUi.dragAndDrop.started'),
+  it('describes a drop target in English', () => {
+    expect(getDropTargetDescription(0, 3)).toBe('Drop target 1 of 3');
+    expect(getDropTargetDescription(1, 3, 'Bin')).toBe(
+      'Drop target 2 of 3: Bin',
     );
-    expect(started).toContain(TRANSLATED);
-
-    const instructions = getKeyboardDragAnnouncement(
-      'start',
-      'a thing',
-      translating('frescoUi.dragAndDrop.instructions'),
-    );
-    expect(instructions).toContain(TRANSLATED);
   });
 
-  it('announces a keyboard grab through the formatter', async () => {
+  it('announces each keyboard drag step in English', () => {
+    expect(getKeyboardDragAnnouncement('cancel')).toBe('Drag cancelled');
+    expect(getKeyboardDragAnnouncement('drop', 'somewhere')).toBe(
+      'Dropped item. somewhere',
+    );
+    expect(getKeyboardDragAnnouncement('navigate')).toBe(
+      'Navigated to drop target',
+    );
+    expect(getKeyboardDragAnnouncement('start', 'a thing')).toBe(
+      'Started dragging. a thing Use arrow keys to navigate between drop targets. Press Space or Enter to drop. Press Escape to cancel.',
+    );
+  });
+
+  it('announces a keyboard grab in English, in a region marked English', async () => {
     function Draggable() {
       const { dragProps } = useDragSource({ type: 'thing' });
       return <div {...dragProps}>a thing</div>;
@@ -402,17 +340,20 @@ describe('the drag-and-drop live-region announcements', () => {
 
     await waitFor(() => {
       const region = document.querySelector('[role="status"]');
-      expect(wentThroughTheFormatter(region?.textContent)).toBe(true);
+      expect(region?.textContent).toBe(
+        'Item grabbed, use arrow keys to navigate to drop targets, press Escape to cancel',
+      );
+      expect(region).toHaveAttribute('lang', 'en');
+      expect(region).toHaveAttribute('dir', 'ltr');
     });
 
-    // And abandoning it announces through the formatter too — its own
-    // message, from its own call site.
     fireEvent.keyDown(source, { key: 'Escape' });
 
     await waitFor(() => {
       const region = document.querySelector('[role="status"]');
-      expect(region?.textContent).not.toBe('');
-      expect(wentThroughTheFormatter(region?.textContent)).toBe(true);
+      expect(region?.textContent).toBe(
+        'Drop cancelled, Item returned to original position',
+      );
     });
   });
 });

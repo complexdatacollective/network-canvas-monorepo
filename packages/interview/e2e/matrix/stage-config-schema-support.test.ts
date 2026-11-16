@@ -160,21 +160,6 @@ describe('stage config schema support (skipLogic / filter)', () => {
     matrix = computeMatrix();
   });
 
-  it('prints the observed skipLogic / filter support matrix', () => {
-    console.table(
-      matrix.map((r) => ({
-        interfaceType: r.interfaceType,
-        authorable: r.authorable,
-        controlParses: r.authorable ? r.controlParses : '-',
-        schemaDefinesFilter: r.schemaDefinesFilter ?? '-',
-        acceptsSkipLogic: r.acceptsSkipLogic,
-        acceptsFilter: r.acceptsFilter,
-      })),
-    );
-
-    expect(matrix).toHaveLength(ALL_SUITES.length);
-  });
-
   it('every skipLogic / filter inventory + shared claim is backed by schema acceptance', () => {
     const claimed = new Set<string>(sharedSuiteClaims);
     for (const [iface, keys] of Object.entries(OPTION_INVENTORY)) {
@@ -205,6 +190,7 @@ describe('stage config schema support (skipLogic / filter)', () => {
   });
 
   it('control: every authorable stage config validates unmodified', () => {
+    expect(matrix.some((r) => r.authorable)).toBe(true);
     const failures = matrix
       .filter((r) => r.authorable && !r.controlParses)
       .map((r) => r.interfaceType);
@@ -225,6 +211,7 @@ describe('stage config schema support (skipLogic / filter)', () => {
   });
 
   it('filter acceptance is consistent with the stage schema defining a filter key', () => {
+    expect(matrix.some((r) => r.authorable)).toBe(true);
     const inconsistent = matrix
       .filter((r) => r.authorable && r.acceptsFilter !== r.schemaDefinesFilter)
       .map(

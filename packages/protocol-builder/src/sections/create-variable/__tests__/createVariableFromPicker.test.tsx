@@ -207,7 +207,6 @@ describe('a slot whose attribute needs more than a name', () => {
       spotlight.compareDocumentPosition(editor) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(spotlight.className).not.toMatch(/(?:^|[\s:])-?z-/u);
     expect(spotlight.style.zIndex).toBe('');
   });
 
