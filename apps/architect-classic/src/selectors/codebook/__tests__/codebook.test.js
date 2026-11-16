@@ -1,9 +1,19 @@
 /* eslint-env jest */
 
-import { getVariableOptionsForSubject, makeGetVariable } from '..';
+import {
+  getAllVariablesByUUID,
+  getVariableOptionsForSubject,
+  makeGetVariable,
+} from '..';
 import testState from '../../../__tests__/testState.json';
 
 describe('codebook selectors', () => {
+  describe('getAllVariablesByUUID()', () => {
+    it('returns an empty object when the codebook has no node, edge or ego', () => {
+      expect(getAllVariablesByUUID({})).toEqual({});
+    });
+  });
+
   describe('getVariableOptionsForSubject()', () => {
     it('extracts variables for nodeType into options list for node entity', () => {
       const subject = {
