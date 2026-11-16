@@ -4,9 +4,11 @@ import {
   applyOperations,
   fixFits,
   fixInEffect,
+  markMoves,
   planFix,
   type StoredOperation,
   writtenHolds,
+  writtenStands,
 } from '../fixEngine';
 import { formatPath, parsePath, readPath } from '../fixPath';
 import { op } from './fixtures';
@@ -271,6 +273,17 @@ describe('fixFits', () => {
   });
 });
 
+/** A fix planned with no normalisation: its result, inverse and what it wrote. */
+const writtenBy = (root: unknown, operations: StoredOperation[]) => {
+  const plan = planFix(root, operations, (raw) => raw);
+  if (!plan.ok) throw new Error(`failed: ${plan.reason}`);
+  return plan;
+};
+
+/** What a fix would leave, planned against the document that was reviewed. */
+const expectedOf = (root: unknown, operations: StoredOperation[]) =>
+  writtenBy(root, operations).written;
+
 describe('fixInEffect', () => {
   it('holds once the protocol already has what every edit writes, however it got there', () => {
     const operations = [
@@ -278,33 +291,74 @@ describe('fixInEffect', () => {
       op('set', '/stages/a/label', 'Better'),
       op('insert', '/stages/-', { id: 'new', label: 'New' }),
     ];
-    expect(fixInEffect(doc(), operations)).toBe(false);
+    const expected = expectedOf(doc(), operations);
+    expect(fixInEffect(doc(), operations, expected)).toBe(false);
     const done = apply(doc(), [
       op('remove', '/stages/b~1c'),
       op('insert', '/stages/a', { id: 'new', label: 'New' }),
       op('set', '/stages/a/label', 'Better'),
     ]).result;
-    expect(fixInEffect(done, operations)).toBe(true);
+    expect(fixInEffect(done, operations, expected)).toBe(true);
   });
 
   it('does not hold while any edit would still change the protocol', () => {
+    const operations = [
+      op('remove', '/stages/b~1c'),
+      op('set', '/stages/a/label', 'Better'),
+    ];
     const removed = apply(doc(), [op('remove', '/stages/b~1c')]).result;
     expect(
-      fixInEffect(removed, [
-        op('remove', '/stages/b~1c'),
-        op('set', '/stages/a/label', 'Better'),
-      ]),
+      fixInEffect(removed, operations, expectedOf(doc(), operations)),
     ).toBe(false);
-    expect(fixInEffect(removed, [])).toBe(false);
+    expect(fixInEffect(removed, [], [])).toBe(false);
+  });
+
+  it('holds when applying the fix would change nothing, with nothing recorded to compare', () => {
+    const operations = [op('set', '/stages/a/label', 'A')];
+    expect(fixInEffect(doc(), operations, null)).toBe(true);
+    expect(fixInEffect(doc(), [op('set', '/stages/a/label', 'B')], null)).toBe(
+      false,
+    );
+  });
+
+  it('is not taken from a removal by index that no longer resolves', () => {
+    // The third option is still there; the list is only shorter.
+    const removal = [op('remove', '/codebook/node/person/options/2')];
+    const expected = expectedOf(doc(), removal);
+    const shorter = apply(doc(), [
+      op('remove', '/codebook/node/person/options/0'),
+    ]).result;
+    expect(
+      readPath(shorter, ['codebook', 'node', 'person', 'options']),
+    ).toEqual({ found: true, value: ['y', 'z'] });
+    expect(fixInEffect(shorter, removal, expected)).toBe(false);
+    expect(fixInEffect(shorter, removal, null)).toBe(false);
+    // Removed by hand, it is.
+    const removedByHand = apply(doc(), [
+      op('remove', '/codebook/node/person/options/2'),
+    ]).result;
+    expect(fixInEffect(removedByHand, removal, expected)).toBe(true);
+  });
+
+  it('is not taken from a removal by index after another fix gives a member of the list an id', () => {
+    const form = () => ({
+      fields: [{ variable: 'a' }, { variable: 'flagged' }],
+    });
+    const removal = [op('remove', '/fields/1')];
+    const { targets } = apply(form(), removal);
+    const expected = expectedOf(form(), removal);
+    const withNewField = apply(form(), [
+      op('insert', '/fields/-', { id: 'new', variable: 'c' }),
+    ]).result;
+    // The question is still in the form, still reached by its index, and the
+    // fix that removes it can still be made.
+    expect(fixInEffect(withNewField, removal, expected)).toBe(false);
+    expect(fixFits(withNewField, removal, targets)).toBe(true);
+    expect(apply(withNewField, removal).result).toEqual({
+      fields: [{ variable: 'a' }, { id: 'new', variable: 'c' }],
+    });
   });
 });
-
-/** A fix planned with no normalisation: its result, inverse and what it wrote. */
-const writtenBy = (root: unknown, operations: StoredOperation[]) => {
-  const plan = planFix(root, operations, (raw) => raw);
-  if (!plan.ok) throw new Error(`failed: ${plan.reason}`);
-  return plan;
-};
 
 describe('writtenHolds', () => {
   it('holds once applied, and not after the inverse', () => {
@@ -452,8 +506,187 @@ describe('a fix that moves a member of an array', () => {
   });
 });
 
+describe('a move the review wrote as a remove and an insert of an exact copy', () => {
+  const doc3 = () => ({
+    stages: [
+      { id: 'a', label: 'A' },
+      { id: 'b', label: 'B' },
+      { id: 'c', label: 'C', items: [{ id: 'i', text: 'one' }] },
+    ],
+  });
+  const idsOf = (root: unknown) =>
+    (root as ReturnType<typeof doc3>).stages.map((s) => s.id);
+  const stageC = (root: unknown) =>
+    (root as ReturnType<typeof doc3>).stages.find((s) => s.id === 'c');
+  /** Moves stage c to the start, as the review writes it. */
+  const moveC = () =>
+    markMoves(doc3(), [
+      op('remove', '/stages/c'),
+      op('insert', '/stages/a', doc3().stages[2]),
+    ]);
+
+  it('is marked as a move, and an insert that rewrites the member is not', () => {
+    expect(moveC().map((operation) => operation.moves)).toEqual([true, true]);
+    const rewriting = markMoves(doc3(), [
+      op('remove', '/stages/c'),
+      op('insert', '/stages/a', { id: 'c', label: 'Rewritten' }),
+    ]);
+    expect(rewriting.map((operation) => operation.moves)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    // Neither is a removal alone, an insert alone, or a copy put in another array.
+    expect(
+      markMoves(doc3(), [
+        op('remove', '/stages/c/items/i'),
+        op('insert', '/stages/-', { id: 'i', text: 'one' }),
+      ]).some((operation) => operation.moves),
+    ).toBe(false);
+  });
+
+  it('writes only where the member stands, so it holds through edits to what the member holds', () => {
+    const { result, written } = writtenBy(doc3(), moveC());
+    expect(idsOf(result)).toEqual(['c', 'a', 'b']);
+    expect(written.every((snapshot) => 'before' in snapshot)).toBe(true);
+    const edited = apply(result, [
+      op('set', '/stages/c/label', 'Edited'),
+    ]).result;
+    expect(writtenHolds(edited, written)).toBe(true);
+    expect(writtenStands(edited, written)).toBe(true);
+    const back = apply(edited, [
+      op('remove', '/stages/c'),
+      op('insert', '/stages/-', stageC(edited)),
+    ]).result;
+    expect(writtenHolds(back, written)).toBe(false);
+    expect(writtenStands(back, written)).toBe(false);
+  });
+
+  it('moves the member as it is now, not the copy the review was written with', () => {
+    const operations = moveC();
+    const { targets } = apply(doc3(), operations);
+    const edited = apply(doc3(), [
+      op('set', '/stages/c/label', 'Edited since the review'),
+      op('insert', '/stages/c/items/-', { id: 'j', text: 'two' }),
+    ]).result;
+    // Still fits: a move does not depend on what the member holds.
+    expect(fixFits(edited, operations, targets)).toBe(true);
+    const moved = apply(edited, operations);
+    expect(idsOf(moved.result)).toEqual(['c', 'a', 'b']);
+    expect(stageC(moved.result)).toEqual(stageC(edited));
+  });
+
+  it('is undone as a move, keeping what the member has come to hold', () => {
+    const { result, inverse, written } = writtenBy(doc3(), moveC());
+    const edited = apply(result, [
+      op('set', '/stages/c/label', 'Edited after the fix'),
+    ]).result;
+    expect(writtenHolds(edited, written)).toBe(true);
+    const undone = apply(edited, inverse).result;
+    expect(idsOf(undone)).toEqual(['a', 'b', 'c']);
+    expect(stageC(undone)).toEqual(stageC(edited));
+    expect(apply(result, inverse).result).toEqual(doc3());
+  });
+
+  it('is in effect once the member stands where the move would put it', () => {
+    const operations = moveC();
+    const expected = expectedOf(doc3(), operations);
+    expect(fixInEffect(doc3(), operations, expected)).toBe(false);
+    const byHand = apply(doc3(), [
+      op('set', '/stages/c/label', 'Edited'),
+      op('remove', '/stages/c'),
+      op('insert', '/stages/a', { id: 'c', label: 'Edited' }),
+    ]).result;
+    expect(fixInEffect(byHand, operations, expected)).toBe(true);
+  });
+
+  it('refuses the second half when the first never ran', () => {
+    const [, second] = moveC();
+    expect(second && applyOperations(doc3(), [second]).ok).toBe(false);
+  });
+});
+
+describe('writtenStands', () => {
+  it('stands through edits to what the fix wrote, and not once it is as it was before', () => {
+    const { result, inverse, written } = writtenBy(doc(), [
+      op('set', '/stages/a/label', 'Better'),
+    ]);
+    expect(writtenStands(result, written)).toBe(true);
+    const refined = apply(result, [
+      op('set', '/stages/a/label', 'Better still'),
+    ]).result;
+    expect(writtenHolds(refined, written)).toBe(false);
+    expect(writtenStands(refined, written)).toBe(true);
+    expect(writtenStands(apply(result, inverse).result, written)).toBe(false);
+    expect(writtenStands(doc(), written)).toBe(false);
+  });
+
+  it('stands through edits to a member the fix added, and not once the member is gone', () => {
+    const { result, written } = writtenBy(doc(), [
+      op('insert', '/stages/-', { id: 'n', label: '[PLACEHOLDER]' }),
+    ]);
+    const filledIn = apply(result, [
+      op('set', '/stages/n/label', 'Helpline'),
+    ]).result;
+    expect(writtenStands(filledIn, written)).toBe(true);
+    const deleted = apply(filledIn, [op('remove', '/stages/n')]).result;
+    expect(writtenStands(deleted, written)).toBe(false);
+  });
+
+  it('does not stand once what the fix removed exists again, whatever it holds', () => {
+    const { result, written } = writtenBy(doc(), [
+      op('remove', '/codebook/node/person/variables/v2'),
+    ]);
+    expect(writtenStands(result, written)).toBe(true);
+    const recreated = apply(result, [
+      op('set', '/codebook/node/person/variables/v2', { name: 'again' }),
+    ]).result;
+    expect(writtenStands(recreated, written)).toBe(false);
+  });
+
+  it('in a list without ids, stands through other changes to the list until what it took out is back', () => {
+    const { result, written } = writtenBy(doc(), [
+      op('remove', '/codebook/node/person/options/0'),
+    ]);
+    const options = (root: unknown, operations: StoredOperation[]) =>
+      apply(root, operations).result;
+    // Another change to the same list: the removal still stands.
+    const longer = options(result, [
+      op('insert', '/codebook/node/person/options/-', 'w'),
+    ]);
+    expect(writtenHolds(longer, written)).toBe(false);
+    expect(writtenStands(longer, written)).toBe(true);
+    // What was removed is put back, among the other changes.
+    const back = options(longer, [
+      op('insert', '/codebook/node/person/options/0', 'x'),
+    ]);
+    expect(writtenStands(back, written)).toBe(false);
+  });
+
+  it('reads a snapshot taken before `was` was recorded as it always was read', () => {
+    const { result, written } = writtenBy(doc(), [
+      op('set', '/stages/a/label', 'Better'),
+    ]);
+    const older = written.map((snapshot) =>
+      'before' in snapshot
+        ? snapshot
+        : {
+            path: snapshot.path,
+            present: snapshot.present,
+            value: snapshot.value,
+          },
+    );
+    const refined = apply(result, [
+      op('set', '/stages/a/label', 'Mine'),
+    ]).result;
+    expect(writtenStands(result, older)).toBe(true);
+    expect(writtenStands(refined, older)).toBe(false);
+    expect(writtenStands(result, [])).toBe(false);
+  });
+});
+
 describe('arrays that mix members with and without ids', () => {
-  // A form's `fields` can hold both; its members are addressed by id.
+  // A form's `fields` can hold both: a member with an id is addressed by it,
+  // and one without by its index.
   const mixed = () => ({
     fields: [
       { id: '1', prompt: 'id one' },
@@ -462,7 +695,7 @@ describe('arrays that mix members with and without ids', () => {
     ],
   });
 
-  it('reads a segment only as an id', () => {
+  it('reads a segment as an id first, and as an index only for a member without one', () => {
     expect(readPath(mixed(), ['fields', '0', 'prompt'])).toEqual({
       found: true,
       value: 'id zero',
@@ -471,9 +704,35 @@ describe('arrays that mix members with and without ids', () => {
       found: true,
       value: 'id one',
     });
-    // No member has id 2, and an index never addresses a member here.
+    // No member has id 2, and the member at index 2 has an id of its own.
     expect(readPath(mixed(), ['fields', '2', 'prompt'])).toEqual({
       found: false,
+    });
+    // A member without an id is reached by its index, beside members with ids.
+    const withoutClash = {
+      fields: [{ id: 'x', prompt: 'has id' }, { prompt: 'no id' }],
+    };
+    expect(readPath(withoutClash, ['fields', '1', 'prompt'])).toEqual({
+      found: true,
+      value: 'no id',
+    });
+    expect(readPath(withoutClash, ['fields', '0', 'prompt'])).toEqual({
+      found: false,
+    });
+  });
+
+  it('keeps reaching a member by its index when another member is given an id', () => {
+    const before = { fields: [{ prompt: 'first' }, { prompt: 'second' }] };
+    const after = apply(before, [
+      op('insert', '/fields/-', { id: 'new', prompt: 'third' }),
+    ]).result;
+    expect(readPath(after, ['fields', '1', 'prompt'])).toEqual({
+      found: true,
+      value: 'second',
+    });
+    expect(readPath(after, ['fields', 'new', 'prompt'])).toEqual({
+      found: true,
+      value: 'third',
     });
   });
 
@@ -494,9 +753,16 @@ describe('arrays that mix members with and without ids', () => {
   });
 
   it('refuses to add a member that no path could reach again', () => {
+    // Its index would be 2, which is another member's id.
     expect(
-      applyOperations(mixed(), [op('insert', '/fields/-', { prompt: 'x' })]),
+      applyOperations(
+        { fields: [{ id: '2', prompt: 'id two' }, { prompt: 'no id' }] },
+        [op('insert', '/fields/-', { prompt: 'x' })],
+      ),
     ).toEqual({ ok: false, failure: { kind: 'ambiguous_path', operation: 0 } });
+    // At an index that is nobody's id, it can be reached and taken out again.
+    const added = apply(mixed(), [op('insert', '/fields/-', { prompt: 'x' })]);
+    expect(apply(added.result, added.inverse).result).toEqual(mixed());
   });
 
   it('refuses a duplicate id even where some members have none', () => {

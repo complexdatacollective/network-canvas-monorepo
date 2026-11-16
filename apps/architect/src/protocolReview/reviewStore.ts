@@ -38,15 +38,32 @@ export type StoredFinding = {
   operations: StoredOperation[];
   /** What the reviewed protocol held at each target; null when the edits never applied to it. */
   targets: TargetSnapshot[] | null;
+  /**
+   * What the fix would leave in every place it writes (`recordFix`): how a
+   * fix nobody applied is recognised as already made. Absent from records
+   * written before it existed, which read as null.
+   */
+  expected?: WrittenSnapshot[] | null;
   decision: FindingDecision;
   /** The edits that take an applied fix back out; null until it is applied. */
   inverse: StoredOperation[] | null;
   /**
-   * Everything the applied fix wrote, as it left it; null until it is
-   * applied. The fix holds, and may be undone, only while all of it is still
-   * so. Absent from records written before it existed, which read as null.
+   * Everything the applied fix wrote, as it left it and as it was before;
+   * null until it is applied. The fix may be undone only while all of it is
+   * still exactly so (`writtenHolds`), and counts as made until it is taken
+   * back out (`writtenStands`). Absent from records written before it
+   * existed, which read as null.
    */
   written?: WrittenSnapshot[] | null;
+  /**
+   * Whether the applied fix has been seen taken back out: the protocol was
+   * seen with a place the fix wrote as it was before the fix (the app's Undo
+   * does that). What the protocol holds afterwards is then the researcher's
+   * own, not an adjustment of the fix, however it compares with what the fix
+   * wrote. Cleared when the protocol is seen holding exactly what the fix
+   * wrote again (the app's Redo).
+   */
+  takenOut?: boolean;
 };
 
 export type StoredReview = {

@@ -855,7 +855,7 @@ describe('decisions', () => {
     });
   });
 
-  it('withdraws Undo once the researcher rewrites what the fix wrote', async () => {
+  it('keeps a fix made, and withdraws its Undo, once the researcher rewrites what the fix wrote', async () => {
     await reviewed(store);
     await store.dispatch(decideFinding('title', 'fix'));
     store.dispatch(
@@ -866,9 +866,9 @@ describe('decisions', () => {
       }),
     );
     expect(findingOf(store, 'title')).toMatchObject({
-      status: 'undecided',
+      status: 'fixed',
+      canFix: false,
       canUndo: false,
-      availability: 'changed',
     });
     expect(await store.dispatch(undoFix('title'))).toEqual({
       ok: false,

@@ -10,6 +10,7 @@ import {
 
 import {
   applyOperations,
+  markMoves,
   planFix,
   type StoredOperation,
   type TargetSnapshot,
@@ -137,26 +138,6 @@ const normalizeEach = (
   return normalized;
 };
 
-/** A finding's fix as kept beside the review. */
-export type RecordedFix = {
-  operations: StoredOperation[];
-  /** What the reviewed protocol held at each target; null when the edits never applied to it. */
-  targets: TargetSnapshot[] | null;
-};
-
-/** Records a fix against the protocol that was SENT for review (`protocolAsReviewed`). */
-export const recordFix = (
-  reviewed: CurrentProtocol,
-  operations: readonly FixOperation[],
-): RecordedFix => {
-  const normalized = normalizeOperations(reviewed, operations);
-  const applied = applyOperations(reviewed, normalized);
-  return {
-    operations: normalized,
-    targets: applied.ok ? applied.targets : null,
-  };
-};
-
 /**
  * What a document reads as once the store has taken it: the store keeps, of
  * the wording Network Canvas supplies, only what differs from it
@@ -174,6 +155,44 @@ const normalizeProtocol = (raw: unknown): unknown =>
         withoutSuppliedWording(raw as unknown as CurrentProtocol),
       )
     : raw;
+
+/** A finding's fix as kept beside the review. */
+export type RecordedFix = {
+  operations: StoredOperation[];
+  /** What the reviewed protocol held at each target; null when the edits never applied to it. */
+  targets: TargetSnapshot[] | null;
+  /**
+   * What the fix would leave in every place it writes, worked out against the
+   * reviewed protocol: how a fix nobody applied is recognised as already made
+   * (`fixInEffect`). Null when the edits never applied, or have no inverse.
+   */
+  expected: WrittenSnapshot[] | null;
+};
+
+/**
+ * Records a fix against the protocol that was SENT for review
+ * (`protocolAsReviewed`): its edits in the protocol's own terms, with the
+ * members it only moves marked as moved (`markMoves`).
+ */
+export const recordFix = (
+  reviewed: CurrentProtocol,
+  operations: readonly FixOperation[],
+): RecordedFix => {
+  const recorded = markMoves(
+    reviewed,
+    normalizeOperations(reviewed, operations),
+  );
+  const applied = applyOperations(reviewed, recorded);
+  if (!applied.ok) {
+    return { operations: recorded, targets: null, expected: null };
+  }
+  const plan = planFix(reviewed, recorded, normalizeProtocol);
+  return {
+    operations: recorded,
+    targets: applied.targets,
+    expected: plan.ok ? plan.written : null,
+  };
+};
 
 /**
  * `candidate` as a protocol, when it is a valid one being written; otherwise

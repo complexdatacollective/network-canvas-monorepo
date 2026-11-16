@@ -16,6 +16,7 @@ import {
   type ReviewQuota,
 } from '@codaco/protocol-review-worker/contract';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { carryIntoOpenStage } from '~/components/StageEditor/openStageChange';
 import type { AppDispatch } from '~/ducks/store';
 import { getArchitectIntl } from '~/i18n/imperative';
 import {
@@ -42,6 +43,7 @@ import {
   fixFits,
   fixInEffect,
   writtenHolds,
+  writtenStands,
 } from '~/protocolReview/fixEngine';
 import {
   editProtocol,
@@ -74,6 +76,7 @@ import {
   getProtocol,
   getProtocolReviewStudyContext,
 } from '~/selectors/protocol';
+import { reportError } from '~/utils/reportError';
 
 import { actionCreators as activeProtocolActions } from './activeProtocol';
 import { getActiveProtocolId, getProtocolOwnedHere } from './app';
@@ -512,13 +515,13 @@ export type ReviewFindingView = {
   /** Each text the fix rewrites, now and after. */
   textEdits: FixTextEdit[];
   decision: FindingDecision;
-  /** `fixed` only while the researcher chose Fix for me AND the fix holds. */
+  /** `fixed` while a fix that was applied stands, or the protocol already is as the fix would leave it. */
   status: FindingDisplayStatus;
   /** Meaningful while the status is not `fixed`. */
   availability: FixAvailability;
   /** Whether Fix for me is offered: undecided or mine, and available. */
   canFix: boolean;
-  /** Whether the per-finding Undo is offered (fixed, and the inverse applies cleanly to a valid protocol). */
+  /** Whether the per-finding Undo is offered (fixed, everything the fix wrote is untouched, and the inverse applies cleanly to a valid protocol). */
   canUndo: boolean;
   /** Whether Undo dismiss is offered: it was dismissed. */
   canRestore: boolean;
@@ -527,25 +530,43 @@ export type ReviewFindingView = {
   fixPlace: FixPlace;
 };
 
+/** Whether an applied fix is still exactly as it was left: what Undo needs. */
 const fixHolds = (stored: StoredFinding, protocol: CurrentProtocol) =>
   stored.decision === 'fix' &&
   !!stored.written &&
   writtenHolds(protocolAsReviewed(protocol), stored.written);
 
+/**
+ * Whether an applied fix is still made: exactly as it was left, or adjusted
+ * since without having been taken back out in between (`noteFixesTakenOut`).
+ */
+const fixStands = (stored: StoredFinding, protocol: CurrentProtocol) =>
+  stored.decision === 'fix' &&
+  !!stored.written &&
+  (writtenHolds(protocolAsReviewed(protocol), stored.written) ||
+    (stored.takenOut !== true &&
+      writtenStands(protocolAsReviewed(protocol), stored.written)));
+
 const statusOf = (
   stored: StoredFinding,
   protocol: CurrentProtocol,
 ): FindingDisplayStatus => {
-  // A fix shows as fixed while everything it wrote is as it left it, or
-  // while the protocol already holds what it would write; the app's own Undo
-  // — or the researcher editing what the fix wrote — returns it to undecided.
+  // A fix shows as fixed from when it is applied until it is taken back out
+  // (the app's own Undo, or the researcher putting back what was there), and
+  // whenever the protocol already is as the fix would leave it. Going on to
+  // edit what a fix wrote does not take it back out: it stays fixed, and
+  // only its own Undo goes (`fixHolds`).
   if (stored.decision === 'dismissed' || stored.decision === 'done') {
     return stored.decision;
   }
-  if (fixHolds(stored, protocol)) return 'fixed';
+  if (fixStands(stored, protocol)) return 'fixed';
   if (
     stored.targets !== null &&
-    fixInEffect(protocolAsReviewed(protocol), stored.operations)
+    fixInEffect(
+      protocolAsReviewed(protocol),
+      stored.operations,
+      stored.expected ?? null,
+    )
   ) {
     return 'fixed';
   }
@@ -1079,7 +1100,9 @@ const withFinding = (
     ? {
         ...record.review,
         findings: record.review.findings.map((stored) =>
-          stored.finding.id === findingId ? { ...stored, ...update } : stored,
+          stored.finding.id === findingId
+            ? { ...stored, ...update, takenOut: false }
+            : stored,
         ),
       }
     : null,
@@ -1100,7 +1123,16 @@ const commitProtocolEdit = (
   if (!getProtocolOwnedHere(state)) return 'not_owned';
   if (getProtocol(state) !== from) return 'changed';
   dispatch(activeProtocolActions.updateProtocol(protocolReplacement(from, to)));
-  return getProtocol(getState()) ?? to;
+  const committed = getProtocol(getState()) ?? to;
+  // A stage editor that is open holds its stage as a draft and saves the
+  // whole of it: the edit goes into that draft too, or the next save from
+  // the editor would write the stage back as it was before.
+  try {
+    carryIntoOpenStage(protocolAsReviewed(from), protocolAsReviewed(committed));
+  } catch (error) {
+    reportError(error, { operation: 'protocolReview.carryIntoOpenStage' });
+  }
+  return committed;
 };
 
 /**
@@ -1277,6 +1309,36 @@ export const setShareReviews =
     await saveRecord(dispatch, getState, { ...record, shareReviews: share });
   };
 
+/**
+ * Notes which applied fixes the protocol, as it stands now, shows taken back
+ * out, and which it shows put back. Called on every change to the protocol,
+ * because what a later state holds cannot say it: an adjusted fix and a fix
+ * that was undone and then written over by hand hold the same.
+ */
+const noteFixesTakenOut = (dispatch: AppDispatch, getState: GetState) => {
+  const protocol = getProtocol(getState());
+  const record = selectRecord(getState());
+  if (!protocol || !record?.review) return;
+  if (record.protocolId !== getActiveProtocolId(getState())) return;
+  const reviewed = protocolAsReviewed(protocol);
+  let changed = false;
+  const findings = record.review.findings.map((stored) => {
+    if (stored.decision !== 'fix' || !stored.written) return stored;
+    const was = stored.takenOut === true;
+    const takenOut = was
+      ? !writtenHolds(reviewed, stored.written)
+      : !writtenStands(reviewed, stored.written);
+    if (takenOut === was) return stored;
+    changed = true;
+    return { ...stored, takenOut };
+  });
+  if (!changed) return;
+  void saveRecord(dispatch, getState, {
+    ...record,
+    review: { ...record.review, findings },
+  });
+};
+
 let checking: Promise<void> | null = null;
 let checkAgain = false;
 
@@ -1398,4 +1460,15 @@ export const checkFixAvailability =
     } finally {
       checking = null;
     }
+  };
+
+/**
+ * Brings the review up to date with a protocol that has just changed: notes
+ * the fixes the change took back out or put back, then checks every fix
+ * again. Dispatched by `keepProtocolReviewOnActiveProtocol`.
+ */
+export const reviewProtocolChanged =
+  (): Thunk<Promise<void>> => async (dispatch, getState) => {
+    noteFixesTakenOut(dispatch, getState);
+    await dispatch(checkFixAvailability());
   };

@@ -199,7 +199,7 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
     expect(protocolOf(store)).toEqual(before);
   });
 
-  it('withdraws Undo once the researcher edits a member the fix inserted', async () => {
+  it('keeps the fix made, and withdraws Undo, once the researcher edits a member the fix inserted', async () => {
     const stage = {
       id: 'added',
       type: 'Information',
@@ -224,7 +224,7 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
       }),
     );
     expect(findingOf(store, 'add')).toMatchObject({
-      status: 'undecided',
+      status: 'fixed',
       canUndo: false,
     });
     expect(await store.dispatch(undoFix('add'))).toEqual({
@@ -417,5 +417,211 @@ describe('F: the preview shows every text change a fix makes', () => {
         editable: true,
       },
     ]);
+  });
+});
+
+describe('G: a problem reads as fixed only while its fix is made', () => {
+  const titleOf = (target: Store) => {
+    const [welcome] = protocolOf(target).stages;
+    return welcome && 'title' in welcome ? welcome.title : undefined;
+  };
+  const setTitle = (target: Store, text: string) =>
+    target.dispatch(
+      setProtocolTranslation({
+        path: ['stages', 0, 'title'],
+        locale: 'en',
+        text,
+      }),
+    );
+
+  it('stays fixed while the researcher adjusts what the fix wrote', async () => {
+    await reviewed(store, [TITLE]);
+    await store.dispatch(checkFixAvailability());
+    await store.dispatch(decideFinding('title', 'fix'));
+    setTitle(store, 'Welcome to our study, and thank you');
+    expect(findingOf(store, 'title')).toMatchObject({
+      status: 'fixed',
+      canUndo: false,
+    });
+    // Back to exactly what the fix wrote, its Undo is offered again.
+    setTitle(store, 'Welcome to our study');
+    await store.dispatch(checkFixAvailability());
+    expect(findingOf(store, 'title')).toMatchObject({
+      status: 'fixed',
+      canUndo: true,
+    });
+  });
+
+  it('is undecided once the researcher puts back what was there before the fix', async () => {
+    await reviewed(store, [TITLE]);
+    await store.dispatch(checkFixAvailability());
+    await store.dispatch(decideFinding('title', 'fix'));
+    setTitle(store, 'Hello');
+    await store.dispatch(checkFixAvailability());
+    expect(findingOf(store, 'title')).toMatchObject({
+      status: 'undecided',
+      availability: 'available',
+    });
+  });
+
+  it('does not read text written after the fix was undone as an adjustment of the fix', async () => {
+    await reviewed(store, [TITLE]);
+    await store.dispatch(checkFixAvailability());
+    await store.dispatch(decideFinding('title', 'fix'));
+    store.dispatch(timelineActions.undo());
+    expect(titleOf(store)).toMatchObject({ en: 'Hello' });
+    expect(findingOf(store, 'title').status).toBe('undecided');
+    // The researcher's own wording, written in place of the fix they undid.
+    setTitle(store, 'Good morning');
+    expect(findingOf(store, 'title')).toMatchObject({
+      status: 'undecided',
+      availability: 'changed',
+    });
+    // The same after a reload: what was seen is kept with the review.
+    const id = store.getState().protocolReview.record?.protocolId;
+    if (id === undefined) throw new Error('No protocol open');
+    await vi.waitFor(async () => {
+      const reloaded = await reload(id, protocolOf(store));
+      expect(findingOf(reloaded, 'title').status).toBe('undecided');
+    });
+  });
+
+  it('reads as fixed again when the app’s Redo puts an adjusted fix back', async () => {
+    await reviewed(store, [TITLE]);
+    await store.dispatch(checkFixAvailability());
+    await store.dispatch(decideFinding('title', 'fix'));
+    setTitle(store, 'Welcome, all');
+    store.dispatch(timelineActions.undo());
+    store.dispatch(timelineActions.undo());
+    expect(titleOf(store)).toMatchObject({ en: 'Hello' });
+    expect(findingOf(store, 'title').status).toBe('undecided');
+    store.dispatch(timelineActions.redo());
+    expect(findingOf(store, 'title').status).toBe('fixed');
+    store.dispatch(timelineActions.redo());
+    expect(titleOf(store)).toMatchObject({ en: 'Welcome, all' });
+    expect(findingOf(store, 'title').status).toBe('fixed');
+  });
+
+  it('does not read a removal by index as made because the list got shorter', async () => {
+    const options = [
+      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
+      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+      { label: { en: 'Never', fr: 'Jamais' }, value: 3 },
+    ];
+    /** The fixture with `freq` offering `list`. */
+    const offering = (list: typeof options): CurrentProtocol => {
+      const protocol = makeProtocol();
+      const person = protocol.codebook.node?.person;
+      if (!person) throw new Error('fixture changed');
+      return {
+        ...protocol,
+        codebook: {
+          ...protocol.codebook,
+          node: {
+            person: {
+              ...person,
+              variables: {
+                ...person.variables,
+                freq: { name: 'freq', type: 'ordinal', options: list },
+              },
+            },
+          },
+        },
+      };
+    };
+    await reviewed(
+      store,
+      [
+        makeFinding('drop', [
+          op('remove', '/codebook/node/person/variables/freq/options/2'),
+        ]),
+      ],
+      offering(options),
+    );
+    expect(findingOf(store, 'drop').status).toBe('undecided');
+    // The first option goes; the third is still there, now at index 1.
+    store.dispatch(
+      actionCreators.updateProtocol({
+        codebook: offering(options.slice(1)).codebook,
+      }),
+    );
+    expect(findingOf(store, 'drop')).toMatchObject({
+      status: 'undecided',
+      canFix: false,
+    });
+  });
+
+  it('keeps a stage move fixed, and undoable as a move, through another fix to the stage it moved', async () => {
+    const protocol = makeProtocol();
+    const [welcome, names] = protocol.stages;
+    if (!welcome || !names) throw new Error('fixture changed');
+    await reviewed(store, [
+      makeFinding('move', [
+        op('remove', '/stages/names'),
+        op('insert', '/stages/welcome', names),
+      ]),
+      makeFinding('prompt', [
+        op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
+      ]),
+    ]);
+    await store.dispatch(checkFixAvailability());
+    expect(await store.dispatch(decideFinding('move', 'fix'))).toEqual({
+      ok: true,
+    });
+    expect(protocolOf(store).stages.map((s) => s.id)).toEqual([
+      'names',
+      'welcome',
+      'finish',
+    ]);
+    await store.dispatch(checkFixAvailability());
+    expect(await store.dispatch(decideFinding('prompt', 'fix'))).toEqual({
+      ok: true,
+    });
+    await store.dispatch(checkFixAvailability());
+    expect(findingOf(store, 'move')).toMatchObject({
+      status: 'fixed',
+      canUndo: true,
+    });
+    expect(findingOf(store, 'prompt').status).toBe('fixed');
+
+    // Undoing the move puts the stage back with the other fix still in it.
+    expect(await store.dispatch(undoFix('move'))).toEqual({ ok: true });
+    expect(protocolOf(store).stages.map((s) => s.id)).toEqual([
+      'welcome',
+      'names',
+      'finish',
+    ]);
+    expect(findingOf(store, 'move').status).toBe('undecided');
+    expect(findingOf(store, 'prompt').status).toBe('fixed');
+  });
+
+  it('offers a stage move after the stage has changed, and moves the stage as it is', async () => {
+    const protocol = makeProtocol();
+    const [, names] = protocol.stages;
+    if (!names) throw new Error('fixture changed');
+    await reviewed(store, [
+      makeFinding('move', [
+        op('remove', '/stages/names'),
+        op('insert', '/stages/welcome', names),
+      ]),
+    ]);
+    store.dispatch(
+      setProtocolTranslation({
+        path: ['stages', 1, 'label'],
+        locale: 'en',
+        text: 'Renamed since the review',
+      }),
+    );
+    await store.dispatch(checkFixAvailability());
+    expect(findingOf(store, 'move')).toMatchObject({
+      status: 'undecided',
+      canFix: true,
+    });
+    expect(await store.dispatch(decideFinding('move', 'fix'))).toEqual({
+      ok: true,
+    });
+    const [first] = protocolOf(store).stages;
+    expect(first?.id).toBe('names');
+    expect(first?.label).toMatchObject({ en: 'Renamed since the review' });
   });
 });

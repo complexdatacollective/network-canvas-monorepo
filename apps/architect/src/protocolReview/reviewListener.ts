@@ -1,7 +1,7 @@
 import { getActiveProtocolId, getProtocolOwnedHere } from '~/ducks/modules/app';
 import {
-  checkFixAvailability,
   refreshProtocolReviewRecord,
+  reviewProtocolChanged,
   syncProtocolReview,
 } from '~/ducks/modules/protocolReview';
 import type { RootState } from '~/ducks/modules/root';
@@ -20,8 +20,9 @@ type ReviewSyncStore = {
  * flight for the previous protocol aborted.
  *
  * And whenever the protocol itself changes — an edit, the app's Undo or
- * Redo, a fix — the review's fixes are checked again for it, whatever is on
- * screen, so a finding never stays `checking` for want of a component to ask.
+ * Redo, a fix — the review notes which applied fixes the change took back
+ * out, and its fixes are checked again, whatever is on screen, so a finding
+ * never stays `checking` for want of a component to ask.
  *
  * And whenever this tab becomes the protocol's owner — the tab that owned it
  * has closed — the record is read again: that tab may have saved decisions
@@ -61,7 +62,7 @@ export const keepProtocolReviewOnActiveProtocol = (
     if (protocol === checkedProtocol) return;
     checkedProtocol = protocol;
     if (protocol && state.protocolReview.record?.review) {
-      void store.dispatch(checkFixAvailability());
+      void store.dispatch(reviewProtocolChanged());
     }
   });
 };

@@ -6,7 +6,6 @@ import {
   findArrayMember,
   formatPath,
   hasOwnValue,
-  isAddressedByIds,
   isIdArray,
   isJsonObject,
   type JsonObject,
@@ -25,11 +24,23 @@ import {
  */
 
 /**
- * An operation as Architect keeps it. `keyIndex` is used only by the inverse
- * of a removed object key: where the key stood, so that undoing puts it back
- * in its place rather than last (codebook variables are shown in key order).
+ * An operation as Architect keeps it.
+ *
+ * `keyIndex` is used only by the inverse of a removed object key: where the
+ * key stood, so that undoing puts it back in its place rather than last
+ * (codebook variables are shown in key order).
+ *
+ * `moves` marks the two halves of a move (`markMoves`): a `remove` of a
+ * member with an id, and the later `insert` that puts that same member back
+ * into the same array somewhere else. The insert's `value` is then only the
+ * copy the review was written with. What is put back is the member as the
+ * remove took it out of the protocol being edited, so a move never rewrites
+ * what the member holds, whatever has changed in it since the review.
  */
-export type StoredOperation = FixOperation & { keyIndex?: number };
+export type StoredOperation = FixOperation & {
+  keyIndex?: number;
+  moves?: true;
+};
 
 export type FixFailureKind =
   /** Not a pointer, or one that would rewrite an id the path addresses by. */
@@ -61,12 +72,15 @@ export type FixFailure = { kind: FixFailureKind; operation: number };
  * What the document held at an operation's target just before it applied: for
  * `set`, whether the key was there and its value; for `remove`, the value it
  * removed. An `insert` that applies has already shown that its array and anchor
- * exist and that its id is free, so it records nothing more.
+ * exist and that its id is free, so it records nothing more. Neither does the
+ * `remove` half of a move (`move`): what the member holds goes with it, so a
+ * move fits whatever that is.
  */
 export type TargetSnapshot =
   | { op: 'set'; present: boolean; value: unknown }
   | { op: 'remove'; value: unknown }
-  | { op: 'insert' };
+  | { op: 'insert' }
+  | { op: 'move' };
 
 export type ApplyResult =
   | {
@@ -79,9 +93,13 @@ export type ApplyResult =
       /**
        * Where everything the operations wrote can be read in `result`: paths
        * made only of object keys and member ids, which name the same place
-       * whatever else the operations moved (see `writeLocations`).
+       * whatever else the operations moved (see `writeLocations`). A member
+       * that was only moved is not among them: a move writes where it stands,
+       * not what it holds.
        */
       anchors: string[];
+      /** The members the operations moved within their arrays, by path. */
+      moved: string[];
     }
   | { ok: false; failure: FixFailure };
 
@@ -339,9 +357,9 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
 
 /**
  * The part of `segments` that names one place however members of arrays
- * move: object keys and member ids, up to (and stopping at) the first array
- * whose members have no ids — the array itself, then, since a position in it
- * is not an identity.
+ * move: object keys and member ids, up to (and stopping at) the first member
+ * that is reached by its index — the array itself, then, since a position in
+ * it is not an identity.
  */
 const stableLocation = (
   root: unknown,
@@ -350,7 +368,14 @@ const stableLocation = (
   let node: unknown = root;
   const location: string[] = [];
   for (const segment of segments) {
-    if (Array.isArray(node) && !isAddressedByIds(node)) return location;
+    if (Array.isArray(node)) {
+      const index = findArrayMember(node, segment);
+      // A member reached by its index has no identity of its own, and neither
+      // has a place in an array that holds no ids at all.
+      const positional =
+        index === -1 ? !node.some(hasStringId) : !hasStringId(node[index]);
+      if (positional) return location;
+    }
     location.push(segment);
     const read = readPath(node, [segment]);
     node = read.found ? read.value : undefined;
@@ -393,6 +418,88 @@ const writeLocations = (
   return [stableLocation(root, segments), ...member];
 };
 
+/** The id of the member `value` (JSON text) holds, or null. */
+const memberIdOf = (value: string | null): string | null => {
+  const parsed = parseValue(value);
+  return parsed.ok && hasStringId(parsed.value) ? parsed.value.id : null;
+};
+
+/**
+ * The path of the member a `remove` or `insert` is about, when it has an id:
+ * where the two halves of a move meet. Null for anything else.
+ */
+const memberPathOf = (
+  root: unknown,
+  operation: StoredOperation,
+): string | null => {
+  const segments = parsePath(operation.path);
+  if (segments === null || segments.length === 0) return null;
+  const parentSegments = segments.slice(0, -1);
+  const parent = readPath(root, parentSegments);
+  if (!parent.found || !Array.isArray(parent.value)) return null;
+  if (operation.op === 'insert') {
+    const id = memberIdOf(operation.value);
+    return id === null ? null : formatPath([...parentSegments, id]);
+  }
+  if (operation.op !== 'remove') return null;
+  const member = readPath(root, segments);
+  return member.found &&
+    hasStringId(member.value) &&
+    member.value.id === segments.at(-1)
+    ? formatPath(segments)
+    : null;
+};
+
+/**
+ * `operations` with the two halves of every move marked (`moves`): a `remove`
+ * of a member with an id, followed by an `insert` into the same array of a
+ * copy that is exactly the member `root` held. Read against `root`, the
+ * protocol the review was written about, with each operation applied in turn.
+ *
+ * Only an exact copy is a move. An insert that differs from what was removed
+ * is the review rewriting the member as well as moving it, and is left to
+ * write what it says.
+ */
+export const markMoves = (
+  root: unknown,
+  operations: readonly StoredOperation[],
+): StoredOperation[] => {
+  const marked = [...operations];
+  try {
+    const removed = new Map<string, { at: number; value: unknown }>();
+    let current = root;
+    for (const [at, operation] of operations.entries()) {
+      const path = memberPathOf(current, operation);
+      if (operation.op === 'insert' && path !== null) {
+        const taken = removed.get(path);
+        const copy = parseValue(operation.value);
+        const before = taken === undefined ? undefined : operations[taken.at];
+        if (
+          taken !== undefined &&
+          before !== undefined &&
+          copy.ok &&
+          sameStored(copy.value, taken.value)
+        ) {
+          marked[taken.at] = { ...before, moves: true };
+          marked[at] = { ...operation, moves: true };
+        }
+        removed.delete(path);
+      }
+      const applied = applyOperations(current, [operation]);
+      // The fix does not apply to what was reviewed, so it is never offered.
+      if (!applied.ok) return [...operations];
+      const [target] = applied.targets;
+      if (path !== null && target?.op === 'remove') {
+        removed.set(path, { at, value: target.value });
+      }
+      current = applied.result;
+    }
+    return marked;
+  } catch {
+    return [...operations];
+  }
+};
+
 /**
  * `root` with every operation applied in order, the operations that undo
  * them, and what each target held before it applied. `root` is not changed.
@@ -405,13 +512,43 @@ export const applyOperations = (
   const inverse: StoredOperation[] = [];
   const targets: TargetSnapshot[] = [];
   const anchors = new Set<string>();
+  const moved = new Set<string>();
+  // Members taken out by the first half of a move, as JSON, by their path.
+  const carried = new Map<string, string>();
   for (const [index, operation] of operations.entries()) {
     let step: StepResult;
     try {
-      for (const location of writeLocations(current, operation)) {
-        anchors.add(formatPath(location));
+      const movedPath = operation.moves
+        ? memberPathOf(current, operation)
+        : null;
+      let effective = operation;
+      if (movedPath !== null && operation.op === 'insert') {
+        const member = carried.get(movedPath);
+        // The half that took the member out never ran: nothing to put back.
+        if (member === undefined) {
+          return {
+            ok: false,
+            failure: { kind: 'bad_value', operation: index },
+          };
+        }
+        carried.delete(movedPath);
+        effective = { ...operation, value: member };
       }
-      step = applyStep(current, operation);
+      if (movedPath === null) {
+        for (const location of writeLocations(current, effective)) {
+          anchors.add(formatPath(location));
+        }
+      } else {
+        moved.add(movedPath);
+      }
+      step = applyStep(current, effective);
+      if (step.ok && movedPath !== null) {
+        if (step.target.op === 'remove') {
+          carried.set(movedPath, JSON.stringify(step.target.value));
+          step = { ...step, target: { op: 'move' } };
+        }
+        step = { ...step, inverse: { ...step.inverse, moves: true } };
+      }
     } catch {
       step = fail('unworkable');
     }
@@ -422,13 +559,21 @@ export const applyOperations = (
     inverse.unshift(step.inverse);
     targets.push(step.target);
   }
-  return { ok: true, result: current, inverse, targets, anchors: [...anchors] };
+  return {
+    ok: true,
+    result: current,
+    inverse,
+    targets,
+    anchors: [...anchors],
+    moved: [...moved],
+  };
 };
 
 /**
  * Whether a fix still fits `root`: every operation applies, and each target
  * holds what it held in the protocol that was reviewed (`recorded`). Any
- * difference means the researcher has changed that place since.
+ * difference means that place has changed since. A member that is only moved
+ * may hold anything: it is moved as it is.
  */
 export const fixFits = (
   root: unknown,
@@ -440,45 +585,74 @@ export const fixFits = (
   return applied.ok && sameStored(applied.targets, recorded);
 };
 
-const operationInEffect = (
-  root: unknown,
-  operation: StoredOperation,
-): boolean => {
-  const segments = parsePath(operation.path);
-  if (segments === null) return false;
-  if (operation.op === 'remove') return !readPath(root, segments).found;
-  const parsed = parseValue(operation.value);
-  if (!parsed.ok) return false;
-  const target =
-    operation.op === 'set'
-      ? readPath(root, segments)
-      : hasStringId(parsed.value)
-        ? readPath(root, [...segments.slice(0, -1), parsed.value.id])
-        : { found: false as const };
-  return target.found && sameStored(target.value, parsed.value);
+/** The keys `object` holds as data (see `hasOwnValue`). */
+const heldKeys = (object: JsonObject) =>
+  Object.keys(object).filter((key) => object[key] !== undefined);
+
+/**
+ * Whether `a` and `b` are the same as stored, for two documents of which one
+ * was made from the other by `applyOperations`: everything the operations did
+ * not touch is the same object in both, so only what they touched is walked.
+ */
+const unchanged = (a: unknown, b: unknown): boolean => {
+  if (Object.is(a, b)) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return (
+      a.length === b.length &&
+      a.every((member, index) => unchanged(member, b[index]))
+    );
+  }
+  if (!isJsonObject(a) || !isJsonObject(b)) return false;
+  const inA = heldKeys(a);
+  return (
+    inA.length === heldKeys(b).length &&
+    inA.every((key) => hasOwnValue(b, key) && unchanged(a[key], b[key]))
+  );
 };
 
+/**
+ * Whether `root` already is as a fix would leave it, however it came to be
+ * so: by the researcher's own hand, by another fix, or because a new review
+ * suggests what the protocol already holds. Either
+ *
+ * - every place the fix would write holds what the fix would leave there
+ *   (`expected`: what it wrote when planned against the protocol that was
+ *   reviewed, see `planFix`), or
+ * - applying it now changes nothing.
+ *
+ * Never from a path that fails to resolve: a path can stop resolving for
+ * reasons that have nothing to do with the fix (a list addressed by position
+ * got shorter), and that is not the fix having been made.
+ */
 export const fixInEffect = (
   root: unknown,
   operations: readonly StoredOperation[],
+  expected: readonly WrittenSnapshot[] | null,
 ): boolean => {
   if (operations.length === 0) return false;
   try {
-    return operations.every((operation) => operationInEffect(root, operation));
+    if (expected !== null && writtenHolds(root, expected)) return true;
+    const applied = applyOperations(root, operations);
+    return applied.ok && unchanged(applied.result, root);
   } catch {
     return false;
   }
 };
 
+/** What one place in a document holds: a value, or nothing. */
+type PlaceState = { present: boolean; value: unknown };
+
 /**
  * What one place in the protocol held just after a fix was applied: the
  * value at `path`, or its absence. Together they are everything the fix
  * wrote, normalisation included (see `editProtocol`).
+ *
+ * `was` is what the same place held just before the fix. Absent from
+ * snapshots taken before it was recorded.
  */
-type ValueSnapshot = {
+type ValueSnapshot = PlaceState & {
   path: string;
-  present: boolean;
-  value: unknown;
+  was?: PlaceState;
 };
 
 /**
@@ -496,15 +670,18 @@ type PlacementSnapshot = {
 
 export type WrittenSnapshot = ValueSnapshot | PlacementSnapshot;
 
-/** What `root` holds at `path`, as a snapshot. */
-const snapshotAt = (root: unknown, path: string): ValueSnapshot => {
+/** What `root` holds at `path`. */
+const stateAt = (root: unknown, path: string): PlaceState => {
   const segments = parsePath(path);
   const read =
     segments === null ? { found: false as const } : readPath(root, segments);
   return read.found
-    ? { path, present: true, value: read.value }
-    : { path, present: false, value: null };
+    ? { present: true, value: read.value }
+    : { present: false, value: null };
 };
+
+const sameState = (a: PlaceState, b: PlaceState) =>
+  a.present === b.present && sameStored(a.value, b.value);
 
 /**
  * The ids of the array `path`'s member stands in, in order (null for a
@@ -570,9 +747,10 @@ const placementHolds = (root: unknown, placement: PlacementSnapshot) => {
 };
 
 /**
- * Whether everything a fix wrote is still as the fix left it. Only then does
- * an applied fix count as holding, and only then may its inverse be applied:
- * an inverse applied over the researcher's later edits would take them too.
+ * Whether everything a fix wrote is still exactly as the fix left it. Only
+ * then may its inverse be applied: an inverse applied over later edits would
+ * take them too. Also how a fix that was never applied is recognised as
+ * already made (`fixInEffect`).
  */
 export const writtenHolds = (
   root: unknown,
@@ -583,7 +761,71 @@ export const writtenHolds = (
     return written.every((snapshot) =>
       'before' in snapshot
         ? placementHolds(root, snapshot)
-        : sameStored(snapshotAt(root, snapshot.path), snapshot),
+        : sameState(stateAt(root, snapshot.path), snapshot),
+    );
+  } catch {
+    return false;
+  }
+};
+
+/** How many members of `list` are `member`, as stored. */
+const countOf = (list: readonly unknown[], member: unknown) =>
+  list.filter((candidate) => sameStored(candidate, member)).length;
+
+/**
+ * Whether a member the fix took out of a list is back in it: one that the
+ * list held before the fix, in more copies than the fix left, and now holds
+ * in more copies than the fix left again. A member the fix rewrote counts as
+ * taken out in its old form.
+ */
+const takenOutIsBack = (
+  was: readonly unknown[],
+  left: readonly unknown[],
+  now: readonly unknown[],
+) =>
+  was.some((member) => {
+    const kept = countOf(left, member);
+    return countOf(was, member) > kept && countOf(now, member) > kept;
+  });
+
+/**
+ * Whether one place the fix wrote still stands: it holds what the fix left,
+ * or something made from it. It no longer stands once it is back as it was
+ * before the fix, once what the fix removed exists again (or what it added
+ * does not), or, in a list, once a member the fix took out is back.
+ */
+const placeStands = (root: unknown, snapshot: ValueSnapshot): boolean => {
+  const now = stateAt(root, snapshot.path);
+  if (sameState(now, snapshot)) return true;
+  const { was } = snapshot;
+  if (was === undefined || now.present !== snapshot.present) return false;
+  if (sameState(now, was)) return false;
+  return !(
+    Array.isArray(now.value) &&
+    Array.isArray(snapshot.value) &&
+    Array.isArray(was.value) &&
+    takenOutIsBack(was.value, snapshot.value, now.value)
+  );
+};
+
+/**
+ * Whether a fix that was applied has not been taken back out. Looser than
+ * `writtenHolds`, which is what Undo needs: the researcher may go on editing
+ * what a fix wrote (a stage it added, a text it suggested) and the fix has
+ * still been made. It is taken back out when a place it wrote is as it was
+ * before the fix again — the app's Undo does that to every one of them — or
+ * when a member it moved is back on the side it was moved from.
+ */
+export const writtenStands = (
+  root: unknown,
+  written: readonly WrittenSnapshot[],
+): boolean => {
+  if (written.length === 0) return false;
+  try {
+    return written.every((snapshot) =>
+      'before' in snapshot
+        ? placementHolds(root, snapshot)
+        : placeStands(root, snapshot),
     );
   } catch {
     return false;
@@ -597,7 +839,10 @@ export type FixPlan =
       result: unknown;
       /** Applied to `result`, these give back the document planned from. */
       inverse: StoredOperation[];
-      /** Everything the fix wrote, as `result` holds it (see `writtenHolds`). */
+      /**
+       * Everything the fix wrote, as `result` holds it, beside what was there
+       * before (see `writtenHolds` and `writtenStands`).
+       */
       written: WrittenSnapshot[];
     }
   | { ok: false; reason: 'changed' | 'invalid' };
@@ -618,7 +863,9 @@ const isUnderKey = (path: string, key: string) =>
  *   top-level key normalisation changed;
  * - `written` names every place the fix wrote by key and id only, read from
  *   the final result, so any later change to any of it is seen — and, for a
- *   member the fix moved within its array, the order it was moved into.
+ *   member the fix moved within its array, the order it was moved into. A
+ *   member that was only moved (`markMoves`) is written in the order alone:
+ *   what it holds is not the fix's.
  *
  * Never throws.
  */
@@ -662,9 +909,14 @@ export const planFix = (
       return { ok: false, reason: 'invalid' };
     }
     const paths = [...new Set([...applied.anchors, ...keys.map(topLevel)])];
+    const placed = [...new Set([...paths, ...applied.moved])];
     const written: WrittenSnapshot[] = [
-      ...paths.map((path) => snapshotAt(normalized, path)),
-      ...paths
+      ...paths.map((path): ValueSnapshot => ({
+        path,
+        ...stateAt(normalized, path),
+        was: stateAt(root, path),
+      })),
+      ...placed
         .map((path) => placementAt(root, normalized, path))
         .filter((placement) => placement !== null),
     ];
