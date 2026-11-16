@@ -72,5 +72,80 @@ describe('API auth helpers', () => {
       expect(result).toEqual({ valid: true });
       expect(mockVerifyApiToken).toHaveBeenCalledWith('valid-token');
     });
+
+    it('accepts a valid token sent without the Bearer prefix', async () => {
+      mockVerifyApiToken.mockResolvedValue({ valid: true });
+
+      const request = new NextRequest('http://localhost:3000/api/v1/test', {
+        headers: { Authorization: 'valid-token' },
+      });
+
+      const result = await requireApiTokenAuth(request);
+
+      expect(result).toEqual({ valid: true });
+      expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith('valid-token');
+    });
+
+    it.each(['bearer valid-token', 'BEARER valid-token'])(
+      'strips the Bearer prefix in any letter case from %j',
+      async (authorization) => {
+        mockVerifyApiToken.mockResolvedValue({ valid: true });
+
+        const request = new NextRequest('http://localhost:3000/api/v1/test', {
+          headers: { Authorization: authorization },
+        });
+
+        const result = await requireApiTokenAuth(request);
+
+        expect(result).toEqual({ valid: true });
+        expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith(
+          'valid-token',
+        );
+      },
+    );
+
+    it.each([
+      ['a bare token that begins with the word', 'BearerValidToken'],
+      ['the word joined by a hyphen', 'bearer-valid-token'],
+      ['the word followed by a tab', 'Bearer\tvalid-token'],
+    ])('passes %s through unchanged', async (_description, authorization) => {
+      mockVerifyApiToken.mockResolvedValue({ valid: false });
+
+      const request = new NextRequest('http://localhost:3000/api/v1/test', {
+        headers: { Authorization: authorization },
+      });
+
+      await requireApiTokenAuth(request);
+
+      expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith(authorization);
+    });
+
+    it('strips only the first space after the Bearer prefix', async () => {
+      mockVerifyApiToken.mockResolvedValue({ valid: false });
+
+      const request = new NextRequest('http://localhost:3000/api/v1/test', {
+        headers: { Authorization: 'Bearer  valid-token' },
+      });
+
+      await requireApiTokenAuth(request);
+
+      expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith(
+        ' valid-token',
+      );
+    });
+
+    it('leaves a Bearer that is not at the start of the header in place', async () => {
+      mockVerifyApiToken.mockResolvedValue({ valid: false });
+
+      const request = new NextRequest('http://localhost:3000/api/v1/test', {
+        headers: { Authorization: 'abc Bearer def' },
+      });
+
+      await requireApiTokenAuth(request);
+
+      expect(mockVerifyApiToken).toHaveBeenCalledExactlyOnceWith(
+        'abc Bearer def',
+      );
+    });
   });
 });
