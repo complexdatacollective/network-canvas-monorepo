@@ -243,6 +243,11 @@ export function prepareNodeShapeUpload(
   }
   const checked = checkNodeShapeSvg(file, text);
   if (!checked.success) return { error: checked.error };
+  // The canonical form is what is stored and read back, and it can be longer
+  // than the file: serializing writes the namespace and quotes out in full.
+  if (checked.svg.length > MAX_NODE_SHAPE_SVG_LENGTH) {
+    return { error: oversizeShapeFileMessage(file) };
+  }
   return {
     // Copied into this realm's Uint8Array: an encoder's output can come from
     // another one, which the contract's bytes schema refuses.
@@ -296,6 +301,9 @@ export const nodeShapeSvgQuery = (
     },
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
+    // The preview URL is local to the host (a blob in Architect), so the read
+    // must not wait for the browser to be online.
+    networkMode: 'always',
   });
 
 /**

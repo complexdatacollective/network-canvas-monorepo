@@ -91,6 +91,8 @@ export function useStoredShapeSvgs(
             queryFn: () => readShapeSvg(scope, asset),
             staleTime: Number.POSITIVE_INFINITY,
             retry: false,
+            // Read from IndexedDB, so it runs offline too.
+            networkMode: 'always',
             placeholderData: () => earlierShapeSvg(queryClient, scope, asset),
           })),
     combine: bySvgAsset,

@@ -1,7 +1,5 @@
 import { SaxesParser, type SaxesAttributeNS, type SaxesTagNS } from 'saxes';
 
-import { NodeColorSequence } from '@codaco/protocol-validation';
-
 import {
   HREF_ELEMENTS,
   ID_PATTERN,
@@ -14,10 +12,19 @@ import {
   URL_REFERENCE_PATTERN,
 } from './nodeShapeGrammar.ts';
 
-const NodeShapeColorTokens = [
+// The sequence is written out, not imported from protocol-validation: that
+// package is an optional peer, and `Node` loads this module.
+export const NodeShapeColorTokens = [
   'node-color',
   'node-color-dark',
-  ...NodeColorSequence,
+  'node-color-seq-1',
+  'node-color-seq-2',
+  'node-color-seq-3',
+  'node-color-seq-4',
+  'node-color-seq-5',
+  'node-color-seq-6',
+  'node-color-seq-7',
+  'node-color-seq-8',
   'text',
   'background',
   'surface',

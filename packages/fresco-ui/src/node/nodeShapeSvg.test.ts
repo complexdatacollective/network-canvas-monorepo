@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { NodeColorSequence } from '@codaco/protocol-validation';
+
 import {
   MAX_NODE_SHAPE_SVG_LENGTH,
+  NodeShapeColorTokens,
   type NodeShapeSvgResult,
   parseNodeShapeSvg,
   serializeNodeShapeSvg,
@@ -833,5 +836,13 @@ describe('hardening', () => {
         ),
       ),
     ).toMatchObject({ success: true, issues: [] });
+  });
+});
+
+describe('NodeShapeColorTokens', () => {
+  it("offers every colour of the protocol's node colour sequence", () => {
+    expect(NodeShapeColorTokens).toEqual(
+      expect.arrayContaining([...NodeColorSequence]),
+    );
   });
 });

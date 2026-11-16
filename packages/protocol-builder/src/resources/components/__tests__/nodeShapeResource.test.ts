@@ -84,6 +84,22 @@ describe('prepareNodeShapeUpload', () => {
     ).toBe(false);
   });
 
+  it('refuses a file whose canonical form is longer than the limit', () => {
+    // 49,990 characters: under the limit as written, over it once the
+    // namespace is written out.
+    const head = '<svg viewBox="0 0 10 10"><path d="';
+    const tail = '"/></svg>';
+    const source = `${head}${'M0 0 '.repeat(20_000).slice(0, 49_990 - head.length - tail.length)}${tail}`;
+    expect(parseNodeShapeSvg(source).success).toBe(true);
+    const upload = prepareNodeShapeUpload(
+      'near.svg',
+      new TextEncoder().encode(source),
+    );
+    expect('error' in upload ? messageId(upload.error) : undefined).toBe(
+      'protocolBuilder.customShapes.tooLarge',
+    );
+  });
+
   it('stores a clean file in its canonical form and notes it was imported', () => {
     const upload = prepareNodeShapeUpload(
       'home.svg',
