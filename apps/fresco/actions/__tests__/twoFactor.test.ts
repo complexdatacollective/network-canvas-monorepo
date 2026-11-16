@@ -260,6 +260,7 @@ describe('verifyTwoFactor', () => {
       expect(formErrorMessages(result)).toEqual([
         'Two-factor authentication is not configured',
       ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
       expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
