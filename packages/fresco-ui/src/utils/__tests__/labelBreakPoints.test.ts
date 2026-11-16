@@ -46,8 +46,6 @@ describe('withLabelBreakPoints', () => {
     expect(withLabelBreakPoints('佐藤アレクサンドラ美咲')).toBe(
       '佐藤アレクサンドラ美咲',
     );
-    expect(withLabelBreakPoints('bio­logical')).toBe(
-      withLabelBreakPoints('bio­logical'),
-    );
+    expect(withLabelBreakPoints('bio\u00ADlogical')).toBe('bio\u00ADlogical');
   });
 });

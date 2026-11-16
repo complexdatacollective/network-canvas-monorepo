@@ -137,10 +137,17 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
   });
 
   it('activates in explicit no-reload mode and returns false so startup continues', async () => {
+    const browserWindow = window;
+    const reload = vi.fn();
+    vi.stubGlobal('window', {
+      clearTimeout: browserWindow.clearTimeout.bind(browserWindow),
+      location: { reload },
+      queueMicrotask: browserWindow.queueMicrotask.bind(browserWindow),
+      setTimeout: browserWindow.setTimeout.bind(browserWindow),
+    });
     const waiting = createWorker('installed');
     const registration = createRegistration({ waiting: waiting.worker });
     const serviceWorker = createServiceWorkerContainer({ registration });
-    const reload = vi.fn();
 
     const result = applyFreshLoadServiceWorkerUpdate({
       serviceWorker,

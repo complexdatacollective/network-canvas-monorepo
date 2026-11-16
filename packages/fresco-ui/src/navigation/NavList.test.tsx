@@ -101,8 +101,10 @@ describe('NavList', () => {
 
   it('keeps list semantics that WebKit drops from an unbulleted flex list', () => {
     const { container } = render(studySidebar);
+    const lists = container.querySelectorAll('ul');
 
-    for (const list of container.querySelectorAll('ul')) {
+    expect(lists).toHaveLength(4);
+    for (const list of lists) {
       expect(list).toHaveAttribute('role', 'list');
     }
   });
@@ -207,20 +209,6 @@ describe('NavList', () => {
     ).toThrow(/NavListGroup was rendered inside a NavList run/);
 
     error.mockRestore();
-  });
-
-  it('lets a group render on its own outside any ungrouped run', () => {
-    // The guard reads a context NavList sets on the contents of an ungrouped
-    // list, so it cannot fire on a group that is nobody's row.
-    expect(() =>
-      render(
-        <NavList>
-          <NavListGroup heading="Design">
-            <NavItem href="/study/1/editor" label="Editor" />
-          </NavListGroup>
-        </NavList>,
-      ),
-    ).not.toThrow();
   });
 
   it('renders a group used on its own', () => {

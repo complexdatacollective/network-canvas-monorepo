@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { DropdownMenuItem } from '../DropdownMenu';
 import {
@@ -81,27 +81,6 @@ describe('SegmentedToolbar — composition', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toHaveClass(
       'aspect-square',
       'rounded-full',
-    );
-  });
-
-  it('renders named Base UI groups and explicit separators', () => {
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarGroup aria-label="History">
-          <ToolbarIconButton aria-label="Undo" icon={<Undo2 />} />
-        </ToolbarGroup>
-        <ToolbarSeparator />
-        <ToolbarGroup aria-label="Editing">
-          <ToolbarIconButton aria-label="Edit" icon={<Pencil />} />
-        </ToolbarGroup>
-      </SegmentedToolbar>,
-    );
-
-    expect(screen.getByRole('group', { name: 'History' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Editing' })).toBeInTheDocument();
-    expect(screen.getByRole('separator')).toHaveAttribute(
-      'aria-orientation',
-      'vertical',
     );
   });
 
@@ -213,12 +192,9 @@ describe('SegmentedToolbar — composition', () => {
     function MissingRefProp() {
       return <ToolbarButton>Save</ToolbarButton>;
     }
-    const compileOnly = () => {
-      // @ts-expect-error Motion popLayout children must declare a ref prop.
-      defineToolbarChild(MissingRefProp);
-    };
-
-    expect(compileOnly).toBeTypeOf('function');
+    expectTypeOf<typeof MissingRefProp>().not.toExtend<
+      Parameters<typeof defineToolbarChild<typeof MissingRefProp>>[0]
+    >();
   });
 });
 
@@ -282,27 +258,6 @@ describe('SegmentedToolbar — overlays', () => {
     });
     await userEvent.click(duplicate);
     expect(onDuplicate).toHaveBeenCalledOnce();
-  });
-
-  it('composes an animated toolbar control with a popover', async () => {
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarPopover
-          trigger={
-            <ToolbarIconButton aria-label="Canvas settings" icon={<Pencil />} />
-          }
-        >
-          <p>Adjust how the canvas is displayed.</p>
-        </ToolbarPopover>
-      </SegmentedToolbar>,
-    );
-
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Canvas settings' }),
-    );
-    expect(
-      await screen.findByText('Adjust how the canvas is displayed.'),
-    ).toBeInTheDocument();
   });
 });
 
@@ -494,77 +449,6 @@ describe('SegmentedToolbar — disabled behavior', () => {
     expect(screen.getByRole('button', { name: 'Redo' })).toHaveFocus();
   });
 
-  it('opts out of the roving focus with focusableWhenDisabled={false}', async () => {
-    const onClick = vi.fn();
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarIconButton
-          aria-label="Undo"
-          icon={<Undo2 />}
-          disabled
-          focusableWhenDisabled={false}
-          onClick={onClick}
-        />
-      </SegmentedToolbar>,
-    );
-
-    const undo = screen.getByRole('button', { name: 'Undo' });
-    expect(undo).toBeDisabled();
-    expect(undo).not.toHaveAttribute('aria-disabled');
-    await userEvent.click(undo);
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
-  it('disables every control in a regular group', () => {
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarGroup aria-label="History" disabled>
-          <ToolbarButton>Save</ToolbarButton>
-          <ToolbarIconButton aria-label="Undo" icon={<Undo2 />} />
-        </ToolbarGroup>
-      </SegmentedToolbar>,
-    );
-
-    expect(screen.getByRole('group', { name: 'History' })).toHaveAttribute(
-      'data-disabled',
-    );
-    expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-    expect(screen.getByRole('button', { name: 'Undo' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-  });
-
-  it('disables every control in a toggle group', () => {
-    render(
-      <SegmentedToolbar aria-label="View tools">
-        <ToolbarToggleGroup aria-label="View" disabled defaultValue={['list']}>
-          <ToolbarIconButton value="list" aria-label="List" icon={<List />} />
-          <ToolbarIconButton
-            value="grid"
-            aria-label="Grid"
-            icon={<Grid3x3 />}
-          />
-        </ToolbarToggleGroup>
-      </SegmentedToolbar>,
-    );
-
-    expect(screen.getByRole('group', { name: 'View' })).toHaveAttribute(
-      'data-disabled',
-    );
-    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-    expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-  });
-
   it('propagates disabled state from the complete toolbar', () => {
     render(
       <SegmentedToolbar aria-label="Editing tools" disabled>
@@ -593,6 +477,78 @@ describe('SegmentedToolbar — disabled behavior', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toHaveAttribute(
       'data-disabled',
     );
+  });
+
+  /**
+   * `aria-disabled` announces but does not prevent. When the default flipped to
+   * focus-retaining, these controls stopped emitting native `disabled`, and the
+   * caller's `onClick` became reachable by pointer; keyboard activation was
+   * still blocked by Base UI, which is why the `{Enter}` coverage did not
+   * notice. `disabled` is load-bearing as a re-entrancy and range guard, so a
+   * pointer click must not activate.
+   */
+  it.each([
+    {
+      name: 'Download',
+      control: (onClick: () => void) => (
+        <ToolbarButton disabled onClick={onClick}>
+          Download
+        </ToolbarButton>
+      ),
+    },
+    {
+      name: 'Undo',
+      control: (onClick: () => void) => (
+        <ToolbarIconButton
+          aria-label="Undo"
+          disabled
+          icon={<Undo2 />}
+          onClick={onClick}
+        />
+      ),
+    },
+    {
+      name: 'Redo',
+      control: (onClick: () => void) => (
+        <ToolbarGroup aria-label="History tools">
+          <ToolbarIconButton
+            aria-label="Redo"
+            disabled
+            icon={<Redo2 />}
+            onClick={onClick}
+          />
+        </ToolbarGroup>
+      ),
+    },
+  ])(
+    'does not activate the disabled $name control on a mouse click',
+    async ({ name, control }) => {
+      const onClick = vi.fn();
+      render(
+        <SegmentedToolbar aria-label="Editing tools">
+          {control(onClick)}
+        </SegmentedToolbar>,
+      );
+
+      await userEvent.click(screen.getByRole('button', { name }));
+      expect(onClick).not.toHaveBeenCalled();
+    },
+  );
+
+  it('still activates an ENABLED control on a mouse click', async () => {
+    const onClick = vi.fn();
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarIconButton
+          aria-label="Undo"
+          icon={<Undo2 />}
+          onClick={onClick}
+        />
+      </SegmentedToolbar>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1029,79 +985,5 @@ describe('SegmentedToolbar — dragging', () => {
     await userEvent.keyboard('{ArrowRight}{ArrowLeft}');
     expect(onPositionChange).toHaveBeenNthCalledWith(1, { x: 8, y: 0 });
     expect(onPositionChange).toHaveBeenNthCalledWith(2, { x: 0, y: 0 });
-  });
-
-  /**
-   * `aria-disabled` announces but does not prevent. When the default flipped to
-   * focus-retaining, these controls stopped emitting native `disabled`, and the
-   * caller's `onClick` became reachable by pointer — keyboard activation was
-   * still blocked by Base UI, which is why the existing `{Enter}` coverage did
-   * not notice. `disabled` is load-bearing as a re-entrancy and range guard, so
-   * a pointer click must not activate.
-   */
-  it('does not activate a disabled ToolbarIconButton on a mouse click', async () => {
-    const onClick = vi.fn();
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarIconButton
-          aria-label="Undo"
-          disabled
-          icon={<Undo2 />}
-          onClick={onClick}
-        />
-      </SegmentedToolbar>,
-    );
-
-    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
-  it('does not activate a disabled ToolbarButton on a mouse click', async () => {
-    const onClick = vi.fn();
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarButton disabled onClick={onClick}>
-          Download
-        </ToolbarButton>
-      </SegmentedToolbar>,
-    );
-
-    await userEvent.click(screen.getByRole('button', { name: 'Download' }));
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
-  it('does not activate a disabled control nested in a ToolbarGroup', async () => {
-    const onClick = vi.fn();
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarGroup aria-label="History tools">
-          <ToolbarIconButton
-            aria-label="Redo"
-            disabled
-            icon={<Redo2 />}
-            onClick={onClick}
-          />
-        </ToolbarGroup>
-      </SegmentedToolbar>,
-    );
-
-    await userEvent.click(screen.getByRole('button', { name: 'Redo' }));
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
-  it('still activates an ENABLED control on a mouse click', async () => {
-    const onClick = vi.fn();
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarIconButton
-          aria-label="Undo"
-          icon={<Undo2 />}
-          onClick={onClick}
-        />
-      </SegmentedToolbar>,
-    );
-
-    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

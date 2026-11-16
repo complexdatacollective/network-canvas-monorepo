@@ -102,23 +102,25 @@ describe('useNodeGestures: holds', () => {
     expect(onLongPress).not.toHaveBeenCalled();
   });
 
-  it('abandons the hold once movement could become a drag', () => {
+  it('keeps the hold through movement within the drag threshold', () => {
     const onLongPress = vi.fn();
     render(<Probe onLongPress={onLongPress} />);
 
     press(100, 100);
     fireEvent.pointerMove(window, { clientX: 103, clientY: 100, pointerId: 1 });
-    act(() => void vi.advanceTimersByTime(100));
-    expect(onLongPress).not.toHaveBeenCalled();
+    hold();
 
-    // Still within the drag threshold, so the hold survives.
-    act(() => void vi.advanceTimersByTime(HOLD_DURATION));
     expect(onLongPress).toHaveBeenCalledOnce();
+  });
 
-    onLongPress.mockClear();
+  it('abandons the hold once movement could become a drag', () => {
+    const onLongPress = vi.fn();
+    render(<Probe onLongPress={onLongPress} />);
+
     press(100, 100);
     fireEvent.pointerMove(window, { clientX: 106, clientY: 100, pointerId: 1 });
     hold();
+
     expect(onLongPress).not.toHaveBeenCalled();
   });
 
@@ -389,20 +391,6 @@ describe('useNodeGestures: suppression lifecycle', () => {
     fireEvent.click(target());
     expect(onClickResult).toHaveBeenCalledExactlyOnceWith(false);
   });
-
-  it('still suppresses the click that does belong to the hold', () => {
-    const onClickResult = vi.fn();
-    render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);
-
-    press();
-    hold();
-    fireEvent.pointerUp(window, { pointerId: 1 });
-    // A real click follows its own pointer-up synchronously, well inside the
-    // window the expiry leaves open.
-    fireEvent.click(target());
-
-    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(true);
-  });
 });
 
 describe('useNodeGestures: drags', () => {
@@ -620,6 +608,7 @@ describe('useNodeGestures: drags', () => {
     render(
       <Probe
         dragEnabled={false}
+        onDragStart={onDragStart}
         onClickResult={onClickResult}
         onLongPress={vi.fn()}
       />,

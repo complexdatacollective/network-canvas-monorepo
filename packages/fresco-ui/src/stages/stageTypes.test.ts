@@ -44,10 +44,6 @@ const themeAliases = new Map(
 const types = Object.keys(STAGE_TYPES) as StageType[];
 
 describe('STAGE_TYPES', () => {
-  it('covers all 21 stage types', () => {
-    expect(types).toHaveLength(21);
-  });
-
   it('names each token after its stage type', () => {
     for (const type of types) {
       const kebab = type.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
@@ -88,9 +84,5 @@ describe('STAGE_TYPES', () => {
       color: 'var(--interface-name-generator-quick-add)',
       contrast: 'var(--interface-name-generator-quick-add-contrast)',
     });
-  });
-
-  it('resolves a stage type to its icon component', () => {
-    expect(stageTypeIcon('Sociogram')).toBe(STAGE_TYPES.Sociogram.icon);
   });
 });

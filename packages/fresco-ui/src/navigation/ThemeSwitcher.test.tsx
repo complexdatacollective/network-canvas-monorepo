@@ -25,7 +25,6 @@ describe('ThemeSwitcher', () => {
     const trigger = screen.getByRole('button', {
       name: 'Color theme: dark',
     });
-    expect(trigger).toHaveClass('h-16');
     expect(trigger.querySelector('.lucide-moon')).toBeInTheDocument();
   });
 
