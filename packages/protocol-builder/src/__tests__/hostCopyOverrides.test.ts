@@ -3,12 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  NOT_CONVERTED_YET,
-  packageSource,
-  sourceFiles,
-  sourcePath,
-} from './packageSource.ts';
+import { packageSource, sourceFiles, sourcePath } from './packageSource.ts';
 
 /**
  * A bundle of words a caller may hand in: `…Copy`, `…Confirm`, `…Words`.
@@ -220,94 +215,23 @@ describe('host copy overrides', () => {
   });
 });
 
-describe('the not-yet-converted exclusions', () => {
+describe('what the scan reaches', () => {
   /**
-   * An exclusion is a claim that a directory still holds an offender. When it
-   * stops being true the exclusion has outlived its conversion, and nothing
-   * else in this file would ever say so: excluding a clean directory silently
-   * widens the blind spot for everything added to it afterwards.
+   * `sourceFiles` drops fixtures and test-support paths, so a directory whose
+   * source all matched one of those patterns would read as clean while nothing
+   * looked at it. These are the areas that once had their own copy and were
+   * converted last.
    */
-  it('covers only directories that still hold something to excuse', () => {
-    const present = NOT_CONVERTED_YET.filter((directory) =>
-      existsSync(join(packageSource, directory)),
-    );
-
-    const stale = present.filter((directory) => {
-      const files = sourceFiles(join(packageSource, directory), {
-        excluding: [],
-      });
-      return !files.some(
-        (path) =>
-          copyPropOffenders(readFileSync(path, 'utf8')).length > 0 ||
-          declarationsIn(path).some(bundleOffends),
-      );
-    });
-
-    expect(stale).toEqual([]);
-  });
-
-  /**
-   * And every one of them is a directory that is actually here.
-   *
-   * An exclusion naming a path this package does not have excuses nothing, and
-   * the check above cannot see it: `present` filters it out before asking
-   * whether anything is left to excuse. Family F's five section directories
-   * were carried on this list for exactly that reason — they lived on another
-   * branch — and this is what stops a name outliving the merge that brought
-   * its directory in.
-   */
-  it('names only directories that are here to exclude', () => {
-    const absent = NOT_CONVERTED_YET.filter(
-      (directory) => !existsSync(join(packageSource, directory)),
-    );
-
-    expect(absent).toEqual([]);
-  });
-
-  /**
-   * The interface families that ARE here are inside the scan, not merely
-   * un-excluded.
-   *
-   * Deleting a name from `NOT_CONVERTED_YET` is not by itself proof the rules
-   * reach that directory: `sourceFiles` also drops fixtures and test-support
-   * paths, so a family whose sections were all `__tests__`-adjacent would read
-   * as converted while nothing looked at it. Asked of the families present
-   * rather than of all five, because they arrive one branch at a time — the
-   * ones that have landed are covered, and the ones that have not cannot be
-   * claimed either way.
-   */
-  it('reaches every interface family that is here', () => {
-    const families = [
-      'sections/network',
-      'editors/family-pedigree/sections',
-      'editors/narrative-pedigree/sections',
-      'sections/geospatial',
-      'sections/anonymisation',
-    ];
-    const present = families.filter((directory) =>
-      existsSync(join(packageSource, directory)),
-    );
+  it.each([
+    'editors/anonymisation/sections',
+    'editors/family-pedigree/sections',
+    'editors/geospatial/sections',
+    'editors/narrative-pedigree/sections',
+    'editors/network-composer/sections',
+    'resources',
+  ])('reads the source in %s', (directory) => {
     const scanned = sourceFiles().map(sourcePath);
 
-    const covered = present.filter((directory) =>
-      scanned.some((path) => path.startsWith(`${directory}/`)),
-    );
-
-    expect(covered).toEqual(present);
-  });
-
-  /**
-   * And `resources/` — the last name this list carried — is inside the scan.
-   *
-   * The two checks above are dormant while the list is empty: filtering an
-   * empty list yields an empty list whatever the package looks like, so
-   * neither of them can fail today. This is the one that says what emptying
-   * the list CLAIMED, and it fails the moment anybody re-excludes the
-   * directory rather than fixing what made them want to.
-   */
-  it('reaches the resources directory the list used to excuse', () => {
-    const scanned = sourceFiles().map(sourcePath);
-
-    expect(scanned.some((path) => path.startsWith('resources/'))).toBe(true);
+    expect(scanned.some((path) => path.startsWith(`${directory}/`))).toBe(true);
   });
 });

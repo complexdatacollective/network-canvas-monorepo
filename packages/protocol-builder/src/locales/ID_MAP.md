@@ -356,9 +356,9 @@ A family that needs different words from a shared section names them one at a
 time as `MessageDescriptor` props — `PromptsSection`'s `description`,
 `FormFieldsSection`'s `title`, `SectionCapability.confirmClear` — never as
 strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
-is the scan that keeps it that way, and it covers these directories the moment
-they exist: its `NOT_CONVERTED_YET` exclusion list is empty, so a section
-reintroducing a `copy?:` prop or a string-bearing `…Copy` type fails there.
+is the scan that keeps it that way: it excludes no source directory, so a
+section reintroducing a `copy?:` prop or a string-bearing `…Copy` type fails
+there.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
@@ -593,9 +593,7 @@ defect it exists to find:
 There was a second, `stillEnglish` — an unconverted area's leaks in full,
 asserted as an EQUALITY so that landing the conversion broke the test and made
 whoever converted it delete the entry. `src/resources` was what it was for, and
-i18n-1b converted it, so the allowance went with it. Its discipline survives
-where it is still needed, in the empty `NOT_CONVERTED_YET` of
-`src/__tests__/packageSource.ts` and the expected-failure guard over it.
+i18n-1b converted it, so the allowance went with it.
 
 ## Reading a story in another language
 
