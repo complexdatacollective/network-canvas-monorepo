@@ -307,6 +307,7 @@ test('adds a language, keeps the default language from being removed, translates
   const addedFinish = added.stages.at(-1);
   const beforeFinish = before.stages.at(-1);
   expect(addedFinish?.type).toBe('FinishSession');
+  expect(beforeFinish?.type).toBe('FinishSession');
   if (
     addedFinish?.type === 'FinishSession' &&
     beforeFinish?.type === 'FinishSession'
@@ -755,5 +756,4 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
   await editor.getByRole('button', { name: 'last_name', exact: true }).click();
   await expect(editor.getByLabel('If known', { exact: true })).toBeVisible();
   await toolbarClearsText();
-  await page.screenshot({ path: 'test-results/toolbar-expanded.png' });
 });
