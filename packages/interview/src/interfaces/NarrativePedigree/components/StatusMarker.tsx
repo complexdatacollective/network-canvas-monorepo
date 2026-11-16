@@ -269,8 +269,6 @@ function statusGlyph(
  * of the condition colour.
  *
  * The SVG is `aria-hidden`; consumers own the labelled wrapper and positioning.
- * A `data-status` attribute on the root SVG lets consumers and tests locate the
- * rendered marker by status value.
  */
 export function StatusMarker({
   status,
@@ -287,7 +285,6 @@ export function StatusMarker({
       viewBox={`0 0 ${VB} ${VB}`}
       aria-hidden
       className="pointer-events-none absolute inset-0 h-full w-full"
-      data-status={status}
     >
       <defs>
         <ShapeClip id={clipId} shape={shape} />

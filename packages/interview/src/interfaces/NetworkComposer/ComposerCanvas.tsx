@@ -259,7 +259,10 @@ export default function ComposerCanvas({
           full-canvas layer becomes the pointerdown target and the background-tap
           handler (which requires e.target === the canvas) never fires — breaking
           add-node, tap-to-deselect, and lasso selection. */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        data-testid="composer-background"
+      >
         {background}
       </div>
       {hulls}

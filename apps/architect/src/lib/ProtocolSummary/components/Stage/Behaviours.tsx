@@ -2,6 +2,7 @@ import { map } from 'es-toolkit/compat';
 
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { removeAfterConsiderationMessages } from '@codaco/protocol-builder/editors/one-to-many-dyad-census/removeAfterConsiderationMessages';
 
 import { SummaryValue } from '../helpers';
 import MiniTable from '../MiniTable';
@@ -78,8 +79,19 @@ const behaviorLabel = (
         label: intl.formatMessage(extraMessages.freedrawenabled),
         value: behaviourValue,
       };
+    case 'removeAfterConsideration':
+      return {
+        label: intl.formatMessage(removeAfterConsiderationMessages.fieldLabel),
+        value: intl.formatMessage(
+          behaviourValue
+            ? removeAfterConsiderationMessages.removeLabel
+            : removeAfterConsiderationMessages.keepLabel,
+        ),
+      };
+    // A behaviour this summary has no words for is shown as the schema names
+    // it: a key, not interface text.
     default:
-      return { label: behaviourKey, value: behaviourValue };
+      return { label: <code>{behaviourKey}</code>, value: behaviourValue };
   }
 };
 

@@ -17,48 +17,32 @@ describe('vaultStore', () => {
     expect(readVault()).toBeNull();
   });
 
-  it('round-trips a none record', () => {
-    const record: VaultRecord = { version: 4, mode: 'none' };
-    writeVault(record);
-    expect(readVault()).toEqual(record);
-  });
-
-  it('round-trips a pin record', () => {
-    const record: VaultRecord = {
-      version: 4,
-      mode: 'pin',
-      kdfSaltB64: 'c2FsdA==',
-      kdfIterations: 600_000,
-      wrappedDekB64: 'd3JhcA==',
-    };
-    writeVault(record);
-    expect(readVault()).toEqual(record);
-  });
-
-  it('round-trips a passphrase record', () => {
-    const record: VaultRecord = {
-      version: 4,
-      mode: 'passphrase',
-      kdfSaltB64: 'c2FsdA==',
-      kdfIterations: 600_000,
-      wrappedDekB64: 'd3JhcA==',
-    };
-    writeVault(record);
-    expect(readVault()).toEqual(record);
-  });
-
-  it('round-trips a biometric record with recovery material', () => {
-    const record: VaultRecord = {
-      version: 4,
-      mode: 'biometric',
-      webauthn: { credentialId: 'AQID', prfSaltB64: 'c2FsdA==' },
-      wrappedDekB64: 'Ymlv',
-      recovery: {
-        kdfSaltB64: 'cmVjb3Zlcg==',
-        kdfIterations: 600_000,
-        wrappedDekB64: 'cmVjd3JhcA==',
+  const wrappedKey = {
+    kdfSaltB64: 'c2FsdA==',
+    kdfIterations: 600_000,
+    wrappedDekB64: 'd3JhcA==',
+  };
+  const records: [string, VaultRecord][] = [
+    ['none', { version: 4, mode: 'none' }],
+    ['pin', { version: 4, mode: 'pin', ...wrappedKey }],
+    ['passphrase', { version: 4, mode: 'passphrase', ...wrappedKey }],
+    [
+      'biometric',
+      {
+        version: 4,
+        mode: 'biometric',
+        webauthn: { credentialId: 'AQID', prfSaltB64: 'c2FsdA==' },
+        wrappedDekB64: 'Ymlv',
+        recovery: {
+          kdfSaltB64: 'cmVjb3Zlcg==',
+          kdfIterations: 600_000,
+          wrappedDekB64: 'cmVjd3JhcA==',
+        },
       },
-    };
+    ],
+  ];
+
+  it.each(records)('round-trips a %s record', (_mode, record) => {
     writeVault(record);
     expect(readVault()).toEqual(record);
   });

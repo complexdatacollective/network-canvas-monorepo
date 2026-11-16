@@ -64,11 +64,15 @@ import {
 } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
+import {
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import {
   controlVariants,
   inputControlVariants,
@@ -76,7 +80,12 @@ import {
   multilineContentVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { tokenPillClasses, tokenPillContentSpec } from '../../TokenPill';
+import {
+  type TokenPillLabel,
+  tokenPillClasses,
+  tokenPillContentSpec,
+  tokenPillLanguage,
+} from '../../TokenPill';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import { useEnclosingHeadingLevel } from '../../typography/EnclosingHeadingLevel';
 import { headingVariants } from '../../typography/Heading';
@@ -294,7 +303,11 @@ const SingleLineDocument = TiptapNode.create({
  */
 export type RichTextEditorToken = Readonly<{
   id: string;
-  label: string;
+  /**
+   * The interface's words for it, or `{ text, dir: 'auto' }` for a name
+   * someone wrote (an attribute's), which reads in its own direction.
+   */
+  label: TokenPillLabel;
   required?: boolean;
   /**
    * How the placeholder is written as text, such as `{name}`. Pasted text
@@ -347,10 +360,17 @@ const placedTokenIds = (doc: ProseMirrorNode): string => {
  * offer it. A pasted token a field does not offer arrives as its label, as
  * text: the field cannot hold it, and the words are what was meant.
  */
-const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
+type InterfaceLanguage = Readonly<{ lang: string; dir: 'ltr' | 'rtl' }>;
+
+const createTokenNode = (
+  tokens: readonly RichTextEditorToken[],
+  interfaceLanguage: InterfaceLanguage,
+) => {
   const labels = new Map(tokens.map(({ id, label }) => [id, label]));
-  const labelOf = (id: unknown) =>
-    typeof id === 'string' ? (labels.get(id) ?? id) : '';
+  // A token the field does not offer shows the name the text records for it,
+  // as it was written.
+  const labelOf = (id: unknown): TokenPillLabel =>
+    typeof id === 'string' ? (labels.get(id) ?? { text: id, dir: 'auto' }) : '';
 
   return TiptapNode.create({
     name: TOKEN_NODE,
@@ -390,13 +410,16 @@ const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
           // A pointer, not the text cursor: the pill is one object.
           class: tokenPillClasses('cursor-pointer'),
           contenteditable: 'false',
+          // The interface's words in the interface's language, whatever
+          // language the text around it is in; a name in its own direction.
+          ...tokenPillLanguage(labelOf(node.attrs.id), interfaceLanguage),
         }),
         ...tokenPillContentSpec(labelOf(node.attrs.id)),
       ];
     },
 
     renderText({ node }) {
-      return labelOf(node.attrs.id);
+      return presentationalTextValue(labelOf(node.attrs.id));
     },
 
     addProseMirrorPlugins() {
@@ -769,6 +792,11 @@ type ExtensionOptions = {
   singleLine: boolean;
   placeholder?: string;
   tokens: readonly RichTextEditorToken[];
+  /**
+   * The interface's language: a placeholder's pill names it in the
+   * interface's words, inside text that may be in another language.
+   */
+  interfaceLanguage: InterfaceLanguage;
   versions: boolean;
   /** Typing this character opens the insert menu. */
   trigger?: string;
@@ -878,6 +906,7 @@ function createCustomExtensions({
   singleLine,
   placeholder,
   tokens,
+  interfaceLanguage,
   versions,
   trigger,
   onTrigger,
@@ -981,7 +1010,7 @@ function createCustomExtensions({
   }
 
   if (tokens.length > 0) {
-    extensions.push(createTokenNode(tokens));
+    extensions.push(createTokenNode(tokens, interfaceLanguage));
   }
 
   if (versions) {
@@ -1477,6 +1506,11 @@ export default function RichTextEditorField({
   const enclosingHeadingLevel = useEnclosingHeadingLevel();
   const enclosingHeadingDepth =
     enclosingHeadingLevel === null ? 0 : Number(enclosingHeadingLevel.slice(1));
+  const interfaceDirection = useAppDirection();
+  const interfaceLanguage = useMemo(
+    () => ({ lang: intl.locale, dir: interfaceDirection }),
+    [intl.locale, interfaceDirection],
+  );
   const editorExtensions = useMemo(
     () =>
       createCustomExtensions({
@@ -1489,11 +1523,13 @@ export default function RichTextEditorField({
         singleLine,
         placeholder,
         tokens,
+        interfaceLanguage,
         versions,
         trigger: insertMenu?.trigger,
         onTrigger,
       }),
     [
+      interfaceLanguage,
       headingLevels,
       enclosingHeadingDepth,
       options.lists.bullet,
@@ -1532,6 +1568,7 @@ export default function RichTextEditorField({
             placeholder: emptyVersionText,
             placeholderWhenReadOnly: true,
             tokens,
+            interfaceLanguage,
             versions,
             trigger: insertMenu?.trigger,
             onTrigger,
@@ -1539,6 +1576,7 @@ export default function RichTextEditorField({
           })
         : [],
     [
+      interfaceLanguage,
       options.links,
       tokens,
       versions,
@@ -2469,7 +2507,7 @@ export default function RichTextEditorField({
                         missing
                           ? messages.insertRequiredToken
                           : messages.insertToken,
-                        { token: token.label },
+                        { token: presentationalTextValue(token.label) },
                       )}
                       onClick={() =>
                         actOn
@@ -2483,7 +2521,9 @@ export default function RichTextEditorField({
                       }
                     >
                       <Plus aria-hidden />
-                      {token.label}
+                      <span {...presentationalTextProps(token.label)}>
+                        {presentationalTextValue(token.label)}
+                      </span>
                       {missing && (
                         <span
                           aria-hidden

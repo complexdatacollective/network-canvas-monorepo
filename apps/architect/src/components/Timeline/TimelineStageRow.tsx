@@ -332,10 +332,13 @@ const TimelineStageRow = ({
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1 basis-40">
+          {/* The researcher's own name for the stage: read in its own
+              direction, on the interface's side. */}
           <Heading
             level="h4"
             margin="none"
-            className="my-2 wrap-break-word transition-all group-hover:font-bold"
+            dir="auto"
+            className="text-match-parent my-2 wrap-break-word transition-all group-hover:font-bold"
           >
             {/* Preserve the height of an empty authored heading. */}
             {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}

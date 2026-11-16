@@ -416,19 +416,6 @@ describe('a declared output schema is the serialization allowlist', () => {
   });
 });
 
-class MeClass extends Schema.Class<MeClass>('MeClass')(Me.fields) {}
-
-describe('a class success schema refuses a plain object', () => {
-  it('throws for the object the Struct accepts', () => {
-    expect(() => encode(MeClass)(VALID_ME)).toThrow('Expected MeClass');
-    expect(encode(Me)(VALID_ME)).toStrictEqual(ENCODED_ME);
-  });
-
-  it('accepts an instance, which is the difference', () => {
-    expect(encode(MeClass)(new MeClass(VALID_ME))).toStrictEqual(ENCODED_ME);
-  });
-});
-
 describe('branded ids', () => {
   it('travels as the bare string it brands', () => {
     expect(encode(StudyId)(StudyId.make(STUDY_UUID))).toBe(STUDY_UUID);

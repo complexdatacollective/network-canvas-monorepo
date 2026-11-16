@@ -208,10 +208,10 @@ test.describe('conducting an interview', () => {
 
       // Stage 1: EgoForm.
       await interviewNav.fillEgoName('Ada');
-      // EgoForm exposes no data-stage-ready; readiness is signalled only by the
-      // next-button gaining the bg-success pulse once the form becomes valid.
-      // next()'s click auto-waits on the button's disabled state too, but this
-      // makes the readiness gate explicit.
+      // A pixel-readiness gate for the capture below, not an oracle: the
+      // baseline shows the next-button's valid-form pulse, and that purely
+      // visual state has no semantic signal (no data attribute or ARIA state)
+      // to wait on instead of its class.
       await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
       await capture('interview-stage-ego');
       await interviewNav.next();
@@ -346,7 +346,6 @@ test.describe('conducting an interview', () => {
 
     await interviewNav.next(); // Information -> EgoForm
     await interviewNav.fillEgoName('Ada');
-    await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
     await interviewNav.next(); // EgoForm -> NameGeneratorQuickAdd
 
     await interviewNav.quickAddNode('LossProbe');
@@ -386,7 +385,6 @@ test.describe('conducting an interview', () => {
     await interviewNav.next(); // Information -> EgoForm
 
     await interviewNav.fillEgoName('Rosalind');
-    await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
     await interviewNav.next(); // EgoForm -> NameGeneratorQuickAdd
 
     await interviewNav.quickAddNode('Alice');

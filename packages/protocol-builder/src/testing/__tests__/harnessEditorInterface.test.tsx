@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { assertType, describe, expect, it } from 'vitest';
 
 import type {
   StageEditorComponent,
@@ -30,8 +30,10 @@ const InformationEditor: StageEditorComponent<'Information'> = ({
  * `FixtureStageId`), so the pair has to agree before the call compiles.
  */
 describe('the interface a named editor is opened over', () => {
+  // The assertion is the compile: these files are typechecked, and nothing
+  // here runs anything worth asserting at runtime.
   it('does not compile an editor over another interface’s stage', () => {
-    // Written out first and assigned second, so the refusal is reported
+    // Written out first and asserted second, so the refusal is reported
     // against the whole value rather than against a property inside it — the
     // line the directive is on.
     const overAnotherInterface = {
@@ -40,10 +42,7 @@ describe('the interface a named editor is opened over', () => {
     } as const;
 
     // @ts-expect-error `ego-form-1` is the fixture's EgoForm stage, and this editor is written for Information
-    const mismatched: RenderStageEditorOptions<'Information'> =
-      overAnotherInterface;
-
-    expect(mismatched.stageId).toBe('ego-form-1');
+    assertType<RenderStageEditorOptions<'Information'>>(overAnotherInterface);
   });
 
   /**
@@ -57,10 +56,7 @@ describe('the interface a named editor is opened over', () => {
       editor: InformationEditor,
     } as const;
 
-    const matched: RenderStageEditorOptions<'Information'> =
-      overItsOwnInterface;
-
-    expect(matched.stageId).toBe('information-1');
+    assertType<RenderStageEditorOptions<'Information'>>(overItsOwnInterface);
   });
 
   /**
@@ -84,15 +80,6 @@ describe('the interface a named editor is opened over', () => {
     });
 
     expect(harness.seeded.type).toBe('Geospatial');
-  });
-
-  it('mounts the editor over the stage it is written for', () => {
-    const harness = renderStageEditor({
-      stageId: 'information-1',
-      editor: InformationEditor,
-    });
-
-    expect(harness.getByText('the Information editor')).toBeInTheDocument();
   });
 });
 

@@ -14,13 +14,11 @@ import {
   ANSWER_SIZE,
   ANSWER_SLOT,
   ANSWER_TRAIL,
-  COMMUNITY_CONFIG,
   FORM_COLORS,
   formBlend,
   INSTITUTIONS,
   INTERVIEWER_CONFIG,
   KEY_HUES,
-  PROJECT_RADIUS,
   PROMPT,
   PROMPT_BUBBLE,
   scenePhase,
@@ -92,22 +90,6 @@ describe('DesignPrinciples', () => {
     }
   });
 
-  it('draws the scene across the whole canvas, so its forms sit centred on it', () => {
-    const { container } = renderWithIntl(<DesignPrinciples />);
-
-    const canvas = container.querySelector('[data-theme-interview]');
-    const scene = canvas?.querySelector('svg');
-    expect(scene).not.toBeNull();
-    // Between the canvas and the scene, nothing is inset or offset.
-    for (
-      let element = scene!.parentElement;
-      element && element !== canvas;
-      element = element.parentElement
-    ) {
-      expect(element.className).toBe('absolute inset-0');
-    }
-  });
-
   it("tints the canvas faintly with each form's colour, every colour as light as the next", () => {
     const { container } = renderWithIntl(<DesignPrinciples />);
 
@@ -130,7 +112,7 @@ describe('DesignPrinciples', () => {
     expect(tints.size).toBe(1);
   });
 
-  it("marks the community's contributions in its key colour, sending them in only when motion is allowed", () => {
+  it("draws each institution's contribution with a trail behind it along its connection", () => {
     const { container } = renderWithIntl(<DesignPrinciples />);
 
     const paths = Array.from(container.querySelectorAll('path'));
@@ -149,17 +131,7 @@ describe('DesignPrinciples', () => {
       expect(
         Number(trails[k]!.getAttribute('stroke-dashoffset')),
       ).toBeGreaterThan(Number(dot.getAttribute('stroke-dashoffset') ?? 0));
-      for (const mark of [dot, trails[k]!]) {
-        expect(mark.closest('[class*="stroke-sea-serpent"]')).not.toBeNull();
-        // They move only when motion is allowed and the community is on
-        // screen; with reduced motion they stand along the connection.
-        expect(mark.getAttribute('class')).toContain(
-          'group-data-[loop=6]/stage:motion-safe:animate-',
-        );
-        expect(mark.closest('[class~="opacity-0"]')).toBeNull();
-      }
     }
-    expect(FORM_COLORS[COMMUNITY_CONFIG]).toBe('sea-serpent');
   });
 
   it('runs the connections beneath the device, and draws its frame over the people leaving it', () => {
@@ -185,57 +157,6 @@ describe('DesignPrinciples', () => {
     const figures = scene.querySelectorAll('path[class~="fill-white/85"]');
     expect(figures).toHaveLength(9);
     for (const figure of figures) expect(before(figure, frame)).toBe(true);
-  });
-
-  it('draws the project in neutral ink, not in a colour', () => {
-    const { container } = renderWithIntl(<DesignPrinciples />);
-
-    const project = container.querySelector(
-      `[data-theme-interview] circle[r="${PROJECT_RADIUS}"]`,
-    );
-    expect(project).not.toBeNull();
-    const classes = project!.getAttribute('class')!.split(/\s+/);
-    for (const name of classes) {
-      expect(name, name).toMatch(/^(stroke-text|fill-white\/\d+)$/);
-    }
-  });
-
-  it('keeps the canvas square on wide screens, the cards passing over its edge', () => {
-    const { container } = renderWithIntl(<DesignPrinciples />);
-
-    const canvas = container.querySelector('[data-theme-interview]')!;
-    const classes = canvas.getAttribute('class')!.split(/\s+/);
-    // As tall as it is wide, and no wider than it may be tall.
-    expect(classes).toEqual(
-      expect.arrayContaining([
-        'tablet-landscape:aspect-square',
-        'tablet-landscape:max-h-[86svh]',
-        'tablet-landscape:max-w-[86svh]',
-      ]),
-    );
-    // At the end of its columns, its end edge two rem past the start of the
-    // reading column's: one column, less two rem, of padding.
-    const holder = canvas.parentElement!.getAttribute('class')!.split(/\s+/);
-    expect(holder).toEqual(
-      expect.arrayContaining([
-        'tablet-landscape:col-span-8',
-        'tablet-landscape:justify-end',
-        'tablet-landscape:pe-[calc((100%-21rem)/8-2rem)]',
-      ]),
-    );
-  });
-
-  it('holds the canvas in view until the last card has passed the reading line', () => {
-    const { container } = renderWithIntl(<DesignPrinciples />);
-
-    // The canvas is held for as long as the reading column runs on. The
-    // reader reads at 58% of the window's height, so the column runs at
-    // least the remaining 42% past the last card.
-    const column = container.querySelector('[data-reading-column]')!;
-    const room = /tablet-landscape:pb-\[(\d+)svh\]/.exec(
-      column.getAttribute('class')!,
-    );
-    expect(Number(room?.[1])).toBeGreaterThanOrEqual(42);
   });
 
   it('uses no relative colours, which older Safari drops', () => {

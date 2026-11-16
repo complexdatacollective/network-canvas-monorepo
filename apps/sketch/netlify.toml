@@ -11,11 +11,12 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 # moves to an inner port so the two do not collide.
 [dev]
 framework = "#custom"
-command = "pnpm --filter @codaco/sketch exec vite --port 5187 --strictPort"
+command = "pnpm --filter @codaco/sketch exec sh -c 'node scripts/bundle-functions.mjs --watch & exec vite --port 5187 --strictPort'"
 targetPort = 5187
 port = 5186
-# Serve the function sources, not the deploy bundle, so edits reload live.
-functions = "apps/sketch/netlify/functions"
+# Serve the deploy bundle, which the command above rebuilds on every change:
+# only it can load the Markdown prompts (scripts/bundle-functions.mjs).
+functions = "apps/sketch/netlify/.bundled"
 
 # Deployed functions are pre-bundled by scripts/bundle-functions.mjs (see
 # there for why), so Netlify ships each file as it is: tracing the bundle

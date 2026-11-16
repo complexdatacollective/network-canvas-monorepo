@@ -304,12 +304,15 @@ describe('Update Schema', () => {
       label: 'Label',
     };
 
-    // Should fail bc schema expects existingIdentifier and formData
-    expect(() => updateSchema.parse(flattenedUpdate)).toThrow();
+    const result = updateSchema.safeParse(flattenedUpdate);
+    expect(result.success).toBe(false);
+    expect(result.error.issues.map((issue) => issue.path)).toEqual([
+      ['existingIdentifier'],
+      ['formData'],
+    ]);
   });
 
   it('should require existingIdentifier field', () => {
-    // if existingIdentifier is missing, should throw error
     const missingExistingIdentifier = {
       formData: {
         identifier: 'new-id-123',
@@ -317,16 +320,23 @@ describe('Update Schema', () => {
       },
     };
 
-    expect(() => updateSchema.parse(missingExistingIdentifier)).toThrow();
+    const result = updateSchema.safeParse(missingExistingIdentifier);
+    expect(result.success).toBe(false);
+    expect(result.error.issues.map((issue) => issue.path)).toEqual([
+      ['existingIdentifier'],
+    ]);
   });
 
   it('should require formData field with identifier and label', () => {
-    // if formData is missing, should throw error
     const missingFormData = {
       existingIdentifier: 'old-id',
     };
 
-    expect(() => updateSchema.parse(missingFormData)).toThrow();
+    const result = updateSchema.safeParse(missingFormData);
+    expect(result.success).toBe(false);
+    expect(result.error.issues.map((issue) => issue.path)).toEqual([
+      ['formData'],
+    ]);
   });
 });
 
@@ -357,6 +367,10 @@ describe('CSV Schema', () => {
       { identifier: '', label: '    ' },
     ];
 
-    expect(() => FormSchema.parse({ csvFile: invalidCsv })).toThrow();
+    const result = FormSchema.safeParse({ csvFile: invalidCsv });
+    expect(result.success).toBe(false);
+    expect(result.error.issues.map((issue) => issue.path)).toEqual([
+      ['csvFile', 1],
+    ]);
   });
 });

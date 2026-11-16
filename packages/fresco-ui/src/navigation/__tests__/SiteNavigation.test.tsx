@@ -437,11 +437,16 @@ describe('SiteNavigation', () => {
   });
 
   it('keeps portaling to the document body without a provider', () => {
-    render(<SiteNavigation locale="en-US" site="website" />);
+    const { container } = render(
+      <SiteNavigation locale="en-US" site="website" />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Software' }));
 
-    expect(screen.getByRole('link', { name: 'Architect' })).toBeInTheDocument();
+    const architectLink = screen.getByRole('link', { name: 'Architect' });
+    expect(container).not.toContainElement(architectLink);
+    expect(document.body).toContainElement(architectLink);
+    expect(architectLink.closest('.z-3000')).toBeNull();
   });
 });
 

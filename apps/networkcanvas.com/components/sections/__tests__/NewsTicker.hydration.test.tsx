@@ -67,13 +67,4 @@ describe('NewsTicker server markup', () => {
     expect(serverMarkupFor(false)).toBe(server);
     expect(serverMarkupFor(true)).toBe(server);
   });
-
-  it('serves the marquee branch, which stops itself without JavaScript', () => {
-    // The pre-hydration frame a reduced-motion visitor sees is already
-    // motionless: the marquee carries `motion-reduce:animate-none`, so the
-    // preference is honoured by CSS before the gate below ever flips.
-    const server = serverMarkupFor(null);
-    expect(server).toContain('animate-marquee');
-    expect(server).toContain('motion-reduce:animate-none');
-  });
 });

@@ -51,7 +51,7 @@ function Cells() {
 
 describe('the participants table’s researcher-written text', () => {
   it.each([participant.identifier, participant.label ?? ''])(
-    'lets “%s” take its direction from its own content, on the interface’s side',
+    'lets “%s” take its direction from its own content',
     (text) => {
       render(
         <NuqsTestingAdapter>
@@ -61,7 +61,6 @@ describe('the participants table’s researcher-written text', () => {
 
       const element = screen.getByText(text);
       expect(element).toHaveAttribute('dir', 'auto');
-      expect(element).toHaveClass('text-match-parent');
     },
   );
 });

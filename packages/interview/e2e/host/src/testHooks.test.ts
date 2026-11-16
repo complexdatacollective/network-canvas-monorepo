@@ -30,32 +30,6 @@ function makeProtocol(overrides?: Partial<ProtocolPayload>): ProtocolPayload {
   };
 }
 
-describe('installTestHooks', () => {
-  beforeEach(() => {
-    installTestHooks();
-  });
-
-  afterEach(() => {
-    delete (globalThis as Record<string, unknown>).__test;
-  });
-
-  it('installs __test on globalThis', () => {
-    expect(typeof (globalThis as Record<string, unknown>).__test).toBe(
-      'object',
-    );
-  });
-
-  it('exposes installProtocol, createInterview, getNetworkState', () => {
-    const testGlobal = (globalThis as Record<string, unknown>).__test as Record<
-      string,
-      unknown
-    >;
-    expect(typeof testGlobal.installProtocol).toBe('function');
-    expect(typeof testGlobal.createInterview).toBe('function');
-    expect(typeof testGlobal.getNetworkState).toBe('function');
-  });
-});
-
 describe('getTestState', () => {
   beforeEach(() => {
     installTestHooks();

@@ -154,7 +154,12 @@ function NodeTypeAttributes({
   return (
     <Section
       key={switchGeneration}
-      title={view.name}
+      // The researcher's name for the type reads in its own direction.
+      title={
+        <span dir="auto" className="text-match-parent">
+          {view.name}
+        </span>
+      }
       description={intl.formatMessage(
         anonymisationMessages.typeSwitchDescription,
       )}

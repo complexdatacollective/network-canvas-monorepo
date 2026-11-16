@@ -92,9 +92,7 @@ describe('ensureError', () => {
 
       expect(error.message).toBe('Odd shape');
       expect(error.name).toBe('Error');
-      expect(typeof error.stack === 'string' || error.stack === undefined).toBe(
-        true,
-      );
+      expect(error.stack).toMatch(/^Error: Odd shape/);
     });
 
     it('describes an object whose message is not a string', () => {

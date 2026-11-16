@@ -206,7 +206,7 @@ const StageContent = ({
       if (!variable) return part.value;
       return (
         <DualLink key={variable[0]} to={`#variable-${variable[0]}`}>
-          {part.value}
+          <bdi>{part.value}</bdi>
         </DualLink>
       );
     });

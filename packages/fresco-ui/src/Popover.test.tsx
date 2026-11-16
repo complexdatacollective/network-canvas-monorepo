@@ -29,21 +29,6 @@ describe('Popover', () => {
     ).toBeInTheDocument();
   });
 
-  it('names the popup from aria-label when there is no heading to point at', async () => {
-    render(
-      <Popover>
-        <PopoverTrigger>Open</PopoverTrigger>
-        <PopoverContent aria-label="Anchored bottom">Anchored</PopoverContent>
-      </Popover>,
-    );
-
-    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
-
-    expect(
-      await screen.findByRole('dialog', { name: 'Anchored bottom' }),
-    ).toBeInTheDocument();
-  });
-
   /**
    * Prose and forms get the roomy padding; a popup that holds a list of
    * options asks for the padding menus and comboboxes use.

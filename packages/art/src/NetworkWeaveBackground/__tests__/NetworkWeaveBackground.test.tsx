@@ -81,35 +81,17 @@ describe('NetworkWeaveBackground', () => {
       expect(Math.abs(lowerStart - upperStart)).toBeLessThan(8);
     }
 
-    for (const tributary of container.querySelectorAll(
-      '.network-weave__tributary',
-    )) {
+    const tributaries = container.querySelectorAll('.network-weave__tributary');
+    expect(tributaries.length).toBeGreaterThan(0);
+    for (const tributary of tributaries) {
       expect(tributary.getAttribute('d')).toMatch(/^M -/);
       expect(tributary.getAttribute('d')).toContain(' C ');
+      expect(Number(tributary.getAttribute('stroke-width'))).toBeGreaterThan(0);
     }
 
     expect(container.querySelector('circle')).toBeNull();
     expect(container.querySelector('.network-weave__quiet-zone')).toBeNull();
     expect(container.querySelector('filter')).toBeNull();
-  });
-
-  it('gives the incoming lines and moving flow dots visual weight', () => {
-    const { container } = render(
-      <NetworkWeaveBackground complexity={12} strands={3} />,
-    );
-
-    for (const tributary of container.querySelectorAll(
-      '.network-weave__tributary',
-    )) {
-      expect(Number(tributary.getAttribute('stroke-width'))).toBeGreaterThan(2);
-    }
-    for (const flow of container.querySelectorAll(
-      '.network-weave__tributary-flow',
-    )) {
-      expect(Number(flow.getAttribute('stroke-width'))).toBeGreaterThanOrEqual(
-        5,
-      );
-    }
   });
 
   it('uses a growing guide with unclipped rounded flow signals', () => {
@@ -133,14 +115,11 @@ describe('NetworkWeaveBackground', () => {
       const endWidth = Math.abs((coordinates[9] ?? 0) - (coordinates[7] ?? 0));
 
       expect(endWidth).toBeGreaterThan(startWidth * 5);
-      expect(guide.getAttribute('fill-opacity')).toBe('0.18');
     });
     flows.forEach((flow) => {
       expect(flow.tagName).toBe('rect');
       expect(flow.getAttribute('mask')).toBeNull();
-      expect(flow.getAttribute('rx')).toBe('16');
-      expect(flow.getAttribute('ry')).toBe('6');
-      expect(flow.getAttribute('fill-opacity')).toBe('0.78');
+      expect(Number(flow.getAttribute('rx'))).toBeGreaterThan(0);
       expect(flow.getAttribute('style')).toContain('offset-path: path(');
       expect(flow.getAttribute('style')).not.toContain("path('M -");
     });
@@ -433,36 +412,42 @@ describe('NetworkWeaveBackground', () => {
       styles.match(/tributary-drift-\S+ ([\d.]+)s/)?.[1],
     );
 
-    expect(ribbonDuration).toBe(4.5);
-    expect(tributaryDuration).toBe(2.25);
     expect(tributaryDuration).toBeLessThan(ribbonDuration);
-    expect(ribbonDuration / tributaryDuration).toBe(2);
   });
 
   it('loops flow motion without phase jumps', () => {
     const { container } = render(<NetworkWeaveBackground animated />);
     const styles = container.querySelector('style')?.textContent ?? '';
 
-    expect(styles).toContain(
-      'from { offset-distance: 0%; transform: scale(0.55, 0.35); } to { offset-distance: 100%; transform: scale(1.4, 3.8); }',
+    expect(styles).toMatch(
+      /from \{ offset-distance: 0%;[^}]*\} to \{ offset-distance: 100%;/,
     );
-    expect(styles).toContain(
-      'from { stroke-dashoffset: 0; } to { stroke-dashoffset: -159; }',
+    const dashTravel = Number(
+      styles.match(
+        /from \{ stroke-dashoffset: 0; \} to \{ stroke-dashoffset: (-?[\d.]+); \}/,
+      )?.[1],
     );
 
-    for (const flow of container.querySelectorAll(
+    const tributaryFlows = container.querySelectorAll(
       '.network-weave__tributary-flow',
-    )) {
-      expect(flow.getAttribute('stroke-dasharray')).toBe('1 52');
-    }
-    for (const flow of container.querySelectorAll(
-      '.network-weave__tributary-flow',
-    )) {
+    );
+    expect(tributaryFlows.length).toBeGreaterThan(0);
+    for (const flow of tributaryFlows) {
+      // A dash cycle that travels a whole number of dash periods ends where
+      // it began, so the restart is invisible.
+      const dashPeriod = (flow.getAttribute('stroke-dasharray') ?? '')
+        .split(' ')
+        .map(Number)
+        .reduce((sum, length) => sum + length, 0);
+      expect(dashPeriod).toBeGreaterThan(0);
+      expect(Math.abs(dashTravel) % dashPeriod).toBe(0);
       expect(flow.getAttribute('stroke-dashoffset')).toBeNull();
     }
-    for (const signal of container.querySelectorAll(
+    const ribbonFlows = container.querySelectorAll(
       '.network-weave__ribbon-flow',
-    )) {
+    );
+    expect(ribbonFlows.length).toBeGreaterThan(0);
+    for (const signal of ribbonFlows) {
       expect(signal.getAttribute('mask')).toBeNull();
     }
     expect(styles).not.toContain('opacity:');

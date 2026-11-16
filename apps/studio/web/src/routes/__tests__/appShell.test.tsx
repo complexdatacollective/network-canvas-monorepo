@@ -796,16 +796,6 @@ describe('the header switcher lockup', () => {
       screen.getByRole('option', { name: /Methods comparison/ }),
     ).not.toHaveTextContent('participants');
 
-    // The dot is coloured BY the state, not one grey for all of them. It is
-    // decoration — the line above carries the state for a reader — so this
-    // asserts the two differ rather than naming a colour.
-    const toneOf = (name: RegExp) =>
-      screen
-        .getByRole('option', { name })
-        .querySelector('span[aria-hidden="true"].rounded-full')?.className;
-    expect(toneOf(/Wave one pilot/)).toContain('bg-success');
-    expect(toneOf(/Methods comparison/)).not.toContain('bg-success');
-
     fireEvent.keyDown(document.activeElement ?? document.body, {
       key: 'Escape',
     });

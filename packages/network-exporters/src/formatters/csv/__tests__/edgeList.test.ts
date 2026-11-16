@@ -7,7 +7,6 @@ import {
   entityPrimaryKeyProperty,
   ncSourceUUID,
   ncTargetUUID,
-  ncUUIDProperty,
   protocolName,
 } from '@codaco/shared-consts';
 
@@ -44,14 +43,12 @@ describe('edgeListRows', () => {
       ),
     );
 
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toContain(ncUUIDProperty);
-    expect(rows[0]).toContain('from');
-    expect(rows[0]).toContain('to');
-    // processEntityVariables expands categorical attributes into boolean columns
-    // e.g. 'relationship-uuid': 'partner' → RelationshipType_partner column = true
-    expect(rows[0]).toContain('RelationshipType_partner');
-    expect(rows[1]).toContain('true');
+    // processEntityVariables expands the categorical attribute into one
+    // boolean column per option.
+    expect(rows).toEqual([
+      'edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,RelationshipType_parent,RelationshipType_partner,RelationshipType_friend\r\n',
+      '1,1,2,ego-1,edge-1,n1,n2,false,true,false\r\n',
+    ]);
   });
 
   it('yields only the header for an empty edge set', () => {

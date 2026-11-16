@@ -22,11 +22,6 @@ const mockItem = {
 };
 
 describe('<SlideFormNode />', () => {
-  it('should render', () => {
-    const component = shallow(<SlideForm {...mockProps} item={mockItem} />);
-    expect(component).toMatchSnapshot();
-  });
-
   it('should render with prepopulated fields if provided', () => {
     const subject = shallow(<SlideForm {...mockProps} item={mockItem} />);
     expect(subject.prop('initialValues')).toEqual({ foo: 'bar' });

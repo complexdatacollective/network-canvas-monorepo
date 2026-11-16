@@ -71,9 +71,7 @@ vi.mock(
   },
 );
 
-import NarrativePedigreeView, {
-  resolveDiseaseColor,
-} from '../components/NarrativePedigreeView';
+import NarrativePedigreeView from '../components/NarrativePedigreeView';
 
 // jsdom lacks ResizeObserver, which fresco-ui layout primitives observe.
 // The stub immediately reports a fixed content size so the off-screen node
@@ -659,11 +657,6 @@ describe('NarrativePedigreeView — node mode selection', () => {
 });
 
 describe('NarrativePedigreeView — condition colours', () => {
-  it('resolves every defined node color reference', () => {
-    expect(resolveDiseaseColor('node-color-seq-1')).toBe('var(--node-1)');
-    expect(resolveDiseaseColor('node-color-seq-8')).toBe('var(--node-8)');
-  });
-
   it('resolves Architect node colour tokens for the key, pedigree, dimming, and snapshot', async () => {
     const baseStage = makeNarrativeStage();
     const stage: NarrativeStage = {
@@ -837,7 +830,7 @@ describe('NarrativePedigreeView — symbol shapes', () => {
 });
 
 describe('NarrativePedigreeView — snapshot', () => {
-  it('calls exportSnapshot with the view element when Save snapshot is clicked', async () => {
+  it('saves the snapshot of the family under a file named after the stage', async () => {
     renderView();
 
     const saveButton = await screen.findByRole('button', {
@@ -847,8 +840,8 @@ describe('NarrativePedigreeView — snapshot', () => {
 
     await waitFor(() => expect(exportSnapshotMock).toHaveBeenCalledTimes(1));
     const [element, filename] = exportSnapshotMock.mock.calls[0]!;
-    expect(element).toBeInstanceOf(HTMLElement);
-    expect(typeof filename).toBe('string');
+    expect(element).toHaveTextContent('Mother');
+    expect(filename).toBe('disease-pedigree.png');
   });
 
   it('captures the whole family, untransformed, however the canvas is zoomed', async () => {

@@ -28,14 +28,4 @@ describe('CategoricalBin id derivation', () => {
       getCatBinDropTargetId(stageId, promptId, 1),
     );
   });
-
-  it('ids are stable for a given index regardless of label', () => {
-    expect(getCatBinListId(stageId, promptId, 2)).toBe(
-      getCatBinListId(stageId, promptId, 2),
-    );
-    expect(getCatBinLayoutId(promptId, 2)).toBe(getCatBinLayoutId(promptId, 2));
-    expect(getCatBinDropTargetId(stageId, promptId, 2)).toBe(
-      getCatBinDropTargetId(stageId, promptId, 2),
-    );
-  });
 });

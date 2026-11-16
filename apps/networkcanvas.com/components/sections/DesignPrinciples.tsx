@@ -219,7 +219,6 @@ export function DesignPrinciples() {
 
           <div
             ref={columnRef}
-            data-reading-column
             className="tablet-landscape:col-span-5 tablet-landscape:col-start-8 tablet-landscape:row-start-1 tablet-landscape:z-10 tablet-landscape:pt-[45svh] tablet-landscape:pb-[42svh] relative"
           >
             {items.map((item, index) => (

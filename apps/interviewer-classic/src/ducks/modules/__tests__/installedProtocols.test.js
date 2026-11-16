@@ -59,17 +59,6 @@ describe('protocols reducer', () => {
       expect(result).toEqual({});
     });
 
-    it('deletes protocol when there are no existing sessions', () => {
-      const actionListener = vi.fn();
-
-      const store = getStore(actionListener);
-      store.dispatch(actionCreators.deleteProtocol(protocolUID));
-
-      const state = store.getState();
-
-      expect(state).toMatchObject({});
-    });
-
     describe('Has existing sessions', () => {
       it('warns user about existing sessions', async () => {
         const actionListener = vi.fn();

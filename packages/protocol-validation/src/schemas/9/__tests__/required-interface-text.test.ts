@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import {
   interfaceTextAsShown,
   interfaceTextFor,
@@ -119,10 +120,23 @@ describe('the interface text a protocol may hold', () => {
     const blank = baseProtocol();
     Object.assign(blank.interfaceText?.navigation ?? {}, { back: { en: ' ' } });
 
-    for (const protocol of [group, entry, blank]) {
-      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
-      expect((await interfaceTextIssues(protocol)).length).toBeGreaterThan(0);
-    }
+    expect(parseIssues(ProtocolSchemaV9.safeParse(group))).toEqual([
+      { path: 'interfaceText', code: 'unrecognized_keys', keys: ['invented'] },
+    ]);
+    expect(parseIssues(ProtocolSchemaV9.safeParse(entry))).toEqual([
+      {
+        path: 'interfaceText.navigation',
+        code: 'unrecognized_keys',
+        keys: ['invented'],
+      },
+    ]);
+    expect(parseIssues(ProtocolSchemaV9.safeParse(blank))).toEqual([
+      {
+        path: 'interfaceText.navigation.back.en',
+        code: 'custom',
+        message: 'Text cannot be blank.',
+      },
+    ]);
   });
 
   it('reports what the interview shows and the protocol lacks, in a default language Network Canvas has no wording in', async () => {

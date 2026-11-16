@@ -300,6 +300,7 @@ describe('NetworkComposer quick-add honours codebook validation', () => {
       expect(store.getState().session.network.nodes).toHaveLength(1);
       expect(input).toHaveValue('');
     });
+    // Long enough for a stale validation of the emptied field to land.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
