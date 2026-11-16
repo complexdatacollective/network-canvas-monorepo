@@ -350,10 +350,70 @@ type Story = StoryObj<typeof meta>;
  */
 const inEnglish = { globals: { appLocale: 'en' } };
 
+/** A custom property as it resolves on one element. */
+const resolved = (element: Element, property: string): string =>
+  getComputedStyle(element).getPropertyValue(property).trim();
+
+/**
+ * The ink an option field's error is drawn in, on the tinted row it sits in.
+ *
+ * The page's own destructive ink is too faint to read on the accent surface,
+ * so the row points `--destructive-ink` at the accent surface's own
+ * `--surface-accent-destructive`. Asserted as each field's error region
+ * resolves it, which is what the error text is painted with.
+ */
+async function expectAccentInk(
+  canvasElement: HTMLElement,
+  fieldNames: readonly string[],
+): Promise<void> {
+  await expect(fieldNames.length).toBeGreaterThan(0);
+  const pageInk = resolved(canvasElement, '--destructive-ink');
+  for (const fieldName of fieldNames) {
+    const region = canvasElement.querySelector(
+      `[data-field-name="${fieldName}"] [aria-live]`,
+    );
+    if (region === null) {
+      throw new Error(`no error region for the field "${fieldName}"`);
+    }
+    const ink = resolved(region, '--destructive-ink');
+    await expect(ink).toBe(resolved(region, '--surface-accent-destructive'));
+    await expect(ink).not.toBe(pageInk);
+    // The fill a destructive control paints with is the page's own: only the
+    // ink is redirected.
+    await expect(resolved(region, '--destructive')).toBe(
+      resolved(canvasElement, '--destructive'),
+    );
+  }
+}
+
 export const NewCategoricalVariable: Story = {};
 
+/**
+ * An attribute whose choices are already written. Each option field sits on
+ * a tinted row, and its error is drawn in the ink that row can carry, while
+ * the button that removes the option keeps the page's destructive fill.
+ */
 export const ExistingVariable: Story = {
   args: { mode: 'update' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const removeButtons = await canvas.findAllByRole('button', {
+      name: /^Remove option \d+$/,
+    });
+    await expect(removeButtons).toHaveLength(2);
+    for (const button of removeButtons) {
+      await expect(resolved(button, '--destructive')).toBe(
+        resolved(canvasElement, '--destructive'),
+      );
+    }
+
+    await expectAccentInk(canvasElement, [
+      'option-1-label',
+      'option-1-value',
+      'option-2-label',
+      'option-2-value',
+    ]);
+  },
 };
 
 export const InterfaceOwnedOptions: Story = {
@@ -398,6 +458,11 @@ export const BooleanAnswers: Story = {
         'Write what this answer says, or clear both to offer Yes and No.',
       ),
     ).toBeVisible();
+
+    await expectAccentInk(canvasElement, [
+      'boolean-answer-true-label',
+      'boolean-answer-false-label',
+    ]);
   },
 };
 

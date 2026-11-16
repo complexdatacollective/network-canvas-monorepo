@@ -55,6 +55,27 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+/** The first fill painted behind a control, up to the group it sits in. */
+function paintedBehind(control: Element, group: Element): string | null {
+  let current = control.parentElement;
+  while (current !== null && current !== group) {
+    const fill = getComputedStyle(current).backgroundColor;
+    if (fill !== 'rgba(0, 0, 0, 0)' && fill !== 'transparent') return fill;
+    current = current.parentElement;
+  }
+  return null;
+}
+
+/** The colour `--rule-bg` paints as, resolved where the rows read it. */
+function fillOfRuleRows(group: Element): string {
+  const probe = document.createElement('div');
+  probe.style.backgroundColor = 'var(--rule-bg)';
+  group.append(probe);
+  const fill = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  return fill;
+}
+
 /**
  * One rule on and one off in each of the three groups — the state the styling
  * is about.
@@ -79,8 +100,8 @@ export const OneOnOneOffInEachGroup: Story = {
       'Limits',
       'Compare to another attribute',
     ]) {
-      const rows = within(canvas.getByRole('group', { name: group }));
-      const switches = rows.getAllByRole('switch');
+      const groupElement = canvas.getByRole('group', { name: group });
+      const switches = within(groupElement).getAllByRole('switch');
       const on = switches.filter(
         (control) => control.getAttribute('aria-checked') === 'true',
       );
@@ -93,10 +114,15 @@ export const OneOnOneOffInEachGroup: Story = {
       await expect(off.length).toBeGreaterThan(0);
 
       // The row carrying an enabled rule is filled; the row beside it is not.
-      // `--rule-bg` is the slate-blue Architect fills a live rule row with,
-      // and the nearest ancestor carrying it IS that row.
-      await expect(on[0]?.closest('[class*="bg-(--rule-bg)"]')).not.toBeNull();
-      await expect(off[0]?.closest('[class*="bg-(--rule-bg)"]')).toBeNull();
+      // `--rule-bg` is the slate-blue Architect fills a live rule row with.
+      const ruleFill = fillOfRuleRows(groupElement);
+      const [onSwitch] = on;
+      const [offSwitch] = off;
+      if (onSwitch === undefined || offSwitch === undefined) {
+        throw new Error(`the ${group} group lost a switch`);
+      }
+      await expect(paintedBehind(onSwitch, groupElement)).toBe(ruleFill);
+      await expect(paintedBehind(offSwitch, groupElement)).not.toBe(ruleFill);
     }
   },
 };
