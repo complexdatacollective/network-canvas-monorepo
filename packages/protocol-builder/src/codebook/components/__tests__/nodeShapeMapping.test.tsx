@@ -217,9 +217,7 @@ describe('the shape mapping switch', () => {
     await user.click(toggle());
     await user.click(toggle());
 
-    expect(
-      screen.queryByRole('radiogroup', { name: 'Shape for Asian' }),
-    ).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Asian' })).toBeNull();
 
     await user.click(save());
     expect(
@@ -260,8 +258,8 @@ describe('the attribute a shape can follow', () => {
     expect(screen.queryByText('Thresholds')).toBeNull();
     expect(screen.getByText('Shape for each value')).toBeVisible();
 
-    await chooseShape(user, 'Shape for Asian', 'Square');
-    await chooseShape(user, 'Shape for White', 'Diamond');
+    await chooseShape(user, 'Asian', 'Square');
+    await chooseShape(user, 'White', 'Diamond');
     await user.click(save());
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
@@ -288,8 +286,8 @@ describe('a mapping that follows one answer at a time', () => {
     await user.click(toggle());
     await chooseAttribute(user, attributeField('Attribute'), 'Alive');
 
-    await chooseShape(user, 'Shape for True', 'Circle');
-    await chooseShape(user, 'Shape for False', 'Diamond');
+    await chooseShape(user, 'True', 'Circle');
+    await chooseShape(user, 'False', 'Diamond');
     await user.click(save());
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
@@ -305,18 +303,18 @@ describe('a mapping that follows one answer at a time', () => {
 
   /**
    * Option values are researcher-typed text: they may hold spaces, dots,
-   * brackets and any script. Each answer's field is therefore named by its
+   * brackets and any script. Each answer's row is therefore named by its
    * position, because a name built from the value would read as a path (`a.b`
    * nested, `x[0]` indexed) wherever a name is interpreted as one.
    */
-  it('names the field of an answer by position, whatever its value holds', async () => {
+  it('names the row of an answer by position, whatever its value holds', async () => {
     const onSubmit = vi.fn<SubmitEntity>(applied);
     const user = renderEditor(onSubmit, person({ default: 'circle' }));
     await user.click(toggle());
     await chooseAttribute(user, attributeField('Attribute'), 'Contact');
 
-    await chooseShape(user, 'Shape for a.b [1]', 'Square');
-    await chooseShape(user, 'Shape for 友人', 'Diamond');
+    await chooseShape(user, 'a.b [1]', 'Square');
+    await chooseShape(user, '友人', 'Diamond');
     await user.click(save());
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
@@ -329,11 +327,10 @@ describe('a mapping that follows one answer at a time', () => {
       ],
     });
     expect(
-      Array.from(document.querySelectorAll('[data-field-name]')).map((field) =>
-        field.getAttribute('data-field-name'),
-      ),
-    ).toEqual(expect.arrayContaining(['shape-for-1', 'shape-for-2']));
+      document.querySelector('[data-field-name="shape-for-each-value"]'),
+    ).not.toBeNull();
     expect(document.querySelector('[data-field-name*="a.b"]')).toBeNull();
+    expect(document.querySelector('[name*="a.b"]')).toBeNull();
   });
 
   it('says so while any answer still has no shape of its own', async () => {
@@ -342,13 +339,19 @@ describe('a mapping that follows one answer at a time', () => {
     await user.click(toggle());
     await chooseAttribute(user, attributeField('Attribute'), 'Ethnicity');
 
-    const notice = 'Some values are unmapped and will use the default shape.';
-    expect(screen.getByText(notice)).toBeVisible();
+    const notice = 'Uses the default shape';
+    expect(screen.getAllByText(notice)).toHaveLength(2);
+    expect(
+      screen.getByRole('radiogroup', { name: 'Asian' }),
+    ).toHaveAccessibleDescription(notice);
 
-    await chooseShape(user, 'Shape for Asian', 'Square');
-    expect(screen.getByText(notice)).toBeVisible();
+    await chooseShape(user, 'Asian', 'Square');
+    expect(screen.getAllByText(notice)).toHaveLength(1);
+    expect(
+      screen.getByRole('radiogroup', { name: 'Asian' }),
+    ).not.toHaveAccessibleDescription();
 
-    await chooseShape(user, 'Shape for White', 'Diamond');
+    await chooseShape(user, 'White', 'Diamond');
     expect(screen.queryByText(notice)).toBeNull();
   });
 
@@ -357,7 +360,7 @@ describe('a mapping that follows one answer at a time', () => {
     const user = renderEditor(onSubmit);
     await user.click(toggle());
     await chooseAttribute(user, attributeField('Attribute'), 'Ethnicity');
-    await chooseShape(user, 'Shape for Asian', 'Square');
+    await chooseShape(user, 'Asian', 'Square');
     await user.click(save());
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());

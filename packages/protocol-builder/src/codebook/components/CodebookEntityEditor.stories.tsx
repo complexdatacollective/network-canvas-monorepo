@@ -225,17 +225,16 @@ export const WithAShapeMapping: Story = {
       dialog.getByRole('switch', { name: 'Map attribute to shape' }),
     ).toBeChecked();
     await expect(
-      within(
-        dialog.getByRole('radiogroup', { name: 'Shape for Asian' }),
-      ).getByRole('radio', { name: 'Select shape Square' }),
+      within(dialog.getByRole('radiogroup', { name: 'Asian' })).getByRole(
+        'radio',
+        { name: 'Select shape Square' },
+      ),
     ).toHaveAttribute('aria-checked', 'true');
     // The other answer has no shape of its own yet, which the editor says
     // rather than leaving the researcher to notice.
     await expect(
-      dialog.getByText(
-        'Some values are unmapped and will use the default shape.',
-      ),
-    ).toBeVisible();
+      dialog.getByRole('radiogroup', { name: 'White' }),
+    ).toHaveAccessibleDescription('Uses the default shape');
   },
 };
 
@@ -268,14 +267,16 @@ export const WithCustomShapes: Story = {
     const dialog = within(await screen.findByRole('dialog'));
 
     await expect(
-      within(
-        dialog.getByRole('radiogroup', { name: /^Shape(?! for)/ }),
-      ).getByRole('radio', { name: 'Select shape Home' }),
+      within(dialog.getByRole('radiogroup', { name: /^Shape/ })).getByRole(
+        'radio',
+        { name: 'Select shape Home' },
+      ),
     ).toHaveAttribute('aria-checked', 'true');
     await expect(
-      within(
-        dialog.getByRole('radiogroup', { name: 'Shape for Asian' }),
-      ).getByRole('radio', { name: 'Select shape School' }),
+      within(dialog.getByRole('radiogroup', { name: 'Asian' })).getByRole(
+        'radio',
+        { name: 'Select shape School' },
+      ),
     ).toHaveAttribute('aria-checked', 'true');
     await expect(
       dialog.getByRole('button', { name: 'Remove shape Home' }),

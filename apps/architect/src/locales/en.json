@@ -3795,10 +3795,6 @@
     "defaultMessage": "Shape at threshold {value}",
     "description": "Accessible label for the shape chosen at a numeric breakpoint. value is the complete locale-formatted threshold number; its precision must be preserved."
   },
-  "architect.typeEditor.shapeVariableMapping.shapeFor": {
-    "defaultMessage": "Shape for {value1}",
-    "description": "Accessible name of the shape picker beside one value of the variable in the shape mapping; read only by screen readers. value1 is the value's label."
-  },
   "architect.typeEditor.shapeVariableMapping.shapeForEachValue": {
     "defaultMessage": "Shape for each value",
     "description": "Heading above the list of a categorical, ordinal or yes/no variable's values in the shape mapping, each with a picker for the shape used for that value."
@@ -3806,10 +3802,6 @@
   "architect.typeEditor.shapeVariableMapping.shapeMapping": {
     "defaultMessage": "Shape mapping",
     "description": "Hidden field label (accessible name only) of the shape mapping editor, which holds the chosen variable and its value-to-shape rules."
-  },
-  "architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill": {
-    "defaultMessage": "Some values are unmapped and will use the default shape.",
-    "description": "Warning below the list of values in the shape mapping, shown while at least one value has no shape chosen. Those nodes use the node type's default shape."
   },
   "architect.typeEditor.shapeVariableMapping.thresholdValue": {
     "defaultMessage": "Threshold {value1, number} value",

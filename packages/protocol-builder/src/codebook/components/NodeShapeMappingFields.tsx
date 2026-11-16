@@ -9,7 +9,6 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import {
   headingTagBelow,
   useEnclosingHeadingLevel,
@@ -18,11 +17,14 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NodeShapeReference } from '@codaco/protocol-validation';
 
+import ShapeMappingField, {
+  useShapeMappingHint,
+} from '../../fields/ShapeMappingField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import type { ResolvedTranslation } from '../../localization/localizedText.ts';
 import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
-import type { CustomShapes } from '../customShapes.ts';
+import { type CustomShapes, isNodeShapeReference } from '../customShapes.ts';
 import {
   eligibleShapeVariables,
   MAX_SHAPE_THRESHOLDS,
@@ -63,18 +65,6 @@ const messages = defineMessages({
     defaultMessage: 'Shape for each value',
     description:
       'Heading over the rows that give one shape to each answer the chosen attribute can take.',
-  },
-  shapeForValue: {
-    id: 'protocolBuilder.codebookEntity.shapeForValue',
-    defaultMessage: 'Shape for {value1}',
-    description:
-      'Label of the control choosing the shape one answer is drawn as. value1 is the answer’s own label, already in the reader’s language where the protocol author wrote one.',
-  },
-  shapeValuesUnmapped: {
-    id: 'protocolBuilder.codebookEntity.shapeValuesUnmapped',
-    defaultMessage: 'Some values are unmapped and will use the default shape.',
-    description:
-      'Notice shown while at least one of the chosen attribute’s answers has been given no shape of its own.',
   },
   shapeThresholds: {
     id: 'protocolBuilder.codebookEntity.shapeThresholds',
@@ -395,6 +385,7 @@ export default function NodeShapeMappingFields({
   const config = thresholdInputConfig(selected);
   const options = eligibleShapeVariables(variables);
   const localize = useLocalizedText();
+  const shapeMappingHint = useShapeMappingHint();
   const answers =
     selected === undefined ? [] : discreteAnswers(selected, intl, localize);
   const thresholds = mapping.thresholds ?? [];
@@ -448,55 +439,55 @@ export default function NodeShapeMappingFields({
           />
 
           {selected !== undefined && mapping.type === 'discrete' && (
-            <div className="flex flex-col gap-3">
-              {groupHeading(intl.formatMessage(messages.shapeForEachValue))}
-              {answers.map((answer, index) => (
-                <div
-                  key={JSON.stringify(answer.value)}
-                  className={`${ROW_CLASSES} flex-wrap`}
-                >
-                  <OptionLabel
-                    label={answer.label.text}
-                    render={
-                      <span
-                        className="min-w-40 flex-1 text-sm"
-                        lang={answer.label.lang}
-                        dir={answer.label.dir}
-                      />
-                    }
-                  />
-                  <div className="max-w-full">
-                    <UnconnectedField
-                      name={`shape-for-${index + 1}`}
-                      label={intl.formatMessage(messages.shapeForValue, {
-                        value1: answer.label.text,
-                      })}
-                      labelHidden
-                      component={ShapePickerField}
-                      small
-                      nodeColor={nodeColor}
-                      customShapes={customShapes}
-                      value={shapeForValue(mapping, answer.value)}
-                      disabled={disabled}
-                      onChange={(next) => {
-                        if (next !== undefined) {
-                          onChange(
-                            withDiscreteShape(mapping, answer.value, next),
-                          );
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-              {answers.some(
-                (answer) => shapeForValue(mapping, answer.value) === undefined,
-              ) && (
-                <Paragraph className="text-warning mt-0 mb-0! text-xs">
-                  {intl.formatMessage(messages.shapeValuesUnmapped)}
-                </Paragraph>
-              )}
-            </div>
+            <UnconnectedField
+              name="shape-for-each-value"
+              label={intl.formatMessage(messages.shapeForEachValue)}
+              hint={shapeMappingHint}
+              component={ShapeMappingField}
+              rows={answers.map((answer, index) => ({
+                id: String(index),
+                label:
+                  answer.label.lang !== undefined &&
+                  answer.label.dir !== undefined
+                    ? {
+                        text: answer.label.text,
+                        lang: answer.label.lang,
+                        dir: answer.label.dir,
+                      }
+                    : answer.label.text,
+              }))}
+              nodeColor={nodeColor}
+              customShapes={customShapes}
+              value={answers.flatMap((answer, index) => {
+                const shape = shapeForValue(mapping, answer.value);
+                return shape === undefined
+                  ? []
+                  : [{ id: String(index), value: shape }];
+              })}
+              disabled={disabled}
+              onChange={(next) => {
+                const changed = (next ?? []).find((entry) => {
+                  const answer = answers[Number(entry.id)];
+                  return (
+                    answer !== undefined &&
+                    shapeForValue(mapping, answer.value) !== entry.value
+                  );
+                });
+                const answer =
+                  changed === undefined
+                    ? undefined
+                    : answers[Number(changed.id)];
+                if (
+                  changed !== undefined &&
+                  answer !== undefined &&
+                  isNodeShapeReference(changed.value)
+                ) {
+                  onChange(
+                    withDiscreteShape(mapping, answer.value, changed.value),
+                  );
+                }
+              }}
+            />
           )}
 
           {selected !== undefined && mapping.type === 'breakpoints' && (

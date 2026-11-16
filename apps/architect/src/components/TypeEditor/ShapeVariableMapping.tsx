@@ -15,10 +15,15 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import type { NodeColorSequence } from '@codaco/fresco-ui/Node';
-import OptionLabel, { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { CustomShapes } from '@codaco/protocol-builder/codebook/customShapes';
+import {
+  type CustomShapes,
+  isNodeShapeReference,
+} from '@codaco/protocol-builder/codebook/customShapes';
+import ShapeMappingField, {
+  useShapeMappingHint,
+} from '@codaco/protocol-builder/fields/ShapeMappingField';
 import ShapePickerField from '@codaco/protocol-builder/fields/ShapePickerField';
 import {
   type NodeShapeReference,
@@ -94,18 +99,6 @@ const messages = defineMessages({
     defaultMessage: 'Shape for each value',
     description:
       "Heading above the list of a categorical, ordinal or yes/no variable's values in the shape mapping, each with a picker for the shape used for that value.",
-  },
-  shapeFor: {
-    id: 'architect.typeEditor.shapeVariableMapping.shapeFor',
-    defaultMessage: 'Shape for {value1}',
-    description:
-      "Accessible name of the shape picker beside one value of the variable in the shape mapping; read only by screen readers. value1 is the value's label.",
-  },
-  someValuesAreUnmappedAndWill: {
-    id: 'architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill',
-    defaultMessage: 'Some values are unmapped and will use the default shape.',
-    description:
-      "Warning below the list of values in the shape mapping, shown while at least one value has no shape chosen. Those nodes use the node type's default shape.",
   },
   thresholds: {
     id: 'architect.typeEditor.shapeVariableMapping.thresholds',
@@ -338,6 +331,7 @@ const ShapeMappingEditor = ({
   customShapes,
 }: ShapeMappingEditorProps) => {
   const intl = useAppIntl();
+  const shapeMappingHint = useShapeMappingHint();
   const localization = useSelector(getLocalization);
   const dynamic = (value ?? EMPTY_MAPPING) as ShapeMappingDraft;
 
@@ -429,6 +423,8 @@ const ShapeMappingEditor = ({
       (entry) => JSON.stringify(entry.value) === JSON.stringify(optionValue),
     )?.shape;
 
+  const discreteOptions = getDiscreteOptions();
+
   return (
     <div className="flex flex-col">
       <UnconnectedField
@@ -442,47 +438,36 @@ const ShapeMappingEditor = ({
       />
 
       {selectedVar && dynamic.type === 'discrete' && (
-        <div className="flex flex-col gap-3">
-          <Heading
-            level="h4"
-            margin="none"
-            className="mb-1 block text-sm font-semibold text-current/70"
-          >
-            {intl.formatMessage(messages.shapeForEachValue)}
-          </Heading>
-          {getDiscreteOptions().map((option) => (
-            // The row wraps, so a picker too wide to share a line with the
-            // value's label moves below it rather than squeezing the label.
-            <div
-              key={String(option.value)}
-              className={`${ITEM_ROW_CLASSES} flex-wrap`}
-            >
-              <OptionLabel
-                label={option.label}
-                render={<span className="min-w-40 flex-1 text-sm" />}
-              />
-              <div className="max-w-full">
-                <ShapePickerField
-                  small
-                  nodeColor={nodeColor}
-                  customShapes={customShapes}
-                  aria-label={intl.formatMessage(messages.shapeFor, {
-                    value1: optionLabelText(option.label),
-                  })}
-                  value={getShapeForValue(option.value)}
-                  onChange={(shape) => {
-                    if (shape) handleDiscreteShapeChange(option.value, shape);
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-          {getDiscreteOptions().some((opt) => !getShapeForValue(opt.value)) && (
-            <Paragraph className="text-warning mt-1 text-xs">
-              {intl.formatMessage(messages.someValuesAreUnmappedAndWill)}
-            </Paragraph>
-          )}
-        </div>
+        <UnconnectedField
+          name={`${SHAPE_MAPPING_FIELD}.map`}
+          label={intl.formatMessage(messages.shapeForEachValue)}
+          hint={shapeMappingHint}
+          component={ShapeMappingField}
+          nodeColor={nodeColor}
+          customShapes={customShapes}
+          rows={discreteOptions.map((option, index) => ({
+            id: String(index),
+            label: option.label,
+          }))}
+          value={discreteOptions.flatMap((option, index) => {
+            const shape = getShapeForValue(option.value);
+            return shape === undefined
+              ? []
+              : [{ id: String(index), value: shape }];
+          })}
+          onChange={(next) => {
+            for (const entry of next ?? []) {
+              const option = discreteOptions[Number(entry.id)];
+              if (
+                option !== undefined &&
+                isNodeShapeReference(entry.value) &&
+                getShapeForValue(option.value) !== entry.value
+              ) {
+                handleDiscreteShapeChange(option.value, entry.value);
+              }
+            }
+          }}
+        />
       )}
 
       {selectedVar && dynamic.type === 'breakpoints' && (

@@ -1047,10 +1047,6 @@
     "defaultMessage": "Shape for each value",
     "description": "Heading over the rows that give one shape to each answer the chosen attribute can take."
   },
-  "protocolBuilder.codebookEntity.shapeForValue": {
-    "defaultMessage": "Shape for {value1}",
-    "description": "Label of the control choosing the shape one answer is drawn as. value1 is the answer’s own label, already in the reader’s language where the protocol author wrote one."
-  },
   "protocolBuilder.codebookEntity.shapeHint": {
     "defaultMessage": "Choose a default shape for this node type.",
     "description": "Guidance under the shape field. A node is a member of the interview network."
@@ -1106,10 +1102,6 @@
   "protocolBuilder.codebookEntity.shapeUsesDefault": {
     "defaultMessage": "uses default shape",
     "description": "Said on the fixed first threshold row, after the shape it shows. Lower case because it completes the row rather than beginning a sentence."
-  },
-  "protocolBuilder.codebookEntity.shapeValuesUnmapped": {
-    "defaultMessage": "Some values are unmapped and will use the default shape.",
-    "description": "Notice shown while at least one of the chosen attribute’s answers has been given no shape of its own."
   },
   "protocolBuilder.codebookEntity.subjectDescription": {
     "defaultMessage": "{entity, select, node {Node type: {name}} edge {Edge type: {name}} other {Ego attributes}}",
@@ -7650,6 +7642,14 @@
   "protocolBuilder.searchOptions.waitingDescription": {
     "defaultMessage": "Select a roster data source before configuring search.",
     "description": "Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against."
+  },
+  "protocolBuilder.shapeMapping.hint": {
+    "defaultMessage": "Choose the shape a node takes for each value of this attribute. A value with no shape chosen uses the default shape. [Learn about custom shapes]({url}).",
+    "description": "Hint under the \"Shape for each value\" field of a node type’s shape mapping, written in markdown: keep the square brackets, the parentheses and {url} as they are, and translate only the words. A node is a member of the interview network; an attribute is a piece of data recorded about it; a custom shape is an SVG image the researcher added to draw nodes of this type."
+  },
+  "protocolBuilder.shapeMapping.usesDefaultShape": {
+    "defaultMessage": "Uses the default shape",
+    "description": "Remark beside one value of an attribute in a node type’s shape mapping, shown while no shape has been chosen for that value. Nodes with that value are drawn in the node type’s default shape."
   },
   "protocolBuilder.shapePicker.selectShape": {
     "defaultMessage": "Select shape {value1}",

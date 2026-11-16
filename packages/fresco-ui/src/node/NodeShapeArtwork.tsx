@@ -196,12 +196,12 @@ const renderElement = (
     const rendered = renderAttribute(element.tag, name, value, idPrefix);
     if (rendered !== undefined) props[reactName] = rendered;
   }
-  if (
-    labelPlateGrowth > 0 &&
-    element.tag === 'rect' &&
-    element.attributes.id === LABEL_PLATE_ID
-  ) {
-    props.height = Number(element.attributes.height) + labelPlateGrowth;
+  if (element.tag === 'rect' && element.attributes.id === LABEL_PLATE_ID) {
+    // Lets a host that draws the artwork without a label leave the plate out.
+    props['data-node-shape-label-plate'] = '';
+    if (labelPlateGrowth > 0) {
+      props.height = Number(element.attributes.height) + labelPlateGrowth;
+    }
   }
   return createElement(
     element.tag,

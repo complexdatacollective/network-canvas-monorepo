@@ -37,6 +37,7 @@
     "./fields/LocalizedStringField": "./src/fields/LocalizedStringField.tsx",
     "./fields/OptionLabelField": "./src/fields/OptionLabelField.tsx",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
+    "./fields/ShapeMappingField": "./src/fields/ShapeMappingField.tsx",
     "./fields/ShapePickerField": "./src/fields/ShapePickerField.tsx",
     "./fields/StageNameField": "./src/fields/StageNameField.tsx",
     "./fields/StageNameInput": "./src/fields/StageNameInput.tsx",
