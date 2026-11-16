@@ -144,7 +144,9 @@ describe('optionsValidationFor', () => {
     );
   });
 
-  it.each(['yes please', '友人', 'amigo cercano', 'Collègue', 'a.b [1]'])(
+  // The characters a value may hold are `invalidOptionValue`'s, tabled in
+  // cellRules.test.ts; this proves the list's validation asks it.
+  it.each(['友人'])(
     'accepts the value %j, in whatever script or punctuation it is written',
     async (value) => {
       await expect(

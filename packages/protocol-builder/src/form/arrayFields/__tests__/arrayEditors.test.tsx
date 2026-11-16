@@ -249,29 +249,28 @@ describe('Options', () => {
     );
   });
 
-  it.each(['yes please', '友人', 'amigo cercano', 'Collègue', 'a.b [1]'])(
-    'accepts the option value %j',
-    async (value) => {
-      const { user } = renderOptions({
-        ...SAVEABLE_STAGE,
-        options: [
-          { label: { 'en-US': 'Alpha' }, value: 'yes' },
-          { label: { 'en-US': 'Bravo' }, value: 'no' },
-        ],
-      });
+  // The characters a value may hold are tabled against the rule itself in
+  // cellRules.test.ts; this proves the cell asks it.
+  it.each(['友人'])('accepts the option value %j', async (value) => {
+    const { user } = renderOptions({
+      ...SAVEABLE_STAGE,
+      options: [
+        { label: { 'en-US': 'Alpha' }, value: 'yes' },
+        { label: { 'en-US': 'Bravo' }, value: 'no' },
+      ],
+    });
 
-      await user.click(
-        await screen.findByRole('button', { name: 'Edit option 1' }),
-      );
-      const valueCell = await screen.findByRole('textbox', { name: 'Value' });
-      fireEvent.change(valueCell, { target: { value } });
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit option 1' }),
+    );
+    const valueCell = await screen.findByRole('textbox', { name: 'Value' });
+    fireEvent.change(valueCell, { target: { value } });
 
-      await waitFor(() => expect(valueCell).toHaveValue(value));
-      expect(
-        optionCell(0, 'value').queryByText(/Cannot contain/u),
-      ).not.toBeInTheDocument();
-    },
-  );
+    await waitFor(() => expect(valueCell).toHaveValue(value));
+    expect(
+      optionCell(0, 'value').queryByText(/Cannot contain/u),
+    ).not.toBeInTheDocument();
+  });
 
   it('reveals a blank option’s problems when it refuses to collapse', async () => {
     const { user } = renderOptions({ ...SAVEABLE_STAGE, options: [] });

@@ -649,7 +649,9 @@ describe('inventing an attribute from the picker', () => {
     ).not.toContain('contactType_call');
   });
 
-  it.each(['nominated early', '友人', 'amigo cercano', 'Collègue'])(
+  // The characters a name may hold are tabled against the rule itself in
+  // variableNameRules.test.ts; this proves the create row asks it.
+  it.each(['友人'])(
     'offers to create %j, which the codebook can store',
     async (name) => {
       const harness = renderRows(<StampedAttributes />);
@@ -1810,7 +1812,8 @@ describe('renaming the attribute a picker holds', () => {
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
   });
 
-  it.each(['full name', '友人', 'amigo cercano', 'Collègue'])(
+  // As above: the rule's own table is in variableNameRules.test.ts.
+  it.each(['友人'])(
     'takes the name %j, which the codebook can store',
     async (name) => {
       const harness = renderStageEditor({
