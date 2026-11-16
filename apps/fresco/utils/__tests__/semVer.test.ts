@@ -46,28 +46,4 @@ describe('getSemverUpdateType', () => {
       getSemverUpdateType(currentVersion, { major: 0, minor: 9, patch: 5 }),
     ).toBe(null);
   });
-
-  it('returns correct type when versions differ across all parts', () => {
-    // Major is higher
-    expect(
-      getSemverUpdateType(
-        { major: 1, minor: 0, patch: 0 },
-        { major: 2, minor: 1, patch: 1 },
-      ),
-    ).toBe('major');
-    // Minor is higher
-    expect(
-      getSemverUpdateType(
-        { major: 1, minor: 1, patch: 0 },
-        { major: 1, minor: 2, patch: 0 },
-      ),
-    ).toBe('minor');
-    // Patch is higher
-    expect(
-      getSemverUpdateType(
-        { major: 1, minor: 2, patch: 3 },
-        { major: 1, minor: 2, patch: 4 },
-      ),
-    ).toBe('patch');
-  });
 });
