@@ -120,6 +120,8 @@ export default defineConfig({
             '@base-ui/react/toggle-group',
             '@base-ui/react/toolbar',
             '@base-ui/react/tooltip',
+            // The protocol cards draw @codaco/art's blobs.
+            '@codaco/art > blobs/v2/animate',
             '@codaco/fresco-ui > @radix-ui/react-slot',
             '@codaco/fresco-ui > @tiptap/core',
             '@codaco/fresco-ui > @tiptap/extension-bullet-list',
