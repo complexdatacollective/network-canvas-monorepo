@@ -90,7 +90,7 @@ const NodeLabelWorkerSection = () => {
           <pre
             dir="ltr"
             tabIndex={0}
-            aria-label={intl.formatMessage(messages.script)}
+            aria-label="Node label worker script"
             className="font-monospace focusable max-h-72 overflow-auto text-sm"
           >
             {source}
