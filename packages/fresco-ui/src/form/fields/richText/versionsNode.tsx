@@ -32,7 +32,11 @@ import {
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { TokenPillContent, tokenPillClasses } from '../../../TokenPill';
+import {
+  TokenPillContent,
+  tokenPillClasses,
+  useTokenPillLanguage,
+} from '../../../TokenPill';
 import { cx } from '../../../utils/cva';
 import { contentInSchema, readableContent } from './fitToSchema';
 
@@ -321,6 +325,8 @@ function VersionEditor({
   onEscape: () => void;
 }) {
   const nested = useContext(NestedEditingContext);
+  // A version's label is the interface's words, like a pill's.
+  const labelLanguage = useTokenPillLanguage();
   // The content this editor last wrote into the line, to tell its own edit
   // coming back from a change made in the line, such as an undo.
   const writtenRef = useRef<readonly JSONContent[] | null>(null);
@@ -482,7 +488,9 @@ function VersionEditor({
             : versionLabelClasses
         }
       >
-        <span className={versionLabelTextClasses}>{version.label}</span>
+        <span {...labelLanguage} className={versionLabelTextClasses}>
+          {version.label}
+        </span>
       </span>
       <VersionPathContext.Provider value={labels}>
         <EditorContent
@@ -522,6 +530,7 @@ function VersionsView({
   const nested = useContext(NestedEditingContext);
   const active = nested?.active ?? true;
   const versionsId = useId();
+  const pillLanguage = useTokenPillLanguage();
   const wrapperRef = useRef<HTMLElement>(null);
   // The versions are the whole message: nothing but whitespace is around the
   // element in its line. Followed as the line is edited, since text typed
@@ -611,6 +620,7 @@ function VersionsView({
             aria-controls={versionsId}
             data-versions-pill=""
             data-selected={selected || undefined}
+            {...pillLanguage}
             // Open, the element shows its versions in the pill's place.
             hidden={expanded}
             className={tokenPillClasses(

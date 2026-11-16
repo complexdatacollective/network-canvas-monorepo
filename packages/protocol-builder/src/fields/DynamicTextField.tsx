@@ -23,7 +23,7 @@ import {
   DEFAULT_MARKDOWN_REHYPE_PLUGINS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
-import { TokenPill } from '@codaco/fresco-ui/TokenPill';
+import { TokenPill, useTokenPillLanguage } from '@codaco/fresco-ui/TokenPill';
 import {
   type DynamicValueBinding,
   type DynamicValues,
@@ -1048,6 +1048,7 @@ export function MessageNodesSummary({
 }>) {
   const elements = multiline ? blockMarkdown : LABEL_MARKDOWN;
   const allowedElements = [...elements.allowedElements, 'span'];
+  const labelLanguage = useTokenPillLanguage();
 
   const renderSwitch = (node: MessageSwitch, key: number): ReactNode => (
     <TokenPill key={key} token={node.argument} label={switchSummary(node)} />
@@ -1072,7 +1073,11 @@ export function MessageNodesSummary({
               data-version-summary={version.key}
               className="flex flex-col"
             >
-              <span className="text-xs font-semibold text-current/70">
+              {/* The interface's words, inside the protocol's text. */}
+              <span
+                {...labelLanguage}
+                className="text-xs font-semibold text-current/70"
+              >
                 {versionLabel(whole, version.key)}
               </span>
               <span

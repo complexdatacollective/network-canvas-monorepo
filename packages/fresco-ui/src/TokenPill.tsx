@@ -2,6 +2,8 @@ import type { DOMOutputSpec } from '@tiptap/pm/model';
 import { Syringe } from 'lucide-react';
 import { type ComponentPropsWithoutRef, Fragment } from 'react';
 
+import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
+
 import { cx } from './utils/cva';
 
 type TokenPillProps = Omit<ComponentPropsWithoutRef<'span'>, 'children'> & {
@@ -127,16 +129,32 @@ export const TokenPill = ({
   selected = false,
   className,
   ...props
-}: TokenPillProps) => (
-  <span
-    {...props}
-    data-token={token}
-    data-selected={selected || undefined}
-    className={tokenPillClasses(className)}
-  >
-    <TokenPillContent label={label} />
-  </span>
-);
+}: TokenPillProps) => {
+  const interfaceLanguage = useTokenPillLanguage();
+  return (
+    <span
+      {...props}
+      {...interfaceLanguage}
+      data-token={token}
+      data-selected={selected || undefined}
+      className={tokenPillClasses(className)}
+    >
+      <TokenPillContent label={label} />
+    </span>
+  );
+};
+
+/**
+ * `lang` and `dir` for a pill: its label is the interface's words, whatever
+ * language the text around it is in (a protocol's English text in an Arabic
+ * interface), so a screen reader reads it in the right voice, it takes the
+ * interface's typeface, and it reads in the interface's direction.
+ */
+export const useTokenPillLanguage = () => {
+  const intl = useAppIntl();
+  const dir = useAppDirection();
+  return { lang: intl.locale, dir };
+};
 
 /** A run of text, or a placeholder in it, named by what the text records. */
 export type TokenizedTextPart = string | Readonly<{ token: string }>;

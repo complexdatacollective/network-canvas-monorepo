@@ -64,7 +64,7 @@ import {
 } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
@@ -347,7 +347,12 @@ const placedTokenIds = (doc: ProseMirrorNode): string => {
  * offer it. A pasted token a field does not offer arrives as its label, as
  * text: the field cannot hold it, and the words are what was meant.
  */
-const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
+type InterfaceLanguage = Readonly<{ lang: string; dir: 'ltr' | 'rtl' }>;
+
+const createTokenNode = (
+  tokens: readonly RichTextEditorToken[],
+  interfaceLanguage: InterfaceLanguage,
+) => {
   const labels = new Map(tokens.map(({ id, label }) => [id, label]));
   const labelOf = (id: unknown) =>
     typeof id === 'string' ? (labels.get(id) ?? id) : '';
@@ -390,6 +395,10 @@ const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
           // A pointer, not the text cursor: the pill is one object.
           class: tokenPillClasses('cursor-pointer'),
           contenteditable: 'false',
+          // Its label is the interface's words, whatever language the text
+          // around it is in.
+          lang: interfaceLanguage.lang,
+          dir: interfaceLanguage.dir,
         }),
         ...tokenPillContentSpec(labelOf(node.attrs.id)),
       ];
@@ -769,6 +778,11 @@ type ExtensionOptions = {
   singleLine: boolean;
   placeholder?: string;
   tokens: readonly RichTextEditorToken[];
+  /**
+   * The interface's language: a placeholder's pill names it in the
+   * interface's words, inside text that may be in another language.
+   */
+  interfaceLanguage: InterfaceLanguage;
   versions: boolean;
   /** Typing this character opens the insert menu. */
   trigger?: string;
@@ -878,6 +892,7 @@ function createCustomExtensions({
   singleLine,
   placeholder,
   tokens,
+  interfaceLanguage,
   versions,
   trigger,
   onTrigger,
@@ -981,7 +996,7 @@ function createCustomExtensions({
   }
 
   if (tokens.length > 0) {
-    extensions.push(createTokenNode(tokens));
+    extensions.push(createTokenNode(tokens, interfaceLanguage));
   }
 
   if (versions) {
@@ -1477,6 +1492,11 @@ export default function RichTextEditorField({
   const enclosingHeadingLevel = useEnclosingHeadingLevel();
   const enclosingHeadingDepth =
     enclosingHeadingLevel === null ? 0 : Number(enclosingHeadingLevel.slice(1));
+  const interfaceDirection = useAppDirection();
+  const interfaceLanguage = useMemo(
+    () => ({ lang: intl.locale, dir: interfaceDirection }),
+    [intl.locale, interfaceDirection],
+  );
   const editorExtensions = useMemo(
     () =>
       createCustomExtensions({
@@ -1489,11 +1509,13 @@ export default function RichTextEditorField({
         singleLine,
         placeholder,
         tokens,
+        interfaceLanguage,
         versions,
         trigger: insertMenu?.trigger,
         onTrigger,
       }),
     [
+      interfaceLanguage,
       headingLevels,
       enclosingHeadingDepth,
       options.lists.bullet,
@@ -1532,6 +1554,7 @@ export default function RichTextEditorField({
             placeholder: emptyVersionText,
             placeholderWhenReadOnly: true,
             tokens,
+            interfaceLanguage,
             versions,
             trigger: insertMenu?.trigger,
             onTrigger,
@@ -1539,6 +1562,7 @@ export default function RichTextEditorField({
           })
         : [],
     [
+      interfaceLanguage,
       options.links,
       tokens,
       versions,

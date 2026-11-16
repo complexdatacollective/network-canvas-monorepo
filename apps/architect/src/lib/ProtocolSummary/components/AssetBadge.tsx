@@ -42,7 +42,9 @@ const AssetBadge = ({ id, link = false }: AssetBadgeProps) => {
   const name = !link ? (
     data.name
   ) : (
-    <DualLink to={`#asset-${id}`}>{data.name}</DualLink>
+    <DualLink to={`#asset-${id}`}>
+      <bdi>{data.name}</bdi>
+    </DualLink>
   );
 
   return (

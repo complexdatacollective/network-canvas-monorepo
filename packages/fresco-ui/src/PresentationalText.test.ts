@@ -9,6 +9,7 @@ import {
 } from './PresentationalText';
 
 const arabic: PresentationalText = { text: 'نعم', lang: 'ar', dir: 'rtl' };
+const written: PresentationalText = { text: 'team-b!', dir: 'auto' };
 
 describe('isPresentationalText', () => {
   it('accepts a plain string and a complete attributed text', () => {
@@ -54,6 +55,18 @@ describe('presentationalTextProps', () => {
       lang: 'ar',
       dir: 'rtl',
     });
+  });
+
+  it('reads text of no recorded language in its own direction', () => {
+    expect(isPresentationalText(written)).toBe(true);
+    expect(presentationalTextValue(written)).toBe('team-b!');
+    expect(presentationalTextProps(written)).toEqual({ dir: 'auto' });
+  });
+
+  it('refuses a language with an own-direction text', () => {
+    expect(isPresentationalText({ text: 'x', lang: 'en', dir: 'auto' })).toBe(
+      false,
+    );
   });
 
   it('adds nothing for a plain string, a React node or no value', () => {

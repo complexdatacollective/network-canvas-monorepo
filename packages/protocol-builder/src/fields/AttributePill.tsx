@@ -323,8 +323,10 @@ function PillContents({
   );
 }
 
+// A name someone wrote reads in its own direction (`dir="auto"`), on the
+// interface's side of the pill (`text-match-parent`).
 const NAME_CLASSES =
-  'm-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap';
+  'text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap';
 
 export default function AttributePill({
   name,
@@ -545,7 +547,9 @@ export default function AttributePill({
         style={style}
       >
         <PillContents iconUrl={iconUrl}>
-          <span className={NAME_CLASSES}>{name}</span>
+          <span dir="auto" className={NAME_CLASSES}>
+            {name}
+          </span>
         </PillContents>
       </data>
     );
@@ -584,6 +588,7 @@ export default function AttributePill({
                 <data
                   value={name}
                   data-attribute-type={type}
+                  dir="auto"
                   className={NAME_CLASSES}
                 >
                   {name}
