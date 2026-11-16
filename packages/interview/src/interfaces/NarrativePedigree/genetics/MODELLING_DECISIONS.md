@@ -431,8 +431,10 @@ Step 2b of `computeXLinkedRecessive` marks a woman who is not recorded affected
 of these:
 
 - an affected son of hers;
-- the lines of all her genetic daughters by one father, where daughters with no
-  recorded father are grouped together as if they had one;
+- the lines of all her genetic daughters by one recorded father;
+- the lines of all her genetic daughters with no recorded father, but only when
+  no recorded father's daughters give a side. Otherwise their affected people
+  join one recorded father's side and add no side of their own;
 - her genetic mother's family.
 
 A daughter's line is the daughter, if she is affected, together with the lines
@@ -464,8 +466,9 @@ carrier's children get through step 3.
 
 The rule judges each woman separately. The women between her and the affected
 relatives on her two sides are usually marked by the same rule, but not always.
-A woman whose only lines are those of daughters by one father has one side, so
-the mother of two sisters is not marked on their lines alone. Nor is a woman
+A woman whose only lines are those of daughters by one father, or of daughters
+by one recorded father and daughters with none, has one side, so the mother of
+two sisters is not marked on their lines alone. Nor is a woman
 marked through a daughter whose father is affected.
 
 ### Rationale
@@ -496,7 +499,11 @@ and not recorded as such. That is a single event, of the same order as the new
 variant the rule already sets aside, and no clinical definition makes a woman an
 obligate carrier without an affected son or an affected father. Daughters by
 different fathers need two such events, so they are two sides. Daughters with no
-recorded father may share one, so they are grouped.
+recorded father may share one father, so they are grouped, and that father may
+be one of the recorded men; in practice he is usually the same partner, not
+entered a second time. So they give a side only when no recorded father's
+daughters do, and a woman with an affected daughter by a recorded man and an
+affected grandson through a daughter with no recorded father has one side.
 
 An affected daughter counts for her mother only inside this rule. On its own she
 adds nothing (§6), and a single line with any number of affected people in it is
@@ -511,10 +518,7 @@ nephew through a sister) where the father is simply missing from the pedigree.
 
 One conservative case remains. An affected female with no recorded father gives
 nothing, so an affected sister with an unrecorded father does not corroborate an
-affected son. One case goes the other way: daughters with no recorded father
-form a group separate from each recorded father's daughters, although their
-father could be one of those men, so a woman with one daughter by a recorded
-man and one with no recorded father can be marked on those two lines.
+affected son.
 
 ### Decision
 
