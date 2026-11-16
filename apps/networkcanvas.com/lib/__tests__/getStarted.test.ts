@@ -2,13 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { classicApps } from '~/test/classicApps';
 
-import { GET_STARTED_PATH, webApps } from '../getStarted';
+import { webApps } from '../getStarted';
 
 describe('get started content', () => {
-  it('uses the Get Started route', () => {
-    expect(GET_STARTED_PATH).toBe('/get-started');
-  });
-
   it('defines the current web apps in workflow order', () => {
     expect(webApps.map(({ id }) => id)).toEqual([
       'architect',

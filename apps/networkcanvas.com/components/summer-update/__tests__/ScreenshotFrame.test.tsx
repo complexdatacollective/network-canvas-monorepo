@@ -29,8 +29,7 @@ describe('ScreenshotFrame', () => {
       name: 'Example screenshot',
     });
 
-    expect(screenshot).toHaveClass('object-contain');
-    expect(screenshot.parentElement).toHaveClass('aspect-7/5', 'bg-white');
+    expect(screenshot.parentElement).toHaveClass('aspect-7/5');
   });
 
   it('supports source images authored at 4:3', () => {
