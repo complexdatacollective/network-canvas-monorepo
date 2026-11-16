@@ -58,25 +58,22 @@ it.each([
   },
 );
 
+// The whitespace between blocks is whatever the markdown pipeline emits; the
+// contract is only that the label text and the rendered text agree on it.
 it.each([
-  [
-    'GFM table',
-    '| Name |\n| --- |\n| Isabel |',
-    '\n\n\n\n\n\n\n\n\n\n\nNameIsabel',
-  ],
-  ['GFM task list', '- [x] Isabel\n- [ ] Zelda', '\n Isabel\n Zelda\n'],
-  ['ordered list', '1. Isabel\n2. Zelda', '\nIsabel\nZelda\n'],
+  ['GFM table', '| Name |\n| --- |\n| Isabel |', 'NameIsabel'],
+  ['GFM task list', '- [x] Isabel\n- [ ] Zelda', 'Isabel Zelda'],
+  ['ordered list', '1. Isabel\n2. Zelda', 'Isabel Zelda'],
   ['nested inline content', '**[~~Isabel~~](https://example.org)**', 'Isabel'],
-  ['line break', 'Isabel  \nZelda', 'Isabel\nZelda'],
+  ['line break', 'Isabel  \nZelda', 'Isabel Zelda'],
   ['comment removal', '<!-- hidden -->Isabel', 'Isabel'],
   ['GFM autolink', 'Isabel https://example.org', 'Isabel https://example.org'],
 ] as const)(
-  'retains the rendered text and whitespace of %s',
-  (_kind, markdown, expected) => {
+  'agrees with the renderer, whitespace included, on %s',
+  (_kind, markdown, words) => {
     const { container } = render(<RenderMarkdown>{markdown}</RenderMarkdown>);
-    expect(container.textContent).toBe(expected);
-    expect(getMarkdownLabelText(markdown)).toBe(expected);
     expect(getMarkdownLabelText(markdown)).toBe(container.textContent);
+    expect(container.textContent?.replace(/\s+/g, ' ').trim()).toBe(words);
   },
 );
 
@@ -108,6 +105,31 @@ it.each([
     expect(container.textContent).toBe(text);
   },
 );
+
+it('strips style and class attributes from raw HTML', () => {
+  const { container } = render(
+    <RenderMarkdown>
+      {'<em style="color: red" class="injected">Isabel</em>'}
+    </RenderMarkdown>,
+  );
+
+  const emphasis = container.querySelector('em');
+  expect(emphasis).toHaveTextContent('Isabel');
+  expect(emphasis).not.toHaveAttribute('style');
+  expect(emphasis).not.toHaveAttribute('class');
+});
+
+it('renders a javascript: link as text with no href', () => {
+  // Both react-markdown's default urlTransform and rehypeSanitize strip the
+  // href, so this fails only when both are removed.
+  const { container } = render(
+    <RenderMarkdown>{'[Isabel](javascript:alert(1))'}</RenderMarkdown>,
+  );
+
+  expect(container).toHaveTextContent('Isabel');
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(container.querySelector('[href]')).toBeNull();
+});
 
 it('retains custom components and wrapper props', () => {
   render(

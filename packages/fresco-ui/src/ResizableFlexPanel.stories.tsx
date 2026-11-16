@@ -79,6 +79,34 @@ export const Vertical: Story = {
   },
 };
 
+/**
+ * A caller's `items-start` must not shrink the panes or the handle to their
+ * content: both panes and the handle still fill the panel's height.
+ */
+export const CrossAxisStretch: Story = {
+  args: {
+    storageKey: 'story-cross-axis-stretch',
+    className: 'h-full items-start',
+    children: [
+      <div key="a">Short first pane</div>,
+      <div key="b">Short second pane</div>,
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const first = canvas.getByText('Short first pane').parentElement;
+    const second = canvas.getByText('Short second pane').parentElement;
+    const root = first?.parentElement;
+    if (!first || !second || !root) throw new Error('panel not rendered');
+
+    const panelHeight = root.getBoundingClientRect().height;
+    await expect(panelHeight).toBeGreaterThan(400);
+    for (const element of [first, second, canvas.getByRole('slider')]) {
+      await expect(element.getBoundingClientRect().height).toBe(panelHeight);
+    }
+  },
+};
+
 export const CustomMinMax: Story = {
   args: {
     storageKey: 'story-minmax',
