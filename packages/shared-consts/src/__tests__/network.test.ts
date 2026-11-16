@@ -145,9 +145,6 @@ describe('NcNetworkSchema', () => {
     expectTypeOf<
       NcNetwork['ego']['attributes'][string]
     >().toEqualTypeOf<VariableValue>();
-    expectTypeOf<
-      NcNetwork['ego']['attributes'][string]
-    >().toEqualTypeOf<VariableValue>();
   });
 });
 

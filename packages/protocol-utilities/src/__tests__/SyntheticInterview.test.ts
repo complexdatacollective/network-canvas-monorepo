@@ -40,6 +40,34 @@ function validateSynthetic(
   } as unknown as Parameters<typeof validateProtocol>[0]);
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/** The type of one variable of an entity type in a built codebook section. */
+function variableType(
+  entities: Record<string, unknown>,
+  entityType: string,
+  variable: string,
+) {
+  const definition = entities[entityType];
+  if (!isRecord(definition) || !isRecord(definition.variables))
+    return undefined;
+  const entry = definition.variables[variable];
+  return isRecord(entry) ? entry.type : undefined;
+}
+
+/** The type of one variable of the node type a built stage is about. */
+function subjectVariableType(
+  nodes: Record<string, unknown>,
+  stage: Record<string, unknown>,
+  variable: unknown,
+) {
+  const subjectType = isRecord(stage.subject) ? stage.subject.type : undefined;
+  return typeof subjectType === 'string' && typeof variable === 'string'
+    ? variableType(nodes, subjectType, variable)
+    : undefined;
+}
+
 describe('SyntheticInterview', () => {
   describe('determinism', () => {
     it('uses the shared synthetic seed by default', () => {
@@ -333,10 +361,14 @@ describe('SyntheticInterview', () => {
 
       const prompt = prompts[0]!;
       expect(prompt.text).toEqual({ 'en-US': 'Place people' });
-      expect(prompt.layout.layoutVariable).toBeTruthy();
-      expect(prompt.edges.create).toBeTruthy();
+      const nodeVariableType = (variable: unknown) =>
+        subjectVariableType(protocol.codebook.node, stageConfig, variable);
+      expect(nodeVariableType(prompt.layout.layoutVariable)).toBe('layout');
+      expect(Object.keys(protocol.codebook.edge)).toContain(
+        prompt.edges.create,
+      );
       expect(prompt.highlight.allowHighlighting).toBe(true);
-      expect(prompt.highlight.variable).toBeTruthy();
+      expect(nodeVariableType(prompt.highlight.variable)).toBe('boolean');
     });
 
     it('creates Sociogram with background options', () => {
@@ -387,11 +419,14 @@ describe('SyntheticInterview', () => {
 
       const preset = presets[0]!;
       expect(preset.label).toEqual({ 'en-US': 'Full View' });
-      expect(preset.layoutVariable).toBeTruthy();
-      expect(preset.groupVariable).toBeTruthy();
+      const nodeVariableType = (variable: unknown) =>
+        subjectVariableType(protocol.codebook.node, stageConfig, variable);
+      expect(nodeVariableType(preset.layoutVariable)).toBe('layout');
+      expect(nodeVariableType(preset.groupVariable)).toBe('categorical');
       expect(preset.highlight).toEqual([
         { variable: expect.any(String), label: { 'en-US': 'Highlighted' } },
       ]);
+      expect(nodeVariableType(preset.highlight[0]!.variable)).toBe('boolean');
     });
 
     it("labels each highlight with its attribute's name, as copy in the default language", () => {
@@ -647,7 +682,9 @@ describe('SyntheticInterview', () => {
       const payload = si.getInterviewPayload();
 
       expect(payload.network.nodes).toHaveLength(3);
-      expect(payload.protocol.codebook).toBeDefined();
+      expect(Object.keys(payload.protocol.codebook.node)).toEqual([
+        ...new Set(payload.network.nodes.map((node) => node.type)),
+      ]);
       expect(payload.protocol.name).toBe('Synthetic Protocol');
       expect(payload.startTime).toBeInstanceOf(Date);
       expect(payload.stageMetadata).toBeNull();
@@ -741,7 +778,13 @@ describe('SyntheticInterview', () => {
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       expect(stageConfig.type).toBe('NameGeneratorQuickAdd');
-      expect(stageConfig.quickAdd).toBeTruthy();
+      expect(
+        subjectVariableType(
+          protocol.codebook.node,
+          stageConfig,
+          stageConfig.quickAdd,
+        ),
+      ).toBe('text');
       const prompts = stageConfig.prompts as { text: LocalizedString }[];
       expect(prompts).toHaveLength(1);
       expect(prompts[0]!.text).toEqual({ 'en-US': 'Name your friends' });
@@ -835,14 +878,18 @@ describe('SyntheticInterview', () => {
       stage.addPrompt();
 
       const protocol = si.getProtocol();
-      const edgeTypeIds = Object.keys(protocol.codebook.edge);
-      expect(edgeTypeIds.length).toBeGreaterThanOrEqual(1);
-
-      const edgeType = protocol.codebook.edge[edgeTypeIds[0]!] as Record<
-        string,
-        unknown
-      >;
-      expect(edgeType.variables).toBeDefined();
+      const [stageConfig] = protocol.stages;
+      expect(stageConfig?.type).toBe('TieStrengthCensus');
+      if (stageConfig?.type !== 'TieStrengthCensus') return;
+      const [prompt] = stageConfig.prompts;
+      expect(
+        prompt &&
+          variableType(
+            protocol.codebook.edge,
+            prompt.createEdge,
+            prompt.edgeVariable,
+          ),
+      ).toBe('ordinal');
     });
   });
 
@@ -934,12 +981,9 @@ describe('SyntheticInterview', () => {
       };
       expect(form.fields).toHaveLength(1);
 
-      // Edge variable should be in codebook
-      const edgeCodebook = protocol.codebook.edge[et.id] as Record<
-        string,
-        unknown
-      >;
-      expect(edgeCodebook.variables).toBeDefined();
+      expect(
+        variableType(protocol.codebook.edge, et.id, form.fields[0]!.variable),
+      ).toBe('ordinal');
     });
   });
 
@@ -1214,8 +1258,6 @@ describe('SyntheticInterview', () => {
         string,
         unknown
       >;
-      expect(edgeCodebook.variables).toBeDefined();
-
       const variables = edgeCodebook.variables as Record<
         string,
         { name: string; type: string }
@@ -1329,11 +1371,13 @@ describe('SyntheticInterview', () => {
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
 
       expect(stageConfig.type).toBe('NetworkComposer');
-      expect(stageConfig.quickAdd).toBeTruthy();
-      expect(stageConfig.layoutVariable).toBeTruthy();
 
       const subject = stageConfig.subject as { entity: string; type: string };
       expect(subject.entity).toBe('node');
+      const nodeVariableType = (variable: unknown) =>
+        subjectVariableType(protocol.codebook.node, stageConfig, variable);
+      expect(nodeVariableType(stageConfig.quickAdd)).toBe('text');
+      expect(nodeVariableType(stageConfig.layoutVariable)).toBe('layout');
 
       const edges = stageConfig.edges as {
         id: string;
@@ -1445,7 +1489,6 @@ describe('SyntheticInterview', () => {
       const composer = payload.protocol.stages.find(
         (s) => s.type === 'NetworkComposer',
       );
-      expect((composer as Record<string, unknown>).nodeForm).toBeDefined();
       expect(
         (
           (composer as Record<string, unknown>).nodeForm as {
