@@ -1620,7 +1620,7 @@ describe('computeXLinkedRecessive', () => {
         });
       });
 
-      it('counts daughters by one father as one side and leaves her at risk', () => {
+      it('leaves her at risk when one father could explain both daughters’ lines', () => {
         // One event in partner1 (a germline mosaic, or an affected man not
         // recorded as such) would explain both lines without her.
         expect(
@@ -1645,7 +1645,7 @@ describe('computeXLinkedRecessive', () => {
         });
       });
 
-      it('counts daughters with no recorded father as one side', () => {
+      it('leaves her at risk when her daughters with no recorded father may share a father', () => {
         expect(
           everyStatus(
             people,
@@ -1665,7 +1665,7 @@ describe('computeXLinkedRecessive', () => {
         });
       });
 
-      it('counts two affected daughters by one father as one side', () => {
+      it('does not mark her when one father could explain two affected daughters', () => {
         expect(
           everyStatus(
             { woman: 'female', partner1: 'male', d1: 'female', d2: 'female' },
@@ -1680,7 +1680,7 @@ describe('computeXLinkedRecessive', () => {
         });
       });
 
-      it('counts two affected daughters by different recorded fathers as two sides', () => {
+      it('marks her when two affected daughters have different recorded fathers', () => {
         expect(
           everyStatus(
             {
@@ -1768,7 +1768,7 @@ describe('computeXLinkedRecessive', () => {
         grandson3: 'affected',
       } satisfies Record<string, Status>;
 
-      it('gives a side to daughters with no recorded father when no recorded father’s daughters give one', () => {
+      it('marks her with an affected son and the line of a daughter with no recorded father', () => {
         expect(
           everyStatus(
             { ...people, son: 'male' },
@@ -1791,7 +1791,7 @@ describe('computeXLinkedRecessive', () => {
         });
       });
 
-      it('counts them with one recorded father’s daughters as one side', () => {
+      it('leaves her at risk when the father of one daughter’s line may also be the father of the daughter with none', () => {
         expect(
           everyStatus(
             people,
@@ -1812,7 +1812,7 @@ describe('computeXLinkedRecessive', () => {
         });
       });
 
-      it('leaves two sides with two recorded fathers’ daughters', () => {
+      it('marks her when no one father could explain daughters’ lines by two recorded fathers and by none', () => {
         expect(
           everyStatus(
             people,
@@ -1856,8 +1856,8 @@ describe('computeXLinkedRecessive', () => {
       });
 
       it('does not mark the mother of an affected daughter by a recorded father and a daughter with no recorded father who has an affected son', () => {
-        // Her daughter with no recorded father may be partner1's, so the two
-        // daughters' lines are one side. That daughter still has her own son
+        // Her daughter with no recorded father may be partner1's, so one event in
+        // partner1 could explain both daughters. That daughter still has her own son
         // and, through her affected sister, her mother's family.
         expect(
           everyStatus(
@@ -2178,6 +2178,238 @@ describe('computeXLinkedRecessive', () => {
       });
     });
 
+    describe('an affected man who may be the father of a female on the route', () => {
+      // Each shape gives the same statuses whether the affected man is
+      // recorded as her father or she has no recorded father and he fathered
+      // another child of her mother.
+      it('takes nothing from the line of her daughter with no recorded father when the father of her affected son is affected', () => {
+        const people: Record<string, Sex> = {
+          woman: 'female',
+          Q: 'male',
+          son: 'male',
+          daughter: 'female',
+          grandson: 'male',
+        };
+        const expected = {
+          woman: 'atRiskCarrier',
+          Q: 'affected',
+          son: 'affected',
+          daughter: 'obligateCarrier',
+          grandson: 'affected',
+        } satisfies Record<string, Status>;
+        for (const daughterLinks of [
+          [['woman', 'daughter']] satisfies Link[],
+          bio(['woman', 'Q'], ['daughter']),
+        ]) {
+          expect(
+            everyStatus(
+              people,
+              [
+                ...bio(['woman', 'Q'], ['son']),
+                ...daughterLinks,
+                ['daughter', 'grandson'],
+              ],
+              ['Q', 'son', 'grandson'],
+            ),
+          ).toEqual(expected);
+        }
+      });
+
+      it('takes nothing from that line beside an affected brother, for her or her mother', () => {
+        const people: Record<string, Sex> = {
+          mother: 'female',
+          woman: 'female',
+          brother: 'male',
+          Q: 'male',
+          son: 'male',
+          daughter: 'female',
+          grandson: 'male',
+        };
+        const expected = {
+          mother: 'atRiskCarrier',
+          woman: 'atRiskCarrier',
+          brother: 'affected',
+          Q: 'affected',
+          son: 'atRiskAffected',
+          daughter: 'obligateCarrier',
+          grandson: 'affected',
+        } satisfies Record<string, Status>;
+        for (const daughterLinks of [
+          [['woman', 'daughter']] satisfies Link[],
+          bio(['woman', 'Q'], ['daughter']),
+        ]) {
+          expect(
+            everyStatus(
+              people,
+              [
+                ['mother', 'woman'],
+                ['mother', 'brother'],
+                ...bio(['woman', 'Q'], ['son']),
+                ...daughterLinks,
+                ['daughter', 'grandson'],
+              ],
+              ['brother', 'Q', 'grandson'],
+            ),
+          ).toEqual(expected);
+        }
+      });
+
+      it('takes nothing from the line of a niece with no recorded father when her sister’s partner is affected', () => {
+        const people: Record<string, Sex> = {
+          mother: 'female',
+          woman: 'female',
+          son: 'male',
+          sister: 'female',
+          Q: 'male',
+          nephew: 'male',
+          niece: 'female',
+          grandnephew: 'male',
+        };
+        const expected = {
+          mother: 'atRiskCarrier',
+          woman: 'atRiskCarrier',
+          son: 'affected',
+          sister: 'atRiskCarrier',
+          Q: 'affected',
+          nephew: 'atRiskAffected',
+          niece: 'obligateCarrier',
+          grandnephew: 'affected',
+        } satisfies Record<string, Status>;
+        for (const nieceLinks of [
+          [['sister', 'niece']] satisfies Link[],
+          bio(['sister', 'Q'], ['niece']),
+        ]) {
+          expect(
+            everyStatus(
+              people,
+              [
+                ['mother', 'woman'],
+                ['mother', 'sister'],
+                ['woman', 'son'],
+                ...bio(['sister', 'Q'], ['nephew']),
+                ...nieceLinks,
+                ['niece', 'grandnephew'],
+              ],
+              ['son', 'Q', 'grandnephew'],
+            ),
+          ).toEqual(expected);
+        }
+      });
+    });
+
+    describe('a man who could explain her affected mother', () => {
+      it('does not mark her when the father of her affected daughter may also be her affected mother’s father', () => {
+        // Her mother has no recorded father, and Q fathered another child of
+        // her grandmother, so one event in Q could explain both.
+        expect(
+          everyStatus(
+            {
+              grandmother: 'female',
+              mother: 'female',
+              aunt: 'female',
+              Q: 'male',
+              woman: 'female',
+              daughter: 'female',
+            },
+            [
+              ['grandmother', 'mother'],
+              ...bio(['grandmother', 'Q'], ['aunt']),
+              ['mother', 'woman'],
+              ...bio(['woman', 'Q'], ['daughter']),
+            ],
+            ['mother', 'daughter'],
+          ),
+        ).toEqual({
+          grandmother: 'unknown',
+          mother: 'affected',
+          aunt: 'unknown',
+          Q: 'unknown',
+          woman: 'atRiskCarrier',
+          daughter: 'affected',
+        });
+      });
+
+      it('does not mark her when her affected mother’s recorded father also fathered her affected daughter', () => {
+        expect(
+          everyStatus(
+            {
+              grandmother: 'female',
+              grandfather: 'male',
+              mother: 'female',
+              woman: 'female',
+              daughter: 'female',
+            },
+            [
+              ...bio(['grandmother', 'grandfather'], ['mother']),
+              ['mother', 'woman'],
+              ...bio(['woman', 'grandfather'], ['daughter']),
+            ],
+            ['mother', 'daughter'],
+          ),
+        ).toEqual({
+          grandmother: 'unknown',
+          grandfather: 'unknown',
+          mother: 'affected',
+          woman: 'atRiskCarrier',
+          daughter: 'affected',
+        });
+      });
+
+      it('marks her with an affected mother whose father is recorded and an affected son', () => {
+        expect(
+          everyStatus(
+            {
+              grandmother: 'female',
+              grandfather: 'male',
+              mother: 'female',
+              woman: 'female',
+              partner: 'male',
+              son: 'male',
+            },
+            [
+              ...bio(['grandmother', 'grandfather'], ['mother']),
+              ['mother', 'woman'],
+              ...bio(['woman', 'partner'], ['son']),
+            ],
+            ['mother', 'son'],
+          ),
+        ).toEqual({
+          grandmother: 'unknown',
+          grandfather: 'unknown',
+          mother: 'affected',
+          woman: 'obligateCarrier',
+          partner: 'unknown',
+          son: 'affected',
+        });
+      });
+
+      it('marks her with an affected mother whose father is not recorded and an affected daughter by another man', () => {
+        expect(
+          everyStatus(
+            {
+              grandmother: 'female',
+              mother: 'female',
+              woman: 'female',
+              partner: 'male',
+              daughter: 'female',
+            },
+            [
+              ['grandmother', 'mother'],
+              ['mother', 'woman'],
+              ...bio(['woman', 'partner'], ['daughter']),
+            ],
+            ['mother', 'daughter'],
+          ),
+        ).toEqual({
+          grandmother: 'unknown',
+          mother: 'affected',
+          woman: 'obligateCarrier',
+          partner: 'unknown',
+          daughter: 'affected',
+        });
+      });
+    });
+
     describe('recorded fathers on the route', () => {
       /**
        *         woman
@@ -2281,6 +2513,34 @@ describe('computeXLinkedRecessive', () => {
           otherParent: 'unknown',
           son: 'affected',
           daughter: 'affected',
+        });
+      });
+
+      it('takes nothing from the line of a daughter whose other parent is affected and not male', () => {
+        expect(
+          everyStatus(
+            {
+              woman: 'female',
+              partner: 'male',
+              otherParent: 'unknown',
+              son: 'male',
+              daughter: 'female',
+              grandson: 'male',
+            },
+            [
+              ...bio(['woman', 'partner'], ['son']),
+              ...bio(['woman', 'otherParent'], ['daughter']),
+              ['daughter', 'grandson'],
+            ],
+            ['otherParent', 'son', 'grandson'],
+          ),
+        ).toEqual({
+          woman: 'atRiskCarrier',
+          partner: 'unknown',
+          otherParent: 'affected',
+          son: 'affected',
+          daughter: 'obligateCarrier',
+          grandson: 'affected',
         });
       });
     });

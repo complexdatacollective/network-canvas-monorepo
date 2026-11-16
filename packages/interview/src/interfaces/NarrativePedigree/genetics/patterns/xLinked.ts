@@ -45,12 +45,13 @@ function mothersOf(graph: GeneticGraph, id: string): AnnotatedParent[] {
  *   children's lines. Her mother's family is the mother if affected, the
  *   mother's affected father, the lines of the mother's other children, and
  *   the mother's own mother's family in turn. A female on any of these routes
- *   passes nothing on when another parent of hers is affected. An affected
+ *   passes nothing on when another parent of hers, or a man who may be her
+ *   father, is affected. An affected
  *   female with no recorded father passes nothing on either and is not
  *   evidence herself, since that father may be affected. Two sides must rest
  *   on at least two different affected people. A man could explain an
  *   affected person when he fathered a female on the route to them (the
- *   person included), because a single event in him (a germline mosaic, or an
+ *   person included, and an affected mother too), because a single event in him (a germline mosaic, or an
  *   affected man not recorded as such) would reach them through his daughter.
  *   A female with no recorded father stands for an unrecorded man and for
  *   every recorded father of her mother's other children. Affected men
@@ -203,11 +204,23 @@ export function computeXLinkedRecessive(
     return [`unrecorded:${motherId}`, ...siblingsFathers];
   };
 
+  // The fathers who could have passed an X to `femaleId` herself.
+  const ownFathersOf = (femaleId: string): string[] => {
+    const mothers = mothersOf(graph, femaleId);
+    if (mothers.length > 0) {
+      return mothers.flatMap(({ id }) => fathersOfDaughter(femaleId, id));
+    }
+    return graph
+      .parentsOf(femaleId)
+      .filter((parent) => parent.sex === 'male')
+      .map((parent) => parent.id);
+  };
+
   // The affected people in the X line that runs from `motherId` down through
   // her genetic child `childId`, with the fathers along the way. A son's line
   // is the son himself. A daughter's line is blocked when another parent of
-  // hers is affected, because that parent's X would explain everything below
-  // her. An affected daughter with no recorded father blocks it too, since
+  // hers, or a man who may be her father, is affected, because his X would
+  // explain everything below her. An affected daughter with no recorded father blocks it too, since
   // that father may be affected; a daughter who only links to affected people
   // further down needs no recorded father.
   const evidenceBelow = (
@@ -233,13 +246,14 @@ export function computeXLinkedRecessive(
     const otherParents = graph
       .parentsOf(childId)
       .filter((parent) => parent.id !== motherId);
-    if (otherParents.some((parent) => affected.has(parent.id))) {
+    const possibleFathers = fathersOfDaughter(childId, motherId);
+    if (
+      otherParents.some((parent) => affected.has(parent.id)) ||
+      possibleFathers.some((id) => affected.has(id))
+    ) {
       return evidence;
     }
-    const fathers = new Set([
-      ...fathersAbove,
-      ...fathersOfDaughter(childId, motherId),
-    ]);
+    const fathers = new Set([...fathersAbove, ...possibleFathers]);
     if (affected.has(childId)) {
       if (!otherParents.some((parent) => parent.sex === 'male')) {
         return evidence;
@@ -267,7 +281,7 @@ export function computeXLinkedRecessive(
         continue;
       }
       if (affected.has(motherId)) {
-        addWitness(evidence, motherId, noFathers);
+        addWitness(evidence, motherId, new Set(ownFathersOf(motherId)));
       }
       for (const parent of graph.parentsOf(motherId)) {
         if (parent.sex === 'male' && affected.has(parent.id)) {
