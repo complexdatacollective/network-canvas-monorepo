@@ -6,51 +6,31 @@
 /// <reference types="geojson" />
 import type { Map, MapOptions } from 'mapbox-gl/esm';
 
-import type { IntlShape } from '@codaco/app-i18n/messages';
-
-import { interfaceMessages } from '../messages';
-
 /** Only the native controls mounted by this interface; its zoom/search UI is React. */
-export function getMapboxLocale(
-  intl: IntlShape,
-): NonNullable<MapOptions['locale']> {
+export function getMapboxLocale(): NonNullable<MapOptions['locale']> {
   return {
-    'Map.Title': intl.formatMessage(interfaceMessages.mapTitle),
-    'LogoControl.Title': intl.formatMessage(interfaceMessages.mapboxHomepage),
-    'AttributionControl.ToggleAttribution': intl.formatMessage(
-      interfaceMessages.toggleAttribution,
-    ),
+    'Map.Title': 'Map',
+    'LogoControl.Title': 'Mapbox homepage',
+    'AttributionControl.ToggleAttribution': 'Toggle attribution',
   };
 }
 
 /**
- * Mapbox accepts locale only on construction. Its public setLanguage changes
- * basemap data, while these three native DOM labels remain at their initial
- * locale. Update the controls we mount through the public element accessors,
- * preserving the map instance, camera, selected feature, and source credits.
+ * Marks the native controls' English names as English, and removes the hover
+ * tooltip Mapbox copies the attribution control's name into: that name is for
+ * screen readers only, so no one should see it. Run once the map is
+ * constructed, which is when Mapbox creates these controls.
  */
-export function updateMapboxControlLocale(
+export function markMapboxControlNames(
   map: Pick<Map, 'getCanvas' | 'getContainer'>,
-  intl: IntlShape,
 ) {
   const container = map.getContainer();
-  map
-    .getCanvas()
-    .setAttribute('aria-label', intl.formatMessage(interfaceMessages.mapTitle));
-  container
-    .querySelector('.mapboxgl-ctrl-logo')
-    ?.setAttribute(
-      'aria-label',
-      intl.formatMessage(interfaceMessages.mapboxHomepage),
-    );
-  // The name is the accessible name only: the control shows no hover tooltip.
+  map.getCanvas().setAttribute('lang', 'en');
+  container.querySelector('.mapboxgl-ctrl-logo')?.setAttribute('lang', 'en');
   const attributionButton = container.querySelector(
     '.mapboxgl-ctrl-attrib-button',
   );
-  attributionButton?.setAttribute(
-    'aria-label',
-    intl.formatMessage(interfaceMessages.toggleAttribution),
-  );
+  attributionButton?.setAttribute('lang', 'en');
   attributionButton?.removeAttribute('title');
   attributionButton
     ?.querySelector('.mapboxgl-ctrl-icon')

@@ -17,9 +17,6 @@ import {
 import * as React from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
-
 import { Button, type ButtonProps, IconButton } from '../Button';
 import {
   DropdownMenu,
@@ -258,20 +255,6 @@ type ToolbarContextValue = {
   size: SegmentSize;
   reduceMotion: boolean;
 };
-
-const messages = defineMessages({
-  moveToolbar: {
-    id: 'frescoUi.segmentedToolbar.moveToolbar',
-    defaultMessage: 'Move toolbar',
-    description: 'Default accessible name of the toolbar drag handle.',
-  },
-  toolbarMoved: {
-    id: 'frescoUi.segmentedToolbar.toolbarMoved',
-    defaultMessage: 'Toolbar moved to {x, number}, {y, number}',
-    description:
-      'Screen-reader announcement after the toolbar is nudged with the keyboard; {x} and {y} are pixel coordinates.',
-  },
-});
 
 const ToolbarContext = React.createContext<ToolbarContextValue | null>(null);
 const GroupDisabledContext = React.createContext(false);
@@ -951,6 +934,7 @@ function DragHandle({
     <button
       type="button"
       aria-label={label}
+      lang="en"
       onPointerDown={onPointerDown}
       onKeyDown={handleKeyDown}
       className={cx(
@@ -982,7 +966,6 @@ export function SegmentedToolbar({
   ref,
   ...props
 }: SegmentedToolbarProps) {
-  const intl = useAppIntl();
   const reduceMotion = usePrefersReducedMotion() ?? false;
   const layoutGroupId = React.useId();
   const dragControls = useDragControls();
@@ -1040,10 +1023,7 @@ export function SegmentedToolbar({
     y.set(next.y);
     onPositionChange?.(next);
     setAnnouncement(
-      intl.formatMessage(messages.toolbarMoved, {
-        x: Math.round(next.x),
-        y: Math.round(next.y),
-      }),
+      `Toolbar moved to ${Math.round(next.x)}, ${Math.round(next.y)}`,
     );
   };
 
@@ -1159,14 +1139,14 @@ export function SegmentedToolbar({
         className={cx(rootLayoutVariants({ orientation }), className)}
       >
         <DragHandle
-          label={dragHandleLabel ?? intl.formatMessage(messages.moveToolbar)}
+          label={dragHandleLabel ?? 'Move toolbar'}
           orientation={orientation}
           size={size}
           onPointerDown={(event) => dragControls.start(event)}
           onNudge={handleNudge}
         />
         {innerToolbar}
-        <output aria-live="polite" className="sr-only">
+        <output aria-live="polite" className="sr-only" lang="en">
           {announcement}
         </output>
       </MotionSurface>

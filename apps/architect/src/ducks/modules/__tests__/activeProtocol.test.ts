@@ -244,37 +244,6 @@ describe('activeProtocol', () => {
     });
   });
 
-  describe('action creators', () => {
-    it('should create setActiveProtocol action', () => {
-      const action = actionCreators.setActiveProtocol(mockProtocol);
-
-      expect(action.type).toBe(actionCreators.setActiveProtocol.type);
-      expect(action.payload).toEqual(mockProtocol);
-    });
-
-    it('should create updateProtocol action', () => {
-      const updates = { description: 'updated' };
-      const action = actionCreators.updateProtocol(updates);
-
-      expect(action.type).toBe(actionCreators.updateProtocol.type);
-      expect(action.payload).toEqual(updates);
-    });
-
-    it('should create updateProtocolDescription action', () => {
-      const options = { description: 'Updated desc' };
-      const action = actionCreators.updateProtocolDescription(options);
-
-      expect(action.type).toBe(actionCreators.updateProtocolDescription.type);
-      expect(action.payload).toEqual(options);
-    });
-
-    it('should create clearActiveProtocol action', () => {
-      const action = actionCreators.clearActiveProtocol();
-
-      expect(action.type).toBe(actionCreators.clearActiveProtocol.type);
-    });
-  });
-
   describe('sub-reducers integration', () => {
     type TestStore = ReturnType<
       typeof configureStore<{

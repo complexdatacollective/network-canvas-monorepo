@@ -1,4 +1,10 @@
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  customShapesIssue,
+  defaultShapeIssue,
+  mappedShapesIssue,
+  readCustomShapes,
+} from '@codaco/protocol-builder/codebook/customShapes';
 
 import type { ShapeMappingType, ShapeThreshold } from './shapeMappingTypes';
 
@@ -8,6 +14,8 @@ import type { ShapeMappingType, ShapeThreshold } from './shapeMappingTypes';
  * invalid-submit path, which marks the named field errored and focuses it.
  */
 export const SHAPE_MAPPING_FIELD = 'shape.dynamic';
+export const CUSTOM_SHAPES_FIELD = 'customShapes';
+const DEFAULT_SHAPE_FIELD = 'shape.default';
 
 export type EntityTypeFormErrors = Record<string, string>;
 
@@ -75,13 +83,24 @@ const shapeMappingError = (dynamic: Record<string, unknown>) => {
 const validateEntityType = (
   values: Record<string, unknown>,
 ): EntityTypeFormErrors => {
-  const shape = values.shape;
-  if (!isRecord(shape) || !isRecord(shape.dynamic)) {
-    return {};
-  }
+  const errors: EntityTypeFormErrors = {};
+  const customShapes = readCustomShapes(values.customShapes);
+  const shapesMessage = customShapesIssue(customShapes);
+  if (shapesMessage) errors[CUSTOM_SHAPES_FIELD] = shapesMessage;
 
-  const message = shapeMappingError(shape.dynamic);
-  return message ? { [SHAPE_MAPPING_FIELD]: message } : {};
+  const shape = values.shape;
+  if (!isRecord(shape)) return errors;
+
+  const defaultMessage = defaultShapeIssue(shape.default, customShapes);
+  if (defaultMessage) errors[DEFAULT_SHAPE_FIELD] = defaultMessage;
+
+  if (isRecord(shape.dynamic)) {
+    const mappingMessage =
+      shapeMappingError(shape.dynamic) ??
+      mappedShapesIssue(shape.dynamic, customShapes);
+    if (mappingMessage) errors[SHAPE_MAPPING_FIELD] = mappingMessage;
+  }
+  return errors;
 };
 
 export default validateEntityType;

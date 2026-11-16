@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import type { ByRoleMatcher } from '@testing-library/react';
 import { Provider } from 'react-redux';
@@ -188,9 +189,11 @@ const renderRoute = async (path: string, lockState: ProtocolLockState) => {
   const { hook } = memoryLocation({ path, static: true });
   render(
     <Provider store={createStore(lockState)}>
-      <Router hook={hook}>
-        <Routes />
-      </Router>
+      <QueryClientProvider client={new QueryClient()}>
+        <Router hook={hook}>
+          <Routes />
+        </Router>
+      </QueryClientProvider>
     </Provider>,
   );
   // Every route draws a heading for RouteFocus to land on: the page, not the
@@ -240,6 +243,11 @@ describe('browsing a protocol another tab holds', () => {
       });
     },
   );
+
+  // A fixture that lost its stages would leave the sweep below with no cases.
+  it('has stage editors to sweep', () => {
+    expect(STAGE_ROUTES.length).toBeGreaterThan(0);
+  });
 
   it.each(STAGE_ROUTES)(
     'opens a %s stage read-only, with nothing that edits it',

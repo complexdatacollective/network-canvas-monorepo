@@ -78,12 +78,6 @@ const messages = defineMessages({
     description:
       'Placeholder in the search box of the variable search window, used when the researcher can search existing codebook variables or type a new name to create one.',
   },
-  findOrCreateAnAttribute: {
-    id: 'architect.form.fields.variablePicker.variableSpotlight.findOrCreateAnAttribute',
-    defaultMessage: 'Find or create an attribute',
-    description:
-      'Accessible name of the search box in the variable search window; read only by screen readers.',
-  },
   documentationOnAttributeNaming: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.documentationOnAttributeNaming',
     defaultMessage: 'documentation on attribute naming',
@@ -103,12 +97,6 @@ const messages = defineMessages({
       'You cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.',
     description:
       'Message in the variable search window when the typed text matches no variable and new variables cannot be created from this window. Attribute means codebook variable.',
-  },
-  attributeResults: {
-    id: 'architect.form.fields.variablePicker.variableSpotlight.attributeResults',
-    defaultMessage: 'Attribute results',
-    description:
-      'Accessible name of the list of matching variables in the variable search window; read only by screen readers.',
   },
 });
 
@@ -495,7 +483,7 @@ const VariableSpotlight = ({
               onKeyDown={handleInputKeyDown}
               prefixComponent={<Search aria-hidden className="size-4" />}
               className="w-full"
-              aria-label={intl.formatMessage(messages.findOrCreateAnAttribute)}
+              aria-label={'Find or create an attribute'}
             />
           </header>
           <main className="min-h-0 flex-auto pb-1">
@@ -538,7 +526,7 @@ const VariableSpotlight = ({
             {collectionItems.length > 0 && (
               <Collection
                 id={RESULTS_ID}
-                aria-label={intl.formatMessage(messages.attributeResults)}
+                aria-label={'Attribute results'}
                 items={collectionItems}
                 keyExtractor={(item) => item.id}
                 textValueExtractor={itemLabel}

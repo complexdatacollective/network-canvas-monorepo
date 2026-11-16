@@ -247,7 +247,10 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
           commands: [{ op: 'set', key: 'description', value: 'Branched' }],
         }),
       ),
-    ).resolves.toBeDefined();
+    ).resolves.toMatchObject({ deduped: false });
+    expect(
+      (await run(getDraftDocument(TEST_TEAM_ID, branched.draftId))).description,
+    ).toBe('Branched');
 
     const published = await run(
       publishDraft(TEST_TEAM_ID, { draftId: branched.draftId }),

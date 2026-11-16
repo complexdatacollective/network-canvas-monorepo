@@ -1,14 +1,12 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Node from '@codaco/fresco-ui/Node';
+import Node, { isNodeColorSequence } from '@codaco/fresco-ui/Node';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import {
-  isNodeColorSequence,
-  isNodeShape,
-} from '~/components/TypeEditor/nodeAppearance';
+import { resolveNodeShapeReference } from '@codaco/protocol-validation';
+import { useStoredShapeSvgs } from '~/components/Codebook/useStoredShapeSvgs';
 import { useAppSelector } from '~/ducks/hooks';
 import { getCodebook } from '~/selectors/protocol';
 
@@ -25,7 +23,8 @@ const PreviewRow = ({ node, outcome }: NodeLabelPreviewRow) => {
     (state) => getCodebook(state)?.node?.[node.type],
   );
   const color = definition?.color;
-  const shape = definition?.shape?.default;
+  const customShapes = definition?.customShapes;
+  const shapeSvgs = useStoredShapeSvgs(customShapes);
 
   return (
     <li className="flex items-center gap-4">
@@ -34,7 +33,11 @@ const PreviewRow = ({ node, outcome }: NodeLabelPreviewRow) => {
         size="sm"
         className="shrink-0"
         color={isNodeColorSequence(color) ? color : undefined}
-        shape={isNodeShape(shape) ? shape : undefined}
+        shape={resolveNodeShapeReference(
+          definition?.shape?.default,
+          customShapes,
+          shapeSvgs,
+        )}
         label={outcome.kind === 'label' ? outcome.label : undefined}
       />
       {outcome.kind === 'label' ? (

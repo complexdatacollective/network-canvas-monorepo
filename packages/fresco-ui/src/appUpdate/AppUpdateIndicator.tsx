@@ -32,18 +32,6 @@ import type {
 } from './useAppUpdate';
 
 const messages = defineMessages({
-  updateAvailablePill: {
-    id: 'frescoUi.appUpdateIndicator.updateAvailablePill',
-    defaultMessage: "An update is available. View what's new in {appName}.",
-    description:
-      'Accessible name of the indicator pill while an update is waiting to install.',
-  },
-  updatedPill: {
-    id: 'frescoUi.appUpdateIndicator.updatedPill',
-    defaultMessage: "{appName} was updated. View what's new.",
-    description:
-      'Accessible name of the indicator pill after an update was applied.',
-  },
   loadingReleaseNotes: {
     id: 'frescoUi.appUpdateIndicator.loadingReleaseNotes',
     defaultMessage: 'Loading release notes…',
@@ -54,12 +42,6 @@ const messages = defineMessages({
     defaultMessage: 'Release notes are unavailable right now.',
     description:
       'Shown in the update dialog when release notes could not be loaded.',
-  },
-  changelogLabel: {
-    id: 'frescoUi.appUpdateIndicator.changelogLabel',
-    defaultMessage: '{appName} changelog',
-    description:
-      'Accessible name of the scrollable release-notes region in the update dialog.',
   },
   availableSummaryKnownVersion: {
     id: 'frescoUi.appUpdateIndicator.availableSummaryKnownVersion',
@@ -196,10 +178,11 @@ export default function AppUpdateIndicator({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label={intl.formatMessage(
-            isAvailable ? messages.updateAvailablePill : messages.updatedPill,
-            { appName },
-          )}
+          aria-label={
+            isAvailable
+              ? `An update is available. View what's new in ${appName}.`
+              : `${appName} was updated. View what's new.`
+          }
         />
       }
       size={size}
@@ -248,10 +231,7 @@ export default function AppUpdateIndicator({
       shadow="none"
       className="mt-4 flex max-h-72 min-h-0 flex-col"
     >
-      <ScrollArea
-        aria-label={intl.formatMessage(messages.changelogLabel, { appName })}
-        viewportClassName="px-6"
-      >
+      <ScrollArea aria-label={`${appName} changelog`} viewportClassName="px-6">
         {changelog}
       </ScrollArea>
     </Surface>

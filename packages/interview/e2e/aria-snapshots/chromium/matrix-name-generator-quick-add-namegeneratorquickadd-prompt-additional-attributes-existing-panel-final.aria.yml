@@ -6,8 +6,7 @@
   - listbox "Already added"
   - listbox "Added Nodes":
     - option "Alice"
-  - button "Add a person":
-    - img "Add a person"
+  - button "Add a person"
   - navigation:
     - button "Settings"
     - button "Previous Step"

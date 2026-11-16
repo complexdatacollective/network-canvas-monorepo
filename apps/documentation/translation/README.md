@@ -1,8 +1,8 @@
 # Translating the documentation
 
 English is the source. Every other language is a translation of it. The
-published languages are English and Spanish, so every change to the English
-must update the Spanish in the same pull request. A test
+published languages are English, Spanish and French, so every change to the
+English must update every other published language in the same pull request. A test
 (`lib/__tests__/translations.test.ts`) enforces this in CI.
 
 ## Where translations live

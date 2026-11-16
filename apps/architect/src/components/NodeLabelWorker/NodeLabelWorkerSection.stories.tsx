@@ -1,5 +1,6 @@
 import { configureStore, type UnknownAction } from '@reduxjs/toolkit';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider } from 'react-redux';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
@@ -75,6 +76,13 @@ const meta = {
   title: 'Components/Codebook/NodeLabelWorkerSection',
   component: NodeLabelWorkerSection,
   parameters: { layout: 'padded' },
+  decorators: [
+    (Story) => (
+      <QueryClientProvider client={new QueryClient()}>
+        <Story />
+      </QueryClientProvider>
+    ),
+  ],
 } satisfies Meta<typeof NodeLabelWorkerSection>;
 
 export default meta;

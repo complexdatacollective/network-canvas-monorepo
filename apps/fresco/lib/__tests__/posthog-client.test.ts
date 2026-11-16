@@ -115,7 +115,9 @@ describe('Fresco PostHog client', () => {
 
     await startPostHog('install-123');
 
-    expect(calls).toEqual(['init', 'register', 'opt_in_capturing', 'register']);
+    const optIn = calls.indexOf('opt_in_capturing');
+    expect(optIn).toBeGreaterThan(-1);
+    expect(calls.slice(0, optIn)).toContain('register');
   });
 
   it('registers the app properties and identifies by installation ID', async () => {
@@ -323,12 +325,7 @@ describe('Fresco PostHog client', () => {
       await starting;
 
       expect(captureException).toHaveBeenCalledOnce();
-      expect(calls).toEqual([
-        'init',
-        'register',
-        'opt_in_capturing',
-        'register',
-      ]);
+      expect(optInCapturing).toHaveBeenCalledBefore(captureException);
       expect(identify).toHaveBeenCalledBefore(captureException);
     });
 

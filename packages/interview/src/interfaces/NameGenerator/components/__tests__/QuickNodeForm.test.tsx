@@ -34,6 +34,7 @@ import session, {
 import ui from '../../../../store/modules/ui';
 import { WritesInFlightProvider } from '../../../../store/WritesInFlightContext';
 import type { StageProps } from '../../../../types';
+import { TestInterviewAssets } from '../../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import {
   encryptionFor,
@@ -217,21 +218,23 @@ async function renderQuickNodeForm({
 
   render(
     <Provider store={store}>
-      <TestProtocolLocalization>
-        <WritesInFlightProvider
-          writesSettled={() => undefined}
-          trackWrite={trackWrite}
-        >
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <QuickNodeForm
-              placeholder={PLACEHOLDER}
-              disabled={false}
-              targetVariable={TARGET_VARIABLE}
-              addNode={addNode}
-            />
-          </CurrentStepProvider>
-        </WritesInFlightProvider>
-      </TestProtocolLocalization>
+      <TestInterviewAssets>
+        <TestProtocolLocalization>
+          <WritesInFlightProvider
+            writesSettled={() => undefined}
+            trackWrite={trackWrite}
+          >
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <QuickNodeForm
+                placeholder={PLACEHOLDER}
+                disabled={false}
+                targetVariable={TARGET_VARIABLE}
+                addNode={addNode}
+              />
+            </CurrentStepProvider>
+          </WritesInFlightProvider>
+        </TestProtocolLocalization>
+      </TestInterviewAssets>
     </Provider>,
   );
 

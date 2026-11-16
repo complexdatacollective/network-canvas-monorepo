@@ -1,0 +1,499 @@
+---
+title: Arrière-plans SVG adaptatifs
+navOrder: 7
+translatedFrom: 724f3ec2f911112df45dc686155aaf554af10cf5
+---
+
+<Definition>
+  Un SVG est une image composée de formes, de lignes et de texte plutôt que
+  d’une grille fixe de pixels. Un SVG adaptatif réorganise ces éléments pour
+  s’ajuster au canevas disponible, en orientation portrait comme en
+  orientation paysage.
+</Definition>
+
+## Pourquoi utiliser un arrière-plan adaptatif ? {#why-use-a-responsive-background}
+
+L’arrière-plan d’un canevas peut faire partie de l’instrument de mesure. Il
+peut diviser un sociogramme en contextes sociaux, représenter deux dimensions
+indépendantes ou délimiter des régions qui donnent un sens précis à la position
+dans l’espace.
+
+Les images PNG et JPEG ordinaires ont une forme fixe. Network Canvas affiche
+l’image entière sans la recadrer : une image conçue pour un écran en paysage
+laissera donc de l’espace vide lorsqu’elle sera affichée sur un écran en
+portrait.
+
+Un SVG adaptatif se comporte différemment. Ses lignes et ses libellés sont
+positionnés par rapport au canevas disponible, ce qui permet à la mise en page
+de s’étendre dans les deux directions. Le texte reste lisible au lieu d’être
+étiré avec le reste de l’image.
+
+## Utiliser Background Creator {#use-the-background-creator}
+
+[**Background Creator**](https://bg-creator.networkcanvas.com) est un outil
+qui fonctionne dans le navigateur et permet de créer des arrière-plans SVG
+adaptatifs en les dessinant, plutôt qu’en modifiant à la main le code source
+du SVG. C’est la méthode recommandée pour créer un arrière-plan pour les
+interfaces « Narration », « Compositeur de réseau » et « Sociogramme », et l’outil
+respecte automatiquement toutes les règles décrites dans cet article.
+
+![Background Creator en train de modifier le modèle intégré Quadrants : quatre zones de quadrant ombrées, séparées par deux axes libellés (de Low à High en X et de Low à High en Y), avec la barre d’outils de dessin et d’exportation en bas.](/assets/img/background-creator/editor.png)
+
+Dans Background Creator, vous pouvez :
+
+- **Dessiner directement sur le canevas.** Ajoutez des rectangles, des
+  ellipses, des lignes, des polygones et du texte modifiable, positionnés en
+  pourcentages, de sorte que le résultat est adaptatif par construction.
+- **Prévisualiser le résultat en temps réel.** Un aperçu en plein écran montre
+  l’arrière-plan exactement tel que les personnes participantes le verront, et
+  vous pouvez passer d’un rapport hauteur/largeur à l’autre pour vérifier que les
+  lignes, les remplissages et les libellés gardent leur sens en portrait et en
+  paysage.
+- **Définir des zones.** Marquez comme zone n’importe quel rectangle, ellipse
+  ou polygone que vous dessinez, et donnez-lui un libellé dans ses propriétés.
+  La forme elle-même constitue la zone : un remplissage visible, comme les
+  remplissages des quadrants du modèle intégré Quadrants, peut aussi servir de
+  zone, ou vous pouvez laisser la forme transparente pour obtenir une zone qui
+  reste invisible aux personnes participantes. Les libellés des zones
+  deviennent les valeurs de la variable exportée.
+- **Enregistrer votre travail et le rouvrir.** Téléchargez le SVG terminé pour
+  l’ajouter dans Architect, ou rouvrez un SVG enregistré précédemment pour
+  continuer à le modifier.
+- **Exporter un script Python ou R prêt à l’emploi.** Le script lit les
+  colonnes `_x` et `_y` de votre exportation CSV (voir plus bas [Classer les
+  nœuds d’après leurs coordonnées](#classify-nodes-from-their-coordinates)) et
+  ajoute une variable catégorielle qui nomme la zone dans laquelle se trouve la
+  position de chaque nœud : vous n’avez donc pas à écrire votre propre code de
+  classement.
+
+Sélectionner une forme affiche ses propriétés, où vous définissez son
+remplissage, son opacité et son contour, et où vous la marquez comme zone.
+Chaque zone affiche une pastille avec son libellé, pour que vous voyiez d’un
+coup d’œil quelles régions seront exportées.
+
+![Un quadrant sélectionné dans Background Creator, avec son panneau de propriétés ouvert qui montre les commandes de couleur de remplissage, d’opacité du remplissage et de contour.](/assets/img/background-creator/zone-properties.png)
+
+Deux modèles intégrés couvrent les conceptions les plus courantes :
+**Quadrants**, deux axes croisés qui divisent le canevas en quatre régions
+libellées, comme [le modèle téléchargeable ci-dessous](#start-with-the-template),
+et **Concentric circles** (cercles concentriques), des anneaux imbriqués pour
+les mesures dans lesquelles la proximité relative avec le centre a une
+signification catégorielle (intérieur, intermédiaire, extérieur). Les deux
+modèles comprennent déjà les zones correspondantes, prêtes à être exportées.
+
+Si vous préférez travailler dans un éditeur graphique, ou si vous avez
+seulement besoin de reformuler le modèle de quadrants intégré, les sections
+[Adobe Illustrator](#adobe-illustrator) et [Inkscape](#inkscape) ci-dessous
+décrivent ces solutions manuelles.
+
+## Un SVG adaptatif convient-il à votre mesure ? {#is-a-responsive-svg-appropriate-for-your-measure}
+
+Les arrière-plans adaptatifs conviennent le mieux lorsque les positions
+horizontale et verticale représentent des dimensions distinctes, ou lorsque les
+régions doivent toujours s’étendre jusqu’aux bords du canevas.
+
+| Plan de recherche                                                                              | Approche recommandée                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Deux axes indépendants, des quadrants, des catégories ou des contextes sociaux                 | Utiliser un SVG adaptatif                                                                                                                                                      |
+| Les positions horizontales et verticales relatives seront analysées indépendamment             | Utiliser un SVG adaptatif                                                                                                                                                      |
+| La distance euclidienne, l’angle ou la forme d’un cercle ont un sens pour la mesure            | Utiliser une image non adaptative (affichée entière dans le canevas, sans déformation, avec des bandes vides si nécessaire) ou garder les appareils dans une seule orientation |
+| Une photographie, une carte, un schéma anatomique ou une autre image ne doit pas être déformée | Utiliser une image non adaptative                                                                                                                                              |
+
+Cette distinction compte pour l’analyse. Un arrière-plan adaptatif conserve
+chaque position en proportion de l’espace horizontal et vertical, mais il ne
+conserve ni les angles ni les distances lorsque l’écran change de forme. Par
+exemple, des cercles concentriques deviendraient des ellipses en mode portrait
+et devraient donc rester une image non adaptative.
+
+<TipBox>
+
+Selon les proportions de l’écran, en portrait ou en paysage, le modèle intégré **Concentric circles** de
+Background Creator étire ses anneaux en ellipses. Comme chaque anneau
+constitue lui-même la zone, l’appartenance à la zone s’étire exactement de la
+même façon : chaque nœud est donc toujours attribué à l’anneau que la personne
+participante a réellement vu. Maintenez la touche Maj enfoncée pendant que vous
+dessinez un anneau pour le rendre parfaitement rond dans les proportions d’écran que
+vous prévisualisez à ce moment-là : vous pouvez ainsi choisir la forme d’écran
+pour laquelle vous l’optimisez. Si votre mesure dépend plutôt d’une distance
+euclidienne précise ou d’un cercle non déformé, utilisez plutôt une image
+non adaptative, en suivant les indications ci-dessus.
+
+</TipBox>
+
+## Partir du modèle {#start-with-the-template}
+
+Si vous n’utilisez pas Background Creator, vous n’avez pas non plus besoin de
+créer un SVG entièrement à la main. La solution manuelle consiste à télécharger
+ce modèle et à remplacer ses quatre libellés par des termes de votre propre
+étude.
+
+<ResponsiveSvgPreview src="/assets/responsive-svg-background.svg" alt="Une carte transparente des contextes sociaux avec des zones pour la famille, les amitiés, le travail ou les études, et la communauté"></ResponsiveSvgPreview>
+
+<DownloadLink href="/assets/responsive-svg-background.svg">
+  Télécharger le modèle adaptatif de contextes sociaux
+</DownloadLink>
+
+Le modèle reprend l’exemple d’un générateur de noms contextuel. [Bidart et
+Charbonneau décrivent un générateur de noms
+contextuel](https://espace.inrs.ca/id/eprint/9280/) (en anglais) qui permet
+d’obtenir une vue d’ensemble du réseau d’une personne à partir des contextes
+sociaux de la vie quotidienne.
+
+Les quatre zones d’exemple (Family, Friends, Work or study et Community,
+c’est-à-dire famille, amitiés, travail ou études, et communauté) ne sont
+qu’illustratives. Les contextes ne sont pas nécessairement exhaustifs ni
+mutuellement exclusifs. Une même personne peut appartenir à la fois au contexte des amitiés et à celui du travail :
+votre consigne doit donc expliquer aux personnes participantes comment gérer
+ces chevauchements.
+
+## Adapter le modèle à votre étude {#adapt-the-template-for-your-study}
+
+### 1. Planifiez la tâche spatiale {#1-plan-the-spatial-task}
+
+Avant de modifier l’image, notez ce que signifiera le placement dans chaque
+région. Gardez des libellés courts et utilisez les mêmes termes dans les
+instructions de l’étape. Demandez-vous :
+
+- si les régions se chevauchent sur le plan conceptuel ;
+- si les personnes participantes peuvent utiliser une zone « autre » ou
+  « je ne sais pas » ;
+- si la position à l’intérieur d’une région a une signification
+  supplémentaire ;
+- comment interpréter les nœuds placés près d’une limite ; et
+- si les positions obtenues seront analysées comme des catégories, comme des
+  coordonnées, ou les deux.
+
+### 2. Téléchargez et copiez le modèle {#2-download-and-copy-the-template}
+
+Téléchargez le modèle ci-dessus et gardez l’original intact. Faites-en une copie
+avec un nom descriptif, par exemple `support-contexts.svg`.
+
+L’extension `.svg` est importante. Elle indique à Architect et au système
+d’exploitation que le fichier est une image SVG.
+
+### 3. Modifiez les libellés {#3-change-the-labels}
+
+Un SVG est une image, mais ses libellés sont stockés sous forme de mots
+ordinaires dans le fichier. Vous pouvez les modifier avec un éditeur de texte
+brut :
+
+- **Windows :** Bloc-notes
+- **macOS :** TextEdit, après avoir choisi **Format → Convertir au format texte**
+- **Linux :** un éditeur de texte brut comme Gedit ou Kate
+
+Ouvrez le SVG copié. Son contenu vous paraîtra inhabituel, car vous voyez les
+instructions qui servent à dessiner l’image. Il vous suffit d’utiliser
+**Rechercher et remplacer** pour modifier ces termes visibles :
+
+| Rechercher  | Remplacer par                                 |
+| ----------- | --------------------------------------------- |
+| `Family`    | Votre premier contexte                        |
+| `Friends`   | Votre deuxième contexte                       |
+| `Work or`   | La première ligne de votre troisième contexte |
+| `study`     | La deuxième ligne de votre troisième contexte |
+| `Community` | Votre quatrième contexte                      |
+
+Ne modifiez pas la ponctuation ni les symboles comme `<`, `>`, `"`, `/`, `=` ou
+`%`. Enregistrez le fichier en texte brut avec l’encodage UTF-8, et vérifiez
+que son nom se termine toujours par `.svg` et non par `.svg.txt`.
+
+<TipBox danger>
+
+Ne modifiez pas le SVG dans Microsoft Word, Apple Pages, Google Docs ou un autre
+logiciel de traitement de texte. Ces applications ajoutent une mise en forme de
+document qui empêchera le fichier de fonctionner comme une image.
+
+</TipBox>
+
+### 4. Ajoutez l’arrière-plan dans Architect {#4-add-the-background-in-architect}
+
+1. Ouvrez l’étape « Narration », « Compositeur de réseau » ou « Sociogramme »
+   qui utilisera l’arrière-plan.
+2. Dans la section **Arrière-plan**, choisissez **Image**.
+3. Sélectionnez votre fichier `.svg` modifié sur votre ordinateur, ou choisissez-le dans la
+   bibliothèque de ressources si vous l’avez déjà ajouté.
+4. Rédigez des instructions d’étape qui expliquent la signification des régions
+   ou des axes. L’arrière-plan doit renforcer ces instructions, et non les
+   remplacer.
+5. Ouvrez le [mode aperçu](/fr/design-protocols/preview-mode) et examinez
+   l’étape en orientation portrait et en orientation paysage.
+
+## Classer les nœuds d’après leurs coordonnées {#classify-nodes-from-their-coordinates}
+
+Si vous avez créé votre arrière-plan dans [Background
+Creator](#use-the-background-creator) et que vous y avez défini des zones, vous
+n’avez pas besoin d’écrire à la main la logique de classement ci-dessous :
+exportez un script Python ou R, qui attribuera pour vous la zone de chaque nœud
+à partir des colonnes `_x` et `_y` de la variable de disposition. Le reste de
+cette section explique le système de coordonnées sous-jacent et montre comment
+écrire vous-même ce classement pour un arrière-plan créé sans zones.
+
+Lorsqu’une personne participante positionne un nœud, Network Canvas enregistre
+le centre de ce nœud sous la forme de deux coordonnées normalisées dans la
+variable de disposition de la consigne :
+
+- `x = 0` correspond au bord gauche et `x = 1` au bord droit.
+- `y = 0` correspond au bord supérieur et `y = 1` au bord inférieur.
+
+L’orientation vers le bas de l’axe des y mérite d’être notée, car c’est
+l’inverse d’un repère cartésien classique.
+
+Lors de l’exportation des données, laissez l’option **Utiliser les coordonnées
+de la disposition d’écran** désactivée. Les valeurs normalisées sont
+indépendantes de l’appareil et correspondent directement aux positions en
+pourcentage utilisées par un SVG adaptatif. Voir [Exportation des
+données](/fr/analyze-data/data-export#use-screen-layout-coordinates) pour en
+savoir plus sur cette option.
+
+Dans une exportation CSV, une variable de disposition nommée `box_layout`
+produit des colonnes nommées `box_layout_x` et `box_layout_y`. Les nœuds qui
+n’ont pas été placés ont des valeurs manquantes. Les exportations GraphML
+contiennent les valeurs `_X` et `_Y` équivalentes.
+
+### Appliquer les règles de quadrants du modèle {#apply-the-templates-quadrant-rules}
+
+Le modèle divise le canevas à 50 % dans les deux directions. Cela revient à
+fixer à `0.5` le seuil des coordonnées normalisées.
+
+| Quadrant         | Libellé du modèle | Règle de coordonnées   |
+| ---------------- | ----------------- | ---------------------- |
+| Supérieur gauche | Family            | `x < 0.5` et `y < 0.5` |
+| Supérieur droit  | Friends           | `x > 0.5` et `y < 0.5` |
+| Inférieur gauche | Work or study     | `x < 0.5` et `y > 0.5` |
+| Inférieur droit  | Community         | `x > 0.5` et `y > 0.5` |
+
+Par exemple, un nœud situé en `(0.25, 0.33)` se trouve dans le quadrant
+supérieur gauche. Un nœud situé en `(0.75, 0.67)` se trouve dans le quadrant
+inférieur droit.
+
+### Décider du traitement des limites {#decide-how-to-treat-boundaries}
+
+Un nœud peut être centré exactement sur un axe, ou suffisamment près pour que
+sa surface visible chevauche deux régions. Décidez du traitement de ce cas
+avant l’analyse plutôt que d’attribuer le nœud à une zone sans le signaler.
+
+Une approche consiste à définir une tolérance aux limites. Une tolérance de
+`0.02` classe comme **Boundary** (limite) tout nœud situé à moins de deux
+points de pourcentage de l’un ou l’autre axe :
+
+Choisissez R ou Python ci-dessous pour voir comment créer une colonne `context`
+à partir des coordonnées exportées. L’exemple en R s’affiche par défaut.
+
+<CoordinateClassificationExample />
+
+Choisissez la tolérance en fonction de la taille des nœuds, de la taille de
+l’écran, des instructions données aux personnes participantes et de ce que
+la limite signifie pour la mesure. D’autres solutions consistent à attribuer
+systématiquement les valeurs situées sur un axe au même côté, ou à examiner
+manuellement les cas limites.
+
+### Utiliser d’autres limites {#use-other-boundaries}
+
+Pour un SVG adaptatif personnalisé, divisez par 100 le pourcentage indiqué dans
+le code source de l’image pour obtenir le seuil normalisé. Une limite verticale
+à 60 %, par exemple, correspond à `x = 0.60`.
+
+Cette conversion directe fonctionne parce que les régions adaptatives couvrent le
+même canevas que celui qui sert aux coordonnées des nœuds. Elle ne s’applique
+pas sans ajustement lorsqu’une image ordinaire, non adaptative, est affichée dans le canevas avec
+des bandes vides autour d’elle.
+
+Si plusieurs consignes doivent produire des mesures spatiales distinctes,
+attribuez à chaque consigne une variable de disposition différente. Réutiliser
+une variable de disposition fait que les positionnements ultérieurs remplacent
+les coordonnées précédentes.
+
+## Modifier plus que les libellés {#changing-more-than-the-labels}
+
+Le modèle est conçu pour que les modifications simples de formulation soient
+sans risque. Modifier le nombre de régions, ajouter des surfaces colorées, déplacer
+des limites ou créer une nouvelle mise en page demande davantage de soin.
+
+[Background Creator](#use-the-background-creator) est conçu précisément pour
+cela : dessinez de nouvelles régions, ajustez les couleurs et définissez des
+zones sans toucher au code source du SVG, puis téléchargez le résultat. La
+solution manuelle ci-dessous, qui consiste à travailler dans un éditeur
+graphique, reste utile lorsque vous souhaitez un contrôle plus fin sur le
+visuel, comme des formes personnalisées, des dégradés ou une charte graphique
+existante, ou lorsque vous collaborez avec une personne graphiste
+qui n’utilise pas Background Creator.
+
+Vous pouvez esquisser la mise en page souhaitée dans une application de dessin
+que vous connaissez bien, puis confier l’esquisse, les libellés et la [liste de
+contrôle pour la transmission technique](#technical-handoff-checklist) ci-dessous
+à une personne graphiste ou à une personne qui collabore avec vous
+sur le plan technique. Le modèle téléchargeable lui fournit un exemple
+fonctionnel à suivre.
+
+Si vous utilisez vous-même un éditeur graphique, conservez deux fichiers :
+
+1. un **original modifiable**, que vous continuez à modifier dans l’éditeur
+   graphique ; et
+2. une **exportation adaptative**, que vous ajoutez dans Architect.
+
+Ne rouvrez pas l’exportation adaptative dans l’éditeur graphique pour l’enregistrer de
+nouveau. De nombreux éditeurs rétablissent une forme de page fixe à
+l’enregistrement, ce qui peut supprimer le comportement adaptatif.
+
+## Adobe Illustrator {#adobe-illustrator}
+
+Il s’agit de la solution de rechange manuelle à Background Creator, dans un
+éditeur graphique. Adobe Illustrator est utile pour concevoir la mise en page
+visuelle, choisir les couleurs et positionner les libellés. Le [tutoriel
+d’Adobe sur l’exportation de SVG
+adaptatifs](https://www.adobe.com/learn/illustrator/web/export-css?ntd=1) (en
+anglais) décrit l’option d’exportation concernée.
+
+1. Créez le visuel sur un plan de travail aux dimensions qui vous conviennent.
+2. Tracez les lignes et les régions jusqu’aux bords du plan de travail
+   correspondants.
+3. Gardez les libellés sous forme de texte modifiable. Ne choisissez pas
+   **Vectoriser** (Create Outlines) pour les libellés.
+4. Ne dessinez pas de rectangle d’arrière-plan de la taille de la page si le
+   thème de l’interface doit rester visible.
+5. Choisissez **Fichier → Exporter → Exporter sous**, sélectionnez **SVG**,
+   activez **Utiliser les plans de travail** et choisissez l’option
+   **Responsive** (adaptatif).
+6. Conservez le fichier Illustrator comme original modifiable.
+7. Préparez le SVG exporté (ou faites-le préparer) à l’aide de la [liste de contrôle pour la
+   transmission technique](#technical-handoff-checklist) avant de l’importer
+   dans Architect.
+
+L’option **Responsive** d’Illustrator est un bon point de départ, mais elle ne
+produit pas à elle seule le comportement particulier, d’un bord à l’autre, qui
+est nécessaire ici. Le fichier exporté doit encore recevoir des positions exprimées
+en pourcentages et ne doit pas avoir de proportions de page fixes.
+
+## Inkscape {#inkscape}
+
+Il s’agit d’une autre solution de rechange manuelle à Background Creator,
+dans un éditeur graphique. Inkscape est une application gratuite de
+conception d’images SVG. Son [guide des propriétés du
+document](https://inkscape-manuals.readthedocs.io/en/latest/managing-workspace.html#document-properties-dialog)
+(en anglais) explique comment gérer la page et son arrière-plan.
+
+1. Créez une page de la taille qui vous convient avec **Fichier → Propriétés du
+   document**.
+2. Laissez la page transparente, sauf si un arrière-plan opaque fait partie du
+   plan de recherche.
+3. Tracez les lignes et les régions jusqu’aux bords de la page correspondants.
+4. Gardez les libellés sous forme de texte. N’utilisez pas **Objet en chemin**
+   sur eux.
+5. Enregistrez l’original modifiable au format **SVG Inkscape**.
+6. Choisissez **Fichier → Enregistrer une copie** et enregistrez un **SVG
+   simple**, comme le décrit le [guide
+   d’enregistrement](https://inkscape-manuals.readthedocs.io/en/latest/saving.html)
+   d’Inkscape (en anglais).
+7. Préparez le SVG simple (ou faites-le préparer) à l’aide de la [liste de contrôle pour la
+   transmission technique](#technical-handoff-checklist) avant de l’importer
+   dans Architect.
+
+Pour de petites modifications de formulation, il est plus sûr de modifier le
+modèle téléchargeable que de l’ouvrir et de l’enregistrer de nouveau dans
+Inkscape.
+
+## Liste de contrôle pour la transmission technique {#technical-handoff-checklist}
+
+Cette section s’adresse aux graphistes, aux personnes chargées du développement et aux
+membres de l’équipe de recherche à l’aise avec le code source d’un SVG.
+Elle n’est pas nécessaire si vous remplacez seulement les libellés du modèle
+fourni, et les SVG téléchargés depuis [Background
+Creator](#use-the-background-creator) remplissent déjà tous les points
+ci-dessous. Si vous souhaitez aussi l’exportation Python ou R fondée sur les
+zones, créez l’arrière-plan dans Background Creator plutôt que dans un éditeur
+graphique : les zones sont enregistrées dans un bloc de métadonnées
+qu’Illustrator et Inkscape ne peuvent pas produire.
+
+Un arrière-plan adaptatif pour Network Canvas doit :
+
+- définir la largeur et la hauteur du SVG extérieur à `100%` ;
+- omettre le `viewBox` extérieur, afin que l’image n’ait pas de proportions
+  fixes ;
+- positionner les limites et les libellés en pourcentages ;
+- garder les libellés sous forme de texte au lieu de les convertir en formes ;
+- utiliser `vector-effect: non-scaling-stroke` pour les lignes qui doivent
+  garder une épaisseur constante ;
+- omettre toute forme d’arrière-plan de la taille de la page lorsque la
+  transparence est nécessaire ;
+- utiliser des polices système disponibles hors ligne ; et
+- éviter les polices, images, feuilles de style et scripts externes.
+
+<details>
+
+<summary>
+
+#### Voir le code source complet du modèle {#view-the-complete-template-source}
+
+</summary>
+
+```xml
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100%"
+  height="100%"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Responsive social-context map</title>
+  <desc id="description">
+    Four labelled quadrants organise people by family, friends, work or study,
+    and community contexts.
+  </desc>
+  <style>
+    .axis {
+      stroke: white;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .label {
+      fill: white;
+      font-family: system-ui, sans-serif;
+      font-size: clamp(16px, 3vmin, 32px);
+      font-weight: 600;
+      text-anchor: middle;
+    }
+  </style>
+
+  <line class="axis" x1="0" y1="50%" x2="100%" y2="50%" />
+  <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
+
+  <text class="label" x="25%" y="25%">
+    <tspan x="25%">Family</tspan>
+  </text>
+  <text class="label" x="75%" y="25%">
+    <tspan x="75%">Friends</tspan>
+  </text>
+  <text class="label" x="25%" y="75%">
+    <tspan x="25%" dy="-0.2em">Work or</tspan>
+    <tspan x="25%" dy="1.2em">study</tspan>
+  </text>
+  <text class="label" x="75%" y="75%">
+    <tspan x="75%">Community</tspan>
+  </text>
+</svg>
+```
+
+</details>
+
+## Dépannage {#troubleshooting}
+
+| Problème                                                                | Cause probable et étape suivante                                                                                                      |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Le fichier est refusé ou s’affiche sous forme de texte                  | Vérifiez que le nom du fichier se termine par `.svg` et non par `.svg.txt`, et qu’il a été enregistré en texte brut                   |
+| Des bandes vides apparaissent en mode portrait ou paysage               | Le SVG a probablement des proportions de page fixes ; comparez-le à la liste de contrôle pour la transmission technique               |
+| Les libellés s’étirent ou changent de forme                             | Les libellés ont peut-être été vectorisés ou convertis en chemins ; revenez à l’original modifiable et gardez-les sous forme de texte |
+| Les lignes deviennent très épaisses ou très fines                       | Demandez que `vector-effect: non-scaling-stroke` soit ajouté à ces lignes                                                             |
+| L’arrière-plan de l’interface ne transparaît pas                        | Le SVG contient probablement un rectangle d’arrière-plan de la taille de la page ; supprimez-le de l’exportation adaptative           |
+| Les libellés sont masqués par les nœuds ou les commandes de l’interface | Raccourcissez ou déplacez les libellés, puis refaites les tests sur les appareils de terrain                                          |
+
+## Concepts associés {#related-concepts}
+
+- [Ressources](/fr/design-protocols/key-concepts/resources) : ajouter le SVG à
+  un protocole et le gérer dans la bibliothèque de ressources
+- [Mode aperçu](/fr/design-protocols/preview-mode) : tester l’arrière-plan avant
+  la collecte de données
+- [Exportation des données](/fr/analyze-data/data-export) : exporter les
+  coordonnées de disposition normalisées pour l’analyse
+- [Interfaces](/fr/design-protocols/key-concepts/interfaces) : comparer les
+  interfaces qui peuvent utiliser un arrière-plan adaptatif

@@ -1,0 +1,102 @@
+---
+title: Filtrage du réseau
+navOrder: 11
+translatedFrom: 05a30afc29058810199d8d4358b8240676158417
+---
+
+<Definition>
+  Le filtrage du réseau vous permet de n’afficher qu’une partie des nœuds ou des
+  liens dans une étape donnée de l’entretien, en fonction de leurs attributs.
+</Definition>
+
+## Détails {#details}
+
+Le filtrage du réseau est une fonction de configuration que vous trouverez à plusieurs endroits d’Architect. Il vous permet de définir une ou plusieurs règles qui déterminent quels nœuds ou quels liens doivent être affichés dans une étape donnée (ou dans un panneau latéral, [voir ci-dessous](#network-filtering-in-a-side-panel)). Vous pouvez l’utiliser pour n’afficher qu’une partie du réseau.
+
+C’est particulièrement utile lorsque le contenu de l’étape ne concerne pas toutes les entités du réseau. Prenons l’exemple d’un protocole d’entretien comportant deux étapes : une étape [« Générateur de noms »](/fr/design-protocols/interface-documentation/name-generator-using-forms) et une étape [« Classement ordinal »](/fr/design-protocols/interface-documentation/ordinal-bin). Dans la première étape, on demande à la personne participante, pour chaque alter (chaque personne qu’elle cite pendant l’entretien), si elle fait du sport avec lui. La seconde étape demande « à quelle fréquence faites-vous du sport avec chacune de ces personnes ? ». Filtrer le réseau de cette seconde étape pour n’afficher que les alters qui ont l’attribut **fait du sport avec** allégera la charge de la personne participante et rendra le protocole d’entretien plus efficace.
+
+<TipBox>
+
+Le filtrage du réseau n’est pas la même chose que la [logique de saut](/fr/design-protocols/key-concepts/skip-logic) ! Même si les deux semblent proches dans leur principe, ils répondent à des objectifs de conception très différents. Le filtrage du réseau détermine quels nœuds afficher _à l’intérieur_ d’une étape, tandis que la logique de saut détermine si une étape doit être affichée ou non. Consultez l’article sur la [logique de saut](/fr/design-protocols/key-concepts/skip-logic) pour en savoir plus.
+
+</TipBox>
+
+## Configurer le filtrage du réseau dans une étape {#configuring-network-filtering-on-a-stage}
+
+Pour configurer le filtrage du réseau dans une étape, ouvrez l’étape depuis la chronologie du protocole et activez l’interrupteur **Filtrage du réseau**. Vous pouvez alors créer une ou plusieurs **règles** (de type alter ou lien) et définir l’**opérateur de jonction**, en indiquant si **toutes les règles** ou **au moins une règle** doivent être satisfaites.
+
+![](/assets/img/key-concepts/network-filtering/filtering-panel.png)
+
+<TipBox>
+
+Le filtrage du réseau n’est disponible que dans les interfaces de type _interpréteur de noms_ (une question posée sur chaque alter déjà cité), c’est-à-dire les interfaces qui ajoutent des attributs aux nœuds ou aux liens. Il n’est pas disponible dans les interfaces spécialisées de type _générateur de noms_.
+
+</TipBox>
+
+### Règles de filtrage {#filtering-rules}
+
+Comme les règles de la [logique de saut](/fr/design-protocols/key-concepts/skip-logic), les règles de filtrage sont de deux types et peuvent cibler soit des nœuds, soit des liens :
+
+- **Règles de « présence »** : elles permettent de vérifier si une entité d’un type donné existe dans le réseau, avec l’opérateur _existe_ ou _n’existe pas_ (`exists`, `not exists`). Ce type de règle n’est généralement pas utile pour la plupart des opérations de filtrage courantes, mais il peut servir lorsque les données d’une liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit) contiennent des nœuds ou des liens de plusieurs types.
+- **Règles d’« attribut »** : elles permettent d’interroger la valeur d’un attribut sur un type d’entité donné. Par exemple, vous pouvez interroger la valeur d’un attribut appelé `age` sur un type de nœud appelé « Person » (personne). Vous pouvez évaluer le résultat avec l’un de plusieurs opérateurs logiques, qui varient selon le type d’attribut. Par exemple, les attributs de type nombre permettent d’utiliser des opérateurs comme _est supérieur à_ et _est inférieur à_.
+
+Les opérateurs disponibles pour une règle d’attribut dépendent du type de l’attribut. Les attributs de type nombre proposent des comparaisons comme _est supérieur à_ et _est inférieur à_ ; les attributs de texte peuvent être comparés avec _est exactement_, _n’est pas_ et, à partir du schéma 8, _contient_ et _ne contient pas_, qui vérifient si le texte enregistré inclut ou non une valeur. Pour les attributs ordinaux et catégoriels, les opérateurs _inclut_ et _exclut_ acceptent **plusieurs** valeurs sélectionnées : une seule règle peut donc correspondre à une entité dont l’attribut contient l’une quelconque de plusieurs options.
+
+Contrairement aux règles de logique de saut (qui sont agrégées en une seule valeur booléenne globale, `true` ou `false`), les règles de filtrage sont appliquées à chaque nœud et à chaque lien du réseau, et ne sont pas agrégées. Les nœuds conservés sont ceux qui satisfont les contraintes des règles.
+
+<TipBox danger>
+
+Il est important de garder à l’esprit que le filtrage préserve la validité du
+modèle de réseau : le réseau obtenu ne contiendra pas de nœuds orphelins
+lorsque vous utilisez une requête sur les liens, ni de liens partiellement
+déconnectés, car ils ne seraient pas valides du point de vue
+phénoménologique.
+
+</TipBox>
+
+### L’opérateur de jonction {#the-join-operator}
+
+Les règles sont enchaînées (ou « jointes ») selon une logique `AND` ou `OR`, que vous définissez dans la section de configuration du filtre de réseau avec les options **Toutes les règles doivent être satisfaites** et **Au moins une règle doit être satisfaite**, respectivement. Ces méthodes se comportent comme on peut s’y attendre. Dans le contexte d’une opération de filtrage :
+
+- `OR` signifie que si un nœud ou un lien satisfait les critères de _l’une quelconque_ des règles, il sera inclus dans le réseau obtenu.
+- `AND` signifie que les nœuds et les liens du réseau obtenu doivent satisfaire les critères de _toutes_ les règles.
+
+Le choix de l’opérateur de jonction peut donc avoir un effet considérable sur la façon dont vos règles sont évaluées ensemble. Veillez à n’utiliser l’opérateur `AND` pour enchaîner plusieurs valeurs d’attribut requises que lorsque toutes ces valeurs sont requises simultanément **sur un même nœud**.
+
+### Exemple détaillé {#extended-example}
+
+Comme le filtrage du réseau peut dérouter au début, voici un exemple détaillé de cette fonction, qui comporte à la fois des règles sur les nœuds et sur les liens.
+
+Imaginez un entretien dans lequel vous utilisez une étape [« Sociogramme »](/fr/design-protocols/interface-documentation/sociogram) pour créer des liens de relation sexuelle entre alters et pour recueillir, dans un attribut booléen, le statut sérologique VIH des alters. Supposons que vous souhaitiez ensuite utiliser une étape [« Formulaire par alter »](/fr/design-protocols/interface-documentation/per-alter-form) (un formulaire pour chaque alter) ou un autre interpréteur de noms pour recueillir des données sur la consommation de drogues des alters, mais uniquement de ceux qui sont séropositifs au VIH _et_ qui ont une relation sexuelle avec un autre alter du réseau.
+
+Pour y parvenir avec le filtrage du réseau, vous pouvez mettre en œuvre, dans l’étape « Formulaire par alter », les règles suivantes, sur les liens et sur les nœuds :
+
+![](/assets/img/key-concepts/network-filtering/example.png)
+
+Appliquer ces règles dans cette étape fait que seuls les nœuds séropositifs qui ont une relation sexuelle seront affichés. Tous les nœuds qui n’ont pas de relation sexuelle seront exclus par le filtre, même s’ils ont l’attribut `HIV_pos = true`.
+
+<TipBox danger>
+
+Si votre requête de filtrage (l’ensemble des règles définies dans l’étape)
+comporte une règle sur les liens, certains alters seront aussi exclus. Par exemple,
+si votre règle filtre sur l’existence d’un type de lien, comme « sex »
+(relation sexuelle), tous les nœuds qui deviendraient isolés à la suite de
+cette requête sont retirés du réseau filtré.
+
+</TipBox>
+
+## Filtrage du réseau dans un panneau latéral {#network-filtering-in-a-side-panel}
+
+Vous pouvez aussi filtrer le contenu des [panneaux latéraux](/fr/design-protocols/interface-documentation/name-generator-using-forms#side-panels) des étapes « Générateur de noms » (lorsqu’elles en utilisent). Cette fonction se comporte exactement comme le filtrage du réseau au niveau de l’étape, à ceci près que les résultats ne s’appliquent qu’au panneau latéral précis que vous configurez. Le filtrage que vous définissez s’applique à toutes les [consignes](/fr/design-protocols/key-concepts/prompts) de cette étape.
+
+Cette fonction peut être particulièrement utile si vous souhaitez filtrer les éléments d’une liste. Par exemple, votre liste peut contenir un attribut représentant l’année d’obtention du diplôme, que vous pourriez utiliser pour filtrer le contenu du panneau latéral dans une question sur les camarades de classe que la personne participante a connus dans une promotion donnée.
+
+![](/assets/img/key-concepts/network-filtering/side-panel.png)
+
+## Concepts associés {#related-concepts}
+
+- [Logique de saut](/fr/design-protocols/key-concepts/skip-logic) : sauter ou afficher des étapes entières de façon conditionnelle
+- [Variables](/fr/design-protocols/key-concepts/variables) : créer des variables à utiliser dans les règles de filtrage
+- [Interfaces](/fr/design-protocols/key-concepts/interfaces) : savoir quelles interfaces prennent en charge le filtrage du réseau
+- [Consignes](/fr/design-protocols/key-concepts/prompts) : configurer des questions qui fonctionnent avec des réseaux filtrés
+- [Ressources](/fr/design-protocols/key-concepts/resources) : importer des données de liste à filtrer

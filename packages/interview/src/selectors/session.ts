@@ -2,7 +2,10 @@ import { createSelector } from '@reduxjs/toolkit';
 import { intersection, invariant } from 'es-toolkit';
 import { filter, includes } from 'es-toolkit/compat';
 
-import type { NodeColorSequence, NodeShape } from '@codaco/fresco-ui/Node';
+import {
+  type NodeColorSequence,
+  type NodeShapeProp,
+} from '@codaco/fresco-ui/Node';
 import { filter as customFilter } from '@codaco/network-query';
 import {
   type Codebook,
@@ -11,10 +14,12 @@ import {
   type FamilyPedigreeNominationPrompt,
   type LocalizedString,
   type NodeDefinition,
+  type NodeShapeReference,
   type Prompt,
   type StageSubject,
   type VariableOption,
   type VariableOptions,
+  resolveNodeShapeReference,
 } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
@@ -383,15 +388,10 @@ export const getNodeColorSelector: (
   },
 );
 
-/**
- * Resolves a node's shape from the codebook shape definition and a node's
- * attributes. Uses the dynamic mapping (discrete or breakpoints) when
- * configured, falling back to the default shape.
- */
-export function resolveNodeShape(
+const resolveShapeReference = (
   shapeDef: NodeDefinition['shape'],
   attributes: Record<string, unknown>,
-): NodeShape {
+): NodeShapeReference => {
   if (!shapeDef.dynamic) return shapeDef.default;
 
   const variableValue = attributes[shapeDef.dynamic.variable];
@@ -419,6 +419,26 @@ export function resolveNodeShape(
     }
   }
   return shapeDef.default;
+};
+
+/**
+ * Resolves a node's shape from its codebook node definition and the node's
+ * attributes. Uses the dynamic mapping (discrete or breakpoints) when
+ * configured, falling back to the default shape. `shapeSvgs` holds the loaded
+ * SVG text of the protocol's custom shapes by asset id (see
+ * `useCustomShapeSvgs`); a custom shape the node type does not define, or
+ * whose SVG has not loaded, draws as a circle.
+ */
+export function resolveNodeShape(
+  nodeDefinition: Pick<NodeDefinition, 'shape' | 'customShapes'>,
+  attributes: Record<string, unknown>,
+  shapeSvgs: Readonly<Record<string, string>>,
+): NodeShapeProp {
+  return resolveNodeShapeReference(
+    resolveShapeReference(nodeDefinition.shape, attributes),
+    nodeDefinition.customShapes,
+    shapeSvgs,
+  );
 }
 
 // Explicit signature: the enlarged stage union makes the inferred selector

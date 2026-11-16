@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 // The three model-facing output schemas:
 //   Screening   (step 1, "Reading your research questions", Haiku 5.5)
 //   StudyDesign (step 2, "Designing the study", Opus 5.5 / OpenAI flagship)
@@ -13,7 +15,7 @@
 //   - no .min/.max/.length/.int/.regex/.email etc. (bounds live in analyse.ts / compile.ts)
 //   - primitive enums only; stage discriminators are z.literal (normalised to enum:[x])
 //   - no recursion; root is an object
-//   - EXACTLY ONE union in the whole StudyDesign schema: StageSchema (11 branches).
+//   - EXACTLY ONE union in the whole StudyDesign schema: StageSchema (13 branches).
 //     Anthropic allows 16 union-typed parameters per request; each anyOf or type
 //     array counts once. Do not add a second union without re-running the
 //     union-count test.
@@ -28,7 +30,10 @@
 //
 // Long guidance (method choice by network size, stage order, burden) lives in
 // the cached system prompt; descriptions here stay short.
-import { z } from 'zod';
+import {
+  INHERITANCE_PATTERNS,
+  PEDIGREE_COMPLETENESS_SCOPES,
+} from '@codaco/protocol-validation';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -196,7 +201,7 @@ export const SkipLogicSchema = z
     whenSkipped: z
       .enum(['next_stage', 'end_interview'])
       .describe(
-        'Where the interview goes when this stage is not shown. next_stage unless nothing after it can apply.',
+        'Where the interview goes when this stage is not shown. next_stage unless nothing after it can apply. end_interview goes to the ending that lists this stage in fromStageIds, or to the normal end when none does.',
       ),
     match: z
       .enum(['all', 'any'])
@@ -278,7 +283,7 @@ const NameGeneratorStage = z
         }),
       )
       .describe(
-        '1-4 prompts on ONE theme. Use another nameGenerator stage for another theme.',
+        'Prompts on ONE theme. Use another nameGenerator stage for another theme.',
       ),
     minNodes: z
       .number()
@@ -288,7 +293,7 @@ const NameGeneratorStage = z
     maxNodes: z
       .number()
       .describe(
-        'Most nodes allowed on this stage; 0 for no limit. Cap at 10-20 when relationship stages follow.',
+        'Most nodes allowed on this stage; 0 for no limit. No more than the research question and the stages that follow need.',
       ),
   })
   .describe(
@@ -388,7 +393,7 @@ const RelationshipCensusStage = z
     method: z
       .enum(['every_pair', 'one_at_a_time', 'with_strength'])
       .describe(
-        "one_at_a_time = usually preferred: one node at a time, tap everyone tied to it from the rest (up to ~25 nodes). every_pair = a yes/no screen for every pair (under ~8 nodes), when each pair needs an explicit answer. with_strength = every pair on an ordered strength scale, when the study needs the participant's perception of tie strength between alters.",
+        "one_at_a_time = the usual choice and least burdensome: one node at a time, tap everyone tied to it from the rest. every_pair = a yes/no screen for every pair, only when every pair must be explicitly confirmed or rejected. with_strength = every pair on an ordered strength scale, only when that is needed and the study needs the participant's perception of tie strength between alters.",
       ),
     prompts: z
       .array(
@@ -505,6 +510,90 @@ const GeospatialStage = z
     'Participant picks the COUNTRY of each node on a world map. Country level only; needs internet during the interview.',
   );
 
+const FamilyPedigreeStage = z
+  .object({
+    kind: z.literal('familyPedigree'),
+    ...stageCommon,
+    nodeTypeId: Ref(
+      'a node type used only for family members: no other stage may create its nodes',
+    ),
+    prompt: Text(
+      'Participant-facing instruction for drawing the family, one sentence; **bold** the key phrase, e.g. "Add the members of your **biological family**."',
+    ),
+    askGenderIdentity: z
+      .boolean()
+      .describe(
+        "true asks each relative's gender identity as well as sex assigned at birth (which is always asked). Only when the study needs it.",
+      ),
+    completeness: z
+      .enum(['none', ...PEDIGREE_COMPLETENESS_SCOPES])
+      .describe(
+        'Which relatives the participant is shown as missing before moving on (they may still continue): none, parents, firstDegree (parents, siblings, children), grandparents (and first degree), secondDegree (and aunts, uncles, grandchildren, half-siblings), thirdDegree (and cousins, great-grandparents).',
+      ),
+    attributeIds: z
+      .array(z.string())
+      .describe(
+        'Attributes of nodeTypeId asked about each relative as they are added (e.g. whether they are alive), in order. 0-3. Never name, sex or gender: the stage asks those itself. Never a condition or trait a nomination prompt records.',
+      ),
+    nominationPrompts: z
+      .array(
+        z.object({
+          text: promptText,
+          attributeId: Ref(
+            'a yes_no attribute of nodeTypeId set to yes for every relative the participant selects',
+          ),
+          records: z
+            .enum(['condition', 'other'])
+            .describe(
+              'condition = a diagnosis or health condition the relative has, which a narrativePedigree may show. other = anything else, such as relatives whose health history is unknown; never shown as a condition.',
+            ),
+          onlyFor: z
+            .enum(['anyone', 'female', 'male'])
+            .describe(
+              'anyone, or limit selection to relatives of that sex assigned at birth, for a condition only they can have.',
+            ),
+        }),
+      )
+      .describe(
+        'Questions asked of the whole family once it is drawn, e.g. "Who in your family has been **diagnosed with breast cancer**?". Each condition is recorded here only. 0-4.',
+      ),
+  })
+  .describe(
+    'The participant draws their family tree (parents, partners, children, siblings, donors and surrogates). It creates its own nodes and the family ties between them.',
+  );
+
+const NarrativePedigreeStage = z
+  .object({
+    kind: z.literal('narrativePedigree'),
+    ...stageCommon,
+    sourceStageId: Ref(
+      'the earlier familyPedigree stage whose family is shown',
+    ),
+    showAtRiskStatuses: z
+      .boolean()
+      .describe(
+        'true marks relatives who will develop or carry a condition according to its inheritance pattern. Only when a genetic counsellor or another qualified professional is present.',
+      ),
+    conditions: z
+      .array(
+        z.object({
+          attributeId: Ref(
+            'a yes_no attribute set by a nomination prompt of the source stage whose records is condition',
+          ),
+          label: Text('Participant-visible name of the condition, 1-4 words.'),
+          inheritancePattern: z
+            .enum(INHERITANCE_PATTERNS)
+            .describe(
+              'How the condition is inherited: a pattern only when the condition itself has a known, established one; otherwise unknown.',
+            ),
+        }),
+      )
+      .describe('1-4 conditions shown on the family tree.'),
+  })
+  .describe(
+    'Shows the family tree from a familyPedigree stage with each condition marked, for the participant (or the interviewer with them) to talk through. Collects no data.',
+  );
+
 export const StageSchema = z.union([
   InformationStage,
   EgoFormStage,
@@ -517,6 +606,8 @@ export const StageSchema = z.union([
   NarrativeStage,
   GeospatialStage,
   NetworkComposerStage,
+  FamilyPedigreeStage,
+  NarrativePedigreeStage,
 ]);
 export const DESIGN_STAGE_KINDS = [
   'information',
@@ -530,11 +621,30 @@ export const DESIGN_STAGE_KINDS = [
   'narrative',
   'geospatial',
   'networkComposer',
+  'familyPedigree',
+  'narrativePedigree',
 ] as const;
 
 // ---------------------------------------------------------------------------
 // Entities and root
 // ---------------------------------------------------------------------------
+
+export const EndingSchema = z.object({
+  id: Id('ending'),
+  outcome: z
+    .enum(['ineligible', 'terminated'])
+    .describe(
+      'What the ending records: ineligible = the participant does not qualify (screened out); terminated = any other planned early stop.',
+    ),
+  fromStageIds: z
+    .array(z.string())
+    .describe(
+      'Ids of the stages whose skip logic (whenSkipped end_interview) sends the participant to this ending.',
+    ),
+  message: Text(
+    'What the participant reads when the interview stops here (Markdown): a "# " heading, then why it ended, in neutral words that do not say which answer would have qualified, and thanks. Add support resources on sensitive topics.',
+  ),
+});
 
 const NodeTypeSchema = z.object({
   id: Id('node type'),
@@ -555,7 +665,7 @@ const NodeTypeSchema = z.object({
     ),
 });
 
-const RelationshipSchema = z.object({
+export const RelationshipSchema = z.object({
   id: Id('relationship'),
   name: Text(
     'Display name of this tie between two nodes, e.g. "Know each other". Distinct from every node type name.',
@@ -581,6 +691,9 @@ export const StudyDesignSchema = z
       .describe(
         'face_to_face = an interviewer sits with the participant (clinic, field or lab interviews); self_administered = the participant completes it alone (online, on a kiosk or tablet). self_administered unless the description says interviewers run the interviews.',
       ),
+    language: Text(
+      'BCP 47 tag of the language every participant-facing text is written in: the language of the research questions unless the researcher says the interview is in another one, e.g. "en", "es", "pt-BR". Write in one language only; Sketch does not translate.',
+    ),
     qualitative: z
       .boolean()
       .describe(
@@ -589,11 +702,16 @@ export const StudyDesignSchema = z
     includeConsent: z
       .boolean()
       .describe(
-        'true adds a standard consent question after the welcome screen; the interview ends if the participant declines.',
+        'true adds a standard consent question after the welcome screen; the interview ends if the participant declines. Always true when self_administered; when face_to_face, only if consent is taken in the interview itself.',
       ),
     consentText: Text(
       'includeConsent true: one paragraph on what taking part involves. Otherwise "".',
     ),
+    endings: z
+      .array(EndingSchema)
+      .describe(
+        'Early endings, for participants whose interview stops before the normal end. [] when everyone reaches the normal end. Sketch adds the normal ending (outcome completed) and the ending for declined consent itself.',
+      ),
     egoAttributes: z
       .array(AttributeSchema)
       .describe(
@@ -640,6 +758,7 @@ export type DesignStage = z.infer<typeof StageSchema>;
 export type DesignAttribute = z.infer<typeof AttributeSchema>;
 export type DesignSkipLogic = z.infer<typeof SkipLogicSchema>;
 export type DesignNodeFilter = z.infer<typeof NodeFilterSchema>;
+export type DesignEnding = z.infer<typeof EndingSchema>;
 
 // ---------------------------------------------------------------------------
 // Step 1: Screening (Haiku 5.5)

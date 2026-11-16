@@ -1250,7 +1250,8 @@ export const TypeAheadSearch = meta.story({
       'true',
     );
 
-    // Wait for search string to reset (500ms timeout)
+    // Let the 500 ms idle timer clear the search string. The reset is internal
+    // state with nothing in the DOM to wait on; the next search proves it.
     await new Promise((resolve) => setTimeout(resolve, 600));
 
     // Type 'che' to jump to Chester Clark (accumulated prefix)
@@ -1309,9 +1310,13 @@ export const DisabledItems = meta.story({
       'data-focused',
     );
 
-    // Space selects item-3
+    // Space adds item-3 to the selection rather than replacing item-1
     await userEvent.keyboard(' ');
     await expect(canvas.getByTestId('item-3')).toHaveAttribute(
+      'data-selected',
+      'true',
+    );
+    await expect(canvas.getByTestId('item-1')).toHaveAttribute(
       'data-selected',
       'true',
     );

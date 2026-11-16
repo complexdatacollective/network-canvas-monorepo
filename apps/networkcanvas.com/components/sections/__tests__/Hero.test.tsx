@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { NewsItem } from '~/lib/siteContent';
@@ -16,6 +16,14 @@ const newsItems: NewsItem[] = [
 
 afterEach(cleanup);
 
+function entranceItemOf(element: HTMLElement | undefined) {
+  const item = element?.closest('.entrance-motion-item');
+  if (!(item instanceof HTMLElement)) {
+    throw new Error('Hero item is not inside an entrance-motion item');
+  }
+  return item;
+}
+
 describe('Hero', () => {
   it('links the primary action to Get Started', () => {
     renderWithIntl(<Hero newsItems={newsItems} />);
@@ -29,81 +37,35 @@ describe('Hero', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('turns the primary action’s arrow round in a right-to-left language', () => {
+  it('shows the headline, body copy and the news it is given', () => {
     renderWithIntl(<Hero newsItems={newsItems} />);
 
-    expect(
-      screen.getByRole('link', { name: 'Get Started' }).querySelector('svg'),
-    ).toHaveClass('rtl:-scale-x-100');
-  });
-
-  it('uses the large desktop headline scale and the semantic text token for body copy', () => {
-    renderWithIntl(<Hero newsItems={newsItems} />);
-
-    expect(
-      screen.getByRole('heading', {
-        name: 'Simplifying complex network data collection.',
-      }),
-    ).toHaveClass('text-6xl', 'font-black');
-    expect(screen.getByText(/Network Canvas provides/)).toHaveClass(
-      'text-text',
-    );
+    screen.getByRole('heading', {
+      name: 'Simplifying complex network data collection.',
+    });
+    screen.getByText(/Network Canvas provides/);
     expect(screen.getAllByText('Fixture-only hero news')).toHaveLength(3);
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();
   });
 
-  it('distributes tablet and desktop content across the available height', () => {
-    const { container } = renderWithIntl(<Hero newsItems={newsItems} />);
-    const view = within(container);
-    const root = view.getByTestId('hero-root');
-    const heading = view.getByRole('heading', {
-      name: 'Simplifying complex network data collection.',
-    });
-    const heroContainer = view.getByTestId('hero-layout');
-    const mediaRow = view.getByTestId('hero-media-row');
-    const mediaSizer = view.getByTestId('hero-media-sizer');
-    const newsWrapper = view.getByTestId('hero-news-wrapper');
-    const ctaWrapper = view.getByTestId('hero-cta-wrapper');
+  it('marks each animated hero item for its pre-hydration entrance state', () => {
+    renderWithIntl(<Hero newsItems={newsItems} />);
 
-    expect(root).toHaveClass('tablet-portrait:flex', 'tablet-portrait:flex-1');
-    expect(heroContainer).toHaveClass(
-      'tablet-portrait:grid',
-      'tablet-portrait:flex-1',
-      'tablet-portrait:grid-cols-1',
-      'tablet-portrait:grid-rows-[minmax(auto,20svh)_auto_auto_auto]',
-      'tablet-portrait:gap-y-10',
-      'tablet-portrait:content-center',
-    );
-    expect(heading).toHaveClass(
-      'entrance-motion-item',
-      'tablet-portrait:row-start-1',
-      'tablet-portrait:self-center',
-    );
-    expect(mediaRow).toHaveClass(
-      'entrance-motion-item',
-      'tablet-portrait:row-start-2',
-      'tablet-portrait:grid-cols-[1.1fr_0.9fr]',
-      'tablet-portrait:mt-0',
-    );
-    expect(mediaSizer).toHaveClass(
-      'w-full',
-      'tablet-portrait:max-w-[min(100%,48svh)]',
-      'tablet-portrait:justify-self-center',
-    );
-    expect(newsWrapper).toHaveClass(
-      'entrance-motion-item',
-      'tablet-portrait:col-start-1',
-      'tablet-portrait:row-start-3',
-      'tablet-portrait:mt-0',
-    );
-    expect(ctaWrapper).toHaveClass(
-      'entrance-motion-item',
-      'tablet-portrait:col-start-1',
-      'tablet-portrait:row-start-4',
-      'tablet-portrait:mt-0',
-    );
+    const items = [
+      screen.getByRole('heading', {
+        name: 'Simplifying complex network data collection.',
+      }),
+      screen.getByText(/Network Canvas provides/),
+      screen.getAllByRole('link', {
+        name: '[Read more] Fixture-only hero news',
+      })[0],
+      screen.getByRole('link', { name: 'Get Started' }),
+    ].map(entranceItemOf);
+
+    // Heading, media row, news and call to action each enter on their own.
+    expect(new Set(items).size).toBe(4);
   });
 
   it('renders Spanish hero copy', () => {

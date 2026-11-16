@@ -13,18 +13,36 @@ const baseValue: Behavior = {
 };
 
 describe('SecurityBehaviorControls', () => {
-  it('renders the three unlock toggles', () => {
-    render(<SecurityBehaviorControls value={baseValue} onChange={vi.fn()} />);
-    expect(
-      screen.getByText('Require unlock when entering an interview'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Require unlock when exiting an interview'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Require unlock before exporting data'),
-    ).toBeInTheDocument();
-  });
+  // One setting on at a time, so a toggle bound to the wrong setting shows up.
+  const oneHot: [string, [boolean, boolean, boolean]][] = [
+    ['requireUnlockOnEnter', [true, false, false]],
+    ['requireUnlockOnExit', [false, true, false]],
+    ['requireUnlockOnExport', [false, false, true]],
+  ];
+  it.each(oneHot)(
+    'shows only the %s toggle on when only that setting is on',
+    (_setting, [enter, exit, exportData]) => {
+      render(
+        <SecurityBehaviorControls
+          value={{
+            idleTimeoutMinutes: 15,
+            requireUnlockOnEnter: enter,
+            requireUnlockOnExit: exit,
+            requireUnlockOnExport: exportData,
+          }}
+          onChange={vi.fn()}
+        />,
+      );
+      const switches = [
+        screen.getByRole('switch', { name: /entering an interview/i }),
+        screen.getByRole('switch', { name: /exiting an interview/i }),
+        screen.getByRole('switch', { name: /before exporting data/i }),
+      ];
+      expect(
+        switches.map((toggle) => toggle.getAttribute('aria-checked')),
+      ).toEqual([enter, exit, exportData].map(String));
+    },
+  );
 
   it('emits requireUnlockOnExit when the exit toggle is switched on', () => {
     const onChange = vi.fn();

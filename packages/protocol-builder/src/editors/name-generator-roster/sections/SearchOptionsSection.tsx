@@ -311,7 +311,12 @@ export default function SearchOptionsSection() {
   // stage still holds, and each is offered only while it is still checked.
   const options = useMemo(
     () => [
-      ...(columns.names ?? []).map((name) => ({ value: name, label: name })),
+      // A column name is whatever the file's author wrote, in no recorded
+      // language: it reads in its own direction.
+      ...(columns.names ?? []).map((name) => ({
+        value: name,
+        label: { text: name, dir: 'auto' as const },
+      })),
       ...orphans.options.map(({ value, label }) => ({ value, label })),
     ],
     [columns.names, orphans.options],

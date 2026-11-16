@@ -125,12 +125,6 @@ const messages = defineMessages({
     description:
       'Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath.',
   },
-  submittingStatus: {
-    id: 'protocolBuilder.codebookVariable.submittingStatus',
-    defaultMessage: 'Saving attribute.',
-    description:
-      'Announced to screen reader users while the attribute is being saved. Not shown on screen.',
-  },
   nameLabel: {
     id: 'protocolBuilder.codebookVariable.nameLabel',
     defaultMessage: 'Attribute name',
@@ -188,12 +182,6 @@ const messages = defineMessages({
     defaultMessage: 'Option {index} value',
     description:
       'Label of the field holding what the export records for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
-  },
-  removeOption: {
-    id: 'protocolBuilder.codebookVariable.removeOption',
-    defaultMessage: 'Remove option {index}',
-    description:
-      'Accessible name of the button that deletes one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
   },
   createSubmit: {
     id: 'protocolBuilder.codebookVariable.createSubmit',
@@ -949,8 +937,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           </Alert>
         )}
         {busy && (
-          <output aria-live="polite" className="sr-only">
-            {intl.formatMessage(messages.submittingStatus)}
+          <output aria-live="polite" className="sr-only" lang="en">
+            Saving attribute.
           </output>
         )}
 
@@ -1122,12 +1110,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         </div>
                         <IconButton
                           icon={<Trash2 aria-hidden="true" />}
-                          aria-label={intl.formatMessage(
-                            messages.removeOption,
-                            {
-                              index: String(index + 1),
-                            },
-                          )}
+                          aria-label={`Remove option ${index + 1}`}
+                          lang="en"
                           color="destructive"
                           disabled={interactionDisabled}
                           onClick={() => {

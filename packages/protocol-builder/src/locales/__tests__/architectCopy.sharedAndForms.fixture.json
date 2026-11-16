@@ -600,16 +600,6 @@
     "es": "No se puede cambiar el tipo de vínculo",
     "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.cannotChangeType (entityType: edge)"
   },
-  "protocolBuilder.entitySelect.nodeGroupLabel": {
-    "en": "Node type options",
-    "es": "Opciones de tipo de nodo",
-    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.typeOptions (value1: true)"
-  },
-  "protocolBuilder.entitySelect.edgeGroupLabel": {
-    "en": "Edge type options",
-    "es": "Opciones de tipo de vínculo",
-    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.typeOptions (value1: false)"
-  },
   "protocolBuilder.externalDataSource.description": {
     "en": "Select the network data file that supplies nodes for this roster.",
     "es": "Selecciona el archivo de datos de red que proporciona los nodos de esta lista.",
@@ -649,16 +639,6 @@
     "en": "Edit attribute name: {label}",
     "es": "Editar nombre del atributo: {label}",
     "from": "74a07e626 architect.variablePill.editAttributeName"
-  },
-  "protocolBuilder.variablePicker.renameDialogName": {
-    "en": "Edit attribute name",
-    "es": "Editar nombre del atributo",
-    "from": "74a07e626 architect.variablePill.editAttributeName62aa3"
-  },
-  "protocolBuilder.variablePicker.renameFieldLabel": {
-    "en": "Attribute name",
-    "es": "Nombre del atributo",
-    "from": "74a07e626 architect.variablePill.attributeName"
   },
   "protocolBuilder.variablePicker.renamePlaceholder": {
     "en": "Enter an attribute name...",

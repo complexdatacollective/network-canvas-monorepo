@@ -1,6 +1,14 @@
 {
   "type": "section",
   "slug": "analyze-data",
-  "localeLabels": { "en": "Analyze Data", "es": "Analizar datos" },
-  "localeIndexFiles": { "en": "index.en.mdx", "es": "index.es.mdx" }
+  "localeLabels": {
+    "en": "Analyze Data",
+    "es": "Analizar datos",
+    "fr": "Analyser les données"
+  },
+  "localeIndexFiles": {
+    "en": "index.en.mdx",
+    "es": "index.es.mdx",
+    "fr": "index.fr.mdx"
+  }
 }

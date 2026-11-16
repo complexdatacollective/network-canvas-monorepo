@@ -11,6 +11,7 @@ import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocaliz
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
 import type { CodebookWriteOutcome } from '../writes.ts';
+import { CodebookEditorHost } from './codebookEditorHost.tsx';
 
 /**
  * A codebook editor is opened from inside something the researcher is already
@@ -73,24 +74,26 @@ function StageFormAround({
   children: ReactNode;
 }>) {
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        onStageSubmit(event);
-      }}
-    >
-      <label>
-        Prompt text
-        <input name="text" defaultValue={HALF_TYPED} />
-      </label>
-      <Dialog open title="Edit the codebook" closeDialog={() => undefined}>
-        <ProtocolLocalizationProvider
-          localization={{ defaultLocale: 'en', locales: ['en'] }}
-        >
-          {children}
-        </ProtocolLocalizationProvider>
-      </Dialog>
-    </form>
+    <CodebookEditorHost>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onStageSubmit(event);
+        }}
+      >
+        <label>
+          Prompt text
+          <input name="text" defaultValue={HALF_TYPED} />
+        </label>
+        <Dialog open title="Edit the codebook" closeDialog={() => undefined}>
+          <ProtocolLocalizationProvider
+            localization={{ defaultLocale: 'en', locales: ['en'] }}
+          >
+            {children}
+          </ProtocolLocalizationProvider>
+        </Dialog>
+      </form>
+    </CodebookEditorHost>
   );
 }
 

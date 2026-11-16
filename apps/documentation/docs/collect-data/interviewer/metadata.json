@@ -3,11 +3,13 @@
   "slug": "interviewer",
   "localeLabels": {
     "en": "Interviewer",
-    "es": "Interviewer"
+    "es": "Interviewer",
+    "fr": "Interviewer"
   },
   "localeIndexFiles": {
     "en": "about.en.mdx",
-    "es": "about.es.mdx"
+    "es": "about.es.mdx",
+    "fr": "about.fr.mdx"
   },
   "navOrder": 3,
   "isExpanded": true

@@ -20,7 +20,7 @@
   "communityTheme.landing.routes.browse": "{count, plural, one {Parcourir # sujet} other {Parcourir # sujets}}",
   "communityTheme.landing.routes.conversation.action": "Lancer une discussion",
   "communityTheme.landing.routes.conversation.body": "Discutez de la conception d’études et des méthodes de recherche sur les réseaux, ou parlez de vos travaux.",
-  "communityTheme.landing.routes.conversation.title": "Échanger avec d’autres chercheuses et chercheurs",
+  "communityTheme.landing.routes.conversation.title": "Échanger avec d’autres équipes de recherche",
   "communityTheme.landing.routes.help.action": "Poser une question",
   "communityTheme.landing.routes.help.body": "Demandez comment faire quelque chose ou signalez un problème avec Architect, Interviewer ou Fresco.",
   "communityTheme.landing.routes.help.title": "Obtenir de l’aide",

@@ -17,6 +17,4 @@ Audio.defaultProps = {
   description: '',
 };
 
-export { Audio };
-
 export default injectAssetUrl(Audio);

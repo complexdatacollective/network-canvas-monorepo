@@ -15,8 +15,6 @@ const mockFetchResponse = {
 global.fetch = vi.fn(() => Promise.resolve(mockFetchResponse));
 
 describe('loadExternalData', () => {
-  it('returns a cancellable request', () => {});
-
   it('request response is json with uids', async () => {
     const result = await loadExternalData(
       mockProtocolName,

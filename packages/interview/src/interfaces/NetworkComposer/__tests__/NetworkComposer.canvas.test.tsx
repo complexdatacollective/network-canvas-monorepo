@@ -15,6 +15,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { useAssetUrl } from '../../../hooks/useAssetUrl';
@@ -169,17 +170,19 @@ function renderInterface(stageOverride: typeof stage = stage) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <StageMetadataContext.Provider value={registerBeforeNext}>
-              <TestProtocolLocalization>{children}</TestProtocolLocalization>
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
-        </ContractProvider>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider value={registerBeforeNext}>
+                <TestProtocolLocalization>{children}</TestProtocolLocalization>
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </ContractProvider>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }
@@ -190,11 +193,6 @@ function renderInterface(stageOverride: typeof stage = stage) {
 }
 
 describe('NetworkComposer canvas', () => {
-  it('renders the interface root with the correct test id', () => {
-    renderInterface();
-    expect(screen.getByTestId('network-composer')).toBeTruthy();
-  });
-
   it('renders both placed nodes as unnamed', async () => {
     renderInterface();
     // Neither node has a name, and participants never see a codebook type's
@@ -276,9 +274,13 @@ describe('NetworkComposer canvas', () => {
 
   it('renders the concentric circles background svg when background.concentricCircles is set', () => {
     renderInterface();
-    // ConcentricCircles renders an <svg aria-hidden> element
-    const svgs = document.querySelectorAll('svg[aria-hidden="true"]');
-    expect(svgs.length).toBeGreaterThan(0);
+    // Other chrome (e.g. tool palette icons) also renders aria-hidden svgs, so
+    // only the decorative background layer is a reliable place to look.
+    expect(
+      screen
+        .getByTestId('composer-background')
+        .querySelectorAll('svg[aria-hidden="true"]').length,
+    ).toBeGreaterThan(0);
   });
 
   it('renders the resolved background image instead of concentric circles when background.image is set', () => {
@@ -293,23 +295,16 @@ describe('NetworkComposer canvas', () => {
       background: { image: 'asset-1' },
     });
 
-    const img = document.querySelector('img[src="blob:mock-background-image"]');
+    const backgroundWrapper = screen.getByTestId('composer-background');
+    const img = backgroundWrapper.querySelector(
+      'img[src="blob:mock-background-image"]',
+    );
     expect(img).toHaveAttribute('src', 'blob:mock-background-image');
     expect(img).toHaveAttribute('alt', '');
     expect(img).toHaveAttribute('aria-hidden', 'true');
 
-    // Scope to the decorative background wrapper — other chrome (e.g. tool
-    // palette icons) also renders aria-hidden svgs, so a page-wide query
-    // isn't a reliable signal that ConcentricCircles specifically is absent.
-    const canvas = screen.getByRole('application');
-    const backgroundWrapper = Array.from(canvas.children).find(
-      (el) =>
-        el.tagName === 'DIV' &&
-        el.className.includes('inset-0') &&
-        el.className.includes('items-center'),
-    );
     expect(
-      backgroundWrapper?.querySelectorAll('svg[aria-hidden="true"]'),
+      backgroundWrapper.querySelectorAll('svg[aria-hidden="true"]'),
     ).toHaveLength(0);
   });
 
@@ -321,14 +316,8 @@ describe('NetworkComposer canvas', () => {
     // tap-to-deselect and lasso. jsdom can't reproduce the hit-test (it dispatches
     // straight at the canvas), so assert the layer is pointer-events-none instead.
     renderInterface();
-    const canvas = screen.getByRole('application');
-    const backgroundWrapper = Array.from(canvas.children).find(
-      (el) =>
-        el.tagName === 'DIV' &&
-        el.className.includes('inset-0') &&
-        el.className.includes('items-center'),
+    expect(screen.getByTestId('composer-background')).toHaveClass(
+      'pointer-events-none',
     );
-    expect(backgroundWrapper).toBeTruthy();
-    expect(backgroundWrapper?.className).toContain('pointer-events-none');
   });
 });

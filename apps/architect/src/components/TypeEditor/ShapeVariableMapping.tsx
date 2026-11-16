@@ -15,14 +15,17 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import type { NodeColorSequence } from '@codaco/fresco-ui/Node';
-import OptionLabel, { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type {
-  NodeShape,
-  Validation,
-  VariableOptions,
-  VariableType,
+import type { CustomShapes } from '@codaco/protocol-builder/codebook/customShapes';
+import ShapeMappingField from '@codaco/protocol-builder/fields/ShapeMappingField';
+import ShapePickerField from '@codaco/protocol-builder/fields/ShapePickerField';
+import {
+  type NodeShapeReference,
+  NodeShapes,
+  type Validation,
+  type VariableOptions,
+  type VariableType,
 } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -34,7 +37,6 @@ import type {
   ShapeMappingDraft,
   ShapeThreshold,
 } from './shapeMappingTypes';
-import { ShapePickerControl, SHAPES } from './ShapePicker';
 import { SHAPE_MAPPING_FIELD } from './validateEntityType';
 const additionalMessages = defineMessages({
   addThreshold: {
@@ -51,24 +53,6 @@ const additionalMessages = defineMessages({
   },
 });
 const messages = defineMessages({
-  thresholdValue: {
-    id: 'architect.typeEditor.shapeVariableMapping.thresholdValue',
-    defaultMessage: 'Threshold {value1, number} value',
-    description:
-      'Accessible name of a numeric shape-mapping threshold input. value1 is the one-based threshold position, not the numeric breakpoint value.',
-  },
-  shapeAtThreshold: {
-    id: 'architect.typeEditor.shapeVariableMapping.shapeAtThreshold',
-    defaultMessage: 'Shape at threshold {value}',
-    description:
-      'Accessible label for the shape chosen at a numeric breakpoint. value is the complete locale-formatted threshold number; its precision must be preserved.',
-  },
-  removeThreshold: {
-    id: 'architect.typeEditor.shapeVariableMapping.removeThreshold',
-    defaultMessage: 'Remove threshold {value1, number}',
-    description:
-      'Accessible remove-button label for a shape-mapping threshold. value1 is its one-based position in the threshold list.',
-  },
   true: {
     id: 'architect.typeEditor.shapeVariableMapping.true',
     defaultMessage: 'True',
@@ -93,18 +77,6 @@ const messages = defineMessages({
     description:
       "Heading above the list of a categorical, ordinal or yes/no variable's values in the shape mapping, each with a picker for the shape used for that value.",
   },
-  shapeFor: {
-    id: 'architect.typeEditor.shapeVariableMapping.shapeFor',
-    defaultMessage: 'Shape for {value1}',
-    description:
-      "Accessible name of the shape picker beside one value of the variable in the shape mapping; read only by screen readers. value1 is the value's label.",
-  },
-  someValuesAreUnmappedAndWill: {
-    id: 'architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill',
-    defaultMessage: 'Some values are unmapped and will use the default shape.',
-    description:
-      "Warning below the list of values in the shape mapping, shown while at least one value has no shape chosen. Those nodes use the node type's default shape.",
-  },
   thresholds: {
     id: 'architect.typeEditor.shapeVariableMapping.thresholds',
     defaultMessage: 'Thresholds',
@@ -117,23 +89,11 @@ const messages = defineMessages({
     description:
       'Label of the fixed first row in the thresholds list of the shape mapping. It covers values lower than the lowest threshold, which use the default shape.',
   },
-  defaultShape: {
-    id: 'architect.typeEditor.shapeVariableMapping.defaultShape',
-    defaultMessage: 'Default shape',
-    description:
-      "Accessible name of the disabled shape picker in the fixed Below first threshold row; it shows the node type's default shape. Read only by screen readers.",
-  },
   usesDefaultShape: {
     id: 'architect.typeEditor.shapeVariableMapping.usesDefaultShape',
     defaultMessage: 'uses default shape',
     description:
       "Small note at the end of the fixed Below first threshold row, saying that values below the first threshold use the node type's default shape.",
-  },
-  belowFirstThresholdCannotBeRemoved: {
-    id: 'architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved',
-    defaultMessage: 'Below first threshold cannot be removed',
-    description:
-      'Accessible name of the disabled delete button in the fixed Below first threshold row; read only by screen readers. The row always exists and cannot be removed.',
   },
   mapAttributeToShape: {
     id: 'architect.typeEditor.shapeVariableMapping.mapAttributeToShape',
@@ -147,12 +107,6 @@ const messages = defineMessages({
       "Override the default shape based on the value of a node's attribute.",
     description:
       'Hint below the Map attribute to shape toggle. Attribute means a variable recorded about each node of this type.',
-  },
-  shapeMapping: {
-    id: 'architect.typeEditor.shapeVariableMapping.shapeMapping',
-    defaultMessage: 'Shape mapping',
-    description:
-      'Hidden field label (accessible name only) of the shape mapping editor, which holds the chosen variable and its value-to-shape rules.',
   },
 });
 
@@ -210,10 +164,10 @@ const getThresholdInputConfig = (
 
 // One shape band is reserved for the "below first threshold" default, so the
 // remaining shapes cap how many thresholds can be distinguished.
-const MAX_THRESHOLDS = SHAPES.length - 1;
+const MAX_THRESHOLDS = NodeShapes.length - 1;
 
 const ITEM_ROW_CLASSES =
-  'bg-input text-input-contrast flex w-full min-h-20 items-center gap-3 rounded-lg px-4';
+  'bg-input text-input-contrast flex w-full min-h-20 items-center gap-3 rounded-lg px-4 py-2';
 
 // The item component is a stable top-level component (so ArrayField never
 // remounts rows); the per-variable input bounds and the node colour reach it
@@ -221,6 +175,7 @@ const ITEM_ROW_CLASSES =
 type ThresholdItemContextValue = {
   config: ThresholdInputConfig;
   nodeColor?: NodeColorSequence;
+  customShapes?: CustomShapes;
 };
 
 const ThresholdItemContext = createContext<ThresholdItemContextValue>({
@@ -237,8 +192,7 @@ const ThresholdItem = ({
   onUpdate,
   onDelete,
 }: ArrayFieldItemProps<ShapeThreshold>) => {
-  const intl = useAppIntl();
-  const { config, nodeColor } = useContext(ThresholdItemContext);
+  const { config, nodeColor, customShapes } = useContext(ThresholdItemContext);
   const value = item.value ?? 0;
   const shape = item.shape;
   const [draft, setDraft] = useState(() => String(value));
@@ -266,9 +220,8 @@ const ThresholdItem = ({
         min={config.min}
         max={config.max}
         size="sm"
-        aria-label={intl.formatMessage(messages.thresholdValue, {
-          value1: index + 1,
-        })}
+        aria-label={`Threshold ${index + 1} value`}
+        lang="en"
         className="w-36"
         value={draft}
         onChange={(nextValue) => setDraft(nextValue ?? '')}
@@ -279,12 +232,11 @@ const ThresholdItem = ({
       {/* Mathematical mapping symbol, independent of locale. */}
       {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
       <span className="text-xl text-current/70">→</span>
-      <ShapePickerControl
+      <ShapePickerField
         small
         nodeColor={nodeColor}
-        aria-label={intl.formatMessage(messages.shapeAtThreshold, {
-          value: intl.formatNumber(value, { maximumSignificantDigits: 21 }),
-        })}
+        customShapes={customShapes}
+        aria-label={`Shape at threshold ${value}`}
         value={shape}
         onChange={(nextShape) =>
           onUpdate?.({
@@ -300,9 +252,8 @@ const ThresholdItem = ({
         variant="text"
         className="ms-auto"
         onClick={onDelete}
-        aria-label={intl.formatMessage(messages.removeThreshold, {
-          value1: index + 1,
-        })}
+        aria-label={`Remove threshold ${index + 1}`}
+        lang="en"
       />
     </>
   );
@@ -314,7 +265,8 @@ type ShapeMappingEditorProps = CreateFormFieldProps<
   {
     variables?: Record<string, ShapeMappingVariable>;
     nodeColor?: NodeColorSequence;
-    defaultShape?: NodeShape;
+    defaultShape?: NodeShapeReference;
+    customShapes?: CustomShapes;
   }
 >;
 
@@ -330,6 +282,7 @@ const ShapeMappingEditor = ({
   variables,
   nodeColor,
   defaultShape,
+  customShapes,
 }: ShapeMappingEditorProps) => {
   const intl = useAppIntl();
   const localization = useSelector(getLocalization);
@@ -373,7 +326,7 @@ const ShapeMappingEditor = ({
 
   const handleDiscreteShapeChange = (
     optionValue: DiscreteShapeMapEntry['value'],
-    shape: NodeShape,
+    shape: NodeShapeReference,
   ) => {
     const currentMap = dynamic.map ?? [];
     const existingIndex = currentMap.findIndex(
@@ -418,10 +371,12 @@ const ShapeMappingEditor = ({
 
   const getShapeForValue = (
     optionValue: DiscreteShapeMapEntry['value'],
-  ): NodeShape | undefined =>
+  ): NodeShapeReference | undefined =>
     dynamic.map?.find(
       (entry) => JSON.stringify(entry.value) === JSON.stringify(optionValue),
     )?.shape;
+
+  const discreteOptions = getDiscreteOptions();
 
   return (
     <div className="flex flex-col">
@@ -436,39 +391,15 @@ const ShapeMappingEditor = ({
       />
 
       {selectedVar && dynamic.type === 'discrete' && (
-        <div className="flex flex-col gap-3">
-          <Heading
-            level="h4"
-            margin="none"
-            className="mb-1 block text-sm font-semibold text-current/70"
-          >
-            {intl.formatMessage(messages.shapeForEachValue)}
-          </Heading>
-          {getDiscreteOptions().map((option) => (
-            <div key={String(option.value)} className={ITEM_ROW_CLASSES}>
-              <OptionLabel
-                label={option.label}
-                render={<span className="flex-1 text-sm" />}
-              />
-              <ShapePickerControl
-                small
-                nodeColor={nodeColor}
-                aria-label={intl.formatMessage(messages.shapeFor, {
-                  value1: optionLabelText(option.label),
-                })}
-                value={getShapeForValue(option.value)}
-                onChange={(shape) => {
-                  if (shape) handleDiscreteShapeChange(option.value, shape);
-                }}
-              />
-            </div>
-          ))}
-          {getDiscreteOptions().some((opt) => !getShapeForValue(opt.value)) && (
-            <Paragraph className="text-warning mt-1 text-xs">
-              {intl.formatMessage(messages.someValuesAreUnmappedAndWill)}
-            </Paragraph>
-          )}
-        </div>
+        <ShapeMappingField
+          name={`${SHAPE_MAPPING_FIELD}.map`}
+          label={intl.formatMessage(messages.shapeForEachValue)}
+          nodeColor={nodeColor}
+          customShapes={customShapes}
+          answers={discreteOptions}
+          shapeFor={getShapeForValue}
+          onShapeChange={handleDiscreteShapeChange}
+        />
       )}
 
       {selectedVar && dynamic.type === 'breakpoints' && (
@@ -488,13 +419,14 @@ const ShapeMappingEditor = ({
             {/* Mathematical mapping symbol, independent of locale. */}
             {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
             <span className="text-xl text-current/70">→</span>
-            <ShapePickerControl
+            <ShapePickerField
               small
               disabled
               readOnly
               nodeColor={nodeColor}
+              customShapes={customShapes}
               value={defaultShape}
-              aria-label={intl.formatMessage(messages.defaultShape)}
+              aria-label="Default shape"
             />
             <span className="ms-auto text-xs text-current/70">
               {intl.formatMessage(messages.usesDefaultShape)}
@@ -505,13 +437,12 @@ const ShapeMappingEditor = ({
               color="destructive"
               variant="text"
               disabled
-              aria-label={intl.formatMessage(
-                messages.belowFirstThresholdCannotBeRemoved,
-              )}
+              aria-label="Below first threshold cannot be removed"
+              lang="en"
             />
           </Surface>
           <ThresholdItemContext.Provider
-            value={{ config: thresholdConfig, nodeColor }}
+            value={{ config: thresholdConfig, nodeColor, customShapes }}
           >
             <ArrayField<ShapeThreshold>
               aria-label={intl.formatMessage(messages.thresholds)}
@@ -551,7 +482,8 @@ type ShapeVariableMappingProps = {
   /** The committed mapping, seeding the field when one is already configured. */
   initialMapping?: ShapeMappingDraft;
   nodeColor?: NodeColorSequence;
-  defaultShape?: NodeShape;
+  defaultShape?: NodeShapeReference;
+  customShapes?: CustomShapes;
 };
 
 /**
@@ -566,6 +498,7 @@ const ShapeVariableMapping = ({
   initialMapping,
   nodeColor,
   defaultShape,
+  customShapes,
 }: ShapeVariableMappingProps) => {
   const intl = useAppIntl();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
@@ -608,13 +541,15 @@ const ShapeVariableMapping = ({
         <div className="mt-5">
           <ArchitectField
             name={SHAPE_MAPPING_FIELD}
-            label={intl.formatMessage(messages.shapeMapping)}
+            // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+            label="Shape mapping"
             labelHidden
             component={ShapeMappingEditor}
             initialValue={initialMapping ?? EMPTY_MAPPING}
             variables={variables}
             nodeColor={nodeColor}
             defaultShape={defaultShape}
+            customShapes={customShapes}
             // Completeness is judged for the mapping as a whole by the
             // dialog's form-level `validateEntityType`, which reports at this
             // same field name.

@@ -7,86 +7,29 @@ import {
 
 describe('App Settings Schema Validators', () => {
   describe('App Setting Preprocessed Schema', () => {
-    it('should parse and convert string date to Date object', () => {
-      const validSettings = {
-        configured: 'true',
-        allowAnonymousRecruitment: 'false',
-        limitInterviews: 'true',
-        initializedAt: '2023-10-01T00:00:00.000Z',
-        installationId: 'installation123',
-        disableAnalytics: 'true',
-      };
+    const storedSettings = {
+      configured: 'true',
+      allowAnonymousRecruitment: 'false',
+      limitInterviews: 'true',
+      initializedAt: '2023-10-01T00:00:00.000Z',
+      installationId: 'installation123',
+      disableAnalytics: 'true',
+    };
 
-      const result = appSettingPreprocessedSchema.parse(validSettings);
-      expect(result.initializedAt).toBeInstanceOf(Date);
-    });
-
-    it('should preprocess boolean strings to booleans', () => {
-      const validSettings = {
-        configured: 'true',
-        allowAnonymousRecruitment: 'false',
-        limitInterviews: 'true',
-        initializedAt: '2023-10-01T00:00:00.000Z',
-        installationId: 'installation123',
-        disableAnalytics: 'true',
-      };
-
-      const result = appSettingPreprocessedSchema.parse(validSettings);
-      expect(result.configured).toBe(true);
-      expect(result.allowAnonymousRecruitment).toBe(false);
-      expect(result.limitInterviews).toBe(true);
-      expect(result.disableAnalytics).toBe(true);
-    });
-
-    it('should reject invalid date strings', () => {
-      const invalidSettings = {
-        configured: 'true',
-        allowAnonymousRecruitment: 'false',
-        limitInterviews: 'true',
+    it('rejects an initializedAt that is not a date', () => {
+      const result = appSettingPreprocessedSchema.safeParse({
+        ...storedSettings,
         initializedAt: 'invalid-date',
-        installationId: 'installation123',
-        disableAnalytics: 'true',
-      };
-
-      expect(() =>
-        appSettingPreprocessedSchema.parse(invalidSettings),
-      ).toThrow();
-    });
-
-    it('should allow valid URL strings', () => {
-      const validSettings = {
-        configured: 'true',
-        allowAnonymousRecruitment: 'false',
-        limitInterviews: 'true',
-        initializedAt: '2023-10-01T00:00:00.000Z',
-        installationId: 'installation123',
-        disableAnalytics: 'true',
-      };
-
-      expect(appSettingPreprocessedSchema.parse(validSettings)).toEqual({
-        configured: true,
-        allowAnonymousRecruitment: false,
-        limitInterviews: true,
-        initializedAt: new Date('2023-10-01T00:00:00.000Z'),
-        installationId: 'installation123',
-        disableAnalytics: true,
-        disableSmallScreenOverlay: false,
-        freezeInterviewsAfterCompletion: true,
-        enableInterviewDataApi: false,
       });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map((issue) => issue.path)).toEqual([
+        ['initializedAt'],
+      ]);
     });
 
-    it('should allow undefined optional fields', () => {
-      const validSettings = {
-        configured: 'true',
-        allowAnonymousRecruitment: 'false',
-        limitInterviews: 'true',
-        initializedAt: '2023-10-01T00:00:00.000Z',
-        installationId: 'installation123',
-        disableAnalytics: 'true',
-      };
-
-      expect(appSettingPreprocessedSchema.parse(validSettings)).toEqual({
+    it('preprocesses stored strings into booleans and dates, and defaults the settings that are absent', () => {
+      expect(appSettingPreprocessedSchema.parse(storedSettings)).toEqual({
         configured: true,
         allowAnonymousRecruitment: false,
         limitInterviews: true,

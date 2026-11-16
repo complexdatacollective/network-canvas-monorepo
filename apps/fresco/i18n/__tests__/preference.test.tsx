@@ -115,7 +115,7 @@ describe('Fresco locale preference control', () => {
     const load = vi.spyOn(frescoCatalogSource, 'load');
     const value = { ...initial, locale: 'es', preference: 'es' };
     const markup = renderToString(<App value={value} messages={es} />);
-    expect(markup).toContain('Idioma de la interfaz: Español');
+    expect(markup).toContain('Interface language: Español');
     const container = document.createElement('div');
     container.innerHTML = markup;
     document.body.append(container);
@@ -127,7 +127,7 @@ describe('Fresco locale preference control', () => {
       await Promise.resolve();
     });
     expect(container.querySelector('[role="combobox"]')).toHaveAccessibleName(
-      'Idioma de la interfaz: Español',
+      'Interface language: Español',
     );
     expect(document.documentElement.lang).toBe('es');
     expect(recoverableError).not.toHaveBeenCalled();
@@ -147,7 +147,7 @@ describe('Fresco locale preference control', () => {
     expect(readState().locale).toBe('es');
     expect(document.documentElement).toHaveAttribute('lang', 'es');
     expect(document.documentElement).toHaveAttribute('dir', 'ltr');
-    expect(trigger()).toHaveAccessibleName('Idioma de la interfaz: Español');
+    expect(trigger()).toHaveAccessibleName('Interface language: Español');
     await open();
     expect(screen.getByRole('option', { name: 'Español' })).toHaveAttribute(
       'aria-selected',

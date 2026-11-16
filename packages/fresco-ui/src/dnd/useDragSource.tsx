@@ -13,9 +13,6 @@ import {
   useState,
 } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
-
 import { DRAG_DISTANCE } from '../hooks/useNodeGestures';
 import type { Prettify } from '../utils/prettify';
 import { useDndStore, useDndStoreApi } from './DndStoreProvider';
@@ -27,28 +24,6 @@ import {
 } from './useAccessibilityAnnouncements';
 import { useScrollAwareDrag } from './useScrollAwareDrag';
 import { findSourceZone, rafThrottle } from './utils';
-
-const messages = defineMessages({
-  unnamedItem: {
-    id: 'frescoUi.dragAndDrop.unnamedItem',
-    defaultMessage: 'Item',
-    description:
-      'Stands in for the name of the thing being dragged in live-region announcements, when the drag source supplied none.',
-  },
-  returnedToPosition: {
-    id: 'frescoUi.dragAndDrop.returnedToPosition',
-    defaultMessage: 'Drop cancelled, {name} returned to original position',
-    description:
-      'Live-region announcement after a keyboard drag ends without a drop.',
-  },
-  grabbed: {
-    id: 'frescoUi.dragAndDrop.grabbed',
-    defaultMessage:
-      '{name} grabbed, use arrow keys to navigate to drop targets, press Escape to cancel',
-    description:
-      'Live-region announcement when a keyboard drag picks something up.',
-  },
-});
 
 // Hook-specific types
 type DragSourceOptions = {
@@ -125,7 +100,6 @@ export function useDragSource(
   });
 
   const { announce } = useAccessibilityAnnouncements();
-  const intl = useAppIntl();
 
   const [dragMode, setDragMode] = useState<'none' | 'pointer' | 'keyboard'>(
     'none',
@@ -265,15 +239,11 @@ export function useDragSource(
       // Successful drops are announced by the drop target
       if (dragMode === 'keyboard' && !isSuccessfulDrop) {
         announce(
-          intl.formatMessage(messages.returnedToPosition, {
-            name:
-              latestRef.current.announcedName ??
-              intl.formatMessage(messages.unnamedItem),
-          }),
+          `Drop cancelled, ${latestRef.current.announcedName ?? 'Item'} returned to original position`,
         );
       }
     },
-    [endDrag, dragMode, announce, storeApi, intl],
+    [endDrag, dragMode, announce, storeApi],
   );
 
   // The gesture's listeners are attached once, at pointerdown, and outlive
@@ -444,14 +414,10 @@ export function useDragSource(
 
       // Announce the enhanced grab message
       announce(
-        intl.formatMessage(messages.grabbed, {
-          name:
-            latestRef.current.announcedName ??
-            intl.formatMessage(messages.unnamedItem),
-        }),
+        `${latestRef.current.announcedName ?? 'Item'} grabbed, use arrow keys to navigate to drop targets, press Escape to cancel`,
       );
     },
-    [initializeDrag, announce, intl],
+    [initializeDrag, announce],
   );
 
   useEffect(() => () => updatePosition.cancel(), [updatePosition]);
@@ -497,9 +463,8 @@ export function useDragSource(
           nextIndex,
           compatibleTargets.length,
           target.announcedName,
-          intl,
         );
-        announce(getKeyboardDragAnnouncement('navigate', description, intl));
+        announce(getKeyboardDragAnnouncement('navigate', description));
       }
     },
     [
@@ -508,7 +473,6 @@ export function useDragSource(
       setActiveDropTarget,
       announce,
       compatibleTargets,
-      intl,
     ],
   );
 

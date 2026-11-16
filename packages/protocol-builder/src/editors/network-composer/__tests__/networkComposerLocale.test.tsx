@@ -140,7 +140,7 @@ describe('the network composer sections, read in Spanish', () => {
       locale: 'es',
     });
 
-    const field = await openRow(harness, 'Editar campo de formulario');
+    const field = await openRow(harness, 'Edit campo de formulario');
     expect(
       field.getByRole('combobox', { name: 'Control de entrada' }),
     ).toBeInTheDocument();

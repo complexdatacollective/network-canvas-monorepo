@@ -1,10 +1,8 @@
 'use client';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
-import { interfaceMessages } from '../interfaces/messages';
 
 /**
  * Tells screen reader users which node a bin stage in select mode is placing
@@ -23,7 +21,6 @@ export default function BinSelectAnnouncer({
   settling?: boolean;
   promptId: string;
 }) {
-  const intl = useAppIntl();
   const name = useNodeLabel(node);
   const nodeId = node?.[entityPrimaryKeyProperty];
 
@@ -32,15 +29,13 @@ export default function BinSelectAnnouncer({
       aria-live="polite"
       aria-atomic
       className="sr-only"
+      lang="en"
       data-testid="bin-select-announcer"
     >
       {!settling && (
         <span key={`${promptId}:${nodeId ?? 'complete'}`}>
-          {node
-            ? intl.formatMessage(interfaceMessages.binSelectInstruction, {
-                name,
-              })
-            : intl.formatMessage(interfaceMessages.binSelectComplete)}
+          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+          {node ? `Choose where ${name} belongs.` : 'Nothing left to place.'}
         </span>
       )}
     </output>

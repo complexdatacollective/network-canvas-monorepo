@@ -12,8 +12,9 @@ import { ListItem } from '~/components/ui/typography/ListItem';
 import { defaultLocale, type Locale, toLocale } from '~/lib/i18n/locales';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
+import fr from '~/messages/fr.json';
 
-const messagesByLocale = { en, es } satisfies Record<Locale, typeof en>;
+const messagesByLocale = { en, es, fr } satisfies Record<Locale, typeof en>;
 
 // The site is a static export, so one 404 page answers every missing address.
 // It is built in the default language and, once in the browser, follows the

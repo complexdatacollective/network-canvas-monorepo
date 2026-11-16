@@ -123,11 +123,13 @@ describe('e2e matrix coverage manifest', () => {
     expect(missing).toEqual([]);
   });
 
-  it('every shared claim is backed by a real suite scenario or pending suite', () => {
-    // Until Task 26 (cross-cutting suite) lands, shared claims are only
-    // asserted to reference inventoried keys of known interfaces. Split at
-    // the FIRST colon only — inventory keys themselves may contain colons
+  it('every shared claim names an inventoried option key of a known interface', () => {
+    // Shared claims are backed by the cross-cutting suite, stories or unit
+    // tests named in shared-claims.ts, none of which declares `covers`, so
+    // only the claim's shape can be checked here. Split at the FIRST colon
+    // only — inventory keys themselves may contain colons
     // (e.g. 'codebook: variable.encrypted').
+    expect(sharedSuiteClaims.length).toBeGreaterThan(0);
     for (const claim of sharedSuiteClaims) {
       const splitAt = claim.indexOf(':');
       const iface = splitAt > 0 ? claim.slice(0, splitAt) : '';

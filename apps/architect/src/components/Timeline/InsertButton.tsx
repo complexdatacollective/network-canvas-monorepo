@@ -8,13 +8,6 @@ import { cx } from '~/utils/cva';
 
 import { timelineRowGrid } from './rowLayout';
 const messages = defineMessages({
-  addStageHereBeforeStage: {
-    id: 'architect.timeline.insertButton.addStageHereBeforeStage',
-    defaultMessage:
-      'Add stage here, before stage {position, number}: {nextStageName}',
-    description:
-      'Accessible name of the button between two stages on the timeline that adds a new stage there; read only by screen readers. position is the number the new stage would take; nextStageName is the name of the stage it would be inserted before.',
-  },
   addStageHere: {
     id: 'architect.timeline.insertButton.addStageHere',
     defaultMessage: 'Add stage here',
@@ -64,10 +57,7 @@ const InsertButton = ({
       // dimmed "Add stage here".
       disabled={readOnly}
       aria-hidden={readOnly || undefined}
-      aria-label={intl.formatMessage(messages.addStageHereBeforeStage, {
-        position: position,
-        nextStageName: nextStageName,
-      })}
+      aria-label={`Add stage here, before stage ${position}: ${nextStageName}`}
       className={cx(
         timelineRowGrid,
         'focusable px-4 py-1',

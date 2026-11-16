@@ -106,7 +106,8 @@ export const DropAndClickToImport: Story = {
     }
 
     // Base state: the dashed outline border, not highlighted.
-    await expect(card).toHaveClass('border-outline');
+    const borderColor = () => getComputedStyle(card).borderTopColor;
+    const restingBorder = borderColor();
 
     const file = new File(['netcanvas'], 'study.netcanvas', {
       type: 'application/x-netcanvas',
@@ -120,12 +121,12 @@ export const DropAndClickToImport: Story = {
 
     // Dragging a file over the card highlights it.
     await fireEvent(card, dragEvent('dragenter'));
-    await waitFor(() => expect(card).toHaveClass('border-sea-green'));
+    await waitFor(() => expect(borderColor()).not.toBe(restingBorder));
 
     // Dropping reports the file and clears the highlight.
     await fireEvent(card, dragEvent('drop'));
     await waitFor(() => expect(args.onImportFile).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(card).toHaveClass('border-outline'));
+    await waitFor(() => expect(borderColor()).toBe(restingBorder));
 
     // A plain click opens the file picker.
     await userEvent.click(surface);

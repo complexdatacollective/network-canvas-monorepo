@@ -1,4 +1,4 @@
-import { formatActionError } from './formatActionError';
+import { formErrorMessages } from './formatActionError';
 vi.mock('~/i18n/server', async () => {
   const { createAppIntl } = await import('@codaco/app-i18n/messages');
   return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
@@ -166,6 +166,49 @@ const VALID_TOTP_CODE = '123456';
 const VALID_RECOVERY_CODE = 'a1b2c3d4e5f6a1b2c3d4';
 const TOTP_SECRET = 'BASE32SECRET';
 
+// Holds recordLoginAttempt pending and fails if the action settles before it
+// resolves, so a branch that stops awaiting the record goes red.
+async function submitWhileFailedAttemptIsRecorded(code: string) {
+  mockVerifyTwoFactorSchemaSafeParse.mockReturnValue({
+    success: true,
+    data: { twoFactorToken: 'valid-token', code },
+  });
+  mockVerifyTwoFactorToken.mockReturnValue({
+    valid: true,
+    userId: VALID_USER_ID,
+  });
+  mockPrismaTotpCredentialFindFirst.mockResolvedValue({
+    user_id: VALID_USER_ID,
+    secret: TOTP_SECRET,
+    verified: true,
+  });
+
+  const recording = Promise.withResolvers<undefined>();
+  mockRecordLoginAttempt.mockReturnValue(recording.promise);
+
+  let actionSettled = false;
+  const action = verifyTwoFactor({
+    twoFactorToken: 'valid-token',
+    code,
+  }).finally(() => {
+    actionSettled = true;
+  });
+
+  await vi.waitFor(() => {
+    expect(mockRecordLoginAttempt).toHaveBeenCalledWith(
+      VALID_USERNAME,
+      VALID_IP,
+      false,
+    );
+  });
+  // Let any continuation that does not wait on the recording run first.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(actionSettled).toBe(false);
+
+  recording.resolve(undefined);
+  return action;
+}
+
 describe('verifyTwoFactor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -186,12 +229,8 @@ describe('verifyTwoFactor', () => {
 
       const result = await verifyTwoFactor({ twoFactorToken: '', code: '' });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Invalid submission',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual(['Invalid submission']);
+      expect(mockVerifyTwoFactorToken).not.toHaveBeenCalled();
     });
   });
 
@@ -208,12 +247,11 @@ describe('verifyTwoFactor', () => {
         code: VALID_TOTP_CODE,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Two-factor session expired. Please sign in again.',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Two-factor session expired. Please sign in again.',
+      ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 
@@ -237,12 +275,11 @@ describe('verifyTwoFactor', () => {
         code: VALID_TOTP_CODE,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Too many attempts. Please sign in again.',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Too many attempts. Please sign in again.',
+      ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 
@@ -263,12 +300,11 @@ describe('verifyTwoFactor', () => {
         code: VALID_TOTP_CODE,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Two-factor authentication is not configured',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual([
+        'Two-factor authentication is not configured',
+      ]);
+      expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
   });
 
@@ -320,12 +356,8 @@ describe('verifyTwoFactor', () => {
         code: '000000',
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Invalid verification code',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual(['Invalid verification code']);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
 
     it('records a failed login attempt when TOTP code is invalid', async () => {
@@ -354,6 +386,13 @@ describe('verifyTwoFactor', () => {
         VALID_IP,
         false,
       );
+    });
+    it('does not return until the failed TOTP attempt has been recorded', async () => {
+      mockVerifyTotpCode.mockReturnValue(false);
+
+      const result = await submitWhileFailedAttemptIsRecorded('000000');
+
+      expect(formErrorMessages(result)).toEqual(['Invalid verification code']);
     });
   });
 
@@ -419,12 +458,8 @@ describe('verifyTwoFactor', () => {
         code: VALID_RECOVERY_CODE,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Invalid recovery code',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual(['Invalid recovery code']);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
     });
 
     it('records a failed login attempt when recovery code is invalid', async () => {
@@ -455,6 +490,15 @@ describe('verifyTwoFactor', () => {
         false,
       );
     });
+    it('does not return until the failed recovery attempt has been recorded', async () => {
+      mockHashRecoveryCode.mockReturnValue('some-hash');
+      mockPrismaRecoveryCodeUpdateMany.mockResolvedValue({ count: 0 });
+
+      const result =
+        await submitWhileFailedAttemptIsRecorded(VALID_RECOVERY_CODE);
+
+      expect(formErrorMessages(result)).toEqual(['Invalid recovery code']);
+    });
   });
 
   describe('unrecognized code format', () => {
@@ -480,17 +524,21 @@ describe('verifyTwoFactor', () => {
         code: badCode,
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors?.map(formatActionError)).toContain(
-          'Invalid code format',
-        );
-      }
+      expect(formErrorMessages(result)).toEqual(['Invalid code format']);
+      expect(mockCreateSessionCookie).not.toHaveBeenCalled();
       expect(mockRecordLoginAttempt).toHaveBeenCalledWith(
         VALID_USERNAME,
         VALID_IP,
         false,
       );
+    });
+
+    it('does not return until the failed attempt has been recorded', async () => {
+      const result = await submitWhileFailedAttemptIsRecorded(
+        'not-a-valid-format-xyz',
+      );
+
+      expect(formErrorMessages(result)).toEqual(['Invalid code format']);
     });
   });
 });

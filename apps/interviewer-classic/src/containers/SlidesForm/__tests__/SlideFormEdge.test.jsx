@@ -30,11 +30,6 @@ const mockItem = {
 };
 
 describe('<SlideFormEdge />', () => {
-  it('should render', () => {
-    const component = shallow(<SlideFormEdge {...mockProps} />);
-    expect(component).toMatchSnapshot();
-  });
-
   it('should render with prepopulated fields if provided', () => {
     const subject = shallow(<SlideFormEdge {...mockProps} item={mockItem} />);
     expect(subject.prop('initialValues')).toEqual({ foo: 'bar' });

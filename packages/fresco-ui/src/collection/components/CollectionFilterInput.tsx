@@ -19,23 +19,6 @@ const messages = defineMessages({
     defaultMessage: 'Search...',
     description: 'Default placeholder for the collection filter input.',
   },
-  resultCount: {
-    id: 'frescoUi.collectionFilterInput.resultCount',
-    defaultMessage: '{count, plural, one {# result} other {# results}}',
-    description:
-      'Screen-reader announcement of the match total while a filter is active. The visible total is the bare number.',
-  },
-  clearSearch: {
-    id: 'frescoUi.collectionFilterInput.clearSearch',
-    defaultMessage: 'Clear search',
-    description:
-      'Accessible name of the button that clears the collection filter query.',
-  },
-  filter: {
-    id: 'frescoUi.collectionFilterInput.filter',
-    defaultMessage: 'Filter',
-    description: 'Accessible name of the collection filter input.',
-  },
 });
 
 type CollectionFilterInputProps = {
@@ -170,10 +153,8 @@ export function CollectionFilterInput({
       {showResultCount && hasActiveFilter && (
         <span aria-live="polite" className="text-sm text-current/70">
           <span aria-hidden="true">{matchCount ?? 0}</span>
-          <span className="sr-only">
-            {intl.formatMessage(messages.resultCount, {
-              count: matchCount ?? 0,
-            })}
+          <span className="sr-only" lang="en">
+            {`${matchCount ?? 0} ${matchCount === 1 ? 'result' : 'results'}`}
           </span>
         </span>
       )}
@@ -181,7 +162,8 @@ export function CollectionFilterInput({
         <IconButton
           variant="text"
           onClick={handleClear}
-          aria-label={intl.formatMessage(messages.clearSearch)}
+          aria-label="Clear search"
+          lang="en"
           icon={<X className="size-3.5" />}
         />
       )}
@@ -201,7 +183,7 @@ export function CollectionFilterInput({
       suffixComponent={suffixContent}
       size={size}
       className={cx('w-full', className)}
-      aria-label={intl.formatMessage(messages.filter)}
+      aria-label="Filter"
     />
   );
 }

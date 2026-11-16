@@ -43,5 +43,9 @@
   "protocolBuilder.variableValidation.lessThanVariableLabel",
   "protocolBuilder.variableValidation.greaterThanVariableLabel",
   "protocolBuilder.variableValidation.lessThanOrEqualToVariableLabel",
-  "protocolBuilder.variableValidation.greaterThanOrEqualToVariableLabel"
+  "protocolBuilder.variableValidation.greaterThanOrEqualToVariableLabel",
+  "protocolBuilder.entitySelect.nodeGroupLabel",
+  "protocolBuilder.entitySelect.edgeGroupLabel",
+  "protocolBuilder.variablePicker.renameDialogName",
+  "protocolBuilder.variablePicker.renameFieldLabel"
 ]

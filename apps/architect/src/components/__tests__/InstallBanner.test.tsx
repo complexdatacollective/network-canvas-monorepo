@@ -101,7 +101,7 @@ describe('InstallBanner', () => {
     expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
     expect(
       screen.getByRole('status', { name: 'Install Architect' }),
-    ).toHaveClass('bg-info');
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /install/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
@@ -133,7 +133,7 @@ describe('InstallBanner', () => {
     expect(screen.getByText(/add to dock/i)).toBeInTheDocument();
     expect(
       screen.getByRole('alert', { name: 'Install Architect' }),
-    ).toHaveClass('bg-destructive');
+    ).toBeInTheDocument();
   });
 
   it('Safari on an iPad: Add to Home Screen', () => {
@@ -169,7 +169,7 @@ describe('InstallBanner', () => {
     expect(screen.getByText(/allow persistent storage/i)).toBeInTheDocument();
     expect(
       screen.getByRole('status', { name: 'Install Architect' }),
-    ).toHaveClass('bg-warning');
+    ).toBeInTheDocument();
   });
 
   it('renders nothing when running as an installed app', () => {

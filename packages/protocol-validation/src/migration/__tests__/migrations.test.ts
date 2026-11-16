@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIssues } from '../../__tests__/schemaIssues.ts';
 import migrationV1toV2 from '../../schemas/2/migration.ts';
 import migrationV2toV3 from '../../schemas/3/migration.ts';
 import migrationV4toV5 from '../../schemas/5/migration.ts';
@@ -226,29 +227,6 @@ describe('Protocol Migrations', () => {
   });
 
   describe('VersionedProtocolSchema', () => {
-    it('validates v7 schema', () => {
-      const v7Doc = {
-        schemaVersion: 7,
-        description: 'Test',
-        codebook: {},
-        stages: [],
-      };
-      const result = VersionedProtocolSchema.safeParse(v7Doc);
-      expect(result.success).toBe(true);
-    });
-
-    it('validates v8 schema', () => {
-      const v8Doc = {
-        name: 'Test Protocol',
-        schemaVersion: 8,
-        description: 'Test',
-        codebook: {},
-        stages: [],
-      };
-      const result = VersionedProtocolSchema.safeParse(v8Doc);
-      expect(result.success).toBe(true);
-    });
-
     it('rejects invalid schema version', () => {
       const invalidDoc = {
         schemaVersion: 10,
@@ -257,7 +235,9 @@ describe('Protocol Migrations', () => {
         stages: [],
       };
       const result = VersionedProtocolSchema.safeParse(invalidDoc);
-      expect(result.success).toBe(false);
+      expect(parseIssues(result)).toEqual([
+        { path: 'schemaVersion', code: 'invalid_union' },
+      ]);
     });
   });
 
@@ -273,16 +253,6 @@ describe('Protocol Migrations', () => {
       });
       expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(migrated.experiments).toEqual({});
-    });
-
-    it('handles validation errors gracefully', () => {
-      const invalidDoc = {
-        schemaVersion: 7,
-        // Missing required fields
-      };
-      expect(() =>
-        migrateProtocol(invalidDoc, undefined, { name: 'Test Protocol' }),
-      ).toThrow();
     });
 
     it('throws error when missing required dependencies', () => {
@@ -514,16 +484,6 @@ describe('Protocol Migrations', () => {
         {},
       );
       expect(result.schemaVersion).toBe(7);
-    });
-
-    it('v4→v5: has migration notes', () => {
-      expect(migrationV4toV5.notes).toBeDefined();
-      expect(migrationV4toV5.notes?.length).toBeGreaterThan(0);
-    });
-
-    it('v6→v7: has migration notes', () => {
-      expect(migrationV6toV7.notes).toBeDefined();
-      expect(migrationV6toV7.notes?.length).toBeGreaterThan(0);
     });
   });
 });

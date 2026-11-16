@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import BooleanField from './Boolean';
 
@@ -153,6 +153,51 @@ export const NegativeOption: Story = {
     ],
   },
   render: renderField,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const themeColor = (className: string) => {
+      const probe = document.createElement('span');
+      probe.className = className;
+      canvasElement.append(probe);
+      const { color } = getComputedStyle(probe);
+      probe.remove();
+      return color;
+    };
+    const indicatorOf = (radio: HTMLElement) => {
+      const svg = radio.querySelector('svg');
+      if (!svg) throw new Error('Expected the option to render an indicator');
+      return svg;
+    };
+    const destructive = themeColor('text-destructive');
+    const primary = themeColor('text-primary');
+    await expect(destructive).not.toBe(primary);
+
+    const no = canvas.getByRole('radio', { name: 'No' });
+    const yes = canvas.getByRole('radio', { name: 'Yes' });
+
+    await waitFor(() =>
+      expect(getComputedStyle(no).borderTopColor).toBe(destructive),
+    );
+    await expect(getComputedStyle(indicatorOf(no)).color).toBe(destructive);
+    await expect(getComputedStyle(yes).borderTopColor).not.toBe(destructive);
+
+    await userEvent.click(yes);
+    await waitFor(() =>
+      expect(getComputedStyle(yes).borderTopColor).toBe(primary),
+    );
+    await expect(getComputedStyle(no).borderTopColor).not.toBe(destructive);
+    await expect(getComputedStyle(indicatorOf(no)).color).toBe(primary);
+
+    // End where the story starts, on the destructive state it exists to show.
+    await userEvent.click(no);
+    await waitFor(() =>
+      expect(getComputedStyle(no).borderTopColor).toBe(destructive),
+    );
+    await expect(getComputedStyle(indicatorOf(no)).color).toBe(destructive);
+    await waitFor(() =>
+      expect(getComputedStyle(yes).borderTopColor).not.toBe(primary),
+    );
+  },
 };
 
 export const NegativeOptionWithLongLabels: Story = {

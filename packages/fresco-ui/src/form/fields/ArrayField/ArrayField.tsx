@@ -66,34 +66,11 @@ export type {
 export { stripManagedProperties } from './useArrayFieldItems';
 
 const messages = defineMessages({
-  reorderHandle: {
-    id: 'frescoUi.arrayField.reorderHandle',
-    defaultMessage: 'Reorder item {index, number} of {count, number}',
-    description: 'Default accessible name of the drag handle on one list item.',
-  },
   reorderInstructions: {
     id: 'frescoUi.arrayField.reorderInstructions',
     defaultMessage:
       'Drag to reorder. Use the up and down arrow keys with the handle focused.',
     description: 'Tooltip explaining how to operate the reorder drag handle.',
-  },
-  movedItem: {
-    id: 'frescoUi.arrayField.movedItem',
-    defaultMessage:
-      'Moved item {from, number} to position {to, number} of {count, number}.',
-    description: 'Screen-reader announcement after a list item is reordered.',
-  },
-  addedItem: {
-    id: 'frescoUi.arrayField.addedItem',
-    defaultMessage:
-      'Added item at position {position, number} of {count, number}.',
-    description: 'Screen-reader announcement after a new list item is added.',
-  },
-  removedItem: {
-    id: 'frescoUi.arrayField.removedItem',
-    defaultMessage:
-      'Removed item {position, number}. {count, plural, one {# item remaining} other {# items remaining}}.',
-    description: 'Screen-reader announcement after a list item is deleted.',
   },
   addItem: {
     id: 'frescoUi.arrayField.addItem',
@@ -531,12 +508,7 @@ export function ArrayFieldDragHandle({
   size = 'md',
 }: ArrayFieldDragHandleProps) {
   const intl = useAppIntl();
-  const resolvedLabel =
-    label ??
-    intl.formatMessage(messages.reorderHandle, {
-      index: index + 1,
-      count: itemCount,
-    });
+  const resolvedLabel = label ?? `Reorder item ${index + 1} of ${itemCount}`;
   const { ref, ...keyboardReorder } = useKeyboardReorder({
     index,
     itemCount,
@@ -996,13 +968,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
 
     setItems(previewItems, { type: 'move', from: drag.from, to });
     announce(
-      intl.formatMessage(messages.movedItem, {
-        from: drag.from + 1,
-        to: to + 1,
-        count: previewItems.length,
-      }),
+      `Moved item ${drag.from + 1} to position ${to + 1} of ${previewItems.length}.`,
     );
-  }, [announce, intl, isInteractionDisabled, setItems]);
+  }, [announce, isInteractionDisabled, setItems]);
 
   // Answers `false` on every path that leaves the item where it was, so the
   // drag handle disarms rather than waiting to reclaim focus after a move that
@@ -1037,14 +1005,10 @@ export default function ArrayField<T extends Record<string, unknown>>({
         setItems(reorderedItems, { type: 'move', from, to });
       }
       announce(
-        intl.formatMessage(messages.movedItem, {
-          from: currentIndex + 1,
-          to: boundedIndex + 1,
-          count: items.length,
-        }),
+        `Moved item ${currentIndex + 1} to position ${boundedIndex + 1} of ${items.length}.`,
       );
     },
-    [announce, intl, isInteractionDisabled, items, setItems],
+    [announce, isInteractionDisabled, items, setItems],
   );
 
   const commitEditing = useCallback(
@@ -1058,10 +1022,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
       saveEditing(data);
       if (newItemPosition !== null) {
         announce(
-          intl.formatMessage(messages.addedItem, {
-            position: newItemPosition,
-            count: confirmedItemCount + 1,
-          }),
+          `Added item at position ${newItemPosition} of ${confirmedItemCount + 1}.`,
         );
       }
     },
@@ -1070,7 +1031,6 @@ export default function ArrayField<T extends Record<string, unknown>>({
       confirmedItemCount,
       editingIndex,
       editingItem?._draft,
-      intl,
       items,
       saveEditing,
     ],
@@ -1113,13 +1073,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
       const index = items.findIndex((item) => item._internalId === internalId);
       const position =
         items.slice(0, index).filter((item) => !item._draft).length + 1;
+      const remaining = Math.max(0, confirmedItemCount - 1);
       const removeAndAnnounce = () => {
         removeItem(internalId);
         announce(
-          intl.formatMessage(messages.removedItem, {
-            position,
-            count: Math.max(0, confirmedItemCount - 1),
-          }),
+          `Removed item ${position}. ${remaining} ${remaining === 1 ? 'item' : 'items'} remaining.`,
         );
       };
 
@@ -1189,7 +1147,6 @@ export default function ArrayField<T extends Record<string, unknown>>({
       confirm,
       confirmedItemCount,
       confirmDelete,
-      intl,
       isDraft,
       isInteractionDisabled,
       itemLabel,
@@ -1363,10 +1320,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- itemTemplate seeds a new row as a Partial<T>, which the consumer's own item type completes
                 addItem(itemTemplate() as T);
                 announce(
-                  intl.formatMessage(messages.addedItem, {
-                    position: confirmedItemCount + 1,
-                    count: confirmedItemCount + 1,
-                  }),
+                  `Added item at position ${confirmedItemCount + 1} of ${confirmedItemCount + 1}.`,
                 );
                 return;
               }

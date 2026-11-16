@@ -1071,51 +1071,6 @@ describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
       0,
     );
   });
-
-  test('accepts highlightedEdgeKeys prop without error', () => {
-    const nodes = makeNodes([
-      { id: 'father' },
-      { id: 'mother' },
-      { id: 'ego', isEgo: true },
-    ]);
-    const edges = makeEdges([
-      {
-        from: 'father',
-        to: 'mother',
-        relationshipType: 'partner',
-        isActive: true,
-      },
-      {
-        from: 'father',
-        to: 'ego',
-        relationshipType: 'biological',
-        isActive: true,
-      },
-      {
-        from: 'mother',
-        to: 'ego',
-        relationshipType: 'biological',
-        isActive: true,
-      },
-    ]);
-
-    const highlightedEdgeKeys = new Set([edgeKey('mother', 'ego')]);
-    const highlightedNodeIds = new Set(['mother', 'ego']);
-
-    expect(() =>
-      render(
-        <PedigreeLayout
-          nodeShapes={new Map()}
-          nodeIds={nodes}
-          links={edges}
-          {...DIMS}
-          renderNode={renderNode}
-          highlightedNodeIds={highlightedNodeIds}
-          highlightedEdgeKeys={highlightedEdgeKeys}
-        />,
-      ),
-    ).not.toThrow();
-  });
 });
 
 describe('auxiliary lines that cross another line', () => {

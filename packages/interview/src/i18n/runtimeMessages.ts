@@ -1,18 +1,6 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 
 export const runtimeMessages = defineMessages({
-  unplacedCount: {
-    id: 'interview.runtime.unplacedCount',
-    defaultMessage: '{count, number} unplaced',
-    description:
-      'Number of items in the tray that have not yet been placed on the canvas.',
-  },
-  addPerson: {
-    id: 'interview.runtime.addPerson',
-    defaultMessage: 'Add a person',
-    description:
-      'Accessible action that adds a person to the current interview task.',
-  },
   itemUnavailable: {
     id: 'interview.runtime.itemUnavailable',
     defaultMessage: 'This item could not be displayed.',
@@ -30,67 +18,12 @@ export const runtimeMessages = defineMessages({
     description:
       'Label of the button under the interview error message that copies the debug information the participant can send to the study organizer. The message above it calls this “the button below”.',
   },
-  canvas: {
-    id: 'interview.runtime.canvas',
-    defaultMessage: 'Placement area',
-    description: 'Announced name of the area where items can be positioned.',
-  },
-  deleteBin: {
-    id: 'interview.runtime.deleteBin',
-    defaultMessage: 'Delete bin',
-    description: 'Announced name of the drop target that deletes an item.',
-  },
-  drawer: {
-    id: 'interview.runtime.drawer',
-    defaultMessage: 'Drawer',
-    description:
-      'Announced name of the tray containing items that can be placed.',
-  },
-  collapseDrawer: {
-    id: 'interview.runtime.collapseDrawer',
-    defaultMessage: 'Collapse drawer',
-    description: 'Accessible action that folds the item tray closed.',
-  },
-  expandDrawer: {
-    id: 'interview.runtime.expandDrawer',
-    defaultMessage: 'Expand drawer',
-    description: 'Accessible action that expands the item tray.',
-  },
-  dropToRemove: {
-    id: 'interview.runtime.dropToRemove',
-    defaultMessage: 'Drop here to remove',
-    description:
-      'Read by screen readers over a list while dropping a dragged item there removes it: the roster list, or a Sociogram’s empty tray. Only screen readers read it, so it stays in English whatever the interview language. subject is the name of the kind of item, such as Person.',
-  },
-  nodeList: {
-    id: 'interview.runtime.nodeList',
-    defaultMessage: 'Item list',
-    description: 'Accessible name for a list of people or other items.',
-  },
-  firstNode: {
-    id: 'interview.runtime.firstNode',
-    defaultMessage: 'First item',
-    description:
-      'Fallback accessible name for the first item when its name is missing.',
-  },
-  secondNode: {
-    id: 'interview.runtime.secondNode',
-    defaultMessage: 'second item',
-    description:
-      'Fallback accessible name for the second item when its name is missing.',
-  },
   choosePassphraseHelp: {
     id: 'interview.runtime.choosePassphraseHelp',
     defaultMessage:
       'Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
     description:
       'Instructions in the passphrase dialog and on the passphrase screen, whether the participant is choosing the interview passphrase or entering the one already chosen. It must not suggest that anyone can recover or reset a forgotten passphrase, because no one can.',
-  },
-  checkingPassphrase: {
-    id: 'interview.runtime.checkingPassphrase',
-    defaultMessage: 'Checking your passphrase…',
-    description:
-      'Announced beside a spinner while an entered passphrase is being checked, which can take a few seconds. Only screen readers read it, so it stays in English whatever the interview language.',
   },
   unnamed: {
     id: 'interview.runtime.unnamed',
@@ -117,29 +50,11 @@ export const runtimeMessages = defineMessages({
     description:
       'Explains, under a question whose earlier protected answer can no longer be shown, that the earlier answer is kept unless the participant enters a new one to replace it. Shown in both the read-only and the replacing state.',
   },
-  replaceUnavailableAnswer: {
-    id: 'interview.runtime.replaceUnavailableAnswer',
-    defaultMessage: 'Enter a new answer',
-    description:
-      'Button beside an earlier answer that can no longer be shown, which lets the participant type a new answer to replace it.',
-  },
   passphrase: {
     id: 'interview.runtime.passphrase',
     defaultMessage: 'Passphrase',
     description:
       'Label of the secret phrase input used to decrypt interview data.',
-  },
-  passphraseButton: {
-    id: 'interview.runtime.passphraseButton',
-    defaultMessage: 'Passphrase',
-    description:
-      'Accessible name of the key button in the navigation bar that opens the passphrase dialog. The button shows only a key, so only screen readers read this, and it stays in English whatever the interview language.',
-  },
-  loadingStatus: {
-    id: 'interview.runtime.loadingStatus',
-    defaultMessage: 'Loading…',
-    description:
-      'Announced while something is loading beside a spinner that shows no words, such as a search filtering its list. Only screen readers read this, so it stays in English whatever the interview language.',
   },
   passphraseIncorrect: {
     id: 'interview.runtime.passphraseIncorrect',
@@ -184,19 +99,9 @@ export const runtimeMessages = defineMessages({
     description:
       'Status on a screen outside the currently selected interview path.',
   },
-  interviewScreens: {
-    id: 'interview.runtime.interviewScreens',
-    defaultMessage: 'Interview screens',
-    description: 'Accessible name of the interview screen navigation list.',
-  },
   noSearchMatch: {
     id: 'interview.runtime.noSearchMatch',
     defaultMessage: 'Nothing matched your search term.',
     description: 'Empty result after searching the interview screen list.',
-  },
-  notifications: {
-    id: 'interview.runtime.notifications',
-    defaultMessage: 'Interview notifications',
-    description: 'Accessible name of the interview notification region.',
   },
 });

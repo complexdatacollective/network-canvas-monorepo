@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { assetSchema } from '../assets/index.ts';
 import { CodebookSchema } from '../codebook/codebook.ts';
@@ -174,7 +175,9 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'background.image', code: 'too_small' },
+    ]);
   });
 });
 
@@ -210,7 +213,9 @@ describe('Geospatial targetFeatureProperty (#674)', () => {
       ...baseStage,
       mapOptions: { ...baseMapOptions, targetFeatureProperty: '' },
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'mapOptions.targetFeatureProperty', code: 'too_small' },
+    ]);
   });
 });
 
@@ -232,7 +237,7 @@ describe('apikey asset value (#674)', () => {
       type: 'apikey',
       value: '',
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([{ path: 'value', code: 'too_small' }]);
   });
 });
 
@@ -257,7 +262,9 @@ describe('Information size and items (#676)', () => {
       ...baseStage,
       items: [{ id: 'i1', type: 'asset', content: 'img-1', size: 'large' }],
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'items.0.size', code: 'invalid_value' },
+    ]);
   });
 
   it('rejects an unsupported size value', () => {
@@ -265,7 +272,9 @@ describe('Information size and items (#676)', () => {
       ...baseStage,
       items: [{ id: 'i1', type: 'asset', content: 'img-1', size: 'XL' }],
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'items.0.size', code: 'invalid_value' },
+    ]);
   });
 
   it('rejects size on a text item', () => {
@@ -280,7 +289,9 @@ describe('Information size and items (#676)', () => {
         },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'items.0', code: 'unrecognized_keys', keys: ['size'] },
+    ]);
   });
 
   it('accepts a text item with no size', () => {
@@ -315,7 +326,9 @@ describe('Information item content non-empty', () => {
       ...baseStage,
       items: [{ id: 'i1', type: 'text', content: localized('') }],
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'items.0.content.en', code: 'too_small' },
+    ]);
   });
 
   it('rejects an asset item with empty content', () => {
@@ -323,7 +336,9 @@ describe('Information item content non-empty', () => {
       ...baseStage,
       items: [{ id: 'i1', type: 'asset', content: '' }],
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'items.0.content', code: 'too_small' },
+    ]);
   });
 
   it('accepts text and asset items with non-empty content', () => {
@@ -354,24 +369,31 @@ describe('Anonymisation explanationText non-empty', () => {
 
   it('rejects an empty explanationText', () => {
     expect(
-      anonymisationStage.safeParse({
-        ...baseStage,
-        explanationText: localized(''),
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        anonymisationStage.safeParse({
+          ...baseStage,
+          explanationText: localized(''),
+        }),
+      ),
+    ).toEqual([{ path: 'explanationText.en', code: 'too_small' }]);
   });
 
   // The heading is part of the text, so the title it replaced is refused.
   it('rejects the separate title and body schema 8 had', () => {
     expect(
-      anonymisationStage.safeParse({
-        ...baseStage,
-        explanationText: {
-          title: localized('Why we do this'),
-          body: localized('Your responses are encrypted.'),
-        },
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        anonymisationStage.safeParse({
+          ...baseStage,
+          explanationText: {
+            title: localized('Why we do this'),
+            body: localized('Your responses are encrypted.'),
+          },
+        }),
+      ),
+    ).toEqual([
+      { path: 'explanationText.body', code: 'invalid_type' },
+      { path: 'explanationText.title', code: 'invalid_type' },
+    ]);
   });
 });
 
@@ -399,7 +421,9 @@ describe('Narrative preset label non-empty', () => {
       ...baseStage,
       presets: [{ id: 'preset1', label: localized(''), layoutVariable: 'pos' }],
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'presets.0.label.en', code: 'too_small' },
+    ]);
   });
 
   it('accepts an image background', () => {
@@ -421,7 +445,14 @@ describe('Narrative preset label non-empty', () => {
         { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'background.concentricCircles',
+        code: 'custom',
+        message:
+          'concentricCircles cannot be set when background has an image.',
+      },
+    ]);
   });
 });
 
@@ -438,8 +469,10 @@ describe('Side panel title and dataSource non-empty', () => {
 
   it('rejects a panel with an empty title', () => {
     expect(
-      panelSchema.safeParse({ ...basePanel, title: localized('') }).success,
-    ).toBe(false);
+      parseIssues(
+        panelSchema.safeParse({ ...basePanel, title: localized('') }),
+      ),
+    ).toEqual([{ path: 'title.en', code: 'too_small' }]);
   });
 
   it('rejects an empty panel dataSource', () => {
@@ -483,9 +516,10 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
 
   it('rejects an empty dataSource', () => {
     expect(
-      nameGeneratorRosterStage.safeParse({ ...baseStage, dataSource: '' })
-        .success,
-    ).toBe(false);
+      parseIssues(
+        nameGeneratorRosterStage.safeParse({ ...baseStage, dataSource: '' }),
+      ),
+    ).toEqual([{ path: 'dataSource', code: 'too_small' }]);
   });
 
   it('accepts searchOptions with at least one matchProperty', () => {
@@ -499,11 +533,13 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
 
   it('rejects searchOptions with an empty matchProperties array', () => {
     expect(
-      nameGeneratorRosterStage.safeParse({
-        ...baseStage,
-        searchOptions: { fuzziness: 0.5, matchProperties: [] },
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        nameGeneratorRosterStage.safeParse({
+          ...baseStage,
+          searchOptions: { fuzziness: 0.5, matchProperties: [] },
+        }),
+      ),
+    ).toEqual([{ path: 'searchOptions.matchProperties', code: 'too_small' }]);
   });
 });
 
@@ -589,7 +625,13 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
         },
       },
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: '',
+        code: 'custom',
+        message: 'Attribute record key "shared" is reused across entity types',
+      },
+    ]);
   });
 
   it('rejects a variable record key reused across a node type and ego', () => {
@@ -613,7 +655,13 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
         },
       },
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: '',
+        code: 'custom',
+        message: 'Attribute record key "shared" is reused across entity types',
+      },
+    ]);
   });
 });
 
@@ -644,11 +692,11 @@ describe('Empty-rules filter (#669)', () => {
 
   it('rejects a filter with an empty rules array', () => {
     const result = FilterSchema.safeParse({ rules: [] });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([{ path: 'rules', code: 'too_small' }]);
   });
 
   it('rejects a multiple-join filter with an empty rules array', () => {
     const result = FilterSchema.safeParse({ join: 'AND', rules: [] });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([{ path: 'rules', code: 'too_small' }]);
   });
 });

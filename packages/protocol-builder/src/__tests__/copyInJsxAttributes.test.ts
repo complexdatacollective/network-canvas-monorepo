@@ -31,9 +31,14 @@ import { sourceFiles, sourcePath } from './packageSource.ts';
  * is invisible here until it is added, so the sweep in
  * `localeSweep.test.tsx` renders the real surfaces under `es` as the
  * backstop, and finds anything this list has not learned about yet.
+ *
+ * `aria-label`, `aria-description`, `aria-valuetext` and `ariaLabel` are
+ * deliberately absent: text only a screen reader reads is English by rule, so
+ * a literal there is correct, and `screenReaderText.test.ts` is what keeps a
+ * translated message out of them.
  */
 const COPY_PROP =
-  /^(?:aria-label|aria-description|aria-placeholder|aria-roledescription|aria-valuetext|label|placeholder|hint|title|description|term|alt|caption|summary|.*Label|.*Message|.*Text|.*Description|.*Placeholder|.*Title|.*Hint|.*Noun|.*Sentence|.*Prompt|.*Copy|.*Caption|.*Summary|.*Heading|.*Legend|emptyState.*|addButton.*)$/;
+  /^(?!ariaLabel$)(?:aria-placeholder|aria-roledescription|label|placeholder|hint|title|description|term|alt|caption|summary|.*Label|.*Message|.*Text|.*Description|.*Placeholder|.*Title|.*Hint|.*Noun|.*Sentence|.*Prompt|.*Copy|.*Caption|.*Summary|.*Heading|.*Legend|emptyState.*|addButton.*)$/;
 
 /**
  * Every prop name in this package's own source whose value the list above has
@@ -110,15 +115,44 @@ const copyInLine = (line: string): { name: string; value: string }[] =>
     return [{ name, value }];
   });
 
+/**
+ * `label` props that are not a visible label: a row's drag handle takes its
+ * accessible name through `label`, and a hidden field label (`labelHidden`) is
+ * read only by a screen reader. Both are English by rule, so a literal there
+ * is correct. Matched on the file and the start of the value, so a line moving
+ * does not matter and a visible label in the same file is still caught.
+ */
+const ENGLISH_BY_RULE: readonly Readonly<{ file: string; value: string }>[] = [
+  { file: 'form/rowDialog.tsx', value: 'Reorder ' },
+  { file: 'form/arrayFields/MultiSelect.tsx', value: 'Reorder item ' },
+  { file: 'form/arrayFields/Option.tsx', value: 'Reorder option ' },
+  {
+    file: 'editors/anonymisation/sections/EncryptedAttributesSection.tsx',
+    value: 'Encrypted attributes for ',
+  },
+];
+
 const findingsIn = (path: string): Finding[] =>
   readFileSync(path, 'utf8')
     .split('\n')
     .flatMap((line, index) =>
-      copyInLine(line).map(({ name, value }) => ({
-        file: sourcePath(path),
-        line: index + 1,
-        text: `${name}=${JSON.stringify(value)}`,
-      })),
+      copyInLine(line)
+        .filter(
+          ({ name, value }) =>
+            !(
+              name === 'label' &&
+              ENGLISH_BY_RULE.some(
+                (excused) =>
+                  excused.file === sourcePath(path) &&
+                  value.startsWith(excused.value),
+              )
+            ),
+        )
+        .map(({ name, value }) => ({
+          file: sourcePath(path),
+          line: index + 1,
+          text: `${name}=${JSON.stringify(value)}`,
+        })),
     );
 
 describe('copy written into a JSX attribute', () => {
@@ -149,7 +183,7 @@ describe('copy written into a JSX attribute', () => {
       '        label="Attribute name"',
       '        placeholder="Enter a label..."',
       '            label={`${subjectLabel} type name`}',
-      '            aria-label={`Remove option ${index + 1}`}',
+      '            aria-roledescription={`Sortable option ${index + 1}`}',
       '        emptyStateMessage="No options have been added yet."',
       "        hint={'This name is exported'}",
       '        aria-roledescription={"Sortable option"}',
@@ -159,6 +193,9 @@ describe('copy written into a JSX attribute', () => {
       '        name="variable-name"',
       '        color="destructive"',
       '        label={intl.formatMessage(messages.nameLabel)}',
+      '        aria-label={`Remove option ${index + 1}`}',
+      '        aria-valuetext="Two of five"',
+      '        ariaLabel={`Select shape ${name}`}',
       '        aria-label={`${count}`}',
       "        const label = 'Attribute name';",
     ];
@@ -167,7 +204,7 @@ describe('copy written into a JSX attribute', () => {
       'label',
       'placeholder',
       'label',
-      'aria-label',
+      'aria-roledescription',
       'emptyStateMessage',
       'hint',
       'aria-roledescription',

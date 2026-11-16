@@ -16,25 +16,19 @@ import Dialog from '../Dialog';
  * in flight behind it (a submit, an export build) or because the flow had to be
  * completed (a lock screen).
  *
- * Each refusal below is paired with the same gesture on a dismissible dialog.
- * Without that pair, a "fix" that simply stopped Escape working everywhere
- * would pass.
+ * The refusals (Escape, an outside press, no close button) are asserted by the
+ * `NonDismissible` play in `Dialogs.stories.tsx`. This file holds their pair:
+ * the same gestures on a dismissible dialog. Without that pair, a "fix" that
+ * simply stopped Escape working everywhere would pass.
  */
 
-const Harness = ({
-  dismissible,
-  onClose,
-}: {
-  dismissible?: boolean;
-  onClose: () => void;
-}) => {
+const Harness = ({ onClose }: { onClose: () => void }) => {
   const [open, setOpen] = useState(true);
 
   return (
     <Dialog
       open={open}
       title="Exporting 12 interviews"
-      dismissible={dismissible}
       closeDialog={() => {
         onClose();
         setOpen(false);
@@ -55,39 +49,6 @@ const pressOutside = (user: ReturnType<typeof userEvent.setup>) =>
   user.click(document.body);
 
 describe('Dialog dismissal', () => {
-  it('does not close on Escape when it is not dismissible', async () => {
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-    render(<Harness dismissible={false} onClose={onClose} />);
-    await screen.findByRole('dialog');
-
-    await user.keyboard('{Escape}');
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  it('does not close on an outside press when it is not dismissible', async () => {
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-    render(<Harness dismissible={false} onClose={onClose} />);
-    await screen.findByRole('dialog');
-
-    await pressOutside(user);
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  it('offers no close button when it is not dismissible', async () => {
-    render(<Harness dismissible={false} onClose={vi.fn()} />);
-    await screen.findByRole('dialog');
-
-    expect(
-      screen.queryByRole('button', { name: 'Close' }),
-    ).not.toBeInTheDocument();
-  });
-
   it('closes on Escape by default', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();

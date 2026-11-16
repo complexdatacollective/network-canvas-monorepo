@@ -50,11 +50,18 @@
         "formatjs/no-invalid-icu": "error",
         "formatjs/enforce-placeholders": "error",
         "formatjs/no-multiple-whitespaces": "error",
+        // `aria-label` and `aria-description` are left out: only a screen
+        // reader reads them, and text only a screen reader reads stays
+        // English, written in the component (`@codaco/app-i18n`'s README).
+        // Visually hidden text in JSX children still trips the rule; each
+        // such line carries a disable comment saying it is screen-reader
+        // text.
         "formatjs/no-literal-string-in-jsx": [
           "error",
           {
             "props": {
-              "include": [["*", "{label,placeholder,title,itemLabel}"]]
+              "include": [["*", "{label,placeholder,title,itemLabel}"]],
+              "exclude": [["*", "aria-{label,description}"]]
             }
           }
         ]

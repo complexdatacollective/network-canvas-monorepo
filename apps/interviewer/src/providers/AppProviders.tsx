@@ -30,7 +30,9 @@ function LanguageUnavailableNotice() {
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <AnimationProvider>
+    <AnimationProvider
+      disableAnimations={import.meta.env.VITE_DISABLE_ANIMATIONS === 'true'}
+    >
       <Toast.Provider limit={7}>
         <TooltipProvider>
           <OnlineStatusProvider>

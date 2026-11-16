@@ -62,20 +62,16 @@ describe('AppUpdateIndicator', () => {
     expect(onInstall).not.toHaveBeenCalled();
   });
 
-  it('renders release notes as a bounded surface with subordinate headings', () => {
+  // The bounded surface itself is a visual state of the Available story.
+  it('renders release notes in a named region under a subordinate heading', () => {
     renderAvailableUpdate(vi.fn().mockResolvedValue(true));
 
     expect(
       screen.getByRole('heading', { level: 3, name: "What's new" }),
     ).toBeInTheDocument();
-
-    const changelog = screen.getByRole('region', {
-      name: 'Interviewer changelog',
-    });
-    expect(changelog.parentElement?.parentElement).toHaveClass(
-      'bg-surface-1',
-      'max-h-72',
-    );
+    expect(
+      screen.getByRole('region', { name: 'Interviewer changelog' }),
+    ).toBeInTheDocument();
   });
 
   it('shows progress while the update activates', async () => {
@@ -131,7 +127,7 @@ describe('AppUpdateIndicator', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
   });
 
-  it('uses an explanatory description and primary close action after updating', () => {
+  it('uses an explanatory description and a close action after updating', () => {
     render(
       <AppUpdateIndicator
         status="updated"
@@ -157,13 +153,10 @@ describe('AppUpdateIndicator', () => {
       ),
     ).toBeInTheDocument();
 
-    const closeButton = within(screen.getByRole('contentinfo')).getByRole(
-      'button',
-      { name: 'Close' },
-    );
-    expect(closeButton).toHaveClass(
-      'bg-(--component-text)',
-      '[--component-text:var(--primary)]',
-    );
+    expect(
+      within(screen.getByRole('contentinfo')).getByRole('button', {
+        name: 'Close',
+      }),
+    ).toBeEnabled();
   });
 });

@@ -14,12 +14,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Label of the second anonymisation password field; this is confirmation of the passphrase, not a separate password.',
   },
-  submit: {
-    id: 'interview.interfaces.submit',
-    defaultMessage: 'Submit',
-    description:
-      'Accessible name of icon-only or visually hidden form submit buttons in anonymisation and slide forms.',
-  },
   discardChangesTitle: {
     id: 'interview.interfaces.discardChangesTitle',
     defaultMessage: 'Discard changes?',
@@ -31,24 +25,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Do you want to discard your changes?',
     description:
       'Question asked when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost.',
-  },
-  scrollForQuestions: {
-    id: 'interview.interfaces.scrollForQuestions',
-    defaultMessage: 'Scroll to see more questions',
-    description:
-      'Accessible name and announcement of the arrows at the bottom of a long personal-information form, which show that more questions are below the visible area. Only screen readers read it, so it stays in English whatever the interview language.',
-  },
-  emptyValue: {
-    id: 'interview.interfaces.emptyValue',
-    defaultMessage: 'No value',
-    description:
-      'Shown in place of a roster detail that has no value: a blank field or an empty list. Replaces a bare dash so screen readers announce it.',
-  },
-  errorHeading: {
-    id: 'interview.interfaces.errorHeading',
-    defaultMessage: 'Something went wrong',
-    description:
-      'Short heading above an external-list loading error. This heading intentionally has no final period.',
   },
   externalDataError: {
     id: 'interview.interfaces.externalDataError',
@@ -73,36 +49,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Resume automatic layout',
     description:
       'Tooltip and accessible name of the toggle that lets the people on a network diagram move into place by themselves again.',
-  },
-  availableRosterNodes: {
-    id: 'interview.interfaces.availableRosterNodes',
-    defaultMessage: 'Available Roster Nodes',
-    description:
-      'Accessible name used by drag-and-drop announcements for the external roster entries that can still be added.',
-  },
-  resizePanels: {
-    id: 'interview.interfaces.resizePanels',
-    defaultMessage: 'Resize panel and node list areas',
-    description:
-      'Accessible name of the divider between the source panel and the list of added people; dragging or keyboard controls resize the two areas.',
-  },
-  availableItems: {
-    id: 'interview.interfaces.availableItems',
-    defaultMessage: 'List of available items to add',
-    description:
-      'Accessible name of the collection containing external roster entries that can be added.',
-  },
-  addedNodes: {
-    id: 'interview.interfaces.addedNodes',
-    defaultMessage: 'Added Nodes',
-    description:
-      'Accessible name used by drag-and-drop announcements for the list of people already added to the network.',
-  },
-  quickAddInput: {
-    id: 'interview.interfaces.quickAddInput',
-    defaultMessage: 'Quick add input',
-    description:
-      'Accessible name of the active quick-add toggle while its name-entry field is open.',
   },
   addNamePlaceholder: {
     id: 'interview.interfaces.addNamePlaceholder',
@@ -185,66 +131,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Notice under the Geospatial map search when a search could not run.',
   },
-  resizePanel: {
-    id: 'interview.interfaces.resizePanel',
-    defaultMessage: 'Resize panel',
-    description:
-      'Accessible name of the draggable divider that changes the width of the network-composer editing panel.',
-  },
-  groupMembershipOptions: {
-    id: 'interview.interfaces.groupMembershipOptions',
-    defaultMessage: 'Group membership options',
-    description:
-      'Accessible name of the popover containing group membership choices in the network composer.',
-  },
-  groupMembershipPeople: {
-    id: 'interview.interfaces.groupMembershipPeople',
-    defaultMessage: 'Group membership for selected people',
-    description:
-      'Accessible name of the controls that set group membership for the currently selected people.',
-  },
-  composerTools: {
-    id: 'interview.interfaces.composerTools',
-    defaultMessage: 'Network composer tools',
-    description:
-      'Accessible name of the vertical toolbar used to create and edit a network.',
-  },
-  editingTools: {
-    id: 'interview.interfaces.editingTools',
-    defaultMessage: 'Editing tools',
-    description:
-      'Accessible name of the toolbar group for selection, adding people, creating connections, and group membership.',
-  },
-  select: {
-    id: 'interview.interfaces.select',
-    defaultMessage: 'Select',
-    description:
-      'Network-composer tool that selects existing people or connections for editing.',
-  },
-  layoutTools: {
-    id: 'interview.interfaces.layoutTools',
-    defaultMessage: 'Layout tools',
-    description:
-      'Accessible name of the network-composer toolbar group that controls automatic positioning.',
-  },
-  historyTools: {
-    id: 'interview.interfaces.historyTools',
-    defaultMessage: 'History tools',
-    description:
-      'Accessible name of the toolbar group containing undo and redo actions.',
-  },
-  composerUndo: {
-    id: 'interview.interfaces.composerUndo',
-    defaultMessage: 'Undo',
-    description:
-      'Accessible name of the network composer toolbar button that reverses the most recent change. The button shows only an icon and no tooltip, so only screen readers read this, and it stays in English whatever the interview language.',
-  },
-  composerRedo: {
-    id: 'interview.interfaces.composerRedo',
-    defaultMessage: 'Redo',
-    description:
-      'Accessible name of the network composer toolbar button that makes again a change that was undone. The button shows only an icon and no tooltip, so only screen readers read this, and it stays in English whatever the interview language.',
-  },
   undo: {
     id: 'interview.interfaces.undo',
     defaultMessage: 'Undo',
@@ -257,164 +143,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Name of the family pedigree toolbar button that makes again a change that was undone, shown in its tooltip.',
   },
-  layoutAndDrawing: {
-    id: 'interview.interfaces.layoutAndDrawing',
-    defaultMessage: 'Layout and drawing tools',
-    description:
-      'Accessible name of the narrative toolbar for automatic positioning and freehand annotations.',
-  },
-  layoutControls: {
-    id: 'interview.interfaces.layoutControls',
-    defaultMessage: 'Layout controls',
-    description:
-      'Accessible name of the narrative toolbar group that pauses or resumes automatic positioning.',
-  },
-  drawingControls: {
-    id: 'interview.interfaces.drawingControls',
-    defaultMessage: 'Drawing controls',
-    description:
-      'Accessible name of the narrative toolbar group for freehand annotations.',
-  },
-  presets: {
-    id: 'interview.interfaces.presets',
-    defaultMessage: 'Presets',
-    description:
-      'Accessible name of the narrative toolbar for switching between researcher-configured network views.',
-  },
-  dragToReposition: {
-    id: 'interview.interfaces.dragToReposition',
-    defaultMessage: 'Drag to reposition',
-    description:
-      'Accessible name of the handle that moves the floating narrative preset toolbar.',
-  },
-  presetNavigation: {
-    id: 'interview.interfaces.presetNavigation',
-    defaultMessage: 'Preset navigation',
-    description:
-      'Accessible name of the toolbar group that switches between researcher-configured narrative views.',
-  },
-  previousPreset: {
-    id: 'interview.interfaces.previousPreset',
-    defaultMessage: 'Previous preset',
-    description:
-      'Action that selects the previous researcher-configured narrative view.',
-  },
-  nextPreset: {
-    id: 'interview.interfaces.nextPreset',
-    defaultMessage: 'Next preset',
-    description:
-      'Action that selects the next researcher-configured narrative view.',
-  },
-  targetNodes: {
-    id: 'interview.interfaces.targetNodes',
-    defaultMessage: 'Target nodes',
-    description:
-      'Accessible name of the collection of people that can be selected in a one-to-many relationship question.',
-  },
-  ordinalContainer: {
-    id: 'interview.interfaces.ordinalContainer',
-    defaultMessage: "Container for the value ''{label}''",
-    description:
-      'Drag-and-drop name of a rating container. label is the unchanged researcher-authored ordinal response label; keep it as a value, not a translation key.',
-  },
-  showInstructions: {
-    id: 'interview.interfaces.showInstructions',
-    defaultMessage: 'Show instructions',
-    description:
-      'Accessible action that expands the floating instructions panel above a network view.',
-  },
-  hideInstructions: {
-    id: 'interview.interfaces.hideInstructions',
-    defaultMessage: 'Hide instructions',
-    description:
-      'Accessible action that collapses the floating instructions panel above a network view.',
-  },
-  returnedToDrawer: {
-    id: 'interview.interfaces.returnedToDrawer',
-    defaultMessage: 'Returned to the drawer.',
-    description:
-      'Screen-reader announcement after an item without a usable name is removed from the canvas and returned to the unplaced-items panel.',
-  },
-  namedReturnedToDrawer: {
-    id: 'interview.interfaces.namedReturnedToDrawer',
-    defaultMessage: '{name} returned to the drawer.',
-    description:
-      'Screen-reader announcement after an item is returned to the unplaced-items panel. name is its unchanged participant-entered or authored display name.',
-  },
-  categoryDrop: {
-    id: 'interview.interfaces.categoryDrop',
-    defaultMessage: 'Category: {label}',
-    description:
-      'Drag target announcement for a categorical response. label is the unchanged researcher-authored category label.',
-  },
-  categoryContents: {
-    id: 'interview.interfaces.categoryContents',
-    defaultMessage:
-      'Category {label}, {count, plural, one {# item} other {# items}}',
-    description:
-      'Accessible name of a collapsed category container. label is its authored category label; count is the number of items currently in the container.',
-  },
-  categoryContentsExpanded: {
-    id: 'interview.interfaces.categoryContentsExpanded',
-    defaultMessage:
-      'Category {label}, {count, plural, one {# item} other {# items}}, expanded',
-    description:
-      'Accessible name of an expanded category container. label is its authored label; count is the number of items currently in it.',
-  },
-  binSelectInstruction: {
-    id: 'interview.interfaces.binSelectInstruction',
-    defaultMessage: 'Choose where {name} belongs.',
-    description:
-      'Announced to screen readers when the item a participant is placing changes, on a sorting screen that asks them to tap a group instead of dragging. Sighted participants see that item shown as selected. An item is whatever the researcher has the participant sort: usually a person, but it can be a place, an organisation or anything else. name is the item’s unchanged participant-entered or authored display name. The groups are researcher-authored and shown on the same screen.',
-  },
-  finishingInterview: {
-    id: 'interview.interfaces.finishingInterview',
-    defaultMessage: 'Finishing the interview…',
-    description:
-      'Announced to screen readers, not shown, while an interview that ends without asking the participant is being finished and its answers saved; sighted participants see only a loading animation. It can take a few seconds on a slow connection.',
-  },
-  binSelectComplete: {
-    id: 'interview.interfaces.binSelectComplete',
-    defaultMessage: 'Nothing left to place.',
-    description:
-      'Announced to screen readers on a sorting screen once everything the participant was sorting (usually people, but it can be places, organisations or anything else) has been put in a group.',
-  },
-  binSelectPlaceIn: {
-    id: 'interview.interfaces.binSelectPlaceIn',
-    defaultMessage: 'Place {name} in {label}',
-    description:
-      'Accessible name of a group a participant taps to put an item (usually a person) in it. name is the item’s unchanged participant-entered or authored display name; label is the unchanged researcher-authored group label.',
-  },
   binSelectPlaceHere: {
     id: 'interview.interfaces.binSelectPlaceHere',
     defaultMessage: 'Place here',
     description:
       'Button inside an opened group on a sorting screen that puts the item the participant is placing (usually a person) into that group.',
-  },
-  binSelectShowContents: {
-    id: 'interview.interfaces.binSelectShowContents',
-    defaultMessage:
-      'Show what is in {label}, {count, plural, one {# item} other {# items}}',
-    description:
-      'Accessible name of the small button on a group that opens it to show what is already in it. label is the unchanged researcher-authored group label; count is the number of items currently in the group.',
-  },
-  categoryList: {
-    id: 'interview.interfaces.categoryList',
-    defaultMessage: '{label} category',
-    description:
-      'Accessible name of the item list inside an expanded category. label is the unchanged researcher-authored category label.',
-  },
-  stubMap: {
-    id: 'interview.interfaces.stubMap',
-    defaultMessage: 'Stubbed map (click to select test feature)',
-    description:
-      'Accessible name of the test-only map placeholder used by automated interface tests; clicking it selects a fixture feature.',
-  },
-  deselect: {
-    id: 'interview.interfaces.deselect',
-    defaultMessage: 'Deselect',
-    description:
-      'Action that clears the current outside-map-area selection so the participant can choose another location.',
   },
   zoomIn: {
     id: 'interview.interfaces.zoomIn',
@@ -427,77 +160,5 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Zoom out',
     description:
       'Name of the family tree toolbar button that decreases magnification, on the Family Pedigree and Narrative Pedigree stages, shown in its tooltip. Sentence case.',
-  },
-  mapZoomIn: {
-    id: 'interview.interfaces.mapZoomIn',
-    defaultMessage: 'Zoom in',
-    description:
-      'Accessible name of the Geospatial map button that increases magnification. The button shows only an icon, so only screen readers read this, and it stays in English whatever the interview language.',
-  },
-  mapZoomOut: {
-    id: 'interview.interfaces.mapZoomOut',
-    defaultMessage: 'Zoom out',
-    description:
-      'Accessible name of the Geospatial map button that decreases magnification. The button shows only an icon, so only screen readers read this, and it stays in English whatever the interview language.',
-  },
-  recenterMap: {
-    id: 'interview.interfaces.recenterMap',
-    defaultMessage: 'Recenter Map',
-    description:
-      'Accessible name of the map button that restores the researcher-configured starting center and zoom.',
-  },
-  closeSearch: {
-    id: 'interview.interfaces.closeSearch',
-    defaultMessage: 'Close search',
-    description:
-      'Accessible name of the toggle while the geospatial place-search panel is open.',
-  },
-  searchLocation: {
-    id: 'interview.interfaces.searchLocation',
-    defaultMessage: 'Search location',
-    description:
-      'Accessible name of the toggle that opens the geospatial place-search panel.',
-  },
-  clearSearch: {
-    id: 'interview.interfaces.clearSearch',
-    defaultMessage: 'Clear search',
-    description:
-      'Accessible action that clears the current geospatial search query.',
-  },
-  searchSuggestions: {
-    id: 'interview.interfaces.searchSuggestions',
-    defaultMessage: 'Search suggestions',
-    description:
-      'Accessible name of the list of places returned by geospatial search, including its loading and empty states.',
-  },
-  mapMoveFailed: {
-    id: 'interview.interfaces.mapMoveFailed',
-    defaultMessage: 'Search could not be completed. Try again in a moment.',
-    description:
-      'Screen-reader announcement when the map could not be moved to the search result the participant chose. Only screen readers read it, so it stays in English whatever the interview language.',
-  },
-  mapMoved: {
-    id: 'interview.interfaces.mapMoved',
-    defaultMessage: 'Map moved to {place}.',
-    description:
-      'Screen-reader announcement after a selected search result moves the map. place is the unchanged place name returned by the map service.',
-  },
-  mapTitle: {
-    id: 'interview.interfaces.mapTitle',
-    defaultMessage: 'Map',
-    description:
-      'Accessible region name of the native Mapbox canvas in the geospatial interface.',
-  },
-  mapboxHomepage: {
-    id: 'interview.interfaces.mapboxHomepage',
-    defaultMessage: 'Mapbox homepage',
-    description:
-      'Accessible name of the native map logo link that opens the Mapbox homepage; preserve the Mapbox brand name.',
-  },
-  toggleAttribution: {
-    id: 'interview.interfaces.toggleAttribution',
-    defaultMessage: 'Toggle attribution',
-    description:
-      'Accessible name and tooltip of the native map control that expands or collapses map source credits; source credit text remains unchanged.',
   },
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { Gamete } from '../../../FamilyPedigree/gametes';
 import {
@@ -165,10 +165,11 @@ describe('buildGeneticGraph — consanguinity loop termination', () => {
     expect(result.has('C')).toBe(true);
   });
 
-  it('propagate does not throw a stack overflow on a cyclic graph', () => {
-    expect(() =>
-      cyclicGraph.propagate(['A'], (id) => cyclicGraph.childrenOf(id)),
-    ).not.toThrow();
+  it('propagate without a visited set still covers the whole loop once', () => {
+    const step = vi.fn((id: string) => cyclicGraph.childrenOf(id));
+    const result = cyclicGraph.propagate(['A'], step);
+    expect(result).toEqual(new Set(['A', 'B', 'C']));
+    expect(step).toHaveBeenCalledTimes(3);
   });
 });
 

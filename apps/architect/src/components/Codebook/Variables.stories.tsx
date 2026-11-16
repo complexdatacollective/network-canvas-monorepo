@@ -66,6 +66,18 @@ const meta = {
   args: { entity: 'node' as const, type: 'person', variables },
 } satisfies Meta<typeof Variables>;
 
+/** The orbiting border marks a picker's held value; a table row holds none. */
+export const StaticNameBorder: Story = {
+  play: async ({ canvasElement }) => {
+    const pill = within(canvasElement).getByRole('button', {
+      name: `Edit attribute name: ${LONG_NAME}`,
+    });
+    await expect(getComputedStyle(pill).backgroundImage).not.toContain(
+      'conic-gradient',
+    );
+  },
+};
+
 export default meta;
 
 type Story = StoryObj<typeof meta>;

@@ -3,17 +3,16 @@
 import { PlusIcon } from 'lucide-react';
 import { forwardRef } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { cva, cx, type VariantProps } from '@codaco/fresco-ui/utils/cva';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import {
   actionCircleVariants,
   actionIconClass,
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from './actionButtonVariants';
+import { addButtonName } from './addButtonName';
 
 const actionButtonVariants = cva({
   base: 'group focusable relative me-4 mt-2 flex aspect-square h-26 rounded-full',
@@ -68,10 +67,10 @@ type ActionButtonProps = Omit<React.ComponentProps<'button'>, 'ref' | 'color'> &
 
 const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(
   ({ iconName, className, disabled, ...rest }, ref) => {
-    const intl = useAppIntl();
     return (
       <button
-        aria-label={intl.formatMessage(messages.addPerson)}
+        aria-label={addButtonName(iconName)}
+        lang="en"
         ref={ref}
         {...rest}
         className={cx(actionButtonVariants({ disabled }), className)}

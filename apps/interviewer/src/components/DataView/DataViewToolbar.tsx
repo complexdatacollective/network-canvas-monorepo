@@ -10,6 +10,7 @@ import { DataTableFacetedFilter } from '@codaco/fresco-ui/DataTable/DataTableFac
 import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import BooleanFilter from '@codaco/fresco-ui/DataTable/filters/BooleanFilter';
 import DateFilter from '@codaco/fresco-ui/DataTable/filters/DateFilter';
+import { type ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
   Popover,
@@ -222,7 +223,7 @@ export function DataViewToolbar({
   globalFilter: string;
   onGlobalFilterChange: (next: string) => void;
   statusCounts: SessionStatusCounts;
-  protocolOptions: { value: string; label: string }[];
+  protocolOptions: ComboboxOption[];
   selectedCount: number;
   exporting: boolean;
   deleting: boolean;

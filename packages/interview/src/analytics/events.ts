@@ -238,6 +238,7 @@ export const InterviewExceptionProperties = Schema.Union([
     is_offline: Schema.Boolean,
   }),
   Schema.Struct({ feature: Schema.Literal('external-data') }),
+  Schema.Struct({ feature: Schema.Literal('custom-shapes') }),
   Schema.Struct({ feature: Schema.Literal('geospatial-map-init') }),
   Schema.Struct({
     feature: Schema.Literal('encrypted-attributes'),

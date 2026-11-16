@@ -83,7 +83,10 @@ export default function PedigreeLayout({
 
   if (nodeWidth === 0 || nodeHeight === 0) {
     return (
-      <div className="flex size-full items-center justify-center">
+      <div
+        className="flex size-full items-center justify-center"
+        data-testid="pedigree-layout-spinner"
+      >
         <Spinner />
       </div>
     );

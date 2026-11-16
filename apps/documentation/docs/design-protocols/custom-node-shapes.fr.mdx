@@ -1,0 +1,233 @@
+---
+title: Formes de nœuds personnalisées
+navOrder: 7.5
+toc: true
+translatedFrom: b4e2ca9d36b6d4bbf09183507c06d174f1af0f60
+---
+
+<Definition>
+  Une forme de nœud personnalisée est un dessin de votre création, fourni sous
+  forme de fichier SVG, que Network Canvas utilise pour dessiner les nœuds d’un
+  type de nœud à la place d’un cercle, d’un carré ou d’un losange.
+</Definition>
+
+## Quand utiliser des formes personnalisées {#when-to-use-custom-shapes}
+
+Les formes intégrées conviennent à la plupart des études. Un dessin peut aider
+lorsque les personnes participantes doivent reconnaître d’un coup d’œil ce que
+représente un nœud. Les études menées auprès d’enfants en sont un cas
+fréquent : une maison pour un domicile, une empreinte de patte pour un animal de
+compagnie ou un livre pour une école se lisent plus facilement qu’un cercle de
+couleur.
+
+Les formes personnalisées fonctionnent partout où un nœud est dessiné, y
+compris dans les générateurs de noms, les sociogrammes, les cases (les zones où
+l’on dépose les nœuds pour les classer) et les formulaires. Vous pouvez en
+utiliser une comme forme par défaut d’un type de nœud, ou laisser un attribut
+déterminer la forme de chaque nœud.
+
+![Un générateur de noms où chaque nœud est dessiné sous la forme d’une petite illustration, comme une personne, une maison, une école ou un chien, avec le libellé du nœud sur une plaque blanche en dessous.](/assets/img/custom-node-shapes/interview-name-generator.png)
+
+<TipBox>
+
+Les formes personnalisées nécessitent un protocole en schéma 9, c’est-à-dire
+Architect 9 et, au choix, Interviewer 9 ou Fresco 5. Pour en savoir plus, consultez
+[Informations sur le schéma de
+protocole](/fr/get-started/protocol-schema-information).
+
+</TipBox>
+
+## Ajouter des formes à un type de nœud {#add-shapes-to-a-node-type}
+
+Les formes personnalisées appartiennent à un seul type de nœud. Pour en
+ajouter :
+
+1. Ouvrez le livre de codes (la définition des types de nœuds, de liens et de
+   leurs attributs, comme le dictionnaire des codes d’une enquête) et modifiez
+   le type de nœud, ou créez-en un nouveau.
+2. Repérez **Formes personnalisées** dans la section **Apparence des nœuds**.
+3. Cliquez sur **Ajouter une forme**. Une fenêtre s’ouvre, dans laquelle vous
+   pouvez importer un nouveau fichier SVG ou choisir une image SVG qui fait déjà
+   partie des ressources du protocole.
+4. Donnez un nom à la forme. Architect propose le nom du fichier. Chaque forme
+   du type de nœud doit porter un nom qu’aucune autre forme de ce type
+   n’utilise.
+
+![La boîte de dialogue de modification d’un type de nœud dans Architect. La section « Formes personnalisées » liste les formes du type de nœud, chacune avec un aperçu qui montre où se placera le libellé, un champ « Nom de la forme » et un bouton de suppression, au-dessus d’un bouton « Ajouter une forme ».](/assets/img/custom-node-shapes/architect-custom-shapes.png)
+
+Chaque forme s’affiche avec un aperçu qui comprend un exemple de libellé : vous
+pouvez ainsi vérifier où se placera le libellé avant d’utiliser la forme.
+
+Architect vérifie chaque fichier lorsque vous l’ajoutez. Un fichier qui ne peut
+pas servir de forme est refusé, avec un message qui indique ce qu’il faut
+modifier. Les règles sont décrites dans [Préparer un fichier
+SVG](#prepare-an-svg-file).
+
+Une fois ajoutée, une forme apparaît à côté du cercle, du carré et du losange
+partout où vous choisissez une forme pour ce type de nœud :
+
+- Comme **forme par défaut** du type de nœud.
+- Comme forme d’une valeur ou d’un seuil lorsque vous activez **Associer un
+  attribut à une forme**. Consultez [Associer un attribut de nœud à une
+  forme](/fr/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape).
+
+![Les paramètres « Associer un attribut à une forme » dans Architect. Sous le titre « Forme pour chaque valeur », chaque valeur d’un attribut catégoriel nommé « type » affiche son libellé au-dessus d’une série de vignettes qui proposent le cercle, le carré et le losange, suivis des formes personnalisées du type de nœud, la vignette choisie étant mise en évidence.](/assets/img/custom-node-shapes/architect-shape-mapping.png)
+
+Pour retirer une forme, cliquez sur son bouton de suppression. Une forme
+utilisée comme forme par défaut ou dans l’association de formes ne peut pas être
+retirée tant que vous n’avez pas choisi une autre forme à sa place.
+
+## Préparer un fichier SVG {#prepare-an-svg-file}
+
+Vous pouvez dessiner une forme dans n’importe quel outil qui exporte en SVG,
+comme Inkscape, Figma ou Illustrator, ou écrire le fichier à la main. Un fichier
+doit respecter quelques règles.
+
+- **Donnez un `viewBox` au dessin.** Le `viewBox` indique à Network Canvas la
+  taille du dessin. Un fichier qui n’en a pas n’est accepté que si son élément
+  `svg` a des attributs `width` et `height` numériques. Un `viewBox` carré,
+  comme `0 0 100 100`, est celui qui remplit le mieux l’espace du nœud.
+- **Gardez le fichier léger.** Une forme peut comporter au maximum 50 000
+  caractères. Les dessins simples, avec quelques couleurs unies, restent en outre lisibles lorsqu’un nœud est dessiné en petite taille.
+- **Utilisez des éléments de dessin de base.** Les tracés, rectangles, cercles,
+  ellipses, lignes, polygones, textes, groupes, dégradés, tracés de détourage et
+  masques sont tous pris en charge.
+
+Architect écarte tout ce qu’une forme de nœud ne peut pas utiliser : scripts,
+images intégrées, feuilles de style, filtres, animations, ainsi que liens ou
+références à d’autres fichiers. Dans ce cas, un avis affiché en dessous de la
+forme indique ce qui a été écarté. Vérifiez l’aperçu, car un dessin qui
+reposait sur l’un de ces éléments peut avoir un aspect différent. Pour éviter ce
+problème, convertissez les effets en éléments de dessin simples et définissez les couleurs
+directement sur chaque élément (`fill="#ffd23f"`) avant d’exporter.
+
+## Couleurs {#colors}
+
+Une forme peut utiliser ses propres couleurs fixes, les couleurs de l’entretien,
+ou un mélange des deux.
+
+Pour utiliser une couleur de l’entretien, écrivez-la sous forme de variable CSS
+dans un `fill` ou un `stroke` :
+
+| Variable                                              | Couleur                                                                |
+| ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| `var(--node-color)`                                   | La couleur du type de nœud                                             |
+| `var(--node-color-dark)`                              | Une nuance plus foncée de la couleur du type de nœud                   |
+| `var(--node-color-seq-1)` à `var(--node-color-seq-8)` | Les huit couleurs de nœud de la palette                                |
+| `var(--text)`                                         | La couleur du texte de l’entretien                                     |
+| `var(--background)`                                   | La couleur d’arrière-plan de l’entretien                               |
+| `var(--surface)`                                      | La couleur des panneaux et des cartes                                  |
+| `var(--primary)`, `var(--accent)`, `var(--selected)`  | Les couleurs principale, d’accentuation et de sélection de l’entretien |
+
+`currentColor` désigne aussi la couleur du type de nœud.
+
+Utiliser la couleur du type de nœud permet à un même ensemble de dessins de
+servir à plusieurs types de nœuds, et préserve la signification des couleurs
+dans votre étude. Dans le sociogramme ci-dessous, chaque dessin prend sa couleur
+principale du type de nœud, avec des couleurs fixes pour les détails.
+
+![Un sociogramme avec des cercles concentriques. Chaque nœud est une illustration dont la couleur principale est le bleu de son type de nœud, avec d’autres détails dans des couleurs fixes, et des liens tracés entre les nœuds.](/assets/img/custom-node-shapes/interview-sociogram.png)
+
+La plupart des outils de dessin ne comprennent pas ces variables. Donnez donc à
+chacune une couleur de repli que l’outil pourra afficher :
+`fill="var(--node-color, #e0457b)"`. Network Canvas ignore cette couleur de
+repli.
+
+## Positionner le libellé {#position-the-label}
+
+Par défaut, le libellé d’un nœud se place au milieu de la forme, dans la couleur
+du texte de l’entretien. Pour choisir son emplacement, ajoutez un rectangle dont
+l’id est `label-area` :
+
+```xml
+<rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+```
+
+Le rectangle n’est jamais dessiné. Sa position et sa taille définissent l’espace
+que le libellé peut occuper, et son `fill` définit la couleur du libellé.
+Choisissez un remplissage qui contraste avec ce qui est dessiné derrière le
+libellé.
+
+### Laisser de la place aux libellés longs {#give-long-labels-room-to-grow}
+
+La longueur des libellés varie, et ce sont les personnes participantes qui
+choisissent la plupart d’entre eux. Network Canvas fait tenir un libellé dans sa
+zone en réduisant la taille du texte par paliers, puis en coupant les mots
+longs. Un libellé qui ne tient toujours pas se termine par des points de
+suspension à la dernière ligne complète. Les personnes participantes peuvent
+appuyer longuement sur un nœud pour lire le libellé en entier.
+
+Si votre dessin comporte un élément de fond placé derrière le libellé, comme une plaque blanche
+ou une banderole, vous pouvez le faire grandir avec le libellé. Donnez à ce
+rectangle l’id `label-plate` :
+
+```xml
+<rect id="label-plate" x="10" y="62" width="80" height="32" rx="9" fill="#ffffff"/>
+<rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+```
+
+Contrairement à la zone de libellé, la plaque de libellé est dessinée. Lorsqu’un
+libellé a besoin de plus de lignes que la zone de libellé ne peut en contenir,
+Network Canvas agrandit la plaque vers le bas pour y faire tenir jusqu’à quatre
+lignes. Les libellés plus longs se terminent par des points de suspension, comme
+auparavant.
+
+Une plaque de libellé doit être un `rect` avec un attribut `height` numérique.
+Elle ne peut pas être pivotée ni transformée d’une autre manière, et une forme ne
+peut en avoir qu’une. Elle n’a d’effet que si la forme possède aussi une zone de
+libellé.
+
+<TipBox>
+
+Une plaque qui s’est agrandie dépasse en dessous de la forme. Si vous vous
+attendez à des libellés longs, laissez un peu d’espace sous la base du dessin,
+et faites des essais avec les libellés les plus longs que vous prévoyez dans le
+[mode aperçu](/fr/design-protocols/preview-mode).
+
+</TipBox>
+
+## Exemple {#example}
+
+Cette forme dessine une maison. Le toit et la porte utilisent la couleur du type
+de nœud, les murs et les fenêtres utilisent des couleurs fixes, et le libellé
+repose sur une plaque qui s’agrandit.
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g stroke="#2b2340" stroke-width="3" stroke-linejoin="round">
+    <rect x="18" y="32" width="64" height="34" fill="#ffe2b0"/>
+    <path d="M8 37 L50 8 L92 37 Z" fill="var(--node-color, #e0457b)"/>
+    <rect x="24" y="42" width="13" height="12" rx="2" fill="#a7d8f0"/>
+    <rect x="63" y="42" width="13" height="12" rx="2" fill="#a7d8f0"/>
+    <path d="M43 66 V50 C43 46 46 44 50 44 C54 44 57 46 57 50 V66 Z"
+          fill="var(--node-color-dark, #c22f63)"/>
+  </g>
+  <rect id="label-plate" x="10" y="62" width="80" height="32" rx="9"
+        fill="#ffffff" stroke="#2b2340" stroke-width="3"/>
+  <rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+</svg>
+```
+
+<DownloadLink href="/assets/custom-node-shape-example.svg">
+  Télécharger un exemple complet de forme
+</DownloadLink>
+
+## Points à garder à l’esprit {#things-to-keep-in-mind}
+
+- **Les formes sont des ressources du protocole.** Chaque fichier SVG est
+  enregistré dans le fichier du protocole avec ses autres ressources : vous
+  n’avez donc pas besoin de conserver les fichiers d’origine à côté. La même
+  image peut servir à plusieurs types de nœuds.
+- **Les personnes participantes ont toujours besoin du libellé.** Un dessin
+  montre quel genre de chose représente un nœud, et le libellé indique de quel nœud précis il s’agit.
+  Laissez-lui assez de place.
+- **La sélection et les autres états s’affichent autour de la forme.** Lorsqu’un
+  nœud est sélectionné, mis en évidence ou en train d’être relié, Network Canvas
+  dessine cet état autour de la forme : votre dessin n’a donc pas besoin de ses
+  propres variantes.
+- **Faites des essais en petite taille.** Les nœuds sont dessinés plus petits
+  sur les écrans chargés et sur les téléphones. Les détails fins et les traits
+  minces peuvent disparaître.
+- **Le texte d’un dessin n’est pas traduit.** Si votre protocole est proposé en
+  plusieurs langues, évitez de mettre des mots dans le dessin et laissez le
+  libellé les porter.

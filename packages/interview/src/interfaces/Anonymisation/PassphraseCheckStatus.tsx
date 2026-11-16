@@ -1,11 +1,8 @@
 'use client';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 
 /**
  * Says, visibly and to assistive technology, that the passphrase in the
@@ -31,8 +28,9 @@ export default function PassphraseCheckStatus({
       {isSubmitting && (
         <>
           <Spinner size="xs" />
-          <span className="sr-only">
-            <AppMessage message={runtimeMessages.checkingPassphrase} />
+          <span className="sr-only" lang="en">
+            {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+            {'Checking your passphrase…'}
           </span>
         </>
       )}

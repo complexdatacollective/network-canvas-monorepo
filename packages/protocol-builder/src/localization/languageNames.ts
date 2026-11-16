@@ -2,12 +2,6 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { getLocaleMetadata, type LocaleTag } from '@codaco/protocol-validation';
 
 export const languageMessages = defineMessages({
-  editingLanguage: {
-    id: 'protocolBuilder.localization.editingLanguage',
-    defaultMessage: 'Editing language',
-    description:
-      'Accessible name of the menu that chooses which of the protocol languages the researcher is writing text in, or previewing a form field in.',
-  },
   defaultLanguage: {
     id: 'protocolBuilder.localization.defaultLanguage',
     defaultMessage: 'Default',

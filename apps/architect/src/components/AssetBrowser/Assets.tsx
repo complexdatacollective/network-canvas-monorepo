@@ -61,18 +61,6 @@ const configMessages = defineMessages({
   },
 });
 const messages = defineMessages({
-  filterResourcesByType: {
-    id: 'architect.assetBrowser.assets.filterResourcesByType',
-    defaultMessage: 'Filter resources by type',
-    description:
-      'Accessible name of the switcher above the resource library that filters resources by kind; read only by screen readers.',
-  },
-  resourceLibrary: {
-    id: 'architect.assetBrowser.assets.resourceLibrary',
-    defaultMessage: 'Resource library',
-    description:
-      'Accessible name of the grid of resource cards in the resource library; read only by screen readers.',
-  },
   noResourcesToDisplay: {
     id: 'architect.assetBrowser.assets.noResourcesToDisplay',
     defaultMessage: 'No resources to display.',
@@ -214,7 +202,7 @@ const Assets = ({
     <div className="flex min-h-0 flex-col gap-5">
       {!type && (
         <SegmentedSwitcher
-          aria-label={intl.formatMessage(messages.filterResourcesByType)}
+          aria-label="Filter resources by type"
           options={formatConfig(ASSET_TYPES, intl)}
           value={selectedAssetType}
           onValueChange={handleAssetTypeChange}
@@ -223,7 +211,7 @@ const Assets = ({
         />
       )}
       <Collection
-        aria-label={intl.formatMessage(messages.resourceLibrary)}
+        aria-label="Resource library"
         items={assets}
         keyExtractor={(asset) => asset.id}
         textValueExtractor={assetName}

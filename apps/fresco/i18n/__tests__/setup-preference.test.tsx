@@ -45,7 +45,7 @@ await frescoCatalogSource.load('es');
 const chooseLanguage = async (name: RegExp) => {
   fireEvent.click(
     screen.getByRole('combobox', {
-      name: /^(Interface language|Idioma de la interfaz):/,
+      name: /^Interface language:/,
     }),
   );
   const popover = await screen.findByRole('dialog');

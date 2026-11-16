@@ -22,8 +22,9 @@ const baseLetter = (letter: string) =>
 
 const isVowel = (letter: string) => VOWEL.test(baseLetter(letter));
 
-// Consonant pairs that begin a syllable together: "Su-bra", not "Sub-ra".
-const ONSET = /^(?:[bcdfgkpstvw][lr]|s[ptkcwnm]|tw|kn|wr)$/i;
+// Consonant pairs that begin a syllable together: "Su-bra", not "Sub-ra", and
+// "Some-thing" rather than no break at all.
+const ONSET = /^(?:[bcdfgkpstvw][lr]|s[ptkcwnm]|tw|kn|wr|[cpstw]h)$/i;
 
 /**
  * Whether a word may be broken before its `index`th letter, by the common

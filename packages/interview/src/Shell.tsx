@@ -40,6 +40,7 @@ import {
   InterviewCompletionProvider,
   useInterviewCompletion,
 } from './contexts/InterviewCompletionContext';
+import { InterviewQueryClientProvider } from './contexts/InterviewQueryClientProvider';
 import { StageMetadataProvider } from './contexts/StageMetadataContext';
 import { ContractProvider } from './contract/context';
 import type {
@@ -943,38 +944,42 @@ const Shell = ({
                 flags={flags}
                 finishConfirmationDescription={finishConfirmationDescription}
               >
-                <InterviewCompletionProvider
-                  // A new payload is a new interview.
-                  key={payload.session.id}
-                  initialCompletion={initialCompletion}
-                  completedActions={completedActions}
+                <InterviewQueryClientProvider
+                  protocolKey={`${payload.protocol.id}\n${payload.protocol.hash}\n${payload.protocol.importedAt}`}
                 >
-                  <CurrentStepProvider
-                    currentStep={reviewEntry.currentStep}
-                    onStepChange={onStepChange}
+                  <InterviewCompletionProvider
+                    // A new payload is a new interview.
+                    key={payload.session.id}
+                    initialCompletion={initialCompletion}
+                    completedActions={completedActions}
                   >
-                    <NodeLabelWorkerProvider>
-                      <Interview
-                        onExit={onExit}
-                        hideNavigation={hideNavigation}
-                        navigationOrientation={navigationOrientation}
-                        navigationClassnames={navigationClassnames}
-                        allowStageNavigation={
-                          allowStageNavigation &&
-                          (currentStep === undefined ||
-                            onStepChange !== undefined)
-                        }
-                        allowUserScaling={allowUserScaling}
-                        initialTextScale={initialTextScale}
-                        onTextScaleChange={onTextScaleChange}
-                        initialStageOverrideIndex={
-                          reviewEntry.initialStageOverrideIndex
-                        }
-                        reviewMode={reviewMode}
-                      />
-                    </NodeLabelWorkerProvider>
-                  </CurrentStepProvider>
-                </InterviewCompletionProvider>
+                    <CurrentStepProvider
+                      currentStep={reviewEntry.currentStep}
+                      onStepChange={onStepChange}
+                    >
+                      <NodeLabelWorkerProvider>
+                        <Interview
+                          onExit={onExit}
+                          hideNavigation={hideNavigation}
+                          navigationOrientation={navigationOrientation}
+                          navigationClassnames={navigationClassnames}
+                          allowStageNavigation={
+                            allowStageNavigation &&
+                            (currentStep === undefined ||
+                              onStepChange !== undefined)
+                          }
+                          allowUserScaling={allowUserScaling}
+                          initialTextScale={initialTextScale}
+                          onTextScaleChange={onTextScaleChange}
+                          initialStageOverrideIndex={
+                            reviewEntry.initialStageOverrideIndex
+                          }
+                          reviewMode={reviewMode}
+                        />
+                      </NodeLabelWorkerProvider>
+                    </CurrentStepProvider>
+                  </InterviewCompletionProvider>
+                </InterviewQueryClientProvider>
               </ContractProvider>
             </WritesInFlightProvider>
           </SyncFlushProvider>

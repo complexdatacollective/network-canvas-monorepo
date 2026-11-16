@@ -23,12 +23,6 @@ import { cva, cx, type VariantProps } from './utils/cva';
 import { fitToastStack } from './utils/fitToastStack';
 
 const messages = defineMessages({
-  notifications: {
-    id: 'frescoUi.toast.notifications',
-    defaultMessage: 'Notifications',
-    description:
-      'Accessible name of the region containing status notifications and alerts.',
-  },
   moreNotifications: {
     id: 'frescoUi.toast.moreNotifications',
     defaultMessage:
@@ -406,7 +400,7 @@ export function Toaster() {
     <Toast.Portal container={portalContainer ?? undefined}>
       <Toast.Viewport
         ref={setViewport}
-        aria-label={intl.formatMessage(messages.notifications)}
+        aria-label="Notifications"
         data-testid="toast-viewport"
         className={cx(
           'group/toasts phone-landscape:max-w-sm fixed top-auto bottom-2 mx-auto flex w-full',

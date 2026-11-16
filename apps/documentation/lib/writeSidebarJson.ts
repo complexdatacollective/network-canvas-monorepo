@@ -42,6 +42,7 @@ function generateSidebarData() {
   const sidebarData: TSideBar = {
     en: emptyLocaleDefinition(),
     es: emptyLocaleDefinition(),
+    fr: emptyLocaleDefinition(),
   };
 
   const sortedFiles = sortDirectoryListing(files);

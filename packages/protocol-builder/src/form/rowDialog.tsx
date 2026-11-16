@@ -40,24 +40,6 @@ import { EditedRowContext, type EditedRowScope } from './editedRow.ts';
 export type RowValues = Record<string, unknown>;
 
 const messages = defineMessages({
-  deleteRow: {
-    id: 'protocolBuilder.arrayField.deleteRow',
-    defaultMessage: 'Delete {itemLabel}',
-    description:
-      'Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
-  },
-  editRow: {
-    id: 'protocolBuilder.arrayField.editRow',
-    defaultMessage: 'Edit {itemLabel}',
-    description:
-      'Accessible name of the button that opens one row of a list in its editing dialog. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
-  },
-  reorderRow: {
-    id: 'protocolBuilder.arrayField.reorderRow',
-    defaultMessage: 'Reorder {itemLabel} {position} of {count, number}',
-    description:
-      'Accessible name of the handle that drags one row of a list into a different position. itemLabel is the list’s own noun for one of its rows, already in the reader’s language; position is the row’s own place in the list, counting from one; count is how many rows the list holds.',
-  },
   addSubmit: {
     id: 'protocolBuilder.arrayField.addSubmit',
     defaultMessage: 'Add',
@@ -318,14 +300,7 @@ export function RowListItem({
           itemCount={itemCount}
           onMove={onMove}
           disabled={interactionDisabled}
-          label={intl.formatMessage(messages.reorderRow, {
-            itemLabel: noun,
-            // The row's own place in the list, which the researcher reads as
-            // this row's number rather than as a quantity — so it is passed as
-            // they would say it, ungrouped.
-            position: String(index + 1),
-            count: itemCount,
-          })}
+          label={`Reorder ${noun} ${index + 1} of ${itemCount}`}
         />
       )}
       <div className="min-w-0 flex-1">
@@ -334,7 +309,8 @@ export function RowListItem({
       <IconButton
         ref={editTriggerRef}
         icon={<Pencil />}
-        aria-label={intl.formatMessage(messages.editRow, { itemLabel: noun })}
+        aria-label={`Edit ${noun}`}
+        lang="en"
         color="dynamic"
         disabled={interactionDisabled}
         onClick={onEdit}
@@ -342,7 +318,8 @@ export function RowListItem({
       <IconButton
         ref={deleteTriggerRef}
         icon={<Trash2 />}
-        aria-label={intl.formatMessage(messages.deleteRow, { itemLabel: noun })}
+        aria-label={`Delete ${noun}`}
+        lang="en"
         color="destructive"
         disabled={interactionDisabled}
         onClick={onDelete}

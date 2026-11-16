@@ -170,18 +170,20 @@ describe('canRedo', () => {
 describe('getCanUndo / getCanRedo', () => {
   it.each(undoCases)(
     'never offers an undo the reducer would drop with $name',
-    ({ state, reducerApplies, selectorOffers }) => {
-      expect(getCanUndo(asRootState(state))).toBe(selectorOffers);
+    ({ state, selectorOffers }) => {
+      const offered = getCanUndo(asRootState(state));
+      expect(offered).toBe(selectorOffers);
       // The implication that matters: offering it means it happens.
-      expect(selectorOffers && !reducerApplies).toBe(false);
+      expect(offered && !applies(state, timelineActions.undo())).toBe(false);
     },
   );
 
   it.each(redoCases)(
     'never offers a redo the reducer would drop with $name',
-    ({ state, reducerApplies, selectorOffers }) => {
-      expect(getCanRedo(asRootState(state))).toBe(selectorOffers);
-      expect(selectorOffers && !reducerApplies).toBe(false);
+    ({ state, selectorOffers }) => {
+      const offered = getCanRedo(asRootState(state));
+      expect(offered).toBe(selectorOffers);
+      expect(offered && !applies(state, timelineActions.redo())).toBe(false);
     },
   );
 

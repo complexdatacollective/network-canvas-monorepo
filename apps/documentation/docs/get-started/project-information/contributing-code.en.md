@@ -40,7 +40,7 @@ The Network Canvas project repositories (“main repositories”) are located un
 
 The core Network Canvas project team consists of the following individuals:
 
-- Michelle Birket
+- Michelle Birkett
 - Gregory Phillips II
 - Patrick Janulis
 - Bernie Hogan

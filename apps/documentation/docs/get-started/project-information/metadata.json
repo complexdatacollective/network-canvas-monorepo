@@ -3,11 +3,13 @@
   "navOrder": 5,
   "localeLabels": {
     "en": "Project Information",
-    "es": "Información del proyecto"
+    "es": "Información del proyecto",
+    "fr": "Informations sur le projet"
   },
   "localeIndexFiles": {
     "en": "project-overview.en.mdx",
-    "es": "project-overview.es.mdx"
+    "es": "project-overview.es.mdx",
+    "fr": "project-overview.fr.mdx"
   },
   "isExpanded": true,
   "slug": "project-information"

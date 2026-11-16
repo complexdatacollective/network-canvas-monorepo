@@ -38,13 +38,13 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
+import { addButtonName } from '../../../components/addButtonName';
 import PassphraseEntry from '../../../components/PassphraseEntry';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import { LocalizedText } from '../../../localization/LocalizedText';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
@@ -242,7 +242,8 @@ const NodeForm = (props: NodeFormProps) => {
             type="button"
             onClick={() => setShow(true)}
             disabled={disabled}
-            aria-label={intl.formatMessage(runtimeMessages.addPerson)}
+            aria-label={addButtonName(icon)}
+            lang="en"
             className="focusable relative aspect-square size-28 rounded-full"
           >
             <motion.div

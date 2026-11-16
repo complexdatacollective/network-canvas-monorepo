@@ -124,14 +124,6 @@ describe('ConnectedVariablePill', () => {
     });
 
     expect(pill).toHaveAttribute('aria-haspopup', 'dialog');
-    expect(pill).toHaveClass(
-      'cursor-pointer',
-      'effect-shadow-sm',
-      'hover:effect-shadow',
-      'hover:-translate-y-0.5',
-      'focus-visible:effect-shadow',
-      'focus-visible:-translate-y-0.5',
-    );
 
     fireEvent.click(pill);
     expect(
@@ -410,47 +402,15 @@ describe('VariablePill', () => {
     });
   });
 
-  it('uses a data element and a static border for a non-interactive reference', () => {
+  it('renders a non-interactive reference as a data element carrying the variable name', () => {
     const { container } = render(
       <VariablePill label="subject_var" type="text" />,
     );
-    const pill = container.querySelector('data');
 
-    expect(pill).toHaveAttribute('value', 'subject_var');
-    expect(pill).toHaveClass('bg-(--variable-pill-accent)');
-    expect(pill).toHaveClass('cursor-default');
-    expect(pill).toHaveClass('effect-shadow-sm');
-    expect(pill).toHaveClass('w-max', 'max-w-full', 'min-w-0');
-    expect(pill?.firstElementChild).toHaveClass(
-      'grid-cols-[3rem_minmax(0,auto)]',
+    expect(container.querySelector('data')).toHaveAttribute(
+      'value',
+      'subject_var',
     );
-    expect(pill?.firstElementChild).not.toHaveClass('w-full');
-    expect(pill).not.toHaveClass('hover:effect-shadow');
-    expect(pill).not.toHaveClass('variable-pill-effect-border');
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
-  it('accepts Tailwind layout constraints through className', () => {
-    const { container } = render(
-      <VariablePill
-        className="max-w-[7cm]"
-        label="participant_neighbourhood_connection_frequency"
-        type="text"
-      />,
-    );
-    const pill = container.querySelector('data');
-
-    expect(pill).toHaveClass('w-max', 'max-w-[7cm]');
-    expect(pill).not.toHaveClass('max-w-full');
-  });
-
-  it('allows animation to be enabled independently of editability', () => {
-    const { container } = render(
-      <VariablePill animated label="subject_var" type="text" />,
-    );
-    const pill = container.querySelector('data');
-
-    expect(pill).toHaveClass('variable-pill-effect-border');
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

@@ -22,6 +22,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import protocol from '../../../store/modules/protocol';
@@ -148,17 +149,19 @@ function renderInterface({
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <StageMetadataContext.Provider value={registerBeforeNext}>
-              <TestProtocolLocalization>{children}</TestProtocolLocalization>
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
-        </ContractProvider>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider value={registerBeforeNext}>
+                <TestProtocolLocalization>{children}</TestProtocolLocalization>
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </ContractProvider>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }
@@ -300,6 +303,7 @@ describe('NetworkComposer quick-add honours codebook validation', () => {
       expect(store.getState().session.network.nodes).toHaveLength(1);
       expect(input).toHaveValue('');
     });
+    // Long enough for a stale validation of the emptied field to land.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });

@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import Field from '../../form/Field/Field';
 import InputField from '../../form/fields/InputField';
@@ -17,7 +17,6 @@ import type {
 } from '../../form/store/types';
 import type {
   AcknowledgeDialog,
-  AnyDialog,
   ChoiceDialog,
   CustomDialog,
   DialogReturnType,
@@ -26,51 +25,34 @@ import DialogProvider from '../DialogProvider';
 import useDialog from '../useDialog';
 
 describe('DialogReturnType', () => {
-  describe('type inference', () => {
-    it('should infer true | null for AcknowledgeDialog', () => {
-      type Result = DialogReturnType<AcknowledgeDialog>;
+  it('is true | null for an acknowledge dialog', () => {
+    expectTypeOf<DialogReturnType<AcknowledgeDialog>>().toEqualTypeOf<
+      true | null
+    >();
+  });
 
-      // Type assertion - if this compiles, the type is correct
-      const results: Result[] = [null, true];
+  it('is the union of the action values, or null, for a choice dialog', () => {
+    expectTypeOf<
+      DialogReturnType<ChoiceDialog<'confirm', 'skip', 'cancel'>>
+    >().toEqualTypeOf<'confirm' | 'skip' | 'cancel' | null>();
+    expectTypeOf<
+      DialogReturnType<ChoiceDialog<true, never, false>>
+    >().toEqualTypeOf<boolean | null>();
+  });
 
-      expect(results[0]).toBeNull();
-      expect(results[1]).toBe(true);
-    });
+  it('is unknown for a custom dialog', () => {
+    expectTypeOf<DialogReturnType<CustomDialog>>().toEqualTypeOf<unknown>();
+  });
+});
 
-    it('should infer union of action values for ChoiceDialog', () => {
-      type TestDialog = ChoiceDialog<'confirm', 'skip', 'cancel'>;
-      type Result = DialogReturnType<TestDialog>;
-
-      // These assignments should all compile
-      const results: Result[] = ['confirm', 'skip', 'cancel', null];
-
-      expect(results[0]).toBe('confirm');
-    });
-
-    it('should infer boolean union for ChoiceDialog with boolean values', () => {
-      type TestDialog = ChoiceDialog<true, never, false>;
-      type Result = DialogReturnType<TestDialog>;
-
-      const results: Result[] = [true, false, null];
-
-      expect(results[0]).toBe(true);
-    });
-
-    it('should infer unknown for CustomDialog', () => {
-      type Result = DialogReturnType<CustomDialog>;
-
-      // unknown accepts any value
-      const _result: Result = 'anything';
-      expect(_result).toBe('anything');
-    });
-
-    it('should handle optional secondary in ChoiceDialog', () => {
-      type TestDialog = ChoiceDialog<'yes', unknown, 'no'>;
-      type Result = DialogReturnType<TestDialog>;
-
-      const _result: Result = 'yes';
-      expect(_result).toBe('yes');
-    });
+describe('Dialog type constraints', () => {
+  it('requires intent on a choice dialog but not on an acknowledge dialog', () => {
+    expectTypeOf<{ intent?: undefined }>().not.toExtend<
+      Pick<ChoiceDialog, 'intent'>
+    >();
+    expectTypeOf<{ intent?: undefined }>().toExtend<
+      Pick<AcknowledgeDialog, 'intent'>
+    >();
   });
 });
 
@@ -83,79 +65,6 @@ describe('DialogProvider', () => {
       expect(() => {
         renderHook(() => useDialog());
       }).toThrow('useDialog must be used within a DialogProvider');
-    });
-
-    it('should return openDialog and closeDialog functions', () => {
-      const { result } = renderHook(() => useDialog(), { wrapper });
-
-      expect(result.current.openDialog).toBeInstanceOf(Function);
-      expect(result.current.closeDialog).toBeInstanceOf(Function);
-    });
-  });
-
-  describe('openDialog', () => {
-    it('should open an acknowledge dialog and resolve with primary value', async () => {
-      const { result } = renderHook(() => useDialog(), { wrapper });
-
-      let dialogResult: boolean | null = null;
-
-      act(() => {
-        void result.current
-          .openDialog({
-            type: 'acknowledge',
-            title: 'Test',
-            description: 'Test description',
-            actions: {
-              primary: { label: 'OK', value: true },
-            },
-          })
-          .then((r) => {
-            dialogResult = r;
-            return undefined;
-          });
-      });
-
-      // Close the dialog with the primary value
-      await act(async () => {
-        // Need to wait for dialog to be registered
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
-
-      // The dialog should be open, close it
-      act(() => {
-        // Dialog IDs are generated, so we'd need to track them
-        // For now, verify the promise is pending
-        expect(dialogResult).toBeNull();
-      });
-    });
-
-    it('should open a choice dialog', async () => {
-      const { result } = renderHook(() => useDialog(), { wrapper });
-
-      let dialogPromise: Promise<unknown>;
-
-      act(() => {
-        dialogPromise = result.current.openDialog({
-          type: 'choice',
-          title: 'Confirm',
-          description: 'Are you sure?',
-          intent: 'destructive',
-          actions: {
-            primary: { label: 'Yes', value: 'yes' as const },
-            cancel: { label: 'No', value: 'no' as const },
-          },
-        });
-      });
-
-      // Verify the promise was created
-      expect(dialogPromise!).toBeInstanceOf(Promise);
-
-      // openDialog defers its setDialogs update to a microtask, so the dialog
-      // mounts after this synchronous act() exits. Flush that update inside an
-      // act() scope so the resulting render isn't reported as an un-acted update.
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
     });
   });
 
@@ -222,7 +131,9 @@ describe('DialogProvider', () => {
       // closeDialog silently returns for non-existent/already-closed dialogs
       // to prevent double-close race conditions
       await act(async () => {
-        await result.current.closeDialog('non-existent-id', true);
+        await expect(
+          result.current.closeDialog('non-existent-id', true),
+        ).resolves.toBeUndefined();
       });
     });
   });
@@ -289,95 +200,6 @@ describe('DialogProvider', () => {
 
       expect(resolved).toBe(true);
     });
-  });
-});
-
-describe('Dialog type constraints', () => {
-  it('should require intent for choice dialogs', () => {
-    const choiceDialog: ChoiceDialog<boolean, never, boolean> = {
-      type: 'choice',
-      title: 'Test',
-      description: 'Test',
-      intent: 'destructive', // Required for choice dialogs
-      actions: {
-        primary: { label: 'Yes', value: true },
-        cancel: { label: 'No', value: false },
-      },
-    };
-
-    expect(choiceDialog.intent).toBe('destructive');
-  });
-
-  it('should allow optional intent for acknowledge dialogs', () => {
-    const acknowledgeDialog: AcknowledgeDialog = {
-      type: 'acknowledge',
-      title: 'Test',
-      description: 'Test',
-      // intent is optional
-      actions: {
-        primary: { label: 'OK', value: true },
-      },
-    };
-
-    expect(acknowledgeDialog.intent).toBeUndefined();
-  });
-
-  it('should allow optional secondary action in choice dialogs', () => {
-    const dialogWithSecondary: ChoiceDialog<'yes', 'maybe', 'no'> = {
-      type: 'choice',
-      title: 'Test',
-      description: 'Test',
-      intent: 'default',
-      actions: {
-        primary: { label: 'Yes', value: 'yes' },
-        secondary: { label: 'Maybe', value: 'maybe' },
-        cancel: { label: 'No', value: 'no' },
-      },
-    };
-
-    const dialogWithoutSecondary: ChoiceDialog<'yes', unknown, 'no'> = {
-      type: 'choice',
-      title: 'Test',
-      description: 'Test',
-      intent: 'default',
-      actions: {
-        primary: { label: 'Yes', value: 'yes' },
-        cancel: { label: 'No', value: 'no' },
-      },
-    };
-
-    expect(dialogWithSecondary.actions.secondary?.value).toBe('maybe');
-    expect(dialogWithoutSecondary.actions.secondary).toBeUndefined();
-  });
-
-  it('should satisfy AnyDialog constraint for all dialog types', () => {
-    const acknowledge: AnyDialog = {
-      type: 'acknowledge',
-      title: 'Test',
-      description: 'Test',
-      actions: { primary: { label: 'OK', value: true } },
-    };
-
-    const choice: AnyDialog = {
-      type: 'choice',
-      title: 'Test',
-      description: 'Test',
-      intent: 'default',
-      actions: {
-        primary: { label: 'Yes', value: true },
-        cancel: { label: 'No', value: false },
-      },
-    };
-
-    const custom: AnyDialog = {
-      type: 'custom',
-      title: 'Test',
-      description: 'Test',
-    };
-
-    expect(acknowledge.type).toBe('acknowledge');
-    expect(choice.type).toBe('choice');
-    expect(custom.type).toBe('custom');
   });
 });
 
@@ -455,13 +277,7 @@ describe('Dialog button actions', () => {
     // Wait for dialog to appear and click OK
     const okButton = await screen.findByRole('button', { name: 'OK' });
     await user.click(okButton);
-
-    // Wait for animation timeout (500ms in DialogProvider)
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(capturedResult).toBe(true);
+    await waitFor(() => expect(capturedResult).toBe(true));
   });
 
   it('should return primary value when clicking primary button in choice dialog', async () => {
@@ -483,11 +299,7 @@ describe('Dialog button actions', () => {
     });
     await user.click(confirmButton);
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(capturedResult).toBe('confirmed');
+    await waitFor(() => expect(capturedResult).toBe('confirmed'));
   });
 
   it('should return secondary value when clicking secondary button in choice dialog', async () => {
@@ -507,11 +319,7 @@ describe('Dialog button actions', () => {
     const maybeButton = await screen.findByRole('button', { name: 'Maybe' });
     await user.click(maybeButton);
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(capturedResult).toBe('maybe');
+    await waitFor(() => expect(capturedResult).toBe('maybe'));
   });
 
   it('should return cancel value when clicking cancel button in choice dialog', async () => {
@@ -531,11 +339,7 @@ describe('Dialog button actions', () => {
     const cancelButton = await screen.findByRole('button', { name: 'Cancel' });
     await user.click(cancelButton);
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(capturedResult).toBe('cancelled');
+    await waitFor(() => expect(capturedResult).toBe('cancelled'));
   });
 
   it('should return null when dialog is closed via closeDialog without a value', async () => {
@@ -578,22 +382,13 @@ describe('Dialog button actions', () => {
     // Open the dialog
     await user.click(screen.getByText('Test'));
 
-    // Wait for dialog to be registered
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
+    await screen.findByRole('dialog');
 
     // Close with null (simulating backdrop click or escape)
     await act(async () => {
       await closeDialogRef?.('test-null-close', null);
     });
-
-    // Wait for animation timeout
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(capturedResult).toBeNull();
+    await waitFor(() => expect(capturedResult).toBeNull());
   });
 });
 
@@ -628,125 +423,6 @@ describe('confirm with async onConfirm', () => {
     );
   }
 
-  it('should return true when async onConfirm completes successfully', async () => {
-    const user = userEvent.setup();
-    let capturedResult: unknown = 'not-set';
-
-    render(
-      <DialogProvider>
-        <AsyncConfirmTestComponent
-          onResult={(r) => (capturedResult = r)}
-          onConfirmFn={async () => {
-            await new Promise<void>((resolve) => setTimeout(resolve, 50));
-          }}
-        />
-      </DialogProvider>,
-    );
-
-    await user.click(
-      screen.getByRole('button', { name: 'Open Async Confirm' }),
-    );
-
-    const runButton = await screen.findByRole('button', { name: 'Run Action' });
-    await user.click(runButton);
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-    });
-
-    expect(capturedResult).toBe(true);
-  });
-
-  it('should show loading state on primary button during async action', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <DialogProvider>
-        <AsyncConfirmTestComponent
-          onResult={() => undefined}
-          onConfirmFn={async () => {
-            await new Promise<void>((resolve) => setTimeout(resolve, 500));
-          }}
-        />
-      </DialogProvider>,
-    );
-
-    await user.click(
-      screen.getByRole('button', { name: 'Open Async Confirm' }),
-    );
-
-    const runButton = await screen.findByRole('button', { name: 'Run Action' });
-    await user.click(runButton);
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    // While the action runs the primary button keeps its label and is disabled.
-    const loadingButton = await screen.findByRole('button', {
-      name: 'Run Action',
-    });
-    await waitFor(() => expect(loadingButton).toBeDisabled());
-
-    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-    expect(cancelButton).toBeDisabled();
-    expect(
-      screen.queryByRole('button', { name: 'Close' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('cannot be cancelled or dismissed while an action that ignores its signal runs, and resolves as confirmed once it completes', async () => {
-    const user = userEvent.setup();
-    let capturedResult: unknown = 'not-set';
-    let finishWork: () => void = () => undefined;
-    let workCompleted = false;
-
-    render(
-      <DialogProvider>
-        <AsyncConfirmTestComponent
-          onResult={(r) => (capturedResult = r)}
-          // Like a server action: once started it runs to completion.
-          onConfirmFn={() =>
-            new Promise<void>((resolve) => {
-              finishWork = () => {
-                workCompleted = true;
-                resolve();
-              };
-            })
-          }
-        />
-      </DialogProvider>,
-    );
-
-    await user.click(
-      screen.getByRole('button', { name: 'Open Async Confirm' }),
-    );
-    await user.click(await screen.findByRole('button', { name: 'Run Action' }));
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Run Action' })).toBeDisabled(),
-    );
-
-    // Every way out is refused while the work runs.
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await user.keyboard('{Escape}');
-    await user.click(document.body);
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-    expect(screen.getByRole('dialog')).toBeVisible();
-    expect(capturedResult).toBe('not-set');
-
-    // The work completes, and the confirm says so.
-    await act(async () => {
-      finishWork();
-    });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-    expect(workCompleted).toBe(true);
-    expect(capturedResult).toBe(true);
-  });
-
   it('refuses a Cancel made in the same task as the confirming click, and runs the action once', async () => {
     const user = userEvent.setup();
     let capturedResult: unknown = 'not-set';
@@ -778,6 +454,8 @@ describe('confirm with async onConfirm', () => {
       run.click();
       cancel.click();
     });
+    // Longer than the 500 ms close delay, so a Cancel that was honoured would
+    // have resolved the confirm by now.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
@@ -788,10 +466,7 @@ describe('confirm with async onConfirm', () => {
     await act(async () => {
       finishWork();
     });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-    expect(capturedResult).toBe(true);
+    await waitFor(() => expect(capturedResult).toBe(true));
   });
 
   it('can be cancelled again once a failed action has settled', async () => {
@@ -826,10 +501,7 @@ describe('confirm with async onConfirm', () => {
     expect(await screen.findByText('Not deleted.')).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-    expect(capturedResult).toBe(false);
+    await waitFor(() => expect(capturedResult).toBe(false));
   });
 
   it('shows an AbortError the dialog did not cause as a failure, so the dialog is not left waiting', async () => {
@@ -857,47 +529,6 @@ describe('confirm with async onConfirm', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Run Action' })).toBeEnabled();
-  });
-
-  it('should return false when user cancels during an abortable async action', async () => {
-    const user = userEvent.setup();
-    let capturedResult: unknown = 'not-set';
-
-    render(
-      <DialogProvider>
-        <AsyncConfirmTestComponent
-          onResult={(r) => (capturedResult = r)}
-          abortable
-          onConfirmFn={async (signal) => {
-            await new Promise<void>((_resolve, reject) => {
-              signal.addEventListener('abort', () => {
-                reject(new DOMException('Aborted', 'AbortError'));
-              });
-            });
-          }}
-        />
-      </DialogProvider>,
-    );
-
-    await user.click(
-      screen.getByRole('button', { name: 'Open Async Confirm' }),
-    );
-
-    const runButton = await screen.findByRole('button', { name: 'Run Action' });
-    await user.click(runButton);
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-
-    const cancelButton = await screen.findByRole('button', { name: 'Cancel' });
-    await user.click(cancelButton);
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-    });
-
-    expect(capturedResult).toBe(false);
   });
 
   it('aborts an abortable action and resolves as dismissed on Escape', async () => {
@@ -932,12 +563,9 @@ describe('confirm with async onConfirm', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
 
     await user.keyboard('{Escape}');
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
 
+    await waitFor(() => expect(capturedResult).toBeNull());
     expect(aborted).toBe(true);
-    expect(capturedResult).toBeNull();
   });
 
   it('should show error message when async onConfirm throws', async () => {
@@ -989,11 +617,7 @@ describe('confirm with async onConfirm', () => {
     const cancelButton = await screen.findByRole('button', { name: 'Cancel' });
     await user.click(cancelButton);
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-    });
-
-    expect(capturedResult).toBe(false);
+    await waitFor(() => expect(capturedResult).toBe(false));
   });
 
   it('should work with sync onConfirm', async () => {
@@ -1019,12 +643,8 @@ describe('confirm with async onConfirm', () => {
     const runButton = await screen.findByRole('button', { name: 'Run Action' });
     await user.click(runButton);
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-    });
-
+    await waitFor(() => expect(capturedResult).toBe(true));
     expect(callbackCalled).toBe(true);
-    expect(capturedResult).toBe(true);
   });
 });
 
@@ -1084,11 +704,7 @@ describe('form dialog onSubmit', () => {
 
     accept = true;
     await user.click(screen.getByTestId('dialog-submit'));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(capturedResult).toEqual({ name: 'Alice' });
+    await waitFor(() => expect(capturedResult).toEqual({ name: 'Alice' }));
   });
 
   it('cannot be cancelled or dismissed while the submission is under way', async () => {
@@ -1120,6 +736,8 @@ describe('form dialog onSubmit', () => {
     ).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
     await user.click(screen.getByTestId('dialog-cancel'));
+    // Longer than the 500 ms close delay, so a dismissal that was honoured
+    // would have resolved the dialog by now.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
@@ -1132,10 +750,7 @@ describe('form dialog onSubmit', () => {
     });
     expect(await screen.findByText('Not saved.')).toBeVisible();
     await user.click(screen.getByTestId('dialog-cancel'));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-    expect(capturedResult).toBeNull();
+    await waitFor(() => expect(capturedResult).toBeNull());
   });
 
   it('closes with the values on submit when no onSubmit is given', async () => {
@@ -1151,10 +766,6 @@ describe('form dialog onSubmit', () => {
     await user.click(screen.getByRole('button', { name: 'Open Form' }));
     await user.type(await screen.findByRole('textbox'), 'Alice');
     await user.click(screen.getByTestId('dialog-submit'));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(capturedResult).toEqual({ name: 'Alice' });
+    await waitFor(() => expect(capturedResult).toEqual({ name: 'Alice' }));
   });
 });

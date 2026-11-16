@@ -1,10 +1,17 @@
 import { get } from 'es-toolkit/compat';
 import { createElement, useCallback, useMemo, useState } from 'react';
+import { useStore } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
+import {
+  ResourceClientProvider,
+  useStagedResources,
+} from '@codaco/protocol-builder/resources/client';
 import DialogForm, {
   type DialogFormProps,
 } from '~/components/DialogForm/DialogForm';
@@ -15,13 +22,20 @@ import TypeEditor, {
 } from '~/components/TypeEditor/TypeEditor';
 import validateEntityType from '~/components/TypeEditor/validateEntityType';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
   createTypeAsync,
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
+import type { ArchitectClient } from '~/protocolBuilder/client';
+import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
+import { useOtherTabName } from '~/protocolBuilder/useOtherTabName';
 import { getProtocol } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
+
+import { adoptStagedImages } from './adoptStagedImages';
+
 const chromeMessages = defineMessages({
   node: {
     id: 'architect.chrome.codebook.entityTypeDialog.node',
@@ -84,22 +98,76 @@ type EntityTypeDialogProps = {
   finalFocus?: DialogFormProps['finalFocus'];
 };
 
-const EntityTypeDialog = ({
+/**
+ * The node or edge type editor, inside a protocol builder so its custom shape
+ * field can import SVG images as protocol resources.
+ *
+ * Each opening is an edit of its own for those imports: a save hands them to
+ * the protocol, and Cancel takes them back.
+ */
+const EntityTypeDialog = (props: EntityTypeDialogProps) => {
+  const { show, entity, type } = props;
+  const store = useStore<RootState>();
+  const client = useArchitectClient(store, useOtherTabName());
+  const protocolId = useAppSelector(getActiveProtocolId);
+
+  // Every opening needs a fresh field store and resource edit, even when
+  // `entity`/`type` repeat (two creations, or a reopen before the exit
+  // animation unmounts the form), so openings are counted as the dialog opens.
+  const [wasShown, setWasShown] = useState(show);
+  const [openCount, setOpenCount] = useState(0);
+  if (show !== wasShown) {
+    setWasShown(show);
+    if (show) {
+      setOpenCount((count) => count + 1);
+    }
+  }
+
+  if (!entity || protocolId === null) {
+    return null;
+  }
+
+  // `entity`/`type` stay in the key so switching what is being edited without
+  // closing still remounts.
+  const sessionKey = `${entity}-${type ?? 'new'}-${openCount}`;
+
+  return (
+    <ProtocolBuilder adapter={client.adapter} protocolId={protocolId}>
+      <ResourceClientProvider key={sessionKey}>
+        <EntityTypeForm
+          {...props}
+          entity={entity}
+          planStagedResourceAdoption={client.planStagedResourceAdoption}
+        />
+      </ResourceClientProvider>
+    </ProtocolBuilder>
+  );
+};
+
+type EntityTypeFormProps = EntityTypeDialogProps &
+  Readonly<{
+    entity: 'node' | 'edge' | 'ego';
+    planStagedResourceAdoption: ArchitectClient['planStagedResourceAdoption'];
+  }>;
+
+const EntityTypeForm = ({
   show,
   entity,
   type,
   onClose,
   finalFocus,
-}: EntityTypeDialogProps) => {
+  planStagedResourceAdoption,
+}: EntityTypeFormProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
+  const staged = useStagedResources();
   const { openDialog } = useDialog();
   const protocol = useAppSelector((state: RootState) => getProtocol(state));
 
   const isNew = !type;
 
   const initialValues = useMemo<EntityTypeValues>(() => {
-    if (!entity || !protocol) {
+    if (!protocol) {
       return {};
     }
     const defaultValue = getNewTypeTemplate({
@@ -112,32 +180,32 @@ const EntityTypeDialog = ({
     return format(value) as EntityTypeValues;
   }, [protocol, entity, type]);
 
-  const title = useMemo(() => {
-    if (!entity) {
-      return '';
-    }
-    const entityLabel =
-      entity === 'node'
-        ? intl.formatMessage(chromeMessages.node)
-        : intl.formatMessage(chromeMessages.edge);
-    return isNew
-      ? intl.formatMessage(chromeMessages.createType, {
-          entityLabel: entityLabel,
-        })
-      : intl.formatMessage(chromeMessages.editType, {
-          entityLabel: entityLabel,
-        });
-  }, [entity, isNew, intl]);
+  const entityLabel = intl.formatMessage(
+    entity === 'node' ? chromeMessages.node : chromeMessages.edge,
+  );
+  const title = intl.formatMessage(
+    isNew ? chromeMessages.createType : chromeMessages.editType,
+    { entityLabel },
+  );
 
   const handleSubmit = useCallback(
-    async (values: Record<string, FieldValue>) => {
-      if (!entity) return;
-
+    async (
+      values: Record<string, FieldValue>,
+    ): Promise<FormSubmissionResult> => {
       // `updateType` replaces the whole definition, and `getFormValues()`
       // reports registered fields only — so the properties this editor does
       // not render (`variables` above all) are carried over from the committed
       // definition.
       const configuration = parse({ ...initialValues, ...values });
+
+      const adoption = adoptStagedImages(
+        staged,
+        planStagedResourceAdoption,
+        values,
+      );
+      if (adoption.status === 'failed') {
+        return { success: false, fieldErrors: adoption.fieldErrors };
+      }
 
       try {
         if (isNew) {
@@ -147,6 +215,7 @@ const EntityTypeDialog = ({
               configuration,
             }),
           ).unwrap();
+          adoption.keep();
           onClose(result.type);
         } else if (type) {
           await dispatch(
@@ -156,6 +225,7 @@ const EntityTypeDialog = ({
               configuration,
             }),
           ).unwrap();
+          adoption.keep();
           onClose();
         }
       } catch (error) {
@@ -181,55 +251,28 @@ const EntityTypeDialog = ({
           },
         });
       }
+      return { success: true };
     },
-    [dispatch, initialValues, onClose, entity, type, isNew, openDialog],
+    [
+      dispatch,
+      initialValues,
+      onClose,
+      entity,
+      type,
+      isNew,
+      openDialog,
+      staged,
+      planStagedResourceAdoption,
+    ],
   );
-
-  /**
-   * Every open is a different editing session, so each one needs its own field
-   * store — the `key` `DialogForm` documents for exactly this.
-   *
-   * Identifying the session by what is being edited is not enough. `type` is
-   * undefined for a creation, so `new-${entity}` was the SAME key for two
-   * consecutive creations of the same entity — and this dialog is mounted for
-   * the lifetime of its owner (`CodebookPage` keeps it rendered and only
-   * toggles `show`), so nothing else separates them. What normally hides that
-   * is `Modal`'s exit animation: it unmounts the form, whose `useForm` cleanup
-   * resets the store. A close followed by another open before that exit
-   * finishes cancels the removal, so the reset never runs — and the next
-   * type's fields re-register over the previous one's parked values, which
-   * `registerField` prefers over `initialValue`. Creating two edge types back
-   * to back (the sample protocol's edge-creation sociogram does exactly that)
-   * therefore reopened the dialog still holding the first type's name, colour
-   * and shape, and saving it wrote those over the second type's own defaults.
-   * Reopening the same type after abandoning an edit had the same effect.
-   *
-   * Counting opens rather than naming the session also covers that reopen
-   * case, since `type` alone repeats there too. It is bumped as the dialog
-   * OPENS (the React-documented adjust-state-on-prop-change pattern) rather
-   * than on close, so the entering dialog is the fresh one and a close still
-   * animates out.
-   */
-  const [wasShown, setWasShown] = useState(show);
-  const [openCount, setOpenCount] = useState(0);
-  if (show !== wasShown) {
-    setWasShown(show);
-    if (show) {
-      setOpenCount((count) => count + 1);
-    }
-  }
-
-  if (!entity) {
-    return null;
-  }
 
   return (
     <DialogForm
-      // `entity`/`type` stay in the key so switching what is being edited
-      // without closing still remounts, as before.
-      key={`${entity}-${type ?? 'new'}-${openCount}`}
       open={show}
-      onClose={() => onClose()}
+      onClose={() => {
+        void staged.discardAll();
+        onClose();
+      }}
       title={title}
       formId={FORM_ID}
       submitLabel={intl.formatMessage(messages.saveAndClose)}

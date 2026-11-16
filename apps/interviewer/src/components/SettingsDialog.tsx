@@ -873,7 +873,8 @@ export function SettingsDialog({
 
   const protocolOptions = protocols.map((p) => ({
     value: p.hash,
-    label: p.name,
+    // A protocol's name reads in its own direction.
+    label: { text: p.name, dir: 'auto' as const },
   }));
   const noProtocols = protocols.length === 0;
   const percentProgress =
@@ -1032,7 +1033,11 @@ export function SettingsDialog({
                   title={intl.formatMessage(messages.installationID)}
                   desc={intl.formatMessage(messages.uniquePerDeviceIdentifier)}
                   control={
-                    <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                    // An identifier, written left to right in every language.
+                    <span
+                      dir="ltr"
+                      className="font-monospace text-text/60 text-xs tracking-[0.02em]"
+                    >
                       {installationId}
                     </span>
                   }

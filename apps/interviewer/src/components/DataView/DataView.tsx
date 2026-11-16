@@ -156,9 +156,15 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
       .filter((n): n is string => typeof n === 'string' && n.length > 0);
     const seen = new Set<string>(names);
     const collator = new Intl.Collator(intl.locale);
-    return Array.from(seen)
-      .toSorted((a, b) => collator.compare(a, b))
-      .map((name) => ({ value: name, label: name }));
+    return (
+      Array.from(seen)
+        .toSorted((a, b) => collator.compare(a, b))
+        // A protocol's name reads in its own direction.
+        .map((name) => ({
+          value: name,
+          label: { text: name, dir: 'auto' as const },
+        }))
+    );
   }, [intl.locale, protocols]);
 
   const {

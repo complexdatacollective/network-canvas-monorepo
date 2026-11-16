@@ -17,18 +17,6 @@ import Checkbox from '../form/fields/Checkbox';
 import { type DataTableFeatures } from './features';
 
 const messages = defineMessages({
-  selectAllOnPage: {
-    id: 'frescoUi.selectAllHeader.selectAllOnPage',
-    defaultMessage: 'Select all on page',
-    description:
-      'Accessible name of the header checkbox that selects every row on the current table page.',
-  },
-  selectionOptions: {
-    id: 'frescoUi.selectAllHeader.selectionOptions',
-    defaultMessage: 'Selection options',
-    description:
-      'Accessible name of the dropdown offering page-wide and table-wide selection actions.',
-  },
   selectPage: {
     id: 'frescoUi.selectAllHeader.selectPage',
     defaultMessage: 'Select page ({count, number})',
@@ -77,7 +65,8 @@ export function SelectAllHeader<TData extends RowData>({
             table.toggleAllPageRowsSelected(value);
           }
         }}
-        aria-label={intl.formatMessage(messages.selectAllOnPage)}
+        aria-label="Select all on page"
+        lang="en"
       />
       {hasMultiplePages && (
         <DropdownMenu>
@@ -86,7 +75,8 @@ export function SelectAllHeader<TData extends RowData>({
               <IconButton
                 size="sm"
                 variant="text"
-                aria-label={intl.formatMessage(messages.selectionOptions)}
+                aria-label="Selection options"
+                lang="en"
                 icon={<ChevronDown aria-hidden="true" />}
               />
             }

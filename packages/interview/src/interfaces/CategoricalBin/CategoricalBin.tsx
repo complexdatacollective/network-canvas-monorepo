@@ -43,6 +43,7 @@ import {
 } from '../../forms/writeSubmissionResult';
 import { useBinSelection } from '../../hooks/useBinSelection';
 import useCompletePlacement from '../../hooks/useCompletePlacement';
+import { useCustomShapeSvgs } from '../../hooks/useCustomShapeSvgs';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   type ResolvedProtocolText,
@@ -303,6 +304,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
+  const shapeSvgs = useCustomShapeSvgs();
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const intl = useAppIntl();
   const { unlocked, requirePassphrase, lockedNotice } = usePassphrase();
@@ -450,8 +452,9 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
             shape={
               nodeTypeDefinition
                 ? resolveNodeShape(
-                    nodeTypeDefinition.shape,
+                    nodeTypeDefinition,
                     node[entityAttributesProperty],
+                    shapeSvgs,
                   )
                 : undefined
             }

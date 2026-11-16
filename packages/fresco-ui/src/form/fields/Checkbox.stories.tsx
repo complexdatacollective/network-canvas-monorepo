@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, within } from 'storybook/test';
 
 import Checkbox from './Checkbox';
 
@@ -97,6 +98,24 @@ export const States: Story = {
       </div>
     </div>
   ),
+  // A read-only checkbox cannot act on a press, so it must not take one: no
+  // hover or pressed treatment, no pointer cursor.
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const name of [
+      'ReadOnly unchecked checkbox',
+      'ReadOnly checked checkbox',
+    ]) {
+      await expect(
+        getComputedStyle(canvas.getByRole('checkbox', { name })).pointerEvents,
+      ).toBe('none');
+    }
+    await expect(
+      getComputedStyle(
+        canvas.getByRole('checkbox', { name: 'Normal unchecked checkbox' }),
+      ).pointerEvents,
+    ).not.toBe('none');
+  },
 };
 
 export const InvalidState: Story = {

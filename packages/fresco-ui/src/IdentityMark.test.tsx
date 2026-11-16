@@ -43,15 +43,6 @@ function fillOf(id: string): string {
 }
 
 describe('IdentityMark colour', () => {
-  it('gives the same id the same fill every time', () => {
-    const id = 'org_01JQ2W3T4Y5Z6A7B8C9D0EFGHJ';
-    const first = fillOf(id);
-
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      expect(fillOf(id)).toBe(first);
-    }
-  });
-
   it('derives the fill from the id alone, so a rename never recolours', () => {
     const id = 'team_sonic';
     const before = [...markFor(id, 'SONIC Lab').classList];

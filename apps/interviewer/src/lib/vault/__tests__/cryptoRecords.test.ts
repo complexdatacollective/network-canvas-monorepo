@@ -30,6 +30,11 @@ describe('deriveKekFromPassword', () => {
     const kekAgain = await deriveKekFromPassword('correct horse', salt, 1000);
     const session = await unwrapDek(wrapped, kekAgain);
     expect(session.extractable).toBe(false);
+
+    const sealed = await encryptJson({ secret: 42 }, dek, 'sessions:pw');
+    await expect(decryptJson(sealed, session, 'sessions:pw')).resolves.toEqual({
+      secret: 42,
+    });
   });
 
   it('derives a different KEK for the wrong secret (unwrap fails)', async () => {
@@ -63,6 +68,11 @@ describe('deriveKekFromPrf', () => {
     const kekAgain = await deriveKekFromPrf(prf.buffer, salt);
     const session = await unwrapDek(wrapped, kekAgain);
     expect(session.extractable).toBe(false);
+
+    const sealed = await encryptJson({ secret: 42 }, dek, 'sessions:prf');
+    await expect(decryptJson(sealed, session, 'sessions:prf')).resolves.toEqual(
+      { secret: 42 },
+    );
   });
 });
 

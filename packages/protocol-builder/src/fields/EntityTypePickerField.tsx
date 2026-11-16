@@ -20,19 +20,20 @@ import {
   type ColorReference,
   EdgeColorSequence,
   NodeColorSequence as NodeColorReferences,
-  type NodeShape,
-  NodeShapes,
   type StageSubject,
+  resolveNodeShapeReference,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
+import { shapeAssetIds } from '../codebook/customShapes.ts';
 import {
   type CodebookEntityDraft,
   documentWithEntityProperties,
 } from '../codebook/editing.ts';
 import { useCodebookSectionDocument } from '../codebook/useCodebookVariableEdits.ts';
+import { useNodeShapeSvgs } from '../codebook/useNodeShapeSvgs.ts';
 import {
   useCodebookSectionWrite,
   useCreateCodebookEntity,
@@ -126,9 +127,6 @@ export type EntityTypePickerFieldProps = CreateFormFieldProps<
 const asNodeColor = (color: ColorReference): NodeColorSequence =>
   NodeColors.find((candidate) => candidate === color) ?? 'node-color-seq-1';
 
-const asNodeShape = (shape: string | undefined): NodeShape | undefined =>
-  NodeShapes.find((candidate) => candidate === shape);
-
 /**
  * The colour a chip is drawn in, from what the type is stored with.
  *
@@ -158,13 +156,20 @@ const asEntityColor = (
 const typeOption = (
   summary: EntityTypeSummary,
   entityType: RuleEntityTarget,
+  shapeSvgs: Readonly<Record<string, string>>,
 ): RuleEntityTypeOption => ({
   value: summary.id,
   label: codebookLabel(summary.name, summary.id),
   color: asEntityColor(summary.color, entityType),
   ...(entityType === 'edge'
     ? {}
-    : { shape: asNodeShape(summary.shape) ?? 'circle' }),
+    : {
+        shape: resolveNodeShapeReference(
+          summary.shape,
+          summary.customShapes,
+          shapeSvgs,
+        ),
+      }),
 });
 
 /**
@@ -194,20 +199,10 @@ const EMPTY_MESSAGES = defineMessages({
  * label of its own — the accessible name a screen reader announces for the
  * whole choice, not a heading anybody sees.
  */
-const GROUP_LABELS = defineMessages({
-  node: {
-    id: 'protocolBuilder.entitySelect.nodeGroupLabel',
-    defaultMessage: 'Node type options',
-    description:
-      'Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place.',
-  },
-  edge: {
-    id: 'protocolBuilder.entitySelect.edgeGroupLabel',
-    defaultMessage: 'Edge type options',
-    description:
-      'Accessible name of the group of chips a researcher picks an edge type from. An edge type is a kind of relationship between two network members, such as a friendship.',
-  },
-}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
+const GROUP_LABELS: Readonly<Record<RuleEntityTarget, string>> = {
+  node: 'Node type options',
+  edge: 'Edge type options',
+};
 
 /**
  * What making a type from inside a stage is called — Architect's own words
@@ -470,7 +465,10 @@ function EdgeChip({
       style={chipStyle}
     >
       <Icon name="links" className="me-2.5 size-6" style={iconStyle} />
-      {label}
+      {/* The researcher's name for the type reads in its own direction. */}
+      <span dir="auto" className="text-match-parent">
+        {label}
+      </span>
     </span>
   );
 }
@@ -792,7 +790,9 @@ function EntityTypeCodebookControls({
             )}
             readOnly={readOnly}
             existingEntityNames={existingEntityNames}
-            onSubmit={(document) => createEntity(entityType, document)}
+            onSubmit={(document, promote) =>
+              createEntity(entityType, document, promote)
+            }
             onApplied={(outcome) => {
               // The id the HOST minted, read off the write: it is the host's
               // to issue, and the stage has to name the type it created.
@@ -827,7 +827,7 @@ function EntityTypeCodebookControls({
               authoritativeDocument={editedDocument}
               readOnly={readOnly}
               existingEntityNames={existingEntityNames}
-              onSubmit={(document) => {
+              onSubmit={(document, promote) => {
                 const subject = {
                   entity: entityType,
                   type: session.typeId,
@@ -841,12 +841,20 @@ function EntityTypeCodebookControls({
                 // this is the same rebase re-asked at the only moment the
                 // answer is authoritative, and the helper keeps `variables`
                 // for exactly this reason.
-                return writeSection(subject, (authoritativeDocument) =>
-                  documentWithEntityProperties({
-                    subject,
-                    authoritativeDocument,
-                    draft: document,
-                  }),
+                return writeSection(
+                  subject,
+                  (authoritativeDocument) =>
+                    documentWithEntityProperties({
+                      subject,
+                      authoritativeDocument,
+                      draft: document,
+                      // A type left with no custom shapes is saved without
+                      // the key, which would otherwise keep the stored ones.
+                      ...(Object.hasOwn(document, 'customShapes')
+                        ? {}
+                        : { unsetProperties: ['customShapes'] }),
+                    }),
+                  promote,
                 );
               }}
               onApplied={closeSession}
@@ -1020,9 +1028,13 @@ export default function EntityTypePickerField({
   // each type's name and look and nothing else, so an edit inside a stage is
   // not a reason to redraw the chips.
   const summaries = useEntityTypes(entityType);
+  const shapeSvgs = useNodeShapeSvgs(
+    summaries.flatMap((summary) => shapeAssetIds(summary.customShapes)),
+  );
   const codebookOptions = useMemo(
-    () => summaries.map((summary) => typeOption(summary, entityType)),
-    [entityType, summaries],
+    () =>
+      summaries.map((summary) => typeOption(summary, entityType, shapeSvgs)),
+    [entityType, shapeSvgs, summaries],
   );
 
   const isMissing =
@@ -1059,9 +1071,7 @@ export default function EntityTypePickerField({
         id={id}
         role="radiogroup"
         aria-label={
-          ariaLabelledBy === undefined
-            ? intl.formatMessage(GROUP_LABELS[entityType])
-            : undefined
+          ariaLabelledBy === undefined ? GROUP_LABELS[entityType] : undefined
         }
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
