@@ -189,8 +189,8 @@ type NavigationProps = {
   disableMoveForward?: boolean;
   disableMoveBackward?: boolean;
   pulseNext: boolean;
-  // Identifies the stage and prompt on screen, so readiness is announced once
-  // for each screen.
+  // Identifies the stage and prompt on screen, so the ready sentence is added
+  // once for each screen.
   screenId: string;
   progress: number;
   orientation?: NavigationOrientation;

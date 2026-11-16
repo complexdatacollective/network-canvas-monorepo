@@ -11,13 +11,12 @@ const READY_TO_CONTINUE = 'You can continue to the next step.';
  * the screen is ready to move on. The sentence is added once for each screen
  * (a stage and prompt, identified by `screenId`) while that screen is ready,
  * whether it became ready there or was ready on arrival. Losing readiness
- * removes it silently, and regaining it adds a new node.
+ * removes it and adds nothing; regaining it adds a new node.
  *
- * Each new `screenId`, including the first, empties the region and releases
- * the sentence in a later task. On first mount the region is therefore in the
- * tree before the sentence arrives, and on a change of screen the leaving
- * screen's readiness, which the store still reports until the new screen's
- * effects have run, is never announced for the new screen.
+ * Each new `screenId`, including the first, empties the region and adds the
+ * sentence a task later. Without that, a change between two ready prompts
+ * leaves the region untouched, and on arrival at a prompt that is not ready
+ * the previous prompt's readiness briefly mounts the sentence.
  *
  * The same sentence sits in a separate hidden element for the Next button's
  * `aria-describedby`, which follows readiness directly.

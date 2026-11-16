@@ -5,4 +5,4 @@
 'fresco': patch
 ---
 
-The interview now announces "You can continue to the next step." to screen readers once for each stage or prompt that is ready to move on, whether it became ready while the participant was on it or was ready when they arrived. This matches the Next button turning green. While the screen is ready, the Next button also carries that sentence as its description.
+The Next button now exposes its ready state to assistive technology. When the current step is complete, a status message reads "You can continue to the next step." and the Next button carries the same sentence as its description.

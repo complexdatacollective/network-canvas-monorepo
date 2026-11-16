@@ -93,17 +93,18 @@ const nextButton = () => screen.getByRole('button', { name: 'Next Step' });
 const announcer = () => screen.getByTestId('ready-to-continue-announcer');
 
 describe('Navigation ready-to-continue announcement', () => {
-  it('describes the Next button and announces once each time the screen becomes ready', async () => {
+  it('describes the Next button and adds the sentence once each time the screen becomes ready', async () => {
     const { rerender } = renderNavigation({ pulseNext: false });
     await settle();
 
     const region = announcer();
     expect(region).toHaveAttribute('aria-live', 'polite');
+    expect(region).toHaveAttribute('aria-atomic', 'true');
     expect(region).toHaveAttribute('lang', 'en');
     expect(nextButton()).not.toHaveAccessibleDescription();
     expect(region).toBeEmptyDOMElement();
 
-    // Gaining readiness on the screen announces in the same render.
+    // Gaining readiness on the screen adds the sentence in the same render.
     rerender({ pulseNext: true });
     expect(nextButton()).toHaveAccessibleName('Next Step');
     expect(nextButton()).toHaveAccessibleDescription(READY);
@@ -117,7 +118,7 @@ describe('Navigation ready-to-continue announcement', () => {
     const firstAnnouncement = region.firstElementChild;
     expect(firstAnnouncement).not.toBeNull();
 
-    // A render that leaves readiness unchanged must not announce again.
+    // A render that leaves readiness unchanged must not add another node.
     rerender({ pulseNext: true, progress: 50 });
     expect(region.firstElementChild).toBe(firstAnnouncement);
 
@@ -128,8 +129,8 @@ describe('Navigation ready-to-continue announcement', () => {
     rerender({ pulseNext: true, progress: 50 });
     expect(nextButton()).toHaveAccessibleDescription(READY);
     expect(region).toHaveTextContent(READY);
-    // Regaining readiness puts a new node in the region, which is what makes
-    // a screen reader announce it again.
+    // Regaining readiness puts a new node in the region instead of leaving
+    // the old one in place.
     expect(region.firstElementChild).not.toBeNull();
     expect(region.firstElementChild).not.toBe(firstAnnouncement);
     expect(firstAnnouncement?.isConnected).toBe(false);
@@ -238,11 +239,11 @@ function WithoutMotion({ children }: { children: ReactNode }) {
   );
 }
 
-describe('the ready-to-continue announcement across screens', () => {
+describe('the ready-to-continue status across screens', () => {
   let observer: MutationObserver | undefined;
   afterEach(() => observer?.disconnect());
 
-  it('announces once on every arrival at a ready stage or prompt, and never for a screen that is not ready', async () => {
+  it('adds the sentence once on every arrival at a ready stage or prompt, and never for a screen that is not ready', async () => {
     render(
       <Shell
         payload={walkPayload()}
@@ -296,7 +297,7 @@ describe('the ready-to-continue announcement across screens', () => {
     await expectNewAnnouncement(4);
 
     // A stage that is not ready on arrival: the leaving stage's readiness must
-    // not be announced for it.
+    // not add the sentence for it.
     await goForwardTo('Name your colleagues');
     await waitFor(() =>
       expect(

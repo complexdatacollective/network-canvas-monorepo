@@ -775,7 +775,7 @@ const getRequiredAnswerPayload = () =>
 const READY_TO_CONTINUE = 'You can continue to the next step.';
 
 export const ReadyToContinue: Story = {
-  name: 'Ready to continue (screen reader announcement)',
+  name: 'Ready to continue (status message)',
   parameters: { controls: { exclude: ['stageCount'] } },
   render: () => (
     <div className="flex h-dvh w-full">
@@ -819,7 +819,7 @@ export const ReadyToContinue: Story = {
       expect(next).toHaveAccessibleDescription(READY_TO_CONTINUE),
     );
     await expect(announcer).toHaveTextContent(READY_TO_CONTINUE);
-    // Regaining readiness adds a fresh node, which is announced again.
+    // Regaining readiness adds a fresh node to the region.
     await expect(announcer.firstElementChild).not.toBeNull();
     await expect(announcer.firstElementChild).not.toBe(firstAnnouncement);
   },
@@ -919,6 +919,9 @@ export const ReadyToContinueAcrossScreens: Story = {
       // Not ready on arrival, so nothing is added for it.
       await goForwardTo('Name your colleagues');
       await waitFor(() => expect(next).not.toHaveAccessibleDescription());
+      // Nothing signals that the sentence will not arrive, so wait well past
+      // the task that would release it for this screen before checking that
+      // the leaving stage's readiness added nothing.
       await new Promise((resolve) => setTimeout(resolve, 300));
       await expect(announcer).toBeEmptyDOMElement();
       await expect(added).toHaveLength(4);
