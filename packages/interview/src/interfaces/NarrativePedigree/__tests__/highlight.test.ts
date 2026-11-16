@@ -742,9 +742,9 @@ describe('computeContributors — (h) X-linked recessive: affected father is the
   });
 });
 
-describe('computeContributors — (i) X-linked recessive: a homozygous-affected daughter has BOTH parents as sources', () => {
+describe('computeContributors — (i) X-linked recessive: an affected daughter has BOTH parents as sources', () => {
   /**
-   * A homozygous-affected daughter (status `affected`) took a disease X from each
+   * A daughter recorded `affected` took a disease X from each
    * parent — an affected father AND a carrier mother — so both lineages light.
    *
    *   FATHER (affected male) ──┐
@@ -922,17 +922,17 @@ describe('computeContributors — (k) Y-linked: inheritance follows the paternal
   });
 });
 
-describe('computeContributors — (l) X-linked recessive: an AFFECTED (homozygous) mother is kept as a co-source', () => {
+describe('computeContributors — (l) X-linked recessive: a carrier daughter of an affected father takes her path through him only', () => {
   /**
-   * A daughter of an affected father AND an AFFECTED (homozygous) mother is
-   * herself homozygous-affected — even when participant under-nomination leaves
-   * her labelled only `obligateCarrier`. The affected mother transmits a disease
-   * X with certainty, so she (and her maternal line) must NOT be dropped in
-   * favour of the affected father alone.
+   * A daughter of an affected father carries the condition because of the X
+   * he gave her. Whether her mother is affected, a carrier or at risk, the
+   * daughter's carrier status is explained by her father, so her path runs
+   * only through him. If she is herself recorded affected, she took a
+   * disease X from each parent and both lines are kept.
    *
    *   FATHER (affected male) ──┐
-   *                            DAUGHTER (focal, female, obligateCarrier by under-nomination)
-   *   MOTHER (affected female)─┘
+   *                            DAUGHTER (focal, female)
+   *   MOTHER (female)         ─┘
    */
   const FATHER = 'father-l';
   const MOTHER = 'mother-l';
@@ -953,32 +953,119 @@ describe('computeContributors — (l) X-linked recessive: an AFFECTED (homozygou
     sex,
   );
 
-  const statuses = new Map([
-    [
-      DISEASE_A,
-      new Map<string, Status>([
-        // Engine labels a daughter of an affected male obligateCarrier unless she
-        // was independently nominated affected.
-        [DAUGHTER, 'obligateCarrier'],
-        [FATHER, 'affected'],
-        [MOTHER, 'affected'],
-      ]),
-    ],
-  ]);
+  function contributorsFor(daughter: Status, mother: Status) {
+    return computeContributors(
+      DAUGHTER,
+      graph,
+      asDiseases(
+        new Map([
+          [
+            DISEASE_A,
+            new Map<string, Status>([
+              [DAUGHTER, daughter],
+              [FATHER, 'affected'],
+              [MOTHER, mother],
+            ]),
+          ],
+        ]),
+        'xLinkedRecessive',
+      ),
+      resolveSexFrom(sex),
+    );
+  }
 
-  const result = computeContributors(
-    DAUGHTER,
-    graph,
-    asDiseases(statuses, 'xLinkedRecessive'),
-    resolveSexFrom(sex),
-  );
-
-  it('includes the affected father', () => {
+  it('keeps only the father for a carrier daughter whose mother is affected', () => {
+    const result = contributorsFor('obligateCarrier', 'affected');
     expect(result.nodes.has(FATHER)).toBe(true);
+    expect(result.nodes.has(MOTHER)).toBe(false);
   });
 
-  it('includes the affected mother (a certain disease-X transmitter, not dropped)', () => {
+  it('keeps only the father for a carrier daughter whose mother is a carrier', () => {
+    const result = contributorsFor('obligateCarrier', 'obligateCarrier');
+    expect(result.nodes.has(FATHER)).toBe(true);
+    expect(result.nodes.has(MOTHER)).toBe(false);
+  });
+
+  it('keeps both parents for an affected daughter whose mother is affected', () => {
+    const result = contributorsFor('affected', 'affected');
+    expect(result.nodes.has(FATHER)).toBe(true);
     expect(result.nodes.has(MOTHER)).toBe(true);
+  });
+});
+
+describe('computeContributors — (p) X-linked recessive: a woman with an affected son and an affected mother', () => {
+  /**
+   * The woman carries the condition because of her affected mother and her
+   * affected son, so her path runs through her mother, and her son's path
+   * runs through her and on to her mother.
+   *
+   *   GRANDMOTHER (affected female) ── GRANDFATHER (male)
+   *                     │
+   *   WOMAN (obligateCarrier female) ── PARTNER (male)
+   *                     │
+   *              SON (affected male)
+   */
+  const GRANDMOTHER = 'grandmother-p';
+  const GRANDFATHER = 'grandfather-p';
+  const WOMAN = 'woman-p';
+  const PARTNER = 'partner-p';
+  const SON = 'son-p';
+
+  const sex = new Map<string, Sex>([
+    [GRANDMOTHER, 'female'],
+    [GRANDFATHER, 'male'],
+    [WOMAN, 'female'],
+    [PARTNER, 'male'],
+    [SON, 'male'],
+  ]);
+
+  const graph = buildStubGraph(
+    [GRANDMOTHER, GRANDFATHER, WOMAN, PARTNER, SON],
+    [
+      [GRANDMOTHER, WOMAN],
+      [GRANDFATHER, WOMAN],
+      [WOMAN, SON],
+      [PARTNER, SON],
+    ],
+    sex,
+  );
+
+  const diseases = asDiseases(
+    new Map([
+      [
+        DISEASE_A,
+        new Map<string, Status>([
+          [GRANDMOTHER, 'affected'],
+          [WOMAN, 'obligateCarrier'],
+          [SON, 'affected'],
+        ]),
+      ],
+    ]),
+    'xLinkedRecessive',
+  );
+
+  it('runs the woman’s path through her mother', () => {
+    const result = computeContributors(
+      WOMAN,
+      graph,
+      diseases,
+      resolveSexFrom(sex),
+    );
+    expect([...result.nodes].toSorted()).toEqual(
+      [GRANDMOTHER, WOMAN].toSorted(),
+    );
+  });
+
+  it('runs the son’s path through his mother to his grandmother', () => {
+    const result = computeContributors(
+      SON,
+      graph,
+      diseases,
+      resolveSexFrom(sex),
+    );
+    expect([...result.nodes].toSorted()).toEqual(
+      [GRANDMOTHER, WOMAN, SON].toSorted(),
+    );
   });
 });
 
@@ -1096,7 +1183,7 @@ describe('computeContributors — (n) Y-linked: a FEMALE focal climbs nothing (s
 
 describe('computeContributors — (o) edges follow transmission, not just both-endpoints (consanguineous X-linked)', () => {
   /**
-   * A homozygous-affected daughter descends from a consanguineous union: her
+   * An affected daughter descends from a consanguineous union: her
    * father and her mother are both children of the same affected grandfather GF.
    * GF is a contributor via the maternal path (father→daughter X to the mother),
    * and the father is a contributor via the paternal path — so BOTH GF and the

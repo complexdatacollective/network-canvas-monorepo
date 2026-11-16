@@ -21,12 +21,10 @@ function isOnLineage(status: Status | undefined): boolean {
   return status !== undefined && status !== 'unknown';
 }
 
-// A hemizygous affected male transmits his single disease X to EVERY daughter,
-// and a homozygous affected female to EVERY child — both are CERTAIN disease-X
-// transmitters. (`obligateAffected` is the inferred-affected form of either.) A
-// merely-carrier parent (obligateCarrier/atRisk*) transmits the disease X with
-// only ~50% probability, so is never a certain source.
-const CERTAIN_X_TRANSMITTER_STATUSES: ReadonlySet<Status> = new Set<Status>([
+// An affected male (or one inferred affected) passes his single X, and so the
+// condition, to EVERY daughter. A carrier or at-risk father is not affected and
+// has no disease X to pass on.
+const AFFECTED_MALE_STATUSES: ReadonlySet<Status> = new Set<Status>([
   'affected',
   'obligateAffected',
 ]);
@@ -48,14 +46,12 @@ const CERTAIN_X_TRANSMITTER_STATUSES: ReadonlySet<Status> = new Set<Status>([
  * - X-linked (recessive/dominant):
  *   - a MALE child's single X came from his mother — the on-lineage FEMALE
  *     parent only (his father gave him the Y, not an X);
- *   - under X-linked RECESSIVE a heterozygous carrier daughter of an affected
- *     father took her single disease X from him with certainty, so the maternal
- *     line is excluded — UNLESS she is herself homozygous-affected (status
- *     `affected`) or a parent is itself a CERTAIN disease-X transmitter (an
- *     affected/obligate-affected mother), in which case both lines are genuine
- *     sources. This is what drops an incidental maternal-line carrier (e.g. a
- *     maternal grandmother flagged only as an at-risk prior) while keeping a
- *     truly transmitting mother;
+ *   - under X-linked RECESSIVE a daughter of an affected father who carries
+ *     the condition is explained by the X he gave her, so the maternal line is
+ *     excluded whatever the mother's status — UNLESS the daughter is herself
+ *     recorded `affected`, which needs a disease X from each parent, so both
+ *     lines are kept. This drops an incidental maternal-line relative (e.g. a
+ *     maternal grandmother flagged only as an at-risk prior);
  *   - under X-linked DOMINANT one affected X suffices, so an affected father
  *     never excludes an affected/transmitting mother — every on-lineage parent
  *     qualifies for a daughter;
@@ -98,24 +94,14 @@ function transmittingParents(
         const affectedFathers = onLineage.filter(
           (p) =>
             p.sex === 'male' &&
-            CERTAIN_X_TRANSMITTER_STATUSES.has(statuses.get(p.id) ?? 'unknown'),
+            AFFECTED_MALE_STATUSES.has(statuses.get(p.id) ?? 'unknown'),
         );
-        // The paternal X is the daughter's sole source ONLY when she is a simple
-        // heterozygous carrier: not herself homozygous-affected, and with no
-        // mother who is herself a certain disease-X transmitter (a homozygous
-        // affected mother always also contributes a disease X). Otherwise both
-        // lines are genuine sources and neither may be dropped.
-        const childIsHomozygousAffected = statuses.get(childId) === 'affected';
-        const motherIsCertainTransmitter = onLineage.some(
-          (p) =>
-            p.sex === 'female' &&
-            CERTAIN_X_TRANSMITTER_STATUSES.has(statuses.get(p.id) ?? 'unknown'),
-        );
-        if (
-          affectedFathers.length > 0 &&
-          !childIsHomozygousAffected &&
-          !motherIsCertainTransmitter
-        ) {
+        // A daughter who carries it is explained by her affected father's X
+        // whatever her mother's status, so her path runs only through him. A
+        // daughter recorded affected needs a disease X from each parent, so
+        // both lines stay.
+        const childIsAffected = statuses.get(childId) === 'affected';
+        if (affectedFathers.length > 0 && !childIsAffected) {
           return affectedFathers.map((p) => p.id);
         }
       }
