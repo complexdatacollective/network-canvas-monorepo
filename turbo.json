@@ -436,7 +436,7 @@
         "messages/**",
         "netlify/**",
         "public/protocols/**",
-        "public/images/screenshots/**",
+        "public/images/**",
         "test/**",
         "instrumentation-client.ts",
         "vitest.config.*",
@@ -634,14 +634,25 @@
         // The test-inputs guard reads every workspace package's tests,
         // stories and .storybook files, what they import, each manifest, and
         // the task definitions they are checked against. Hidden directories
-        // stay in because .storybook is among them; only Next's build output
-        // is left out.
+        // stay in because .storybook is among them. Turbo hashes git-ignored
+        // files too, so the generated trees the guard never lists (it reads
+        // git ls-files) are left out, or a local build would miss the cache.
         "{apps,packages,tooling,workers}/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json}",
         "turbo.json",
         "pnpm-workspace.yaml",
         "!**/node_modules/**",
         "!**/dist/**",
-        "!**/.next/**"
+        "!**/.next/**",
+        "!**/.netlify/**",
+        "!**/.turbo/**",
+        "!**/build/**",
+        "!**/coverage/**",
+        "!**/out/**",
+        "!**/playwright-report/**",
+        "!**/storybook-static/**",
+        "!**/test-results/**",
+        "!**/next-env.d.ts",
+        "!apps/fresco/lib/db/generated/**"
       ],
       "outputs": []
     },
