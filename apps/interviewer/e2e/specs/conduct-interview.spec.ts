@@ -208,11 +208,11 @@ test.describe('conducting an interview', () => {
 
       // Stage 1: EgoForm.
       await interviewNav.fillEgoName('Ada');
-      // A pixel-readiness gate for the capture below, not an oracle: the
-      // baseline shows the next-button's valid-form pulse, and that purely
-      // visual state has no semantic signal (no data attribute or ARIA state)
-      // to wait on instead of its class.
-      await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
+      // The baseline below shows the next-button's pulse, which appears with
+      // the description that tells screen-reader users the form is ready.
+      await expect(page.getByTestId('next-button')).toHaveAccessibleDescription(
+        'You can continue to the next step.',
+      );
       await capture('interview-stage-ego');
       await interviewNav.next();
 

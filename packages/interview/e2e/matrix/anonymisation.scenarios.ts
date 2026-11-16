@@ -137,7 +137,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         await anon.submit();
 
         await expect(anon.successAlert()).toBeVisible();
-        await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
 
         await interview.next();
         await expect(
@@ -185,7 +185,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         );
         await expect(anon.successAlert()).toHaveCount(0);
         await expect(page).toHaveURL(/step=1/);
-        expect(await interview.nextButtonHasPulse()).toBe(false);
+        await interview.expectNotReadyToContinue();
 
         // beforeNext.gating through the REAL nav path: clicking the nav Next
         // button runs useBeforeNext, which requestSubmit()s the form. With the
@@ -221,7 +221,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         await anon.fillPassphrase('matching-passphrase');
         await anon.submit();
         await expect(anon.successAlert()).toBeVisible();
-        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
         await interview.next();
         await expect(
           page.getByRole('heading', { name: 'Complete' }),

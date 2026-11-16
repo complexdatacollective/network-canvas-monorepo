@@ -265,15 +265,15 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           expect(await stage.ordinalBin.getUnplacedCount()).toBe(2);
           await expect(stage.ordinalBin.getNodeInDrawer('Dana')).toBeVisible();
           await expect(stage.ordinalBin.getNodeInDrawer('Erin')).toBeVisible();
-          expect(await interview.nextButtonHasPulse()).toBe(false);
+          await interview.expectNotReadyToContinue();
 
           await stage.ordinalBin.dragNodeToBin('Dana', 'Close');
           // Still one unplaced (Erin) — not ready yet.
-          expect(await interview.nextButtonHasPulse()).toBe(false);
+          await interview.expectNotReadyToContinue();
 
           await stage.ordinalBin.dragNodeToBin('Erin', 'Not close');
           expect(await stage.ordinalBin.getUnplacedCount()).toBe(0);
-          expect(await interview.nextButtonHasPulse()).toBe(true);
+          await interview.expectReadyToContinue();
 
           const network = await protocol.getNetworkState(interview.interviewId);
           const dana = network?.nodes.find(
@@ -739,7 +739,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           await stage.ordinalBin.dragNodeToBin('Frank', 'Very close');
 
           // Readiness ignores the filtered-out and off-subject nodes.
-          expect(await interview.nextButtonHasPulse()).toBe(true);
+          await interview.expectReadyToContinue();
 
           const network = await protocol.getNetworkState(interview.interviewId);
           const grace = network?.nodes.find(
@@ -849,7 +849,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview, stage }) => {
-        expect(await interview.nextButtonHasPulse()).toBe(false);
+        await interview.expectNotReadyToContinue();
         // Unplaced nodes: forward navigation is blocked with the supplied notice.
         await interview.nextButton.click();
         await expect(page.getByText(/must place every item/i)).toBeVisible();
@@ -864,7 +864,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         await stage.ordinalBin.dragNodeToBin('Jon', 'Not close');
         expect(await stage.ordinalBin.getUnplacedCount()).toBe(0);
         // Ready for the next stage once every node is placed.
-        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
         await interview.next();
         await expect(
           page.getByRole('heading', { name: 'All done' }),
