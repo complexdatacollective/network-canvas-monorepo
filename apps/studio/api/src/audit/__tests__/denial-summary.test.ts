@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, layer } from '@effect/vitest';
-import { Effect, Exit, Redacted } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { describe } from 'vitest';
 
 import {
@@ -10,6 +10,7 @@ import {
   testDb,
 } from '../../__tests__/support/database.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
+import { deepestMessage } from '../../db/errors.ts';
 import { appendDeniedAuditSummary } from '../denial-summary.ts';
 
 const FIRST = '2026-08-31T10:00:10.000Z';
@@ -81,13 +82,16 @@ describe.skipIf(!testDb)('a denied-attempts summary', () => {
             lastSuppressedAt: LAST,
           });
 
-          const amended = yield* Effect.exit(
+          const refused = yield* Effect.flip(
             harness.onOwner(
               harness.owner
                 .sql`update audit_events set outcome = 'failed' where id = ${event.id}`,
             ),
           );
-          assert.isTrue(Exit.isFailure(amended));
+          assert.strictEqual(
+            deepestMessage(refused),
+            'audit events are immutable',
+          );
         }),
       { timeout: 30_000 },
     );

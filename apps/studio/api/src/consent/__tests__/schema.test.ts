@@ -1018,7 +1018,7 @@ describe.skipIf(!testDb)('consent schema', () => {
 
       it.effect('holds the grant immutable', () =>
         Effect.gen(function* () {
-          const { consentId, studyId, participantId } = yield* grantedConsent();
+          const { consentId, studyId } = yield* grantedConsent();
           const otherStudyId = yield* newStudy();
           const otherParticipantId = yield* newParticipant(studyId);
           const otherDocumentId = yield* newDocument(studyId, { version: 2 });
@@ -1045,8 +1045,6 @@ describe.skipIf(!testDb)('consent schema', () => {
               'participant consent grants are immutable',
             );
           }
-
-          expect(participantId).toBeTruthy();
         }),
       );
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { ComponentTypes } from '../variables/types.ts';
@@ -60,7 +61,13 @@ describe('NetworkComposer cross-reference validation', () => {
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(composerProtocol({ ...baseStage, quickAdd: 'missing' })),
     );
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'stages.0.quickAdd',
+        code: 'custom',
+        message: 'The attribute "missing" does not exist in the codebook',
+      },
+    ]);
   });
 
   it('rejects a layoutVariable referencing a missing node variable', () => {
@@ -69,7 +76,13 @@ describe('NetworkComposer cross-reference validation', () => {
         composerProtocol({ ...baseStage, layoutVariable: 'missing' }),
       ),
     );
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'stages.0.layoutVariable',
+        code: 'custom',
+        message: 'The attribute "missing" does not exist in the codebook',
+      },
+    ]);
   });
 
   // The canvas persists every node's { x, y } under layoutVariable, merging it
@@ -137,7 +150,13 @@ describe('NetworkComposer cross-reference validation', () => {
         }),
       ),
     );
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'stages.0.nodeForm.fields.0.variable',
+        code: 'custom',
+        message: 'The attribute "missing" does not exist in the codebook',
+      },
+    ]);
   });
 
   it('rejects an edge form field referencing a variable not on that edge type', () => {
@@ -166,7 +185,13 @@ describe('NetworkComposer cross-reference validation', () => {
         }),
       ),
     );
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'stages.0.edges.0.form.fields.0.variable',
+        code: 'custom',
+        message: 'The attribute "age" does not exist in the codebook',
+      },
+    ]);
   });
 });
 

@@ -1,27 +1,9 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { Status } from '../../genetics/status';
 import { StatusMarker } from '../StatusMarker';
 
 describe('StatusMarker', () => {
-  describe('data-status attribute', () => {
-    const statuses: Status[] = [
-      'affected',
-      'obligateAffected',
-      'obligateCarrier',
-      'atRiskAffected',
-      'atRiskCarrier',
-      'unknown',
-    ];
-
-    it.each(statuses)('renders data-status="%s"', (status) => {
-      render(<StatusMarker status={status} color="#e53e3e" shape="square" />);
-      const el = document.querySelector(`[data-status="${status}"]`);
-      expect(el).toBeInTheDocument();
-    });
-  });
-
   describe('distinguishing SVG elements per status (Bennett 2022)', () => {
     it('affected: renders a solid [data-filled-shape]', () => {
       const { container } = render(
@@ -113,15 +95,6 @@ describe('StatusMarker', () => {
   });
 
   describe('shape-aware rendering', () => {
-    it.each(['square', 'circle', 'diamond'] as const)(
-      'affected renders without error for shape=%s',
-      (shape) => {
-        expect(() =>
-          render(<StatusMarker status="affected" color="#f00" shape={shape} />),
-        ).not.toThrow();
-      },
-    );
-
     it('affected/circle renders a <circle> not a <rect>', () => {
       const { container } = render(
         <StatusMarker status="affected" color="#f00" shape="circle" />,

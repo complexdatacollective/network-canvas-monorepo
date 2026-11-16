@@ -255,8 +255,11 @@ describe('computeAutosomalDominant', () => {
     const graph = buildGraph(nodes, edges);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic pedigree', () => {
-      expect(() => computeAutosomalDominant(graph, affected)).not.toThrow();
+    it('terminates on a cyclic pedigree and gives every member of the loop a status', () => {
+      const result = computeAutosomalDominant(graph, affected);
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'B')).not.toBe('unknown');
+      expect(status(result, 'C')).not.toBe('unknown');
     });
   });
 });
@@ -571,8 +574,11 @@ describe('computeAutosomalRecessive', () => {
     const graph = buildGraph(nodes, edges);
     const affected = new Set(['A']);
 
-    it('terminates without throwing on a cyclic pedigree', () => {
-      expect(() => computeAutosomalRecessive(graph, affected)).not.toThrow();
+    it('terminates on a cyclic pedigree and gives every member of the loop a status', () => {
+      const result = computeAutosomalRecessive(graph, affected);
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'B')).not.toBe('unknown');
+      expect(status(result, 'C')).not.toBe('unknown');
     });
   });
 });

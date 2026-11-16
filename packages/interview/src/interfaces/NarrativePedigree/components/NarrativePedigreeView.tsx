@@ -111,7 +111,7 @@ const NODE_COLOR_VARIABLES = {
   'node-color-seq-8': 'var(--node-8)',
 } as const satisfies Record<NodeColorReference, string>;
 
-export function resolveDiseaseColor(color: NodeColorReference): string {
+function resolveDiseaseColor(color: NodeColorReference): string {
   return NODE_COLOR_VARIABLES[color];
 }
 

@@ -26,10 +26,6 @@ describe('the published OpenAPI document', () => {
     expect(document).toMatchSnapshot();
   });
 
-  it('is OpenAPI 3.1.0', () => {
-    expect(document.openapi).toBe('3.1.0');
-  });
-
   it('names its mount as the server its relative paths resolve against', () => {
     expect(document.servers).toEqual([{ url: API_V1_PATH }]);
   });

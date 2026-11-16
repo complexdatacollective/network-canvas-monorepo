@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
@@ -67,7 +68,11 @@ const protocolWith = (
             type: 'text' as const,
             component: 'Text',
           },
-          isEgo: { name: 'IsEgo', type: 'boolean' as const },
+          isEgo: {
+            name: 'IsEgo',
+            type: 'boolean' as const,
+            component: 'Toggle',
+          },
           hd: {
             name: 'HeartDisease',
             type: 'boolean' as const,
@@ -142,8 +147,10 @@ describe('familyPedigreeStage', () => {
       );
     }
     expect(
-      familyPedigreeStage.safeParse({ ...base, framing: 'neutral' }).success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({ ...base, framing: 'neutral' }),
+      ),
+    ).toEqual([{ path: 'framing', code: 'invalid_value' }]);
   });
 
   it('accepts researcher-defined person fields', () => {
@@ -160,16 +167,22 @@ describe('familyPedigreeStage', () => {
   it('requires nodeConfiguration', () => {
     const { nodeConfiguration: _omitted, ...withoutNodeConfiguration } = base;
     expect(
-      familyPedigreeStage.safeParse(withoutNodeConfiguration).success,
-    ).toBe(false);
+      parseIssues(familyPedigreeStage.safeParse(withoutNodeConfiguration)),
+    ).toEqual([{ path: 'nodeConfiguration', code: 'invalid_type' }]);
   });
 
   it('requires every person attribute', () => {
     const { egoAttribute: _omitted, ...incomplete } = base.nodeConfiguration;
     expect(
-      familyPedigreeStage.safeParse({ ...base, nodeConfiguration: incomplete })
-        .success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({
+          ...base,
+          nodeConfiguration: incomplete,
+        }),
+      ),
+    ).toEqual([
+      { path: 'nodeConfiguration.egoAttribute', code: 'invalid_type' },
+    ]);
   });
 
   it('asks the name with a question of its own, and an optional hint', () => {
@@ -203,15 +216,23 @@ describe('familyPedigreeStage', () => {
     };
     it('holds no framing words, which every Family Pedigree shares', () => {
       expect(
-        familyPedigreeStage.safeParse({
-          ...base,
-          framing: 'participantPreference',
-          wording: {
-            ...familyPedigreeWordingIn(),
-            framingChoiceTitle: { en: 'How should we describe your family?' },
-          },
-        }).success,
-      ).toBe(false);
+        parseIssues(
+          familyPedigreeStage.safeParse({
+            ...base,
+            framing: 'participantPreference',
+            wording: {
+              ...familyPedigreeWordingIn(),
+              framingChoiceTitle: { en: 'How should we describe your family?' },
+            },
+          }),
+        ),
+      ).toEqual([
+        {
+          path: 'wording',
+          code: 'unrecognized_keys',
+          keys: ['framingChoiceTitle'],
+        },
+      ]);
     });
 
     it('accepts a stage that asks about gender identity without its question, which the interview words itself', () => {
@@ -272,12 +293,21 @@ describe('familyPedigreeStage', () => {
 
     it('is not told how many parents are missing', () => {
       expect(
-        familyPedigreeStage.safeParse(
-          withParentsItem(
-            '{missing, plural, one {Add a parent for {name}} other {Add parents for {name}}}',
+        parseIssues(
+          familyPedigreeStage.safeParse(
+            withParentsItem(
+              '{missing, plural, one {Add a parent for {name}} other {Add parents for {name}}}',
+            ),
           ),
-        ).success,
-      ).toBe(false);
+        ),
+      ).toEqual([
+        {
+          path: 'completeness.itemText.parents.listItem.en',
+          code: 'custom',
+          message:
+            '"missing" cannot choose between versions of this text by number. This text can only use "isYou", "name".',
+        },
+      ]);
     });
 
     it('may be one phrase for everyone, naming the person', () => {
@@ -304,45 +334,66 @@ describe('familyPedigreeStage', () => {
 
     it('may not use anything else', () => {
       expect(
-        familyPedigreeStage.safeParse(
-          withParentsItem('Add parents for {relative}'),
-        ).success,
-      ).toBe(false);
+        parseIssues(
+          familyPedigreeStage.safeParse(
+            withParentsItem('Add parents for {relative}'),
+          ),
+        ),
+      ).toEqual([
+        {
+          path: 'completeness.itemText.parents.listItem.en',
+          code: 'custom',
+          message:
+            '"{relative}" is not something this text can show. This text can only use "isYou", "name".',
+        },
+      ]);
       // No entry is told how many are missing.
       const text = pedigreeCompletenessText();
       expect(
-        familyPedigreeStage.safeParse(
-          withCompleteness({
-            ...text,
-            itemText: {
-              ...text.itemText,
-              details: {
-                listItem: {
-                  en: '{missing, plural, other {# details missing}}',
+        parseIssues(
+          familyPedigreeStage.safeParse(
+            withCompleteness({
+              ...text,
+              itemText: {
+                ...text.itemText,
+                details: {
+                  listItem: {
+                    en: '{missing, plural, other {# details missing}}',
+                  },
                 },
               },
-            },
-          }),
-        ).success,
-      ).toBe(false);
+            }),
+          ),
+        ),
+      ).toEqual([
+        {
+          path: 'completeness.itemText.details.listItem.en',
+          code: 'custom',
+          message:
+            '"missing" cannot choose between versions of this text by number. This text can only use "isYou", "name".',
+        },
+      ]);
     });
   });
 
   it('requires a relationship configuration', () => {
     const { edgeConfiguration: _omitted, ...withoutRelationship } = base;
-    expect(familyPedigreeStage.safeParse(withoutRelationship).success).toBe(
-      false,
-    );
+    expect(
+      parseIssues(familyPedigreeStage.safeParse(withoutRelationship)),
+    ).toEqual([{ path: 'edgeConfiguration', code: 'invalid_type' }]);
   });
 
   it('requires a non-empty prompt in every language given', () => {
     expect(
-      familyPedigreeStage.safeParse({ ...base, prompt: localized('') }).success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({ ...base, prompt: localized('') }),
+      ),
+    ).toEqual([{ path: 'prompt.en', code: 'too_small' }]);
     expect(
-      familyPedigreeStage.safeParse({ ...base, prompt: 'Draw your family' })
-        .success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({ ...base, prompt: 'Draw your family' }),
+      ),
+    ).toEqual([{ path: 'prompt', code: 'invalid_type' }]);
   });
 
   it('accepts nomination prompts, optionally limited by sex at birth', () => {
@@ -369,45 +420,77 @@ describe('familyPedigreeStage', () => {
   it('rejects nomination prompts that reuse an id, or the family prompt id', () => {
     const prompt = { id: 'heart', text: localized('Who?'), attribute: 'hd' };
     expect(
-      familyPedigreeStage.safeParse({
-        ...base,
-        nominationPrompts: [prompt, { ...prompt, attribute: 'other' }],
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({
+          ...base,
+          nominationPrompts: [prompt, { ...prompt, attribute: 'other' }],
+        }),
+      ),
+    ).toEqual([
+      {
+        path: 'nominationPrompts',
+        code: 'custom',
+        message: 'Nomination prompts contain duplicate ID "heart"',
+      },
+    ]);
     expect(
-      familyPedigreeStage.safeParse({
-        ...base,
-        nominationPrompts: [{ ...prompt, id: FAMILY_PEDIGREE_BUILD_PROMPT_ID }],
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({
+          ...base,
+          nominationPrompts: [
+            { ...prompt, id: FAMILY_PEDIGREE_BUILD_PROMPT_ID },
+          ],
+        }),
+      ),
+    ).toEqual([
+      {
+        path: 'nominationPrompts.0.id',
+        code: 'custom',
+        message:
+          'Nomination prompt id "pedigree" is reserved for building the family',
+      },
+    ]);
   });
 
   it('rejects an empty list of nomination prompts, or another limit', () => {
     expect(
-      familyPedigreeStage.safeParse({ ...base, nominationPrompts: [] }).success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({ ...base, nominationPrompts: [] }),
+      ),
+    ).toEqual([{ path: 'nominationPrompts', code: 'too_small' }]);
     expect(
-      familyPedigreeStage.safeParse({
-        ...base,
-        nominationPrompts: [
-          {
-            id: 'heart',
-            text: localized('Who?'),
-            attribute: 'hd',
-            onlyForSexAssignedAtBirth: 'intersex',
-          },
-        ],
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({
+          ...base,
+          nominationPrompts: [
+            {
+              id: 'heart',
+              text: localized('Who?'),
+              attribute: 'hd',
+              onlyForSexAssignedAtBirth: 'intersex',
+            },
+          ],
+        }),
+      ),
+    ).toEqual([
+      {
+        path: 'nominationPrompts.0.onlyForSexAssignedAtBirth',
+        code: 'invalid_value',
+      },
+    ]);
   });
 
   it('rejects the keys of the retired census interface', () => {
     expect(
-      familyPedigreeStage.safeParse({
-        ...base,
-        censusPrompt: localized('Build'),
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({
+          ...base,
+          censusPrompt: localized('Build'),
+        }),
+      ),
+    ).toEqual([
+      { path: '', code: 'unrecognized_keys', keys: ['censusPrompt'] },
+    ]);
   });
 });
 
@@ -445,14 +528,18 @@ describe('FamilyPedigree in a whole protocol', () => {
 
   it('refuses gender identity that names a variable but no words', () => {
     expect(
-      familyPedigreeStage.safeParse({
-        ...base,
-        nodeConfiguration: {
-          ...base.nodeConfiguration,
-          genderIdentity: { attribute: 'gender' },
-        },
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        familyPedigreeStage.safeParse({
+          ...base,
+          nodeConfiguration: {
+            ...base.nodeConfiguration,
+            genderIdentity: { attribute: 'gender' },
+          },
+        }),
+      ),
+    ).toEqual([
+      { path: 'nodeConfiguration.genderIdentity.terms', code: 'invalid_type' },
+    ]);
   });
 
   it('requires each nomination prompt attribute to be a boolean', () => {
@@ -469,11 +556,30 @@ describe('FamilyPedigree in a whole protocol', () => {
       );
     const accepted = withNomination('hd');
     expect(accepted.success ? null : accepted.error.issues).toBeNull();
-    expect(withNomination('name').success).toBe(false);
+    expect(parseIssues(withNomination('relText'))).toEqual([
+      {
+        path: 'stages.0.nominationPrompts.0.attribute',
+        code: 'custom',
+        message: 'The attribute "relText" must be of type boolean',
+      },
+    ]);
     // Nor can it be the attribute marking the participant.
-    expect(withNomination('isEgo').success).toBe(false);
+    expect(parseIssues(withNomination('isEgo'))).toEqual([
+      {
+        path: 'stages.0.nominationPrompts.0.attribute',
+        code: 'custom',
+        message:
+          'Attribute "IsEgo" is set by the Family Pedigree interface, which marks the participant, so nothing else in this protocol may set it.',
+      },
+    ]);
     // Nor one the person type does not have.
-    expect(withNomination('missing').success).toBe(false);
+    expect(parseIssues(withNomination('missing'))).toEqual([
+      {
+        path: 'stages.0.nominationPrompts.0.attribute',
+        code: 'custom',
+        message: 'The attribute "missing" does not exist in the codebook',
+      },
+    ]);
   });
 
   it('requires each additional person field to name an attribute with a component', () => {
@@ -488,14 +594,14 @@ describe('FamilyPedigree in a whole protocol', () => {
       );
     // `hd` is a boolean with no input control.
     const refused = withField('hd');
-    expect(refused.success).toBe(false);
-    expect(
-      refused.success
-        ? []
-        : refused.error.issues.filter((issue) =>
-            issue.message.includes('must define a component'),
-          ),
-    ).not.toEqual([]);
+    expect(parseIssues(refused)).toEqual([
+      {
+        path: 'stages.0.form.fields.0.variable',
+        code: 'custom',
+        message:
+          'Form field attribute "hd" must define a component (input control) to be rendered as a form field.',
+      },
+    ]);
   });
 
   /** The issues a protocol earns at one path. */
@@ -615,9 +721,18 @@ describe('FamilyPedigree in a whole protocol', () => {
         ),
       );
       expect(
-        ProtocolSchemaV9.safeParse(withFinishStage(withRelationship('relText')))
-          .success,
-      ).toBe(false);
+        parseIssues(
+          ProtocolSchemaV9.safeParse(
+            withFinishStage(withRelationship('relText')),
+          ),
+        ),
+      ).toEqual([
+        {
+          path: 'stages.0.nodeConfiguration.relationshipToParticipantAttribute',
+          code: 'custom',
+          message: 'The attribute "relText" must be of type categorical',
+        },
+      ]);
     });
 
     it('refuses an additional person field, or another of the stage’s answers, on the same attribute', () => {
@@ -633,8 +748,21 @@ describe('FamilyPedigree in a whole protocol', () => {
       );
       const sharedWithSex = withRelationship('sab');
       expect(
-        ProtocolSchemaV9.safeParse(withFinishStage(sharedWithSex)).success,
-      ).toBe(false);
+        parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(sharedWithSex))),
+      ).toEqual([
+        {
+          path: 'stages.0.nodeConfiguration.relationshipToParticipantAttribute',
+          code: 'custom',
+          message:
+            'The relationship to the participant attribute "Sab" used by a Family Pedigree stage must keep its fixed options.',
+        },
+        {
+          path: 'stages.0.nodeConfiguration.sexAssignedAtBirthAttribute',
+          code: 'custom',
+          message:
+            'Attribute "Sab" is set by the Family Pedigree interface, which records each person\'s relationship to the participant, so nothing else in this protocol may set it.',
+        },
+      ]);
     });
   });
 
@@ -690,8 +818,15 @@ describe('FamilyPedigree in a whole protocol', () => {
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
       ['stages', 0, 'form', 'fields', 0, 'variable'],
     ]);
-    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
-      false,
-    );
+    expect(
+      parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
+    ).toEqual([
+      {
+        path: 'stages.0.form.fields.0.variable',
+        code: 'custom',
+        message:
+          'Attribute "IsEgo" is set by the Family Pedigree interface, which marks the participant, so nothing else in this protocol may set it.',
+      },
+    ]);
   });
 });

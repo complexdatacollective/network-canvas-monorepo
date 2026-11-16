@@ -65,8 +65,6 @@ describe('NCBlob', () => {
 
     it('derives velocity from speed and angle', () => {
       const blob = new NCBlob(1, 1, palette);
-      expect(typeof blob.velocityX).toBe('number');
-      expect(typeof blob.velocityY).toBe('number');
       // sqrt(vx^2 + vy^2) === speed for any angle.
       const magnitude = Math.hypot(blob.velocityX, blob.velocityY);
       expect(magnitude).toBeCloseTo(blob.speed);

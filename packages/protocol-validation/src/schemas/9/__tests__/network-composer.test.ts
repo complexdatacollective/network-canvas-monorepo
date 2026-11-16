@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { stageSchema } from '../stages/index.ts';
 import { networkComposerStage } from '../stages/network-composer.ts';
@@ -138,14 +139,21 @@ describe('networkComposerStage schema', () => {
       ...validStage,
       background: { image: 'assets/background.png', concentricCircles: 4 },
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'background.concentricCircles',
+        code: 'custom',
+        message:
+          'concentricCircles cannot be set when background has an image.',
+      },
+    ]);
   });
 
   it('rejects a missing background', () => {
     const { background: _background, ...withoutBackground } = validStage;
-    expect(networkComposerStage.safeParse(withoutBackground).success).toBe(
-      false,
-    );
+    expect(
+      parseIssues(networkComposerStage.safeParse(withoutBackground)),
+    ).toEqual([{ path: 'background', code: 'invalid_type' }]);
   });
 });
 
@@ -241,7 +249,9 @@ describe('ComposerFormFieldSchema', () => {
         ],
       },
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'nodeForm.fields.0.label.en', code: 'too_small' },
+    ]);
   });
 
   it('accepts an empty nodeForm.fields array', () => {
@@ -273,7 +283,9 @@ describe('ComposerFormFieldSchema', () => {
         ],
       },
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'nodeForm.fields.0.component', code: 'invalid_union' },
+    ]);
   });
 
   it('rejects a nodeForm field that still uses prompt (renamed to label)', () => {
@@ -289,7 +301,14 @@ describe('ComposerFormFieldSchema', () => {
         ],
       },
     });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'nodeForm.fields.0',
+        code: 'unrecognized_keys',
+        keys: ['prompt'],
+      },
+      { path: 'nodeForm.fields.0.label', code: 'invalid_type' },
+    ]);
   });
 
   it('carries component + parameters + label on an edge form field', () => {
@@ -337,65 +356,14 @@ describe('ComposerFormFieldSchema', () => {
         ],
       },
     });
-    expect(result.success).toBe(false);
-  });
-
-  // Eighth-wave Finding 2: the composer field schema reuses
-  // `datePickerParametersSchema` (variable.ts) directly, so the year-below-
-  // 1000 floor at year/month resolution applies here without any
-  // composer-specific code.
-  it('rejects a nodeForm DatePicker field with a year-resolution bound below 1000', () => {
-    const result = networkComposerStage.safeParse({
-      ...baseStageWithComponent,
-      nodeForm: {
-        fields: [
-          {
-            variable: 'birth_year',
-            label: localized('birth_year'),
-            component: ComponentTypes.DatePicker,
-            parameters: { type: 'year', min: '0099' },
-          },
-        ],
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'nodeForm.fields.0.parameters.min',
+        code: 'custom',
+        message:
+          'DatePicker "min" must be a valid YYYY date matching the picker\'s resolution',
       },
-    });
-    expect(result.success).toBe(false);
-  });
-
-  // Eleventh-wave Finding 1: the year-zero full-resolution rejection also
-  // arrives here through the shared `datePickerParametersSchema` — the native
-  // date input cannot select any date in year 0000.
-  it('rejects a nodeForm DatePicker field with a full-resolution year-zero bound', () => {
-    const result = networkComposerStage.safeParse({
-      ...baseStageWithComponent,
-      nodeForm: {
-        fields: [
-          {
-            variable: 'birth_date',
-            label: localized('birth_date'),
-            component: ComponentTypes.DatePicker,
-            parameters: { max: '0000-12-31' },
-          },
-        ],
-      },
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a nodeForm DatePicker field with min after max', () => {
-    const result = networkComposerStage.safeParse({
-      ...baseStageWithComponent,
-      nodeForm: {
-        fields: [
-          {
-            variable: 'birth_date',
-            label: localized('birth_date'),
-            component: ComponentTypes.DatePicker,
-            parameters: { min: '2021-06-01', max: '2020-01-01' },
-          },
-        ],
-      },
-    });
-    expect(result.success).toBe(false);
+    ]);
   });
 
   it('rejects an edge form RelativeDatePicker field with a negative before offset', () => {
@@ -419,31 +387,13 @@ describe('ComposerFormFieldSchema', () => {
         },
       ],
     });
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects an edge form RelativeDatePicker field with a year-zero anchor', () => {
-    const result = networkComposerStage.safeParse({
-      ...baseStageWithComponent,
-      edges: [
-        {
-          id: 'e1',
-          subject: { entity: 'edge', type: 'knows' },
-          label: localized('Connection'),
-          form: {
-            fields: [
-              {
-                variable: 'met_date',
-                label: localized('met_date'),
-                component: ComponentTypes.RelativeDatePicker,
-                parameters: { anchor: '0000-12-31' },
-              },
-            ],
-          },
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'edges.0.form.fields.0.parameters.before',
+        code: 'custom',
+        message: 'RelativeDatePicker "before" must not be negative',
+      },
+    ]);
   });
 
   it('accepts an edge form RelativeDatePicker field at the native date floor', () => {

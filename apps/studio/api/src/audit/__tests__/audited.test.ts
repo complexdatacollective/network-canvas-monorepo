@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Fiber, Layer, Redacted, Schema } from 'effect';
+import {
+  Cause,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Option,
+  Redacted,
+  Schema,
+} from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe } from 'vitest';
 
@@ -95,6 +104,11 @@ const denied = () =>
       },
     ],
   });
+
+const failureOf = <A, E>(exit: Exit.Exit<A, E>): E | undefined =>
+  Exit.isFailure(exit)
+    ? Option.getOrUndefined(Cause.findErrorOption(exit.cause))
+    : undefined;
 
 const Harness = Layer.mergeAll(
   TestDatabaseLive,
@@ -294,7 +308,7 @@ describe.skipIf(!testDb)('audited', () => {
             ),
           );
 
-          assert.isTrue(Exit.isFailure(exit));
+          assert.instanceOf(failureOf(exit), RoleChangeDenied);
 
           assert.strictEqual(yield* markerCount(marker), 0);
 
@@ -380,7 +394,10 @@ describe.skipIf(!testDb)('audited', () => {
           ),
         );
 
-        assert.isTrue(Exit.isFailure(exit));
+        assert.strictEqual(
+          failureOf(exit)?.message,
+          'the database was unreachable',
+        );
         assert.strictEqual(yield* markerCount(marker), 0);
         assert.lengthOf(yield* auditRows(TEAM.teamId), 0);
       }),
@@ -403,7 +420,7 @@ describe.skipIf(!testDb)('audited', () => {
           ),
         );
 
-        assert.isTrue(Exit.isFailure(exit));
+        assert.isTrue(Exit.hasDies(exit));
         assert.strictEqual(yield* markerCount(marker), 0);
         assert.lengthOf(yield* auditRows(TEAM.teamId), 0);
       }),
@@ -420,7 +437,7 @@ describe.skipIf(!testDb)('audited', () => {
             Effect.succeed(changed('ok', ROLE_CHANGED)),
           ),
         );
-        assert.isTrue(Exit.isFailure(exit));
+        assert.strictEqual(failureOf(exit)?._tag, 'NotFound');
       }),
     );
 
