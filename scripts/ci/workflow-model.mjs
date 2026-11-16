@@ -9,7 +9,8 @@ import { parse } from 'yaml';
 // or a step switched off with one of the `if` forms below cannot stand in for
 // the real thing, and a missing job or step throws instead of handing
 // `undefined` to an assertion. A condition that is false for a less obvious
-// reason (`if: ${{ !true }}`) is not recognised.
+// reason (`if: ${{ !true }}`) is not recognised. Checks that something must
+// never appear read `raw(node)` instead, where comments are still present.
 
 export const WORKFLOW_DIR = new URL(
   '../../.github/workflows/',
@@ -34,9 +35,35 @@ function stripStepComments(steps) {
   }
 }
 
+// Each object of a stripped document, mapped to the same object as written.
+const rawTwins = new WeakMap();
+
+function pairTwins(stripped, written) {
+  if (typeof stripped !== 'object' || stripped === null) return;
+  rawTwins.set(stripped, written);
+  for (const key of Object.keys(stripped)) {
+    pairTwins(stripped[key], written[key]);
+  }
+}
+
+/**
+ * A document, job or step as written, comments included. GitHub substitutes
+ * `${{ }}` inside a shell comment too, and a substituted newline ends the
+ * comment, so every check that a script must NOT contain something reads this.
+ */
+export function raw(node) {
+  const written = rawTwins.get(node);
+  if (written === undefined) {
+    throw new Error('raw() takes a document, job or step from readActionsYaml');
+  }
+  return written;
+}
+
 /** A workflow or composite action, with step comments removed. */
 export function readActionsYaml(url) {
-  const document = parse(readFileSync(url, 'utf8'));
+  const source = readFileSync(url, 'utf8');
+  const document = parse(source);
+  pairTwins(document, parse(source));
   for (const job of Object.values(document?.jobs ?? {})) {
     stripStepComments(job?.steps);
   }

@@ -25,6 +25,7 @@ import {
   hasJob,
   liveSteps,
   needsOf,
+  raw,
   readActionsYaml,
   readWorkflow,
   scriptsOf,
@@ -583,13 +584,16 @@ test('the dead-link action runs headed Chrome and reads a shared cache', () => {
   // headless Chrome whatever User-Agent it sends, so a crawl that quietly
   // lost its display server would report live links as dead.
   assert.match(check.run, /xvfb-run --auto-servernum/);
-  assert.doesNotMatch(check.run, /--headless/);
+  assert.doesNotMatch(raw(check).run, /--headless/);
   // A spoofed User-Agent is what publishers fingerprint against, and sending
   // one from real Chrome is what broke the Zenodo citations.
-  assert.doesNotMatch(check.run, /--user-agent/);
+  assert.doesNotMatch(raw(check).run, /--user-agent/);
   assert.match(check.run, /--github-actions/);
   assert.match(check.run, /--cache=/);
-  assert.doesNotMatch(check.run, /dead-link-checker\.mjs[^\n]* (-v|--yes)/);
+  assert.doesNotMatch(
+    raw(check).run,
+    /dead-link-checker\.mjs[^\n]* (-v|--yes)/,
+  );
   // The HTTP-client crawl ran serially so a cluster of links on one publisher
   // could not look like a bot burst. A browser is slower per link, so this
   // trades some of that back — pin the value rather than letting it drift,
@@ -1037,7 +1041,7 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   assert.match(testJob.if, /github\.event_name != 'merge_group'/);
   assert.match(code, /if \[\[ "\$GITHUB_EVENT_NAME" == "pull_request" \]\] \\/);
   assert.doesNotMatch(
-    `${testJob.if}\n${scriptsOf(testJob)}`,
+    `${testJob.if}\n${scriptsOf(raw(testJob))}`,
     /pull_request\|merge_group/,
   );
   // Deliberately not `--affected`. Turbo 2.10.4 ignores every `--filter`
@@ -1088,7 +1092,7 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // Over the raw scripts, comments included: a comment can only make this
   // stricter.
   assert.doesNotMatch(
-    scriptsOf(testJob),
+    scriptsOf(raw(testJob)),
     /turbo run [^\n]*--affected/,
     'turbo ignores --filter under --affected, so no invocation here may use it',
   );
@@ -1325,7 +1329,7 @@ test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defi
   // Over the raw scripts, comments included: a comment can only make this
   // stricter.
   assert.doesNotMatch(
-    scriptsOf(storybook),
+    scriptsOf(raw(storybook)),
     /turbo run [^\n]*--affected/,
     'turbo ignores --filter under --affected, so no invocation here may use it',
   );
@@ -1410,7 +1414,7 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
   stepRunning(seedJob, /pnpm exec turbo run test\b/);
   for (const step of liveSteps(seedJob)) {
     assert.doesNotMatch(
-      step.run ?? '',
+      raw(step).run ?? '',
       /turbo run (?:build|typecheck)[^\n]*\btest\b/,
       'the seed does not run tests in the same turbo invocation as build or typecheck',
     );
@@ -1485,11 +1489,12 @@ test('turbo runs at the one version the root package.json pins', () => {
 
 // PART-LOCAL HELPERS
 
-// The scripts of every live step of the jobs.
+// The scripts of every live step of the jobs as written, comments included,
+// for checks that something must never appear in them.
 const everyRun = (...jobs) =>
   jobs
     .flatMap((job) => liveSteps(job))
-    .map((step) => step.run ?? '')
+    .map((step) => raw(step).run ?? '')
     .join('\n');
 const stepNamed = (job, name) => getStep(job, { name });
 const indexNamed = (job, name) => stepIndex(job, { name });
@@ -1556,7 +1561,7 @@ test('generated release PRs use the dedicated PAT and rely on native PR CI', () 
     /gh workflow run ci-and-release\.yml/,
   );
   assert.equal(releaseJob.permissions?.actions, undefined);
-  assert.doesNotMatch(JSON.stringify(releaseJob), /"actions":"write"/);
+  assert.doesNotMatch(JSON.stringify(raw(releaseJob)), /"actions":"write"/);
 
   const productReleaseJob = ciJob('product-release-pr');
   assert.equal(
@@ -1569,7 +1574,10 @@ test('generated release PRs use the dedicated PAT and rely on native PR CI', () 
     /gh workflow run ci-and-release\.yml/,
   );
   assert.equal(productReleaseJob.permissions?.actions, undefined);
-  assert.doesNotMatch(JSON.stringify(productReleaseJob), /"actions":"write"/);
+  assert.doesNotMatch(
+    JSON.stringify(raw(productReleaseJob)),
+    /"actions":"write"/,
+  );
 });
 
 test('product release PR matrix covers every gated release lane completely', () => {
@@ -1606,7 +1614,7 @@ test('normal-lane apps do not get separate generated release PRs', () => {
       ({ slug }) => slug === 'apps',
     ),
   );
-  const definition = JSON.stringify(productReleaseJob);
+  const definition = JSON.stringify(raw(productReleaseJob));
   assert.doesNotMatch(definition, /@codaco\/architect/);
   assert.doesNotMatch(definition, /@codaco\/background-creator/);
   assert.doesNotMatch(definition, /@codaco\/interviewer/);
@@ -1770,7 +1778,7 @@ test('Architect 8.x releases in either lane chain the sub-path dist after the re
     expected_sha: '${{ needs.apps-release-architect.outputs.sha }}',
   });
   // A dist failure must not fail the release job it follows.
-  assert.doesNotMatch(JSON.stringify(architect.steps), /subpath-dist/);
+  assert.doesNotMatch(JSON.stringify(raw(architect).steps), /subpath-dist/);
 
   const hotfix = readWorkflow('hotfix-release.yml');
   assert.equal(
@@ -1895,7 +1903,7 @@ test('the app sub-path dist lane builds a released tag without a write token', (
     buildStep.run,
     'env "${BASE_VARIABLE}=${BASE}" pnpm --filter "@codaco/${APP}" build',
   );
-  const buildSource = JSON.stringify(build);
+  const buildSource = JSON.stringify(raw(build));
   assert.doesNotMatch(buildSource, /secrets\.|GH_TOKEN|github\.token/);
   assert.doesNotMatch(buildSource, /POSTHOG/);
   const pack = getStep(build, { id: 'pack' });
@@ -1945,7 +1953,7 @@ test('the app sub-path dist lane builds a released tag without a write token', (
     '${{ inputs.app }}-subpath-dist-v${{ needs.resolve.outputs.major }}',
   );
 
-  const definition = JSON.stringify(dist);
+  const definition = JSON.stringify(raw(dist));
   assert.doesNotMatch(definition, /netlify/i);
   assert.doesNotMatch(definition, /softprops\/action-gh-release/);
 });
@@ -1989,7 +1997,7 @@ test('Interviewer 8.x releases in either lane chain the sub-path dist after the 
     expected_sha: '${{ needs.apps-release-interviewer.outputs.sha }}',
   });
   // A dist failure must not fail the release job it follows.
-  assert.doesNotMatch(JSON.stringify(interviewer.steps), /subpath-dist/);
+  assert.doesNotMatch(JSON.stringify(raw(interviewer).steps), /subpath-dist/);
 
   const hotfix = readWorkflow('hotfix-release.yml');
   const hotfixDist = getJob(hotfix, 'interviewer-subpath-dist');
@@ -2013,7 +2021,7 @@ test('Interviewer 8.x releases in either lane chain the sub-path dist after the 
 // the normal lane's lock.
 test('the app maintenance lane releases an older line without deploying it', () => {
   const maintenance = readWorkflow('app-maintenance-release.yml');
-  const definition = JSON.stringify(maintenance);
+  const definition = JSON.stringify(raw(maintenance));
   assert.deepEqual(Object.keys(maintenance.on), ['workflow_dispatch']);
   const apps = maintenance.on.workflow_dispatch.inputs.app.options;
   assert.deepEqual(apps, ['interviewer', 'architect']);
@@ -2168,12 +2176,12 @@ test('the app maintenance lane releases an older line without deploying it', () 
   assert.match(setAside.run, /git rev-parse "refs\/tags\/\$tag"\)" != "\$SHA"/);
   assert.match(setAside.run, /"\$status" != HTTP\/\*' 404'\*/);
   assert.match(setAside.run, /git tag -d "\$tag"/);
-  assert.doesNotMatch(setAside.run, /-X DELETE/);
+  assert.doesNotMatch(raw(setAside).run, /-X DELETE/);
 
   // The set-aside reads the app's own package and tag, never Architect's.
   assert.match(setAside.run, /"apps\/\$\{APP\}\/package\.json"/);
   assert.match(setAside.run, /tag="@codaco\/\$\{APP\}@\$version"/);
-  assert.doesNotMatch(setAside.run, /architect/);
+  assert.doesNotMatch(raw(setAside).run, /architect/);
 
   const dist = getJob(maintenance, 'subpath-dist');
   assert.deepEqual(needsOf(dist), ['verify', 'release']);
@@ -2365,7 +2373,8 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     );
   }
   assert.doesNotMatch(
-    step('Sign the images and attest their SBOMs'),
+    raw(getStep(studio, { name: 'Sign the images and attest their SBOMs' }))
+      .run,
     /--predicate "[^"]*\.cdx\.json"/,
     'no SBOM goes to the public transparency log whole',
   );
@@ -2513,7 +2522,7 @@ test('release-side jobs stop once their main commit has been superseded', () => 
     'studio',
   ]) {
     assert.doesNotMatch(
-      JSON.stringify(ciJob(`apps-release-${app}`)),
+      JSON.stringify(raw(ciJob(`apps-release-${app}`))),
       /superseded-push-guard/,
     );
   }
@@ -2543,11 +2552,11 @@ test('a stale Version Packages PR cannot merge', () => {
     /compare\/\$\{vp_head\}\.\.\.\$\{GITHUB_SHA\}"[^\n]*\n\s+--jq \.status/,
   );
   assert.match(resolve.run, /ahead \| identical\) release_pr=true/);
-  assert.doesNotMatch(JSON.stringify(freshness), /merge_group\.head_ref/);
-  assert.doesNotMatch(JSON.stringify(freshness), /head_commit\.message/);
+  assert.doesNotMatch(JSON.stringify(raw(freshness)), /merge_group\.head_ref/);
+  assert.doesNotMatch(JSON.stringify(raw(freshness)), /head_commit\.message/);
   // A judgement that cannot be made must fail the entry, not wave it through:
   // nothing in the resolving step may swallow a failed API call.
-  assert.doesNotMatch(resolve.run, /\|\| true|2>\/dev\/null|set \+e/);
+  assert.doesNotMatch(raw(resolve).run, /\|\| true|2>\/dev\/null|set \+e/);
   assert.equal(resolve['continue-on-error'], undefined);
   const check = getStep(freshness, {
     run: /^node scripts\/release\/check-version-packages-freshness\.mjs\s*$/,
@@ -2815,8 +2824,9 @@ test('the native E2E lane cannot touch pixel baselines', () => {
       'native',
       `${name} arms the capture guard`,
     );
-    // The parsed job carries no comments, so only what it runs is judged.
-    const commands = JSON.stringify(body);
+    // The parsed job carries no YAML comments, but its scripts keep theirs: a
+    // comment that interpolates an expression is still substituted.
+    const commands = JSON.stringify(raw(body));
     assert.doesNotMatch(
       commands,
       /run\.sh/,
@@ -3610,10 +3620,10 @@ test('studio-upgrade runs the lane only once a Studio release is authorised, and
   const qualityJob = ciJob('quality');
   assert.ok(!needsOf(qualityJob).includes('studio-upgrade'));
   assert.doesNotMatch(
-    JSON.stringify(qualityJob),
+    JSON.stringify(raw(qualityJob)),
     /studio-upgrade|STUDIO_UPGRADE/,
   );
-  assert.doesNotMatch(JSON.stringify(ciJob('detect')), /studio_upgrade/);
+  assert.doesNotMatch(JSON.stringify(raw(ciJob('detect'))), /studio_upgrade/);
 });
 
 // PostHog resolves a minified stack frame by matching the chunk ID injected
@@ -3735,7 +3745,7 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     assert.match(step.run, /--pr "\$PR_NUMBER"/);
     // Branch names reach the script through the environment, never inlined
     // into the shell, where a crafted name could run commands.
-    assert.doesNotMatch(step.run, /\$\{\{/);
+    assert.doesNotMatch(raw(step).run, /\$\{\{/);
   }
   assert.match(provision.if, /github\.event\.action != 'closed'/);
   assert.match(teardown.if, /github\.event\.action == 'closed'/);
@@ -3855,7 +3865,7 @@ test('the protocol review Worker deploys only from its own release lane', () => 
     if (name === NAME) continue;
     for (const credential of CREDENTIALS) {
       assert.ok(
-        !JSON.stringify(other).includes(`secrets.${credential}`),
+        !JSON.stringify(raw(other)).includes(`secrets.${credential}`),
         `${name} must not read ${credential}`,
       );
     }
@@ -3906,7 +3916,7 @@ test('the protocol review Worker deploys only from its own release lane', () => 
     );
   }
   // And never interpolated into a script, where the shell would parse it.
-  for (const step of worker.steps) {
+  for (const step of raw(worker).steps) {
     assert.doesNotMatch(step.run ?? '', /\$\{\{\s*secrets\./, step.name);
   }
 

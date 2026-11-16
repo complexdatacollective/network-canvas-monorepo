@@ -9,6 +9,7 @@ import {
   getStep,
   liveSteps,
   needsOf,
+  raw,
   readWorkflow,
   stepIndex,
 } from './workflow-model.mjs';
@@ -66,7 +67,7 @@ test('all UI Test contexts are emitted for PR SHAs without merge-queue work', ()
 
   const statuses = job('required-statuses');
   const condition = flat(statuses.if);
-  assert.doesNotMatch(JSON.stringify(statuses), /merge_group/);
+  assert.doesNotMatch(JSON.stringify(raw(statuses)), /merge_group/);
   assert.ok(condition.includes("github.actor != 'dependabot[bot]'"));
   assert.ok(condition.includes("github.event_name == 'workflow_run'"));
   assert.ok(
@@ -158,7 +159,7 @@ test('release selection uses the fail-closed lockfile-aware detector', () => {
   assert.ok(affected.run.includes('--release-ref "$GITHUB_REF_NAME"'));
   assert.ok(affected.run.includes('--main "origin/$DEFAULT_BRANCH"'));
   assert.equal(affected.env.BEFORE_SHA, '${{ github.event.before }}');
-  assert.doesNotMatch(JSON.stringify(detect), /git merge-base/);
+  assert.doesNotMatch(JSON.stringify(raw(detect)), /git merge-base/);
   assert.ok(affected.run.includes('} >> "$GITHUB_STEP_SUMMARY"'));
 });
 
@@ -204,7 +205,7 @@ test('default-branch pushes replace release-branch skip builds with real builds'
         'if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH" ]]; then\n  chromatic_args+=(--force-rebuild)\nfi',
       ),
     );
-    assert.doesNotMatch(JSON.stringify(body), /--skip /);
+    assert.doesNotMatch(JSON.stringify(raw(body)), /--skip /);
   }
 });
 
@@ -260,7 +261,7 @@ test('unaffected release projects call Chromatic skip from one setup job', () =>
       summary.run.includes('node scripts/ci/chromatic-observability.mjs'),
     );
     assert.ok(summary.run.includes(jobName));
-    assert.doesNotMatch(JSON.stringify(liveSteps(body)), /--skip /);
+    assert.doesNotMatch(JSON.stringify(liveSteps(raw(body))), /--skip /);
   }
 });
 
@@ -272,7 +273,10 @@ test('affected release projects pass runtime options through pnpm', () => {
         `pnpm --filter ${packageName} chromatic \\\n  "\${chromatic_args[@]}" \\\n  --log-file="$RUNNER_TEMP/chromatic-${jobName}.log"`,
       ),
     );
-    assert.doesNotMatch(run, /pnpm --filter [^\n]+ chromatic -- \\/);
+    assert.doesNotMatch(
+      raw(runChromatic(jobName)).run,
+      /pnpm --filter [^\n]+ chromatic -- \\/,
+    );
   }
 });
 
