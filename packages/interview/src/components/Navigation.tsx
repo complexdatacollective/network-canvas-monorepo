@@ -189,6 +189,9 @@ type NavigationProps = {
   disableMoveForward?: boolean;
   disableMoveBackward?: boolean;
   pulseNext: boolean;
+  // Identifies the stage and prompt on screen, so readiness is announced once
+  // for each screen.
+  screenId: string;
   progress: number;
   orientation?: NavigationOrientation;
   forwardButtonRef?: Ref<HTMLButtonElement>;
@@ -212,6 +215,7 @@ const Navigation = ({
   disableMoveForward,
   disableMoveBackward,
   pulseNext,
+  screenId,
   progress,
   orientation = 'vertical',
   forwardButtonRef,
@@ -623,6 +627,7 @@ const Navigation = ({
         />
         <ReadyToContinueAnnouncer
           ready={pulseNext}
+          screenId={screenId}
           descriptionId={readyDescriptionId}
         />
       </MotionSurface>

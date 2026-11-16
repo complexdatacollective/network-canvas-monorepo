@@ -1,24 +1,43 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
+// Interview chrome is English only, so the sentence is marked lang="en"
+// rather than translated.
 const READY_TO_CONTINUE = 'You can continue to the next step.';
 
 /**
- * Tells screen reader users what the Next button's green pulse tells sighted
- * participants: the screen is ready to move on. The live region is always
- * rendered, so it exists before its content changes; the sentence is mounted
- * each time readiness is gained and unmounted when it is lost, so every gain
- * is a new node and is announced again. Losing readiness is silent.
+ * Puts the meaning of the Next button's green pulse into a polite live region:
+ * the screen is ready to move on. The sentence is added once for each screen
+ * (a stage and prompt, identified by `screenId`) while that screen is ready,
+ * whether it became ready there or was ready on arrival. Losing readiness
+ * removes it silently, and regaining it adds a new node.
+ *
+ * Each new `screenId`, including the first, empties the region and releases
+ * the sentence in a later task. On first mount the region is therefore in the
+ * tree before the sentence arrives, and on a change of screen the leaving
+ * screen's readiness, which the store still reports until the new screen's
+ * effects have run, is never announced for the new screen.
  *
  * The same sentence sits in a separate hidden element for the Next button's
- * `aria-describedby`, so it is not read twice from the live region.
+ * `aria-describedby`, which follows readiness directly.
  */
 export default function ReadyToContinueAnnouncer({
   ready,
+  screenId,
   descriptionId,
 }: {
   ready: boolean;
+  screenId: string;
   descriptionId: string;
 }) {
+  const [settledScreenId, setSettledScreenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSettledScreenId(screenId), 0);
+    return () => clearTimeout(timeout);
+  }, [screenId]);
+
   return (
     <>
       <output
@@ -28,7 +47,9 @@ export default function ReadyToContinueAnnouncer({
         lang="en"
         data-testid="ready-to-continue-announcer"
       >
-        {ready && <span>{READY_TO_CONTINUE}</span>}
+        {ready && settledScreenId === screenId && (
+          <span>{READY_TO_CONTINUE}</span>
+        )}
       </output>
       <span id={descriptionId} hidden lang="en">
         {READY_TO_CONTINUE}

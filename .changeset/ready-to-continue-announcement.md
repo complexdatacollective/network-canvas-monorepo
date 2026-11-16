@@ -1,8 +1,8 @@
 ---
-'@codaco/interview': minor
-'@codaco/architect': minor
-'@codaco/interviewer': minor
-'fresco': minor
+'@codaco/interview': patch
+'@codaco/architect': patch
+'@codaco/interviewer': patch
+'fresco': patch
 ---
 
-Participants using a screen reader now hear "You can continue to the next step." when a screen becomes ready to move on, the moment the Next button turns green for sighted participants. The Next button also carries that sentence as its description while the screen is ready.
+The interview now announces "You can continue to the next step." to screen readers once for each stage or prompt that is ready to move on, whether it became ready while the participant was on it or was ready when they arrived. This matches the Next button turning green. While the screen is ready, the Next button also carries that sentence as its description.

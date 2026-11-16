@@ -209,7 +209,7 @@ test.describe('conducting an interview', () => {
       // Stage 1: EgoForm.
       await interviewNav.fillEgoName('Ada');
       // The baseline below shows the next-button's pulse, which appears with
-      // the description that tells screen-reader users the form is ready.
+      // the ready-to-continue description on the same button.
       await expect(page.getByTestId('next-button')).toHaveAccessibleDescription(
         'You can continue to the next step.',
       );
