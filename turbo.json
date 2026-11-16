@@ -95,10 +95,12 @@
         "hooks/**",
         "lib/**",
         "messages/**",
+        "netlify/**",
         "docs/**",
         "translation/**",
         "env.js",
         "navigation.ts",
+        "instrumentation-client.ts",
         "vitest.config.*",
         "vitest.setup.*",
         "tsconfig*.json",
@@ -267,6 +269,32 @@
       "inputs": ["src/**", "vite.config.*", "tsconfig*.json", "package.json"],
       "outputs": []
     },
+    // The theme's tests build and read the Discourse theme under theme/.
+    "@codaco/community-theme#test": {
+      "dependsOn": ["^topo"],
+      "inputs": ["src/**", "theme/**", "vitest.config.*", "package.json"],
+      "outputs": []
+    },
+    // The generic test inputs plus the Storybook locale module a unit test
+    // imports.
+    "@codaco/protocol-builder#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "__tests__/**",
+        "scripts/**",
+        "vite.*",
+        ".storybook/i18n.*",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "vitest.sequencer.*",
+        "config/vitest/**",
+        "package.json",
+        ".env",
+        ".env.development"
+      ],
+      "outputs": []
+    },
     "@codaco/sketch#build": {
       "dependsOn": ["^topo"],
       "inputs": [
@@ -389,6 +417,7 @@
         "netlify/**",
         "public/protocols/**",
         "test/**",
+        "instrumentation-client.ts",
         "vitest.config.*",
         "vitest.setup.*",
         "tsconfig*.json",
@@ -613,6 +642,8 @@
       "inputs": [
         "src/**",
         "__tests__/**",
+        "scripts/**",
+        "vite.*",
         "vitest.config.*",
         "vitest.setup.*",
         "vitest.sequencer.*",
@@ -763,6 +794,7 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
         "$TURBO_ROOT$/scripts/buildtime/app-base-path.mjs",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "__tests__/**",
@@ -786,6 +818,7 @@
         "src/**",
         "__tests__/**",
         "e2e/**",
+        "vite.config.*",
         "vitest.config.*",
         "vitest.setup.*",
         "package.json",
@@ -955,6 +988,12 @@
     "fresco#test": {
       "dependsOn": ["^topo", "fresco#codegen"],
       "inputs": [
+        "__tests__/**",
+        "i18n/**",
+        "src/**",
+        "Dockerfile",
+        "docker-compose.*.yml",
+        ".github/**",
         "app/**",
         "actions/**",
         "components/**",
@@ -985,6 +1024,8 @@
     "fresco#test:storybook": {
       "dependsOn": ["^topo", "fresco#codegen"],
       "inputs": [
+        "i18n/**",
+        "src/**",
         "app/**",
         "actions/**",
         "components/**",
