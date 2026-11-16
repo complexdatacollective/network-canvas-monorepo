@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, waitFor } from 'storybook/test';
 
 import type { StoredSessionLite } from '~/lib/db/types';
 
@@ -45,7 +46,42 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
-export const Default: Story = {};
+function setVisibility(state: DocumentVisibilityState | null) {
+  if (state === null) {
+    Reflect.deleteProperty(document, 'visibilityState');
+  } else {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => state,
+    });
+  }
+  document.dispatchEvent(new Event('visibilitychange'));
+}
+
+/**
+ * The status dot pulses only while the page is active, so a hidden tab does
+ * not keep animating.
+ */
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const dot = canvasElement.querySelector('span[aria-hidden].rounded-full');
+    if (!dot) throw new Error('status dot not found');
+    await waitFor(() =>
+      expect(getComputedStyle(dot).animationName).toBe('animate-pulse-glow'),
+    );
+    try {
+      setVisibility('hidden');
+      await waitFor(() =>
+        expect(getComputedStyle(dot).animationName).toBe('none'),
+      );
+    } finally {
+      setVisibility(null);
+    }
+    await waitFor(() =>
+      expect(getComputedStyle(dot).animationName).toBe('animate-pulse-glow'),
+    );
+  },
+};
 
 export const UntitledCase: Story = {
   args: { caseId: '' },
