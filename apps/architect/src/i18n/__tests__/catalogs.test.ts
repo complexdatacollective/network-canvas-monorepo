@@ -75,7 +75,7 @@ describe('Architect catalog contract', () => {
       expect(entry.description?.trim()).toBeTruthy();
     }
   }, 120_000);
-  it('ships complete Spanish and reviewed sparse British English with identical ICU arguments and rich tags', () => {
+  it('ships every full locale complete, and the sparse British English overrides reviewed, with identical ICU arguments and rich tags', () => {
     expect(checkFullLocale(en, es, esSources)).toEqual([]);
     expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
     expect(checkFullLocale(en, zhHant, zhHantSources)).toEqual([]);

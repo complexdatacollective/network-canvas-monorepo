@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { BUNDLED_TEMPLATES } from '~/templates';
+
+import { sampleProtocol } from '../sample-protocol';
 import {
   bundledTemplateAssetUrls,
   warmBundledTemplateAssets,
@@ -22,10 +26,32 @@ afterEach(() => {
 
 describe('warmBundledTemplateAssets', () => {
   it('includes the Sample and template asset URLs and excludes nothing extra', () => {
-    expect(bundledTemplateAssetUrls.length).toBeGreaterThan(0);
-    expect(bundledTemplateAssetUrls.every((u) => typeof u === 'string')).toBe(
-      true,
+    const sourcesOf = (protocol: CurrentProtocol) =>
+      Object.values(protocol.assetManifest ?? {}).flatMap((entry) =>
+        'source' in entry && entry.source ? [entry.source] : [],
+      );
+    const expectedPaths = [
+      ...sourcesOf(sampleProtocol).map((source) => `/sample/assets/${source}`),
+      ...BUNDLED_TEMPLATES.flatMap(({ id, protocol }) =>
+        sourcesOf(protocol).map(
+          (source) => `/templates/${id}/assets/${source}`,
+        ),
+      ),
+    ];
+    expect(expectedPaths.length).toBeGreaterThan(0);
+    expect(bundledTemplateAssetUrls).toHaveLength(expectedPaths.length);
+
+    // Vite inlines a small asset as a data URL, which carries no path to
+    // match; every other URL names exactly one expected file.
+    const fileUrls = bundledTemplateAssetUrls.filter(
+      (url) => !url.startsWith('data:'),
     );
+    expect(fileUrls.length).toBeGreaterThan(0);
+    const matched = fileUrls.map((url) =>
+      expectedPaths.filter((path) => url.endsWith(path)),
+    );
+    expect(matched.every((paths) => paths.length === 1)).toBe(true);
+    expect(new Set(matched.flat()).size).toBe(fileUrls.length);
   });
 
   describe('with a controlling service worker', () => {

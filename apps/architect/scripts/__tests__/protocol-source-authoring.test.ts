@@ -232,6 +232,11 @@ describe('protocol source authoring', () => {
     );
 
     expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues).toContain(
+      'assetManifest.image.source: Asset source must be a filename without path separators or ".."',
+    );
+    await expect(readFile(join(assetDir, '../image.png'))).rejects.toThrow();
   });
 
   it('rejects duplicate asset source filenames', async () => {
