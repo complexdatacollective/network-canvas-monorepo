@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import {
   defineMessages,
@@ -21,10 +21,12 @@ import {
 } from './types';
 
 type OperatorFilterProps = {
-  value: OperatorFilterValue | undefined;
-  onChange: (value: OperatorFilterValue | undefined) => void;
-  config: OperatorFilterConfig;
-  data: unknown[];
+  'value': OperatorFilterValue | undefined;
+  'onChange': (value: OperatorFilterValue | undefined) => void;
+  'config': OperatorFilterConfig;
+  'data': unknown[];
+  /** The id of the visible label naming what is filtered. */
+  'aria-labelledby'?: string;
 };
 
 const messages = defineMessages({
@@ -110,8 +112,14 @@ export default function OperatorFilter({
   onChange,
   config,
   data,
+  'aria-labelledby': ariaLabelledBy,
 }: OperatorFilterProps) {
   const intl = useAppIntl();
+  // The comparison and the number have no visible label of their own, so they
+  // are named for screen readers only, which is English.
+  const labelIds = useId();
+  const operatorLabelId = `${labelIds}-operator`;
+  const valueLabelId = `${labelIds}-value`;
   const [selectedEntity, setSelectedEntity] = useState<string>('');
   const [selectedOperator, setSelectedOperator] = useState<
     OperatorCondition['operator']
@@ -164,7 +172,17 @@ export default function OperatorFilter({
   }));
 
   return (
-    <div className="flex w-72 flex-col gap-3">
+    <div
+      role="group"
+      aria-labelledby={ariaLabelledBy}
+      className="flex w-72 flex-col gap-3"
+    >
+      <span id={operatorLabelId} className="sr-only" lang="en">
+        Comparison
+      </span>
+      <span id={valueLabelId} className="sr-only" lang="en">
+        Value
+      </span>
       <Paragraph intent="smallText" emphasis="muted" margin="none">
         {intl.formatMessage(messages.showInterviewsWhere)}
       </Paragraph>
@@ -208,6 +226,7 @@ export default function OperatorFilter({
       <div className="flex flex-col gap-2">
         <SelectField
           name="entity-type"
+          aria-label={config.entitySelector?.label}
           size="sm"
           options={entityOptions}
           value={selectedEntity}
@@ -223,6 +242,7 @@ export default function OperatorFilter({
 
         <SelectField
           name="filter-operator"
+          aria-labelledby={operatorLabelId}
           size="sm"
           options={operatorOptions}
           value={selectedOperator}
@@ -238,6 +258,7 @@ export default function OperatorFilter({
           <InputField
             type="number"
             name="filter-value"
+            aria-labelledby={valueLabelId}
             size="sm"
             value={inputValue}
             onChange={(val) => setInputValue(val ?? '')}
