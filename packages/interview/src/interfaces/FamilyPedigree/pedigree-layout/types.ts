@@ -27,9 +27,17 @@ export type PedigreeLink = {
   isGestationalCarrier?: boolean;
 };
 
+/** The box a custom drawing fills within its symbol, centred, as fractions
+ * of the symbol's width and height. */
+export type PedigreeSymbolBox = { width: number; height: number };
+
 /** The shape of a person's symbol, which decides where a line meets its
  * edge. */
-export type PedigreeSymbolShape = 'circle' | 'square' | 'diamond';
+export type PedigreeSymbolShape =
+  | 'circle'
+  | 'square'
+  | 'diamond'
+  | PedigreeSymbolBox;
 
 export type ParentConnection = {
   parentIndex: number;

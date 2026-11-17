@@ -114,6 +114,8 @@ export type NodeTypeEntry = {
   color: NodeColorReference;
   icon: string;
   shape: { default: string; dynamic?: ShapeMapping };
+  /** The type's custom shapes, by shape id: each names an SVG asset. */
+  customShapes?: Record<string, { name: string; asset: string }>;
   variables: Map<string, VariableEntry>;
 };
 

@@ -248,7 +248,8 @@ function outsideRoundedBox(
 /**
  * How far a point lies outside a symbol, as a fraction of the symbol
  * (negative inside): a circle, a square with rounded corners, or a diamond
- * (a square turned and scaled to 0.85); unknown, the box itself.
+ * (a square turned and scaled to 0.85); a custom drawing, the box it fills;
+ * unknown, the symbol's own box.
  */
 function outsideSymbol(
   p: Point,
@@ -268,6 +269,14 @@ function outsideSymbol(
   const [dx, dy] = [Math.abs(x), Math.abs(y)];
   const radius = symbol.cornerRadius ?? CORNER_RADIUS;
   if (shape === 'circle') return Math.hypot(dx, dy) - 0.5;
+  if (typeof shape === 'object') {
+    const ax = dx - shape.width / 2;
+    const ay = dy - shape.height / 2;
+    return (
+      Math.hypot(Math.max(ax, 0), Math.max(ay, 0)) +
+      Math.min(Math.max(ax, ay), 0)
+    );
+  }
   if (shape === 'diamond') {
     return outsideRoundedBox(
       Math.abs(x + y) / Math.SQRT2,

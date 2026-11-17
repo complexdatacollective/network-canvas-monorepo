@@ -26,6 +26,7 @@ import {
   type EncryptedBytes,
   encryptValue,
 } from '../Anonymisation/encryptionFormat';
+import { addCustomSymbols } from '../pedigree-common/customSymbolsFixture';
 
 const PROMPT =
   'Add the members of your family. Select a person to add their relatives.';
@@ -98,6 +99,8 @@ type StoryOptions = {
   nominationPrompts?: NominationPrompt[];
   /** The person attribute the codebook maps each person's symbol to. */
   shapeBy?: 'genderIdentity' | 'sexAssignedAtBirth';
+  /** Draw people with custom shapes, mapped to their gender identity. */
+  customSymbols?: boolean;
   /** The researcher's own gender identity options, in place of the six
    * defaults. An option with no `words` takes neutral words. */
   genderIdentities?: GenderIdentities;
@@ -152,6 +155,7 @@ export function buildInterview({
   framing,
   nominationPrompts,
   shapeBy = 'genderIdentity',
+  customSymbols = false,
   genderIdentities,
   askGenderIdentity = true,
   nameValidation,
@@ -199,6 +203,9 @@ export function buildInterview({
             ],
           },
   });
+  if (customSymbols && stage.genderIdentity !== undefined) {
+    addCustomSymbols(si, people, stage.genderIdentity);
+  }
   if (withFormFields) {
     stage.addFormField({ component: 'Number', prompt: 'Age' });
     // The question is worded for the participant when it is about them.
@@ -371,6 +378,7 @@ function PedigreeStory({
   framing,
   nominationPrompts,
   shapeBy,
+  customSymbols,
   genderIdentities,
   askGenderIdentity,
   nameValidation,
@@ -393,6 +401,7 @@ function PedigreeStory({
           framing,
           nominationPrompts,
           shapeBy,
+          customSymbols,
           genderIdentities,
           askGenderIdentity,
           nameValidation,
@@ -411,6 +420,7 @@ function PedigreeStory({
       framing,
       nominationPrompts,
       shapeBy,
+      customSymbols,
       genderIdentities,
       askGenderIdentity,
       nameValidation,
@@ -2746,6 +2756,36 @@ export const ShapeFollowsSexAssignedAtBirth: Story = {
       mother: 'circle',
       father: 'square',
     });
+  },
+};
+
+/**
+ * The same family, with a codebook that draws people with custom shapes: a
+ * circle for women, a wide plaque for men and a house for anyone else. Each
+ * line ends on the box its person's drawing fills.
+ */
+export const CustomShapes: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={genderDiverseFamily}
+      customSymbols
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    await expectPeople(6)({ canvasElement });
+    const drawingOf = (id: string) =>
+      canvasElement
+        .querySelector(`[data-person-id="${id}"] [data-node-shape-artwork]`)
+        ?.getAttribute('viewBox');
+    await waitFor(() => expect(drawingOf('father')).toBe('0 0 160 100'));
+    await expect(drawingOf('partner')).toBe('0 0 100 100');
+    await expect(drawingOf('mother')).toBeUndefined();
+    // The lines under the two kinds of drawing are hidden across their boxes.
+    await expect(
+      canvasElement.querySelectorAll('mask rect[fill="black"]').length,
+    ).toBeGreaterThan(1);
   },
 };
 

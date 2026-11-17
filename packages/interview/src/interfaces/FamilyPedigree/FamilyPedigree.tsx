@@ -58,6 +58,7 @@ import {
   writeSubmissionResult,
 } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
+import { useCustomShapeSvgs } from '../../hooks/useCustomShapeSvgs';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -114,7 +115,10 @@ import {
   usePedigreeZoomButtons,
   zoomForKey,
 } from '../pedigree-common/PedigreeCanvas';
-import { symbolShapesOf } from '../pedigree-common/symbolShapes';
+import {
+  symbolOutlinesOf,
+  symbolShapesOf,
+} from '../pedigree-common/symbolShapes';
 import {
   answersContradictedBy,
   type CompletenessItem,
@@ -687,7 +691,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // A person's symbol is the person type's shape in the codebook, which the
   // researcher may map to one of their attributes, such as gender identity
   // or sex assigned at birth.
-  const shapeDefinition = codebook.node?.[config.personType]?.shape;
+  const personDefinition = codebook.node?.[config.personType];
+  const shapeSvgs = useCustomShapeSvgs();
 
   // The gender identity question offers the attribute's own options, with
   // the labels the researcher gave them.
@@ -1127,11 +1132,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => new Map(shown.people.map((person) => [person.id, person.name ?? ''])),
     [shown.people],
   );
-  // The shape each person's symbol is drawn with, so that lines meet the
-  // symbols' edges.
+  // The shape each person's symbol is drawn with, and its outline, so that
+  // lines meet the symbols' edges.
+  const symbolShapes = useMemo(
+    () => symbolShapesOf(shown.people, personDefinition, shapeSvgs),
+    [shown.people, personDefinition, shapeSvgs],
+  );
   const nodeShapes = useMemo(
-    () => symbolShapesOf(shown.people, shapeDefinition),
-    [shown.people, shapeDefinition],
+    () => symbolOutlinesOf(symbolShapes),
+    [symbolShapes],
   );
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
@@ -2939,7 +2948,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     }
                     accessibleName={displayName(personId)}
                     color={nodeColor}
-                    shape={nodeShapes.get(personId) ?? 'circle'}
+                    shape={symbolShapes.get(personId) ?? 'circle'}
                     selected={
                       nomination ? isNominated(person) : personId === selectedId
                     }
