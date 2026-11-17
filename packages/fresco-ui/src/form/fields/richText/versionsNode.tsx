@@ -77,14 +77,20 @@ export type RichTextVersionsAction = Readonly<{ id: string; label: string }>;
 /**
  * What the researcher asked for in a set of versions that its consumer has
  * to carry out: `edit` or `remove` on one version, or one of the set's own
- * `actions`. `update` rewrites the element in the text, as one undoable edit.
+ * `actions`. `update` rewrites the element in the text, as one undoable edit;
+ * told `{ undoable: false }`, it rewrites it outside the text's history, for
+ * a change that only restates something the consumer keeps elsewhere (a
+ * version's label, say), which undoing in the text could not take back.
  */
 export type RichTextVersionsActionEvent = Readonly<{
   action: string;
   /** The version the action is on; absent for one of the set's actions. */
   versionKey?: string;
   attributes: RichTextVersionsAttributes;
-  update: (attributes: Partial<RichTextVersionsAttributes>) => void;
+  update: (
+    attributes: Partial<RichTextVersionsAttributes>,
+    options?: Readonly<{ undoable?: boolean }>,
+  ) => void;
 }>;
 
 /**
@@ -777,8 +783,23 @@ function VersionsView({
       action,
       ...(versionKey !== undefined && { versionKey }),
       attributes: { ...latest.current, meta: node.attrs.meta as unknown },
-      update: (next) => {
-        updateAttributes(next);
+      update: (next, options) => {
+        const position = getPos();
+        const current =
+          position === undefined ? null : editor.state.doc.nodeAt(position);
+        if (
+          options?.undoable === false &&
+          position !== undefined &&
+          current !== null
+        ) {
+          editor.view.dispatch(
+            editor.state.tr
+              .setNodeMarkup(position, undefined, { ...current.attrs, ...next })
+              .setMeta('addToHistory', false),
+          );
+        } else {
+          updateAttributes(next);
+        }
         // Carried out, often from a dialog that took the focus away: the
         // element is opened again, where the researcher left it.
         setFolded(false);

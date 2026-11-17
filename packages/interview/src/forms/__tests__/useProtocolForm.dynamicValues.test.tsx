@@ -46,6 +46,8 @@ function renderForm(
     'precedingVariables' | 'newEntityAttributes' | 'labelNode'
   >,
   prompt: string,
+  /** The node type's own label, where the test gives it one. */
+  dynamicLabel?: unknown,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -68,6 +70,7 @@ function renderForm(
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
+              ...(dynamicLabel === undefined ? {} : { dynamicLabel }),
               variables: {
                 name: { name: 'name', type: 'text', component: 'Text' },
                 close: { name: 'close', type: 'boolean' },
@@ -210,6 +213,25 @@ describe('useProtocolForm dynamic values', () => {
       expect.objectContaining({ name: 'Ada', kinds: ['aunt'] }),
       expect.objectContaining({ name: true, kinds: true }),
     );
+  });
+
+  // A node type's own label can test any of the node's attributes, so the
+  // node the form labels has to carry every answer, not only the text and
+  // numbers a default label is read from.
+  it('labels the node being created by its own label, from an answer that is a list of options', () => {
+    renderForm({ precedingVariables: ['kinds'] }, 'How old is {label}?', {
+      text: { en: '{kind, select, aunt {An aunt} other {Someone}}' },
+      dynamicValues: { kind: { path: 'node.kinds', cases: { aunt: 'aunt' } } },
+    });
+    expect(
+      screen.getByText('Someone', { selector: 'bdi' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Aunt' }));
+    expect(
+      screen.getByText('An aunt', { selector: 'bdi' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Someone', { selector: 'bdi' })).toBeNull();
   });
 
   it('shows what a new person will be created with', () => {

@@ -1239,9 +1239,13 @@ export function DynamicMessageEditor({
         [session.conditionId]: condition,
       };
       // The rows say their rules, so the "If" in the text is relabelled.
+      // The rules are kept with the stage and not in the text, so undoing in
+      // the text cannot take them back: the new labels stay out of its
+      // history, or an undo would show the old rules over the new ones.
       const { rows, otherwise } = ifBlockRowsIn(session.event.attributes);
       session.event.update(
         ifBlockAttributes(rows, otherwise, ifBlockFor(bindings, nextValues)),
+        { undoable: false },
       );
       setConditions(nextValues);
       return;

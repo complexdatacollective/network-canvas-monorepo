@@ -1936,6 +1936,90 @@ describe('undo and redo of values and versions', () => {
     );
   });
 
+  // A consumer that keeps part of what a version says outside the text (the
+  // rules an "If" tests) restates it in the version's label. Undoing in the
+  // text cannot take the consumer's own change back, so the new label must
+  // not be undone either, or the text would show rules that no longer hold.
+  it.each([
+    { undoable: false, afterUndo: 'If: two friends' },
+    { undoable: true, afterUndo: 'If: one friend' },
+  ])(
+    'leaves a relabelled version as it is on undo only when told the change is not undoable ($undoable)',
+    async ({ undoable, afterUndo }) => {
+      const user = withSafeTypingIntoRichText(userEvent.setup());
+      render(
+        <RichTextEditorField
+          id="greeting"
+          name="greeting"
+          aria-describedby="greeting-hint"
+          aria-label="Greeting"
+          singleLine
+          versions
+          changeMode="input"
+          value={{
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [
+                  { type: 'text', text: 'Hello' },
+                  {
+                    type: 'versions',
+                    attrs: {
+                      label: 'If',
+                      versions: [
+                        {
+                          key: 'yes',
+                          label: 'If: one friend',
+                          action: 'Edit rules',
+                          content: [],
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          }}
+          onChange={() => undefined}
+          onVersionsAction={(event) =>
+            event.update(
+              {
+                versions: event.attributes.versions.map((version) => ({
+                  ...version,
+                  label: 'If: two friends',
+                })),
+              },
+              { undoable },
+            )
+          }
+        />,
+      );
+      const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+      const pill = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>(
+          '[data-versions-pill]',
+        );
+        if (found === null) throw new Error('No pill');
+        return found;
+      });
+      await user.click(pill);
+      await user.click(
+        await screen.findByRole('button', { name: 'Edit rules' }),
+      );
+      expect(
+        await screen.findByRole('textbox', { name: 'If: two friends' }),
+      ).toBeInTheDocument();
+
+      await user.click(editor);
+      await user.keyboard('{Control>}z{/Control}');
+      await user.click(pill);
+      expect(
+        await screen.findByRole('textbox', { name: afterUndo }),
+      ).toBeInTheDocument();
+    },
+  );
+
   it('undoes an edit in a version from the line, and redoes it from the version', async () => {
     const onChange = vi.fn();
     const user = withSafeTypingIntoRichText(userEvent.setup());
