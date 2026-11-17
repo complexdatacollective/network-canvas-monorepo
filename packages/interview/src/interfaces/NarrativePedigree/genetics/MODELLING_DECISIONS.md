@@ -474,8 +474,8 @@ biological and donor links count, on every link of a route: an adoptive, social
 or gestational link breaks it, and a son conceived with a donor egg belongs to
 the egg donor's lines. A person whose sex is uncertain gives no evidence and the
 walk does not pass through them. The existing rule for daughters of an affected
-father, the at-risk markings of step 2, the step-3 walk and the precedence
-lattice (§4) are unchanged. A woman marked here passes the statuses an obligate
+father, the step-3 walk and the precedence lattice (§4) are unchanged. The
+at-risk markings above a carrier are set out in §9. A woman marked here passes the statuses an obligate
 carrier's children get through step 3.
 
 The rule judges each woman separately. The women between her and the affected
@@ -544,12 +544,6 @@ known to the family and recorded when he is affected himself, and requiring him
 would withhold the status from the much commoner families where he is simply
 missing.
 
-A woman more than two generations above the affected males gets no status when
-her only sides are the lines of two daughters by one father, each heading a
-line the rule marks. Her daughters are marked obligate, but their father could
-explain both lines, and the at-risk markings of step 2 reach only the mother and
-maternal grandmother of an affected male. This is unchanged from `main`.
-
 A man's affected daughters by another woman are not on any of her sides, so they
 cannot show that he is the likely source of her own affected daughter. In a
 family of a woman, her partner, their affected son and affected daughter, and
@@ -609,3 +603,61 @@ path unless she is herself affected.** A woman made an obligate carrier by §7
 through her mother's family has her path run through her mother. If her father
 is also affected, her path runs only through him, as for any carrier daughter of
 an affected father.
+
+---
+
+## 9. X-linked recessive: possible-carrier status climbs the whole maternal line
+
+### What the code does
+
+Step 2c of `computeXLinkedRecessive` starts from every mother of an affected
+male and every obligate carrier. For each such woman it marks her genetic
+mother and the sisters who share her mother `atRiskCarrier`, and the brothers
+who share her mother `atRiskAffected`. It then does the same from her mother,
+and so on up the maternal line for as many generations as are recorded. A
+visited set ends the climb in a loop. The step-3 walk then gives the children of
+every woman marked here their at-risk statuses.
+
+The climb ends above a woman who is not affected and whose recorded father is
+affected. A woman recorded affected is climbed through whoever her father is.
+An affected man who only may be her father does not end the climb.
+
+### Rationale
+
+A carrier's disease X came from her mother, from her father, or arose new in
+her. When her father is unaffected, her mother is the only inherited source, so
+her mother's chance of carrying is about one half for a condition in which
+affected males do not have children and higher for milder ones. Applied again
+at each generation the chance shrinks but never reaches zero. For an isolated
+case of a lethal condition the usual figures are two thirds for the mother, one
+third for her mother and one sixth for the great-grandmother. The statuses
+carry no probability (§1), so "at risk" holds at every depth, for every
+condition, without any extra inheritance setting.
+
+Before this decision the at-risk markings reached only the mother, maternal
+grandmother, maternal aunts and maternal uncles of an affected male, and nothing
+was marked above an obligate carrier. That matched the list of first- and
+second-degree relatives used to offer carrier testing, which is a practical
+boundary and not a genetic one. The original design asked for a recursion up
+the maternal line and the first implementation did not carry it out. The gap
+showed most clearly in a woman three or more generations above the affected
+males whose two daughters by one father were both obligate carriers: she is the
+most likely common source after their father and had no status.
+
+A woman whose recorded father is affected has his X for certain, and it accounts
+for her carrying the condition, so nothing points to her mother. This matches
+the autosomal recessive rule, which does not spread a prior from a carrier who
+is the child of a certain transmitter. Before this decision her mother was
+marked as the maternal grandmother of the woman's affected son; she no longer
+is. A woman recorded affected may have a copy from each parent (§8), so her
+mother stays a possible source. A man who only may be her father is enough to
+withhold an obligate status (§7) but not an at-risk one, because withholding
+"at risk" on a possibility would understate the mother's risk in the families
+where he is not the father.
+
+### Decision
+
+**From every mother of an affected male and every obligate carrier, mark her
+mother and maternal sisters at-risk carriers and her maternal brothers at risk
+of being affected, repeating up the maternal line without limit and stopping
+above an unaffected woman whose recorded father is affected.**
