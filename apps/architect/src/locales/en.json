@@ -3555,10 +3555,6 @@
     "defaultMessage": "OK",
     "description": "Button that closes the dialog shown when the interview preview cannot start from the stage editor, either because no protocol is loaded or because the stage has errors."
   },
-  "architect.stageEditor.stageEditorChrome.walkthrough": {
-    "defaultMessage": "Walk me through it",
-    "description": "Button above the list of sections of the stage being edited. It opens a step-by-step guide to the stage in a floating panel."
-  },
   "architect.stageEditor.stageEditorPage.otherTab": {
     "defaultMessage": "Another tab",
     "description": "What an editor calls the browser tab that holds the saved copy of this protocol, when it is not this one. Read as, for example, “Another tab is editing this stage”."
@@ -3591,10 +3587,6 @@
     "defaultMessage": "Do",
     "description": "Heading over recommended practices in the stage walkthrough."
   },
-  "architect.stageEditor.walkthrough.expand": {
-    "defaultMessage": "Make the walkthrough larger",
-    "description": "Tooltip and accessible name of the button in the walkthrough panel header that widens the panel, so its text and animations are easier to read."
-  },
   "architect.stageEditor.walkthrough.eyebrow": {
     "defaultMessage": "Walkthrough",
     "description": "Small label above the name of the stage type at the top of the walkthrough, and on the minimized walkthrough."
@@ -3607,21 +3599,9 @@
     "defaultMessage": "In this window",
     "description": "Eyebrow on walkthrough steps about the dialog the researcher has open, rather than the stage editor behind it."
   },
-  "architect.stageEditor.walkthrough.move": {
-    "defaultMessage": "Move the walkthrough",
-    "description": "Grip on the walkthrough panel, used to move the panel out of the way."
-  },
-  "architect.stageEditor.walkthrough.moveHint": {
-    "defaultMessage": "Drag to move it, use the arrow keys, or activate to move it to the other side of the screen.",
-    "description": "Screen-reader description of the grip on the walkthrough panel, saying the ways it can be moved."
-  },
   "architect.stageEditor.walkthrough.next": {
     "defaultMessage": "Next",
     "description": "Button that moves to the next walkthrough step."
-  },
-  "architect.stageEditor.walkthrough.progress": {
-    "defaultMessage": "Step {index, number} of {total, number}",
-    "description": "Position in the stage walkthrough. index is one-based."
   },
   "architect.stageEditor.walkthrough.progressShort": {
     "defaultMessage": "{index, number}/{total, number}",
@@ -3651,9 +3631,9 @@
     "defaultMessage": "Walk me through {section}",
     "description": "Accessible name and tooltip of the info button beside the title of a section of the stage being edited. It opens the step-by-step guide to the stage at the step about that section. section is the section’s title, such as “Prompts”."
   },
-  "architect.stageEditor.walkthrough.shrink": {
-    "defaultMessage": "Make the walkthrough smaller",
-    "description": "Tooltip and accessible name of the button in the widened walkthrough panel header that returns it to its usual size."
+  "architect.stageEditor.walkthrough.start": {
+    "defaultMessage": "Walk me through this",
+    "description": "Button in the stage editor toolbar that opens a step-by-step guide to the stage being edited, in a floating panel. It is hidden while the guide is open."
   },
   "architect.storageUnavailableBanner.downloadFailed": {
     "defaultMessage": "Download failed",

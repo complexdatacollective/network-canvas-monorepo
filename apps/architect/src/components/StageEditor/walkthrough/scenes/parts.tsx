@@ -54,6 +54,8 @@ const LOOP_REST = 1.6;
 
 export const smooth = (x: number) => x * x * (3 - 2 * x);
 
+const easeOut = (k: number) => 1 - (1 - k) ** 3;
+
 export const lerp = (from: number, to: number, k: number) =>
   from + (to - from) * k;
 
@@ -462,7 +464,7 @@ export type SceneDrawing = Readonly<{
 }>;
 
 /**
- * A looping scene: a window that pops in on the first play, with whatever
+ * A looping scene: a window that fades in on the first play, with whatever
  * `draw` returns for the moment `t`. It plays to `end`, rests there, and
  * starts over. With reduced motion it stays on its last frame.
  */
@@ -476,7 +478,9 @@ export function defineScene(
     const id = useId().replace(/[^\w-]/g, '');
     const period = end + LOOP_REST;
     const t = Math.min(time % period, end);
-    const win = time < period ? backOut(segment(t, 0, 0.5)) : 1;
+    // A quiet entrance: the window fades in as it settles from just below
+    // full size, rather than popping up from nothing.
+    const enter = time < period ? easeOut(segment(t, 0, 0.35)) : 1;
     const { body, overlay, rail, modal } = draw({ t, id });
     return (
       <svg
@@ -486,10 +490,11 @@ export function defineScene(
         aria-hidden
       >
         <g
+          opacity={enter}
           transform={pivot(
             FRAME.x + FRAME.width / 2,
             FRAME.y + FRAME.height / 2,
-            win,
+            lerp(0.96, 1, enter),
           )}
         >
           <BrowserWindow

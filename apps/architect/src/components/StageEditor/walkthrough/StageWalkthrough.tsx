@@ -1,10 +1,4 @@
-import {
-  GripHorizontal,
-  Maximize2,
-  Minimize2,
-  Minus,
-  MousePointerClick,
-} from 'lucide-react';
+import { Minus, MousePointerClick } from 'lucide-react';
 import {
   animate,
   AnimatePresence,
@@ -21,8 +15,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type KeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
@@ -63,7 +55,6 @@ import {
   goToDetourStep,
   goToWalkthroughStep,
   setWalkthroughCollapsed,
-  setWalkthroughExpanded,
   setWalkthroughPosition,
   setWalkthroughSection,
   takeWalkthroughFocus,
@@ -71,11 +62,6 @@ import {
 } from './walkthroughStore';
 
 const messages = defineMessages({
-  progress: {
-    id: 'architect.stageEditor.walkthrough.progress',
-    defaultMessage: 'Step {index, number} of {total, number}',
-    description: 'Position in the stage walkthrough. index is one-based.',
-  },
   back: {
     id: 'architect.stageEditor.walkthrough.back',
     defaultMessage: 'Back',
@@ -108,31 +94,6 @@ const messages = defineMessages({
     defaultMessage: 'Resume',
     description:
       'Button on the minimized walkthrough that opens it again at the step the researcher was on.',
-  },
-  move: {
-    id: 'architect.stageEditor.walkthrough.move',
-    defaultMessage: 'Move the walkthrough',
-    description:
-      'Grip on the walkthrough panel, used to move the panel out of the way.',
-  },
-  moveHint: {
-    id: 'architect.stageEditor.walkthrough.moveHint',
-    defaultMessage:
-      'Drag to move it, use the arrow keys, or activate to move it to the other side of the screen.',
-    description:
-      'Screen-reader description of the grip on the walkthrough panel, saying the ways it can be moved.',
-  },
-  expand: {
-    id: 'architect.stageEditor.walkthrough.expand',
-    defaultMessage: 'Make the walkthrough larger',
-    description:
-      'Tooltip and accessible name of the button in the walkthrough panel header that widens the panel, so its text and animations are easier to read.',
-  },
-  shrink: {
-    id: 'architect.stageEditor.walkthrough.shrink',
-    defaultMessage: 'Make the walkthrough smaller',
-    description:
-      'Tooltip and accessible name of the button in the widened walkthrough panel header that returns it to its usual size.',
   },
   collapse: {
     id: 'architect.stageEditor.walkthrough.collapse',
@@ -383,8 +344,9 @@ export function StepRing({
   const intl = useAppIntl();
   return (
     <ProgressRing value={(index + 1) / total} className="size-10 shrink-0">
-      <span className="sr-only">
-        {intl.formatMessage(messages.progress, { index: index + 1, total })}
+      <span className="sr-only" lang="en">
+        {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+        {`Step ${index + 1} of ${total}`}
       </span>
       <span aria-hidden className="font-heading text-2xs font-extrabold">
         {intl.formatMessage(messages.progressShort, {
@@ -398,14 +360,14 @@ export function StepRing({
 
 /**
  * One segment per step, filled up to the step the researcher is on. Hidden
- * from assistive technology: the footer states the same position in words.
+ * from assistive technology, which is told the same position in words.
  */
 function StepSegments({
   index,
   total,
 }: Readonly<{ index: number; total: number }>) {
   return (
-    <div aria-hidden className="flex gap-1">
+    <div aria-hidden className="flex min-w-0 gap-1">
       {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
@@ -455,10 +417,9 @@ function WalkthroughCard({
 }>) {
   const intl = useAppIntl();
   const headingId = useId();
-  const moveHintId = useId();
   const nextRef = useRef<HTMLButtonElement>(null);
   const reducedMotion = usePrefersReducedMotion() === true;
-  const { expanded, focusRequest } = useWalkthroughState();
+  const { focusRequest } = useWalkthroughState();
 
   // On mount, and whenever the researcher asks for the panel again.
   const focusedFor = useRef<number | null>(null);
@@ -494,8 +455,6 @@ function WalkthroughCard({
     maxHeight,
     remember,
     startDrag,
-    flipSide,
-    nudge,
     avoid,
   } = useMovablePanel(clearOfNav, reducedMotion);
 
@@ -539,12 +498,7 @@ function WalkthroughCard({
         dragMomentum={false}
         onDragEnd={remember}
         style={{ x, y, maxHeight }}
-        className={cx(
-          'pointer-events-auto fixed inset-e-6 bottom-24 flex flex-col',
-          expanded
-            ? 'w-[min(44rem,calc(100vw-3rem))]'
-            : 'w-[min(24rem,calc(100vw-3rem))]',
-        )}
+        className="pointer-events-auto fixed inset-e-6 bottom-24 flex w-[min(30rem,calc(100vw-3rem))] flex-col"
       >
         <MotionSurface
           as="section"
@@ -561,7 +515,7 @@ function WalkthroughCard({
         >
           <header
             onPointerDown={startDrag}
-            className="flex shrink-0 cursor-grab touch-none flex-col gap-3 px-5 pt-4 select-none active:cursor-grabbing"
+            className="flex shrink-0 cursor-grab touch-none flex-col px-5 pt-4 select-none active:cursor-grabbing"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 flex-col">
@@ -571,35 +525,6 @@ function WalkthroughCard({
                 </span>
               </div>
               <div className="-me-2 flex shrink-0 items-center">
-                <IconButton
-                  data-grip
-                  size="sm"
-                  variant="text"
-                  color="dynamic"
-                  icon={<GripHorizontal />}
-                  title={intl.formatMessage(messages.move)}
-                  aria-label={intl.formatMessage(messages.move)}
-                  aria-describedby={moveHintId}
-                  onClick={flipSide}
-                  onKeyDown={nudge}
-                  className="cursor-grab active:cursor-grabbing"
-                />
-                <span id={moveHintId} className="sr-only">
-                  {intl.formatMessage(messages.moveHint)}
-                </span>
-                <IconButton
-                  size="sm"
-                  variant="text"
-                  color="dynamic"
-                  icon={expanded ? <Minimize2 /> : <Maximize2 />}
-                  title={intl.formatMessage(
-                    expanded ? messages.shrink : messages.expand,
-                  )}
-                  aria-label={intl.formatMessage(
-                    expanded ? messages.shrink : messages.expand,
-                  )}
-                  onClick={() => setWalkthroughExpanded(!expanded)}
-                />
                 <IconButton
                   size="sm"
                   variant="text"
@@ -612,7 +537,6 @@ function WalkthroughCard({
                 <CloseButton size="sm" onClick={() => closeWalkthrough()} />
               </div>
             </div>
-            <StepSegments index={index} total={total} />
           </header>
           <ScrollArea
             ref={body}
@@ -662,7 +586,7 @@ function WalkthroughCard({
               </Alert>
             </div>
           )}
-          <footer className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-5 py-3">
+          <footer className="grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-3">
             <div>
               <Button
                 variant="text"
@@ -673,11 +597,10 @@ function WalkthroughCard({
                 {intl.formatMessage(messages.back)}
               </Button>
             </div>
-            <span className="text-sm opacity-70">
-              {intl.formatMessage(messages.progress, {
-                index: index + 1,
-                total,
-              })}
+            <StepSegments index={index} total={total} />
+            <span className="sr-only" lang="en">
+              {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+              {`Step ${index + 1} of ${total}`}
             </span>
             <div className="flex justify-end">
               {!awaitingSave && (
@@ -733,21 +656,15 @@ const overlaps = (a: DOMRect, b: DOMRect) =>
   a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 
 /** How far one arrow key press moves the panel. */
-const NUDGE = 32;
-/** How far the pointer may travel on the grip and still count as a click. */
-const CLICK_SLOP = 5;
-
 /**
- * Lets the researcher move the panel out of the way: by dragging its header,
- * with the arrow keys on its grip, or by clicking the grip to send it to the
- * other side of the window. It stays inside `bounds`, and keeps where it was
- * put when it remounts to follow a dialog.
+ * Lets the researcher move the panel out of the way by dragging its header. It
+ * stays inside `bounds`, moves aside on its own when it covers what a step
+ * points at, and keeps where it was put when it remounts to follow a dialog.
  */
 function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
   const card = useRef<HTMLDivElement>(null);
   const bounds = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
-  const pressedAt = useRef({ x: 0, y: 0 });
   const start = getWalkthroughPosition();
   const x = useMotionValue(start.x);
   const y = useMotionValue(start.y);
@@ -802,32 +719,12 @@ function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
   const startDrag = useCallback(
     (event: ReactPointerEvent) => {
       const from = event.target instanceof Element ? event.target : null;
-      if (from?.closest('button:not([data-grip]), a') != null) return;
-      pressedAt.current = { x: event.clientX, y: event.clientY };
+      if (from?.closest('button, a') != null) return;
       // Otherwise moving the pointer across the page selects its text.
       event.preventDefault();
       dragControls.start(event);
     },
     [dragControls],
-  );
-
-  const flipSide = useCallback(
-    (event: ReactMouseEvent) => {
-      // A pointer that travelled was dragging, not asking to change sides.
-      const travelled = Math.hypot(
-        event.clientX - pressedAt.current.x,
-        event.clientY - pressedAt.current.y,
-      );
-      if (event.detail !== 0 && travelled > CLICK_SLOP) return;
-      const rect = card.current?.getBoundingClientRect();
-      const room = bounds.current?.getBoundingClientRect();
-      if (rect === undefined || room === undefined) return;
-      const onRight = rect.left + rect.width / 2 > window.innerWidth / 2;
-      moveBy(onRight ? room.left - rect.left : room.right - rect.right, 0, {
-        animated: true,
-      });
-    },
-    [moveBy],
   );
 
   /** Moves the panel to the other side if that uncovers `element`. */
@@ -847,21 +744,6 @@ function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
     [moveBy],
   );
 
-  const nudge = useCallback(
-    (event: KeyboardEvent) => {
-      const step = {
-        ArrowLeft: [-NUDGE, 0],
-        ArrowRight: [NUDGE, 0],
-        ArrowUp: [0, -NUDGE],
-        ArrowDown: [0, NUDGE],
-      }[event.key];
-      if (step === undefined) return;
-      event.preventDefault();
-      moveBy(step[0] ?? 0, step[1] ?? 0);
-    },
-    [moveBy],
-  );
-
   return {
     card,
     bounds,
@@ -871,8 +753,6 @@ function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
     maxHeight,
     remember,
     startDrag,
-    flipSide,
-    nudge,
     avoid,
   };
 }

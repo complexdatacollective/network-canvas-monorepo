@@ -143,8 +143,11 @@ export type StageEditorToolbarProps = Readonly<{
   previewOptionsContent?: ReactNode;
   isStageInvalid: boolean;
   isOpeningPreview: boolean;
-  /** A control that ends the toolbar after its own separator, if any. */
-  trailing?: ReactNode;
+  /**
+   * The walkthrough's control, if the stage has one: its own group, between
+   * the editing actions and the preview.
+   */
+  walkthrough?: ReactNode;
 }>;
 
 /**
@@ -165,7 +168,7 @@ export const StageEditorToolbar = ({
   previewOptionsContent,
   isStageInvalid,
   isOpeningPreview,
-  trailing,
+  walkthrough,
 }: StageEditorToolbarProps) => {
   const intl = useAppIntl();
   const { control: issuesControl, openIssues } =
@@ -214,6 +217,12 @@ export const StageEditorToolbar = ({
             />
           ) : null}
         </ToolbarGroup>,
+        walkthrough ? <ToolbarSeparator key="walkthrough-separator" /> : null,
+        walkthrough ? (
+          <ToolbarGroup key="walkthrough" aria-label={'Walkthrough'}>
+            {walkthrough}
+          </ToolbarGroup>
+        ) : null,
         <ToolbarSeparator key="stage-preview-separator" />,
         <ToolbarGroup
           key="stage-preview"
@@ -248,8 +257,6 @@ export const StageEditorToolbar = ({
             {previewOptionsContent}
           </ToolbarPopover>
         </ToolbarGroup>,
-        trailing ? <ToolbarSeparator key="trailing-separator" /> : null,
-        trailing ?? null,
       ],
     }),
     [
@@ -268,7 +275,7 @@ export const StageEditorToolbar = ({
       reviewControl,
       previewOptionsContent,
       previewOptionsOpen,
-      trailing,
+      walkthrough,
       intl,
     ],
   );
