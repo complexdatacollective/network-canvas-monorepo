@@ -2,7 +2,7 @@
 title: Acerca de Fresco
 date: 7th October 2026
 navOrder: 1
-translatedFrom: 7b5b2f895279ae19ae792ed60a58d6986271f5e0
+translatedFrom: c75a54da60ab7d084ad33cbab5337fc34a0d87c6
 ---
 
 <Paragraph variant="lead">
@@ -92,13 +92,13 @@ Debes tener en cuenta varias diferencias clave entre Fresco y las aplicaciones d
 - **La gestión de las entrevistas también se hace en el navegador**, mediante un panel destinado al equipo de investigación. Desde la aplicación web puedes gestionar los protocolos, participantes, entrevistas y la configuración.
 - **Fresco almacena todos los datos en una base de datos**. Esto significa que los datos se guardan en un servidor de internet y no en un ordenador local. Esto tiene consecuencias para la seguridad y la privacidad de los datos, así que tendrás que valorar las implicaciones legales y éticas de usar Fresco.
 - Eres responsable de **alojar y mantener Fresco** en tus propios servidores. Esto significa que necesitarás ciertos conocimientos técnicos para implementar y mantener Fresco.
-- Por ahora, Fresco no admite todas las funciones de las aplicaciones de escritorio. Por ejemplo, los scripts personalizados de etiquetado de nodos (node label workers) no están disponibles, y los vídeos y el audio no pueden reproducirse automáticamente la primera vez que se cargan debido a limitaciones de los navegadores. Para ver la lista completa de problemas conocidos, consulta el apartado de [limitaciones conocidas](#known-limitations), más abajo.
+- Por ahora, Fresco no admite todas las funciones de las aplicaciones de escritorio. Por ejemplo, los vídeos y el audio no pueden reproducirse automáticamente la primera vez que se cargan debido a limitaciones de los navegadores. Para ver la lista completa de problemas conocidos, consulta el apartado de [limitaciones conocidas](#known-limitations), más abajo.
 
 ## Limitaciones conocidas {#known-limitations}
 
 Debido a la naturaleza de la plataforma web, no hemos podido incluir algunas funciones de Interviewer. Entre ellas:
 
-- Los [scripts personalizados de etiquetado de nodos](/es/design-protocols/key-concepts/node-labelling#custom-node-labeling-advanced) no están disponibles. Habrían supuesto un posible riesgo de seguridad, así que decidimos no incluirlos. Si usabas esta función y necesitas ayuda para encontrar una alternativa, ponte en contacto con nosotros.
+- No se admiten los scripts de etiquetado de nodos (`nodeLabelWorker.js`), porque ejecutar un script incluido en un protocolo habría supuesto un riesgo de seguridad. Para escribir tus propias etiquetas de nodo, usa en su lugar una [etiqueta dinámica](/es/design-protocols/key-concepts/node-labelling#dynamic-labels).
 - Los vídeos y el audio de tus pantallas informativas no pueden reproducirse automáticamente la primera vez que se cargan debido a limitaciones de los navegadores. Cada participante debe haber interactuado con la entrevista antes de que el contenido multimedia pueda reproducirse automáticamente.
 - No se admite la preferencia visual «Use fullscreen forms» (usar formularios a pantalla completa). Esta preferencia era útil en dispositivos con teclados en pantalla grandes, como las tabletas. Sin embargo, Fresco está pensado para usarse en un ordenador de sobremesa o portátil, así que esta preferencia no es necesaria.
 - La función de sonidos de interacción que se introdujo en la última versión de Interviewer aún no se ha incorporado a Fresco.

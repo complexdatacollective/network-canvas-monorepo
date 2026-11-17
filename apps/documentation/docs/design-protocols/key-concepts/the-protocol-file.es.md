@@ -1,7 +1,7 @@
 ---
 title: El archivo de protocolo
 navOrder: 1
-translatedFrom: 40092f88310335767b2d6122e9461605a97d223f
+translatedFrom: dcc860974d010f3a1b0539d30b0fa36dc902b62c
 ---
 
 <Definition>
@@ -23,7 +23,7 @@ En cualquier caso, el archivo `.netcanvas` contiene todos los datos de tu protoc
 
 Aunque puedes tratar un archivo `.netcanvas` como un único archivo, en realidad es una carpeta comprimida. Dentro, las etapas, las preguntas y la lógica que forman tu entrevista se almacenan en un archivo llamado `protocol.json`, y los recursos que hayas añadido (como imágenes, vídeo o datos de listas) se guardan junto a él en una carpeta `assets/`.
 
-Para ver el contenido de un protocolo, cámbiale el nombre para que termine en `.zip` y descomprímelo. El principal motivo para hacerlo es el flujo de trabajo de [etiquetado personalizado de nodos](/es/design-protocols/key-concepts/node-labelling#custom-node-labeling-advanced), que consiste en colocar un archivo `nodeLabelWorker.js` en el nivel superior del protocolo, en la misma carpeta que `protocol.json`. Una vez añadido el archivo, vuelve a comprimir la carpeta, cambia el nombre del archivo comprimido para que termine en `.netcanvas` e impórtalo en Interviewer. Si más adelante editas el protocolo en Architect, el archivo JavaScript se conservará al guardar.
+Para ver el contenido de un protocolo, cámbiale el nombre para que termine en `.zip` y descomprímelo. Rara vez tendrás que hacerlo. Para volver a usar el protocolo, vuelve a comprimir la carpeta y cambia el nombre del archivo comprimido para que termine en `.netcanvas`.
 
 ## Creación de archivos de protocolo {#authoring-protocol-files}
 

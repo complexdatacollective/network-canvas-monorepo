@@ -3,6 +3,7 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   type Codebook,
   type ColorReference,
+  type EdgeCountComparison,
   type FilterOperator,
   type LocaleTag,
   type VariableType,
@@ -22,7 +23,13 @@ import {
   operatorsWithRegExp,
   type PresenceOperator,
 } from './operators.ts';
-import { isCompleteRule, isRuleDraft, ruleDraftOptions } from './rule.ts';
+import {
+  isCompleteRule,
+  isEdgeCountComparison,
+  isEdgeCountRuleDraft,
+  isRuleDraft,
+  ruleDraftOptions,
+} from './rule.ts';
 import {
   assertNoSuchDateProblem,
   assertNoSuchNumberProblem,
@@ -533,6 +540,139 @@ const PRESENCE_OPERATOR_TEXT = defineMessages({
   },
 }) satisfies Record<PresenceOperator, MessageDescriptor>;
 
+/**
+ * A rule that counts edges, as one sentence: what is counted (edges of one
+ * type, named by `edgeType`, or of every type), how the count is compared
+ * and, where the comparison takes one, the number (`count`). Whole
+ * sentences, because how a count, a type name and a number fit together
+ * differs from language to language.
+ */
+const EDGE_COUNT_SENTENCES = defineMessages({
+  EXACTLY: {
+    id: 'protocolBuilder.ruleDescription.edgeCountSentenceExactly',
+    defaultMessage:
+      '{scope, select, any {Number of edges of any type is exactly {count, number}} other {Number of “{edgeType}” edges is exactly {count, number}}}',
+    description:
+      'Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, as the researcher wrote it, such as “Friend”. count is the number compared with.',
+  },
+  NOT: {
+    id: 'protocolBuilder.ruleDescription.edgeCountSentenceNot',
+    defaultMessage:
+      '{scope, select, any {Number of edges of any type is not {count, number}} other {Number of “{edgeType}” edges is not {count, number}}}',
+    description:
+      'Describes a rule about how many edges (relationships) join a node to other nodes: the number is anything but count. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”.',
+  },
+  GREATER_THAN: {
+    id: 'protocolBuilder.ruleDescription.edgeCountSentenceGreaterThan',
+    defaultMessage:
+      '{scope, select, any {Number of edges of any type is more than {count, number}} other {Number of “{edgeType}” edges is more than {count, number}}}',
+    description:
+      'Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with.',
+  },
+  GREATER_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.ruleDescription.edgeCountSentenceGreaterThanOrEqual',
+    defaultMessage:
+      '{scope, select, any {Number of edges of any type is at least {count, number}} other {Number of “{edgeType}” edges is at least {count, number}}}',
+    description:
+      'Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with.',
+  },
+  LESS_THAN: {
+    id: 'protocolBuilder.ruleDescription.edgeCountSentenceLessThan',
+    defaultMessage:
+      '{scope, select, any {Number of edges of any type is less than {count, number}} other {Number of “{edgeType}” edges is less than {count, number}}}',
+    description:
+      'Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with.',
+  },
+  LESS_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.ruleDescription.edgeCountSentenceLessThanOrEqual',
+    defaultMessage:
+      '{scope, select, any {Number of edges of any type is at most {count, number}} other {Number of “{edgeType}” edges is at most {count, number}}}',
+    description:
+      'Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with.',
+  },
+  MOST: {
+    id: 'protocolBuilder.ruleDescription.edgeCountSentenceMost',
+    defaultMessage:
+      '{scope, select, any {Has the highest number of edges of any type among nodes of its type} other {Has the highest number of “{edgeType}” edges among nodes of its type}}',
+    description:
+      'Describes a rule that a node meets when no other node of the same node type has more edges (relationships) than it has; nodes that tie for the highest all meet it, but no node meets it when every node of that type has the same number. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. “its type” is the node type of the node the rule is about.',
+  },
+  FEWEST: {
+    id: 'protocolBuilder.ruleDescription.edgeCountSentenceFewest',
+    defaultMessage:
+      '{scope, select, any {Has the lowest number of edges of any type among nodes of its type} other {Has the lowest number of “{edgeType}” edges among nodes of its type}}',
+    description:
+      'Describes a rule that a node meets when no other node of the same node type has fewer edges (relationships) than it has; nodes that tie for the lowest all meet it, but no node meets it when every node of that type has the same number. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. “its type” is the node type of the node the rule is about.',
+  },
+}) satisfies Record<EdgeCountComparison, MessageDescriptor>;
+
+/** What each way of comparing a count of edges is called, as a choice. */
+const EDGE_COUNT_CHOICES = defineMessages({
+  EXACTLY: {
+    id: 'protocolBuilder.ruleDescription.edgeCountChoiceExactly',
+    defaultMessage: 'Is exactly',
+    description:
+      'Choice in the list of ways to compare the number of edges (relationships) a node has with a number the researcher types: the number of edges is exactly that number.',
+  },
+  NOT: {
+    id: 'protocolBuilder.ruleDescription.edgeCountChoiceNot',
+    defaultMessage: 'Is not',
+    description:
+      'Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is anything but that number.',
+  },
+  GREATER_THAN: {
+    id: 'protocolBuilder.ruleDescription.edgeCountChoiceGreaterThan',
+    defaultMessage: 'Is more than',
+    description:
+      'Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is greater than that number.',
+  },
+  GREATER_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.ruleDescription.edgeCountChoiceGreaterThanOrEqual',
+    defaultMessage: 'Is at least',
+    description:
+      'Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is that number or more.',
+  },
+  LESS_THAN: {
+    id: 'protocolBuilder.ruleDescription.edgeCountChoiceLessThan',
+    defaultMessage: 'Is less than',
+    description:
+      'Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is smaller than that number.',
+  },
+  LESS_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.ruleDescription.edgeCountChoiceLessThanOrEqual',
+    defaultMessage: 'Is at most',
+    description:
+      'Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is that number or fewer.',
+  },
+  MOST: {
+    id: 'protocolBuilder.ruleDescription.edgeCountChoiceMost',
+    defaultMessage: 'Is the highest among nodes of its type',
+    description:
+      'Choice in the list of ways to compare the number of edges a node has. It takes no number: the node has more edges than any other node of the same node type.',
+  },
+  FEWEST: {
+    id: 'protocolBuilder.ruleDescription.edgeCountChoiceFewest',
+    defaultMessage: 'Is the lowest among nodes of its type',
+    description:
+      'Choice in the list of ways to compare the number of edges a node has. It takes no number: the node has fewer edges than any other node of the same node type.',
+  },
+}) satisfies Record<EdgeCountComparison, MessageDescriptor>;
+
+export const edgeCountMessages = defineMessages({
+  anyEdge: {
+    id: 'protocolBuilder.ruleDescription.anyEdgeType',
+    defaultMessage: 'Edges of any type',
+    description:
+      'Choice in the list of edge types (kinds of relationship between network members) a rule can count, above the protocol’s own edge types: edges of every type are counted together.',
+  },
+});
+
+/** What each way of comparing a count of edges is called, for a list of them. */
+export const edgeCountComparisonText = (
+  comparison: EdgeCountComparison,
+  intl: IntlShape = englishIntl,
+): string => intl.formatMessage(EDGE_COUNT_CHOICES[comparison]);
+
 const generalMessages = defineMessages({
   egoLabel: {
     id: 'protocolBuilder.ruleDescription.egoLabel',
@@ -677,7 +817,10 @@ export function describeRule({
     shapeSvgs,
     intl,
   );
-  if (entity?.missing === true) {
+  // A rule that counts edges may name no type, to count every edge.
+  const countsEveryEdge =
+    isEdgeCountRuleDraft(rule) && entityTypeId === undefined;
+  if (entity?.missing === true && !countsEveryEdge) {
     problems.push({
       code: 'missingEntityType',
       message: say(
@@ -687,6 +830,50 @@ export function describeRule({
             ? problemMessages.missingEdgeType
             : problemMessages.missingEgo,
       ),
+    });
+  }
+
+  if (isEdgeCountRuleDraft(rule)) {
+    const comparison = isEdgeCountComparison(options.count)
+      ? options.count
+      : undefined;
+    if (!isCompleteRule(rule)) {
+      problems.push({
+        code: 'incomplete',
+        message: say(problemMessages.incomplete),
+      });
+    }
+    if (typeof rule.id !== 'string') {
+      problems.push({
+        code: 'missingId',
+        message: say(problemMessages.missingId),
+      });
+    } else if (duplicateIds?.has(rule.id) === true) {
+      problems.push({
+        code: 'duplicateId',
+        message: say(problemMessages.duplicateId),
+      });
+    }
+    // The whole rule is one sentence, which holds what is counted and the
+    // number too: how they fit together is each language's own.
+    const text =
+      comparison === undefined
+        ? ''
+        : intl.formatMessage(EDGE_COUNT_SENTENCES[comparison], {
+            scope: countsEveryEdge ? 'any' : 'type',
+            edgeType: entity?.label ?? '',
+            count: typeof options.value === 'number' ? options.value : 0,
+          });
+    return Object.freeze({
+      target,
+      entity: undefined,
+      attribute: undefined,
+      operator: Object.freeze({ id: comparison, text }),
+      operand: undefined,
+      attributePresence: false,
+      columns: false,
+      text,
+      problems: Object.freeze(problems),
     });
   }
 

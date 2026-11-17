@@ -84,6 +84,26 @@ person who conducts an interview is "la persona entrevistadora".
 | bin (in the bin interfaces) | contenedor                           | _Gloss_: "contenedor (cada una de las zonas a las que se arrastran los nodos para clasificarlos)". A trash bin is "papelera"; in deployment docs a Docker container is "contenedor Docker".                                                                                                                                     |
 | categorical / ordinal       | categórico, categórica / ordinal     | Agree with the noun: "atributo categórico", "variable categórica".                                                                                                                                                                                                                                                              |
 
+## Logic in text and dynamic labels
+
+Text that shows values (a prompt, a form question, a node type's own label) can
+hold logic: an "If" whose rules the researcher sets, or different wording for
+each of an attribute's answers. The terms are the ones the editors ship.
+
+| English                    | Spanish                                                    | Notes                                                                                    |
+| -------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| dynamic label              | etiqueta dinámica                                          | The node type editor's section and toggle; «Etiqueta dinámica» when named in a sentence. |
+| default label              | etiqueta predeterminada                                    | The label the interview would otherwise choose for a node.                               |
+| logic (inserted in a text) | lógica                                                     | "Insertar lógica", "botón de lógica". Not "lógica de salto", which is skip logic.        |
+| If / If not                | Si / Si no se cumple                                       | Names of a block's rows; «Si» in guillemets when named in a sentence.                    |
+| Else if / Else if not      | En caso contrario, si / En caso contrario, si no se cumple |                                                                                          |
+| Otherwise                  | En caso contrario                                          | The row shown when no rule set is met.                                                   |
+| wording                    | redacción                                                  | One version of a text: "una redacción distinta para cada respuesta".                     |
+| number of edges            | número de vínculos                                         | The rule that counts a node's edges.                                                     |
+| pill                       | píldora                                                    | The chip an inserted value or piece of logic is shown as.                                |
+| emoji                      | emoji (emojis)                                             |                                                                                          |
+| syringe button             | botón de la jeringa                                        | The toolbar button that opens the menu of values.                                        |
+
 ## Inclusive language
 
 Use wording that is neutral by construction: "cada participante", "quienes

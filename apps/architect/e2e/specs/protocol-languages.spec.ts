@@ -752,7 +752,8 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
     }
   };
   await toolbarClearsText();
-  await editor.getByRole('button', { name: 'last_name', exact: true }).click();
+  // Folded, the value's button shows its versions after its name.
+  await editor.getByRole('button', { name: /^last_name/ }).click();
   await expect(editor.getByLabel('If known', { exact: true })).toBeVisible();
   await toolbarClearsText();
 });

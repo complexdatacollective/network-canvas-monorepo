@@ -462,6 +462,7 @@ export default function GeospatialInterface({
     {
       attributes: { node: placing?.[entityAttributesProperty] },
       labels: { node: placingLabel },
+      ids: { node: placing?.[entityPrimaryKeyProperty] },
     },
   );
 

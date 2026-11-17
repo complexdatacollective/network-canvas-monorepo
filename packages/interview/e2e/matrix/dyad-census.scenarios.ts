@@ -548,5 +548,74 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         ).toBeVisible();
       },
     },
+
+    {
+      id: 'conditions-about-a-node-of-the-pair',
+      covers: ['conditions'],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const nodeType = synth.addNodeType({ name: 'Person' });
+        const personName = nodeType.addVariable({ name: 'name', type: 'text' });
+        const stage = synth.addStage('DyadCensus', {
+          subject: { entity: 'node', type: nodeType.id },
+        });
+        // One "If" about the second person's answer, one about how many
+        // edges the first person has.
+        stage.stageEntry.conditions = {
+          secondIsSam: {
+            about: 'dyadTarget',
+            rules: [
+              {
+                id: 'named-sam',
+                type: 'node',
+                options: {
+                  type: nodeType.id,
+                  attribute: personName.id,
+                  operator: 'EXACTLY',
+                  value: 'Sam',
+                },
+              },
+            ],
+          },
+          firstIsConnected: {
+            about: 'dyadSource',
+            rules: [
+              {
+                id: 'has-an-edge',
+                type: 'edge',
+                options: { count: 'GREATER_THAN', value: 0 },
+              },
+            ],
+          },
+        };
+        stage.stageEntry.dynamicValues = {
+          secondIsSam: { path: '$condition.secondIsSam', cases: { yes: true } },
+          firstIsConnected: {
+            path: '$condition.firstIsConnected',
+            cases: { yes: true },
+          },
+        };
+        stage.addPrompt({
+          text: {
+            'en-US':
+              '{secondIsSam, select, yes {Second is Sam.} other {Second is someone else.}} {firstIsConnected, select, yes {First has ties.} other {First has no ties.}} Do they know each other?',
+          },
+        });
+        synth.addManualNode(stage.id, nodeType.id, 'n0', {
+          [personName.id]: 'Alex',
+        });
+        synth.addManualNode(stage.id, nodeType.id, 'n1', {
+          [personName.id]: 'Sam',
+        });
+        return synth;
+      },
+      run: async ({ page }) => {
+        // The first pair is Alex and Sam, and nobody has an edge yet.
+        await expect(
+          page.getByText(/Second is Sam\. First has no ties\./),
+        ).toBeVisible();
+      },
+    },
   ],
 };

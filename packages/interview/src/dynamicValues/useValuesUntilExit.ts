@@ -18,7 +18,9 @@ const sameRoles = <T>(
 };
 
 const sameEntities = (a: DynamicValueEntities, b: DynamicValueEntities) =>
-  sameRoles(a.attributes, b.attributes) && sameRoles(a.labels, b.labels);
+  sameRoles(a.attributes, b.attributes) &&
+  sameRoles(a.labels, b.labels) &&
+  sameRoles(a.ids, b.ids);
 
 /**
  * Values for text about what a keyed transition shows. When the key changes,

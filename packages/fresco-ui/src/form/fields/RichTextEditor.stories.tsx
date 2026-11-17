@@ -1007,7 +1007,7 @@ export const WithVersionsAndInsertMenu: Story = {
     // back.
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(editor).toHaveFocus());
-    await expect(canvas.getByRole('button', { name: 'Name' })).toHaveAttribute(
+    await expect(canvas.getByRole('button', { name: /^Name/ })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
@@ -1132,7 +1132,7 @@ export const VersionsInASentenceStayFolded: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const pill = await canvas.findByRole('button', { name: 'Name' });
+    const pill = await canvas.findByRole('button', { name: /^Name/ });
     await expect(pill).toHaveAttribute('aria-expanded', 'false');
     await expect(
       canvas.queryByRole('textbox', { name: 'When Name is known' }),
@@ -1279,5 +1279,48 @@ export const InsertMenuWithAnUnavailableItem: Story = {
     await waitFor(() =>
       expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
     );
+  },
+};
+
+/**
+ * Every editor offers emoji. Typing a colon and the start of an emoji's name
+ * (`:ro`) suggests emoji beside the caret while the keyboard stays in the
+ * text: what is typed next narrows the list, the arrow keys move through
+ * it, Enter or Tab takes the one highlighted, and Escape puts it away. A
+ * colon in a sentence ("Note: …", "10:30") suggests nothing. The toolbar's
+ * button opens the same emoji as a menu to search. An emoji is inserted as
+ * the character itself, so the stored text is unchanged.
+ * `emojiMenu={false}` leaves both out.
+ */
+export const Emoji: Story = {
+  render: () => <EditorWithValue initial={undefined} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    await userEvent.click(editor);
+
+    // Typed: suggestions beside the caret, the keyboard still in the text.
+    await userEvent.keyboard(':ro');
+    const list = await canvas.findByRole('listbox', {
+      name: 'Emoji suggestions',
+    });
+    await expect(editor).toHaveFocus();
+    await userEvent.keyboard('cket');
+    await waitFor(() =>
+      expect(within(list).getAllByRole('option')[0]).toHaveTextContent(
+        '🚀:rocket:',
+      ),
+    );
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(editor).toHaveTextContent('🚀'));
+    await expect(canvas.queryByRole('listbox')).toBeNull();
+
+    // From the toolbar: the same emoji, as a menu to search.
+    await userEvent.click(canvas.getByRole('button', { name: 'Insert emoji' }));
+    const search = await body.findByRole('combobox', { name: 'Search' });
+    await userEvent.type(search, 'hospital');
+    await userEvent.click(await body.findByRole('option', { name: /🏥/ }));
+    await waitFor(() => expect(editor).toHaveTextContent('🚀🏥'));
   },
 };

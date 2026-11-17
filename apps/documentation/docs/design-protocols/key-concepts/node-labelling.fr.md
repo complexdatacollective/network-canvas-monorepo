@@ -1,69 +1,81 @@
 ---
 title: Libellés des nœuds
 navOrder: 13
-translatedFrom: b561f288d8b113fc514c2257d9f6bc3c6718a769
+translatedFrom: 8fb0f6b196f9ca83b4558e51bdb379fda1fe8bbc
 ---
 
-## Comment Interviewer calcule le libellé d’un nœud {#how-interviewer-calculates-a-nodes-label}
+## Comment le libellé d’un nœud est choisi {#how-a-nodes-label-is-chosen}
 
-Interviewer calcule le libellé à utiliser pour afficher un nœud selon la logique suivante :
+Chaque nœud est affiché avec un libellé : sur un sociogramme, dans la liste d’un générateur de noms, dans une case, et partout où le texte d’une étape [insère](/fr/design-protocols/piped-text) le **Libellé du nœud**. L’entretien choisit le libellé de chaque nœud de la façon suivante :
 
-0. Utiliser le script de libellés de nœuds (_worker_ `nodeLabelWorker.js`) que contient le protocole, s’il y en a un (voir la [section ci-dessous](#custom-node-labeling-advanced) pour les détails de cette fonctionnalité avancée).
-1. Chercher une variable appelée « name » (sans tenir compte de la casse) parmi celles que le [livre de codes](/fr/design-protocols/key-concepts/codebook) définit pour le type du nœud (le livre de codes est la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête), et essayer de récupérer sur le nœud la valeur de cette variable.
-2. Chercher sur le nœud une propriété dont la clé est « name » (sans tenir compte de la casse), et essayer de récupérer cette valeur.
-3. Afficher le texte « No 'name' variable! ».
+1. Si le type du nœud a un [libellé dynamique](#dynamic-labels), le nœud affiche ce libellé.
+2. Sinon, le nœud affiche son libellé par défaut, tiré des données propres au nœud : un attribut nommé « name » ; à défaut, un attribut dont le nom contient « name » ; à défaut, pour des données importées, une colonne dont le nom contient « name », même si le [livre de codes](/fr/design-protocols/key-concepts/codebook) ne la mentionne pas ; à défaut, le premier attribut de type texte qui a une valeur.
+3. Un nœud qui n’a rien de tout cela s’affiche avec le libellé « Sans nom ».
 
-Si vous obtenez des résultats inattendus, comme des messages « No 'name' variable! », vérifiez que vous avez construit votre protocole ou vos données de façon à satisfaire une règle prioritaire, c’est-à-dire placée plus haut dans la liste ci-dessus. Par exemple, vérifiez que vous avez correctement créé une variable « name » pour le type de nœud, et que cette variable reçoit une valeur pendant votre entretien.
-
-Pour des fonctionnalités avancées, comme le calcul dynamique du libellé d’un nœud, consultez plus bas la section [« Libellés de nœuds personnalisés »](#custom-node-labeling-advanced).
+Si un nœud affiche un libellé inattendu, vérifiez que son type a un attribut nommé « name » et que cet attribut reçoit une valeur pendant l’entretien.
 
 ## Attribuer un libellé aux nœuds issus d’une liste prédéfinie {#labeling-nodes-from-roster-data}
 
-Pour contrôler le libellé des nœuds issus d’un fichier de réseau ajouté comme ressource et utilisé comme liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit), l’option suivante est disponible : créez pour vos nœuds un attribut appelé « name » (sans tenir compte de la casse). Vous pouvez mettre en œuvre cet attribut sous la forme d’une colonne de votre fichier CSV, ou d’un attribut nommé dans un fichier GraphML.
+Pour contrôler le libellé des nœuds issus d’un fichier de réseau ajouté comme ressource et utilisé comme liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit), donnez à vos nœuds un attribut appelé « name » (sans tenir compte de la casse). Vous pouvez mettre en œuvre cet attribut sous la forme d’une colonne de votre fichier CSV, ou d’un attribut nommé dans un fichier GraphML.
 
-Voir aussi : [travailler avec les ressources](/fr/design-protocols/key-concepts/resources#network).
+Voir aussi : [travailler avec les ressources](/fr/design-protocols/key-concepts/resources#network).
 
-## Libellés de nœuds personnalisés (avancé) {#custom-node-labeling-advanced}
+## Libellés dynamiques {#dynamic-labels}
 
-<TipBox>
+Un libellé dynamique est un libellé que vous rédigez vous-même pour un type de nœud. Il remplace le libellé par défaut sur tous les nœuds de ce type, et il peut changer d’un nœud à l’autre et au cours de l’entretien : il peut afficher les attributs d’un nœud, et il peut afficher un texte différent selon ces attributs ou selon la place du nœud dans le réseau, par exemple le nombre de liens qu’il a.
 
-Les libellés de nœuds personnalisés ne sont pas pris en charge dans [Fresco](/fr/collect-data/fresco/about). Le `nodeLabelWorker` décrit ci-dessous ne s’exécute que dans Interviewer.
+Les libellés dynamiques sont une fonctionnalité avancée. La plupart des protocoles n’en ont pas besoin, car le libellé par défaut affiche déjà le nom de chaque nœud.
 
-</TipBox>
+Les libellés dynamiques fonctionnent dans Interviewer et dans [Fresco](/fr/collect-data/fresco/about). Ils font partie du protocole lui-même : aucun fichier supplémentaire n’est nécessaire.
 
-Pour attribuer des libellés aux nœuds avec plus de souplesse, vous pouvez programmer une fonction de libellé personnalisée. Pour cela, il vous faut :
+### Activer un libellé dynamique {#turning-on-a-dynamic-label}
 
-- Ajouter `nodeLabelWorker.js` à votre protocole (voir [Contenu d’un fichier .netcanvas](./the-protocol-file#inside-a-netcanvas-file) pour savoir comment procéder)
-- Définir dans ce fichier une fonction nommée `nodeLabelWorker`
-- Faire en sorte que cette fonction renvoie une chaîne de caractères, qui sera utilisée comme libellé.
+1. Dans Architect, ouvrez le **Livre de codes** et modifiez le type de nœud. Vous pouvez aussi le faire depuis une étape, lorsque vous créez un type de nœud ou modifiez celui que l’étape utilise.
+2. Activez **Libellé dynamique**.
+3. Rédigez le libellé dans le champ **Libellé**.
+4. Enregistrez le type de nœud.
 
-`nodeLabelWorker` est appelée avec un objet contenant des informations sur le nœud et le réseau, et doit renvoyer le libellé (une chaîne de caractères) du nœud concerné. Conceptuellement : `f(node, network) -> label`. Vous pouvez ainsi mettre à jour les libellés des nœuds en fonction de l’évolution de l’état du réseau, ou des attributs de chaque nœud.
+Si vous désactivez de nouveau **Libellé dynamique**, le libellé que vous avez rédigé est supprimé et le type de nœud retrouve son libellé par défaut.
 
-Voici un exemple simple qui attribue à chaque nœud un libellé composé (initiale + nom de famille) :
+### Rédiger le libellé {#writing-the-label}
 
-```javascript
-/**
- * @param  {Object} data
- * @param  {Object} data.node All props for the node requiring a label
- * @param  {string} data.node.networkCanvasId Unique ID for the node. Note that if your data
- *                                            happens to already contain a property named
- *                                            "networkCanvasId", your prop will take precedence,
- *                                            and this cannot be used to identify edge connections.
- * @param  {Object} data.network The current state of the network in this session
- * @param  {Array} data.network.nodes Each node has a unique `networkCanvasId` prop
- * @param  {Array} data.network.edges Edges contain `to` and `from` props which
- *                                    correspond to nodes' `networkCanvasId` values
- *
- * @return {string|Promise} a label for the input node, or
- *                          a promise that resolves to the label
- */
-function nodeLabelWorker({ node, network }) {
-  return `${node.first_name[0]} ${node.last_name}`;
-}
-```
+Le libellé est une seule ligne de texte. Vous pouvez saisir du texte ordinaire et des emojis, et insérer deux sortes d’éléments depuis la barre d’outils du champ.
 
-En plus des attributs définis dans le protocole, chaque nœud contient une propriété `networkCanvasId`, un identifiant unique qui permet de repérer le nœud dans le réseau.
+**Des valeurs, avec le bouton seringue.** Une valeur est un espace réservé : sur chaque nœud, le libellé affiche à sa place la valeur de ce nœud. Vous pouvez insérer n’importe quel attribut du type de nœud, ou le **Libellé par défaut**, c’est-à-dire le libellé que le nœud aurait eu sans libellé dynamique. Par exemple, un libellé composé du libellé par défaut suivi de l’âge du nœud affiche « Alice 34 » sur un nœud et « Bo 27 » sur un autre.
 
-La fonction `nodeLabelWorker` est exécutée de manière asynchrone dans un environnement [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) (documentation MDN en anglais). Elle est en outre limitée par la politique de sécurité du contenu (CSP) de l’application : ne comptez pas sur un accès à Internet (requêtes réseau) dans la fonction de libellé.
+Un attribut peut ne pas avoir de valeur pour certains nœuds. Lorsque vous en insérez un, sélectionnez-le dans le libellé pour rédiger deux versions du texte qui l’entoure : l’une pour le cas où la valeur est connue, l’autre pour le cas où elle ne l’est pas. Voir [Lorsque l’information manque](/fr/design-protocols/piped-text#when-information-is-missing).
 
-Pour un exemple plus complet, consultez [le nodeLabelWorker du protocole de développement](https://github.com/complexdatacollective/development-protocol/blob/master/nodeLabelWorker.js) (en anglais).
+**De la logique, avec le bouton de logique.** La logique insère un groupe de formulations possibles, dont chaque nœud affiche une seule :
+
+- **Si … sinon** affiche une formulation lorsque les règles que vous définissez sont satisfaites, et une autre sinon. **Sauf si … sinon** fait l’inverse.
+- **Formulation différente pour chaque réponse** affiche une formulation pour chaque réponse à un attribut catégoriel, ordinal ou booléen.
+
+Sélectionnez un groupe dans le libellé pour l’ouvrir et rédiger le texte de chacun de ses cas. Un cas peut rester vide, pour ne rien afficher, et il peut contenir des valeurs et d’autres éléments de logique.
+
+### Règles {#rules}
+
+Un **Si** vérifie des règles portant sur le nœud qui porte le libellé. Choisissez **Modifier les règles** sur sa ligne pour les définir. Une règle peut vérifier :
+
+- un attribut du nœud, par exemple si son âge est d’au moins 18 ;
+- si le nœud a un lien d’un type donné, ou un attribut de l’un de ses liens ;
+- le nombre de liens du nœud, d’un type ou de tout type. Ce nombre peut être comparé à un nombre que vous indiquez (exactement, plus de, au plus, etc.) ou aux autres nœuds du même type : **Est le plus élevé parmi les nœuds de son type** et **Est le plus faible parmi les nœuds de son type**. Les nœuds à égalité pour le nombre le plus élevé, ou pour le plus faible, satisfont tous la règle. Aucun nœud ne la satisfait lorsque tous les nœuds du type ont le même nombre de liens.
+
+Lorsqu’un **Si** a plusieurs règles, vous choisissez si elles doivent toutes être satisfaites ou si une seule suffit.
+
+**Ajouter « Sinon, si »** ajoute un cas supplémentaire avec ses propres règles, vérifié lorsque les cas précédents ne s’appliquent pas. Le dernier cas, **Sinon**, s’affiche lorsqu’aucun des autres ne s’applique.
+
+Par exemple, pour signaler la personne la mieux connectée sur un sociogramme, rédigez le libellé par défaut suivi d’un **Si** dont la règle est que le nombre de liens « connaît » est le plus élevé parmi les nœuds de son type, et placez un emoji étoile dans ce cas. À mesure que la personne participante trace des liens, l’étoile passe au nœud qui en a le plus.
+
+### Comment les personnes participantes voient un libellé dynamique {#how-participants-see-a-dynamic-label}
+
+Les personnes participantes ne voient que le libellé final. Il s’affiche partout où le nœud est dessiné, et partout où le texte d’une étape insère le libellé du nœud. Le libellé est recalculé chaque fois que les attributs ou les liens du nœud changent : il reste donc à jour tout au long de l’entretien.
+
+Un libellé dynamique ne change que ce qui est affiché. Il n’est pas enregistré avec le nœud et n’est pas exporté : les attributs du nœud sont exportés comme d’habitude.
+
+### Traduire un libellé dynamique {#translating-a-dynamic-label}
+
+Dans un protocole en plusieurs langues, un libellé dynamique se traduit comme tout autre texte qui affiche des valeurs, dans le [tableau des traductions](/fr/design-protocols/translating-your-protocol#the-translation-table). Ses valeurs et sa logique sont conservées dans chaque traduction, et le texte de chaque cas est traduit.
+
+### Protocoles qui utilisaient un script de libellés de nœuds {#protocols-that-used-a-node-label-worker}
+
+Les protocoles créés pour d’anciennes versions d’Interviewer pouvaient attribuer un libellé aux nœuds à l’aide d’un script, `nodeLabelWorker.js`, placé dans le fichier du protocole. Ni les versions actuelles d’Interviewer ni Fresco n’exécutent de scripts. Utilisez plutôt un libellé dynamique.

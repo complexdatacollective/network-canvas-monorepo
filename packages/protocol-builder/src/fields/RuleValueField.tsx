@@ -189,7 +189,7 @@ const DecimalValueField = ({
  * nothing, and the value the control declines to commit is what the field's
  * own `required` then reports.
  */
-const WholeNumberValueField = ({
+export const WholeNumberValueField = ({
   value,
   onChange,
   onBlur,

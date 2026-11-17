@@ -8,6 +8,7 @@ import {
   CASED_VARIABLE_TYPES,
   dynamicValueArgumentsAt,
   type DynamicValueForm,
+  type DynamicValueRole,
   type DynamicValueSite,
   type DynamicValueSiteContext,
   type DynamicValueStage,
@@ -17,8 +18,10 @@ import {
   dynamicValueParticipantRolesAt,
   dynamicValueRolesAt,
   dynamicValueStatus,
+  FALSE_CASE,
   PARTICIPANT_CASE,
   parseDynamicValuePath,
+  TRUE_CASE,
 } from './dynamic-values.ts';
 
 type Path = (string | number)[];
@@ -136,6 +139,9 @@ export const dynamicValueContextFor = ({
     roles: dynamicValueRolesAt(valueStage, site, form),
     absentRoles: dynamicValueAbsentRolesAt(valueStage, site),
     participantRoles: dynamicValueParticipantRolesAt(valueStage, site, form),
+    conditions: conditionsContextOf(
+      isRecord(stage) ? stage.conditions : undefined,
+    ),
     variablesFor: (role) => {
       if (role === 'ego') return variablesOf(codebook, { entity: 'ego' });
       // An edge's ends are nodes of any type.
@@ -185,20 +191,25 @@ type SiteHit = Readonly<{
   dynamicValues?: DynamicValueSite;
 }>;
 
-const checkBindings = (
-  stage: Record<string, unknown>,
-  stageIndex: number,
-  codebook: unknown,
-): DynamicValueProblem[] => {
-  const bindings = stage.dynamicValues;
-  if (!isRecord(bindings)) return [];
-  const stageSubject = stageSubjectOf(stage);
-  return Object.entries(bindings).flatMap(([name, binding]) => {
+/**
+ * Problems with the cases of `bindings`, which sit at `base`: a case that
+ * stands for no option of its attribute, or for one an earlier case already
+ * stands for, and cases on a value that has none. `variablesForRole` gives the
+ * attributes of the entity a role names, or undefined where it names none.
+ */
+export const findBindingCaseProblems = (
+  bindings: Record<string, unknown>,
+  base: Path,
+  variablesForRole: (
+    role: DynamicValueRole,
+  ) => Readonly<Record<string, DynamicValueVariable>> | undefined,
+): DynamicValueProblem[] =>
+  Object.entries(bindings).flatMap(([name, binding]) => {
     if (!isRecord(binding) || typeof binding.path !== 'string') return [];
     const cases = binding.cases;
     if (!isRecord(cases)) return [];
     const parsed = parseDynamicValuePath(binding.path);
-    const base: Path = ['stages', stageIndex, 'dynamicValues', name, 'cases'];
+    const casesPath: Path = [...base, name, 'cases'];
     // Whether a node is the participant has one case, for the participant;
     // everyone else reads `other`.
     if (parsed?.kind === 'participant') {
@@ -207,8 +218,22 @@ const checkBindings = (
           ? []
           : [
               {
-                path: [...base, key],
+                path: [...casesPath, key],
                 message: `Whether the node is the participant has one case, "${PARTICIPANT_CASE}", standing for true; everyone else takes the "other" version.`,
+              },
+            ],
+      );
+    }
+    // A condition is met or it is not: one case for each.
+    if (parsed?.kind === 'condition') {
+      return Object.entries(cases).flatMap(([key, value]) =>
+        (key === TRUE_CASE && value === true) ||
+        (key === FALSE_CASE && value === false)
+          ? []
+          : [
+              {
+                path: [...casesPath, key],
+                message: `A condition has two cases, "${TRUE_CASE}" standing for true and "${FALSE_CASE}" standing for false.`,
               },
             ],
       );
@@ -216,24 +241,18 @@ const checkBindings = (
     if (parsed?.kind !== 'attribute') {
       return [
         {
-          path: base,
+          path: casesPath,
           message: 'Only an attribute with options can have cases.',
         },
       ];
     }
-    const subject: StageSubject | undefined =
-      parsed.role === 'ego'
-        ? { entity: 'ego' }
-        : stageSubject?.entity === (parsed.role === 'edge' ? 'edge' : 'node')
-          ? stageSubject
-          : undefined;
-    const variable = variablesOf(codebook, subject)?.[parsed.variableId];
+    const variable = variablesForRole(parsed.role)?.[parsed.variableId];
     // A missing variable is reported where the binding names it.
     if (variable === undefined) return [];
     if (!CASED_VARIABLE_TYPES.has(variable.type)) {
       return [
         {
-          path: base,
+          path: casesPath,
           message: 'Only an attribute with options can have cases.',
         },
       ];
@@ -249,7 +268,7 @@ const checkBindings = (
       if (!optionValues.includes(optionValue)) {
         return [
           {
-            path: [...base, key],
+            path: [...casesPath, key],
             message: `Case "${key}" stands for ${JSON.stringify(optionValue)}, which is not one of the attribute's options.`,
           },
         ];
@@ -258,7 +277,7 @@ const checkBindings = (
       if (earlier !== undefined) {
         return [
           {
-            path: [...base, key],
+            path: [...casesPath, key],
             message: `Case "${key}" stands for ${JSON.stringify(optionValue)}, as case "${earlier}" already does, so it would never be chosen. Give each option at most one case.`,
           },
         ];
@@ -267,6 +286,48 @@ const checkBindings = (
       return [];
     });
   });
+
+const checkBindings = (
+  stage: Record<string, unknown>,
+  stageIndex: number,
+  codebook: unknown,
+): DynamicValueProblem[] => {
+  const bindings = stage.dynamicValues;
+  if (!isRecord(bindings)) return [];
+  const stageSubject = stageSubjectOf(stage);
+  return findBindingCaseProblems(
+    bindings,
+    ['stages', stageIndex, 'dynamicValues'],
+    (role) => {
+      const subject: StageSubject | undefined =
+        role === 'ego'
+          ? { entity: 'ego' }
+          : stageSubject?.entity === (role === 'edge' ? 'edge' : 'node')
+            ? stageSubject
+            : undefined;
+      return variablesOf(codebook, subject);
+    },
+  );
+};
+
+/**
+ * The conditions a stage or a node type's label declares, as a site sees
+ * them: by id, with the role each one's rules are about.
+ */
+export const conditionsContextOf = (
+  conditions: unknown,
+): DynamicValueSiteContext['conditions'] => {
+  if (!isRecord(conditions)) return undefined;
+  return new Map(
+    Object.entries(conditions).map(([id, condition]) => {
+      const about = isRecord(condition) ? condition.about : undefined;
+      return [
+        id,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- raw protocol data; `ConditionSchema` holds `about` to its roles, and a role the text is not shown with is refused where the condition is used
+        typeof about === 'string' ? { about: about as DynamicValueRole } : {},
+      ];
+    }),
+  );
 };
 
 /**

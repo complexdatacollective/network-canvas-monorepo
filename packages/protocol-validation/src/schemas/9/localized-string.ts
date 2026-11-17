@@ -355,7 +355,8 @@ const isLocalizedStringDescriptor = (
   (!('dynamicValues' in value) ||
     value.dynamicValues === 'stageText' ||
     value.dynamicValues === 'prompt' ||
-    value.dynamicValues === 'formField') &&
+    value.dynamicValues === 'formField' ||
+    value.dynamicValues === 'nodeLabel') &&
   (!('mayBeEmpty' in value) || value.mayBeEmpty === true);
 
 export const getLocalizedStringDescriptor = (

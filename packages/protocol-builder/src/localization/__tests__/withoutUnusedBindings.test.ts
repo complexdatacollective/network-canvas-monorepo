@@ -65,3 +65,52 @@ describe('withoutUnusedBindings', () => {
     expect(withoutUnusedBindings(stage, {})).toBe(stage);
   });
 });
+
+describe('the conditions the text of a stage tests', () => {
+  const RULES = {
+    rules: [
+      {
+        id: 'r',
+        type: 'ego',
+        options: { attribute: 'age', operator: 'EXISTS' },
+      },
+    ],
+  };
+  const IF = { path: '$condition.if1', cases: { yes: true } };
+
+  it('keeps a condition while some text tests it', () => {
+    const stage = {
+      title: { 'en-US': '{if1, select, yes {Hi} other {Hello}}' },
+      dynamicValues: { if1: IF },
+      conditions: { if1: RULES },
+    };
+    expect(withoutUnusedBindings(stage, {})).toBe(stage);
+  });
+
+  it('drops a condition with the last text that tested it', () => {
+    expect(
+      withoutUnusedBindings(
+        {
+          title: { 'en-US': 'Hello' },
+          dynamicValues: { if1: IF },
+          conditions: { if1: RULES },
+        },
+        {},
+      ),
+    ).toEqual({ title: { 'en-US': 'Hello' } });
+  });
+
+  it('drops a condition left behind with no binding at all', () => {
+    expect(
+      withoutUnusedBindings(
+        { title: { 'en-US': 'Hello' }, conditions: { if1: RULES } },
+        {},
+      ),
+    ).toEqual({ title: { 'en-US': 'Hello' } });
+  });
+
+  it('leaves alone a condition the stage already held untested when last saved', () => {
+    const stage = { title: { 'en-US': 'Hello' }, conditions: { if1: RULES } };
+    expect(withoutUnusedBindings(stage, stage)).toBe(stage);
+  });
+});

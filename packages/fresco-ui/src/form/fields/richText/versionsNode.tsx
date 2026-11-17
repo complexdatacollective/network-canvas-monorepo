@@ -39,11 +39,13 @@ import {
 } from '../../../PresentationalText';
 import {
   type TokenPillLabel,
+  type TokenPillVariant,
   TokenPillContent,
   tokenPillClasses,
   useTokenPillLanguage,
 } from '../../../TokenPill';
 import { cx } from '../../../utils/cva';
+import { emojiSuggestionsShowing } from './emojiSuggestionState';
 import { contentInSchema, readableContent } from './fitToSchema';
 
 /**
@@ -56,6 +58,40 @@ export type RichTextVersion = Readonly<{
   key: string;
   label: string;
   content: readonly JSONContent[];
+  /**
+   * Makes the version's label a button, for a case the researcher sets up
+   * rather than only names (the rules of an "If" row): what the button does,
+   * as its tooltip and for a screen reader, such as “Edit rules”. Pressing it
+   * reports the action `edit` for this version (see `onVersionsAction`).
+   */
+  action?: string;
+  /**
+   * Gives the version a button that removes it, named by this text, such as
+   * “Remove this case”. Pressing it reports the action `remove`.
+   */
+  removable?: string;
+}>;
+
+/** Something that can be done to a whole set of versions, as a button. */
+export type RichTextVersionsAction = Readonly<{ id: string; label: string }>;
+
+/**
+ * What the researcher asked for in a set of versions that its consumer has
+ * to carry out: `edit` or `remove` on one version, or one of the set's own
+ * `actions`. `update` rewrites the element in the text, as one undoable edit;
+ * told `{ undoable: false }`, it rewrites it outside the text's history, for
+ * a change that only restates something the consumer keeps elsewhere (a
+ * version's label, say), which undoing in the text could not take back.
+ */
+export type RichTextVersionsActionEvent = Readonly<{
+  action: string;
+  /** The version the action is on; absent for one of the set's actions. */
+  versionKey?: string;
+  attributes: RichTextVersionsAttributes;
+  update: (
+    attributes: Partial<RichTextVersionsAttributes>,
+    options?: Readonly<{ undoable?: boolean }>,
+  ) => void;
 }>;
 
 /**
@@ -73,6 +109,14 @@ export type RichTextVersionsAttributes = Readonly<{
    */
   summary?: TokenPillLabel;
   versions: readonly RichTextVersion[];
+  /**
+   * `logic` for versions chosen by a test (if, else, a case for each
+   * answer) rather than by whether one value is known: drawn in the colour
+   * and with the icon logic has wherever it is shown.
+   */
+  variant?: TokenPillVariant;
+  /** Buttons under the open versions, such as “Add else if”. */
+  actions?: readonly RichTextVersionsAction[];
   /** Whatever the consumer needs to read the element back; kept as given. */
   meta?: unknown;
 }>;
@@ -94,6 +138,10 @@ type NestedEditing = Readonly<{
    * back to its pill when they leave it.
    */
   active?: boolean;
+  /** What a placeholder is called, for a folded element's preview. */
+  tokenLabel?: (id: string) => string | undefined;
+  /** Carries out an action asked for in a set of versions. */
+  onVersionsAction?: (event: RichTextVersionsActionEvent) => void;
   /**
    * Whether the versions of a message that is nothing but one set of versions
    * stay open: the field is then those versions, and a pill hiding all of its
@@ -145,6 +193,12 @@ export const versionsIn = (value: unknown): RichTextVersion[] =>
                 key: version.key,
                 label: version.label,
                 content: version.content.filter(isTypedNode),
+                ...(typeof version.action === 'string' && {
+                  action: version.action,
+                }),
+                ...(typeof version.removable === 'string' && {
+                  removable: version.removable,
+                }),
               },
             ]
           : [],
@@ -160,7 +214,70 @@ const versionsAttributesOf = (
       summary: attrs.summary,
     }),
   versions: versionsIn(attrs.versions),
+  ...(attrs.variant === 'logic' && { variant: 'logic' as const }),
+  ...(Array.isArray(attrs.actions) && {
+    actions: attrs.actions.flatMap((action: unknown) =>
+      isRecord(action) &&
+      typeof action.id === 'string' &&
+      typeof action.label === 'string'
+        ? [{ id: action.id, label: action.label }]
+        : [],
+    ),
+  }),
+  ...(attrs.meta !== undefined && attrs.meta !== null && { meta: attrs.meta }),
 });
+
+// How many versions a folded element previews, and how much of each.
+const PREVIEWED_VERSIONS = 3;
+const PREVIEW_LENGTH = 16;
+
+/** What a version's line reads as, with each value named. */
+const previewText = (
+  content: readonly JSONContent[],
+  tokenLabel: (id: string) => string | undefined,
+): string =>
+  content
+    .map((node) => {
+      if (node.type === 'text') return node.text ?? '';
+      if (node.type === 'hardBreak') return ' ';
+      if (node.type === VERSIONS_NODE && isRecord(node.attrs)) {
+        const inner = versionsAttributesOf(node.attrs);
+        return presentationalTextValue(inner.summary ?? inner.label);
+      }
+      const id: unknown = node.attrs?.id;
+      return typeof id === 'string' ? (tokenLabel(id) ?? id) : '';
+    })
+    .join('');
+
+/**
+ * What a folded element can show, so that its pill says more than what it
+ * depends on: the first few versions that show something, each cut short,
+ * and how many more there are. A version that shows nothing, or only the
+ * value the pill already names, adds nothing and is left out.
+ */
+export const versionsPreview = (
+  attributes: RichTextVersionsAttributes,
+  tokenLabel: (id: string) => string | undefined = () => undefined,
+): Readonly<{ shown: readonly string[]; more: number }> => {
+  const named = presentationalTextValue(
+    attributes.summary ?? attributes.label,
+  ).trim();
+  const texts = attributes.versions
+    .map((version) =>
+      previewText(version.content, tokenLabel).replace(/\s+/g, ' ').trim(),
+    )
+    .filter((text) => text !== '' && text !== named);
+  const unique = [...new Set(texts)];
+  return {
+    shown: unique.slice(0, PREVIEWED_VERSIONS).map((text) => {
+      const characters = Array.from(text);
+      return characters.length > PREVIEW_LENGTH
+        ? `${characters.slice(0, PREVIEW_LENGTH - 1).join('')}…`
+        : text;
+    }),
+    more: Math.max(0, unique.length - PREVIEWED_VERSIONS),
+  };
+};
 
 /**
  * Whether `doc` is one line holding a single set of versions and nothing but
@@ -295,6 +412,13 @@ const nestedVersionLabelClasses = cx('py-1 pb-0 select-none');
 
 const versionLabelTextClasses = cx('text-xs font-semibold text-current/70');
 
+// A row's own controls, and a set's: small text buttons, underlined so they
+// read as something to press beside the labels, which are not.
+const versionActionClasses = cx(
+  'focusable cursor-pointer rounded-sm text-xs font-semibold underline underline-offset-2',
+  'disabled:cursor-default disabled:no-underline disabled:opacity-60',
+);
+
 // A version is one line, as tall as its words. Its paragraph is an inline
 // block rather than inline: ProseMirror ends a paragraph that is empty, or
 // that ends in a value, with a line break, and in an inline paragraph that
@@ -328,10 +452,13 @@ function VersionEditor({
   version,
   onChange,
   onEscape,
+  onAction,
 }: {
   version: RichTextVersion;
   onChange: (content: JSONContent[]) => void;
   onEscape: () => void;
+  /** Reports `edit` or `remove`, where the version offers them. */
+  onAction: (action: 'edit' | 'remove') => void;
 }) {
   const nested = useContext(NestedEditingContext);
   // A version's label is the interface's words, like a pill's.
@@ -390,6 +517,10 @@ function VersionEditor({
           'data-version': version.key,
         },
         handleKeyDown: (view, event) => {
+          // While emoji are being suggested the keys below are the list's:
+          // an arrow moves through it and Escape puts it away, where they
+          // would otherwise leave the version or fold the whole element.
+          if (emojiSuggestionsShowing(view)) return false;
           if (
             (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
             !event.shiftKey &&
@@ -490,16 +621,51 @@ function VersionEditor({
   return (
     <span className={versionClasses}>
       <span
-        aria-hidden
-        className={
+        className={cx(
           parentLabels.length > 0
             ? nestedVersionLabelClasses
-            : versionLabelClasses
-        }
+            : versionLabelClasses,
+          'flex flex-col items-start gap-1',
+        )}
       >
-        <span {...labelLanguage} className={versionLabelTextClasses}>
+        <span
+          aria-hidden
+          {...labelLanguage}
+          className={versionLabelTextClasses}
+        >
           {version.label}
         </span>
+        {(version.action !== undefined || version.removable !== undefined) && (
+          // Under the label, which stays hidden from screen readers as the
+          // name of the row's editor: these are the row's own controls.
+          <span
+            {...labelLanguage}
+            data-version-actions={version.key}
+            contentEditable={false}
+            className="flex flex-wrap gap-x-3 gap-y-1"
+          >
+            {version.action !== undefined && (
+              <button
+                type="button"
+                disabled={!(nested?.editable ?? false)}
+                className={versionActionClasses}
+                onClick={() => onAction('edit')}
+              >
+                {version.action}
+              </button>
+            )}
+            {version.removable !== undefined && (
+              <button
+                type="button"
+                disabled={!(nested?.editable ?? false)}
+                className={versionActionClasses}
+                onClick={() => onAction('remove')}
+              >
+                {version.removable}
+              </button>
+            )}
+          </span>
+        )}
       </span>
       <VersionPathContext.Provider value={labels}>
         <EditorContent
@@ -537,6 +703,7 @@ function VersionsView({
     latest.current = attributes;
   });
   const nested = useContext(NestedEditingContext);
+  const intl = useAppIntl();
   const active = nested?.active ?? true;
   const versionsId = useId();
   const pillLanguage = useTokenPillLanguage(
@@ -552,6 +719,13 @@ function VersionsView({
       isWholeMessageVersions(current.state.doc),
   });
   const alwaysOpen = (nested?.openWholeMessage ?? false) && isWholeMessage;
+  const variant = attributes.variant ?? 'value';
+  const isLogic = variant === 'logic';
+  const tokenLabel = nested?.tokenLabel;
+  const preview = useMemo(
+    () => versionsPreview(attributes, tokenLabel),
+    [attributes, tokenLabel],
+  );
   const insideVersion = useContext(VersionPathContext).length > 0;
 
   // Open while the element is selected, until Escape or leaving the field
@@ -609,6 +783,34 @@ function VersionsView({
     setFolded(true);
     selectSelf();
   };
+  const report = (action: string, versionKey?: string) =>
+    nested?.onVersionsAction?.({
+      action,
+      ...(versionKey !== undefined && { versionKey }),
+      attributes: { ...latest.current, meta: node.attrs.meta as unknown },
+      update: (next, options) => {
+        const position = getPos();
+        const current =
+          position === undefined ? null : editor.state.doc.nodeAt(position);
+        if (
+          options?.undoable === false &&
+          position !== undefined &&
+          current !== null
+        ) {
+          editor.view.dispatch(
+            editor.state.tr
+              .setNodeMarkup(position, undefined, { ...current.attrs, ...next })
+              .setMeta('addToHistory', false),
+          );
+        } else {
+          updateAttributes(next);
+        }
+        // Carried out, often from a dialog that took the focus away: the
+        // element is opened again, where the researcher left it.
+        setFolded(false);
+        requestAnimationFrame(() => selectSelf());
+      },
+    });
   return (
     <NodeViewWrapper
       ref={wrapperRef}
@@ -617,6 +819,7 @@ function VersionsView({
       role="group"
       aria-label={attributes.label}
       data-versions-element=""
+      data-variant={isLogic ? 'logic' : undefined}
       data-expanded={expanded || undefined}
       data-always-open={alwaysOpen || undefined}
       className="mx-0.5"
@@ -636,6 +839,7 @@ function VersionsView({
             hidden={expanded}
             className={tokenPillClasses(
               cx('mx-0 cursor-pointer', expanded && 'hidden'),
+              variant,
             )}
             // Selects the element and opens it, also when it was already
             // selected and folded.
@@ -644,7 +848,23 @@ function VersionsView({
               setFolded(false);
             }}
           >
-            <TokenPillContent label={attributes.summary ?? attributes.label} />
+            <TokenPillContent
+              label={attributes.summary ?? attributes.label}
+              variant={variant}
+            />
+            {preview.shown.length > 0 && (
+              // What the versions can show, so the pill says more than what
+              // they depend on. In the language of the text, not the pill's.
+              <span
+                data-versions-preview=""
+                dir="auto"
+                className="text-match-parent font-normal"
+              >
+                {': '}
+                {preview.shown.join(' · ')}
+                {preview.more > 0 && ` · +${intl.formatNumber(preview.more)}`}
+              </span>
+            )}
           </span>
         </>
       )}
@@ -671,19 +891,27 @@ function VersionsView({
         // the consumer gives them.
         className={cx(
           expanded ? 'inline-grid' : 'hidden',
-          'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-3 gap-y-2 align-baseline',
+          // A long label (the rules of an "If") wraps in its column rather than
+          // pushing the lines out of the field.
+          'max-w-full grid-cols-[fit-content(16rem)_minmax(0,1fr)] items-start gap-x-3 gap-y-2 align-baseline',
           // The field's text area is the container. Its width, not the
           // window's, decides when the rows stack; inside a version they
           // always do, for the room each level of nesting would take.
           insideVersion
             ? 'w-full grid-cols-[minmax(0,1fr)] gap-y-1'
             : '@max-sm/rich-text:w-full @max-sm/rich-text:grid-cols-[minmax(0,1fr)] @max-sm/rich-text:gap-y-1',
-          'border-primary/40 bg-primary/5 rounded-sm border border-dashed',
+          'rounded-sm border border-dashed',
+          isLogic
+            ? 'border-info/50 bg-info/5'
+            : 'border-primary/40 bg-primary/5',
           insideVersion ? 'px-2 py-1.5' : 'px-3 py-2',
           // With no pill to show it, the element being selected in the line
           // (what Escape in a row leaves it) is shown by its frame: whatever
           // is typed next replaces it.
-          alwaysOpen && selected && 'border-primary border-solid',
+          alwaysOpen &&
+            selected &&
+            (isLogic ? 'border-info' : 'border-primary') &&
+            'border-solid',
         )}
       >
         {attributes.versions.map((version, index) => (
@@ -693,6 +921,7 @@ function VersionsView({
             // A permanently open element has nothing to fold back to: Escape
             // hands the caret back to the line, with the element selected.
             onEscape={alwaysOpen ? selectSelf : foldToPill}
+            onAction={(action) => report(action, version.key)}
             onChange={(content) => {
               const current = latest.current;
               updateAttributes({
@@ -703,6 +932,26 @@ function VersionsView({
             }}
           />
         ))}
+        {(attributes.actions?.length ?? 0) > 0 && (
+          <span
+            {...pillLanguage}
+            data-versions-actions=""
+            contentEditable={false}
+            className="col-span-full flex flex-wrap gap-x-3 gap-y-1"
+          >
+            {attributes.actions?.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                disabled={!(nested?.editable ?? false)}
+                className={versionActionClasses}
+                onClick={() => report(action.id)}
+              >
+                {action.label}
+              </button>
+            ))}
+          </span>
+        )}
       </span>
     </NodeViewWrapper>
   );
@@ -711,7 +960,9 @@ function VersionsView({
 // An event in one of the versions' own editors is that editor's to handle.
 const isInVersionEditor = (event: Event) =>
   event.target instanceof Element &&
-  event.target.closest('[data-version]') !== null;
+  event.target.closest(
+    '[data-version], [data-version-actions], [data-versions-actions]',
+  ) !== null;
 
 /** The selected element's view, when the selection is one. */
 const selectedElement = (editor: Editor): HTMLElement | null => {
@@ -801,6 +1052,33 @@ export const VersionsNode = TiptapNode.create({
             }),
           };
         },
+      },
+      variant: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute('data-versions-variant') === 'logic'
+            ? 'logic'
+            : null,
+        renderHTML: (attributes) =>
+          attributes.variant === 'logic'
+            ? { 'data-versions-variant': 'logic' }
+            : {},
+      },
+      actions: {
+        default: null,
+        parseHTML: (element) => {
+          try {
+            return JSON.parse(
+              element.getAttribute('data-versions-actions') ?? 'null',
+            ) as unknown;
+          } catch {
+            return null;
+          }
+        },
+        renderHTML: (attributes) =>
+          Array.isArray(attributes.actions)
+            ? { 'data-versions-actions': JSON.stringify(attributes.actions) }
+            : {},
       },
       meta: {
         default: null,

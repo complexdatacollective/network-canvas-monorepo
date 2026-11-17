@@ -23,9 +23,22 @@ const DYNAMIC_VALUE_PATH = 'dynamicValuePath' as const;
  *   the node a bin stage in select mode is placing);
  * - `formField`, a form field's caption, shown while the form describes one
  *   entity: a node or edge form's fields, and the question a Categorical Bin
- *   asks about the node just put in its "other" bin.
+ *   asks about the node just put in its "other" bin;
+ * - `nodeLabel`, the label a node type gives its nodes (the codebook's
+ *   `dynamicLabel`), shown on every node of that type wherever the interview
+ *   draws one: only that node, by its attributes and the label the interview
+ *   would otherwise choose for it. It sits on no stage, so
+ *   `nodeLabelValueContext` gives what it can show rather than
+ *   `dynamicValueRolesAt`.
+ *
+ * Text at any site can also choose its wording by a condition: a set of
+ * rules asked of what the text can show there (see `conditions.ts`).
  */
-export type DynamicValueSite = 'stageText' | 'prompt' | 'formField';
+export type DynamicValueSite =
+  | 'stageText'
+  | 'prompt'
+  | 'formField'
+  | 'nodeLabel';
 
 /**
  * Values the interview itself knows, rather than an attribute of someone in
@@ -111,10 +124,21 @@ const PARTICIPANT_PATH_SEGMENT = '$isParticipant';
  */
 export const PARTICIPANT_CASE = 'participant';
 
+const CONDITION_PATH_PREFIX = '$condition.';
+
+/**
+ * The case keys a binding of a condition may give: the one chosen when the
+ * condition is met, and the one chosen when it is not. Text reads `other`
+ * for whichever it gives no version.
+ */
+export const TRUE_CASE = 'yes';
+export const FALSE_CASE = 'no';
+
 export type ParsedDynamicValuePath =
   | Readonly<{ kind: 'intrinsic'; name: IntrinsicDynamicValue }>
   | Readonly<{ kind: 'label'; role: LabelledDynamicValueRole }>
   | Readonly<{ kind: 'participant'; role: 'node' }>
+  | Readonly<{ kind: 'condition'; conditionId: string }>
   | Readonly<{
       kind: 'attribute';
       role: AttributeDynamicValueRole;
@@ -132,6 +156,12 @@ export const parseDynamicValuePath = (
   path: string,
 ): ParsedDynamicValuePath | undefined => {
   if (isIntrinsic(path)) return { kind: 'intrinsic', name: path };
+  if (path.startsWith(CONDITION_PATH_PREFIX)) {
+    const conditionId = path.slice(CONDITION_PATH_PREFIX.length);
+    return conditionId === '' ? undefined : { kind: 'condition', conditionId };
+  }
+  // No attribute id holds `$`, so nothing else begins with one.
+  if (path.startsWith('$')) return undefined;
   for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
     if (
       isLabelledDynamicValueRole(role) &&
@@ -180,6 +210,15 @@ export const dynamicValueLabelPathFor = (
  */
 export const dynamicValueParticipantPathFor = (role: 'node'): string =>
   `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${PARTICIPANT_PATH_SEGMENT}`;
+
+/**
+ * The `path` naming whether one of the conditions declared beside the text
+ * (a stage's `conditions`, or a node type's `dynamicLabel.conditions`) is
+ * met. Text chooses its wording by it and never shows it. It is never
+ * missing.
+ */
+export const dynamicValueConditionPathFor = (conditionId: string): string =>
+  `${CONDITION_PATH_PREFIX}${conditionId}`;
 
 const DynamicValuePathSchema = z
   .string()
@@ -304,6 +343,8 @@ export const dynamicValueRolesAt = (
   site: DynamicValueSite,
   form: DynamicValueForm | undefined,
 ): ReadonlySet<DynamicValueRole> => {
+  // A node's label is about that node alone, on whichever stage draws it.
+  if (site === 'nodeLabel') return new Set<DynamicValueRole>(['node']);
   const roles = new Set<DynamicValueRole>(['ego']);
   if (site === 'prompt') {
     if (DYAD_STAGE_TYPES.has(stage.type)) {
@@ -453,6 +494,21 @@ export type DynamicValueSiteContext = Readonly<{
    */
   participantRoles?: ReadonlySet<DynamicValueRole>;
   /**
+   * Set for a node type's own label, which shows no value the interview
+   * knows (today's date): it is drawn on many nodes at once, on every stage.
+   * There, a node's label is the one the interview would otherwise choose.
+   */
+  nodeLabel?: boolean;
+  /**
+   * The conditions declared beside the text, by id, each with the role its
+   * node and edge rules are asked of (absent for one that asks only about
+   * the participant). Absent where none are declared.
+   */
+  conditions?: ReadonlyMap<
+    string,
+    Readonly<{ about?: DynamicValueRole | undefined }>
+  >;
+  /**
    * The variables of each role's entity, or undefined where the role names
    * no codebook entity (a node role on a stage with no node subject).
    */
@@ -485,12 +541,43 @@ export const dynamicValueStatus = (
     };
   }
   if (parsed.kind === 'intrinsic') {
+    if (context.nodeLabel === true) {
+      return {
+        status: 'unavailable',
+        reason: 'a node’s label can show only what is known about that node',
+      };
+    }
     return {
       status: 'available',
       argument: {
         cases: [],
         numeric: false,
         optional: INTRINSIC_DYNAMIC_VALUES[parsed.name].optional,
+      },
+    };
+  }
+  if (parsed.kind === 'condition') {
+    const condition = context.conditions?.get(parsed.conditionId);
+    if (condition === undefined) {
+      return {
+        status: 'unknown',
+        reason: 'the condition it names does not exist',
+      };
+    }
+    if (condition.about !== undefined && !context.roles.has(condition.about)) {
+      return {
+        status: 'unavailable',
+        reason: `its rules are about ${ROLE_NAMES[condition.about]}, which this text is not shown with`,
+      };
+    }
+    return {
+      status: 'available',
+      argument: {
+        cases: Object.keys(binding.cases ?? {}),
+        numeric: false,
+        optional: false,
+        unshowable:
+          'a condition only chooses wording, and is never shown itself. Give the text a version for when it is met and one for when it is not.',
       },
     };
   }

@@ -222,6 +222,7 @@ function EntityEditorDialog({
           Object.keys(codebook[entity] ?? {}).length,
         )}
         readOnly={readOnly}
+        codebook={codebook}
         existingEntityNames={existingEntityNames}
         onSubmit={(document, promote) =>
           createEntity(entity, document, promote)
@@ -259,6 +260,7 @@ function EntityEditorDialog({
       initialDraft={editedDraft}
       authoritativeDocument={editedDocument}
       readOnly={readOnly}
+      codebook={codebook}
       existingEntityNames={existingEntityNames}
       onSubmit={(document, promote) =>
         // Laid over the document the LOCK hands back, not over the one the
