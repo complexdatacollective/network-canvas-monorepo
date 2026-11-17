@@ -716,11 +716,16 @@ const abortInflight = (): InflightRun | null => {
  */
 const countStoppedRun = (dispatch: AppDispatch) => {
   const now = Date.now();
-  const quota = effectiveQuota(readStoredQuota(), now);
-  if (quota === null) return;
-  // A window that has run out is replenished on reading, so the count goes
-  // into a new one, as the service opens one with the review it admits;
-  // otherwise the next read would replenish it straight away.
+  // With nothing saved yet (no review has been answered in this browser),
+  // the window is a full one at the service's limit. A window that has run
+  // out is replenished on reading. Either way the count goes into a new
+  // window, as the service opens one with the review it admits; otherwise
+  // the next read would replenish it straight away.
+  const quota = effectiveQuota(readStoredQuota(), now) ?? {
+    limit: REVIEW_LIMITS.perInstallationPerHour,
+    remaining: REVIEW_LIMITS.perInstallationPerHour,
+    resetsAt: new Date(now).toISOString(),
+  };
   const expired = Date.parse(quota.resetsAt) <= now;
   const counted: ReviewQuota = {
     ...quota,
