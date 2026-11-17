@@ -2,7 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import developmentProtocol from '@codaco/protocols/development';
@@ -54,8 +54,7 @@ const renderWithLock = (ui: React.ReactElement, readOnly: boolean | null) => {
 
 describe('Codebook while another tab owns the protocol', () => {
   it('disables every control that creates, edits or deletes', () => {
-    const onEditEntity = vi.fn();
-    renderWithLock(<Codebook onEditEntity={onEditEntity} />, true);
+    renderWithLock(<Codebook />, true);
 
     const createNode = screen.getByRole('button', { name: 'Create node type' });
     const createEdge = screen.getByRole('button', { name: 'Create edge type' });
@@ -84,7 +83,7 @@ describe('Codebook while another tab owns the protocol', () => {
     for (const button of [createNode, createEdge, ...editButtons]) {
       fireEvent.click(button);
     }
-    expect(onEditEntity).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('renders attribute names without a rename trigger and disables deletion', () => {
@@ -142,7 +141,7 @@ describe.each([
   ['while the protocol is editable', false],
 ])('Codebook %s', (_label, readOnly) => {
   it('leaves the editing controls enabled', () => {
-    renderWithLock(<Codebook onEditEntity={vi.fn()} />, readOnly);
+    renderWithLock(<Codebook />, readOnly);
 
     expect(
       screen.getByRole('button', { name: 'Create node type' }),

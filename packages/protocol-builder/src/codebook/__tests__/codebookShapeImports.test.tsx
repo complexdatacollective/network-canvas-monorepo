@@ -98,19 +98,25 @@ const shapeAssets = (host: InMemoryHost): unknown[] => {
   );
 };
 
-const REFUSED_PROMOTION: HandlerOverrides = {
-  Submit: (submitted) =>
-    Effect.fail(
+const refusedPromotion = (
+  naming: 'the image' | 'nothing',
+): HandlerOverrides => ({
+  Submit: (submitted) => {
+    const resourceId =
+      naming === 'the image' ? submitted.promote?.resourceIds[0] : undefined;
+    return Effect.fail(
       new PromotionFailed({
         sectionId: submitted.sectionId,
         failure: {
           reason: 'promotion-failed',
           message: 'the staged file is gone',
           retryable: false,
+          ...(resourceId === undefined ? {} : { resourceId }),
         },
       }),
-    ),
-};
+    );
+  },
+});
 
 describe('a shape image imported in the node type editor', () => {
   it('is committed with the node type it was imported for', async () => {
@@ -142,6 +148,9 @@ describe('a shape image imported in the node type editor', () => {
     ).toHaveLength(1);
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
     await screen.findByText('Editor closed');
 
     await waitFor(async () =>
@@ -153,18 +162,58 @@ describe('a shape image imported in the node type editor', () => {
     expect(shapeAssets(host)).toEqual([]);
   });
 
-  it('keeps the draft open and says so when the image cannot be committed', async () => {
+  it('keeps the draft open and names the shape whose image cannot be committed', async () => {
     const user = userEvent.setup();
     const host = createResourceHost();
-    renderEditor(host, REFUSED_PROMOTION);
+    renderEditor(host, refusedPromotion('the image'));
 
     await importShape(user);
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The files you imported could not be saved with this change',
-    );
+    expect(
+      await screen.findByText(
+        'The image for the shape "home" is no longer available. Remove this shape and add it again.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue('home')).toBeInTheDocument();
     expect(shapeAssets(host)).toEqual([]);
+  });
+
+  it('says an image is unavailable when the host does not say which', async () => {
+    const user = userEvent.setup();
+    const host = createResourceHost();
+    renderEditor(host, refusedPromotion('nothing'));
+
+    await importShape(user);
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(
+      await screen.findByText(
+        'An image added to this node type is no longer available. Remove the shape that uses it, then add the shape again.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue('home')).toBeInTheDocument();
+  });
+
+  it('closes without asking when nothing was changed', async () => {
+    const user = userEvent.setup();
+    renderEditor(createResourceHost());
+
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+    await screen.findByText('Editor closed');
+  });
+
+  it('keeps the draft when the researcher chooses to keep editing', async () => {
+    const user = userEvent.setup();
+    renderEditor(createResourceHost());
+
+    await importShape(user);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Keep editing' }),
+    );
+
+    expect(screen.getByDisplayValue('home')).toBeInTheDocument();
+    expect(screen.queryByText('Editor closed')).not.toBeInTheDocument();
   });
 });

@@ -394,11 +394,12 @@ describe('no create control sits beside an attribute picker', () => {
    * editor has a control for. Both hand what they open to the picker, and the
    * sweep above is what holds them to it.
    *
-   * The last assertion names the only modules that mount the editor at all.
-   * `sections/StageManagedOptionsEditor.tsx` is the second: it opens the editor
-   * in update mode for an attribute whose options a stage manages, and offers
-   * no way to create one, so it is neither the picker's escalation path nor
-   * something an interface editor can do on its own.
+   * The last assertion names the only modules that open the editor's dialog.
+   * `sections/StageManagedOptionsEditor.tsx` opens it in update mode for an
+   * attribute whose options a stage manages, and offers no way to create one,
+   * so it is neither the picker's escalation path nor something an interface
+   * editor can do on its own. `CreateCodebookVariableDialog` is the one a host's
+   * codebook page mounts, outside any stage editor.
    */
   it('lets no interface editor reach the codebook’s attribute editor directly', () => {
     const namedIn = (area: string, specifier: RegExp): string[] =>
@@ -413,12 +414,11 @@ describe('no create control sits beside an attribute picker', () => {
 
     expect(namedIn('editors/', /useCreateVariableEditor/u)).toEqual([]);
     expect(
-      namedIn('editors/', /codebook\/components\/VariableEditor\.tsx/u),
+      namedIn('editors/', /components\/VariableEditor(Dialog)?\.tsx/u),
     ).toEqual([]);
 
-    expect(
-      namedIn('', /from '[^']*codebook\/components\/VariableEditor\.tsx'/u),
-    ).toEqual([
+    expect(namedIn('', /from '[^']*VariableEditorDialog\.tsx'/u)).toEqual([
+      'codebook/components/CreateCodebookVariableDialog.tsx',
       'sections/StageManagedOptionsEditor.tsx',
       'sections/create-variable/useCreateVariableEditor.tsx',
     ]);

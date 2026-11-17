@@ -134,9 +134,6 @@ export const VARIABLE_TYPES = {
   },
 };
 
-// Internal config - not exported
-const VARIABLE_TYPES_WITH_OPTIONS = ['ordinal', 'categorical'];
-
 /** Translate known attribute metadata without changing persisted type identifiers. */
 export const getVariableTypeLabel = (
   type: string | undefined,
@@ -148,18 +145,10 @@ export const getVariableTypeLabel = (
   return descriptor ? intl.formatMessage(descriptor) : (type ?? '');
 };
 
-export const VARIABLE_OPTIONS = Object.values(VARIABLE_TYPES);
-
-const isOrdinalOrCategoricalType = (
-  variableType: string | null | undefined,
-): variableType is string =>
-  typeof variableType === 'string' &&
-  VARIABLE_TYPES_WITH_OPTIONS.includes(variableType);
-
 const getColorForType = (type: string | undefined) =>
   get(VARIABLE_TYPES, [type ?? '', 'color'], 'charcoal');
 
 const getIconForType = (type: string | undefined) =>
   get(VARIABLE_TYPES, `${type ?? ''}.icon`, DefaultVariable);
 
-export { getColorForType, getIconForType, isOrdinalOrCategoricalType };
+export { getColorForType, getIconForType };

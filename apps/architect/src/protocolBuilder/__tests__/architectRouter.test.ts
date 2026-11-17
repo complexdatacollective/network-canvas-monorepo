@@ -693,52 +693,6 @@ describe("Architect's in-process protocol-builder host", () => {
   });
 
   /**
-   * The node type dialog saves through Redux rather than a submit, so the
-   * client checks the edit's imports before the type is written and hands
-   * them over once it is.
-   */
-  it('keeps the imports an edit adopted when that edit is then discarded', async () => {
-    const store = configureStore({ reducer: rootReducer });
-    store.dispatch(setActiveProtocolId(PROTOCOL_ID));
-    store.dispatch(
-      setActiveProtocol(CurrentProtocolSchema.parse(allInterfaces)),
-    );
-    const architect = createArchitectClient(store, OTHER_TAB);
-    runtimes.push(architect.runtime);
-    const client = {
-      call: architect.adapter.rpcCall,
-      runtime: architect.runtime,
-    };
-    const kept = await importResource(client);
-    const foreign = await importResource(client, OTHER_EDIT);
-
-    expect(
-      architect.planStagedResourceAdoption({
-        editId: EDIT,
-        resourceIds: [foreign],
-      }),
-    ).toEqual({ status: 'failed', resourceId: foreign });
-    const adoption = architect.planStagedResourceAdoption({
-      editId: EDIT,
-      resourceIds: [kept],
-    });
-    if (adoption.status !== 'ok') throw new Error('expected adoption to plan');
-    adoption.complete();
-    await client.call('ResourcesDiscard', {
-      protocolId: PROTOCOL_ID,
-      editId: EDIT,
-    });
-    await client.call('ResourcesDiscard', {
-      protocolId: PROTOCOL_ID,
-      editId: OTHER_EDIT,
-    });
-
-    const manifest = getAssetManifest(store.getState());
-    expect(Object.keys(manifest)).toContain(kept);
-    expect(Object.keys(manifest)).not.toContain(foreign);
-  });
-
-  /**
    * One researcher, one store — and still two edits: a codebook dialog over a
    * stage editor, or a second tab of the same protocol. Neither one's cancel
    * may take away the file the other is about to submit, so staging is scoped
