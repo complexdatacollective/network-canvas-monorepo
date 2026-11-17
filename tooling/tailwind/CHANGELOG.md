@@ -1,5 +1,90 @@
 # @codaco/tailwind-config
 
+## 1.6.0
+
+### Minor Changes
+
+- c34db26: Node labels are easier to read. The node colors are adjusted, most of them darker, so their white labels stand out: all eight node colors now meet the WCAG AA contrast ratio of 4.5:1 for text, and the lighter half of each node stands out at 3:1 against the interview background. Nodes keep their two-tone diagonal.
+
+  The node colors in the default and interview themes (`--node-1` to `--node-8`) are now derived from the brand colors rather than equal to them. The brand color Neon Coral is slightly lighter and less saturated, and Mustard, Neon Carrot, Sea Serpent, Kiwi and Paradise Pink shift in hue, so edge, ordinal and categorical colors, the destructive and warning colors, the loading spinner, Background Creator's color swatches, and generated background patterns built from them change color slightly too.
+
+  In Architect, a read-only shape picker now tells assistive technology that its shapes are unavailable, matching the read-only type picker.
+
+- e405448: Arabic text is now set in Readex Pro, a typeface that ships with the apps, so
+  it looks the same on every device instead of depending on the fonts each one
+  has installed. This applies to text marked as Arabic: an interface or
+  interview shown in Arabic, and Arabic wording inside another language where
+  the app knows its language. Text in every other language is unchanged,
+  including languages such as Persian and Urdu that share the script.
+
+  `@codaco/tailwind-config` adds `fonts/readex-pro.css`, and its themes add
+  Readex Pro to the heading and body stacks for `lang="ar"` only. A host that
+  imports `fonts/nunito.css` and `fonts/inclusive-sans.css` should import the
+  new file beside them; without it Arabic falls back to a system font as
+  before. Only the Arabic subset is declared (23 KB), and a browser fetches it
+  only for a page that shows Arabic. Each theme now names the Latin face of its
+  stacks as `--heading-face` and `--body-face`; a theme of your own that sets
+  `--heading-font` or `--body-font` should set those too. The site navigation
+  bundle ships the file in `dist/fonts/`.
+
+- 92cf293: Reduced motion now follows `AnimationProvider`'s `reducedMotion` setting everywhere, not only in Motion components. `@codaco/fresco-ui/reducedMotion` adds `usePrefersReducedMotion()` (use it instead of Motion's `useReducedMotion()`, which reads only the operating system) and `prefersReducedMotion(node)` for code outside React. The provider marks the document root with `data-reduced-motion` when it overrides the system, and `@codaco/tailwind-config`'s `motion-reduce:` / `motion-safe:` variants and its global reduced-motion rule follow that mark. With the default setting nothing changes: motion follows the operating system's preference as before.
+- ad201b2: Every kind of stage now has one colour and one icon, the same in every app. Stages that do similar work share a colour family: naming people in coral reds, describing them in blues, sorting them in oranges, mapping in teal, finding ties in purples, reflecting in sea greens, and the screens that collect no network data in greys. Every colour carries a white icon at the WCAG AA contrast ratio of 4.5:1. Eight interfaces get new icons drawn in Lucide's style: Ego Form, Per Alter Form, Per Alter Edge Form, Sociogram, Network Composer, Narrative, Dyad Census and Tie-Strength Census.
+
+  **Architect**
+
+  - The protocol timeline on the start screen draws each stage in its new colour and icon. Information stages are a lighter grey instead of charcoal.
+  - Each stage in that timeline now carries the name of the interface it really uses, under a title that says what happens on the stage. Previously some stages showed the wrong type, such as a Sociogram labelled "Connections". The stage labels also have more padding and tighter, clearer type.
+
+  **Tailwind config (`@codaco/tailwind-config`)**
+
+  - Adds `interfaces.css`, which `fresco.css` loads, with `--interface-<stage-type>` and `--interface-<stage-type>-contrast` tokens for each stage type and `--color-interface-*` aliases for Tailwind utilities. An app that keeps its own theme instead of `fresco.css` imports `colors.css` and then `interfaces.css`.
+
+  **Fresco UI (`@codaco/fresco-ui`)**
+
+  - **Breaking:** `STAGE_TYPES` in `stages/stageTypes` replaces `STAGE_TYPE_COLORS` and `STAGE_TYPE_ICONS`, mapping each stage type to its colour token and icon. `stageTypeColorStyle` now returns the stage type's `--interface-*` tokens instead of a palette colour, and `stageTypeIcon` returns the new icons. `StageBar` draws its segments in the new colours.
+
+- 276e1ef: Adds the `text-match-parent` utility for text that takes its reading direction
+  from its own content (`dir="auto"`), such as a name a researcher wrote. The text
+  still reads in its own direction but stays on the side its container's text is
+  on, so a name in Latin script inside a right-to-left interface no longer sits
+  alone on the far left.
+
+### Patch Changes
+
+- 28ff7c6: Text in Arabic, Persian, Urdu and other languages written in the Arabic script
+  no longer has its letters pulled apart in Safari. Small labels and buttons use
+  a little extra space between letters, and Safari put that space inside words,
+  where the letters of this script must join. It showed wherever a protocol's
+  text or the interface was in one of those languages, on an iPad in particular.
+  Text in these languages now takes no letter-spacing.
+
+  Arabic set in the monospace style, such as Interviewer's status line, is now
+  drawn in Readex Pro like the rest of the page, in place of a wider system
+  font.
+
+  `@codaco/tailwind-config`: `--font-monospace` now reads `--monospace-font`,
+  which the theme sets for `lang="ar"`; a theme of your own may set it too.
+
+- fae4bb6: Two fixes for text in a right-to-left interface.
+
+  Code (`code`, `kbd`, `samp` and `pre`) is now always laid out left to right and
+  kept apart from the sentence around it. Before, a file extension inside an
+  Arabic sentence had its dot drawn on the wrong side: ".netcanvas" appeared as
+  "netcanvas.".
+
+  Text in a language written in the Arabic script is no longer slanted by the
+  browser when a style asks for italic. The script has no italic, and the faked
+  slant cut the top off the first letter of an italic placeholder in a text box.
+  A typeface that has a real italic, such as the Latin faces, still uses it.
+
+- ed8fef3: The elevation and inset-surface plugins no longer copy non-colour values into `--scoped-text`, `--scoped-bg` or `--inset-bg`. Font sizes such as `text-[12px]`, background sizes such as `bg-[length:200%_100%]`, gradients and `url()` images used to land in those variables, where elevation shadows, Badge text and inset shadows read them as colours. Colour classes, including `var()` values such as `bg-(--edge-color)`, behave as before.
+- c097a07: A progress bar with no known amount of progress is now drawn. It showed only
+  its empty track, with nothing moving on it: in Interviewer, while a protocol
+  is being imported, while an export is being prepared, and while the app is
+  being downloaded for offline use. The moving segment starts from the edge the
+  bar fills from, which is the right in a right-to-left language and the top of
+  a vertical bar. With reduced motion the bar is drawn still and faded.
+
 ## 1.5.1
 
 ### Patch Changes
