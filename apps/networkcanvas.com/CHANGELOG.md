@@ -1,5 +1,16 @@
 # networkcanvas.com
 
+## 0.11.1
+
+### Patch Changes
+
+- In eight Protocol Gallery protocols (GATE, KAYA, ROBUST, Sixhumene waves 1 to 3, Test-to-PrEP and UK-JCOIN-I), the publication citation on the first information screen now shows a single working link to the paper. It previously showed the address twice in brackets, and the first copy led to a "page not found" error.
+- The language picker no longer shows an "Interface language" heading above its list of languages. Screen readers still announce the picker as "Interface language".
+- Text that only a screen reader reads, such as the language menu's name and the names of icon-only buttons, is now English in every language, and is marked `lang="en"` where that does not also mark translated text, so a screen reader reads it in an English voice. Visible text, placeholders and tooltips stay translated.
+- Align the French website with the shared French glossary: gender-neutral wording for participants and research teams in the Updates pages, "importer" for bringing a protocol or file into Architect and Interviewer, consistent terms with the apps, and no-break spaces before French high punctuation.
+- The Grants section now lists five current funded studies that use Network Canvas, each with its institution's logo, its principal investigators and a link to its NIH RePORTER record, in every website language. The link for the opioid treatment study (GATE) now opens that study's record; it previously opened a different grant.
+- Add studies using Network Canvas to assess enhanced HIV prevention network outreach in the US South and to map social support among perinatal people with opioid use disorder.
+
 ## 0.11.0
 
 ### Minor Changes
