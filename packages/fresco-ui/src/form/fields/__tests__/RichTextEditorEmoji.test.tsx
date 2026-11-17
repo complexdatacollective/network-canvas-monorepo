@@ -202,6 +202,35 @@ describe('emoji suggested as a name is typed in a RichTextEditorField', () => {
     expect(editor).toHaveFocus();
   });
 
+  // The Escape that puts the list away is spent on it: a dialog around the
+  // field must not also take it as a request to close.
+  it('keeps the Escape that dismisses it from whatever is around the field', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    const escapes: string[] = [];
+    render(
+      // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- stands in for a dialog that closes on Escape
+      <div
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') escapes.push('seen');
+        }}
+      >
+        <Host />
+      </div>,
+    );
+    const editor = await screen.findByRole('textbox', { name: 'Note' });
+    await user.click(editor);
+    await user.keyboard(':rocket');
+    await screen.findByRole('listbox');
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    expect(escapes).toEqual([]);
+
+    // With nothing to dismiss, Escape is the surrounding dialog's again.
+    await user.keyboard('{Escape}');
+    expect(escapes).toEqual(['seen']);
+  });
+
   it('goes once the name is ended, and leaves Enter to the text when nothing matches', async () => {
     const user = withSafeTypingIntoRichText(userEvent.setup());
     render(<Host />);

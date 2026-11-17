@@ -890,6 +890,9 @@ const createEmojiSuggestions = (hooks: EmojiSuggestionHooks) =>
             handleKeyDown: (view, event) => {
               if (!open) return false;
               if (event.key === 'Escape') {
+                // Escape is spent here: a dialog around the text must not
+                // also take it as a request to close.
+                event.stopPropagation();
                 dismissedAt = typedAt(view)?.from;
                 report(null);
                 return true;
