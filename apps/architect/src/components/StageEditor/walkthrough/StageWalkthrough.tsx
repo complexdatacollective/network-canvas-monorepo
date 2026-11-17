@@ -5,7 +5,7 @@ import {
   motion,
   useDragControls,
   useMotionValue,
-  useTransform,
+  type MotionValue,
 } from 'motion/react';
 import {
   useCallback,
@@ -16,7 +16,6 @@ import {
   useState,
   useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
-  type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -97,17 +96,24 @@ const messages = defineMessages({
 const MARKDOWN_TAGS = [...ALLOWED_MARKDOWN_SECTION_TAGS, 'img', 'code'];
 
 const SPRING = { type: 'spring', duration: 0.4, bounce: 0 } as const;
-/** How the panel moves to a new place: slowly, easing in and out. */
-const GLIDE = {
+/**
+ * How long a step change takes. Everything it moves (the page's scroll, the
+ * panel's place and height, the highlight and the step's text) moves together
+ * over this time, on the same easing.
+ */
+const STEP_SECONDS = 0.5;
+const STEP = {
   type: 'tween',
-  duration: 0.6,
+  duration: STEP_SECONDS,
   ease: [0.65, 0, 0.35, 1],
 } as const;
-/** How the panel grows or shrinks to a new step's height. */
-const RESIZE = {
-  type: 'tween',
-  duration: 0.35,
-  ease: [0.33, 1, 0.68, 1],
+/** The old step's text fades out over the first half of a step change… */
+const TEXT_OUT = { duration: STEP_SECONDS / 2, ease: 'easeIn' } as const;
+/** …and the new step's over the second half. */
+const TEXT_IN = {
+  duration: STEP_SECONDS / 2,
+  delay: STEP_SECONDS / 2,
+  ease: 'easeOut',
 } as const;
 /** The space kept between the panel and the section it sits beside. */
 const PANEL_GAP = 24;
@@ -276,69 +282,63 @@ function WalkthroughCard({
     if (takeWalkthroughFocus()) nextRef.current?.focus({ preventScroll: true });
   }, [focusRequest]);
 
-  useEffect(() => {
-    target?.scrollIntoView({
-      behavior: reducedMotion ? 'auto' : 'smooth',
-      block: 'center',
-    });
-  }, [reducedMotion, target]);
-
   const [navBar] = useState(() =>
     document.querySelector<HTMLElement>('header'),
   );
   const clearOfNav = Math.max(0, useRect(navBar)?.bottom ?? 0);
-  // A new step starts at its top, not where the last one was scrolled to.
-  const body = useRef<HTMLElement>(null);
-  const toTop = (move: () => void) => () => {
-    body.current?.scrollTo({ top: 0 });
-    move();
-  };
   const {
     card,
     bounds,
+    surface,
+    header,
+    viewport,
+    content,
+    footer,
     dragControls,
     x,
     y,
-    maxHeight,
-    settle,
+    height,
+    sized,
+    ring,
     startDrag,
-    placeBeside,
-  } = useMovablePanel(clearOfNav, reducedMotion);
-  const { surfaceRef, headerRef, contentRef, footerRef, height, finalHeight } =
-    usePanelHeight(body, bounds, reducedMotion);
+    settle,
+    showStep,
+  } = usePanel(target, reducedMotion);
+  // A new step starts at its top, not where the last one was scrolled to.
+  const toTop = (move: () => void) => () => {
+    viewport.current?.scrollTo({ top: 0 });
+    move();
+  };
 
-  // Once the step's target has scrolled into place, the panel moves beside it,
-  // and stays there as the step's height settles.
-  const anchor = target;
-  const [settled, setSettled] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    if (anchor === null) return undefined;
-    // Placed once the page has stopped scrolling the target into view.
-    let timer = window.setTimeout(() => setSettled(anchor), SCROLL_QUIET_MS);
-    const restart = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => setSettled(anchor), SCROLL_QUIET_MS);
-    };
-    window.addEventListener('scroll', restart, {
-      capture: true,
-      passive: true,
-    });
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('scroll', restart, { capture: true });
-    };
-  }, [anchor]);
-  useEffect(() => {
-    if (settled === null || settled !== anchor) return;
-    placeBeside(settled, finalHeight);
-  }, [anchor, finalHeight, placeBeside, settled]);
+  // The new step's text is in place (the old one fades out over it), so
+  // everything a step change moves is planned from its height. Only a new
+  // step, or its section appearing, starts a change.
+  const latestShowStep = useRef(showStep);
+  useLayoutEffect(() => {
+    latestShowStep.current = showStep;
+  }, [showStep]);
+  useLayoutEffect(() => {
+    latestShowStep.current(target);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new step about the same section is still a step change, with its own height
+  }, [index, target]);
   const Scene = step.scene === undefined ? undefined : SCENES[step.scene];
 
   return (
     <>
-      {target !== null && (
-        <Spotlight target={target} reducedMotion={reducedMotion} />
-      )}
+      <motion.div
+        aria-hidden
+        className="ring-warning fixed rounded ring-4"
+        // Inline: the portal layer re-enables pointer events on its children,
+        // and a ring that caught clicks would block the control it points at.
+        style={{
+          pointerEvents: 'none',
+          top: ring.top,
+          left: ring.left,
+          width: ring.width,
+          height: ring.height,
+          opacity: ring.opacity,
+        }}
+      />
       <div
         ref={bounds}
         aria-hidden
@@ -352,11 +352,11 @@ function WalkthroughCard({
         dragControls={dragControls}
         dragMomentum={false}
         onDragEnd={settle}
-        style={{ x, y, maxHeight }}
+        style={{ x, y, maxHeight: `calc(100dvh - ${clearOfNav}px - 6.75rem)` }}
         className="pointer-events-auto fixed inset-e-6 top-0 flex w-[min(30rem,calc(100vw-3rem))] flex-col"
       >
         <MotionSurface
-          ref={surfaceRef}
+          ref={surface}
           as="section"
           aria-labelledby={headingId}
           floating
@@ -365,15 +365,13 @@ function WalkthroughCard({
           noContainer
           onKeyDown={closeOnEscape}
           className="effect-shadow-lg flex min-h-0 w-full flex-col overflow-hidden"
-          style={{
-            height: finalHeight === undefined ? undefined : height,
-          }}
+          style={{ height: sized ? height : undefined }}
           initial={reducedMotion ? false : { opacity: 0, y: 16, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={SPRING}
         >
           <header
-            ref={headerRef}
+            ref={header}
             onPointerDown={startDrag}
             className="flex shrink-0 cursor-grab touch-none flex-col px-5 pt-4 select-none active:cursor-grabbing"
           >
@@ -399,18 +397,25 @@ function WalkthroughCard({
             </div>
           </header>
           <ScrollArea
-            ref={body}
+            ref={viewport}
             viewportClassName="flex flex-col gap-4 px-5 pt-6 pb-4"
           >
-            <div ref={contentRef}>
-              <AnimatePresence mode="wait" initial={false}>
+            <div ref={content} className="relative">
+              <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`${step.title}-${index}`}
                   className="flex flex-col gap-4"
-                  initial={reducedMotion ? false : { opacity: 0, x: 24 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
-                  transition={SPRING}
+                  initial={reducedMotion ? false : { opacity: 0, x: 12 }}
+                  animate={{
+                    opacity: 1,
+                    x: 0,
+                    transition: reducedMotion ? { duration: 0 } : TEXT_IN,
+                  }}
+                  exit={{
+                    opacity: 0,
+                    x: reducedMotion ? 0 : -12,
+                    transition: reducedMotion ? { duration: 0 } : TEXT_OUT,
+                  }}
                 >
                   {Scene !== undefined && (
                     <div className="w-full shrink-0">
@@ -430,7 +435,7 @@ function WalkthroughCard({
             </div>
           </ScrollArea>
           <footer
-            ref={footerRef}
+            ref={footer}
             className="grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-3"
           >
             <div>
@@ -474,113 +479,356 @@ function Block({ block }: Readonly<{ block: WalkthroughBlock }>) {
   );
 }
 
-/**
- * How long the page must go without scrolling before the step's target is
- * taken to be in place.
- */
-const SCROLL_QUIET_MS = 150;
+/** How far the highlight ring sits outside what it rings. */
+const RING_INSET = 8;
+
+type Box = Readonly<{
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}>;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), Math.max(min, max));
+
+/** The element that scrolls `element` into view: its nearest scrolling box. */
+function scrollerOf(element: HTMLElement): HTMLElement {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const { overflowY } = getComputedStyle(node);
+    if (
+      /auto|scroll|overlay/.test(overflowY) &&
+      node.scrollHeight > node.clientHeight
+    ) {
+      return node;
+    }
+  }
+  return document.scrollingElement instanceof HTMLElement
+    ? document.scrollingElement
+    : document.documentElement;
+}
 
 /**
- * Lets the researcher move the panel out of the way by dragging its header. It
- * stays inside `bounds`, which keep clear of the navigation bar and the
- * toolbar, moves beside what each step points at, and keeps where it was put
- * when it remounts after being minimised. It opens in the corner above the
- * toolbar.
+ * Where the panel goes beside `target`, `PANEL_GAP` away from it, on whichever
+ * side leaves the most room: lined up with its top beside it, or with its
+ * middle above or below it. Where no side has room for the whole panel it
+ * gets as close as `room` allows.
  */
-function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
+function besideTarget(target: Box, room: DOMRect, width: number, tall: number) {
+  const sides = [
+    { side: 'left', spare: target.left - room.left - width },
+    {
+      side: 'right',
+      spare: room.right - (target.left + target.width) - width,
+    },
+    { side: 'above', spare: target.top - room.top - tall },
+    { side: 'below', spare: room.bottom - (target.top + target.height) - tall },
+  ] as const;
+  const { side } = sides.reduce((best, next) =>
+    next.spare > best.spare ? next : best,
+  );
+  const left =
+    side === 'left'
+      ? target.left - PANEL_GAP - width
+      : side === 'right'
+        ? target.left + target.width + PANEL_GAP
+        : target.left + (target.width - width) / 2;
+  const top =
+    side === 'above'
+      ? target.top - PANEL_GAP - tall
+      : side === 'below'
+        ? target.top + target.height + PANEL_GAP
+        : target.top;
+  return { left, top };
+}
+
+/**
+ * The floating panel's place, size and highlight ring, and how a step change
+ * moves them.
+ *
+ * The panel keeps its bottom edge, where Back and Next are, still: a step of a
+ * different height changes it at the top. It stays inside `bounds`, which keep
+ * clear of the navigation bar and the toolbar, opens in the corner above the
+ * toolbar, and can be dragged anywhere by its header.
+ *
+ * A step about a different section scrolls that section into the middle of
+ * the room and moves the panel beside it. Everything a step change moves is
+ * worked out first and then animated together, with `STEP`: the page's
+ * scroll, the panel's place and height, and the ring, which therefore stays
+ * on its section while the page scrolls under it.
+ */
+function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
   const card = useRef<HTMLDivElement>(null);
   const bounds = useRef<HTMLDivElement>(null);
+  const surface = useRef<HTMLElement>(null);
+  const header = useRef<HTMLElement>(null);
+  const viewport = useRef<HTMLElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const footer = useRef<HTMLElement>(null);
   const dragControls = useDragControls();
+
   const start = getWalkthroughPosition();
   const x = useMotionValue(start?.x ?? 0);
   const y = useMotionValue(start?.y ?? 0);
-  const nav = useMotionValue(clearOfNav);
-  useEffect(() => nav.set(clearOfNav), [clearOfNav, nav]);
-  // No taller than `bounds`, the room between the navigation bar and the
-  // toolbar. Moving the panel never changes its size.
-  const maxHeight = useTransform(
-    nav,
-    (top) => `calc(100dvh - ${top}px - 6.75rem)`,
-  );
+  const height = useMotionValue(0);
+  const [sized, setSized] = useState(false);
+  const ringTop = useMotionValue(0);
+  const ringLeft = useMotionValue(0);
+  const ringWidth = useMotionValue(0);
+  const ringHeight = useMotionValue(0);
+  const ringOpacity = useMotionValue(0);
 
-  // Set once `moveBy` exists, which calls it after a glide.
-  const fit = useRef(() => {});
-  /** Puts the panel at `toX`, `toY`, gliding there if `animated`. */
-  const goTo = useCallback(
-    (toX: number, toY: number, animated: boolean) => {
-      setWalkthroughPosition({ x: toX, y: toY });
-      if (toX === x.get() && toY === y.get()) return;
-      if (animated && !reducedMotion) {
-        void animate(x, toX, GLIDE);
-        // The panel may have changed height on the way.
-        void animate(y, toY, GLIDE).finished.then(() => fit.current());
-      } else {
-        x.set(toX);
-        y.set(toY);
-      }
+  // Read by callbacks that outlive a render.
+  const targetNow = useRef(target);
+  useLayoutEffect(() => {
+    targetNow.current = target;
+  }, [target]);
+  /** The panel has a place: until then it goes to the corner. */
+  const positioned = useRef(start !== undefined);
+  /** The section the panel was last put beside. */
+  const besideOf = useRef<HTMLElement | null>(null);
+  /** Counts step changes, so only the latest one finishes. */
+  const changes = useRef(0);
+  const moving = useRef(false);
+  const scrolling = useRef<ReturnType<typeof animate> | null>(null);
+
+  /** The step's whole height, borders and all: the panel with nothing to scroll. */
+  const naturalHeight = useCallback(() => {
+    const parts = [surface, header, content, footer, viewport].map(
+      (part) => part.current,
+    );
+    const [s, h, c, f, v] = parts;
+    if (!s || !h || !c || !f || !v) return undefined;
+    const padding = getComputedStyle(v);
+    return Math.ceil(
+      s.offsetHeight -
+        s.clientHeight +
+        h.offsetHeight +
+        f.offsetHeight +
+        c.offsetHeight +
+        Number.parseFloat(padding.paddingTop) +
+        Number.parseFloat(padding.paddingBottom),
+    );
+  }, []);
+
+  const setRing = useCallback(
+    (box: Box) => {
+      ringTop.set(box.top - RING_INSET);
+      ringLeft.set(box.left - RING_INSET);
+      ringWidth.set(box.width + RING_INSET * 2);
+      ringHeight.set(box.height + RING_INSET * 2);
     },
-    [reducedMotion, x, y],
+    [ringHeight, ringLeft, ringTop, ringWidth],
   );
 
-  /** Moves the panel by `dx`, `dy`, as far as `bounds` allow. */
-  const moveBy = useCallback(
-    (dx: number, dy: number, { animated = false } = {}) => {
+  /**
+   * Moves the panel to `left`, `top` (kept inside `bounds`) at `tall`, and
+   * the page and ring as given, all together. Returns when it is all there.
+   */
+  const moveTogether = useCallback(
+    (
+      plan: Readonly<{
+        left: number;
+        top: number;
+        tall: number;
+        scroll?: Readonly<{ scroller: HTMLElement; to: number }>;
+        ring?: Readonly<{ from: Box | null; to: Box | null }>;
+      }>,
+      animated: boolean,
+    ) => {
       const rect = card.current?.getBoundingClientRect();
       const room = bounds.current?.getBoundingClientRect();
-      if (rect === undefined || room === undefined) return;
-      // The top edge wins when the panel cannot fit, so it never goes under
-      // the navigation bar.
-      goTo(
-        x.get() +
-          Math.max(
-            Math.min(dx, room.right - rect.right),
-            room.left - rect.left,
-          ),
-        y.get() +
-          Math.max(
-            Math.min(dy, room.bottom - rect.bottom),
-            room.top - rect.top,
-          ),
-        animated,
-      );
+      if (rect === undefined || room === undefined) return Promise.resolve();
+      const tall = Math.min(plan.tall, Math.floor(room.height));
+      const left = clamp(plan.left, room.left, room.right - rect.width);
+      const top = clamp(plan.top, room.top, room.bottom - tall);
+      const toX = x.get() + left - rect.left;
+      const toY = y.get() + top - rect.top;
+      setWalkthroughPosition({ x: toX, y: toY });
+
+      const finished: Promise<unknown>[] = [];
+      const go = (value: MotionValue<number>, to: number) => {
+        if (animated) finished.push(animate(value, to, STEP).finished);
+        else value.jump(to);
+      };
+      go(x, toX);
+      go(y, toY);
+      // The first sizing is not a change, so it is not animated.
+      if (sized) go(height, tall);
+      else height.jump(tall);
+
+      scrolling.current?.stop();
+      scrolling.current = null;
+      if (plan.scroll !== undefined) {
+        const { scroller, to } = plan.scroll;
+        if (animated) {
+          const scroll = animate(scroller.scrollTop, to, {
+            ...STEP,
+            onUpdate: (value) => {
+              scroller.scrollTop = value;
+            },
+          });
+          scrolling.current = scroll;
+          finished.push(scroll.finished);
+        } else {
+          scroller.scrollTop = to;
+        }
+      }
+
+      if (plan.ring !== undefined) {
+        const { from, to } = plan.ring;
+        if (to === null) {
+          go(ringOpacity, 0);
+        } else {
+          // A ring that was hidden starts on its section, so it rides along
+          // with the scroll rather than flying in from the last one.
+          if (ringOpacity.get() === 0 && from !== null) setRing(from);
+          go(ringTop, to.top - RING_INSET);
+          go(ringLeft, to.left - RING_INSET);
+          go(ringWidth, to.width + RING_INSET * 2);
+          go(ringHeight, to.height + RING_INSET * 2);
+          go(ringOpacity, 1);
+        }
+      }
+      return Promise.all(finished);
     },
-    [goTo, x, y],
+    [
+      ringHeight,
+      ringLeft,
+      ringOpacity,
+      ringTop,
+      ringWidth,
+      setRing,
+      sized,
+      height,
+      x,
+      y,
+    ],
   );
 
-  // A glide cut short by another one finishes too, so only once nothing is
-  // still moving the panel.
+  /** Runs one change and marks the panel as moving until the latest is done. */
+  const change = useCallback(
+    (run: (animated: boolean) => Promise<unknown>) => {
+      const animated = !reducedMotion && positioned.current;
+      const id = ++changes.current;
+      moving.current = true;
+      void run(animated).finally(() => {
+        if (changes.current === id) moving.current = false;
+      });
+    },
+    [reducedMotion],
+  );
+
+  /** Takes the step on screen: its height, and `section`, if it is about one. */
+  const showStep = useCallback(
+    (section: HTMLElement | null) => {
+      const rect = card.current?.getBoundingClientRect();
+      const room = bounds.current?.getBoundingClientRect();
+      const tall = naturalHeight();
+      if (rect === undefined || room === undefined || tall === undefined) {
+        return;
+      }
+      const toTall = Math.min(tall, Math.floor(room.height));
+
+      // Keep the bottom where it is; on first opening, in the corner.
+      let left = rect.left;
+      let top = positioned.current
+        ? rect.bottom - toTall
+        : room.bottom - toTall;
+      let scroll: { scroller: HTMLElement; to: number } | undefined;
+      let ring: { from: Box | null; to: Box | null } = { from: null, to: null };
+
+      if (section !== null) {
+        const now = section.getBoundingClientRect();
+        // Into the middle of the room the panel leaves visible, or, for a
+        // section taller than that, with its top at the top of the room.
+        const scroller = scrollerOf(section);
+        const want =
+          now.height > room.height
+            ? room.top
+            : room.top + (room.height - now.height) / 2;
+        const to = clamp(
+          scroller.scrollTop + now.top - want,
+          0,
+          scroller.scrollHeight - scroller.clientHeight,
+        );
+        const by = to - scroller.scrollTop;
+        if (by !== 0) scroll = { scroller, to };
+        const there = {
+          top: now.top - by,
+          left: now.left,
+          width: now.width,
+          height: now.height,
+        };
+        ring = { from: now, to: there };
+        // Another step about the same section leaves the panel where it is.
+        if (besideOf.current !== section) {
+          ({ left, top } = besideTarget(there, room, rect.width, toTall));
+          besideOf.current = section;
+        }
+      } else {
+        besideOf.current = null;
+      }
+
+      change((animated) =>
+        moveTogether({ left, top, tall: toTall, scroll, ring }, animated),
+      );
+      positioned.current = true;
+      if (!sized) setSized(true);
+    },
+    [change, moveTogether, naturalHeight, sized],
+  );
+
+  /**
+   * Fits the panel to a change in its step's height or in the room, with the
+   * bottom kept still, and keeps the ring on its section as the page moves.
+   * Not during a step change, which has already planned for both.
+   */
   useEffect(() => {
-    fit.current = () => {
-      if (!x.isAnimating() && !y.isAnimating()) moveBy(0, 0);
+    const refit = () => {
+      if (moving.current) return;
+      const rect = card.current?.getBoundingClientRect();
+      const tall = naturalHeight();
+      if (rect === undefined || tall === undefined) return;
+      const room = bounds.current?.getBoundingClientRect();
+      const toTall = Math.min(tall, Math.floor(room?.height ?? tall));
+      if (
+        toTall === Math.round(height.get()) &&
+        rect.bottom <= (room?.bottom ?? rect.bottom)
+      ) {
+        return;
+      }
+      change((animated) =>
+        moveTogether(
+          { left: rect.left, top: rect.bottom - toTall, tall: toTall },
+          animated,
+        ),
+      );
     };
-  }, [moveBy, x, y]);
-
-  // A drag is free to leave `bounds` (constraining it to them would also pull
-  // the panel back toward where it was every time its height changes), so the
-  // panel eases back inside them when it is let go.
-  const settle = useCallback(() => moveBy(0, 0, { animated: true }), [moveBy]);
-
-  // Opening for the first time, the panel goes to the bottom of its room.
-  const placed = useRef(start !== undefined);
-  useLayoutEffect(() => {
-    if (placed.current) return;
-    placed.current = true;
-    moveBy(0, Number.POSITIVE_INFINITY);
-  }, [moveBy]);
-
-  // A taller step must not push the panel past the toolbar: the panel moves
-  // up to fit instead.
-  useEffect(() => {
-    const element = card.current;
-    if (element === null) return undefined;
-    // Not while it glides somewhere: a step that gets shorter as the panel
-    // moves can overhang its room for a moment on the way.
+    const follow = () => {
+      const section = targetNow.current;
+      if (moving.current || section === null) return;
+      setRing(section.getBoundingClientRect());
+    };
     const observer = new ResizeObserver(() => {
-      if (!x.isAnimating() && !y.isAnimating()) moveBy(0, 0);
+      refit();
+      follow();
     });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [moveBy, x, y]);
+    for (const part of [header, content, footer, bounds]) {
+      if (part.current !== null) observer.observe(part.current);
+    }
+    if (target !== null) observer.observe(target);
+    window.addEventListener('scroll', follow, { capture: true, passive: true });
+    window.addEventListener('resize', follow);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', follow, { capture: true });
+      window.removeEventListener('resize', follow);
+    };
+  }, [change, height, moveTogether, naturalHeight, setRing, target]);
+
+  // Stops scrolling the page once the panel goes.
+  useEffect(() => () => scrolling.current?.stop(), []);
 
   const startDrag = useCallback(
     (event: ReactPointerEvent) => {
@@ -593,132 +841,43 @@ function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
     [dragControls],
   );
 
-  /**
-   * Moves the panel beside `element`, `PANEL_GAP` away from it, on whichever
-   * side leaves the most room. Where no side has room for the whole panel it
-   * gets as close as `bounds` allow. `height` is the height the panel is
-   * growing or shrinking to, if it is not that height yet.
-   */
-  const placeBeside = useCallback(
-    (element: HTMLElement, height?: number) => {
-      const rect = card.current?.getBoundingClientRect();
-      const room = bounds.current?.getBoundingClientRect();
-      if (rect === undefined || room === undefined) return;
-      const { width } = rect;
-      const tall = height ?? rect.height;
-      const target = element.getBoundingClientRect();
-      // How much room each side leaves once the panel is there.
-      const sides = [
-        { side: 'left', spare: target.left - room.left - width },
-        { side: 'right', spare: room.right - target.right - width },
-        { side: 'above', spare: target.top - room.top - tall },
-        { side: 'below', spare: room.bottom - target.bottom - tall },
-      ] as const;
-      const { side } = sides.reduce((best, next) =>
-        next.spare > best.spare ? next : best,
-      );
-      // Beside the target the panel lines up with its top; above or below,
-      // with its middle.
-      const left =
-        side === 'left'
-          ? target.left - PANEL_GAP - width
-          : side === 'right'
-            ? target.right + PANEL_GAP
-            : target.left + (target.width - width) / 2;
-      const top =
-        side === 'above'
-          ? target.top - PANEL_GAP - tall
-          : side === 'below'
-            ? target.bottom + PANEL_GAP
-            : target.top;
-      const toLeft = Math.min(Math.max(left, room.left), room.right - width);
-      const toTop = Math.min(Math.max(top, room.top), room.bottom - tall);
-      // Kept inside `bounds` at the height it is heading for, not the height it
-      // is at, which `moveBy` would use.
-      goTo(x.get() + toLeft - rect.left, y.get() + toTop - rect.top, true);
-    },
-    [goTo, x, y],
-  );
+  // A drag is free to leave `bounds` (Motion's constraints would rescale the
+  // panel's place on every change of height), so the panel eases back inside
+  // them when it is let go.
+  const settle = useCallback(() => {
+    const rect = card.current?.getBoundingClientRect();
+    if (rect === undefined) return;
+    change((animated) =>
+      moveTogether(
+        { left: rect.left, top: rect.top, tall: height.get() },
+        animated,
+      ),
+    );
+  }, [change, height, moveTogether]);
 
   return {
     card,
     bounds,
+    surface,
+    header,
+    viewport,
+    content,
+    footer,
     dragControls,
     x,
     y,
-    maxHeight,
-    settle,
-    startDrag,
-    placeBeside,
-  };
-}
-
-/**
- * Sizes the panel to fit the step on screen, up to the height of `bounds`,
- * and animates between steps' heights. Beyond that height the step scrolls.
- */
-function usePanelHeight(
-  viewport: RefObject<HTMLElement | null>,
-  bounds: RefObject<HTMLDivElement | null>,
-  reducedMotion: boolean,
-) {
-  const surface = useRef<HTMLElement>(null);
-  const header = useRef<HTMLElement>(null);
-  const content = useRef<HTMLDivElement>(null);
-  const footer = useRef<HTMLElement>(null);
-  const height = useMotionValue(0);
-  const [finalHeight, setFinalHeight] = useState<number>();
-
-  useLayoutEffect(() => {
-    const parts = [surface, header, content, footer, viewport, bounds];
-    const measure = () => {
-      const [s, h, c, f, v, b] = parts.map((part) => part.current);
-      if (!s || !h || !c || !f || !v || !b) return;
-      const padding = getComputedStyle(v);
-      // The step's whole height, borders and all: what the panel would be with
-      // nothing to scroll.
-      const natural =
-        s.offsetHeight -
-        s.clientHeight +
-        h.offsetHeight +
-        f.offsetHeight +
-        c.offsetHeight +
-        Number.parseFloat(padding.paddingTop) +
-        Number.parseFloat(padding.paddingBottom);
-      setFinalHeight(
-        Math.min(
-          Math.ceil(natural),
-          Math.floor(b.getBoundingClientRect().height),
-        ),
-      );
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    for (const part of [header, content, footer, bounds]) {
-      if (part.current !== null) observer.observe(part.current);
-    }
-    return () => observer.disconnect();
-  }, [bounds, viewport]);
-
-  const sized = useRef(false);
-  useLayoutEffect(() => {
-    if (finalHeight === undefined) return undefined;
-    if (!sized.current || reducedMotion) {
-      sized.current = true;
-      height.jump(finalHeight);
-      return undefined;
-    }
-    const controls = animate(height, finalHeight, RESIZE);
-    return () => controls.stop();
-  }, [finalHeight, height, reducedMotion]);
-
-  return {
-    surfaceRef: surface,
-    headerRef: header,
-    contentRef: content,
-    footerRef: footer,
     height,
-    finalHeight,
+    sized,
+    ring: {
+      top: ringTop,
+      left: ringLeft,
+      width: ringWidth,
+      height: ringHeight,
+      opacity: ringOpacity,
+    },
+    startDrag,
+    settle,
+    showStep,
   };
 }
 
@@ -792,32 +951,4 @@ function subscribeToPage(onChange: () => void) {
     characterData: true,
   });
   return () => observer.disconnect();
-}
-
-const SPOTLIGHT_INSET = 8;
-
-function Spotlight({
-  target,
-  reducedMotion,
-}: Readonly<{ target: HTMLElement; reducedMotion: boolean }>) {
-  const rect = useRect(target);
-  if (rect === null) return null;
-
-  return (
-    <motion.div
-      aria-hidden
-      className="ring-warning fixed rounded ring-4"
-      // Inline: the portal layer re-enables pointer events on its children,
-      // and a ring that caught clicks would block the control it points at.
-      style={{ pointerEvents: 'none' }}
-      initial={false}
-      animate={{
-        top: rect.top - SPOTLIGHT_INSET,
-        left: rect.left - SPOTLIGHT_INSET,
-        width: rect.width + SPOTLIGHT_INSET * 2,
-        height: rect.height + SPOTLIGHT_INSET * 2,
-      }}
-      transition={reducedMotion ? { duration: 0 } : SPRING}
-    />
-  );
 }
