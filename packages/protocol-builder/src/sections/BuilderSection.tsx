@@ -1,4 +1,10 @@
-import { type ReactNode, useCallback, useContext, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useState,
+} from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -14,6 +20,7 @@ import {
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 import { useOnResearcherChange } from './researcherChange.ts';
+import type { SectionKey } from './sectionKeys.ts';
 
 /**
  * An optional capability the researcher switches on and off.
@@ -51,6 +58,13 @@ export type SectionCapability = Readonly<{
 }>;
 
 export type BuilderSectionProps = Readonly<{
+  /**
+   * What this section IS, as a stable name that does not change with its
+   * wording or its language. See `SectionKey`. Registered with the outline,
+   * handed to the host's header action, and carried on the section's element
+   * as `data-section-key`.
+   */
+  sectionKey: SectionKey;
   title: string;
   description?: ReactNode;
   /**
@@ -140,6 +154,7 @@ const NO_FIELDS: readonly string[] = Object.freeze([]);
  * editor is not showing.
  */
 export default function BuilderSection({
+  sectionKey,
   title,
   description,
   disabled = false,
@@ -166,6 +181,7 @@ export default function BuilderSection({
   // saying "switched off" against all of them would tell a spectator the
   // opposite of what is true.
   const { sectionId } = useOutlineSection(
+    sectionKey,
     title,
     // The prerequisite is asked about first. A section waiting on a choice the
     // researcher has not made cannot be switched on at all, so saying it is
@@ -265,7 +281,20 @@ export default function BuilderSection({
   });
 
   const body = children;
-  const headerAction = useContext(SectionHeaderActionContext)?.(title);
+  const headerAction = useContext(SectionHeaderActionContext)?.({
+    key: sectionKey,
+    title,
+  });
+
+  // Fresco's `Section` takes an id but passes no other attribute through, so
+  // the key is written onto the element it identifies. Every render, not once:
+  // the panel is remounted when a reset changes `resetGeneration`, and the new
+  // element has to carry the key before it is painted.
+  useLayoutEffect(() => {
+    document
+      .getElementById(sectionId)
+      ?.setAttribute('data-section-key', sectionKey);
+  });
 
   if (capability === undefined && optional === undefined) {
     return (

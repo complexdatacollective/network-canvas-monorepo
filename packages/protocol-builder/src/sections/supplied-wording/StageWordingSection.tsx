@@ -283,6 +283,7 @@ export default function StageWordingSection({
       // Mounted again once the languages are known, so it reads `startOn`
       // from them.
       key={decided ? 'decided' : 'pending'}
+      sectionKey="built-in-wording"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
       optional={

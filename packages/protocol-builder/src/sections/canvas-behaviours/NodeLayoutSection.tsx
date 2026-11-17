@@ -19,6 +19,7 @@ export default function NodeLayoutSection() {
 
   return (
     <BuilderSection
+      sectionKey="node-layout"
       title={intl.formatMessage(canvasBehavioursMessages.nodeLayoutTitle)}
       description={intl.formatMessage(
         canvasBehavioursMessages.nodeLayoutDescription,

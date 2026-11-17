@@ -549,6 +549,7 @@ export default function EncryptedAttributesSection() {
 
   return (
     <BuilderSection
+      sectionKey="encrypted-attributes"
       title={intl.formatMessage(anonymisationMessages.encryptedAttributesTitle)}
       description={intl.formatMessage(
         anonymisationMessages.encryptedAttributesDescription,

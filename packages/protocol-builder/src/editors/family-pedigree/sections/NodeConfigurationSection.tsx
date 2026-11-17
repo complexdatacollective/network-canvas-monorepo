@@ -69,6 +69,7 @@ export default function NodeConfigurationSection() {
 
   return (
     <BuilderSection
+      sectionKey="person-attributes"
       title={intl.formatMessage(messages.nodeConfigurationTitle)}
       description={intl.formatMessage(
         waiting

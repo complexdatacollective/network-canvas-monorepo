@@ -64,7 +64,7 @@ const settingsCapability = {
 
 const threeSections = (pageContentTitle = 'Page content') => (
   <>
-    <BuilderSection title={pageContentTitle}>
+    <BuilderSection sectionKey="form-fields" title={pageContentTitle}>
       <Field
         name="title"
         label="Page heading"
@@ -72,7 +72,11 @@ const threeSections = (pageContentTitle = 'Page content') => (
         required={REQUIRED}
       />
     </BuilderSection>
-    <BuilderSection title="Interviewer guidance" capability={scriptCapability}>
+    <BuilderSection
+      sectionKey="interviewer-guidance"
+      title="Interviewer guidance"
+      capability={scriptCapability}
+    >
       <Field
         name="interviewScript"
         label="Interviewer script text"
@@ -291,7 +295,7 @@ describe('StageEditorShell', () => {
           <button type="button" onClick={() => setTitle('Screen content')}>
             Rename the section
           </button>
-          <BuilderSection title={title}>
+          <BuilderSection sectionKey="form-fields" title={title}>
             <Field
               name="title"
               label="Page heading"
@@ -355,6 +359,7 @@ describe('StageEditorShell', () => {
       },
       sections: (
         <BuilderSection
+          sectionKey="interviewer-guidance"
           title="Interviewer guidance"
           capability={{
             ...scriptCapability,
@@ -408,7 +413,10 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       fields: { ...initialFields, interviewScript: '  ' },
       sections: (
-        <BuilderSection title="Interviewer guidance">
+        <BuilderSection
+          sectionKey="interviewer-guidance"
+          title="Interviewer guidance"
+        >
           <Field
             name="interviewScript"
             label="Interviewer script text"
@@ -433,7 +441,11 @@ describe('StageEditorShell', () => {
     // parts inside it — the shape skip logic has.
     const harness = renderEditor({
       sections: (
-        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+        <BuilderSection
+          sectionKey="skip-logic"
+          title="Skip logic"
+          capability={skipLogicCapability}
+        >
           <Field
             name="skipLogic.action"
             label="What this stage does"
@@ -479,7 +491,11 @@ describe('StageEditorShell', () => {
       sections: (
         <WithHiddenPart label="Toggle advanced options">
           {({ shown, toggle }) => (
-            <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+            <BuilderSection
+              sectionKey="skip-logic"
+              title="Skip logic"
+              capability={skipLogicCapability}
+            >
               <Field
                 name="skipLogic.action"
                 label="What this stage does"
@@ -533,7 +549,11 @@ describe('StageEditorShell', () => {
   it('sees content a capability is holding out of sight', async () => {
     const harness = renderEditor({
       sections: (
-        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+        <BuilderSection
+          sectionKey="skip-logic"
+          title="Skip logic"
+          capability={skipLogicCapability}
+        >
           <Toggleable label="Toggle advanced options">
             <Field
               name="skipLogic.destination"
@@ -591,7 +611,7 @@ describe('StageEditorShell', () => {
             Reverse the sections
           </button>
           {shown.map((title) => (
-            <BuilderSection key={title} title={title}>
+            <BuilderSection sectionKey="form-fields" key={title} title={title}>
               <Field
                 name={title === 'Introduction' ? 'title' : 'label'}
                 label={`${title} text`}
@@ -627,7 +647,11 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       fields: { ...initialFields, skipLogic: { action: 'SKIP' } },
       sections: (
-        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+        <BuilderSection
+          sectionKey="skip-logic"
+          title="Skip logic"
+          capability={skipLogicCapability}
+        >
           <Field
             name="skipLogic.action"
             label="What this stage does"
@@ -672,6 +696,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection
+          sectionKey="form-fields"
           title="Advanced settings"
           capability={settingsCapability}
         >
@@ -708,6 +733,7 @@ describe('StageEditorShell', () => {
         <WithHiddenPart label="Toggle the control">
           {({ shown, toggle }) => (
             <BuilderSection
+              sectionKey="form-fields"
               title="Advanced settings"
               capability={settingsCapability}
             >
@@ -766,6 +792,7 @@ describe('StageEditorShell', () => {
         <WithHiddenPart label="Toggle the control">
           {({ shown, toggle }) => (
             <BuilderSection
+              sectionKey="form-fields"
               title="Prompt override"
               capability={{
                 // A protocol-authored key, canonically formatted. It is one
@@ -829,6 +856,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection
+          sectionKey="form-fields"
           title="Advanced settings"
           capability={settingsCapability}
         >
@@ -902,6 +930,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection
+          sectionKey="form-fields"
           title="Row setting"
           capability={{
             fields: ['items[0].optionalSetting'],
@@ -957,7 +986,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <>
-          <BuilderSection title="Details">
+          <BuilderSection sectionKey="form-fields" title="Details">
             <Field<typeof CompoundControl>
               name="settings"
               label="Settings"
@@ -965,6 +994,7 @@ describe('StageEditorShell', () => {
             />
           </BuilderSection>
           <BuilderSection
+            sectionKey="form-fields"
             title="Advanced settings"
             capability={settingsCapability}
           >
@@ -1013,6 +1043,7 @@ describe('StageEditorShell', () => {
       fields: { ...initialFields, interviewScript: '   ' },
       sections: (
         <BuilderSection
+          sectionKey="interviewer-guidance"
           title="Interviewer guidance"
           capability={scriptCapability}
         >
@@ -1061,7 +1092,7 @@ describe('StageEditorShell', () => {
     }
     const harness = renderEditor({
       sections: (
-        <BuilderSection title="Page content">
+        <BuilderSection sectionKey="page-content" title="Page content">
           <MountCounter />
           <Field
             name="title"
@@ -1092,6 +1123,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection
+          sectionKey="interviewer-guidance"
           title="Interviewer guidance"
           disabled
           capability={scriptCapability}

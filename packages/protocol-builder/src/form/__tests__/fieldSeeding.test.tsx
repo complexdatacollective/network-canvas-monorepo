@@ -16,7 +16,11 @@ const en = (text: string) => ({ 'en-US': text });
 const renderField = (fields: SectionDoc, children: ReactNode) =>
   renderStageEditor({
     stage: { type: 'Information', fields },
-    sections: <BuilderSection title="Introduction">{children}</BuilderSection>,
+    sections: (
+      <BuilderSection sectionKey="introduction" title="Introduction">
+        {children}
+      </BuilderSection>
+    ),
   });
 
 describe('a field seeded from the document the form was handed', () => {
@@ -30,7 +34,7 @@ describe('a field seeded from the document the form was handed', () => {
         },
       },
       sections: (
-        <BuilderSection title="Introduction">
+        <BuilderSection sectionKey="introduction" title="Introduction">
           <FieldNamespace prefix="form">
             <Field
               name="title"

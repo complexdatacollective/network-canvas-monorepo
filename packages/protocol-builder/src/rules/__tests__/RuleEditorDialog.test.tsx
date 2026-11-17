@@ -120,7 +120,7 @@ function renderRuleList(rules?: readonly RuleDraft[]) {
         <SubmitButton form={formId}>Finished editing</SubmitButton>
       )}
     >
-      <BuilderSection title="Skip logic">
+      <BuilderSection sectionKey="skip-logic" title="Skip logic">
         <Field
           name={RULE_SET_FIELD}
           label="Rules"
@@ -977,7 +977,7 @@ function renderRuleSetOf(
 ) {
   render(
     <RuleEditorHost sections={ruleSections(rules)}>
-      <BuilderSection title="Rules">
+      <BuilderSection sectionKey="form-fields" title="Rules">
         {variant === 'query' ? (
           <Field
             name={RULE_SET_FIELD}

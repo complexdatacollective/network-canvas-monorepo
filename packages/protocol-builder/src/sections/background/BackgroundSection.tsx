@@ -263,6 +263,7 @@ export default function BackgroundSection() {
 
   return (
     <BuilderSection
+      sectionKey="background"
       title={intl.formatMessage(messages.backgroundTitle)}
       description={intl.formatMessage(messages.backgroundDescription)}
     >

@@ -46,6 +46,7 @@ export function createStageSectionsStore(
       const status = sectionOutlineStatus(section, reader);
       return Object.freeze({
         id: section.id,
+        sectionKey: section.sectionKey,
         title: section.title,
         status,
         problems:
@@ -144,6 +145,7 @@ function same(a: readonly StageSection[], b: readonly StageSection[]): boolean {
       return (
         other !== undefined &&
         section.id === other.id &&
+        section.sectionKey === other.sectionKey &&
         section.title === other.title &&
         section.status === other.status &&
         section.problems.length === other.problems.length &&

@@ -135,7 +135,7 @@ export function renderResourceEditor(
           <CaptureResourceClient />
           <StageEditSession target={{ sectionId: STAGE_SECTION }}>
             <StageEditorShell {...(actions === undefined ? {} : { actions })}>
-              <BuilderSection title="Resources">
+              <BuilderSection sectionKey="form-fields" title="Resources">
                 <CaptureStore />
                 {children}
               </BuilderSection>

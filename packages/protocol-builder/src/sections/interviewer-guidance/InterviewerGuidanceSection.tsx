@@ -73,6 +73,7 @@ export default function InterviewerGuidanceSection() {
 
   return (
     <BuilderSection
+      sectionKey="interviewer-guidance"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
       capability={GUIDANCE_CAPABILITY}

@@ -62,6 +62,7 @@ export default function MapAppearanceSection() {
   return (
     <>
       <BuilderSection
+        sectionKey="map-appearance"
         title={intl.formatMessage(geospatialMessages.appearanceTitle)}
         description={intl.formatMessage(
           geospatialMessages.appearanceDescription,
@@ -100,6 +101,7 @@ export default function MapAppearanceSection() {
       </BuilderSection>
 
       <BuilderSection
+        sectionKey="map-view"
         title={intl.formatMessage(geospatialMessages.viewTitle)}
         description={intl.formatMessage(geospatialMessages.viewDescription)}
       >

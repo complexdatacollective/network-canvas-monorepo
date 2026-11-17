@@ -103,7 +103,7 @@ function RosterColumnsSection({
   }, [resources, resourceId]);
 
   return (
-    <BuilderSection title="Card display">
+    <BuilderSection sectionKey="card-display" title="Card display">
       <p>
         {unreadable || columns.length === 0
           ? 'That roster could not be read.'
@@ -134,7 +134,7 @@ function ResourceListSection() {
   }, [resources]);
 
   return (
-    <BuilderSection title="Files">
+    <BuilderSection sectionKey="form-fields" title="Files">
       {refused && <p>The host refused to list its files.</p>}
       <ul>
         {listed.map((resource) => (
@@ -294,7 +294,7 @@ describe('the stage-editor test harness', () => {
  */
 function SingleLineQuestion() {
   return (
-    <BuilderSection title="Question">
+    <BuilderSection sectionKey="form-fields" title="Question">
       <Field<typeof RichTextField>
         name="interviewScript"
         component={RichTextField}
@@ -920,7 +920,7 @@ describe('a codebook change the harness seeds', () => {
     const { codebook } = useProtocolContext();
     const names = Object.keys(codebook.node?.person?.variables ?? {});
     return (
-      <BuilderSection title="Person attributes">
+      <BuilderSection sectionKey="person-attributes" title="Person attributes">
         <p>{`Attributes: ${names.toSorted().join(', ')}`}</p>
       </BuilderSection>
     );

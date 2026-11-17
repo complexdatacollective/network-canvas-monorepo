@@ -79,7 +79,7 @@ function renderEditor(readOnly = false) {
     stage: { type: 'Information', fields: initialFields },
     ...(readOnly ? { readOnly: true } : {}),
     sections: (
-      <BuilderSection title="Page content">
+      <BuilderSection sectionKey="page-content" title="Page content">
         <Probe />
         <Field
           name="title"

@@ -128,6 +128,7 @@ export default function NetworkFilterSection() {
 
   return (
     <BuilderSection
+      sectionKey="filter-network"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
       capability={FILTER_CAPABILITY}

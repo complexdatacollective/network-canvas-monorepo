@@ -123,6 +123,7 @@ export default function StageLanguagesSection() {
 
   return (
     <BuilderSection
+      sectionKey="stage-languages"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description, {
         count: languageCount,

@@ -57,7 +57,7 @@ const lateStageHolding = (fields: SectionDoc) => ({
  */
 const editorSections = (
   <>
-    <BuilderSection title="Page content">
+    <BuilderSection sectionKey="page-content" title="Page content">
       <Field name="title" label="Page heading" component={InputField} />
     </BuilderSection>
     <SkipLogicSection />
