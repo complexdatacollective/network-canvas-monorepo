@@ -12,7 +12,7 @@ import {
 
 import Node, {
   type NodeColorSequence,
-  type NodeShape,
+  type NodeShapeProp,
 } from '@codaco/fresco-ui/Node';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -32,7 +32,7 @@ type PersonNodeProps = {
   color: NodeColorSequence;
   /** From the person type's shape in the codebook, which may follow one of
    * their attributes. */
-  shape: NodeShape;
+  shape: NodeShapeProp;
   /** Their details are open in the side panel; or, answering a nomination
    * prompt, it applies to them. */
   selected: boolean;

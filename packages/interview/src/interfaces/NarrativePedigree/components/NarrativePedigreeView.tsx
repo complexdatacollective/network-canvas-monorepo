@@ -17,7 +17,7 @@ import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
-import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
+import Node from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import {
   SegmentedToolbar,
@@ -30,6 +30,7 @@ import type { NodeColorReference } from '@codaco/protocol-validation';
 import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
 
 import { useDynamicValueSources } from '../../../dynamicValues/DynamicValueScope';
+import { useCustomShapeSvgs } from '../../../hooks/useCustomShapeSvgs';
 import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
@@ -78,7 +79,11 @@ import {
   usePedigreeZoomButtons,
   zoomForKey,
 } from '../../pedigree-common/PedigreeCanvas';
-import { symbolShapesOf } from '../../pedigree-common/symbolShapes';
+import {
+  notationShapesOf,
+  symbolOutlinesOf,
+  symbolShapesOf,
+} from '../../pedigree-common/symbolShapes';
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
 import { computeStatuses } from '../genetics/computeStatuses';
@@ -418,15 +423,17 @@ export default function NarrativePedigreeView({
     ? codebook.node?.[config.personType]
     : undefined;
   const nodeColor = personDefinition?.color ?? 'node-color-seq-1';
-  const shapeDefinition = personDefinition?.shape;
+  const shapeSvgs = useCustomShapeSvgs();
 
-  // Each symbol is drawn, and the lines meeting it laid out, with one shape.
-  const nodeShapes = useMemo(
-    () => symbolShapesOf(family?.people ?? [], shapeDefinition),
-    [family, shapeDefinition],
+  const symbolShapes = useMemo(
+    () => symbolShapesOf(family?.people ?? [], personDefinition, shapeSvgs),
+    [family, personDefinition, shapeSvgs],
   );
-  const shapeFor = (personId: string): NodeShape =>
-    nodeShapes.get(personId) ?? 'circle';
+  // With a condition chosen, each person is drawn as a notation symbol.
+  const notationShapes = useMemo(
+    () => notationShapesOf(symbolShapes),
+    [symbolShapes],
+  );
   const isAdopted = (personId: string) =>
     (family?.links ?? []).some(
       (link) => link.kind === 'adoptive' && link.target === personId,
@@ -471,12 +478,16 @@ export default function NarrativePedigreeView({
   // SELECTED condition, so it is only meaningful once a condition is chosen
   // from the key. Until then the focal affordance is disabled.
   const focalEnabled = selectedDisease !== undefined;
+  // Each symbol is drawn, and the lines meeting it laid out, with one shape.
+  const nodeShapes = useMemo(
+    () => (focalEnabled ? notationShapes : symbolOutlinesOf(symbolShapes)),
+    [focalEnabled, notationShapes, symbolShapes],
+  );
 
   // The person's symbol: plain, or — with a condition chosen — the condition's
   // status in standard pedigree notation. Drawn the same on screen and in the
   // printable snapshot.
   const renderSymbol = (personId: string): ReactNode => {
-    const shape = shapeFor(personId);
     const label = labelFor(personId);
     const dimmed = !highlight.nodes.has(personId);
     const isSelected = personId === focalId;
@@ -489,7 +500,7 @@ export default function NarrativePedigreeView({
           <Node
             presentational
             label={label}
-            shape={shape}
+            shape={symbolShapes.get(personId) ?? 'circle'}
             color={nodeColor}
             size="sm"
             selected={isSelected}
@@ -530,7 +541,7 @@ export default function NarrativePedigreeView({
           <Sticker
             status={status}
             color={color}
-            shape={shape}
+            shape={notationShapes.get(personId) ?? 'circle'}
             size="100%"
             surfaceColor={dimmed ? dimColor('white') : undefined}
             nodeMode="single"

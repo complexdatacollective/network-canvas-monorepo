@@ -1,6 +1,8 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { type ReactNode, useState } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -20,6 +22,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
@@ -32,6 +35,7 @@ import {
 import { encryptionFor } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { installEncryptionKey } from '../../Anonymisation/unlockEncryption';
 import { encryptedPerson } from '../../FamilyPedigree/__tests__/fixtures';
+import type { PedigreeSymbolShape } from '../../FamilyPedigree/pedigree-layout/types';
 import { narrativePedigreeWords } from './narrativePedigreeWords';
 
 const exportSnapshotMock =
@@ -46,7 +50,7 @@ vi.mock('../export/snapshot', () => ({
 // real layout, recorded on the way through.
 type LayoutProps = {
   nodeIds: readonly string[];
-  nodeShapes?: ReadonlyMap<string, string>;
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>;
 };
 const layoutsDrawn = vi.hoisted(
   () => [] as { instance: string; props: LayoutProps }[],
@@ -263,13 +267,43 @@ function makeNarrativeStage(): NarrativeStage {
   };
 }
 
-function makeCodebook(encryptNames = false) {
+const CUSTOM_SHAPE_ASSET = 'house-asset';
+const CUSTOM_SHAPE_SVG =
+  '<svg viewBox="0 0 200 100"><rect width="200" height="100"/></svg>';
+
+/** The host an interview runs in: it hands over the protocol's assets. */
+function TestHost({ children }: { children: ReactNode }) {
+  const [client] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  );
+  return (
+    <ContractProvider
+      onFinish={() => Promise.resolve()}
+      onRequestAsset={() =>
+        Promise.resolve(
+          `data:image/svg+xml,${encodeURIComponent(CUSTOM_SHAPE_SVG)}`,
+        )
+      }
+    >
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    </ContractProvider>
+  );
+}
+
+function makeCodebook(encryptNames = false, customShape = false) {
   return {
     node: {
       [NODE_TYPE]: {
         name: 'Person',
         color: 'node-color-seq-1',
-        shape: { default: 'square' },
+        ...(customShape
+          ? {
+              shape: { default: 'custom:house' },
+              customShapes: {
+                house: { name: 'House', asset: CUSTOM_SHAPE_ASSET },
+              },
+            }
+          : { shape: { default: 'square' } }),
         variables: encryptNames
           ? {
               [NAME_VAR]: {
@@ -302,6 +336,8 @@ type StoreOptions = {
    * force once the passphrase has been entered.
    */
   encryption?: { key?: CryptoKey };
+  /** Draw every person with a custom shape, wider than it is tall. */
+  customShape?: boolean;
 };
 
 function makeStore({
@@ -310,13 +346,14 @@ function makeStore({
   chosenFraming,
   network = { nodes, edges },
   encryption,
+  customShape,
 }: StoreOptions = {}) {
   const store = configureStore({
     reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
         localization: { defaultLocale: 'en', locales: ['en', 'es'] },
-        codebook: makeCodebook(encryption !== undefined),
+        codebook: makeCodebook(encryption !== undefined, customShape),
         stages: [{ ...sourceStage, framing: sourceFraming }, narrativeStage],
         assets: [],
       } as never,
@@ -357,17 +394,19 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
   const interfaceText = suppliedInterfaceText(ENGLISH_AND_SPANISH, [stage]);
   const view = (requestedLocale: string) => (
     <Provider store={store}>
-      <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-        <InterviewI18nProvider>
-          <TestProtocolLocalization
-            localization={ENGLISH_AND_SPANISH}
-            locale={requestedLocale}
-            interfaceText={interfaceText}
-          >
-            <NarrativePedigreeView stage={stage} />
-          </TestProtocolLocalization>
-        </InterviewI18nProvider>
-      </CurrentStepProvider>
+      <TestHost>
+        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+          <InterviewI18nProvider>
+            <TestProtocolLocalization
+              localization={ENGLISH_AND_SPANISH}
+              locale={requestedLocale}
+              interfaceText={interfaceText}
+            >
+              <NarrativePedigreeView stage={stage} />
+            </TestProtocolLocalization>
+          </InterviewI18nProvider>
+        </CurrentStepProvider>
+      </TestHost>
     </Provider>
   );
   const rendered = render(view(locale));
@@ -829,6 +868,36 @@ describe('NarrativePedigreeView — symbol shapes', () => {
   });
 });
 
+describe('NarrativePedigreeView — custom shapes', () => {
+  const drawings = () =>
+    document.querySelectorAll('[data-node-shape-artwork]').length;
+  const outlinesLaidOut = () => {
+    const last = layoutsDrawn.at(-1);
+    return last?.props.nodeIds.map((id) => last.props.nodeShapes?.get(id));
+  };
+
+  it('draws each person with their custom shape, and lays the lines out against the box it fills', async () => {
+    renderView({ customShape: true });
+    await waitForFamily();
+    await waitFor(() => expect(drawings()).toBe(memberIds().length));
+    expect(outlinesLaidOut()).toEqual(
+      memberIds().map(() => ({ width: 1, height: 0.5 })),
+    );
+  });
+
+  it('draws the notation symbols as circles, and lays the lines out against them, once a condition is chosen', async () => {
+    renderView({ customShape: true });
+    await waitForFamily();
+    await waitFor(() => expect(drawings()).toBe(memberIds().length));
+    await selectCondition('Disease A');
+    await waitFor(() => expect(drawings()).toBe(0));
+    expect(outlinesLaidOut()).toEqual(memberIds().map(() => 'circle'));
+    expect(
+      document.querySelectorAll('[data-notation-status] circle').length,
+    ).toBeGreaterThan(0);
+  });
+});
+
 describe('NarrativePedigreeView — snapshot', () => {
   it('saves the snapshot of the family under a file named after the stage', async () => {
     renderView();
@@ -1157,14 +1226,16 @@ describe('NarrativePedigreeView — localized condition labels', () => {
 
     render(
       <Provider store={makeStore({ narrativeStage: stage })}>
-        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          <TestProtocolLocalization
-            localization={{ defaultLocale: 'en', locales: ['en', 'ar'] }}
-            locale="ar"
-          >
-            <NarrativePedigreeView stage={stage} />
-          </TestProtocolLocalization>
-        </CurrentStepProvider>
+        <TestHost>
+          <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+            <TestProtocolLocalization
+              localization={{ defaultLocale: 'en', locales: ['en', 'ar'] }}
+              locale="ar"
+            >
+              <NarrativePedigreeView stage={stage} />
+            </TestProtocolLocalization>
+          </CurrentStepProvider>
+        </TestHost>
       </Provider>,
     );
 

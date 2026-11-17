@@ -45,6 +45,20 @@ describe('exportSnapshot', () => {
     );
   });
 
+  it('copies the colours a custom node shape reads onto the clone', async () => {
+    await exportSnapshot(element, 'test.png');
+    expect(htmlToImage.toPng).toHaveBeenCalledWith(
+      element,
+      expect.objectContaining({
+        includeStyleProperties: expect.arrayContaining([
+          '--node-color',
+          '--node-color-seq-8',
+          '--text',
+        ]),
+      }),
+    );
+  });
+
   it('resets the clone to in-flow positioning so the off-screen document is not captured blank', async () => {
     // The snapshot document is mounted position: fixed; left: -100000px. Without
     // a position reset html-to-image clones that and renders the whole subtree

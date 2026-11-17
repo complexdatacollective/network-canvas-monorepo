@@ -2,7 +2,11 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 
 import PedigreeLayout from '../components/PedigreeLayout';
-import type { PedigreeEdgeType, PedigreeLink } from '../types';
+import type {
+  PedigreeEdgeType,
+  PedigreeLink,
+  PedigreeSymbolShape,
+} from '../types';
 
 const DIMS = {
   nodeWidth: 100,
@@ -392,6 +396,55 @@ describe('PedigreeLayout', () => {
           isActive: true,
         },
       ]);
+
+    test('hides the lines across the box a custom drawing fills, and nowhere else', () => {
+      const { container } = render(
+        <PedigreeLayout
+          nodeShapes={
+            new Map<string, PedigreeSymbolShape>([
+              ['father', 'square'],
+              ['mother', 'circle'],
+              ['ego', { width: 1, height: 0.5 }],
+            ])
+          }
+          nodeIds={familyNodes()}
+          links={familyEdges()}
+          {...DIMS}
+          renderNode={renderNode}
+        />,
+      );
+      const ego = screen.getByTestId('node-ego').parentElement;
+      const mask = container.querySelector('mask');
+      const hidden = [...(mask?.querySelectorAll('rect[fill="black"]') ?? [])];
+      expect(hidden).toHaveLength(1);
+      const box = hidden[0];
+      // The drawing fills the middle half of the symbol's height.
+      expect(Number(box?.getAttribute('x'))).toBe(parseFloat(ego!.style.left));
+      expect(Number(box?.getAttribute('y'))).toBe(
+        parseFloat(ego!.style.top) + 25,
+      );
+      expect(box?.getAttribute('width')).toBe('100');
+      expect(box?.getAttribute('height')).toBe('50');
+      expect(container.querySelector('svg > g')?.getAttribute('mask')).toBe(
+        `url(#${mask?.id})`,
+      );
+    });
+
+    test('masks no lines when every symbol is a built-in shape', () => {
+      const { container } = render(
+        <PedigreeLayout
+          nodeShapes={new Map([['ego', 'diamond']])}
+          nodeIds={familyNodes()}
+          links={familyEdges()}
+          {...DIMS}
+          renderNode={renderNode}
+        />,
+      );
+      expect(container.querySelector('mask')).toBeNull();
+      expect(container.querySelector('svg > g')?.hasAttribute('mask')).toBe(
+        false,
+      );
+    });
 
     test('no data-edge-dimmed attributes when highlightedNodeIds is undefined', () => {
       const { container } = render(

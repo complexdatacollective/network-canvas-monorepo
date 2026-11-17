@@ -189,6 +189,8 @@ type NodeTypeHandle = {
   id: string;
   addVariable: (opts?: AddVariableInput) => VariableRef;
   setShape: (shape: NodeTypeEntry['shape']) => void;
+  /** The custom shapes a shape may name as `custom:<shape id>`. */
+  setCustomShapes: (customShapes: NodeTypeEntry['customShapes']) => void;
 };
 
 type EdgeTypeHandle = {
@@ -513,6 +515,9 @@ export class SyntheticInterview {
         this.addVariableToNodeType(id, varOpts),
       setShape: (shape: NodeTypeEntry['shape']) => {
         entry.shape = shape;
+      },
+      setCustomShapes: (customShapes: NodeTypeEntry['customShapes']) => {
+        entry.customShapes = customShapes;
       },
     };
 
@@ -2692,6 +2697,7 @@ export class SyntheticInterview {
         color: entry.color,
         icon: entry.icon,
         shape: entry.shape,
+        ...(entry.customShapes ? { customShapes: entry.customShapes } : {}),
         variables,
       };
     }
