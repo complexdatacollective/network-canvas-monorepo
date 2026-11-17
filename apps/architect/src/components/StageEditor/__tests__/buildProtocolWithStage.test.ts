@@ -30,7 +30,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     subject: { entity: 'node', type: 'person' },
     form: {
       title: localized('Add person'),
-      fields: [{ variable: 'name', prompt: localized('Name') }],
+      fields: [{ id: 'field-1', variable: 'name', prompt: localized('Name') }],
     },
     prompts: [{ id: 'prompt-1', text: localized('Who do you know?') }],
     ...stageOverrides,

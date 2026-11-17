@@ -49,7 +49,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             subject: { entity: 'node', type: 'person' },
             form: {
               fields: [
-                { variable: 'position', prompt: localized('Place node') },
+                {
+                  id: 'field-1',
+                  variable: 'position',
+                  prompt: localized('Place node'),
+                },
               ],
             },
             introductionPanel: {
@@ -105,7 +109,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             subject: { entity: 'node', type: 'person' },
             form: {
               fields: [
-                { variable: 'nickname', prompt: localized('Nickname?') },
+                {
+                  id: 'field-1',
+                  variable: 'nickname',
+                  prompt: localized('Nickname?'),
+                },
               ],
             },
             introductionPanel: {
@@ -737,7 +745,9 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
-        fields: [{ variable: 'name', prompt: localized('Name') }],
+        fields: [
+          { id: 'field-1', variable: 'name', prompt: localized('Name') },
+        ],
       },
       prompts: [{ id: 'p1', text: localized('Who?') }],
       panels,

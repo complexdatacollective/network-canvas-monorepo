@@ -124,13 +124,13 @@ describe('golden hashes', () => {
         "codebook:node:person": "5b62bc580a031a23de667d9f7c0005e797a1f97b8e375362b9c5cd7c21375372",
         "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
         "stage:finish": "9d53432c1592c77cb24422813ad7716d997cd720d5ef19aaa4a06ed08603ddbc",
-        "stage:nameGenerator1": "da989aa0f95cc6223c4ae6e1e8eecd53698a900bae557d0dae58ba43948f9511",
+        "stage:nameGenerator1": "ef20d042ed967ccad07decab6021b419fe3e06ae06b9e1bba52c015c0dabdbaa",
         "stage:sociogram1": "f20a610875c24d940f59bd6d68d52e3b0453fe778d1a4af9a3a09a7926b0e3a9",
         "stageOrder": "db26c1d9b0a06b6f2eaa8ffbc16226398ec945d3ce6168f4ad1d174e0621aa57",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"3ad78322b12b50ee685ecf7d2eb75dfdad58251d53a59407dfe87b92d1f0f624"`,
+      `"1f1a67ed6b41c09a0bc5a6fb72d4f137b8decd92c62d2323cd8e6132d504fa7e"`,
     );
   });
 });

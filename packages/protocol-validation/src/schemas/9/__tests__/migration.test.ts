@@ -1949,3 +1949,230 @@ describe('Migrating optional text that shows nothing from schema 8 to 9', () => 
     );
   });
 });
+
+describe('Migrating form field ids from schema 8 to 9', () => {
+  // One stage of each type that holds a form of the shared field shape, as
+  // schema 8 stored it: no field has an id.
+  const formStages = (): Schema8Stage[] => [
+    {
+      id: 'ego-form',
+      type: 'EgoForm',
+      label: 'About you',
+      introductionPanel: { title: 'About you', text: 'Please answer.' },
+      form: {
+        fields: [
+          { variable: 'egoName', prompt: 'Your name?' },
+          { variable: 'egoAge', prompt: 'Your age?' },
+        ],
+      },
+    },
+    {
+      id: 'alter-form',
+      type: 'AlterForm',
+      label: 'About them',
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        fields: [
+          { variable: 'name', prompt: 'Their name?' },
+          { variable: 'age', prompt: 'Their age?' },
+        ],
+      },
+    },
+    {
+      id: 'alter-edge-form',
+      type: 'AlterEdgeForm',
+      label: 'About the tie',
+      subject: { entity: 'edge', type: 'knows' },
+      form: {
+        fields: [
+          { variable: 'closeness', prompt: 'How close?' },
+          { variable: 'duration', prompt: 'How long?' },
+        ],
+      },
+    },
+    {
+      id: 'name-generator',
+      type: 'NameGenerator',
+      label: 'Add people',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+      form: {
+        title: 'Add a person',
+        fields: [
+          { variable: 'name', prompt: 'Name?' },
+          { variable: 'age', prompt: 'Age?' },
+        ],
+      },
+    },
+  ];
+
+  const fieldIds = (stage: unknown): unknown[] => {
+    const { form } = stage as { form?: { fields?: unknown } };
+    const fields: unknown[] = Array.isArray(form?.fields) ? form.fields : [];
+    return fields.map((field) => (field as { id?: unknown }).id);
+  };
+
+  it.each(['ego-form', 'alter-form', 'alter-edge-form', 'name-generator'])(
+    'gives every field of the %s stage a different id',
+    (id) => {
+      const ids = fieldIds(
+        migratedStage(schema8WithStages(...formStages()), id),
+      );
+
+      expect(ids).toHaveLength(2);
+      for (const fieldId of ids) {
+        expect(fieldId).toEqual(expect.any(String));
+        expect(fieldId).not.toBe('');
+      }
+      expect(new Set(ids).size).toBe(2);
+    },
+  );
+
+  it('migrates every stage type to a protocol schema 9 accepts', () => {
+    // `migrateProtocol` validates its result, so this throws if a field of
+    // any stage type is left without an id.
+    expect(() =>
+      migrateProtocol(schema8WithStages(...formStages()), 9),
+    ).not.toThrow();
+  });
+
+  it('keeps an id a field already has, and gives the others ids that do not collide with it', () => {
+    const [egoForm] = formStages();
+    const document = schema8WithStages({
+      ...egoForm,
+      form: {
+        fields: [
+          { variable: 'egoName', prompt: 'Your name?' },
+          { id: 'field-1', variable: 'egoAge', prompt: 'Your age?' },
+        ],
+      },
+    });
+
+    const ids = fieldIds(migratedStage(document, 'ego-form'));
+
+    expect(ids[1]).toBe('field-1');
+    expect(ids[0]).not.toBe('field-1');
+  });
+
+  it('replaces an id that an earlier field of the form already uses', () => {
+    const [egoForm] = formStages();
+    const document = schema8WithStages({
+      ...egoForm,
+      form: {
+        fields: [
+          { id: 'mine', variable: 'egoName', prompt: 'Your name?' },
+          { id: 'mine', variable: 'egoAge', prompt: 'Your age?' },
+        ],
+      },
+    });
+
+    const ids = fieldIds(migratedStage(document, 'ego-form'));
+
+    expect(ids[0]).toBe('mine');
+    expect(ids[1]).toEqual(expect.any(String));
+    expect(ids[1]).not.toBe('mine');
+  });
+
+  describe('on a Network Composer stage', () => {
+    // A schema 8 Network Composer: a node form and two edge forms, whose
+    // fields have no id, except the ones that say so.
+    const composer = (): Schema8Stage => ({
+      id: 'composer',
+      type: 'NetworkComposer',
+      label: 'Compose',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      layoutVariable: 'layoutPosition',
+      background: { concentricCircles: 1 },
+      nodeForm: {
+        fields: [
+          { variable: 'age', component: 'Number' },
+          { id: 'kept', variable: 'category', component: 'ToggleButtonGroup' },
+        ],
+      },
+      edges: [
+        {
+          id: 'knows-edge',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              { variable: 'closeness', component: 'RadioGroup' },
+              { variable: 'duration', component: 'Number' },
+            ],
+          },
+        },
+        {
+          id: 'collaborates-edge',
+          subject: { entity: 'edge', type: 'collaborates' },
+          form: {
+            fields: [
+              { id: 'field-1', variable: 'frequency', component: 'RadioGroup' },
+            ],
+          },
+        },
+      ],
+    });
+
+    const migratedComposer = () =>
+      migratedStage(schema8WithStages(composer()), 'composer') as {
+        nodeForm: { fields: { id: string }[] };
+        edges: { form: { fields: { id: string }[] } }[];
+      };
+
+    it('gives every field of the node form and each edge form an id', () => {
+      const stage = migratedComposer();
+      const forms = [stage.nodeForm, ...stage.edges.map(({ form }) => form)];
+
+      expect(forms).toHaveLength(3);
+      for (const form of forms) {
+        const ids = form.fields.map(({ id }) => id);
+        expect(ids.every((id) => typeof id === 'string' && id !== '')).toBe(
+          true,
+        );
+        expect(new Set(ids).size).toBe(ids.length);
+      }
+    });
+
+    it('keeps the ids fields already have', () => {
+      const stage = migratedComposer();
+
+      expect(stage.nodeForm.fields[1]?.id).toBe('kept');
+      expect(stage.edges[1]?.form.fields[0]?.id).toBe('field-1');
+    });
+
+    it('does not repeat an id within one form', () => {
+      const document = schema8WithStages({
+        ...composer(),
+        nodeForm: {
+          fields: [
+            { id: 'field-2', variable: 'age', component: 'Number' },
+            { variable: 'category', component: 'ToggleButtonGroup' },
+          ],
+        },
+      });
+      const { nodeForm } = migratedStage(document, 'composer') as {
+        nodeForm: { fields: { id: string }[] };
+      };
+
+      expect(nodeForm.fields.map(({ id }) => id)).toEqual([
+        'field-2',
+        'field-3',
+      ]);
+    });
+  });
+
+  it('gives the same ids when the same document is migrated twice', () => {
+    const document = schema8WithStages(...formStages());
+    expect(migratedStages(document)).toEqual(migratedStages(document));
+  });
+
+  it('keeps the ids it gave when a migrated form is migrated again', () => {
+    const once = stagesMigratedFrom(schema8WithStages(...formStages()));
+    const again = stagesMigratedFrom({
+      ...schema8WithStages(),
+      stages: once,
+    });
+
+    expect(again.flatMap(fieldIds)).toEqual(once.flatMap(fieldIds));
+  });
+});

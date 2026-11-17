@@ -155,6 +155,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             form: {
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'egoName',
                   prompt: localized('Enter your name'),
                 },
@@ -186,6 +187,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             form: {
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'egoName',
                   prompt: localized('Enter your name'),
                 },
@@ -220,10 +222,12 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               title: localized('Add person'),
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'name',
                   prompt: localized('Enter name'),
                 },
                 {
+                  id: 'field-2',
                   variable: 'age',
                   prompt: localized('Enter age'),
                 },
@@ -247,6 +251,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               title: localized('Add person'),
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'nonexistentVariable',
                   prompt: localized('Enter something'),
                 },
@@ -288,10 +293,12 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             form: {
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'egoName',
                   prompt: localized('Enter your name'),
                 },
                 {
+                  id: 'field-2',
                   variable: 'egoAge',
                   prompt: localized('Enter your age'),
                 },
@@ -319,6 +326,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             form: {
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'nonexistentEgoVariable',
                   prompt: localized('Enter something'),
                 },
@@ -363,10 +371,12 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             form: {
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'closeness',
                   prompt: localized('How close are you?'),
                 },
                 {
+                  id: 'field-2',
                   variable: 'duration',
                   prompt: localized('How long have you known them?'),
                 },
@@ -396,6 +406,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               title: localized('Add person'),
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'department', // This variable exists on 'colleague' not 'person'
                   prompt: localized('Enter department'),
                 },
@@ -1094,7 +1105,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           subject: { entity: 'node', type: 'person' },
           form: {
             title: localized('Add person'),
-            fields: [{ variable: 'name', prompt: localized('Enter name') }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'name',
+                prompt: localized('Enter name'),
+              },
+            ],
           },
           prompts: [
             {
@@ -1154,6 +1171,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               title: localized('Add person'),
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'name',
                   prompt: localized('Enter name'),
                 },
@@ -1195,6 +1213,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               title: localized('Add person'),
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'name',
                   prompt: localized('Enter name'),
                 },
@@ -2583,6 +2602,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               title: localized('Add person'),
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'name',
                   prompt: localized('Enter name'),
                 },
@@ -2640,6 +2660,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               title: localized('Add person'),
               fields: [
                 {
+                  id: 'field-1',
                   variable: 'nonexistentVariable', // Error 2: Invalid form field variable
                   prompt: localized('Enter something'),
                 },

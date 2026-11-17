@@ -547,7 +547,9 @@ describe('the sweep itself', () => {
 describe('what the sweep treats as protocol content', () => {
   const alterForm = {
     title: 'Add a person',
-    fields: [{ variable: 'name', prompt: 'What is their name?' }],
+    fields: [
+      { id: 'field-1', variable: 'name', prompt: 'What is their name?' },
+    ],
     items: [{ id: 'block-1', type: 'text', content: 'Read this.' }],
   };
   const codebook = {

@@ -315,6 +315,7 @@ const nicknameStages: Parameters<typeof createEncryptionStore>[1] = [
       title: { en: 'Add a person' },
       fields: [
         {
+          id: 'field-1',
           variable: asEntityAttributeReference('nickname'),
           prompt: { en: 'Nickname' },
         },

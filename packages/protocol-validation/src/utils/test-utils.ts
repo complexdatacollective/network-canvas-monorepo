@@ -137,6 +137,7 @@ export const createBaseProtocol = () => ({
         title: localized('Add person'),
         fields: [
           {
+            id: 'field-name',
             variable: 'name',
             prompt: localized('Enter name'),
           },

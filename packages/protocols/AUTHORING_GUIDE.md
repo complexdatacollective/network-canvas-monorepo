@@ -246,11 +246,11 @@ key); TieStrength `edgeVariable` (must be an **ordinal edge** variable); sociogr
 Required keys per stage type used by these templates:
 
 - **Information**: `items: [{ "id", "type":"text", "content":"…" }]` (use `text` items; `title?`).
-- **EgoForm**: `introductionPanel:{title,text?}` (REQUIRED; shown above the questions, and `text` may be left out for a title-only panel) + `form:{fields:[{variable(ego key), prompt}]}` (no `title`). No other stage has an `introductionPanel` in schema 9: to explain another stage to the participant, put an **Information** stage just before it (give it the same `skipLogic` so the two are skipped together).
-- **NameGenerator**: `subject`(node) + `form:{fields:[{variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
+- **EgoForm**: `introductionPanel:{title,text?}` (REQUIRED; shown above the questions, and `text` may be left out for a title-only panel) + `form:{fields:[{id,variable(ego key), prompt}]}` (no `title`). No other stage has an `introductionPanel` in schema 9: to explain another stage to the participant, put an **Information** stage just before it (give it the same `skipLogic` so the two are skipped together).
+- **NameGenerator**: `subject`(node) + `form:{fields:[{id,variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
 - **NameGeneratorQuickAdd**: `subject`(node) + `quickAdd:"<a text node-variable key>"` + `prompts:[{id,text}]` (≥1). (No `form`.)
-- **AlterForm**: `subject`(node) + `form:{fields:[{variable(node key),prompt}]}` + `filter?`.
-- **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `form:{fields:[{variable(edge key),prompt}]}`.
+- **AlterForm**: `subject`(node) + `form:{fields:[{id,variable(node key),prompt}]}` + `filter?`.
+- **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `form:{fields:[{id,variable(edge key),prompt}]}`.
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
 - **Sociogram**: `subject`(node) + `prompts:[{id,text, layout:{layoutVariable:"<layout node key>"}, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.

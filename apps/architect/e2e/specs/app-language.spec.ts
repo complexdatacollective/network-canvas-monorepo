@@ -362,6 +362,7 @@ test('formats printed attribute order and updates linked-list grammar live while
           },
           form: {
             fields: names.map((_, index) => ({
+              id: `field-${index}`,
               variable: `attribute-${index}`,
               prompt: { en: `Authored_prompt_${index}` },
             })),
@@ -377,6 +378,7 @@ test('formats printed attribute order and updates linked-list grammar live while
           },
           form: {
             fields: [0, 3].map((index) => ({
+              id: `field-${index}`,
               variable: `attribute-${index}`,
               prompt: { en: `Authored_prompt_${index}` },
             })),

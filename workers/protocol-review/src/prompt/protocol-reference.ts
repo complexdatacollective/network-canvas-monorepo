@@ -82,7 +82,7 @@ Name generator limits: "behaviours": { "minNodes"?: whole number ≥ 0, "maxNode
 
 A bin stage whose behaviours.requireCompletePlacement is true needs "unplacedNodesNotice": {…}.
 
-Form field: { "id"?: <UUID>, "variable": <variableId>, "prompt": {…}, "hint"?: {…} }. A form keeps at least one field and asks each variable once. A variable recorded by a bin, a Sociogram highlight, a census or a prompt tag must not also be asked in a form.
+Form field: { "id": <text, unique within the form>, "variable": <variableId>, "prompt": {…}, "hint"?: {…} }. A form keeps at least one field and asks each variable once and gives each field its own id. A variable recorded by a bin, a Sociogram highlight, a census or a prompt tag must not also be asked in a form.
 
 ## Filters and skip logic
 

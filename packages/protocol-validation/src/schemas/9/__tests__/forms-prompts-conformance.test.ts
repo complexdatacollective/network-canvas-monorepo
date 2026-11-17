@@ -168,7 +168,11 @@ describe('Forms & prompts schema conformance', () => {
           form: {
             title: localized('Add person'),
             fields: [
-              { variable: 'personName', prompt: localized('Enter name') },
+              {
+                id: 'field-1',
+                variable: 'personName',
+                prompt: localized('Enter name'),
+              },
             ],
           },
           prompts: [{ id: 'p1', text: localized('Who do you know?') }],
@@ -191,7 +195,13 @@ describe('Forms & prompts schema conformance', () => {
           label: localized('Ego Form'),
           form: {
             title: localized('Tell us about yourself'),
-            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Your name?'),
+              },
+            ],
           },
           introductionPanel: {
             title: localized('Intro'),
@@ -217,7 +227,11 @@ describe('Forms & prompts schema conformance', () => {
           form: {
             title: localized('About this person'),
             fields: [
-              { variable: 'personName', prompt: localized('Their name?') },
+              {
+                id: 'field-1',
+                variable: 'personName',
+                prompt: localized('Their name?'),
+              },
             ],
           },
         },
@@ -240,7 +254,11 @@ describe('Forms & prompts schema conformance', () => {
           form: {
             title: localized('About this relationship'),
             fields: [
-              { variable: 'closeness', prompt: localized('How close?') },
+              {
+                id: 'field-1',
+                variable: 'closeness',
+                prompt: localized('How close?'),
+              },
             ],
           },
         },
@@ -260,7 +278,13 @@ describe('Forms & prompts schema conformance', () => {
           type: 'EgoForm',
           label: localized('Ego Form'),
           form: {
-            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Your name?'),
+              },
+            ],
           },
           introductionPanel: {
             title: localized('Intro'),
@@ -281,7 +305,13 @@ describe('Forms & prompts schema conformance', () => {
           type: 'EgoForm',
           label: localized('Ego Form'),
           form: {
-            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Your name?'),
+              },
+            ],
           },
           introductionPanel: { title: localized('Intro') },
         },
@@ -299,7 +329,13 @@ describe('Forms & prompts schema conformance', () => {
           type: 'EgoForm',
           label: localized('Ego Form'),
           form: {
-            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Your name?'),
+              },
+            ],
           },
         },
       ]);
@@ -316,7 +352,13 @@ describe('Forms & prompts schema conformance', () => {
           type: 'EgoForm',
           label: localized('Ego Form'),
           form: {
-            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Your name?'),
+              },
+            ],
           },
           introductionPanel: { title: localized(''), text: localized('text') },
         },
@@ -339,7 +381,11 @@ describe('Forms & prompts schema conformance', () => {
           form: {
             title: localized('Add a person'),
             fields: [
-              { variable: 'personName', prompt: localized('Enter name') },
+              {
+                id: 'field-1',
+                variable: 'personName',
+                prompt: localized('Enter name'),
+              },
             ],
           },
           prompts: [{ id: 'p1', text: localized('Who do you know?') }],
@@ -628,7 +674,13 @@ describe('Forms & prompts schema conformance', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
-        fields: [{ variable: 'personName', prompt: localized('Enter name') }],
+        fields: [
+          {
+            id: 'field-1',
+            variable: 'personName',
+            prompt: localized('Enter name'),
+          },
+        ],
       },
       prompts: [{ id: 'p1', text: localized('Who do you know?') }],
       behaviours,
@@ -727,7 +779,13 @@ describe('Forms & prompts schema conformance', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
-        fields: [{ variable: 'personName', prompt: localized('Enter name') }],
+        fields: [
+          {
+            id: 'field-1',
+            variable: 'personName',
+            prompt: localized('Enter name'),
+          },
+        ],
       },
       prompts: [{ id: 'p1', text: localized(text) }],
     });
@@ -755,7 +813,9 @@ describe('Forms & prompts schema conformance', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
-        fields: [{ variable: 'personName', prompt: localized(prompt) }],
+        fields: [
+          { id: 'field-1', variable: 'personName', prompt: localized(prompt) },
+        ],
       },
       prompts: [{ id: 'p1', text: localized('Who do you know?') }],
     });
@@ -789,7 +849,11 @@ describe('Forms & prompts schema conformance', () => {
           subject: { entity: 'node', type: 'person' },
           form: {
             fields: [
-              { variable: 'personName', prompt: localized('Their name?') },
+              {
+                id: 'field-1',
+                variable: 'personName',
+                prompt: localized('Their name?'),
+              },
             ],
           },
           introductionPanel: {

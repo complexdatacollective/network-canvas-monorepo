@@ -387,12 +387,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "living_situation",
             "prompt": {
               "en": "Which of the following best describes your current living situation?"
             }
           },
           {
+            "id": "field-2",
             "variable": "self_rated_health",
             "prompt": { "en": "In general, how would you rate your health?" }
           }
@@ -409,6 +411,7 @@
         "title": { "en": "Add Person" },
         "fields": [
           {
+            "id": "field-1",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's first name or initials?"
@@ -466,20 +469,24 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "relationship",
             "prompt": { "en": "What is {nodeLabel}'s relationship to you?" }
           },
           {
+            "id": "field-2",
             "variable": "age_band",
             "prompt": { "en": "Roughly how old is {nodeLabel}?" }
           },
           {
+            "id": "field-3",
             "variable": "contact_frequency",
             "prompt": {
               "en": "How often are you in contact with {nodeLabel}?"
             }
           },
           {
+            "id": "field-4",
             "variable": "contact_mode",
             "prompt": {
               "en": "How do you usually keep in contact with {nodeLabel}?"
@@ -487,10 +494,12 @@
             "hint": { "en": "Select all that apply." }
           },
           {
+            "id": "field-5",
             "variable": "lives_with",
             "prompt": { "en": "Does {nodeLabel} live with you?" }
           },
           {
+            "id": "field-6",
             "variable": "support_emotional",
             "prompt": {
               "en": "Could you turn to {nodeLabel} for **emotional** support?"
@@ -500,6 +509,7 @@
             }
           },
           {
+            "id": "field-7",
             "variable": "support_practical",
             "prompt": {
               "en": "Could you turn to {nodeLabel} for **practical** support?"
@@ -540,78 +550,93 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "ucla_1",
             "prompt": {
               "en": "How often do you feel that you lack companionship?"
             }
           },
           {
+            "id": "field-2",
             "variable": "ucla_2",
             "prompt": { "en": "How often do you feel left out?" }
           },
           {
+            "id": "field-3",
             "variable": "ucla_3",
             "prompt": { "en": "How often do you feel isolated from others?" }
           },
           {
+            "id": "field-4",
             "variable": "djg_1",
             "prompt": { "en": "I experience a general sense of emptiness." }
           },
           {
+            "id": "field-5",
             "variable": "djg_2",
             "prompt": { "en": "I miss having people around me." }
           },
           {
+            "id": "field-6",
             "variable": "djg_3",
             "prompt": { "en": "I often feel rejected." }
           },
           {
+            "id": "field-7",
             "variable": "djg_4",
             "prompt": {
               "en": "There are plenty of people I can rely on when I have problems."
             }
           },
           {
+            "id": "field-8",
             "variable": "djg_5",
             "prompt": {
               "en": "There are many people I can trust completely."
             }
           },
           {
+            "id": "field-9",
             "variable": "djg_6",
             "prompt": { "en": "There are enough people I feel close to." }
           },
           {
+            "id": "field-10",
             "variable": "lsns_1",
             "prompt": {
               "en": "Thinking about your relatives, how many do you see or hear from at least once a month?"
             }
           },
           {
+            "id": "field-11",
             "variable": "lsns_2",
             "prompt": {
               "en": "How many relatives do you feel close enough to that you can talk to them about private matters?"
             }
           },
           {
+            "id": "field-12",
             "variable": "lsns_3",
             "prompt": {
               "en": "How many relatives do you feel close enough to that you could call on them for help?"
             }
           },
           {
+            "id": "field-13",
             "variable": "lsns_4",
             "prompt": {
               "en": "Thinking about your friends, how many do you see or hear from at least once a month?"
             }
           },
           {
+            "id": "field-14",
             "variable": "lsns_5",
             "prompt": {
               "en": "How many friends do you feel close enough to that you can talk to them about private matters?"
             }
           },
           {
+            "id": "field-15",
             "variable": "lsns_6",
             "prompt": {
               "en": "How many friends do you feel close enough to that you could call on them for help?"

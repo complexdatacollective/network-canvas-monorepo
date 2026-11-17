@@ -109,6 +109,7 @@ function makeWrapper(
 }
 
 const field = (variable: string, prompt: LocalizedString): FormField => ({
+  id: 'field-L111',
   variable: asEntityAttributeReference(variable),
   prompt,
 });

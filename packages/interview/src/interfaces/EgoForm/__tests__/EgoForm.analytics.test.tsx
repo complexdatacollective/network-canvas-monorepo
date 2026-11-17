@@ -63,8 +63,12 @@ const stage = {
   introductionPanel: { title: { en: 'About you' } },
   form: {
     fields: [
-      { variable: 'nickname', prompt: { en: 'Your nickname' } },
-      { variable: 'born_on', prompt: { en: 'Your date of birth' } },
+      { id: 'field-1', variable: 'nickname', prompt: { en: 'Your nickname' } },
+      {
+        id: 'field-2',
+        variable: 'born_on',
+        prompt: { en: 'Your date of birth' },
+      },
     ],
   },
 } as unknown as StageProps<'EgoForm'>['stage'];

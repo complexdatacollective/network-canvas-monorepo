@@ -507,6 +507,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       form: {
         fields: [
           {
+            id: 'field-1',
             variable: 'fm_occupation',
             prompt: { 'en-US': 'What do they do?' },
           },

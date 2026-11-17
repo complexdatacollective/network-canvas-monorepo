@@ -84,7 +84,7 @@ function binAndFormProtocol(
     type: 'AlterForm',
     label: 'About each person',
     subject: { entity: 'node', type: 'person' },
-    form: { fields: [{ variable: 'band', prompt: 'Band' }] },
+    form: { fields: [{ id: 'field-1', variable: 'band', prompt: 'Band' }] },
   });
   const form = formStage('stage-form');
   // People the binning stage never saw, so their claims are still the

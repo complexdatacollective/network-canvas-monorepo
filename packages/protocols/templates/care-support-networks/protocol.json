@@ -344,12 +344,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "care_stage",
             "prompt": {
               "en": "Where are you in your care journey at the moment?"
             }
           },
           {
+            "id": "field-2",
             "variable": "weeks_since_birth",
             "prompt": {
               "en": "If your baby has already been born, how many weeks ago was that?"
@@ -357,66 +359,77 @@
             "hint": { "en": "Leave blank if you are still pregnant." }
           },
           {
+            "id": "field-3",
             "variable": "living_situation",
             "prompt": {
               "en": "Which best describes who you live with right now?"
             }
           },
           {
+            "id": "field-4",
             "variable": "epds_1",
             "prompt": {
               "en": "In the past 7 days: I have been able to laugh and see the funny side of things."
             }
           },
           {
+            "id": "field-5",
             "variable": "epds_2",
             "prompt": {
               "en": "In the past 7 days: I have looked forward with enjoyment to things."
             }
           },
           {
+            "id": "field-6",
             "variable": "epds_3",
             "prompt": {
               "en": "In the past 7 days: I have blamed myself unnecessarily when things went wrong."
             }
           },
           {
+            "id": "field-7",
             "variable": "epds_4",
             "prompt": {
               "en": "In the past 7 days: I have been anxious or worried for no good reason."
             }
           },
           {
+            "id": "field-8",
             "variable": "epds_5",
             "prompt": {
               "en": "In the past 7 days: I have felt scared or panicky for no very good reason."
             }
           },
           {
+            "id": "field-9",
             "variable": "epds_6",
             "prompt": {
               "en": "In the past 7 days: Things have been getting on top of me."
             }
           },
           {
+            "id": "field-10",
             "variable": "epds_7",
             "prompt": {
               "en": "In the past 7 days: I have been so unhappy that I have had difficulty sleeping."
             }
           },
           {
+            "id": "field-11",
             "variable": "epds_8",
             "prompt": {
               "en": "In the past 7 days: I have felt sad or miserable."
             }
           },
           {
+            "id": "field-12",
             "variable": "epds_9",
             "prompt": {
               "en": "In the past 7 days: I have been so unhappy that I have been crying."
             }
           },
           {
+            "id": "field-13",
             "variable": "epds_10",
             "prompt": {
               "en": "In the past 7 days: The thought of harming myself has occurred to me."
@@ -448,6 +461,7 @@
         "title": { "en": "Add Supporter" },
         "fields": [
           {
+            "id": "field-1",
             "variable": "supporter_name",
             "prompt": { "en": "What is this person's name or initials?" },
             "hint": { "en": "Use whatever helps you remember who they are." }
@@ -520,22 +534,26 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "relationship",
             "prompt": { "en": "What is {nodeLabel}'s relationship to you?" }
           },
           {
+            "id": "field-2",
             "variable": "proximity",
             "prompt": {
               "en": "Where is {nodeLabel}, relative to you, most of the time?"
             }
           },
           {
+            "id": "field-3",
             "variable": "contact_frequency",
             "prompt": {
               "en": "How often are you in contact with {nodeLabel} at the moment?"
             }
           },
           {
+            "id": "field-4",
             "variable": "support_functions",
             "prompt": {
               "en": "Which kinds of support does {nodeLabel} give you?"

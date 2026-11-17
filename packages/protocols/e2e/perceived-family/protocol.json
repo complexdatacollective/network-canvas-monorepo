@@ -178,12 +178,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "name",
             "prompt": {
               "en-US": "What name or nickname should we use?"
             }
           },
           {
+            "id": "field-2",
             "variable": "relationship_words",
             "prompt": {
               "en-US": "What words do you use for your relationship with this person?"
@@ -253,6 +255,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "family_categories",
             "prompt": {
               "en-US": "Which descriptions fit this person?"
@@ -262,6 +265,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "category_words",
             "prompt": {
               "en-US": "What other words would you use?"

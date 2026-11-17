@@ -154,7 +154,11 @@ const nameGeneratorWith = (
       form: {
         title: en('Add a person'),
         fields: [
-          { variable: 'name', prompt: en("What is this person's name?") },
+          {
+            id: 'field-1',
+            variable: 'name',
+            prompt: en("What is this person's name?"),
+          },
         ],
       },
       prompts: [{ id: 'prompt-seed', text: en('Who do you know?') }],

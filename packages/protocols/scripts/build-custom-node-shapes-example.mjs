@@ -114,10 +114,15 @@ function nameGenerator({ id, type, label, prompt }) {
       title: en('Add to my world'),
       fields: [
         {
+          id: `field-${type}_name`,
           variable: `${type}_name`,
           prompt: en('What do you call them or it?'),
         },
-        { variable: `${type}_type`, prompt: en('What kind of thing is it?') },
+        {
+          id: `field-${type}_type`,
+          variable: `${type}_type`,
+          prompt: en('What kind of thing is it?'),
+        },
       ],
     },
     prompts: [{ id: `${id}-prompt`, text: en(prompt) }],

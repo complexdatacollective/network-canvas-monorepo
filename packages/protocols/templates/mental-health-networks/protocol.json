@@ -302,6 +302,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?"
@@ -340,48 +341,56 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "k6_1",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel nervous?"
             }
           },
           {
+            "id": "field-2",
             "variable": "k6_2",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel hopeless?"
             }
           },
           {
+            "id": "field-3",
             "variable": "k6_3",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel restless or fidgety?"
             }
           },
           {
+            "id": "field-4",
             "variable": "k6_4",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel so depressed that nothing could cheer you up?"
             }
           },
           {
+            "id": "field-5",
             "variable": "k6_5",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel that everything was an effort?"
             }
           },
           {
+            "id": "field-6",
             "variable": "k6_6",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel worthless?"
             }
           },
           {
+            "id": "field-7",
             "variable": "self_rated_mental_health",
             "prompt": {
               "en": "In general, how would you rate your mental health these days?"
             }
           },
           {
+            "id": "field-8",
             "variable": "in_treatment",
             "prompt": {
               "en": "Are you currently receiving any treatment or support for your mental health?"
@@ -410,6 +419,7 @@
         "title": { "en": "Add Person" },
         "fields": [
           {
+            "id": "field-1",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
@@ -465,6 +475,7 @@
         "title": { "en": "Add Person" },
         "fields": [
           {
+            "id": "field-1",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
@@ -518,10 +529,12 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "relationship",
             "prompt": { "en": "How is {nodeLabel} related to you?" }
           },
           {
+            "id": "field-2",
             "variable": "knows_about_mh",
             "prompt": {
               "en": "Does {nodeLabel} **know about your mental health**?"
@@ -529,6 +542,7 @@
             "hint": { "en": "That is, have you told them about it?" }
           },
           {
+            "id": "field-3",
             "variable": "is_clinical",
             "prompt": {
               "en": "Is {nodeLabel} a **formal or clinical source of help**?"

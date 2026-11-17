@@ -715,6 +715,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-ego_consent",
             "variable": "ego_consent",
             "prompt": {
               "en": "Do you agree to take part in this study?"
@@ -740,18 +741,21 @@
       "form": {
         "fields": [
           {
+            "id": "field-ego_age",
             "variable": "ego_age",
             "prompt": {
               "en": "What is your age in years?"
             }
           },
           {
+            "id": "field-ego_gender",
             "variable": "ego_gender",
             "prompt": {
               "en": "How do you describe your gender?"
             }
           },
           {
+            "id": "field-ego_lives_in_halls",
             "variable": "ego_lives_in_halls",
             "prompt": {
               "en": "Do you live in university accommodation (halls)?"
@@ -917,12 +921,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-person_is_first_year",
             "variable": "person_is_first_year",
             "prompt": {
               "en": "Is this person also a first-year student?"
             }
           },
           {
+            "id": "field-person_first_met",
             "variable": "person_first_met",
             "prompt": {
               "en": "When did you first meet this person?"
@@ -1280,6 +1286,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-ego_audit_frequency",
             "variable": "ego_audit_frequency",
             "prompt": {
               "en": "How often do you have a drink containing alcohol?"
@@ -1321,12 +1328,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-ego_audit_typical",
             "variable": "ego_audit_typical",
             "prompt": {
               "en": "How many drinks containing alcohol do you have on a typical day when you are drinking?"
             }
           },
           {
+            "id": "field-ego_audit_heavy",
             "variable": "ego_audit_heavy",
             "prompt": {
               "en": "How often do you have six or more drinks on one occasion?"
@@ -1352,30 +1361,35 @@
       "form": {
         "fields": [
           {
+            "id": "field-ego_who5_cheerful",
             "variable": "ego_who5_cheerful",
             "prompt": {
               "en": "Over the last two weeks: I have felt cheerful and in good spirits."
             }
           },
           {
+            "id": "field-ego_who5_calm",
             "variable": "ego_who5_calm",
             "prompt": {
               "en": "Over the last two weeks: I have felt calm and relaxed."
             }
           },
           {
+            "id": "field-ego_who5_active",
             "variable": "ego_who5_active",
             "prompt": {
               "en": "Over the last two weeks: I have felt active and vigorous."
             }
           },
           {
+            "id": "field-ego_who5_rested",
             "variable": "ego_who5_rested",
             "prompt": {
               "en": "Over the last two weeks: I woke up feeling fresh and rested."
             }
           },
           {
+            "id": "field-ego_who5_interest",
             "variable": "ego_who5_interest",
             "prompt": {
               "en": "Over the last two weeks: My daily life has been filled with things that interest me."

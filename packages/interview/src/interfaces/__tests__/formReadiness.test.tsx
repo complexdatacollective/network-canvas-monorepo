@@ -65,8 +65,8 @@ const variables = {
 
 const form = {
   fields: [
-    { variable: 'name', prompt: { en: 'Name' } },
-    { variable: 'nickname', prompt: { en: 'Nickname' } },
+    { id: 'field-1', variable: 'name', prompt: { en: 'Name' } },
+    { id: 'field-2', variable: 'nickname', prompt: { en: 'Nickname' } },
   ],
 };
 

@@ -152,6 +152,7 @@ const egoStages: Stage[] = [
     form: {
       fields: [
         {
+          id: 'field-1',
           variable: asEntityAttributeReference(variableId),
           prompt: { en: 'When did you last see them?' },
         },

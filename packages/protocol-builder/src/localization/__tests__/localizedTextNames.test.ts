@@ -31,6 +31,7 @@ const scaleVariable = (name: string, minLabel: string, maxLabel: string) => ({
 });
 
 const composerScaleField = (variable: string, label: string) => ({
+  id: 'field-L33',
   variable,
   component: 'VisualAnalogScale',
   label: en(label),
@@ -216,6 +217,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     {
       fields: [
         {
+          id: 'field-1',
           variable: 'fm_occupation',
           prompt: en('What do they do?'),
           hint: en('Their main work.'),

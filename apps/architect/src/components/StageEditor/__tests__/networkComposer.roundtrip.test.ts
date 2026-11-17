@@ -11,7 +11,14 @@ const stage = {
   layoutVariable: 'layoutPosition',
   background: { concentricCircles: 4 },
   nodeForm: {
-    fields: [{ variable: 'age', component: 'Number', label: { en: 'Age?' } }],
+    fields: [
+      {
+        id: 'field-1',
+        variable: 'age',
+        component: 'Number',
+        label: { en: 'Age?' },
+      },
+    ],
   },
   edges: [
     {
@@ -21,6 +28,7 @@ const stage = {
       form: {
         fields: [
           {
+            id: 'field-1',
             variable: 'closeness',
             component: 'VisualAnalogScale',
             label: { en: 'How close?' },

@@ -25,7 +25,7 @@ const unlimitedStage = {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: en('Add a person'),
-        fields: [{ variable: 'name', prompt: en('Name?') }],
+        fields: [{ id: 'field-1', variable: 'name', prompt: en('Name?') }],
       },
       prompts: [{ id: 'prompt-a', text: en('Who do you know?') }],
     },

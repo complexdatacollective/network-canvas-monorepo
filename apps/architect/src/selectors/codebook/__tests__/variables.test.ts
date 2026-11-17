@@ -118,8 +118,8 @@ describe('getIsUsed', () => {
               subject: { entity: 'node', type: 'person' },
               form: {
                 fields: [
-                  { variable: variable1, prompt: 'prompt 1' },
-                  { variable: variable2, prompt: 'prompt 2' },
+                  { id: 'field-1', variable: variable1, prompt: 'prompt 1' },
+                  { id: 'field-2', variable: variable2, prompt: 'prompt 2' },
                 ],
               },
             },

@@ -350,6 +350,7 @@ describe('AlterForm comparing an answer with a protected one', () => {
       form: {
         fields: [
           {
+            id: 'field-1',
             variable: asEntityAttributeReference('nickname'),
             prompt: { en: 'Nickname' },
           },

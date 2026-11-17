@@ -275,8 +275,13 @@ describe('dynamic values in a stage’s text', () => {
         introductionPanel: { title: { en: 'About you' } },
         form: {
           fields: [
-            { variable: 'name', prompt: { en: 'What is your name?' } },
             {
+              id: 'field-1',
+              variable: 'name',
+              prompt: { en: 'What is your name?' },
+            },
+            {
+              id: 'field-2',
               variable: 'age',
               prompt: {
                 en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
@@ -328,6 +333,7 @@ describe('dynamic values in a stage’s text', () => {
         form: {
           fields: [
             {
+              id: 'field-1',
               variable: 'age',
               prompt: {
                 en: '**How old are you**{name, select, missing {?} other {, {name}?}}',
@@ -365,14 +371,23 @@ describe('dynamic values in a stage’s text', () => {
         introductionPanel: { title: { en: 'About you' } },
         form: {
           fields: [
-            { variable: 'name', prompt: { en: 'What is your name?' } },
             {
+              id: 'field-1',
+              variable: 'name',
+              prompt: { en: 'What is your name?' },
+            },
+            {
+              id: 'field-2',
               variable: 'age',
               prompt: {
                 en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
               },
             },
-            { variable: 'guess', prompt: { en: 'Guess an age' } },
+            {
+              id: 'field-3',
+              variable: 'guess',
+              prompt: { en: 'Guess an age' },
+            },
           ],
         },
       },

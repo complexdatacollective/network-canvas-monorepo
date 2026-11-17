@@ -84,6 +84,7 @@ const FORM_ID = 'person-form';
 const NICKNAME = 'nickname';
 
 const nicknameField: FormField = {
+  id: 'field-nickname',
   variable: asEntityAttributeReference(NICKNAME),
   prompt: { en: 'Nickname' },
 };

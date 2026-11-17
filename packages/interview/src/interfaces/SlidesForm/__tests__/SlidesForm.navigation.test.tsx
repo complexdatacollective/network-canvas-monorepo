@@ -65,7 +65,9 @@ beforeAll(() => {
 });
 
 const form: TitlelessForm = {
-  fields: [{ variable: 'name' as never, prompt: { en: 'Person name' } }],
+  fields: [
+    { id: 'field-1', variable: 'name' as never, prompt: { en: 'Person name' } },
+  ],
 };
 
 const person: NcNode = {
@@ -807,7 +809,13 @@ describe('SlidesForm going back from the first slide', () => {
 
 describe('SlidesForm moving on from a complete form', () => {
   const closenessForm: TitlelessForm = {
-    fields: [{ variable: 'closeness' as never, prompt: { en: 'How close?' } }],
+    fields: [
+      {
+        id: 'field-1',
+        variable: 'closeness' as never,
+        prompt: { en: 'How close?' },
+      },
+    ],
   };
 
   // A person's answers can be given, and Next moves on, once they arrive.

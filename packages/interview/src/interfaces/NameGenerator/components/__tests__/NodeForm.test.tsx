@@ -60,6 +60,7 @@ const form: TForm = {
   title: { en: 'Add a person' },
   fields: [
     {
+      id: 'field-1',
       variable: asEntityAttributeReference(VARIABLE),
       prompt: { en: FIELD_LABEL },
     },

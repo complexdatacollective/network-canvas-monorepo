@@ -118,10 +118,15 @@ const nameGeneratorStages: Stages = [
       title: { en: 'Add a person' },
       fields: [
         {
+          id: 'field-1',
           variable: asEntityAttributeReference('name'),
           prompt: { en: 'Name' },
         },
-        { variable: asEntityAttributeReference('age'), prompt: { en: 'Age' } },
+        {
+          id: 'field-2',
+          variable: asEntityAttributeReference('age'),
+          prompt: { en: 'Age' },
+        },
       ],
     },
     prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
@@ -138,10 +143,15 @@ export const alterFormStages: Stages = [
     form: {
       fields: [
         {
+          id: 'field-1',
           variable: asEntityAttributeReference('name'),
           prompt: { en: 'Name' },
         },
-        { variable: asEntityAttributeReference('age'), prompt: { en: 'Age' } },
+        {
+          id: 'field-2',
+          variable: asEntityAttributeReference('age'),
+          prompt: { en: 'Age' },
+        },
       ],
     },
   },

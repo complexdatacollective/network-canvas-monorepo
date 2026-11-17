@@ -246,7 +246,11 @@ const FORM_COLLECTING_A_CHOICE = {
     ...loadFixtureStage('alter-form-1').fields,
     form: {
       fields: [
-        { variable: CHOICE_VARIABLE, prompt: en('How do you keep in touch?') },
+        {
+          id: 'field-1',
+          variable: CHOICE_VARIABLE,
+          prompt: en('How do you keep in touch?'),
+        },
       ],
     },
   },
