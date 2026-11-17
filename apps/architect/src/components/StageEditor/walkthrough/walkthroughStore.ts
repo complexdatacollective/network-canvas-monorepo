@@ -6,7 +6,7 @@ type WalkthroughState = Readonly<{
   collapsed: boolean;
   /** The editor section the current step is about, for the section list. */
   section: string | undefined;
-  /** The stage the walkthrough is about, whose progress it keeps. */
+  /** The stage the walkthrough is about. */
   stage: string | undefined;
   /** Counts requests to bring an open panel to the researcher's attention. */
   focusRequest: number;
@@ -25,18 +25,13 @@ const CLOSED: WalkthroughState = {
 
 let state: WalkthroughState = CLOSED;
 /**
- * Where the researcher has moved the panel to, from its home in the corner.
- * Kept apart from the state above: the panel remounts when it is restored
- * from the toolbar, and reading this then puts it back where it was, while
- * writing it on every drag would re-render the panel for nothing.
+ * Where the panel is, from its home in the corner, until the walkthrough
+ * closes. Kept apart from the state above: the panel remounts when it is
+ * restored from the toolbar, and reading this then puts it back where it was,
+ * while writing it on every move would re-render the panel for nothing.
  */
 let position: Position | undefined;
 let returnFocusTo: HTMLElement | null = null;
-/**
- * The step each stage's walkthrough was left on, so opening it again carries
- * on there. Kept until the page reloads.
- */
-const progress = new Map<string, number>();
 let focusPending = false;
 const listeners = new Set<() => void>();
 
@@ -59,9 +54,9 @@ export function useWalkthroughState(): WalkthroughState {
 }
 
 /**
- * Opens the walkthrough for `stage` at `step`, or where the researcher left
- * it. Already open, it moves to `step` if one is given, is restored if
- * minimised, and is brought to their attention.
+ * Opens the walkthrough for `stage` at `step`, or at its start, with the panel
+ * in the corner. Already open, it moves to `step` if one is given, is restored
+ * if minimised, and is brought to their attention.
  */
 export function openWalkthrough(
   launcher: HTMLElement | null,
@@ -70,7 +65,6 @@ export function openWalkthrough(
 ) {
   returnFocusTo = launcher;
   focusPending = true;
-  if (step !== undefined) progress.set(stage, step);
   if (state.open && state.stage === stage) {
     set({
       ...state,
@@ -84,7 +78,7 @@ export function openWalkthrough(
     ...CLOSED,
     open: true,
     stage,
-    step: step ?? progress.get(stage) ?? 0,
+    step: step ?? 0,
   });
 }
 
@@ -100,7 +94,6 @@ export function takeWalkthroughFocus(): boolean {
 }
 
 export function goToWalkthroughStep(step: number) {
-  if (state.stage !== undefined) progress.set(state.stage, step);
   set({ ...state, step });
 }
 
@@ -123,15 +116,13 @@ export function setWalkthroughCollapsed(collapsed: boolean) {
 }
 
 /**
- * Closes the walkthrough. Its place is kept for next time, unless it was
- * closed by finishing it.
+ * Closes the walkthrough, whether it was finished or not. Nothing about it is
+ * kept: opened again, it starts from its first step with the panel in the
+ * corner. (Minimising is not closing, and keeps both.)
  */
-export function closeWalkthrough({
-  restoreFocus = true,
-  finished = false,
-} = {}) {
+export function closeWalkthrough({ restoreFocus = true } = {}) {
   if (!state.open) return;
-  if (finished && state.stage !== undefined) progress.delete(state.stage);
+  position = undefined;
   set(CLOSED);
   const target = returnFocusTo;
   returnFocusTo = null;

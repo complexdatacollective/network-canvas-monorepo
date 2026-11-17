@@ -191,9 +191,7 @@ function WalkthroughPanel({
       target={target}
       onBack={index === 0 ? undefined : () => goToWalkthroughStep(index - 1)}
       onNext={
-        isLast
-          ? () => closeWalkthrough({ finished: true })
-          : () => goToWalkthroughStep(index + 1)
+        isLast ? () => closeWalkthrough() : () => goToWalkthroughStep(index + 1)
       }
       isLast={isLast}
     />
