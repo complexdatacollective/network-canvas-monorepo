@@ -954,12 +954,12 @@ describe('what a network composer lets the participant build', () => {
     const dialog = await addRow(harness, 'Create new node attribute');
     await inventAttribute(harness.user, picker('Attribute'), 'favouriteFood');
 
-    // Nothing written yet: which control collects it is the next question, and
+    // Nothing staged yet: which control collects it is the next question, and
     // the codebook refuses an attribute with no kind of answer.
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        (variable) => variable.name === 'favouriteFood',
-      ),
+      Object.values(
+        harness.editorCodebook().node?.person?.variables ?? {},
+      ).some((variable) => variable.name === 'favouriteFood'),
     ).toBe(false);
     // The picker shows what the row is making, so the researcher can see that
     // their name was taken.
@@ -1012,13 +1012,13 @@ describe('what a network composer lets the participant build', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
-    // In the codebook, under a record key the researcher never sees — so it is
-    // looked up by the name they typed, and read whole, because the kind the
-    // control decided is the half a name could not say. The control goes with
-    // it: a composer field owns its own from then on, and this is the one
-    // write that gives the attribute one at all.
+    // In the stage's draft of the codebook, under a record key the researcher
+    // never sees — so it is looked up by the name they typed, and read whole,
+    // because the kind the control decided is the half a name could not say.
+    // The control goes with it: a composer field owns its own from then on,
+    // and this is the one write that gives the attribute one at all.
     const created = await waitFor(() => {
-      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const variables = harness.editorCodebook().node?.person?.variables ?? {};
       const entry = Object.entries(variables).find(
         ([, variable]) => variable.name === 'favouriteFood',
       );
@@ -1032,9 +1032,23 @@ describe('what a network composer lets the participant build', () => {
       type: 'number',
       component: 'Number',
     });
+    // Part of the stage's draft: the protocol holds it only once the stage is
+    // saved, in the same revision as the field that records it.
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        (variable) => variable.name === 'favouriteFood',
+      ),
+    ).toBe(false);
 
     // Captioned with the name the researcher gave the attribute it invented.
     const saved = await harness.submit();
+    expect(
+      harness.hostCodebook().node?.person?.variables?.[created[0]],
+    ).toMatchObject({
+      name: 'favouriteFood',
+      type: 'number',
+      component: 'Number',
+    });
     expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
@@ -1090,20 +1104,28 @@ describe('what a network composer lets the participant build', () => {
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     // On the codebook attribute, which is where the values live — and which is
-    // why every other stage collecting it gains them too.
+    // why every other stage collecting it gains them too once this stage is
+    // saved. Until then they are the stage's draft: the editor shows them and
+    // the protocol does not hold them.
+    const withLetter = expect.objectContaining({
+      options: [
+        { label: { 'en-US': 'In person' }, value: 'in_person' },
+        { label: { 'en-US': 'Phone or video call' }, value: 'call' },
+        { label: { 'en-US': 'Text or messaging' }, value: 'text' },
+        { label: { 'en-US': 'Letter' }, value: 'letter' },
+      ],
+    });
     await waitFor(() =>
       expect(
-        harness.hostCodebook().node?.person?.variables?.contactType,
-      ).toEqual(
-        expect.objectContaining({
-          options: [
-            { label: { 'en-US': 'In person' }, value: 'in_person' },
-            { label: { 'en-US': 'Phone or video call' }, value: 'call' },
-            { label: { 'en-US': 'Text or messaging' }, value: 'text' },
-            { label: { 'en-US': 'Letter' }, value: 'letter' },
-          ],
-        }),
-      ),
+        harness.editorCodebook().node?.person?.variables?.contactType,
+      ).toEqual(withLetter),
+    );
+    expect(
+      harness.hostCodebook().node?.person?.variables?.contactType,
+    ).not.toEqual(withLetter);
+    expect(await harness.submit()).not.toBeNull();
+    expect(harness.hostCodebook().node?.person?.variables?.contactType).toEqual(
+      withLetter,
     );
   });
 
@@ -1143,20 +1165,20 @@ describe('what a network composer lets the participant build', () => {
 
     // Nothing yet: the row's own save is what creates the attribute.
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        (variable) => variable.name === 'livesNearby',
-      ),
+      Object.values(
+        harness.editorCodebook().node?.person?.variables ?? {},
+      ).some((variable) => variable.name === 'livesNearby'),
     ).toBe(false);
 
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
     const created = await waitFor(() => {
-      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const variables = harness.editorCodebook().node?.person?.variables ?? {};
       const entry = Object.values(variables).find(
         (variable) => variable.name === 'livesNearby',
       );
       if (entry === undefined) {
-        throw new Error('the codebook has no “livesNearby” attribute');
+        throw new Error('the stage draft has no “livesNearby” attribute');
       }
       return entry;
     });
@@ -1217,23 +1239,23 @@ describe('what a network composer lets the participant build', () => {
       await dialog.findByRole('switch', { name: 'Required answer' }),
     );
 
-    // Still nothing in the codebook: the rules are held on the row until the
-    // create they belong to.
+    // Still nothing in the stage's codebook: the rules are held on the row
+    // until the create they belong to.
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        (variable) => variable.name === 'favouriteFood',
-      ),
+      Object.values(
+        harness.editorCodebook().node?.person?.variables ?? {},
+      ).some((variable) => variable.name === 'favouriteFood'),
     ).toBe(false);
 
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
     const created = await waitFor(() => {
-      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const variables = harness.editorCodebook().node?.person?.variables ?? {};
       const entry = Object.values(variables).find(
         (variable) => variable.name === 'favouriteFood',
       );
       if (entry === undefined) {
-        throw new Error('the codebook has no “favouriteFood” attribute');
+        throw new Error('the stage draft has no “favouriteFood” attribute');
       }
       return entry;
     });
@@ -1263,9 +1285,9 @@ describe('what a network composer lets the participant build', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        (variable) => variable.name === 'favouriteFood',
-      ),
+      Object.values(
+        harness.editorCodebook().node?.person?.variables ?? {},
+      ).some((variable) => variable.name === 'favouriteFood'),
     ).toBe(false);
   });
 
@@ -1293,7 +1315,7 @@ describe('what a network composer lets the participant build', () => {
     );
 
     const created = Object.entries(
-      harness.hostCodebook().node?.person?.variables ?? {},
+      harness.editorCodebook().node?.person?.variables ?? {},
     ).find(([, variable]) => variable.name === 'closeness');
     expect(created?.[1]).toMatchObject({
       type: 'ordinal',
@@ -1304,6 +1326,9 @@ describe('what a network composer lets the participant build', () => {
     });
 
     const saved = await harness.submit();
+    expect(
+      harness.hostCodebook().node?.person?.variables?.[created?.[0] ?? ''],
+    ).toMatchObject({ name: 'closeness', type: 'ordinal' });
     expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
@@ -1367,7 +1392,7 @@ describe('what a network composer lets the participant build', () => {
   /**
    * The attribute every node this composer adds is stamped with, invented from
    * the same control that binds it. A name finishes a text attribute, so this
-   * one is written straight to the codebook.
+   * one is made without a dialog, and kept with the stage's draft.
    */
   it('creates the attribute a quick-added node is named in', async () => {
     const harness = renderStageEditor(composerHolding({ quickAdd: '' }));
@@ -1381,7 +1406,7 @@ describe('what a network composer lets the participant build', () => {
 
     const created = await waitFor(() => {
       const entry = Object.entries(
-        harness.hostCodebook().node?.person?.variables ?? {},
+        harness.editorCodebook().node?.person?.variables ?? {},
       ).find(([, variable]) => variable.name === 'calledThem');
       if (entry === undefined) throw new Error('the attribute was not created');
       return entry;
@@ -1455,12 +1480,17 @@ describe('what a network composer lets the participant build', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
-    // In the codebook, because that is where a type lives — under the id the
-    // HOST minted, which is the id the stage then has to be naming.
-    const created = Object.entries(harness.hostCodebook().edge ?? {}).find(
+    // In the stage's draft of the codebook, because that is where a type
+    // lives while the stage is being edited — under the id the EDITOR minted
+    // (nothing is created at the host until the stage is saved), which is the
+    // id the stage then has to be naming.
+    const created = Object.entries(harness.editorCodebook().edge ?? {}).find(
       ([, definition]) => definition.name === 'livesWith',
     );
     expect(created).toBeDefined();
+    expect(
+      Object.values(harness.hostCodebook().edge ?? {}).map(({ name }) => name),
+    ).not.toContain('livesWith');
     // ...and drawable here, because that is what the researcher asked for:
     // finding it in a list that has just grown is not the answer.
     const saved = await harness.submit();
@@ -1471,6 +1501,11 @@ describe('what a network composer lets the participant build', () => {
         label: { 'en-US': 'livesWith' },
       },
     ]);
+    // The type reaches the protocol with the stage that draws it, under the
+    // id the stage names.
+    expect(harness.hostCodebook().edge?.[created?.[0] ?? '']?.name).toBe(
+      'livesWith',
+    );
   });
 
   /**
@@ -1498,7 +1533,9 @@ describe('what a network composer lets the participant build', () => {
       await screen.findByText('A type named "Person" already exists.'),
     ).toBeInTheDocument();
     expect(
-      Object.values(harness.hostCodebook().edge ?? {}).map(({ name }) => name),
+      Object.values(harness.editorCodebook().edge ?? {}).map(
+        ({ name }) => name,
+      ),
     ).toEqual(['family_edge', 'knows']);
   });
 });
@@ -2110,11 +2147,16 @@ describe('the rules the composer’s quick-add attribute has to satisfy', () => 
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
+    // Part of the stage's draft: the editor's codebook carries the rule at
+    // once, the protocol's only once the stage is saved.
     await waitFor(() =>
       expect(
-        harness.hostCodebook().node?.person?.variables?.composerName,
+        harness.editorCodebook().node?.person?.variables?.composerName,
       ).toMatchObject({ validation: { required: true } }),
     );
+    expect(
+      harness.hostCodebook().node?.person?.variables?.composerName,
+    ).not.toMatchObject({ validation: { required: true } });
   });
 
   it('creates an attribute that has to be answered', async () => {
@@ -2127,7 +2169,7 @@ describe('the rules the composer’s quick-add attribute has to satisfy', () => 
     );
 
     const created = await waitFor(() => {
-      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const variables = harness.editorCodebook().node?.person?.variables ?? {};
       const entry = Object.values(variables).find(
         (variable) => variable.name === 'nickname',
       );
@@ -2485,13 +2527,25 @@ describe('the rules a composer field authors', () => {
     );
     await harness.user.selectOptions(targets, 'bornOn');
 
-    // The codebook as the PROTOCOL holds it: the rule is on the attribute, so
-    // nothing short of that is the rule having been saved.
+    // Saved with the field: a dialog's codebook changes stay with the stage
+    // when it is saved (and would be taken back if it were cancelled).
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    // The codebook as the EDITOR shows it: the rule is on the attribute, so
+    // nothing short of that is the rule having been written — into the
+    // stage's draft, which is where a rule authored in a stage editor goes.
     await waitFor(() =>
       expect(
-        harness.hostCodebook().node?.person?.variables?.metOn,
+        harness.editorCodebook().node?.person?.variables?.metOn,
       ).toHaveProperty('validation', { sameAs: 'bornOn' }),
     );
+    expect(
+      harness.hostCodebook().node?.person?.variables?.metOn,
+    ).not.toHaveProperty('validation', { sameAs: 'bornOn' });
+    expect(await harness.submit()).not.toBeNull();
+    expect(
+      harness.hostCodebook().node?.person?.variables?.metOn,
+    ).toHaveProperty('validation', { sameAs: 'bornOn' });
   });
 
   /**

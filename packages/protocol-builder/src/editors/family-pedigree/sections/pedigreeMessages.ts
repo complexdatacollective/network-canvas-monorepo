@@ -37,9 +37,9 @@ export const familyPedigreeMessages = defineMessages({
   symbolsHint: {
     id: 'protocolBuilder.pedigree.symbolsHint',
     defaultMessage:
-      'A person’s symbol comes from the shape of the person type in the codebook. Choosing an option changes that shape straight away, not when you save this stage, and changes how people of this type are drawn throughout the interview.',
+      'A person’s symbol comes from the shape of the person type in the codebook. Choosing an option changes that shape when you save this stage, and changes how people of this type are drawn throughout the interview.',
     description:
-      'Guidance under the symbols choice. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is written to the codebook at once, so it is not undone by cancelling the stage, and it applies on every stage that draws this node type.',
+      'Guidance under the symbols choice. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is saved to the codebook with the stage, so cancelling the stage undoes it, and once saved it applies on every stage that draws this node type.',
   },
   symbolsNoSource: {
     id: 'protocolBuilder.pedigree.symbolsNoSource',

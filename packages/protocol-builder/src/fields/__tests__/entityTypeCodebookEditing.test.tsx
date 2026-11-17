@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { onlineManager } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -44,11 +43,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 /**
  * An attribute another editor adds to the held type, on the host only.
  *
- * `receiveCodebookUpdate` would render it here first, which is the state after
- * the window this is about: written straight to the store, the change is on
- * the host when the lock is taken and had not reached this editor's last
- * render — which is the only state a write computed before the lock can be
- * caught in.
+ * `receiveCodebookUpdate` would render it here first; written straight to the
+ * store, the change is on the host when the stage is saved and had not reached
+ * this editor's last render — which is the only state a held change computed
+ * before the save can be caught in.
  */
 const collaboratorAddsFamilyMemberVariable = (
   harness: ReturnType<typeof renderStageEditor>,
@@ -95,12 +93,12 @@ describe('making and changing a codebook type from the control that names it', (
   });
 
   /**
-   * And the way out works: the type is written to the codebook under that
-   * section's own lock, and the stage is pointed at it afterwards as an
-   * ordinary unsaved change — which is why the stage itself is never
-   * submitted.
+   * And the way out works: the type is made part of the stage's draft with an
+   * id minted here, and the stage is pointed at it as an ordinary unsaved
+   * change. Nothing is sent to the host until the stage is saved, which is
+   * what creates the type.
    */
-  it('writes the new type to the codebook and selects it on the stage', async () => {
+  it('holds the new type with the stage and selects it on the stage', async () => {
     const harness = renderStageEditor(pedigreeOnAProtocolWithNoNodeTypes());
     await harness.opened();
     clearNodeTypes(harness);
@@ -128,80 +126,17 @@ describe('making and changing a codebook type from the control that names it', (
       await screen.findByRole('radio', { name: 'relative' }),
     ).toBeChecked();
     expect(
-      Object.values(harness.hostCodebook().node ?? {}).map(({ name }) => name),
+      Object.values(harness.editorCodebook().node ?? {}).map(
+        ({ name }) => name,
+      ),
     ).toContain('relative');
-    // The stage is not part of that edit: a stage just pointed at a brand-new
-    // type has no slots filled in for it, and a host keeping the stored
-    // protocol valid would be right to refuse the pair as one write.
+    // Held, not written: the protocol learns of the type when the stage is
+    // saved, and nothing was sent to the host while it was only a draft.
+    expect(
+      Object.values(harness.hostCodebook().node ?? {}).map(({ name }) => name),
+    ).not.toContain('relative');
     expect(submit).not.toHaveBeenCalled();
   });
-
-  /**
-   * The new type is shown by its name from the moment the stage holds it.
-   *
-   * The create's answer and the revision it published reach the editor
-   * separately, and in Architect the answer arrives first. Selecting the type
-   * on that answer alone showed the new id as a type "no longer in the
-   * codebook" until the revision caught up. Holding every revision back is
-   * that window, kept open for as long as the test needs to look at it.
-   *
-   * And offline as well as online: Architect's host is in the tab, so a
-   * create succeeds with the network down, and the read that follows it must
-   * not wait for the network to come back.
-   */
-  it.each([
-    { connection: 'online', online: true },
-    { connection: 'offline', online: false },
-  ])(
-    'names the new type on the stage before its revision has arrived ($connection)',
-    async ({ online }) => {
-      onTestFinished(() => onlineManager.setOnline(true));
-      let holding = false;
-      const heldBack: unknown[] = [];
-      const harness = renderStageEditor({
-        ...pedigreeOnAProtocolWithNoNodeTypes(),
-        adapter: (host) => ({
-          ...host.adapter,
-          rpcStream: (tag, payload, onChunk, signal) =>
-            host.adapter.rpcStream(
-              tag,
-              payload,
-              (chunk) => {
-                if (holding) heldBack.push(chunk);
-                else onChunk(chunk);
-              },
-              signal,
-            ),
-        }),
-      });
-      await harness.opened();
-      clearNodeTypes(harness);
-
-      await harness.user.click(
-        await screen.findByRole('button', { name: 'Create new node type' }),
-      );
-      await harness.user.type(
-        await screen.findByRole('textbox', { name: 'Node type name' }),
-        'relative',
-      );
-      holding = true;
-      onlineManager.setOnline(online);
-      await harness.user.click(
-        screen.getByRole('button', { name: 'Save entity' }),
-      );
-      await harness.user.click(
-        await screen.findByRole('button', { name: 'Choose the node type' }),
-      );
-
-      expect(
-        await screen.findByRole('radio', { name: 'relative' }),
-      ).toBeChecked();
-      expect(heldBack).not.toHaveLength(0);
-      expect(
-        screen.queryByText(/no longer in the codebook/),
-      ).not.toBeInTheDocument();
-    },
-  );
 
   /**
    * The dialog is closed by being turned off, not by being taken away.
@@ -273,10 +208,11 @@ describe('making and changing a codebook type from the control that names it', (
    * Changing the type the stage already holds, from the same control.
    *
    * The editor opens on what the codebook holds rather than on an empty draft,
-   * because this is an edit of something that exists — and the write goes
-   * through the codebook section, not through the stage.
+   * because this is an edit of something that exists — and saving it joins the
+   * stage's draft rather than the protocol, which only the stage's save
+   * writes to.
    */
-  it('opens the held type in the codebook editor, and writes what it changed', async () => {
+  it('opens the held type in the codebook editor, and holds what it changed with the stage', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
       sections: <SubjectSection entity="node" />,
@@ -305,7 +241,7 @@ describe('making and changing a codebook type from the control that names it', (
 
     await waitFor(() =>
       expect(
-        Object.values(harness.hostCodebook().node ?? {}).map(
+        Object.values(harness.editorCodebook().node ?? {}).map(
           ({ name: typeName }) => typeName,
         ),
       ).toContain('relative'),
@@ -314,6 +250,13 @@ describe('making and changing a codebook type from the control that names it', (
     expect(
       await screen.findByRole('radio', { name: 'relative' }),
     ).toBeChecked();
+    // Held with the stage: the protocol keeps the old name until it is saved,
+    // and gets the new one with it.
+    expect(harness.hostCodebook().node?.family_member?.name).toBe(
+      'family member',
+    );
+    await harness.submit();
+    expect(harness.hostCodebook().node?.family_member?.name).toBe('relative');
   });
 
   /**
@@ -443,12 +386,13 @@ describe('making and changing a codebook type from the control that names it', (
    * A type is more than the properties this form shows.
    *
    * `variables` belongs to the attribute editors, not to this one, so the
-   * write has to lay the form's own properties over the document the LOCK
-   * hands back rather than over the one the editor read — or an attribute a
-   * collaborator added while the save was taking the lock is deleted by a
-   * researcher who only changed a name.
+   * type this dialog held changes only the properties the form shows. A
+   * collaborator who adds an attribute to the type while the rename is held
+   * in the stage's draft must not have it deleted by a researcher who only
+   * changed a name: the stage's save lays the held properties over the
+   * section as the protocol holds it by then.
    */
-  it('keeps an attribute a collaborator added while the write was taking the lock', async () => {
+  it('keeps an attribute a collaborator added while the rename was held', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
       sections: <SubjectSection entity="node" />,
@@ -464,19 +408,23 @@ describe('making and changing a codebook type from the control that names it', (
     const name = await editor.findByRole('textbox', { name: 'Node type name' });
     await harness.user.clear(name);
     await harness.user.type(name, 'relative');
+    await harness.user.click(
+      editor.getByRole('button', { name: 'Save entity' }),
+    );
+    await waitFor(() =>
+      expect(harness.editorCodebook().node?.family_member?.name).toBe(
+        'relative',
+      ),
+    );
 
     collaboratorAddsFamilyMemberVariable(harness, 'shoe_size', {
       name: 'shoe_size',
       type: 'number',
       component: 'Number',
     });
-    // Synchronous, so the save is raised from the render that has not seen the
-    // collaborator's attribute yet — the window the lock exists to close.
-    fireEvent.click(editor.getByRole('button', { name: 'Save entity' }));
+    await harness.submit();
 
-    await waitFor(() =>
-      expect(harness.hostCodebook().node?.family_member?.name).toBe('relative'),
-    );
+    expect(harness.hostCodebook().node?.family_member?.name).toBe('relative');
     expect(
       Object.keys(harness.hostCodebook().node?.family_member?.variables ?? {}),
     ).toContain('shoe_size');

@@ -350,6 +350,7 @@ function buildHandlers(
         principal,
         entries,
         input.interfaceText,
+        input.codebook,
       );
       if (outcome.status === 'notLockHolder') {
         return yield* new NotLockHolder({
@@ -425,6 +426,8 @@ function buildHandlers(
         input.position,
         entries,
         input.interfaceText,
+        input.codebook,
+        principal,
       );
       if (outcome.status === 'exists') {
         return yield* new SectionExists({ sectionId: outcome.sectionId });

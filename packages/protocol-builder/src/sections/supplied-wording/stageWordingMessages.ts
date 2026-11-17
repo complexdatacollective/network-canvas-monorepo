@@ -41,13 +41,6 @@ export const stageWordingMessages = defineMessages({
     description:
       'Body of the dialog asking a researcher to confirm switching off a stage’s Wording section. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages.',
   },
-  switchOffSharedDescription: {
-    id: 'protocolBuilder.stageWording.switchOffSharedDescription',
-    defaultMessage:
-      'The wording you changed in this section goes back to Network Canvas’s wording, in every language. That includes the wording shared by every stage of this kind, which changes on all of those stages straight away.',
-    description:
-      'Body of the dialog asking a researcher to confirm switching off a stage’s “Customize built-in wording” section when they changed some of the words every stage of the same type shares. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages; the shared words change on every such stage, and at once rather than when the stage is saved.',
-  },
   switchOffConfirm: {
     id: 'protocolBuilder.stageWording.switchOffConfirm',
     defaultMessage: 'Use Network Canvas’s wording',

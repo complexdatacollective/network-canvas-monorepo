@@ -749,18 +749,19 @@ describe('a prompt whose attribute’s options a stage manages', () => {
  * (`sections/CategoricalBinPrompts/PromptFields.tsx:399-410`).
  */
 describe('the rules the follow-up attribute’s answers have to satisfy', () => {
-  it('edits them under the follow-up picker, and writes them', async () => {
-    const harness = renderStageEditor(
-      binningPeople({
-        id: 'prompt-a',
-        text: { 'en-US': 'What kind of contact?' },
-        variable: 'contactType',
-        otherVariable: 'relationship_to_ego',
-        otherOptionLabel: { 'en-US': 'Other' },
-        otherVariablePrompt: { 'en-US': 'Which?' },
-      }),
-    );
+  const followUpRow = () =>
+    binningPeople({
+      id: 'prompt-a',
+      text: { 'en-US': 'What kind of contact?' },
+      variable: 'contactType',
+      otherVariable: 'relationship_to_ego',
+      otherOptionLabel: { 'en-US': 'Other' },
+      otherVariablePrompt: { 'en-US': 'Which?' },
+    });
 
+  const switchRequiredOn = async (
+    harness: StageEditorHarness,
+  ): Promise<ReturnType<typeof within>> => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
@@ -777,11 +778,75 @@ describe('the rules the follow-up attribute’s answers have to satisfy', () => 
     await harness.user.click(
       await dialog.findByRole('switch', { name: 'Required answer' }),
     );
+    return dialog;
+  };
 
-    await waitFor(() =>
-      expect(
-        harness.hostCodebook().node?.person?.variables?.relationship_to_ego,
-      ).toMatchObject({ validation: { required: true } }),
+  const followUpValidation = (codebook: StageEditorHarness['hostCodebook']) =>
+    Reflect.get(
+      codebook().node?.person?.variables?.relationship_to_ego ?? {},
+      'validation',
     );
+
+  /**
+   * A rule changed in the row dialog is part of the stage's draft at once —
+   * so the section behind the dialog reads it — stays there when the row is
+   * saved, and reaches the protocol only when the stage is.
+   */
+  it('edits them under the follow-up picker, and keeps them with the stage draft when the row is saved', async () => {
+    const harness = renderStageEditor(followUpRow());
+
+    await switchRequiredOn(harness);
+    expect(Object.keys(harness.stagedCodebook())).toEqual([
+      'codebook:node:person',
+    ]);
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    expect(
+      Reflect.get(
+        harness.editorCodebook().node?.person?.variables?.relationship_to_ego ??
+          {},
+        'validation',
+      ),
+    ).toEqual({ required: true });
+    expect(followUpValidation(harness.hostCodebook)).toBeUndefined();
+
+    expect(await harness.submit()).not.toBeNull();
+    expect(followUpValidation(harness.hostCodebook)).toEqual({
+      required: true,
+    });
+  });
+
+  /**
+   * Cancelling the row takes the rule back out of the stage's draft, so
+   * neither the editor nor, after saving the stage, the protocol holds it.
+   */
+  it('drops them when the row is cancelled', async () => {
+    const harness = renderStageEditor(followUpRow());
+
+    const dialog = await switchRequiredOn(harness);
+    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+    // Unsaved changes in the row ask before they are discarded.
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(harness.stagedCodebook()).toEqual({});
+    expect(
+      Reflect.get(
+        harness.editorCodebook().node?.person?.variables?.relationship_to_ego ??
+          {},
+        'validation',
+      ),
+    ).toBeUndefined();
+
+    expect(await harness.submit()).not.toBeNull();
+    expect(followUpValidation(harness.hostCodebook)).toBeUndefined();
   });
 });

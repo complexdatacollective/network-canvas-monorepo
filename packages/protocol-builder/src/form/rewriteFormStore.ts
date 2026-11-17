@@ -10,7 +10,7 @@ import {
   setValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
 
-import type { StageFormDraft } from '../stageDocument.ts';
+import { holdsStagedCodebook, type StageFormDraft } from '../stageDocument.ts';
 import { safeFieldPath } from './documentFromSubmission.ts';
 import { isFieldValue } from './fieldValue.ts';
 import type { StageFormStoreApi } from './stageEditorContext.ts';
@@ -28,7 +28,9 @@ function heldFields(storeApi: StageFormStoreApi): HeldField[] {
   const { fields, dormantValues } = storeApi.getState();
   return [...fields, ...dormantValues].flatMap(([name, field]) => {
     const path = field.path ?? safeFieldPath(name);
-    return path === null || path.length === 0 ? [] : [{ name, path, field }];
+    return path === null || path.length === 0 || holdsStagedCodebook(path[0])
+      ? []
+      : [{ name, path, field }];
   });
 }
 

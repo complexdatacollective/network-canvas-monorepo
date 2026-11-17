@@ -82,3 +82,11 @@ export function parseSectionId(id: string): SectionRef {
   }
   throw new UnknownSectionIdError(id);
 }
+
+/** Whether a section is part of the codebook: a node type, an edge type, or the ego's. */
+export function isCodebookSectionId(id: string): boolean {
+  const { kind } = parseSectionId(id);
+  return (
+    kind === 'codebookNode' || kind === 'codebookEdge' || kind === 'codebookEgo'
+  );
+}
