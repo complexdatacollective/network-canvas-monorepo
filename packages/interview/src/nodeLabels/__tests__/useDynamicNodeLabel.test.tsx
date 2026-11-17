@@ -112,6 +112,7 @@ function storeWith(
             title: { en: 'Add a place' },
             fields: [
               {
+                id: 'field-L114',
                 variable: asEntityAttributeReference('nameVar'),
                 prompt: { en: 'Name' },
               },
