@@ -134,13 +134,28 @@ const scalarKey =
 /** A member's `id`. */
 const idOf = scalarKey('id');
 
-/** An answer option's `value` (it has no id): text, a number, true or false. */
-const valueOf: MemberKey = (member) =>
-  idOf(member) === null ? scalarKey('value')(member) : null;
+const isScalar = (value: unknown): boolean =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean';
 
 /**
- * An answer option's label, as far as `written` words it: the same key for
- * an option whose label holds every translation `written` gives, unchanged.
+ * What a member without an id refers to: everything it holds besides its
+ * label that is text, a number, or true or false. An answer option's
+ * `value`, the edge `type` a narrative preset displays, the `variable` it
+ * highlights or a roster sorts by.
+ */
+const referenceOf: MemberKey = (member) => {
+  if (!isJsonObject(member) || idOf(member) !== null) return null;
+  const held = Object.entries(member)
+    .filter(([key, value]) => key !== 'label' && isScalar(value))
+    .toSorted(([a], [b]) => a.localeCompare(b));
+  return held.length === 0 ? null : JSON.stringify(held);
+};
+
+/**
+ * A member's label, as far as `written` words it: the same key for
+ * a member whose label holds every translation `written` gives, unchanged.
  */
 const labelAsWordedBy =
   (written: unknown): MemberKey =>
@@ -161,14 +176,15 @@ const labelAsWordedBy =
  * For each member of `written`, the member of `current` it replaces, or
  * undefined when there is no telling; nothing is carried over to it.
  *
- * A member with an `id` replaces the one with that id. An answer option has
- * none, so it replaces the option whose label it leaves as it was, and
- * failing that the option with its `value`: a fix that rewords an option
- * keeps its value, and one that recodes the values keeps the labels, whose
- * translations belong to the label. Each of these counts only when exactly
- * one member on each side answers to it. Members that have neither are
- * paired by position, when no member of either array can be told apart and
- * both are the same length.
+ * A member with an `id` replaces the one with that id. Others (an answer
+ * option, an entry in a narrative preset or a roster's sorting) have none.
+ * Such a member replaces the one whose label it leaves as it was, and
+ * failing that the one that refers to the same thing (`referenceOf`): a fix
+ * that rewords a label keeps what it refers to, and one that recodes the
+ * values keeps the labels, whose translations belong to the label. Each of
+ * these counts only when exactly one member on each side answers to it.
+ * Members that hold nothing to tell them apart are paired by position, when
+ * that is so of every member of both arrays and both are the same length.
  */
 const replacedMembers = (
   written: readonly unknown[],
@@ -207,9 +223,9 @@ const replacedMembers = (
   };
   pairBy(() => idOf);
   pairBy((member) => labelAsWordedBy(member));
-  pairBy(() => valueOf);
+  pairBy(() => referenceOf);
   const told = [...written, ...current].some(
-    (member) => idOf(member) !== null || valueOf(member) !== null,
+    (member) => idOf(member) !== null || referenceOf(member) !== null,
   );
   if (!told && written.length === current.length) return [...current];
   return replaced;

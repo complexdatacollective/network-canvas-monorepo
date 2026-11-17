@@ -200,6 +200,39 @@ describe('a fix that replaces more than one text', () => {
     expect(JSON.stringify(options)).toContain('{"en":"Every day"}');
   });
 
+  it('keeps each translation with what its entry refers to when entries are reordered and reworded', () => {
+    const protocol = withOptions([
+      { label: { en: 'Friends', fr: 'Amis' }, type: 'friend' },
+      { label: { en: 'Family', fr: 'Famille' }, type: 'family' },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Relatives' }, type: 'family' },
+        { label: { en: 'Close friends' }, type: 'friend' },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Relatives', fr: 'Famille' }, type: 'family' },
+        { label: { en: 'Close friends', fr: 'Amis' }, type: 'friend' },
+      ],
+    });
+  });
+
+  it('carries nothing over to an entry reworded and pointed at something else', () => {
+    const protocol = withOptions([
+      { label: { en: 'Friends', fr: 'Amis' }, type: 'friend' },
+      { label: { en: 'Family', fr: 'Famille' }, type: 'family' },
+    ]);
+    expect(
+      JSON.stringify(
+        rewritten(protocol, [
+          { label: { en: 'Colleagues' }, type: 'colleague' },
+          { label: { en: 'Family' }, type: 'family' },
+        ]),
+      ),
+    ).toContain('{"en":"Colleagues"}');
+  });
+
   it('carries nothing over to options that share a value', () => {
     const protocol = withOptions([
       { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
