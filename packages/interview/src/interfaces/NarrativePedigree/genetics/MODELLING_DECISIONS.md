@@ -364,3 +364,248 @@ means _"insufficient data to place this person on a sex-linked lineage,"_ not
 
 **Decision.** **Accept as-is; document the data-completeness dependence and the
 inclusive gamete fallback. No new runtime signal.**
+
+---
+
+## 6. X-linked recessive: a female recorded as affected passes risk to her children
+
+### What the engine does
+
+In `computeXLinkedRecessive` (`patterns/xLinked.ts`), every female recorded as
+affected is a starting point for the same downward walk that a carrier female
+starts (step 3): her daughters get `atRiskCarrier`, her sons get
+`atRiskAffected`, and the walk continues down through her daughters exactly as
+it does from a carrier. Her own status stays `affected`. On its own, her being
+affected adds nothing about her parents; it can count as one side of her mother
+in the rule of §7. An affected
+person of uncertain sex is not a starting point, because neither the male nor
+the female rule can be applied to them. Every write goes through the precedence lattice
+(§4), so a stronger status reached by another rule is kept: a daughter who also
+has an affected father stays `obligateCarrier`, and a child recorded as affected
+stays `affected`. A child of uncertain sex is left `unknown` and the walk does
+not continue through them (§5b).
+
+### Rationale
+
+**Her children are at risk, never certain.** A woman recorded as affected by an
+X-linked recessive condition may be homozygous, or she may be a manifesting
+heterozygote (for example through skewed X-inactivation). A homozygous mother
+passes a disease X to every child; a manifesting heterozygote passes it to about
+half. The recorded pedigree cannot tell these apart, so the engine assumes
+neither and gives her children the at-risk statuses a carrier mother's children
+get. This under-states the homozygous case rather than over-claiming certainty
+for the heterozygous one, in line with the conservative stance of §5.
+
+**On its own, she adds nothing about her parents.** A homozygous daughter implies a carrier mother
+and an affected father, but a manifesting heterozygote implies only that one
+parent passed a disease X, and a de novo variant implies neither. Because the
+engine does not decide which of these applies, it adds no inference upward from
+her alone. Her parents still receive any status the other rules give them, and
+§7 counts her for her mother when her father is recorded and the condition also
+shows elsewhere.
+
+**The earlier behaviour was an oversight.** The carrier-female helpers return
+early for anyone in the affected set, so an affected woman was never a seed for
+step 3. Her children were marked only when her own mother happened to be a
+derived carrier, because the walk then reached her as a daughter and continued
+through her. The same woman's children therefore got statuses in one family (an
+affected woman whose mother has two affected sons) and none in another (an
+affected woman whose only recorded affected relative is her father), and a lone
+affected woman's children got none at all.
+
+### Decision
+
+**Seed the step-3 walk from every affected female, with at-risk statuses for
+her children and no upward inference from her own status alone.** The status of her
+children no longer depends on whether her mother happened to be marked a
+carrier.
+
+---
+
+## 7. X-linked recessive: a woman with the condition on two sides of her is an obligate carrier
+
+### What the engine does
+
+Step 2b of `computeXLinkedRecessive` marks a woman who is not recorded affected
+`obligateCarrier` when the condition shows on two sides of her and no one man
+could explain all of it through his daughters. A side is one of these:
+
+- the line of one of her genetic children;
+- her genetic mother's family.
+
+A son's line is the son, if he is affected. A daughter's line is the daughter,
+if she is affected, together with the lines of the daughter's own children. Her
+mother's family is her mother, if affected; her mother's affected father; the
+lines of her mother's other genetic children, counted the same way; and her
+mother's own mother's family, recursively.
+
+Two conditions apply to every female a route passes down through: the woman's
+daughter, but equally her sister, aunt, niece or cousin.
+
+- Nothing passes through her when another genetic parent of hers is affected,
+  because that parent's X would explain everything below her. The same holds
+  when her father is not recorded and an affected man is recorded as the father
+  of another of her mother's children, since he may be her father too.
+- If she is recorded affected and has no recorded male genetic parent other
+  than her mother, nothing passes through her and she is not evidence herself.
+  A female who only links to affected people further down needs no recorded
+  father.
+
+Both sides must rest on at least two different affected people, so one person
+reached along two routes in a consanguineous family is not enough.
+
+For every affected person on a side the engine also collects the men who could
+explain them: the fathers of each female on the route down to that person, the
+person included when she is female. The route starts at the woman's child, or,
+on her mother's side, at the mother's other child (the woman's sister, aunt and
+so on). An affected son of hers and her mother's affected father have no such
+men. Her affected mother has her own father, counted the same way. A female
+with no recorded father stands for a man unrecorded as the father of her
+mother's children and for every recorded father of her mother's other children,
+because her father may be any of them. When one man appears for every affected
+person, he alone could explain all of the sides, and she is not marked. So her daughters by one father give her nothing without a
+further side, and neither do her daughters with no recorded father when they
+could be his. Where an affected person is reached along more than one route,
+any man on any of those routes counts for them.
+
+A set of people already on the current route stops the walk, so loops terminate
+and the woman's own line is never counted as part of her mother's family. Only
+biological and donor links count, on every link of a route: an adoptive, social
+or gestational link breaks it, and a son conceived with a donor egg belongs to
+the egg donor's lines. A person whose sex is uncertain gives no evidence and the
+walk does not pass through them. The existing rule for daughters of an affected
+father, the at-risk markings of step 2, the step-3 walk and the precedence
+lattice (§4) are unchanged. A woman marked here passes the statuses an obligate
+carrier's children get through step 3.
+
+The rule judges each woman separately. The women between her and the affected
+relatives on her two sides are usually marked by the same rule, but not always.
+The mother of two sisters by one father, or of a sister by a recorded father and
+one with none, is not marked on their lines alone, and neither are those sisters
+when their affected children have one father. Nor is a woman marked through a
+daughter whose father, or a man who may be her father, is affected.
+
+### Rationale
+
+For a woman with one affected son, the only alternatives are that she carries
+the disease X or that it arose as a new variant in him. The two-affected-sons
+rule already accepts that two independent findings make the new-variant
+alternative negligible. Any finding in her mother's family raises her prior of
+carrying from near zero to a substantial fraction, and the affected son then
+leaves only a coincident new variant as the alternative, so the same reasoning
+applies. On `main` an affected son was corroborated only by a second affected
+son or by an affected brother who shares her mother. This rule is the general
+form of those two and adds the cases they left out: an affected mother, an
+affected maternal uncle, an affected sister sharing her mother, a carrier
+mother, an affected grandson through a daughter.
+
+This reverses an earlier refusal to count an affected maternal grandfather.
+That refusal treated his transmission to the woman as at most one half, and
+ignored that her affected son makes the alternative a coincidence. Affected men
+reached only through an unbroken male line (the woman's father's relatives, or
+a male-line great-grandfather) still give nothing, because no X passes from
+father to son.
+
+One event in a man explains everything that reaches the affected people through
+his daughters without the woman carrying anything: he may be a germline mosaic
+(new X-linked variants arise mostly in the male germline), or he may be affected
+and not recorded as such. That is the kind of single event the rule sets aside
+only when a second, separate one would also be needed. So a man who appears on
+the route to every affected person cancels the rule. This covers the woman's
+daughters by one father, and also her own daughter and her sister's daughter
+when one man fathered both. Daughters with no recorded father may share one
+father, and that father may be one of the recorded men; in practice he is
+usually the same partner, not entered a second time. The engine assumes that a father left
+out of the record of one mother's children is not the same man as a father left
+out of another mother's, so those two never cancel each other.
+
+An affected daughter counts for her mother only inside this rule. On its own she
+adds nothing (§6), and a single line with any number of affected people in it is
+still one side. An affected female whose father is not recorded is not counted
+and stops everything below her, because her father is too likely to be the
+source: an affected man passes his X to every daughter. A female who only links
+to affected people further down is different. An unrecorded father who is
+affected would explain her line, but requiring a recorded father there would
+withhold the status from common families (an affected cousin through a maternal
+aunt, an affected nephew through a sister) where the father is simply missing
+from the pedigree.
+
+### Recorded limits
+
+The relaxation for a female who only links further down can mark a woman whose
+evidence an unrecorded affected man would explain. An affected man recorded as
+the father of another child of that female's mother blocks her line, so this
+applies only to a man who is missing from the pedigree. In a family of a
+grandmother, a grandfather, their affected son, their daughter (the woman), her
+daughter with no recorded father and that daughter's affected son, the woman is
+marked, although her daughter's unrecorded father could explain the grandson.
+This is accepted because the father of a woman whose son is affected is usually
+known to the family and recorded when he is affected himself, and requiring him
+would withhold the status from the much commoner families where he is simply
+missing.
+
+A woman more than two generations above the affected males gets no status when
+her only sides are the lines of two daughters by one father, each heading a
+line the rule marks. Her daughters are marked obligate, but their father could
+explain both lines, and the at-risk markings of step 2 reach only the mother and
+maternal grandmother of an affected male. This is unchanged from `main`.
+
+A man's affected daughters by another woman are not on any of her sides, so they
+cannot show that he is the likely source of her own affected daughter. In a
+family of a woman, her partner, their affected son and affected daughter, and
+the partner's affected daughter by another woman, she is marked, although his
+other daughter makes him the likely source of their daughter. The rule still
+holds as stated: no one event explains every affected person, and two separate
+events are needed whether or not she carries it.
+
+With related couples, one man can still account for everything in a few shapes,
+because the engine collects the men below the woman's mother and the possible
+fathers of an affected mother, but not the men above them. In a family of a
+grandmother; her daughter, the woman's mother, with no recorded father; a man
+who fathered another child of the grandmother; the woman and her affected
+brother, both children of the mother; and the woman's affected daughter by that
+man, the woman is marked, although one event in him, who may be her mother's
+father, explains both affected people. The same holds with an affected sister
+whose father is recorded in place of the brother, with the man recorded as the
+mother's father, and with an affected mother whose own mother he fathered. This
+arises only when one man has children with related women, here a woman and her
+granddaughter or great-granddaughter.
+
+One conservative case remains. An affected female with no recorded father gives
+nothing, so an affected sister with an unrecorded father does not corroborate an
+affected son.
+
+### Decision
+
+**Mark a woman an obligate carrier when the condition shows on two sides of her,
+through genetic links only, on two different affected people, unless one man on
+the route to every affected person could explain them all.**
+
+---
+
+## 8. Focus highlighting: a carrier daughter of an affected father
+
+### What the code does
+
+When a person is focused, `transmittingParents` in `highlight.ts` decides which
+parents the highlighted path climbs through. Under X-linked recessive, for a
+female who carries the condition and whose father is affected (or inferred
+affected), the path runs only through her father, whatever her mother's status.
+If she is herself recorded affected, the path runs through both parents.
+
+### Rationale
+
+Her carrier status is fully explained by the X her affected father gave her.
+Earlier code also kept the maternal line when the mother was affected, on the
+assumption that an affected woman has two copies and passes a disease X to
+every child. Section 6 does not make that assumption, so the exception was
+removed. A daughter recorded affected may have received a copy from each
+parent, so her mother's line is kept as a possible source.
+
+### Decision
+
+**For a carrier daughter of an affected father, highlight only the paternal
+path unless she is herself affected.** A woman made an obligate carrier by §7
+through her mother's family has her path run through her mother. If her father
+is also affected, her path runs only through him, as for any carrier daughter of
+an affected father.
