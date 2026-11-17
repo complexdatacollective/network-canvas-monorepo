@@ -43,6 +43,40 @@ function status(map: Map<string, Status>, id: string): Status {
   return map.get(id) ?? 'unknown';
 }
 
+type Link = [string, string] | [string, string, string];
+
+/**
+ * Runs the engine over `[parent, child, kind?]` links (kind defaults to
+ * `biological`) and returns every person's status.
+ */
+function everyStatus(
+  people: Record<string, Sex>,
+  links: Link[],
+  affected: string[],
+): Record<string, Status> {
+  const resolveSex = sexResolver(people);
+  const graph = buildGraph(
+    Object.keys(people).map(makeNode),
+    links.map(([source, target, kind = 'biological']) => ({
+      source,
+      target,
+      kind,
+    })),
+    resolveSex,
+  );
+  const result = computeXLinkedRecessive(graph, new Set(affected), resolveSex);
+  return Object.fromEntries(
+    Object.keys(people).map((id) => [id, status(result, id)]),
+  );
+}
+
+/** Biological links from every parent to every child. */
+function bio(parents: string[], children: string[]): Link[] {
+  return parents.flatMap((parent) =>
+    children.map((child): Link => [parent, child]),
+  );
+}
+
 describe('computeXLinkedRecessive', () => {
   describe('obligate: every daughter of an affected male', () => {
     /**
@@ -987,44 +1021,6 @@ describe('computeXLinkedRecessive', () => {
   });
 
   describe('obligate: the condition appears on two sides of her', () => {
-    type Link = [string, string] | [string, string, string];
-
-    /**
-     * Runs the engine over `[parent, child, kind?]` links (kind defaults to
-     * `biological`) and returns every person's status.
-     */
-    function everyStatus(
-      people: Record<string, Sex>,
-      links: Link[],
-      affected: string[],
-    ): Record<string, Status> {
-      const resolveSex = sexResolver(people);
-      const graph = buildGraph(
-        Object.keys(people).map(makeNode),
-        links.map(([source, target, kind = 'biological']) => ({
-          source,
-          target,
-          kind,
-        })),
-        resolveSex,
-      );
-      const result = computeXLinkedRecessive(
-        graph,
-        new Set(affected),
-        resolveSex,
-      );
-      return Object.fromEntries(
-        Object.keys(people).map((id) => [id, status(result, id)]),
-      );
-    }
-
-    /** Biological links from every parent to every child. */
-    function bio(parents: string[], children: string[]): Link[] {
-      return parents.flatMap((parent) =>
-        children.map((child): Link => [parent, child]),
-      );
-    }
-
     describe('an affected son and an affected mother', () => {
       /**
        *        mother (affected) --- father
@@ -1971,7 +1967,7 @@ describe('computeXLinkedRecessive', () => {
             ['sonA', 'sonB'],
           ),
         ).toEqual({
-          grandmother: 'unknown',
+          grandmother: 'atRiskCarrier',
           grandfather: 'unknown',
           A: 'atRiskCarrier',
           B: 'atRiskCarrier',
@@ -1995,7 +1991,7 @@ describe('computeXLinkedRecessive', () => {
             ['daughterA', 'daughterB'],
           ),
         ).toEqual({
-          grandmother: 'unknown',
+          grandmother: 'atRiskCarrier',
           grandfather: 'unknown',
           A: 'obligateCarrier',
           B: 'obligateCarrier',
@@ -2131,7 +2127,7 @@ describe('computeXLinkedRecessive', () => {
             ['nephew', 'grandson'],
           ),
         ).toEqual({
-          mother: 'unknown',
+          mother: 'atRiskCarrier',
           father: 'unknown',
           woman: 'atRiskCarrier',
           sister: 'atRiskCarrier',
@@ -2433,7 +2429,7 @@ describe('computeXLinkedRecessive', () => {
             ['mother', 'son'],
           ),
         ).toEqual({
-          grandmother: 'unknown',
+          grandmother: 'atRiskCarrier',
           grandfather: 'unknown',
           mother: 'affected',
           woman: 'obligateCarrier',
@@ -2460,7 +2456,7 @@ describe('computeXLinkedRecessive', () => {
             ['mother', 'daughter'],
           ),
         ).toEqual({
-          grandmother: 'unknown',
+          grandmother: 'atRiskCarrier',
           mother: 'affected',
           woman: 'obligateCarrier',
           partner: 'unknown',
@@ -2514,9 +2510,9 @@ describe('computeXLinkedRecessive', () => {
             ['grandfather', 'mother', 'son'],
           ),
         ).toEqual({
-          grandmother: 'unknown',
+          grandmother: 'atRiskCarrier',
           grandfather: 'affected',
-          uncle: 'unknown',
+          uncle: 'atRiskAffected',
           mother: 'affected',
           woman: 'obligateCarrier',
           partner: 'unknown',
@@ -2734,7 +2730,7 @@ describe('computeXLinkedRecessive', () => {
             ['grandson1', 'grandson2'],
           ),
         ).toEqual({
-          mother: 'unknown',
+          mother: 'atRiskCarrier',
           father: 'unknown',
           woman: 'atRiskCarrier',
           partner: 'unknown',
@@ -2978,7 +2974,7 @@ describe('computeXLinkedRecessive', () => {
             ['grandparent', 'son'],
           ),
         ).toEqual({
-          grandmother: 'unknown',
+          grandmother: 'atRiskCarrier',
           grandparent: 'affected',
           mother: 'atRiskCarrier',
           woman: 'atRiskCarrier',
@@ -3139,6 +3135,231 @@ describe('computeXLinkedRecessive', () => {
           sister: 'atRiskCarrier',
           son: 'affected',
         });
+      });
+    });
+  });
+
+  describe('possible-carrier status climbs the whole maternal line', () => {
+    it('marks every woman above a single affected male, with her sisters and brothers', () => {
+      expect(
+        everyStatus(
+          {
+            greatGreatGrandmother: 'female',
+            greatGrandmother: 'female',
+            greatGrandfather: 'male',
+            greatAunt: 'female',
+            greatUncle: 'male',
+            grandmother: 'female',
+            grandfather: 'male',
+            mother: 'female',
+            father: 'male',
+            son: 'male',
+          },
+          [
+            ...bio(['greatGreatGrandmother'], ['greatGrandmother']),
+            ...bio(
+              ['greatGrandmother', 'greatGrandfather'],
+              ['grandmother', 'greatAunt', 'greatUncle'],
+            ),
+            ...bio(['grandmother', 'grandfather'], ['mother']),
+            ...bio(['mother', 'father'], ['son']),
+          ],
+          ['son'],
+        ),
+      ).toEqual({
+        greatGreatGrandmother: 'atRiskCarrier',
+        greatGrandmother: 'atRiskCarrier',
+        greatGrandfather: 'unknown',
+        greatAunt: 'atRiskCarrier',
+        greatUncle: 'atRiskAffected',
+        grandmother: 'atRiskCarrier',
+        grandfather: 'unknown',
+        mother: 'atRiskCarrier',
+        father: 'unknown',
+        son: 'affected',
+      });
+    });
+
+    it('marks the mother of two obligate carriers by one father, and her own mother', () => {
+      /**
+       *                 herMother
+       *                     |
+       *      partner --- woman
+       *            |            |
+       *   daughter1 -- husband1   daughter2 -- husband2
+       *        |                       |
+       *   granddaughter1 -- spouse1   granddaughter2 -- spouse2
+       *        |                       |
+       *   boy1 (affected)         boy2 (affected)
+       *
+       *   One event in the partner could explain both lines, so the woman is
+       *   not an obligate carrier, but she may be the source of both.
+       */
+      expect(
+        everyStatus(
+          {
+            herMother: 'female',
+            woman: 'female',
+            partner: 'male',
+            daughter1: 'female',
+            daughter2: 'female',
+            husband1: 'male',
+            husband2: 'male',
+            granddaughter1: 'female',
+            granddaughter2: 'female',
+            spouse1: 'male',
+            spouse2: 'male',
+            boy1: 'male',
+            boy2: 'male',
+          },
+          [
+            ...bio(['herMother'], ['woman']),
+            ...bio(['woman', 'partner'], ['daughter1', 'daughter2']),
+            ...bio(['daughter1', 'husband1'], ['granddaughter1']),
+            ...bio(['daughter2', 'husband2'], ['granddaughter2']),
+            ...bio(['granddaughter1', 'spouse1'], ['boy1']),
+            ...bio(['granddaughter2', 'spouse2'], ['boy2']),
+          ],
+          ['boy1', 'boy2'],
+        ),
+      ).toEqual({
+        herMother: 'atRiskCarrier',
+        woman: 'atRiskCarrier',
+        partner: 'unknown',
+        daughter1: 'obligateCarrier',
+        daughter2: 'obligateCarrier',
+        husband1: 'unknown',
+        husband2: 'unknown',
+        granddaughter1: 'obligateCarrier',
+        granddaughter2: 'obligateCarrier',
+        spouse1: 'unknown',
+        spouse2: 'unknown',
+        boy1: 'affected',
+        boy2: 'affected',
+      });
+    });
+
+    it('does not climb above a woman whose recorded father is affected', () => {
+      // The daughter's disease X came from her father, so nothing points to
+      // her mother or her mother's family.
+      expect(
+        everyStatus(
+          {
+            wifeMother: 'female',
+            wifeSister: 'female',
+            wife: 'female',
+            affectedFather: 'male',
+            daughter: 'female',
+            husband: 'male',
+            grandson: 'male',
+          },
+          [
+            ...bio(['wifeMother'], ['wife', 'wifeSister']),
+            ...bio(['affectedFather', 'wife'], ['daughter']),
+            ...bio(['daughter', 'husband'], ['grandson']),
+          ],
+          ['affectedFather', 'grandson'],
+        ),
+      ).toEqual({
+        wifeMother: 'unknown',
+        wifeSister: 'unknown',
+        wife: 'unknown',
+        affectedFather: 'affected',
+        daughter: 'obligateCarrier',
+        husband: 'unknown',
+        grandson: 'affected',
+      });
+    });
+
+    it('still climbs above a woman with no recorded father when an affected man fathered her half-brother', () => {
+      // He may be her father, which keeps her mother from being an obligate
+      // carrier, but her mother may still be the source.
+      expect(
+        everyStatus(
+          {
+            grandmother: 'female',
+            herMother: 'female',
+            affectedMan: 'male',
+            halfBrother: 'male',
+            woman: 'female',
+            partner: 'male',
+            son1: 'male',
+            son2: 'male',
+          },
+          [
+            ...bio(['grandmother'], ['herMother']),
+            ...bio(['herMother'], ['woman']),
+            ...bio(['herMother', 'affectedMan'], ['halfBrother']),
+            ...bio(['woman', 'partner'], ['son1', 'son2']),
+          ],
+          ['affectedMan', 'son1', 'son2'],
+        ),
+      ).toEqual({
+        grandmother: 'atRiskCarrier',
+        herMother: 'atRiskCarrier',
+        affectedMan: 'affected',
+        halfBrother: 'atRiskAffected',
+        woman: 'obligateCarrier',
+        partner: 'unknown',
+        son1: 'affected',
+        son2: 'affected',
+      });
+    });
+
+    it('climbs above an affected woman whose father is affected too', () => {
+      // She may have a copy from each parent, so her mother stays a possible
+      // source.
+      expect(
+        everyStatus(
+          {
+            grandmother: 'female',
+            grandfather: 'male',
+            mother: 'female',
+            father: 'male',
+            son: 'male',
+          },
+          [
+            ...bio(['grandmother', 'grandfather'], ['mother']),
+            ...bio(['mother', 'father'], ['son']),
+          ],
+          ['grandfather', 'mother', 'son'],
+        ),
+      ).toEqual({
+        grandmother: 'atRiskCarrier',
+        grandfather: 'affected',
+        mother: 'affected',
+        father: 'unknown',
+        son: 'affected',
+      });
+    });
+
+    it('climbs through an affected woman on the way up', () => {
+      expect(
+        everyStatus(
+          {
+            greatGrandmother: 'female',
+            greatGrandfather: 'male',
+            grandmother: 'female',
+            grandfather: 'male',
+            mother: 'female',
+            father: 'male',
+            son: 'male',
+          },
+          [
+            ...bio(['greatGrandmother', 'greatGrandfather'], ['grandmother']),
+            ...bio(['grandmother', 'grandfather'], ['mother']),
+            ...bio(['mother', 'father'], ['son']),
+          ],
+          ['grandmother', 'son'],
+        ),
+      ).toEqual({
+        greatGrandmother: 'atRiskCarrier',
+        greatGrandfather: 'unknown',
+        grandmother: 'affected',
+        grandfather: 'unknown',
+        mother: 'obligateCarrier',
+        father: 'unknown',
+        son: 'affected',
       });
     });
   });
