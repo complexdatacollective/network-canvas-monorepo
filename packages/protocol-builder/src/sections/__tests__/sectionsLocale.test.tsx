@@ -89,7 +89,7 @@ describe('the shared stage-editor sections in Spanish', () => {
     renderInSpanish();
 
     expect(
-      screen.getByRole('switch', { name: 'Filtro de la etapa' }),
+      screen.getByRole('switch', { name: 'Filtrar la red' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('switch', { name: 'Lógica de salto' }),

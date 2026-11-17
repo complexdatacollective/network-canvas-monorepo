@@ -302,7 +302,7 @@ const CASES: readonly EditorCase[] = [
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
@@ -339,7 +339,7 @@ const CASES: readonly EditorCase[] = [
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
@@ -375,7 +375,7 @@ const CASES: readonly EditorCase[] = [
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
@@ -427,7 +427,7 @@ const CASES: readonly EditorCase[] = [
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
@@ -478,7 +478,7 @@ const CASES: readonly EditorCase[] = [
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
