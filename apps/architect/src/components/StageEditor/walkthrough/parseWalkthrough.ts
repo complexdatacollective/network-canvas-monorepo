@@ -9,6 +9,11 @@ export type WalkthroughStep = Readonly<{
   blocks: readonly WalkthroughBlock[];
   section?: string;
   field?: string;
+  /**
+   * A control outside the stage's sections, such as `preview`, named by the
+   * `data-walkthrough-control` attribute it carries.
+   */
+  control?: string;
   scene?: string;
 }>;
 
@@ -17,7 +22,7 @@ export type Walkthrough = Readonly<{
   steps: readonly WalkthroughStep[];
 }>;
 
-const DIRECTIVES = ['section', 'field', 'scene'] as const;
+const DIRECTIVES = ['section', 'field', 'control', 'scene'] as const;
 type Directive = (typeof DIRECTIVES)[number];
 
 const isDirective = (value: string): value is Directive =>

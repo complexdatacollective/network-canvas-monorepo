@@ -176,7 +176,7 @@ function WalkthroughPanel({
     return () => setWalkthroughSection(undefined);
   }, [collapsed, sectionId]);
 
-  const target = useStepTarget(sectionId, step?.field);
+  const target = useStepTarget(sectionId, step?.field, step?.control);
   const isLast = index === steps.length - 1;
 
   // Minimised, the walkthrough sits in the editor's toolbar instead.
@@ -492,6 +492,18 @@ type Box = Readonly<{
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), Math.max(min, max));
 
+/** Whether `element` sits in a fixed box, which the page scrolls past. */
+function isFixed(element: HTMLElement): boolean {
+  for (
+    let node: HTMLElement | null = element;
+    node;
+    node = node.parentElement
+  ) {
+    if (getComputedStyle(node).position === 'fixed') return true;
+  }
+  return false;
+}
+
 /** The element that scrolls `element` into view: its nearest scrolling box. */
 function scrollerOf(element: HTMLElement): HTMLElement {
   for (let node = element.parentElement; node; node = node.parentElement) {
@@ -742,18 +754,22 @@ function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
         const now = section.getBoundingClientRect();
         // Into the middle of the room the panel leaves visible, or, for a
         // section taller than that, with its top at the top of the room.
-        const scroller = scrollerOf(section);
+        // A control on a fixed bar, such as the toolbar, is always in view.
+        const scroller = isFixed(section) ? null : scrollerOf(section);
         const want =
           now.height > room.height
             ? room.top
             : room.top + (room.height - now.height) / 2;
-        const to = clamp(
-          scroller.scrollTop + now.top - want,
-          0,
-          scroller.scrollHeight - scroller.clientHeight,
-        );
-        const by = to - scroller.scrollTop;
-        if (by !== 0) scroll = { scroller, to };
+        const to =
+          scroller === null
+            ? 0
+            : clamp(
+                scroller.scrollTop + now.top - want,
+                0,
+                scroller.scrollHeight - scroller.clientHeight,
+              );
+        const by = scroller === null ? 0 : to - scroller.scrollTop;
+        if (scroller !== null && by !== 0) scroll = { scroller, to };
         const there = {
           top: now.top - by,
           left: now.left,
@@ -780,28 +796,62 @@ function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
   );
 
   /**
-   * Fits the panel to a change in its step's height or in the room, with the
-   * bottom kept still, and keeps the ring on its section as the page moves.
-   * Not during a step change, which has already planned for both.
+   * Keeps the panel fitted and placed as its step, its section or the window
+   * changes size, and the ring on its section as the page moves. Not during a
+   * step change, which has already planned for all of it.
    */
   useEffect(() => {
+    /** The panel's height for the step on screen, and its room. */
+    const measure = () => {
+      const rect = card.current?.getBoundingClientRect();
+      const room = bounds.current?.getBoundingClientRect();
+      const tall = naturalHeight();
+      if (rect === undefined || room === undefined || tall === undefined) {
+        return undefined;
+      }
+      return { rect, room, tall: Math.min(tall, Math.floor(room.height)) };
+    };
+    /**
+     * Keeps the panel beside its section as the window or the section
+     * changes size, moving to another side if that one has more room now.
+     * Straight there, so it stays with the section while the window is
+     * dragged to a new size.
+     */
+    const reanchor = () => {
+      const section = targetNow.current;
+      if (moving.current || section === null) return false;
+      if (besideOf.current !== section) return false;
+      const now = measure();
+      if (now === undefined) return false;
+      const spot = besideTarget(
+        section.getBoundingClientRect(),
+        now.room,
+        now.rect.width,
+        now.tall,
+      );
+      void moveTogether({ ...spot, tall: now.tall }, false);
+      return true;
+    };
+    /**
+     * Fits a panel that is not beside a section to a change in its step's
+     * height or in its room, with the bottom kept still.
+     */
     const refit = () => {
       if (moving.current) return;
-      const rect = card.current?.getBoundingClientRect();
-      const tall = naturalHeight();
-      if (rect === undefined || tall === undefined) return;
-      const room = bounds.current?.getBoundingClientRect();
-      const toTall = Math.min(tall, Math.floor(room?.height ?? tall));
-      if (
-        toTall === Math.round(height.get()) &&
-        rect.bottom <= (room?.bottom ?? rect.bottom)
-      ) {
-        return;
-      }
+      const now = measure();
+      if (now === undefined) return;
+      const { rect, room, tall } = now;
+      const inside =
+        rect.left >= room.left &&
+        rect.right <= room.right &&
+        rect.top - (tall - rect.height) >= room.top &&
+        rect.bottom <= room.bottom;
+      if (tall === Math.round(height.get()) && inside) return;
       change((animated) =>
         moveTogether(
-          { left: rect.left, top: rect.bottom - toTall, tall: toTall },
-          animated,
+          { left: rect.left, top: rect.bottom - tall, tall },
+          // A change of room is the window being resized: keep up with it.
+          animated && tall !== Math.round(height.get()),
         ),
       );
     };
@@ -810,20 +860,29 @@ function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
       if (moving.current || section === null) return;
       setRing(section.getBoundingClientRect());
     };
-    const observer = new ResizeObserver(() => {
+    // The window or the section changing size re-places the panel beside
+    // the section; the step's own height changing keeps the bottom still.
+    const fit = () => {
+      if (!reanchor()) refit();
+      follow();
+    };
+    const steps = new ResizeObserver(() => {
       refit();
       follow();
     });
-    for (const part of [header, content, footer, bounds]) {
-      if (part.current !== null) observer.observe(part.current);
+    for (const part of [header, content, footer]) {
+      if (part.current !== null) steps.observe(part.current);
     }
+    const observer = new ResizeObserver(fit);
+    if (bounds.current !== null) observer.observe(bounds.current);
     if (target !== null) observer.observe(target);
     window.addEventListener('scroll', follow, { capture: true, passive: true });
-    window.addEventListener('resize', follow);
+    window.addEventListener('resize', fit);
     return () => {
+      steps.disconnect();
       observer.disconnect();
       window.removeEventListener('scroll', follow, { capture: true });
-      window.removeEventListener('resize', follow);
+      window.removeEventListener('resize', fit);
     };
   }, [change, height, moveTogether, naturalHeight, setRing, target]);
 
@@ -836,6 +895,9 @@ function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
       if (from?.closest('button, a') != null) return;
       // Otherwise moving the pointer across the page selects its text.
       event.preventDefault();
+      // Put somewhere by hand, the panel stops following its section until
+      // the next step about another one.
+      besideOf.current = null;
       dragControls.start(event);
     },
     [dragControls],
@@ -923,12 +985,21 @@ function closeOnEscape(event: KeyboardEvent) {
   closeWalkthrough();
 }
 
-/** The element a step points at: a section, or a field inside it. */
+/**
+ * The element a step points at: a section, a field inside it, or a control
+ * outside the sections, such as the toolbar's Preview button.
+ */
 function useStepTarget(
   sectionId: string | undefined,
   field: string | undefined,
+  control: string | undefined,
 ): HTMLElement | null {
   const getSnapshot = useCallback(() => {
+    if (control !== undefined) {
+      return document.querySelector<HTMLElement>(
+        `[data-walkthrough-control="${CSS.escape(control)}"]`,
+      );
+    }
     if (sectionId === undefined) return null;
     const section = document.getElementById(sectionId);
     if (section === null || field === undefined) return section;
@@ -937,7 +1008,7 @@ function useStepTarget(
         `[data-field-name="${CSS.escape(field)}"]`,
       ) ?? section
     );
-  }, [field, sectionId]);
+  }, [control, field, sectionId]);
 
   return useSyncExternalStore(subscribeToPage, getSnapshot, () => null);
 }

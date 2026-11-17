@@ -461,6 +461,7 @@
     </main>
     <datalist id="values-section"></datalist>
     <datalist id="values-field"></datalist>
+    <datalist id="values-control"></datalist>
 
     <script type="module">
       import { DIRECTIVES, parse, problems, serialize } from '/format.mjs';
@@ -468,11 +469,14 @@
       const DIRECTIVE_LABELS = {
         section: 'Highlight section',
         field: 'Highlight field',
+        control: 'Highlight control',
         scene: 'Animation',
       };
       const DIRECTIVE_HINTS = {
         section: "The editor section's title, e.g. Participant prompts",
         field: 'A form field name inside that section',
+        control:
+          'A control outside the sections, e.g. preview (the toolbar Preview button)',
         scene: 'An animation from scenes/sceneRegistry.ts',
       };
 
@@ -554,6 +558,7 @@
         const scene = directive('scene');
         const section = directive('section');
         const field = directive('field');
+        const control = directive('control');
         const preview = h('div', {
           'className': 'preview',
           'aria-label': 'Preview',
@@ -563,12 +568,16 @@
           h('div', { className: 'eyebrow' }, `Step ${position} in this file`),
           h('h3', {}, step.title || 'Untitled step'),
         );
-        if (section || field) {
+        if (section || field || control) {
           preview.append(
             h(
               'div',
               { className: 'target' },
-              [section && `Rings “${section}”`, field && `field “${field}”`]
+              [
+                section && `Rings “${section}”`,
+                field && `field “${field}”`,
+                control && `Rings the ${control} control`,
+              ]
                 .filter(Boolean)
                 .join(' · '),
             ),
@@ -628,7 +637,7 @@
             .filter((file) => file.path.startsWith('shared/'))
             .map(link),
         );
-        for (const name of ['section', 'field']) {
+        for (const name of ['section', 'field', 'control']) {
           $(`#values-${name}`).replaceChildren(
             ...(meta.values[name] ?? []).map((value) => h('option', { value })),
           );

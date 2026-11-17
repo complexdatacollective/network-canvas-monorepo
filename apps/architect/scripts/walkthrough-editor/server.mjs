@@ -46,7 +46,12 @@ const sceneNames = () => {
 };
 
 const meta = () => {
-  const values = { section: new Set(), field: new Set() };
+  const values = {
+    section: new Set(),
+    field: new Set(),
+    // The controls outside the sections that carry data-walkthrough-control.
+    control: new Set(['preview']),
+  };
   const shared = {};
   const files = [];
   for (const path of listFiles()) {

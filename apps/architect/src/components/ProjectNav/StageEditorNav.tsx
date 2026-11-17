@@ -231,6 +231,8 @@ export const StageEditorToolbar = ({
         >
           <ToolbarButton
             className={`${previewButtonClassName} relative rounded-e-none! focus-visible:z-10`}
+            // The walkthrough's Preview step points at this button.
+            data-walkthrough-control="preview"
             disabled={isOpeningPreview || isStageInvalid}
             icon={
               isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
