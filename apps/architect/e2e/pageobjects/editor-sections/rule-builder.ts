@@ -4,7 +4,7 @@ import { chooseAttribute } from './variables.js';
 
 // The rule builder `@codaco/protocol-builder` ships (`fields/RuleSetField.tsx`,
 // `rules/RuleEditorDialog.tsx`), mounted by the Skip logic section (ego rules
-// available) and by the Stage filter section (no ego rules). Facts read off
+// available) and by the Filter network section (no ego rules). Facts read off
 // that source:
 // - Add buttons: each rule set names its one add control, because a stage
 //   editor can mount both at once (`addRuleLabel` — see ADD_RULE_BUTTONS).
@@ -95,7 +95,7 @@ async function selectAttribute(
   );
 }
 
-/** Authors one rule in the Stage filter section's builder. */
+/** Authors one rule in the Filter network section's builder. */
 export async function addFilterRule(
   host: Locator,
   spec: FilterRuleSpec,

@@ -1137,7 +1137,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "筛选规则隐藏了已配置的值",
   "protocolBuilder.networkFilter.rulesHint": "创建一条或多条规则，以筛选此阶段显示的内容。",
   "protocolBuilder.networkFilter.rulesLabel": "筛选规则",
-  "protocolBuilder.networkFilter.title": "阶段筛选",
+  "protocolBuilder.networkFilter.title": "筛选网络",
   "protocolBuilder.nodeLabel.textPlaceholder": "撰写标签，并通过工具栏插入值和逻辑…",
   "protocolBuilder.nodePanels.addLabel": "添加新面板",
   "protocolBuilder.nodePanels.addTitle": "创建面板",

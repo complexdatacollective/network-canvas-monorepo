@@ -4552,8 +4552,8 @@
     "description": "Label of the rule builder inside the stage-filter section, where a researcher writes the rules that decide what reaches the stage."
   },
   "protocolBuilder.networkFilter.title": {
-    "defaultMessage": "Stage filter",
-    "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview."
+    "defaultMessage": "Filter network",
+    "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on, written as an instruction (“filter the network”). A stage is one step of an interview."
   },
   "protocolBuilder.nodeLabel.textPlaceholder": {
     "defaultMessage": "Write the label, and insert values and logic from the toolbar…",
@@ -5001,7 +5001,7 @@
   },
   "protocolBuilder.pedigree.egoHint": {
     "defaultMessage": "The interface sets this boolean attribute to true on the participant’s own person, and leaves it blank on everyone else. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Because it is blank rather than false for everyone else, filter on “is not” true to leave the participant out.",
-    "description": "Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Stage filter section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there."
+    "description": "Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Filter network section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there."
   },
   "protocolBuilder.pedigree.egoLabel": {
     "defaultMessage": "Participant marker",

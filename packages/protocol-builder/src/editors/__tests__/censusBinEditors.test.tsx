@@ -296,7 +296,7 @@ const CASES: readonly EditorCase[] = [
     editor: dyadCensusStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
@@ -333,7 +333,7 @@ const CASES: readonly EditorCase[] = [
     editor: tieStrengthCensusStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
@@ -368,7 +368,7 @@ const CASES: readonly EditorCase[] = [
     editor: oneToManyDyadCensusStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Node availability',
       'Skip logic',
@@ -420,7 +420,7 @@ const CASES: readonly EditorCase[] = [
     editor: ordinalBinStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Placing nodes',
       'Skip logic',
@@ -469,7 +469,7 @@ const CASES: readonly EditorCase[] = [
     editor: categoricalBinStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Placing nodes',
       // The fixture's bin is placed by dragging and lets nodes stay

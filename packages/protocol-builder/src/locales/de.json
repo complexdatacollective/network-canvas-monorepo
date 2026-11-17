@@ -1137,7 +1137,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "Filterregeln blenden konfigurierte Werte aus",
   "protocolBuilder.networkFilter.rulesHint": "Erstellen Sie eine oder mehrere Regeln, um zu filtern, was in diesem Abschnitt angezeigt wird.",
   "protocolBuilder.networkFilter.rulesLabel": "Filterregeln",
-  "protocolBuilder.networkFilter.title": "Abschnittsfilter",
+  "protocolBuilder.networkFilter.title": "Netzwerk filtern",
   "protocolBuilder.nodeLabel.textPlaceholder": "Schreiben Sie die Bezeichnung und fügen Sie über die Werkzeugleiste Werte und Logik ein …",
   "protocolBuilder.nodePanels.addLabel": "Neues Panel hinzufügen",
   "protocolBuilder.nodePanels.addTitle": "Panel erstellen",

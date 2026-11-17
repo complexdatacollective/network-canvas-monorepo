@@ -1137,7 +1137,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "قواعد التصفية تخفي قيمًا مُعدّة",
   "protocolBuilder.networkFilter.rulesHint": "أنشئ قاعدة واحدة أو أكثر لتصفية ما يُعرض في هذه المرحلة.",
   "protocolBuilder.networkFilter.rulesLabel": "قواعد التصفية",
-  "protocolBuilder.networkFilter.title": "عامل تصفية المرحلة",
+  "protocolBuilder.networkFilter.title": "تصفية الشبكة",
   "protocolBuilder.nodeLabel.textPlaceholder": "اكتب التسمية، وأدرج القيم والمنطق من شريط الأدوات…",
   "protocolBuilder.nodePanels.addLabel": "إضافة لوحة جديدة",
   "protocolBuilder.nodePanels.addTitle": "إنشاء لوحة",

@@ -48,7 +48,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: sociogramStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Background',
       'Node layout',
@@ -71,7 +71,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: narrativeStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Visualization presets',
       'Background',
       'Narrative behaviors',
@@ -130,7 +130,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     // questions are written.
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Map access',
       'Map layers',
       'Prompt collection',

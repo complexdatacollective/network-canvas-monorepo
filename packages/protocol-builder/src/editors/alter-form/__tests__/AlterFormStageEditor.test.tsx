@@ -107,7 +107,7 @@ describe('the editor for a form about each person', () => {
 
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Stage filter')
+        harness.outline().find((section) => section.title === 'Filter network')
           ?.state,
       ).not.toBe('Switched off'),
     );

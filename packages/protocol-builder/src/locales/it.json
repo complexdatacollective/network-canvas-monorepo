@@ -1137,7 +1137,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "Le regole di filtro nascondono valori configurati",
   "protocolBuilder.networkFilter.rulesHint": "Crea una o più regole per filtrare ciò che viene mostrato in questa fase.",
   "protocolBuilder.networkFilter.rulesLabel": "Regole di filtro",
-  "protocolBuilder.networkFilter.title": "Filtro della fase",
+  "protocolBuilder.networkFilter.title": "Filtra la rete",
   "protocolBuilder.nodeLabel.textPlaceholder": "Scrivi l’etichetta e inserisci valori e logica dalla barra degli strumenti…",
   "protocolBuilder.nodePanels.addLabel": "Aggiungi un nuovo pannello",
   "protocolBuilder.nodePanels.addTitle": "Crea un pannello",

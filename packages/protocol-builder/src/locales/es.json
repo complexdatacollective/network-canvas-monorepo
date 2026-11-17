@@ -1137,7 +1137,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "Las reglas de filtrado ocultan valores configurados",
   "protocolBuilder.networkFilter.rulesHint": "Crea una o varias reglas para filtrar lo que se muestra en esta etapa.",
   "protocolBuilder.networkFilter.rulesLabel": "Reglas de filtrado",
-  "protocolBuilder.networkFilter.title": "Filtro de la etapa",
+  "protocolBuilder.networkFilter.title": "Filtrar la red",
   "protocolBuilder.nodeLabel.textPlaceholder": "Escribe la etiqueta e inserta valores y lógica desde la barra de herramientas…",
   "protocolBuilder.nodePanels.addLabel": "Añadir nuevo panel",
   "protocolBuilder.nodePanels.addTitle": "Crear panel",
