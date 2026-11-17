@@ -421,6 +421,50 @@ describe('an "If" on a condition', () => {
     ).toBe('{if2, select, no {two} other {three}}');
   });
 
+  // An "If" is a select, and ICU reads `#` as a plural's number only
+  // directly inside that plural's version: a count pill pasted into a row
+  // of an "If" within the plural keeps its value.
+  it('prints a count pill in a row of an "If" within its plural as the value', () => {
+    const inIf = ifBlockAttributes(
+      [
+        {
+          argument: 'if1',
+          key: 'yes',
+          content: [{ type: 'token', attrs: { id: countTokenId('n') } }],
+        },
+      ],
+      [{ type: 'text', text: 'none' }],
+      block,
+    );
+    const document = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'versions',
+              attrs: {
+                label: 'n',
+                meta: { argument: 'n', type: 'plural' },
+                versions: [
+                  {
+                    key: 'other',
+                    label: 'other',
+                    content: [{ type: 'versions', attrs: inIf }],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
+      '{n, plural, other {{if1, select, yes {{n}} other {none}}}}',
+    );
+  });
+
   it('leaves a switch that is not an "If" as the versions it has', () => {
     const { attrs, versions } = versionsOf('{kind, select, a {x} other {y}}');
     expect(versions.map((version) => version.key)).toEqual(['a', 'other']);

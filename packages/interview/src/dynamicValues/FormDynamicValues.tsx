@@ -42,7 +42,9 @@ const storableAttributes = (
   const stored: Record<string, VariableValue> = {};
   for (const [name, value] of Object.entries(attributes)) {
     const parsed = VariableValueSchema.safeParse(value);
-    if (parsed.success) stored[name] = parsed.data;
+    // Written as its own property: an attribute's id is any string a
+    // protocol holds, `__proto__` among them.
+    if (parsed.success) writeOwnProperty(stored, name, parsed.data);
   }
   return stored;
 };

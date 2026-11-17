@@ -353,19 +353,49 @@ export function useStageDynamicValues(): Pick<
  * if the dialog saves. So when the dialog closes, saved or cancelled, the
  * stage keeps only the bindings its text uses: those of the stage itself, and
  * of the row an enclosing dialog has open.
+ *
+ * The rules an "If" tests are kept on the stage too, and editing them in the
+ * dialog changes them there at once. The row that already tests them stays
+ * on the stage whether or not the dialog saves, so a dialog that closes
+ * without saving puts back the rules the stage held when it opened. The
+ * dialog calls the function this answers with when it saves.
  */
-export function useReleaseRowBindings(open: boolean) {
+export function useReleaseRowBindings(open: boolean): () => void {
   const stageForm = useContext(StageEditorFormContext);
   const enclosingRow = useContext(EditedRowContext);
-  const wasOpen = useRef(open);
+  const wasOpen = useRef(false);
+  const saved = useRef(false);
+  const conditionsAtOpen = useRef<Readonly<Record<string, unknown>>>({});
 
   useEffect(() => {
+    const opened = !wasOpen.current && open;
     const closed = wasOpen.current && !open;
     wasOpen.current = open;
-    if (!closed || stageForm === null || stageForm.readOnly) return;
-    const { [DYNAMIC_VALUES_PATH]: bindings, ...text } = stageFieldsOf(
-      stageForm.liveDraft(),
-    );
+    if (stageForm === null || stageForm.readOnly) return;
+    if (opened) {
+      saved.current = false;
+      const held = stageFieldsOf(stageForm.liveDraft())[CONDITIONS_PATH];
+      conditionsAtOpen.current = isRecord(held) ? held : {};
+      return;
+    }
+    if (!closed) return;
+    const {
+      [DYNAMIC_VALUES_PATH]: bindings,
+      [CONDITIONS_PATH]: conditions,
+      ...text
+    } = stageFieldsOf(stageForm.liveDraft());
+    if (!saved.current) {
+      const now = isRecord(conditions) ? conditions : {};
+      const restored = { ...now, ...conditionsAtOpen.current };
+      if (!isEqual(restored, now)) {
+        stageForm.storeApi
+          .getState()
+          .setFieldValue(
+            CONDITIONS_PATH,
+            Object.keys(restored).length === 0 ? undefined : restored,
+          );
+      }
+    }
     if (!isRecord(bindings)) return;
     const inUse = dynamicValueNamesUsedIn(text);
     if (enclosingRow !== null) {
@@ -380,6 +410,10 @@ export function useReleaseRowBindings(open: boolean) {
         kept.length === 0 ? undefined : Object.fromEntries(kept),
       );
   }, [open, stageForm, enclosingRow]);
+
+  return useCallback(() => {
+    saved.current = true;
+  }, []);
 }
 
 /**

@@ -453,7 +453,7 @@ export function RowDialog({
     dialogSize,
   } = useRowListConfig();
   const session = useRowEditorSession(item, index, isNewItem, expand);
-  useReleaseRowBindings(session?.open === true);
+  const rowSaved = useReleaseRowBindings(session?.open === true);
 
   // `ArrayField` withdraws its save handler while the list is not accepting
   // changes, and there is no editor to render then: a disabled or read-only
@@ -498,6 +498,9 @@ export function RowDialog({
           : { row: edited };
         if ('refused' in outcome) return outcome.refused;
 
+        // Said before the row is handed over, which is what closes the
+        // dialog: rules edited here stay with the row that now tests them.
+        rowSaved();
         onSave(normalize ? normalize(outcome.row) : outcome.row);
         return undefined;
       }}

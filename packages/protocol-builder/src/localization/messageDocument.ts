@@ -542,11 +542,13 @@ const pieceNode = (
     const nodesOf = (version: RichTextVersion | undefined) =>
       version === undefined
         ? []
-        : messageNodesOf(
+        : // An "If" is a select, where `#` is literal text: a count pill in
+          // one of its rows keeps its value as an ordinary placeholder.
+          messageNodesOf(
             lineDocument(version.content),
             format,
             true,
-            pluralArgument,
+            undefined,
           );
     let otherwise: MessageNode[] = nodesOf(
       listed.find(({ key }) => key === 'other'),

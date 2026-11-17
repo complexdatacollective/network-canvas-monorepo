@@ -405,3 +405,114 @@ describe('a value inserted in default-language text that is translated', () => {
     );
   });
 });
+
+/**
+ * The rules an "If" tests are kept on the stage, and editing them in a row's
+ * dialog changes them there at once. The row that already tests them stays
+ * on the stage whether or not the dialog saves.
+ */
+describe('rules edited in a row dialog', () => {
+  const RULES = [
+    {
+      id: 'ties',
+      type: 'edge',
+      options: { count: 'GREATER_THAN', value: 0 },
+    },
+  ];
+
+  const openCensusWithAnIf = () => {
+    const { type, fields } = loadFixtureStage('dyad-census-1');
+    return renderStageEditor({
+      stage: {
+        type,
+        fields: {
+          ...fields,
+          dynamicValues: {
+            linked: { path: '$condition.linked', cases: { yes: true } },
+          },
+          conditions: { linked: { about: 'dyadSource', rules: RULES } },
+          prompts: [
+            {
+              id: 'dyad-census-prompt-1',
+              text: {
+                'en-US': 'Do they{linked, select, yes { still} other {}} talk?',
+              },
+              createEdge: 'knows',
+            },
+          ],
+        },
+      },
+      registry: dyadCensusStageEditor,
+    });
+  };
+
+  /** Opens the prompt, and in it the If's rules, and asks them of the other node. */
+  const askTheOtherNode = async (
+    harness: ReturnType<typeof openCensusWithAnIf>,
+  ) => {
+    await harness.opened();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    const pill = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-versions-pill]');
+      if (found === null) throw new Error('No pill');
+      return found;
+    });
+    await harness.user.click(pill);
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Edit rules' }),
+    );
+    const rules = within(
+      await screen.findByRole('dialog', {
+        name: 'Edit rules',
+      }),
+    );
+    await harness.user.selectOptions(
+      rules.getByRole('combobox', { name: /^Check rules against/ }),
+      'The second node of the pair',
+    );
+    await harness.user.click(rules.getByRole('button', { name: 'Save rules' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'Edit rules',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    return dialog;
+  };
+
+  it('are put back when the dialog is cancelled', async () => {
+    const harness = openCensusWithAnIf();
+    const dialog = await askTheOtherNode(harness);
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+    const discard = screen.queryByRole('button', { name: 'Discard changes' });
+    if (discard !== null) await harness.user.click(discard);
+    await dialogClosed();
+
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Stage name' }),
+      ' again',
+    );
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.conditions).toEqual({
+      linked: { about: 'dyadSource', rules: RULES },
+    });
+  });
+
+  it('are kept when the dialog is saved', async () => {
+    const harness = openCensusWithAnIf();
+    const dialog = await askTheOtherNode(harness);
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await dialogClosed();
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.conditions).toEqual({
+      linked: { about: 'dyadTarget', rules: RULES },
+    });
+  });
+});
