@@ -210,7 +210,7 @@
   "protocolBuilder.codebookEntity.createNodeType": "Criar tipo de nó",
   "protocolBuilder.codebookEntity.customShapesLabel": "Formas personalizadas",
   "protocolBuilder.codebookEntity.dynamicLabel": "Rótulo dinâmico",
-  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Escreva o rótulo exibido em todos os nós deste tipo, no lugar do rótulo que a entrevista escolhe por conta própria. O rótulo pode mostrar os atributos do nó, incluir texto ou emoji e mudar conforme o valor de um atributo ou conforme regras que você definir, como o número de laços que o nó tem. Ele é atualizado ao longo da entrevista.",
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Ative este recurso avançado para definir por conta própria os rótulos dos nós deste tipo, incluindo rótulos que mudam conforme os atributos dos nós ou a estrutura da rede.",
   "protocolBuilder.codebookEntity.dynamicLabelField": "Rótulo",
   "protocolBuilder.codebookEntity.dynamicLabelHint": "Digite texto ou emoji. Use o botão da seringa, ou digite '{', para inserir um atributo ou o rótulo padrão. Use o botão de lógica ao lado dele para inserir um “Se”, cujas regras você define, ou um texto diferente para cada resposta de um atributo. Clique em um elemento inserido para escrever o texto de cada um dos casos dele; também é possível inserir lógica dentro de um caso.",
   "protocolBuilder.codebookEntity.dynamicLabelProblem": "O rótulo não pode ser usado da forma como está escrito. Corrija o problema indicado abaixo dele.",

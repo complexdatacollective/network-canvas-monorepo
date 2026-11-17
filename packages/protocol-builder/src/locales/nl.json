@@ -210,7 +210,7 @@
   "protocolBuilder.codebookEntity.createNodeType": "Knooppunttype aanmaken",
   "protocolBuilder.codebookEntity.customShapesLabel": "Eigen vormen",
   "protocolBuilder.codebookEntity.dynamicLabel": "Dynamisch label",
-  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Schrijf het label dat op elk knooppunt van dit type wordt getoond, in plaats van het label dat het interview zelf kiest. Het label kan de attributen van het knooppunt tonen, tekst of emoji toevoegen en veranderen afhankelijk van de waarde van een attribuut of van regels die je instelt, zoals het aantal relaties van het knooppunt. Het label wordt bijgewerkt naarmate het interview vordert.",
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Schakel deze geavanceerde functie in om de labels van knooppunten van dit type zelf te bepalen, waaronder labels die veranderen op basis van de attributen van knooppunten of de structuur van het netwerk.",
   "protocolBuilder.codebookEntity.dynamicLabelField": "Label",
   "protocolBuilder.codebookEntity.dynamicLabelHint": "Typ tekst of emoji. Gebruik de knop met de injectiespuit, of typ '{', om een attribuut of het standaardlabel in te voegen. Gebruik de logicaknop ernaast om een Als in te voegen, waarvan je de regels instelt, of een aparte formulering voor elk antwoord van een attribuut. Klik op een ingevoegd blokje om de tekst voor elk geval ervan te schrijven; ook binnen een geval kun je logica invoegen.",
   "protocolBuilder.codebookEntity.dynamicLabelProblem": "Het label kan in deze vorm niet worden gebruikt. Los het probleem op dat onder het labelveld wordt getoond.",

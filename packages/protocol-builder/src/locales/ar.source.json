@@ -210,7 +210,7 @@
   "protocolBuilder.codebookEntity.createNodeType": "Create node type",
   "protocolBuilder.codebookEntity.customShapesLabel": "Custom shapes",
   "protocolBuilder.codebookEntity.dynamicLabel": "Dynamic label",
-  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Write the label shown on every node of this type, in place of the label the interview chooses on its own. The label can show the node’s attributes, add text or emoji, and change depending on an attribute’s value or on rules you set, such as how many edges the node has. It updates as the interview goes on.",
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Enable this advanced feature to define node labels yourself for this type, including the ability to define labels that change according to node attributes or network structure.",
   "protocolBuilder.codebookEntity.dynamicLabelField": "Label",
   "protocolBuilder.codebookEntity.dynamicLabelHint": "Type text or emoji. Use the syringe button, or type '{', to insert an attribute or the default label. Use the logic button beside it to insert an If, whose rules you set, or different wording for each of an attribute’s answers. Click an inserted pill to write the text for each of its cases; logic can be inserted inside a case too.",
   "protocolBuilder.codebookEntity.dynamicLabelProblem": "The label cannot be used as it is written. Correct the problem shown beneath it.",

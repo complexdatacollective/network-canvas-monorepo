@@ -210,7 +210,7 @@
   "protocolBuilder.codebookEntity.createNodeType": "创建节点类型",
   "protocolBuilder.codebookEntity.customShapesLabel": "自定义形状",
   "protocolBuilder.codebookEntity.dynamicLabel": "动态标签",
-  "protocolBuilder.codebookEntity.dynamicLabelDescription": "撰写显示在此类型每个节点上的标签，以取代访谈自行选用的标签。标签可以显示节点的属性、添加文本或表情符号，还可以根据某个属性的值或您设置的规则（例如节点有多少条关系）而变化。标签会随着访谈的进行而更新。",
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": "启用此高级功能后，您可以自行定义此类型节点的标签，包括定义随节点属性或网络结构而变化的标签。",
   "protocolBuilder.codebookEntity.dynamicLabelField": "标签",
   "protocolBuilder.codebookEntity.dynamicLabelHint": "输入文本或表情符号。使用注射器按钮或输入“'{'”，可插入属性或默认标签。使用注射器按钮旁边的逻辑按钮，可插入由您设置规则的“如果”，或为某个属性的每个回答插入不同的措辞。点击已插入的胶囊块，即可为其每种情况撰写文本；在某种情况中也可以再插入逻辑。",
   "protocolBuilder.codebookEntity.dynamicLabelProblem": "标签按当前写法无法使用。请更正标签下方显示的问题。",

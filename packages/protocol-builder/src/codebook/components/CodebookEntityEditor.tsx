@@ -267,9 +267,9 @@ export const codebookEntityMessages = defineMessages({
   dynamicLabelDescription: {
     id: 'protocolBuilder.codebookEntity.dynamicLabelDescription',
     defaultMessage:
-      'Write the label shown on every node of this type, in place of the label the interview chooses on its own. The label can show the node’s attributes, add text or emoji, and change depending on an attribute’s value or on rules you set, such as how many edges the node has. It updates as the interview goes on.',
+      'Enable this advanced feature to define node labels yourself for this type, including the ability to define labels that change according to node attributes or network structure.',
     description:
-      'Description under the Dynamic label heading in the node type editor. Attributes are the variables recorded about each node of this type; an edge joins a node to another node.',
+      'Description under the Dynamic label heading in the node type editor, beside the on/off toggle that enables the section. “This type” is the node type being edited. Node attributes are the variables recorded about each node; network structure means how the node is connected to others, such as how many edges it has.',
   },
   dynamicLabelField: {
     id: 'protocolBuilder.codebookEntity.dynamicLabelField',

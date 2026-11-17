@@ -210,7 +210,7 @@
   "protocolBuilder.codebookEntity.createNodeType": "Crear tipo de nodo",
   "protocolBuilder.codebookEntity.customShapesLabel": "Formas personalizadas",
   "protocolBuilder.codebookEntity.dynamicLabel": "Etiqueta dinámica",
-  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Escribe la etiqueta que se muestra en cada nodo de este tipo, en lugar de la que la entrevista elige por sí sola. La etiqueta puede mostrar los atributos del nodo, añadir texto o emojis, y cambiar según el valor de un atributo o según las reglas que definas, como el número de vínculos que tiene el nodo. Se actualiza a medida que avanza la entrevista.",
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Activa esta función avanzada para definir por tu cuenta las etiquetas de los nodos de este tipo, con la posibilidad de definir etiquetas que cambien según los atributos de los nodos o la estructura de la red.",
   "protocolBuilder.codebookEntity.dynamicLabelField": "Etiqueta",
   "protocolBuilder.codebookEntity.dynamicLabelHint": "Escribe texto o emojis. Usa el botón de la jeringa, o escribe '{', para insertar un atributo o la etiqueta predeterminada. Usa el botón de lógica que está a su lado para insertar un «Si», cuyas reglas defines tú, o una redacción distinta para cada respuesta de un atributo. Haz clic en una píldora insertada para escribir el texto de cada uno de sus casos; también se puede insertar lógica dentro de un caso.",
   "protocolBuilder.codebookEntity.dynamicLabelProblem": "La etiqueta no se puede usar tal como está escrita. Corrige el problema que se indica debajo de ella.",

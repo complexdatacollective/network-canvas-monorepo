@@ -210,7 +210,7 @@
   "protocolBuilder.codebookEntity.createNodeType": "Créer un type de nœud",
   "protocolBuilder.codebookEntity.customShapesLabel": "Formes personnalisées",
   "protocolBuilder.codebookEntity.dynamicLabel": "Libellé dynamique",
-  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Rédigez le libellé affiché sur chaque nœud de ce type, à la place de celui que l’entretien choisit de lui-même. Le libellé peut afficher les attributs du nœud, ajouter du texte ou des emojis, et changer selon la valeur d’un attribut ou selon des règles que vous définissez, par exemple le nombre de liens du nœud. Il se met à jour au fil de l’entretien.",
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Activez cette fonctionnalité avancée pour définir vous-même les libellés des nœuds de ce type, y compris des libellés qui changent selon les attributs des nœuds ou la structure du réseau.",
   "protocolBuilder.codebookEntity.dynamicLabelField": "Libellé",
   "protocolBuilder.codebookEntity.dynamicLabelHint": "Saisissez du texte ou des emojis. Utilisez le bouton seringue, ou saisissez « '{' », pour insérer un attribut ou le libellé par défaut. Utilisez le bouton de logique situé à côté pour insérer un « Si », dont vous définissez les règles, ou une formulation différente pour chacune des réponses d’un attribut. Cliquez sur une pastille insérée pour rédiger le texte de chacun de ses cas ; de la logique peut aussi être insérée à l’intérieur d’un cas.",
   "protocolBuilder.codebookEntity.dynamicLabelProblem": "Le libellé ne peut pas être utilisé tel qu’il est rédigé. Corrigez le problème indiqué en dessous.",

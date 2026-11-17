@@ -210,7 +210,7 @@
   "protocolBuilder.codebookEntity.createNodeType": "Knotentyp erstellen",
   "protocolBuilder.codebookEntity.customShapesLabel": "Eigene Formen",
   "protocolBuilder.codebookEntity.dynamicLabel": "Dynamische Bezeichnung",
-  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Schreiben Sie die Bezeichnung, die auf jedem Knoten dieses Typs angezeigt wird – anstelle der Bezeichnung, die das Interview von sich aus wählt. Die Bezeichnung kann Attribute des Knotens anzeigen, Text oder Emojis ergänzen und sich je nach dem Wert eines Attributs oder nach von Ihnen festgelegten Regeln ändern, etwa danach, wie viele Kanten der Knoten hat. Sie wird im Verlauf des Interviews aktualisiert.",
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": "Aktivieren Sie diese erweiterte Funktion, um die Knotenbezeichnungen für diesen Typ selbst festzulegen, darunter auch solche, die sich je nach Knotenattributen oder Netzwerkstruktur ändern.",
   "protocolBuilder.codebookEntity.dynamicLabelField": "Bezeichnung",
   "protocolBuilder.codebookEntity.dynamicLabelHint": "Geben Sie Text oder Emojis ein. Verwenden Sie die Schaltfläche mit dem Spritzensymbol oder tippen Sie '{', um ein Attribut oder die Standardbezeichnung einzufügen. Mit der Logik-Schaltfläche daneben fügen Sie ein „Wenn“ ein, dessen Regeln Sie festlegen, oder einen unterschiedlichen Wortlaut für jede Antwort eines Attributs. Klicken Sie auf einen eingefügten Chip, um den Text für jeden seiner Fälle zu schreiben; auch innerhalb eines Falls kann Logik eingefügt werden.",
   "protocolBuilder.codebookEntity.dynamicLabelProblem": "Die Bezeichnung kann so, wie sie geschrieben ist, nicht verwendet werden. Beheben Sie das darunter angezeigte Problem.",

@@ -210,7 +210,7 @@
   "protocolBuilder.codebookEntity.createNodeType": "建立節點類型",
   "protocolBuilder.codebookEntity.customShapesLabel": "自訂形狀",
   "protocolBuilder.codebookEntity.dynamicLabel": "動態標籤",
-  "protocolBuilder.codebookEntity.dynamicLabelDescription": "撰寫要顯示在此類型每個節點上的標籤，以取代訪談自行選用的標籤。標籤可以顯示節點的屬性、加入文字或表情符號，並依屬性的值或您設定的規則（例如節點有多少條關係）而變化。標籤會隨訪談進行而更新。",
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": "啟用此進階功能後，您可以自行定義此類型節點的標籤，包括定義會隨節點屬性或網絡結構而變化的標籤。",
   "protocolBuilder.codebookEntity.dynamicLabelField": "標籤",
   "protocolBuilder.codebookEntity.dynamicLabelHint": "輸入文字或表情符號。使用注射器按鈕或輸入「'{'」，即可插入屬性或預設標籤。使用旁邊的邏輯按鈕，即可插入由您設定規則的「如果」，或插入依屬性的每個答案選項使用不同措辭的邏輯。按一下已插入的膠囊標記，即可為其每種情況撰寫文字；情況之內也可以再插入邏輯。",
   "protocolBuilder.codebookEntity.dynamicLabelProblem": "標籤依目前的寫法無法使用。請修正標籤下方顯示的問題。",
