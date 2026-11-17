@@ -59,7 +59,15 @@ export async function seedProtocol(
   //    `window`, so this talks to the native API directly).
   await page.goto('/');
   await page.evaluate(
-    async ({ dbName, storageId, protocolName, proto, assets }) => {
+    async ({
+      dbName,
+      storageId,
+      protocolName,
+      protocolJson,
+      description,
+      schemaVersion,
+      assets,
+    }) => {
       const open = () =>
         new Promise<IDBDatabase>((resolve, reject) => {
           const req = indexedDB.open(dbName);
@@ -102,11 +110,11 @@ export async function seedProtocol(
         );
         tx.objectStore('protocols').put({
           id: storageId,
-          protocol: proto,
+          protocol: JSON.parse(protocolJson),
           name: protocolName,
-          description: proto.description,
+          description,
           sourceRef: { kind: 'e2e', id: 'e2e-fixture' },
-          schemaVersion: proto.schemaVersion,
+          schemaVersion,
           validated: true,
           createdAt: now,
           updatedAt: now,
@@ -129,7 +137,11 @@ export async function seedProtocol(
       dbName: DB_NAME,
       storageId: id,
       protocolName: name,
-      proto: seededProtocol,
+      // As text: a protocol's experiments hold arbitrary JSON, a recursive
+      // type that Playwright's argument typing cannot unfold.
+      protocolJson: JSON.stringify(seededProtocol),
+      description: seededProtocol.description,
+      schemaVersion: seededProtocol.schemaVersion,
       assets: opts.assets ?? [],
     },
   );

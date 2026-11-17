@@ -15,6 +15,7 @@ import app, {
   setProtocolLockState,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
+import protocolReview from '~/ducks/modules/protocolReview';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 import type { AppDispatch } from '~/ducks/store';
@@ -377,6 +378,7 @@ describe('getLeavePersistence', () => {
         app,
         protocols,
         protocolValidation,
+        protocolReview,
         activeProtocol: createTimeline(activeProtocol),
       }),
     });

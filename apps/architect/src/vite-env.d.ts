@@ -13,4 +13,6 @@ interface ImportMetaEnv {
   readonly VITE_DISABLE_ANALYTICS?: string;
   readonly VITE_DISABLE_ANIMATIONS?: string;
   readonly VITE_PROTOCOL_SOURCE_AUTHORING?: string;
+  /** Overrides where protocol reviews are requested (a local or staging Worker). */
+  readonly VITE_PROTOCOL_REVIEW_URL?: string;
 }

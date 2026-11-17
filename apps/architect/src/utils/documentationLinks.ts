@@ -6,6 +6,7 @@ import {
 
 export const documentationLinks = {
   home: DOCS_BASE_URL,
+  communityForum: 'https://community.networkcanvas.com/',
   skipLogic: protocolAuthoringLinks.skipLogic,
   networkFiltering: protocolAuthoringLinks.networkFiltering,
   resources: `${DOCS_BASE_URL}/design-protocols/key-concepts/resources/`,

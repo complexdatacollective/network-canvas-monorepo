@@ -2,6 +2,7 @@ import { Redirect, Route, Switch } from 'wouter';
 
 import AssetsPage from '~/components/pages/AssetsPage';
 import CodebookPage from '~/components/pages/CodebookPage';
+import ExperimentsPage from '~/components/pages/ExperimentsPage';
 import LocalizationPage from '~/components/pages/LocalizationPage';
 import StageEditorPage from '~/components/pages/StageEditorPage';
 import SummaryPage from '~/components/pages/SummaryPage';
@@ -28,6 +29,11 @@ const ProtocolRoutes = () => (
         <CodebookPage />
       </ProjectLayout>
     </Route>
+    <Route path="/protocol/experiments">
+      <ProjectLayout>
+        <ExperimentsPage />
+      </ProjectLayout>
+    </Route>
     <Route path="/protocol/localization">
       <ProjectLayout>
         <LocalizationPage />
@@ -39,8 +45,8 @@ const ProtocolRoutes = () => (
       </ProjectLayout>
     </Route>
     <Route path="/protocol/stage/:stageId" component={StageEditorPage} />
-    {/* An editor address with no page here (a removed page such as
-        /protocol/experiments, or an old bookmark) would leave the editor
+    {/* An editor address with no page here (a removed page or an old
+        bookmark) would leave the editor
         blank, so open the protocol's main page instead. */}
     <Redirect to="/protocol" replace />
   </Switch>

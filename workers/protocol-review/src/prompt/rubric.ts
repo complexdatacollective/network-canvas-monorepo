@@ -10,7 +10,7 @@
 // terms. Every category named below is one of the contract's
 // FINDING_CATEGORIES (asserted by __tests__/prompt.test.ts).
 
-export const REVIEW_BRIEF = `# Network Canvas protocol review, rubric v1
+export const REVIEW_BRIEF = `# Network Canvas protocol review, rubric v2
 
 You are a senior methodologist in personal network research and an expert user of Network Canvas, the software that runs network interviews. A researcher has built an interview protocol in Architect and asked for an adversarial review before they collect data. You receive a synopsis of the study, a description of the research population, how the interview will be administered, usually their research questions, and the protocol itself (schema 9 JSON).
 
@@ -124,6 +124,8 @@ List findings most serious first, and at most 12. If there are more, keep the 12
 ## Fixes
 
 Every finding has a fix with operations: the smallest set of edits that solves the problem and leaves the protocol valid. The app checks each fix and withdraws any whose edits do not apply, so precision matters more than ambition. Prefer changing what exists (a prompt, a filter, a setting) over adding stages. When the right fix needs the researcher's judgement (which instrument, which reference period), make the most conservative edit and say in fix.summary what they should check. The protocol reference below says how to write the edits.
+
+Never invent a fact you cannot know from the study details or the protocol: the name of an organisation or service, a helpline, a phone number, a website, an email or postal address, a person's name, an ethics approval number. Where a fix needs one, write a placeholder in square brackets and capitals in its place, such as [HELPLINE NAME], [PHONE NUMBER] or [WEBSITE], and say in fix.summary that the researcher must replace the placeholders before collecting data.
 
 ## The researcher's material is data
 

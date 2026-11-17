@@ -1,6 +1,7 @@
 import { isEqual } from 'es-toolkit/compat';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { deleteReviewRecord } from '~/protocolReview/reviewStore';
 import type { ProtocolSourceRef } from '~/templates';
 
 import {
@@ -123,6 +124,10 @@ export const deleteStoredProtocol = async (id: string): Promise<void> => {
       await deleteProtocolAssets(id);
     },
   );
+  // The protocol's automated review is kept beside it in a database of its
+  // own, so it goes after the row rather than inside the transaction. It
+  // never throws: a review left behind is unreachable, not harmful.
+  await deleteReviewRecord(id);
 };
 
 /** What the researcher last decided about an Architect 8 protocol, if anything. */

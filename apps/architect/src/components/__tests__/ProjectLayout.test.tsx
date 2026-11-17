@@ -10,6 +10,7 @@ import activeProtocol, {
   updateProtocolName,
 } from '~/ducks/modules/activeProtocol';
 import app, { setProtocolLockState } from '~/ducks/modules/app';
+import protocolReview from '~/ducks/modules/protocolReview';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 import { getCanUndo } from '~/selectors/protocol';
@@ -53,6 +54,7 @@ const createTestStore = () =>
       app,
       protocols,
       protocolValidation,
+      protocolReview,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });
