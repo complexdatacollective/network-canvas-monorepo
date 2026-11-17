@@ -344,14 +344,18 @@ test('does not upgrade when the deployment cannot be recorded', () => {
 
 test('skips a run while another holds the lock', async () => {
   const s = setup();
-  writeFileSync(join(s.stack, '.auto-update.lock'), '');
-  const holder = spawn(
-    'flock',
-    [join(s.stack, '.auto-update.lock'), 'sleep', '30'],
-    { stdio: 'ignore' },
-  );
+  const lockPath = join(s.stack, '.auto-update.lock');
+  writeFileSync(lockPath, '');
+  const holder = spawn('flock', [lockPath, 'sleep', '30'], { stdio: 'ignore' });
   try {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // `flock -n -E 75` exits 75 only when someone else holds the lock.
+    const deadline = Date.now() + 10_000;
+    while (
+      spawnSync('flock', ['-n', '-E', '75', lockPath, 'true']).status !== 75
+    ) {
+      assert.ok(Date.now() < deadline, 'the holder took the lock within 10s');
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
     const r = run(s);
     assert.equal(r.status, 0, r.output);
     assert.match(r.output, /another run holds the lock/);

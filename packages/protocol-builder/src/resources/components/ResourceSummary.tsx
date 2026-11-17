@@ -102,7 +102,14 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-3">
-        <Heading level="h4" margin="none">
+        {/* Names the researcher or their files gave: each read in its own
+            direction, on the interface's side. */}
+        <Heading
+          level="h4"
+          margin="none"
+          dir="auto"
+          className="text-match-parent"
+        >
           {Redacted.value(descriptor.name)}
         </Heading>
         {/*
@@ -128,7 +135,7 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         */}
         {descriptor.status === 'staged' && descriptor.source !== undefined && (
           <Detail term={intl.formatMessage(messages.fileTerm)}>
-            {Redacted.value(descriptor.source)}
+            <bdi>{Redacted.value(descriptor.source)}</bdi>
           </Detail>
         )}
         {descriptor.byteLength !== undefined && (
@@ -148,7 +155,12 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         )}
         {attributes !== undefined && attributes.length > 0 && (
           <Detail term={intl.formatMessage(messages.attributesTerm)}>
-            {attributes.join(', ')}
+            {intl.formatList(
+              attributes.map((attribute) => (
+                <bdi key={attribute}>{attribute}</bdi>
+              )),
+              { type: 'unit' },
+            )}
           </Detail>
         )}
         {dimensions !== undefined && (

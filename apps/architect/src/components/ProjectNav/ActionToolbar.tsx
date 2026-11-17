@@ -15,25 +15,9 @@ import {
   useState,
 } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
 import { cx } from '~/utils/cva';
-const defaultMessages = defineMessages({
-  ariaLabel: {
-    id: 'architect.defaults.components.ProjectNav.ActionToolbar.ariaLabel',
-    defaultMessage: 'Page actions',
-    description:
-      'Default researcher-facing copy when the caller does not supply its own ariaLabel.',
-  },
-  leadingAriaLabel: {
-    id: 'architect.defaults.components.ProjectNav.ActionToolbar.leadingAriaLabel',
-    defaultMessage: 'History actions',
-    description:
-      'Default researcher-facing copy when the caller does not supply its own leadingAriaLabel.',
-  },
-});
 
 export type ActionToolbarProps = {
   'children': ReactNode;
@@ -161,12 +145,8 @@ const ActionToolbar = ({
   'aria-label': providedAriaLabel,
   'leadingAriaLabel': providedLeadingAriaLabel,
 }: ActionToolbarProps) => {
-  const intl = useAppIntl();
-  const ariaLabel =
-    providedAriaLabel ?? intl.formatMessage(defaultMessages.ariaLabel);
-  const leadingAriaLabel =
-    providedLeadingAriaLabel ??
-    intl.formatMessage(defaultMessages.leadingAriaLabel);
+  const ariaLabel = providedAriaLabel ?? 'Page actions';
+  const leadingAriaLabel = providedLeadingAriaLabel ?? 'History actions';
   const hasLeadingActions = leadingActions !== undefined;
   const shouldReduceMotion = usePrefersReducedMotion() ?? false;
   const toolbarTransition = shouldReduceMotion

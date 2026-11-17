@@ -164,24 +164,6 @@ describe('<Issues />', () => {
     expect(screen.getByRole('button', { name: 'Issues (4)' })).toBeVisible();
   });
 
-  it('uses the semantic warning colour and unpadded popover surface', () => {
-    const view = renderStageForm({ children: <IssuesHarness /> });
-
-    act(() => {
-      view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
-      view.reportRefusedSubmit();
-    });
-
-    expect(screen.getByRole('button', { name: 'Issues (3)' })).toHaveClass(
-      'focus:outline-warning',
-    );
-    expect(screen.getByRole('dialog')).toHaveClass('p-0');
-    expect(screen.getByRole('dialog').lastElementChild).toHaveClass(
-      'overflow-hidden',
-      'rounded-[inherit]',
-    );
-  });
-
   describe('a field that fails several rules', () => {
     // A required text with a length limit that is over the limit and trims to
     // empty: `required` and `maxLength` both fail, and the form store keeps

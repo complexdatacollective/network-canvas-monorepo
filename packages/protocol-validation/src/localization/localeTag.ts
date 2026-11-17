@@ -9,6 +9,13 @@ export type LocaleTag = string;
 export type LocalizationDeclaration = Readonly<{
   defaultLocale: LocaleTag;
   locales: readonly LocaleTag[];
+  /**
+   * The language the interview shows its own text in when it has that text in
+   * none of the languages a participant would otherwise be shown. Named only
+   * by a protocol whose default language Network Canvas has no wording in
+   * (see `needsFallbackLanguage`).
+   */
+  fallbackLocale?: LocaleTag;
 }>;
 
 export function canonicalizeLocale(value: string): LocaleTag | undefined {

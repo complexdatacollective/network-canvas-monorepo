@@ -78,6 +78,37 @@ also accept this explicit wrapper. Ordinary strings are always literal data,
 even if they happen to resemble an encoded error. This keeps shared rule names
 and unnamed-attribute labels reactive without duplicating their translations.
 
+A server that refuses with these messages but renders nothing takes
+`@codaco/app-i18n/message-errors` instead: `defineMessages`, `createMessageError`
+and `formatMessageError` with no react-intl or React at run time. Extraction finds
+its `defineMessages` calls by name, so the app whose client formats them collects
+the server module into its own catalog.
+
+### Text only a screen reader reads is not a message
+
+Text that only a screen reader reads stays English in every language. This
+covers visually hidden text, the `aria-label` of an icon-only control or a
+region, `aria-valuetext`, and live-region announcements, including
+drag-and-drop names. Write it as a plain string in the component that uses
+it, never as a message, so that nobody mistakes it for text to translate.
+Mark it `lang="en"` on the element that holds it, so a screen reader reads it
+in an English voice: a visually hidden span, a live region, or a control or
+group whose own content has no translated text. Leave `lang` off an element
+that also holds translated or entered text, such as a list of names or a
+button with a visible label. Marking it would mark that text as English too.
+A sentence that inserts a name or a protocol's words, such as "Sam and Ana"
+or "Showing Diabetes", stays an English sentence; leave `lang` off it for the
+same reason.
+
+A text that is also seen, whether as visible text, a placeholder, a tooltip
+or a `title`, is not screen-reader-only. It stays a translated message.
+
+`checkScreenReaderText` (`@codaco/app-i18n/catalog-guards`) reads a package's
+source for an `aria-label`, `aria-description`, `aria-valuetext` or `ariaLabel`
+handed `intl.formatMessage(…)`, and reports each one. The caller lists the
+attributes whose text is also shown, such as a toolbar button whose name is
+its tooltip. A package adopts it with a test that passes its own source files.
+
 ## Loading catalogs
 
 Every catalog-owning package exports a map of loaders: for each locale it

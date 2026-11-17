@@ -134,6 +134,38 @@ export const STAGE_NAME_WORDING = {
     finish:
       '{finish, select, completed {(Completed)} ineligible {(Ineligible)} terminated {(Ended Early)} completedAutomatic {(Completed, Automatic)} ineligibleAutomatic {(Ineligible, Automatic)} terminatedAutomatic {(Ended Early, Automatic)} automatic {(Automatic)} other {}}',
   },
+  'ar': {
+    name: NAME_TYPE_FIRST,
+    types: {
+      NameGenerator: 'مولّد الأسماء (باستخدام النماذج)',
+      NameGeneratorQuickAdd: 'مولّد الأسماء (إضافة سريعة)',
+      NameGeneratorRoster: 'مولّد الأسماء من قائمة مُعدّة مسبقًا',
+      FamilyPedigree: 'شجرة نسب العائلة',
+      NarrativePedigree: 'شجرة النسب السردية',
+      DyadCensus: 'تعداد الثنائيات',
+      OneToManyDyadCensus: 'تعداد الثنائيات من واحد إلى متعدد',
+      TieStrengthCensus: 'تعداد قوة الروابط',
+      Sociogram: 'المخطط الاجتماعي',
+      NetworkComposer: 'منشئ الشبكة',
+      Narrative: 'السرد',
+      OrdinalBin: 'التصنيف الترتيبي',
+      CategoricalBin: 'التصنيف الفئوي',
+      AlterForm: 'نموذج لكل طرف آخر',
+      Geospatial: 'الواجهة الجغرافية المكانية',
+      AlterEdgeForm: 'نموذج لكل رابطة بين طرفين',
+      EgoForm: 'نموذج الأنا',
+      Information: 'معلومات',
+      Anonymisation: 'واجهة إخفاء الهوية',
+      LanguageChooser: 'اختيار اللغة',
+      FinishSession: 'شاشة الإنهاء',
+    },
+    panels:
+      '{source, select, network {مع اللوحات من الشبكة} roster {مع اللوحات من القائمة} other {مع اللوحات}}',
+    media:
+      '{media, select, image {مع صورة} video {مع فيديو} audio {مع صوت} imageVideo {مع صورة وفيديو} imageAudio {مع صورة وصوت} videoAudio {مع فيديو وصوت} imageVideoAudio {مع صورة وفيديو وصوت} other {مع وسائط}}',
+    finish:
+      '{finish, select, completed {(مكتملة)} ineligible {(عدم الأهلية)} terminated {(أُنهيت مبكرًا)} completedAutomatic {(مكتملة، إنهاء تلقائي)} ineligibleAutomatic {(عدم الأهلية، إنهاء تلقائي)} terminatedAutomatic {(أُنهيت مبكرًا، إنهاء تلقائي)} automatic {(إنهاء تلقائي)} other {}}',
+  },
   'de': {
     name: NAME_TYPE_FIRST,
     types: {

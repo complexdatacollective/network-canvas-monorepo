@@ -762,18 +762,14 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
               className="pointer-events-auto w-full max-w-4xl"
             >
               <ScrollArea
-                aria-label={intl.formatMessage(
-                  interfaceMessages.groupMembershipOptions,
-                )}
+                aria-label="Group membership options"
                 orientation="vertical"
                 className="h-auto max-h-64 max-w-full"
                 viewportClassName="px-3"
               >
                 <ToggleGroup
                   multiple
-                  aria-label={intl.formatMessage(
-                    interfaceMessages.groupMembershipPeople,
-                  )}
+                  aria-label="Group membership for selected people"
                   value={selectedGroupValues}
                   onValueChange={handleSelectionGroupValueChange}
                   className="grid w-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(--spacing(36),1fr))] gap-2"

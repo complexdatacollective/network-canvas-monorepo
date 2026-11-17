@@ -44,6 +44,7 @@ import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import { LocalizedOptionLabelField } from '../../fields/LocalizedStringField.tsx';
 import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
 import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
+import { focusFirstInvalidControl } from '../../form/focusFirstInvalidControl.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
 import {
   useLocalizedText,
@@ -125,12 +126,6 @@ const messages = defineMessages({
     description:
       'Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath.',
   },
-  submittingStatus: {
-    id: 'protocolBuilder.codebookVariable.submittingStatus',
-    defaultMessage: 'Saving attribute.',
-    description:
-      'Announced to screen reader users while the attribute is being saved. Not shown on screen.',
-  },
   nameLabel: {
     id: 'protocolBuilder.codebookVariable.nameLabel',
     defaultMessage: 'Attribute name',
@@ -189,12 +184,6 @@ const messages = defineMessages({
     description:
       'Label of the field holding what the export records for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
   },
-  removeOption: {
-    id: 'protocolBuilder.codebookVariable.removeOption',
-    defaultMessage: 'Remove option {index}',
-    description:
-      'Accessible name of the button that deletes one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
-  },
   createSubmit: {
     id: 'protocolBuilder.codebookVariable.createSubmit',
     defaultMessage: 'Create attribute',
@@ -227,6 +216,9 @@ const messages = defineMessages({
       'Column heading over what the export records for each allowed answer, in the read-only list of answers an interview step owns.',
   },
 });
+
+/** The title of a dialog this editor is hosted in while it creates. */
+export const createVariableTitle = messages.createTitle;
 
 const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
 
@@ -455,6 +447,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const [busy, setBusy] = useState(false);
   const { hasEdited, markEdited } = useEditedCells();
   const failureRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const optionKeySequence = useRef(0);
   // The rows the editor opens with, and the host's choice on each of them: one
   // reading, so a key and the choice filed under it cannot come from two.
@@ -603,9 +596,20 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     });
   }, [options.length]);
 
+  // A refused save takes the researcher to the first field it marked, and to
+  // the alert only when no field carries the refusal. Issues are cleared by
+  // the next edit and set by nothing but a submit, so a non-empty list is
+  // always a refusal that has just happened.
   useEffect(() => {
-    if (failure !== undefined) failureRef.current?.focus();
+    if (failure === undefined) return;
+    if (!focusFirstInvalidControl(formRef.current)) {
+      failureRef.current?.focus();
+    }
   }, [failure]);
+
+  useEffect(() => {
+    if (issues.length > 0) focusFirstInvalidControl(formRef.current);
+  }, [issues]);
 
   const typeOptions = useMemo(() => {
     const allowed = new Set(
@@ -949,12 +953,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           </Alert>
         )}
         {busy && (
-          <output aria-live="polite" className="sr-only">
-            {intl.formatMessage(messages.submittingStatus)}
+          <output aria-live="polite" className="sr-only" lang="en">
+            Saving attribute.
           </output>
         )}
 
         <form
+          ref={formRef}
           id={formId}
           className="mt-8"
           onSubmit={(event) => void handleSubmit(event)}
@@ -969,6 +974,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             autoFocus={!readOnly}
             required
             readOnly={interactionDisabled}
+            aria-invalid={nameErrors.length > 0 || undefined}
             errors={nameErrors}
             showErrors={nameErrors.length > 0}
           />
@@ -984,6 +990,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                   ?.label ?? ''
               }
               readOnly
+              aria-invalid={typeErrors.length > 0 || undefined}
               errors={typeErrors}
               showErrors={typeErrors.length > 0}
             />
@@ -998,6 +1005,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               onChange={handleTypeChange}
               required
               readOnly={interactionDisabled || optionsLocked}
+              aria-invalid={typeErrors.length > 0 || undefined}
               errors={typeErrors}
               showErrors={typeErrors.length > 0}
             />
@@ -1122,12 +1130,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         </div>
                         <IconButton
                           icon={<Trash2 aria-hidden="true" />}
-                          aria-label={intl.formatMessage(
-                            messages.removeOption,
-                            {
-                              index: String(index + 1),
-                            },
-                          )}
+                          aria-label={`Remove option ${index + 1}`}
+                          lang="en"
                           color="destructive"
                           disabled={interactionDisabled}
                           onClick={() => {

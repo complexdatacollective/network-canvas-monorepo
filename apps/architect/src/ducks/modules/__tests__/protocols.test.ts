@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
@@ -38,6 +38,10 @@ const mockProtocol2: CurrentProtocol = {
   assetManifest: {},
 };
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('protocols', () => {
   describe('reducer', () => {
     type TestState = { protocols: ReturnType<typeof protocolsReducer> };
@@ -56,6 +60,7 @@ describe('protocols', () => {
     });
 
     it('should add a protocol', () => {
+      vi.useFakeTimers({ now: 1_700_000_000_000 });
       store.dispatch(
         addProtocol({
           protocol: mockProtocol,
@@ -73,9 +78,9 @@ describe('protocols', () => {
       expect(addedProtocol?.name).toBe('Test Protocol');
       expect(addedProtocol?.description).toBe('test description');
       expect(addedProtocol?.protocol).toEqual(mockProtocol);
-      expect(addedProtocol?.createdAt).toBeDefined();
-      expect(addedProtocol?.updatedAt).toBeDefined();
-      expect(addedProtocol?.lastModified).toBeDefined();
+      expect(addedProtocol?.createdAt).toBe(1_700_000_000_000);
+      expect(addedProtocol?.updatedAt).toBe(1_700_000_000_000);
+      expect(addedProtocol?.lastModified).toBe(1_700_000_000_000);
     });
 
     it('should update a protocol', () => {
@@ -201,31 +206,6 @@ describe('protocols', () => {
       expect(protocol).toBeDefined();
       expect(protocol?.id).toBe(protocol1Id);
       expect(protocol?.name).toBe('Protocol 1');
-    });
-
-    it('should return undefined for non-existent protocol ID', () => {
-      const protocolsData = store.getState().protocols;
-      const protocol = protocolsData['non-existent'];
-
-      expect(protocol).toBeUndefined();
-    });
-
-    it('should select recent protocols with limit', () => {
-      const protocolsData = store.getState().protocols;
-      const allProtocols = Object.values(protocolsData).toSorted(
-        (a, b) => b.lastModified - a.lastModified,
-      );
-      const recentProtocols = allProtocols.slice(0, 1);
-
-      expect(recentProtocols).toHaveLength(1);
-      expect(recentProtocols[0]?.id).toBe(protocol2Id); // Most recent
-    });
-
-    it('should check if protocol exists', () => {
-      const protocolsData = store.getState().protocols;
-
-      expect(!!protocolsData[protocol1Id]).toBe(true);
-      expect(!!protocolsData['non-existent']).toBe(false);
     });
   });
 });

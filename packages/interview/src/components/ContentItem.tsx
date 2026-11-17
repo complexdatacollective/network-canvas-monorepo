@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -18,21 +17,6 @@ import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { LocalizedMarkdown } from '../localization/LocalizedMarkdown';
 import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import { getAssetManifest } from '../store/modules/protocol';
-
-const mediaMessages = defineMessages({
-  audioLabel: {
-    id: 'interview.contentItem.audioLabel',
-    defaultMessage: 'Audio',
-    description:
-      'Accessible name of an audio player in protocol content that the researcher has not described.',
-  },
-  videoLabel: {
-    id: 'interview.contentItem.videoLabel',
-    defaultMessage: 'Video',
-    description:
-      'Accessible name of a video player in protocol content that the researcher has not described.',
-  },
-});
 
 // UploadThing's CDN serves files uploaded via the `blob` router with an invalid
 // Content-Type (e.g. `video` instead of `video/mp4`). Safari strictly requires
@@ -151,7 +135,6 @@ function VideoPlayer({
   isE2E: boolean;
   size: string | undefined;
 }) {
-  const intl = useAppIntl();
   const [state, setState] = useState<MediaLoadState>('loading');
   const captureException = useCaptureException();
 
@@ -178,7 +161,8 @@ function VideoPlayer({
       <video
         loop
         controls
-        aria-label={description ?? intl.formatMessage(mediaMessages.videoLabel)}
+        aria-label={description ?? 'Video'}
+        lang={description ? undefined : 'en'}
         autoPlay={!isE2E}
         muted={!isE2E}
         playsInline
@@ -214,7 +198,6 @@ function AssetItem({
   item: Extract<Item, { type: 'asset' }>;
   isE2E: boolean;
 }) {
-  const intl = useAppIntl();
   const assetManifest = useSelector(getAssetManifest);
   const assetMeta = assetManifest[item.content];
   const { url, isLoading } = useAssetUrl(item.content);
@@ -261,9 +244,8 @@ function AssetItem({
         <audio
           controls
           autoPlay
-          aria-label={
-            description ?? intl.formatMessage(mediaMessages.audioLabel)
-          }
+          aria-label={description ?? 'Audio'}
+          lang={description ? undefined : 'en'}
         >
           <source
             src={url}

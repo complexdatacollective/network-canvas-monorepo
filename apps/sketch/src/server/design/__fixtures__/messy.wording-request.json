@@ -1,4 +1,5 @@
 {
+  "language": "en",
   "summary": "A messy study of support.",
   "stages": [
     {
@@ -8,6 +9,14 @@
       "title": "introduction title",
       "text": "introduction text: what taking part involves",
       "draft": "Do you consent?"
+    },
+    {
+      "stageKey": "consent_declined",
+      "kind": "ending for declined consent",
+      "purpose": "Shown when the participant does not agree to take part",
+      "title": "none: return \"\"",
+      "text": "screen body (Markdown): a \"# \" heading, then that the interview has ended and nothing more will be asked",
+      "draft": "# Thank you\n\nYou chose not to take part, so the interview has ended. Nothing more will be asked."
     },
     {
       "stageKey": "welcome",

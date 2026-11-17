@@ -321,8 +321,8 @@ export const Positioned: Story = {
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button />}>Left</DropdownMenuTrigger>
-        <DropdownMenuContent side="left">
+        <DropdownMenuTrigger render={<Button />}>Start</DropdownMenuTrigger>
+        <DropdownMenuContent side="inline-start">
           <DropdownMenuItem>Profile</DropdownMenuItem>
           <DropdownMenuItem>Settings</DropdownMenuItem>
           <DropdownMenuItem>Logout</DropdownMenuItem>
@@ -330,8 +330,8 @@ export const Positioned: Story = {
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button />}>Right</DropdownMenuTrigger>
-        <DropdownMenuContent side="right">
+        <DropdownMenuTrigger render={<Button />}>End</DropdownMenuTrigger>
+        <DropdownMenuContent side="inline-end">
           <DropdownMenuItem>Profile</DropdownMenuItem>
           <DropdownMenuItem>Settings</DropdownMenuItem>
           <DropdownMenuItem>Logout</DropdownMenuItem>

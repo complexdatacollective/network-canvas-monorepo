@@ -33,7 +33,7 @@ const protocol = {
   },
 } as unknown as Protocol<9>;
 
-describe('entity-attribute references against the real v8 schema', () => {
+describe('entity-attribute references against the real v9 schema', () => {
   it('extracts a validation cross-reference with the owning-variable subject', () => {
     const hits = collectEntityAttributeReferences(protocol);
     const ref = hits.find((h) => h.variableId === 'start');

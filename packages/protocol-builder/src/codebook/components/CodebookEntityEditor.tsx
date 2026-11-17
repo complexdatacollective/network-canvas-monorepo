@@ -24,13 +24,14 @@ import ColorPickerField, {
 } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
 import {
   EdgeColorSequence,
   NodeColorSequence,
+  type NodeShapeReference,
 } from '@codaco/protocol-validation';
 import {
   CodebookNameSchema,
@@ -39,10 +40,28 @@ import {
 } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
+import CustomShapesField, {
+  customShapesGuidance,
+} from '../../fields/CustomShapesField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
+import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
+import {
+  ResourceClientProvider,
+  useStagedResources,
+} from '../../resources/client.tsx';
+import type { ResourcePromotion } from '../../state/hooks.ts';
 import { codebookEditingMessages } from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
+import {
+  customShapeForAsset,
+  customShapesIssue,
+  customShapeUsage,
+  defaultShapeIssue,
+  isNodeShapeReference,
+  mappedShapesIssue,
+  readCustomShapes,
+} from '../customShapes.ts';
 import {
   documentForNewEntity,
   documentWithEntityProperties,
@@ -51,7 +70,6 @@ import {
   type CodebookEntityDraft,
 } from '../editing.ts';
 import {
-  isNodeShape,
   shapeMappingDraft,
   shapeMappingIssue,
   shapeMappingVariables,
@@ -163,6 +181,12 @@ export const codebookEntityMessages = defineMessages({
     description:
       'Guidance under the shape field. A node is a member of the interview network.',
   },
+  customShapesLabel: {
+    id: 'protocolBuilder.codebookEntity.customShapesLabel',
+    defaultMessage: 'Custom shapes',
+    description:
+      'Label of the part of the node type editor where the researcher adds their own shapes for the node type from SVG image files.',
+  },
   iconLabel: {
     id: 'protocolBuilder.codebookEntity.iconLabel',
     defaultMessage: 'Icon',
@@ -212,6 +236,20 @@ export const codebookEntityMessages = defineMessages({
     defaultMessage: 'Interface icon',
     description:
       'Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step.',
+  },
+  shapeImageUnavailable: {
+    id: 'protocolBuilder.codebookEntity.shapeImageUnavailable',
+    defaultMessage:
+      'The image for the shape "{name}" is no longer available. Remove this shape and add it again.',
+    description:
+      'Refusal shown under the custom shapes field of the node type editor when saving fails because the SVG image one custom shape is drawn from can no longer be kept with the protocol. name is the name the researcher gave that shape.',
+  },
+  imageUnavailable: {
+    id: 'protocolBuilder.codebookEntity.imageUnavailable',
+    defaultMessage:
+      'An image added to this node type is no longer available. Remove the shape that uses it, then add the shape again.',
+    description:
+      'Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified.',
   },
   failureTitle: {
     id: 'protocolBuilder.codebookEntity.failureTitle',
@@ -284,14 +322,17 @@ const colorOptions = (
  * renders them, so they follow the formatter while they wait.
  */
 type EntityFieldErrors = Readonly<
-  Partial<Record<'name' | 'color' | 'shape' | 'shape.dynamic' | 'icon', string>>
+  Partial<
+    Record<
+      'name' | 'color' | 'customShapes' | 'shape' | 'shape.dynamic' | 'icon',
+      string
+    >
+  >
 >;
 
 /** The default shape a type holds, where it holds one this picker knows. */
-const asNodeShape = (value: unknown): NodeShape | undefined =>
-  value === 'circle' || value === 'square' || value === 'diamond'
-    ? value
-    : undefined;
+const asShapeReference = (value: unknown): NodeShapeReference | undefined =>
+  isNodeShapeReference(value) ? value : undefined;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -373,16 +414,21 @@ const validateFields = (
   }
   if (subject.entity === 'node') {
     const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
+    const customShapes = readCustomShapes(draft.customShapes);
+    const shapesIssue = customShapesIssue(customShapes);
+    if (shapesIssue !== undefined) errors.customShapes = shapesIssue;
+    const missingDefault = defaultShapeIssue(shape, customShapes);
     if (shape === '')
       errors.shape = createMessageError(codebookEntityMessages.shapeRequired);
+    else if (missingDefault !== undefined) errors.shape = missingDefault;
     const mapping = isRecord(draft.shape) ? draft.shape.dynamic : undefined;
     const mappingIssue =
       mapping === undefined
         ? undefined
-        : shapeMappingIssue(
+        : (shapeMappingIssue(
             shapeMappingDraft(mapping),
             shapeMappingVariables(draft.variables),
-          );
+          ) ?? mappedShapesIssue(shapeMappingDraft(mapping), customShapes));
     if (mappingIssue !== undefined) errors['shape.dynamic'] = mappingIssue;
     const icon = stringValue(draft.icon);
     if (icon === '')
@@ -392,6 +438,28 @@ const validateFields = (
     }
   }
   return errors;
+};
+
+/**
+ * What to say under the custom shapes field when the host would not keep an
+ * image imported in this edit, naming the shape drawn from it where the host
+ * said which image it stopped at.
+ */
+const unavailableImageIssue = (
+  draft: CodebookEntityDraft,
+  resourceId: string | undefined,
+): string => {
+  const shapes = readCustomShapes(draft.customShapes);
+  const shapeId =
+    resourceId === undefined
+      ? undefined
+      : customShapeForAsset(shapes, resourceId);
+  const name = shapeId === undefined ? undefined : shapes?.[shapeId]?.name;
+  return name === undefined
+    ? createMessageError(codebookEntityMessages.imageUnavailable)
+    : createMessageError(codebookEntityMessages.shapeImageUnavailable, {
+        name,
+      });
 };
 
 export type CodebookEntityFieldsProps = Readonly<{
@@ -424,13 +492,12 @@ export function CodebookEntityFields({
 
   const storedShape = isRecord(draft.shape) ? draft.shape : {};
   const storedDefaultShape = storedShape.default;
-  const currentDefaultShape = isNodeShape(storedDefaultShape)
-    ? storedDefaultShape
-    : undefined;
+  const currentDefaultShape = asShapeReference(storedDefaultShape);
   const currentMapping =
     storedShape.dynamic === undefined
       ? undefined
       : shapeMappingDraft(storedShape.dynamic);
+  const customShapes = readCustomShapes(draft.customShapes);
 
   const currentColor = stringValue(draft.color);
   const colors =
@@ -507,16 +574,35 @@ export function CodebookEntityFields({
             )}
           >
             <UnconnectedField
+              name="customShapes"
+              label={intl.formatMessage(
+                codebookEntityMessages.customShapesLabel,
+              )}
+              hint={customShapesGuidance(intl)}
+              component={CustomShapesField}
+              nodeColor={currentColor}
+              usage={customShapeUsage(currentDefaultShape, currentMapping)}
+              value={customShapes}
+              onChange={(value) =>
+                onChange(replaceDraftProperty(draft, 'customShapes', value))
+              }
+              disabled={disabled}
+              errors={
+                errors.customShapes === undefined
+                  ? undefined
+                  : [errors.customShapes]
+              }
+              showErrors
+            />
+
+            <UnconnectedField
               name="shape"
               label={intl.formatMessage(codebookEntityMessages.shapeLabel)}
               hint={intl.formatMessage(codebookEntityMessages.shapeHint)}
               component={ShapePickerField}
               nodeColor={currentColor}
-              value={
-                isRecord(draft.shape)
-                  ? asNodeShape(draft.shape.default)
-                  : undefined
-              }
+              customShapes={customShapes}
+              value={currentDefaultShape}
               onChange={(value) =>
                 onChange(replaceDefaultShape(draft, String(value)))
               }
@@ -528,6 +614,7 @@ export function CodebookEntityFields({
 
             <NodeShapeMappingFields
               nodeColor={currentColor}
+              customShapes={customShapes}
               variables={shapeMappingVariables(draft.variables)}
               {...(currentDefaultShape === undefined
                 ? {}
@@ -575,8 +662,7 @@ export function CodebookEntityFields({
  *
  * Given, the editor renders the dialog itself and puts its Cancel and its save
  * in the dialog's own `footer`, where every other dialog in the package keeps
- * them — Architect's `EntityTypeDialog` did the same, through `DialogForm`.
- * That is only possible from here: the footer pins the first of its children
+ * them. That is only possible from here: the footer pins the first of its children
  * left, so the two controls have to BE the footer's children rather than
  * arrive inside something the host wrapped around them.
  *
@@ -612,8 +698,16 @@ type CommonEditorProps = Readonly<{
   existingEntityNames: readonly string[];
   /** Disables editing and submission without discarding the current draft. */
   readOnly?: boolean;
-  /** Writes the section, and answers with what became of it. */
-  onSubmit(document: SectionDoc): Promise<CodebookWriteOutcome>;
+  /**
+   * Writes the section, and answers with what became of it.
+   *
+   * `promote` names the files imported while the editor was open, such as a
+   * custom shape's SVG, for the host to commit in the same write.
+   */
+  onSubmit(
+    document: SectionDoc,
+    promote?: ResourcePromotion,
+  ): Promise<CodebookWriteOutcome>;
   onCancel?(): void;
 }>;
 
@@ -639,9 +733,20 @@ export type CodebookEntityEditorProps = CommonEditorProps &
 /**
  * Reusable entity editor. The host owns only the write and the close or
  * navigation chrome around it.
+ *
+ * Each opening is an edit of its own for the files imported in it: they are
+ * promoted with the save, and discarded when the editor goes without one.
+ * Keyed by the opening, so reopening starts a fresh draft and a fresh edit.
  */
-export default function CodebookEntityEditor({
-  sessionKey,
+export default function CodebookEntityEditor(props: CodebookEntityEditorProps) {
+  return (
+    <ResourceClientProvider key={props.sessionKey}>
+      <EntityEditor {...props} />
+    </ResourceClientProvider>
+  );
+}
+
+function EntityEditor({
   dialog,
   subject,
   initialDraft,
@@ -652,11 +757,14 @@ export default function CodebookEntityEditor({
   ...modeProps
 }: CodebookEntityEditorProps) {
   const intl = useAppIntl();
+  const staged = useStagedResources();
   // The save lives in the dialog's footer, outside the `<form>` element, so it
   // names the form it submits rather than being inside it.
   const formDomId = useId();
-  const [openKey, setOpenKey] = useState(sessionKey);
   const [draft, setDraft] = useState<CodebookEntityDraft>(initialDraft);
+  // The draft as it opened. `initialDraft` follows the live section on an
+  // update, so a collaborator's change would otherwise read as unsaved work.
+  const [openedDraft] = useState(() => canonicalize(initialDraft));
   const [errors, setErrors] = useState<EntityFieldErrors>({});
   // A record rather than the sentence, so a second refusal saying the same
   // thing is still a new failure for the effect below to move focus to.
@@ -664,21 +772,27 @@ export default function CodebookEntityEditor({
     useState<Readonly<{ message: string; held: boolean }>>();
   const [busy, setBusy] = useState(false);
   const failureRef = useRef<HTMLDivElement>(null);
-
-  // The caller's open identity owns reset semantics: the initial values may be
-  // reconstructed on every render and must not reset a draft while one opening
-  // is still on screen.
-  if (openKey !== sessionKey) {
-    setOpenKey(sessionKey);
-    setDraft(initialDraft);
-    setErrors({});
-    setFailure(undefined);
-    setBusy(false);
-  }
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (failure !== undefined) failureRef.current?.focus();
   }, [failure]);
+
+  // Errors are only ever set by a refused save, so each new set is a refusal
+  // whose first field the researcher is taken to.
+  useEffect(() => {
+    const fieldErrors = Object.fromEntries(
+      Object.entries(errors).map(([field, message]) => [field, [message]]),
+    );
+    focusFirstError({ formErrors: [], fieldErrors }, formRef.current);
+  }, [errors]);
+
+  const requestClose = useDiscardDraftGuard({
+    hasDraft: () => canonicalize(draft) !== openedDraft,
+    onClose: () => onCancel?.(),
+    open: dialog?.open ?? true,
+    blocked: busy,
+  });
 
   const dirty =
     modeProps.mode === 'create' ||
@@ -710,6 +824,11 @@ export default function CodebookEntityEditor({
               subject,
               authoritativeDocument: modeProps.authoritativeDocument,
               draft,
+              // Removing every custom shape leaves the draft without the key,
+              // which would otherwise keep the stored shapes.
+              ...(Object.hasOwn(draft, 'customShapes')
+                ? {}
+                : { unsetProperties: ['customShapes'] }),
             });
     } catch (error: unknown) {
       // Everything the entity schema refuses past `validateFields` is written
@@ -727,10 +846,26 @@ export default function CodebookEntityEditor({
 
     setBusy(true);
     try {
-      const outcome = await onSubmit(document);
+      const outcome = await onSubmit(document, staged.promotion());
       if (outcome.status === 'applied') {
+        staged.promoted();
         if (modeProps.mode === 'create') modeProps.onApplied(outcome);
         else modeProps.onApplied?.(outcome);
+        return;
+      }
+      if (
+        outcome.refusal.kind === 'promotionFailed' &&
+        subject.entity === 'node'
+      ) {
+        // The one promotion failure the researcher fixes in a field: the
+        // image behind a custom shape has gone, and removing the shape is
+        // what lets the save through.
+        setErrors({
+          customShapes: unavailableImageIssue(
+            draft,
+            outcome.refusal.resourceId,
+          ),
+        });
         return;
       }
       setFailure({
@@ -752,8 +887,7 @@ export default function CodebookEntityEditor({
 
   // The editor writes no heading of its own: it is opened under a title that
   // already names it — the dialog's, or the page host's — and a second one
-  // saying the same thing is the restatement Architect's `TypeEditor` never
-  // had. Its sections and its alert count from that title instead.
+  // would only restate it. Its sections and its alert count from that title instead.
   const body = (
     <>
       {failure !== undefined && (
@@ -797,7 +931,7 @@ export default function CodebookEntityEditor({
         <Button
           type="button"
           color="default"
-          onClick={onCancel}
+          onClick={requestClose}
           disabled={busy}
         >
           {intl.formatMessage(commonMessages.cancel)}
@@ -822,6 +956,7 @@ export default function CodebookEntityEditor({
 
   const form = (tail?: ReactNode) => (
     <form
+      ref={formRef}
       id={formDomId}
       onSubmit={(event) => void handleSubmit(event)}
       noValidate
@@ -840,13 +975,11 @@ export default function CodebookEntityEditor({
         size="readable"
         // A save in flight refuses every way out, because the dialog is about
         // to show what became of it. Escape, a press outside and the close
-        // button all arrive at `closeDialog`, so refusing there covers all
-        // three — and `dismissible` takes the close button away rather than
-        // leaving a control on screen that does nothing.
+        // button all arrive at `closeDialog`, so the guard refusing there
+        // covers all three — and `dismissible` takes the close button away
+        // rather than leaving a control on screen that does nothing.
         dismissible={!busy}
-        closeDialog={() => {
-          if (!busy) onCancel?.();
-        }}
+        closeDialog={requestClose}
         {...(dialog.finalFocus === undefined
           ? {}
           : { finalFocus: dialog.finalFocus })}

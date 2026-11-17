@@ -22,6 +22,7 @@ import {
   TESTING_MAPBOX_TOKEN,
 } from '~/templates/testingMapboxToken';
 import { findDefaultLanguageTextProblem } from '~/utils/defaultLanguageText';
+import { findFallbackLanguageMissing } from '~/utils/downloadRefusal';
 
 import { getAllVariablesByUUID } from './codebook';
 import { getIsUsed } from './codebook/isUsed';
@@ -167,6 +168,17 @@ export const getHasVariableRoleConflicts = createSelector(
 export const getDefaultLanguageTextProblem = createSelector(
   [getProtocol],
   (protocol) => (protocol ? findDefaultLanguageTextProblem(protocol) : null),
+);
+
+/**
+ * The fallback language the protocol needs and has not been given
+ * (`findFallbackLanguageMissing`): its default language is one Network Canvas
+ * has no wording in. A protocol being written may lack it, but cannot be
+ * downloaded until it is chosen (`findDownloadRefusal`).
+ */
+export const getFallbackLanguageMissing = createSelector(
+  [getProtocol],
+  (protocol) => (protocol ? findFallbackLanguageMissing(protocol) : null),
 );
 
 /**

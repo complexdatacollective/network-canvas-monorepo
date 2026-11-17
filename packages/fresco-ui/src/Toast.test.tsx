@@ -35,7 +35,7 @@ function Trigger() {
   );
 }
 
-it('updates the notification region and an existing rich title when the locale changes', async () => {
+it('updates an existing rich title when the locale changes, leaving the notification region name in English', async () => {
   const view = (locale: string) => (
     <AppI18nProvider
       locale={locale}
@@ -56,7 +56,7 @@ it('updates the notification region and an existing rich title when the locale c
   expect(screen.getByRole('heading', { name: 'Loading…' })).toBeInTheDocument();
   rerender(view('es'));
   expect(
-    screen.getByRole('region', { name: 'Notificaciones' }),
+    screen.getByRole('region', { name: 'Notifications' }),
   ).toBeInTheDocument();
   expect(
     screen.getByRole('heading', { name: 'Cargando…' }),

@@ -1,6 +1,5 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   type ButtonHTMLAttributes,
@@ -9,6 +8,7 @@ import {
   type Ref,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
 } from 'react';
@@ -17,7 +17,6 @@ import { useMergeRefs } from 'react-best-merge-refs';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { useFitText } from './hooks/useFitText';
 import {
   type ActivationSource,
   type NodeDragEndInfo,
@@ -28,12 +27,21 @@ import {
   useSafeAnimate,
   useShouldSkipAnimations,
 } from './hooks/useSafeAnimate';
+import { NodeLabelArea } from './node/NodeLabelArea';
+import {
+  getParsedNodeShape,
+  NodeShapeArtwork,
+  toNodeShapeIdPrefix,
+} from './node/NodeShapeArtwork';
+import { useNodeLabelFit } from './node/useNodeLabelFit';
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
 import { cva, type VariantProps } from './utils/cva';
-import { withLabelBreakPoints } from './utils/labelBreakPoints';
 
 export type NodeShape = 'circle' | 'square' | 'diamond';
+/** A custom shape: the SVG text of its drawing. */
+export type NodeCustomShape = { svg: string };
+export type NodeShapeProp = NodeShape | NodeCustomShape;
 
 export type { ActivationSource, NodeDragEndInfo };
 
@@ -60,6 +68,10 @@ export const NodeColors = [
 ] as const;
 
 export type NodeColorSequence = (typeof NodeColors)[number];
+
+export const isNodeColorSequence = (
+  value: unknown,
+): value is NodeColorSequence => NodeColors.some((color) => color === value);
 
 const nodeVariants = cva({
   base: [
@@ -142,6 +154,11 @@ const shapeLayerVariants = cva({
   },
 });
 
+// A custom shape draws its own artwork, so its layer carries only the corner
+// radius the state rings follow.
+const CUSTOM_SHAPE_LAYER_CLASS =
+  'pointer-events-none absolute inset-0 rounded-[inherit]';
+
 export const labelVariants = cva({
   // No word-breaking here: a word that cannot fit its line must overflow, or
   // the fit ladder cannot see it. Breaking is conceded only by the dedicated
@@ -215,15 +232,21 @@ const EMERGENCY_BREAKS = 'hyphens-manual wrap-anywhere text-balance';
 // existing 60% height budget therefore stays inside the painted shape.
 const DIAMOND_LABEL_WIDTH = 'w-[60%]!';
 
+type FitLadder = readonly [string, ...string[]];
+
 const buildFitSteps = (
   size: NodeSize,
   labelClassName?: string,
-): readonly [string, ...string[]] => {
+  floorClassName = labelClassName,
+): FitLadder => {
   const floor = LABEL_FIT_OVERRIDES[size].at(-1) ?? '';
   const withLabelClass = (className?: string) =>
     [className, labelClassName].filter(Boolean).join(' ');
   const atFloor = (breaks: string) =>
-    labelVariants({ size, className: withLabelClass(`${floor} ${breaks}`) });
+    labelVariants({
+      size,
+      className: [floor, breaks, floorClassName].filter(Boolean).join(' '),
+    });
   return [
     // The first rung is the size's default, so a label that already fits
     // renders as it did before fitting existed.
@@ -234,29 +257,39 @@ const buildFitSteps = (
         className: withLabelClass(`${NO_BREAKS} ${className}`),
       }),
     ),
+    ...(floorClassName === labelClassName ? [] : [atFloor(NO_BREAKS)]),
     atFloor(HYPHENATED_BREAKS),
     atFloor(EMERGENCY_BREAKS),
   ];
 };
 
-const LABEL_FIT_STEPS: Record<NodeSize, readonly [string, ...string[]]> = {
-  xxs: buildFitSteps('xxs'),
-  xs: buildFitSteps('xs'),
-  sm: buildFitSteps('sm'),
-  md: buildFitSteps('md'),
-  lg: buildFitSteps('lg'),
-};
+const fitStepsBySize = (
+  labelClassName?: string,
+  floorClassName?: string,
+): Record<NodeSize, FitLadder> => ({
+  xxs: buildFitSteps('xxs', labelClassName, floorClassName),
+  xs: buildFitSteps('xs', labelClassName, floorClassName),
+  sm: buildFitSteps('sm', labelClassName, floorClassName),
+  md: buildFitSteps('md', labelClassName, floorClassName),
+  lg: buildFitSteps('lg', labelClassName, floorClassName),
+});
 
-const DIAMOND_LABEL_FIT_STEPS: Record<
-  NodeSize,
-  readonly [string, ...string[]]
-> = {
-  xxs: buildFitSteps('xxs', DIAMOND_LABEL_WIDTH),
-  xs: buildFitSteps('xs', DIAMOND_LABEL_WIDTH),
-  sm: buildFitSteps('sm', DIAMOND_LABEL_WIDTH),
-  md: buildFitSteps('md', DIAMOND_LABEL_WIDTH),
-  lg: buildFitSteps('lg', DIAMOND_LABEL_WIDTH),
-};
+const LABEL_FIT_STEPS = fitStepsBySize();
+const DIAMOND_LABEL_FIT_STEPS = fitStepsBySize(DIAMOND_LABEL_WIDTH);
+
+// A custom shape's label box is the artwork's own label area, already placed
+// inside the drawing, so the label uses all of it rather than an inscribed
+// share, and its height bounds the ladder instead of the line count alone.
+const CUSTOM_LABEL_SIZE = 'w-full! max-h-full';
+const CUSTOM_LABEL_FIT_STEPS = fitStepsBySize(CUSTOM_LABEL_SIZE);
+
+// An artwork with a label plate lets the label outgrow its area: its floor
+// rungs lift the height limit (see `useNodeLabelFit`).
+const GROWN_LABEL_SIZE = 'w-full! max-h-none';
+const GROWING_LABEL_FIT_STEPS = fitStepsBySize(
+  CUSTOM_LABEL_SIZE,
+  GROWN_LABEL_SIZE,
+);
 
 export function truncateNodeLabel(label: string, maxLength = 35): string {
   if (label.length <= maxLength) return label;
@@ -344,7 +377,9 @@ type UINodeProps = {
    */
   'presentational'?: boolean;
   'ref'?: Ref<HTMLButtonElement>;
-} & VariantProps<typeof nodeVariants> &
+  /** A built-in shape, or a custom SVG shape */
+  'shape'?: NodeShapeProp;
+} & Omit<VariantProps<typeof nodeVariants>, 'shape'> &
   Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
     | 'color'
@@ -438,43 +473,35 @@ export default function Node(props: UINodeProps) {
     disabled,
   });
 
+  // An artwork that cannot be parsed draws as a circle.
+  const customShape =
+    typeof shape === 'object' ? getParsedNodeShape(shape.svg) : null;
+  const builtInShape: NodeShape =
+    typeof shape === 'string' ? shape : customShape ? 'square' : 'circle';
+  const shapeIdPrefix = toNodeShapeIdPrefix(useId());
+
   // Fit the label to the node rather than clipping it at a fixed size, so most
   // names are readable in full without any interaction at all.
-  const labelBoxRef = useRef<HTMLSpanElement>(null);
-  const fitSteps =
-    shape === 'diamond'
-      ? DIAMOND_LABEL_FIT_STEPS[size ?? 'md']
-      : LABEL_FIT_STEPS[size ?? 'md'];
-
-  // A label that only fits once words are broken is shown with break points
-  // marked in it (see `withLabelBreakPoints`). They are added only after a fit
-  // has landed on a breaking rung for this very label, so the great majority
-  // of names are rendered exactly as given.
-  const [breakPointsFor, setBreakPointsFor] = useState<string>();
-  const markBreakPoints = breakPointsFor === label;
-  const displayedLabel = markBreakPoints ? withLabelBreakPoints(label) : label;
-  const fitKey = `${markBreakPoints ? 'breakable' : 'plain'}:${label}`;
   const {
-    ref: labelRef,
-    stepIndex,
+    labelBoxRef,
+    labelRef,
+    labelClassName,
+    displayedLabel,
     isTruncated,
-    fittedWatch,
-  } = useFitText<HTMLSpanElement>({
-    steps: fitSteps,
-    containerRef: labelBoxRef,
-    watch: fitKey,
-    enabled: !loading,
+    labelLineClamp,
+    labelPlateGrowth,
+  } = useNodeLabelFit({
+    label,
+    steps: (customShape
+      ? customShape.labelPlate
+        ? GROWING_LABEL_FIT_STEPS
+        : CUSTOM_LABEL_FIT_STEPS
+      : builtInShape === 'diamond'
+        ? DIAMOND_LABEL_FIT_STEPS
+        : LABEL_FIT_STEPS)[size ?? 'md'],
+    customShape,
+    loading,
   });
-  // The breaking rungs are the last two of every ladder.
-  const reachedBreakingRung = stepIndex >= fitSteps.length - 2;
-  if (
-    reachedBreakingRung &&
-    fittedWatch === fitKey &&
-    !markBreakPoints &&
-    withLabelBreakPoints(label) !== label
-  ) {
-    setBreakPointsFor(label);
-  }
 
   // A keyboard drag already owns arrow keys and the node's position; revealing
   // the label on top of that is noise.
@@ -634,24 +661,13 @@ export default function Node(props: UINodeProps) {
     }
   }, [displayedSelected, highlighted, stateScope, animate]);
 
-  const nodeContent = (
-    <>
-      {loading && <Loader2 className="animate-spin" size={24} />}
-      {!loading && (
-        <span ref={labelRef} className={fitSteps[stepIndex] ?? fitSteps[0]}>
-          {displayedLabel}
-        </span>
-      )}
-    </>
-  );
-
   // Hoisted out of the branch below: a ternary arm is not a place to call a
   // hook, whatever `presentational` happens to be on this render.
   const buttonRef = useMergeRefs({ ref, scope });
 
   const rootClassName = nodeVariants({
     size,
-    shape,
+    shape: builtInShape,
     color,
     disabled,
     className,
@@ -691,9 +707,20 @@ export default function Node(props: UINodeProps) {
           diamonds) the rotation, keeping the root element transform-free */}
       <span
         ref={stateScope}
-        className={shapeLayerVariants({ shape })}
+        className={
+          customShape
+            ? CUSTOM_SHAPE_LAYER_CLASS
+            : shapeLayerVariants({ shape: builtInShape })
+        }
         aria-hidden
       >
+        {customShape && (
+          <NodeShapeArtwork
+            shape={customShape}
+            idPrefix={shapeIdPrefix}
+            labelPlateGrowth={labelPlateGrowth}
+          />
+        )}
         {/* Linking indicator - separate element so it can animate independently */}
         <AnimatePresence>
           {linking && (
@@ -738,15 +765,18 @@ export default function Node(props: UINodeProps) {
           )}
         </AnimatePresence>
       </span>
-      {/* Content layer - positioned so it paints above the shape layer, and
-          the fixed-size box the label is fitted to */}
-      <span
-        ref={labelBoxRef}
-        className="relative flex size-full min-w-0 items-center justify-center overflow-hidden rounded-[inherit]"
+      <NodeLabelArea
+        boxRef={labelBoxRef}
+        labelRef={labelRef}
+        label={displayedLabel}
+        labelClassName={labelClassName}
+        labelLineClamp={labelLineClamp}
+        customShape={customShape}
+        plateGrown={labelPlateGrowth > 0}
+        loading={loading}
       >
-        {nodeContent}
         {props.children}
-      </span>
+      </NodeLabelArea>
     </>
   );
 

@@ -32,10 +32,14 @@ test.describe('vault lifecycle', () => {
     await vault.enrolPin(PIN);
     await page.reload();
     await vault.unlockPin('87654321');
-    // Still locked (unlock failed) — the unlock dialog stays.
+    // The rejection is the settle point: the PIN was checked and refused.
+    await expect(page.getByText(/^Incorrect PIN\.?$/)).toBeVisible();
     await expect(
       page.getByRole('heading', { name: 'Welcome back' }),
     ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Sample Protocol' }),
+    ).toBeHidden();
   });
 
   test('passphrase enrolment and unlock', async ({ vault, page }) => {

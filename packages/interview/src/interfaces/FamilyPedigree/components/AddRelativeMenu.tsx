@@ -6,13 +6,11 @@ import { type MotionValue, motion, useMotionValue } from 'motion/react';
 import { useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionButton } from '@codaco/fresco-ui/Button';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { formatRelativeTerm } from '../kinship';
-import { messages } from '../messages';
 import type { Relation } from '../model';
 import { usePedigreeWords } from '../pedigreeWords';
 
@@ -85,7 +83,6 @@ export default function AddRelativeMenu({
   onAdd,
   scale,
 }: AddRelativeMenuProps) {
-  const intl = useAppIntl();
   const words = usePedigreeWords();
   const reduceMotion = usePrefersReducedMotion();
 
@@ -142,6 +139,9 @@ export default function AddRelativeMenu({
   return createPortal(
     <div
       ref={placed}
+      // Siblings to the left and partners to the right in every language:
+      // the right-to-left mirror check leaves the buttons out.
+      data-direction-exempt
       // oxlint-disable-next-line tailwindcss/enforce-logical -- moved to the person's measured position, which is a distance from the left
       className="pointer-events-none absolute top-0 left-0 origin-top-left"
       data-add-menu={personId}
@@ -156,10 +156,7 @@ export default function AddRelativeMenu({
       */}
       <DirectionProvider direction="ltr">
         <Toolbar.Root
-          aria-label={intl.formatMessage(messages.actionsLabel, {
-            isYou: isYou ? 'true' : 'false',
-            name,
-          })}
+          aria-label={isYou ? 'Add your relatives' : `Add relatives of ${name}`}
           loopFocus
           className="pointer-events-none absolute inset-0"
         >
@@ -188,7 +185,11 @@ export default function AddRelativeMenu({
                       delay: reduceMotion ? 0 : index * 0.02,
                     }}
                     className={cx(
-                      'pointer-events-auto size-18 max-w-none shrink-0 rounded-full p-0 whitespace-nowrap',
+                      // A word for a relative may take two words in another
+                      // language (Arabic's "أحد الوالدين", one of the
+                      // parents): it wraps inside the circle rather than
+                      // running out of it.
+                      'pointer-events-auto size-18 max-w-none shrink-0 rounded-full px-1.5 py-0 text-center leading-tight text-balance',
                       // Set apart from the family and the canvas beneath them
                       // by a soft, wide shadow, the same at rest, on hover and
                       // when pressed.

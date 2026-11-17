@@ -10,6 +10,7 @@ import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
 } from './popoverArrow';
+import { type PopupSide, usePhysicalSide } from './popupSide';
 import { usePortalContainer } from './PortalContainer';
 import {
   dropdownItemVariants,
@@ -129,7 +130,7 @@ const DropdownMenuContent = React.forwardRef<
   Omit<React.ComponentPropsWithoutRef<typeof Menu.Popup>, 'className'> & {
     className?: string;
     sideOffset?: number;
-    side?: 'top' | 'right' | 'bottom' | 'left';
+    side?: PopupSide;
     align?: 'start' | 'center' | 'end';
     keepMounted?: boolean;
     showArrow?: boolean;
@@ -154,6 +155,7 @@ const DropdownMenuContent = React.forwardRef<
   ) => {
     const { mounted } = useDropdownMenuContext();
     const portalContainer = usePortalContainer();
+    const physicalSide = usePhysicalSide(side);
 
     return (
       <Menu.Portal
@@ -164,21 +166,27 @@ const DropdownMenuContent = React.forwardRef<
           {mounted && (
             <Menu.Positioner
               sideOffset={sideOffset}
-              side={side}
+              side={physicalSide}
               align={align}
               anchor={anchor}
               arrowPadding={POPOVER_ARROW_PADDING}
             >
               <Menu.Popup
                 ref={ref}
-                render={<BaseUISharedPopoverContainer className={className} />}
+                render={
+                  <BaseUISharedPopoverContainer
+                    className={className}
+                    arrow={
+                      showArrow && (
+                        <Menu.Arrow className={POPOVER_ARROW_CLASS_NAME}>
+                          <ArrowSvg />
+                        </Menu.Arrow>
+                      )
+                    }
+                  />
+                }
                 {...props}
               >
-                {showArrow && (
-                  <Menu.Arrow className={POPOVER_ARROW_CLASS_NAME}>
-                    <ArrowSvg />
-                  </Menu.Arrow>
-                )}
                 {children}
               </Menu.Popup>
             </Menu.Positioner>

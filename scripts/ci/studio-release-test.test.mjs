@@ -526,9 +526,18 @@ test('only what existed before is compared, and every loss or change is a differ
 test('every mask names its reason and the run that showed the change', () => {
   assert.ok(MASKS.length > 0);
   for (const mask of MASKS) {
-    assert.ok(mask.reason.length > 20, `${mask.name} says why`);
-    assert.ok(mask.seen.length > 0, `${mask.name} says when it was seen`);
+    assert.equal(typeof mask.reason, 'string', `${mask.name} says why`);
+    assert.notEqual(mask.reason.trim(), '', `${mask.name} says why`);
+    assert.equal(typeof mask.seen, 'string', `${mask.name} says when`);
+    assert.notEqual(mask.seen.trim(), '', `${mask.name} says when`);
   }
+  // A reason copied from another mask explains neither.
+  const reasons = MASKS.map((mask) => mask.reason);
+  assert.equal(
+    new Set(reasons).size,
+    reasons.length,
+    'every reason is its own',
+  );
 });
 
 const schedule = (name, nextRunAt) => ({

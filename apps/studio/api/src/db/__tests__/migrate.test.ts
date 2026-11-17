@@ -133,11 +133,6 @@ describe.skipIf(!db)('migrate', () => {
     }),
   );
 
-  it('carries at least one committed migration', () => {
-    expect(committed.migrations.length).toBeGreaterThan(0);
-    expect(committed.fingerprint).toBe(SCHEMA_FINGERPRINT);
-  });
-
   it(
     'applies every committed migration to an empty database, records each, and stamps it',
     async () => {

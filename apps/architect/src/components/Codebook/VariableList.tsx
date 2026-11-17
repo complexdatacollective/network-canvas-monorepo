@@ -1,5 +1,6 @@
 import {
   useTable,
+  type CellContext,
   type HeaderContext,
   type SortingState,
 } from '@tanstack/react-table';
@@ -15,12 +16,6 @@ import {
 } from '@codaco/fresco-ui/DataTable/features';
 import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 const messages = defineMessages({
-  tableLabel: {
-    id: 'architect.codebook.variableList.tableLabel',
-    defaultMessage: 'Attributes',
-    description:
-      'Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached.',
-  },
   name: {
     id: 'architect.codebook.variableList.name',
     defaultMessage: 'Name',
@@ -49,6 +44,14 @@ type VariableListRow = {
  * this lives at module scope rather than inside the render body — a renderer
  * redefined during render is a new component type on every render.
  */
+// A variable's name is the researcher's: it reads in its own direction, on
+// the interface's side of the cell.
+const NameCell = ({ row }: CellContext<DataTableFeatures, VariableListRow>) => (
+  <span dir="auto" className="text-match-parent">
+    {row.original.name}
+  </span>
+);
+
 const NameHeader = ({
   column,
   table,
@@ -74,7 +77,7 @@ const Variables = ({ variables = [] }: VariableListProps) => {
       {
         accessorKey: 'name',
         header: NameHeader,
-        cell: ({ row }) => row.original.name,
+        cell: NameCell,
       },
     ],
     [],
@@ -96,7 +99,7 @@ const Variables = ({ variables = [] }: VariableListProps) => {
     <div className="mt-7">
       <DataTable
         table={table}
-        aria-label={intl.formatMessage(messages.tableLabel)}
+        aria-label="Attributes"
         showPagination={false}
         emptyText={intl.formatMessage(messages.noAttributes)}
       />

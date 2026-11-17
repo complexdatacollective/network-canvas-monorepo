@@ -149,10 +149,4 @@ describe('navigate actionCreators', () => {
       });
     });
   });
-
-  it.todo('goToNextStage()');
-
-  it.todo('goToNextPrompt()');
-
-  it.todo('goToStage()');
 });

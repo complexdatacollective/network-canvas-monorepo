@@ -300,7 +300,7 @@ const Fallback = ({
             lang={intl.locale}
             dir="auto"
             aria-hidden
-            className="max-w-full rounded-sm bg-current/8 px-1.5 text-xs leading-5 text-current/80"
+            className="text-match-parent max-w-full rounded-sm bg-current/8 px-1.5 text-xs leading-5 text-current/80"
           >
             {intl.formatMessage(
               unlessBrowserLists
@@ -332,7 +332,7 @@ const ProblemNote = ({ id, children }: { id: string; children: string }) => {
       aria-live="polite"
       lang={intl.locale}
       dir="auto"
-      className="text-destructive-ink block px-3 pb-2 text-sm"
+      className="text-destructive-ink text-match-parent block px-3 pb-2 text-sm"
     >
       {children}
     </output>
@@ -407,6 +407,8 @@ const PlainTextCell = ({
     <td
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -432,6 +434,10 @@ const PlainTextCell = ({
         )}
         <textarea
           rows={1}
+          // The translation is in this column's language, whatever its first
+          // letter: an Arabic sentence that opens with a product name is
+          // still right to left.
+          dir={localeDirection(locale)}
           value={text}
           // A one-line text holds no line break: one typed with Shift+Enter
           // or pasted becomes a space.
@@ -697,6 +703,8 @@ const RichTextCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -724,6 +732,8 @@ const RichTextCell = ({
             value={text}
             onChange={(markdown) => draft.change(markdown ?? '')}
             singleLine={singleLine}
+            // In this column's language, as the plain-text cell's box is.
+            dir={localeDirection(locale)}
             className={CELL_EDITOR_CLASSES}
             autoFocus
           />
@@ -806,6 +816,8 @@ const MessageCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
@@ -958,6 +970,8 @@ const DynamicCell = ({
       {...cellProps}
       lang={locale}
       dir={localeDirection(locale)}
+      // Typed in this column's language: nothing to guess.
+      data-typed-language=""
       data-field-path={draft.name}
       data-field-form={formScope}
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}

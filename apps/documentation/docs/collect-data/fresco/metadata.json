@@ -1,8 +1,16 @@
 {
   "type": "folder",
   "slug": "fresco",
-  "localeLabels": { "en": "Fresco", "es": "Fresco" },
-  "localeIndexFiles": { "en": "about.en.mdx", "es": "about.es.mdx" },
+  "localeLabels": {
+    "en": "Fresco",
+    "es": "Fresco",
+    "fr": "Fresco"
+  },
+  "localeIndexFiles": {
+    "en": "about.en.mdx",
+    "es": "about.es.mdx",
+    "fr": "about.fr.mdx"
+  },
   "navOrder": 4,
   "isExpanded": true
 }

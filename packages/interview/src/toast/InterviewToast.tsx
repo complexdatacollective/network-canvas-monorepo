@@ -23,7 +23,6 @@ import {
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { interviewToastManager } from './interviewToastManager';
 
 type InterviewToastContextValue = {
@@ -164,14 +163,13 @@ function InterviewToastItem({
 }
 
 export function InterviewToastViewport() {
-  const intl = useAppIntl();
   const { toasts } = Toast.useToastManager();
   const portalContainer = usePortalContainer();
 
   return (
     <Toast.Portal container={portalContainer ?? undefined}>
       <Toast.Viewport
-        aria-label={intl.formatMessage(messages.notifications)}
+        aria-label={'Interview notifications'}
         className="pointer-events-none fixed inset-0 z-50"
       >
         {toasts.map((toast) => (

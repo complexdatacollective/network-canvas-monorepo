@@ -83,6 +83,7 @@ describe('a keyring that cannot be used', () => {
         return caught;
       }
     })();
+    expect(error).toBeInstanceOf(KeyringError);
     // A boot failure is the thing most likely to be pasted into an issue, and
     // the whole input is key material — including the halves of a malformed
     // entry, which may be a key written into the id's place.

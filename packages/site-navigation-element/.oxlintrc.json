@@ -1,3 +1,7 @@
 {
-  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"]
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/direction.json"
+  ]
 }

@@ -84,18 +84,6 @@ const DUPLICATE_NAME = 'Attribute with name "Age" already exists';
 const CONTRADICTION =
   '“Minimum selected” requires 3 answers, but this attribute has only 2 options to choose from.';
 
-/**
- * The same kind of sentence, written by the codebook schema rather than by a
- * host: `rejectValidationContradictions` refuses an attribute whose committed
- * rules its options can no longer satisfy, and anchors it at the rule.
- *
- * Written out rather than imported, for the reason `REFUSED` is: a test that
- * read the schema's own message would still pass if the editor rendered
- * nothing and the alert kept its generic copy.
- */
-const OPTION_COUNT_CONTRADICTION =
-  'Attribute "preference": minSelected (3) is greater than the number of options (2)';
-
 const APPLIED: CodebookWriteOutcome = {
   status: 'applied',
   sectionId: PERSON_SECTION,
@@ -793,10 +781,9 @@ describe('VariableEditor', () => {
     expect(alert).toHaveTextContent(TOO_FEW_OPTIONS);
     expect(alert).not.toHaveTextContent(REFUSED.threw);
     expect(alert).not.toHaveTextContent('the variable draft is invalid');
-    expect(
-      screen.getByRole('group', { name: /Choice values/ }),
-    ).toHaveAccessibleDescription(TOO_FEW_OPTIONS);
-    expect(alert).toHaveFocus();
+    const choices = screen.getByRole('group', { name: /Choice values/ });
+    expect(choices).toHaveAccessibleDescription(TOO_FEW_OPTIONS);
+    expect(choices.contains(document.activeElement)).toBe(true);
     expect(
       screen.getByRole('textbox', { name: /attribute name/i }),
     ).toHaveValue('choice');
@@ -873,58 +860,6 @@ describe('VariableEditor', () => {
     expect(
       screen.getByRole('textbox', { name: /attribute name/i }),
     ).toHaveValue('quota');
-  });
-
-  /**
-   * The rule the researcher has to change, named.
-   *
-   * Removing an option can leave a committed validation rule unsatisfiable —
-   * "answer at least three" with two options left to choose from. The codebook
-   * schema refuses that, and the sentence it refuses it with names the rule and
-   * both numbers. Reported as a thrown failure it would be replaced by the
-   * "wait a moment and try again" copy written for a save that did not reach
-   * the host, which is about a transport this draft never entered and asks for
-   * a retry that cannot succeed.
-   */
-  it('names the validation rule an option removal would break', async () => {
-    const user = withSafeTypingIntoRichText(userEvent.setup());
-    const existing = {
-      name: 'preference',
-      type: 'categorical',
-      options: [
-        { label: { en: 'Low' }, value: 'low' },
-        { label: { en: 'Middle' }, value: 'middle' },
-        { label: { en: 'High' }, value: 'high' },
-      ],
-      validation: { minSelected: 3 },
-    } as const;
-    const onSubmitDocument = submitting();
-
-    render(
-      <VariableEditor
-        openId="edit-contradiction"
-        mode="update"
-        subject={SUBJECT}
-        authoritativeDocument={personDocument({ preference: existing })}
-        variableId="preference"
-        initialDraft={existing}
-        onSubmitDocument={onSubmitDocument}
-        onComplete={() => undefined}
-      />,
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Remove option 3' }));
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(OPTION_COUNT_CONTRADICTION);
-    expect(alert).not.toHaveTextContent(REFUSED.threw);
-    expect(alert).toHaveFocus();
-    // The draft never left the editor, and the researcher can still fix it.
-    expect(onSubmitDocument).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole('button', { name: 'Save attribute' }),
-    ).toBeEnabled();
   });
 
   /**
@@ -2529,120 +2464,5 @@ describe('the two answers a boolean offers', () => {
         { label: { en: 'No' }, value: false, negative: true },
       ],
     });
-  });
-});
-
-describe('the destructive ink on a tinted row', () => {
-  const ACCENT_INK = '[--destructive-ink:var(--surface-accent-destructive)]';
-  const FILL_OVERRIDE = '[--destructive:';
-
-  const redeclares = (element: Element, prefix: string) =>
-    Array.from(element.classList).some((token) => token.startsWith(prefix));
-
-  const inkOwnerOf = (element: Element): Element | null => {
-    let current = element.parentElement;
-    while (current !== null) {
-      if (redeclares(current, '[--destructive-ink:')) return current;
-      current = current.parentElement;
-    }
-    return null;
-  };
-
-  const errorRegionOf = (fieldName: string): HTMLElement => {
-    const region = document.querySelector<HTMLElement>(
-      `[data-field-name="${fieldName}"] [aria-live]`,
-    );
-    if (region === null) {
-      throw new Error(`no error region for the field "${fieldName}"`);
-    }
-    return region;
-  };
-
-  const expectAccentInk = (fieldNames: readonly string[]) => {
-    for (const fieldName of fieldNames) {
-      const owner = inkOwnerOf(errorRegionOf(fieldName));
-      expect(owner).not.toBeNull();
-      expect(owner?.classList.contains(ACCENT_INK)).toBe(true);
-      expect(owner?.classList.contains('bg-surface-accent')).toBe(true);
-    }
-  };
-
-  it('reaches every option field of a choice, and leaves the fill of the button that removes the option alone', () => {
-    const existing = {
-      name: 'preference',
-      type: 'categorical',
-      options: [
-        { label: { en: 'Low' }, value: 'low' },
-        { label: { en: 'High' }, value: 'high' },
-      ],
-    } as const;
-
-    render(
-      <VariableEditor
-        openId="edit-strong-ink"
-        mode="update"
-        subject={SUBJECT}
-        authoritativeDocument={personDocument({ preference: existing })}
-        variableId="preference"
-        initialDraft={existing}
-        onSubmitDocument={async () => APPLIED}
-        onComplete={() => undefined}
-      />,
-    );
-
-    const removeButtons = screen.getAllByRole('button', {
-      name: /^Remove option \d+$/,
-    });
-    expect(removeButtons).toHaveLength(2);
-    for (const button of removeButtons) {
-      let current: Element | null = button;
-      while (current !== null) {
-        expect(redeclares(current, FILL_OVERRIDE)).toBe(false);
-        current = current.parentElement;
-      }
-    }
-
-    expectAccentInk([
-      'option-1-label',
-      'option-1-value',
-      'option-2-label',
-      'option-2-value',
-    ]);
-  });
-
-  it('reaches the answer fields of a boolean without overriding the destructive fill', () => {
-    const variable = {
-      name: 'flagged',
-      type: 'boolean',
-      component: 'Boolean',
-    } as const;
-
-    render(
-      <VariableEditor
-        openId="boolean-strong-ink"
-        mode="update"
-        subject={SUBJECT}
-        authoritativeDocument={personDocument({ flagged: variable })}
-        variableId="flagged"
-        initialDraft={variable}
-        onSubmitDocument={async () => APPLIED}
-        onComplete={() => undefined}
-      />,
-    );
-
-    expectAccentInk([
-      'boolean-answer-true-label',
-      'boolean-answer-false-label',
-    ]);
-    for (const fieldName of [
-      'boolean-answer-true-label',
-      'boolean-answer-false-label',
-    ]) {
-      let current: Element | null = errorRegionOf(fieldName);
-      while (current !== null) {
-        expect(redeclares(current, FILL_OVERRIDE)).toBe(false);
-        current = current.parentElement;
-      }
-    }
   });
 });

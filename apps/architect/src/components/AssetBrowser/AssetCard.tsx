@@ -27,47 +27,17 @@ import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { cx } from '~/utils/cva';
 import { reportError } from '~/utils/reportError';
 const messages = defineMessages({
-  videoPreview: {
-    id: 'architect.assetBrowser.assetCard.videoPreview',
-    defaultMessage: '{name} video preview',
-    description:
-      'Accessible name of the video thumbnail on a resource card; read only by screen readers. name is the researcher-given name of the video resource.',
-  },
-  preview: {
-    id: 'architect.assetBrowser.assetCard.preview',
-    defaultMessage: 'Preview {name}',
-    description:
-      'Accessible name of the icon button on a resource card that opens a preview of the resource; read only by screen readers. name is the resource name.',
-  },
   previewResource: {
     id: 'architect.assetBrowser.assetCard.previewResource',
     defaultMessage: 'Preview resource',
     description:
       'Tooltip of the icon button on a resource card that opens a preview of the resource. Preview here is a verb.',
   },
-  download: {
-    id: 'architect.assetBrowser.assetCard.download',
-    defaultMessage: 'Download {name}',
-    description:
-      'Accessible name of the icon button on a resource card that downloads the resource file; read only by screen readers. name is the resource name.',
-  },
   downloadResource: {
     id: 'architect.assetBrowser.assetCard.downloadResource',
     defaultMessage: 'Download resource',
     description:
       'Tooltip of the icon button on a resource card that downloads the resource file. Download here is a verb.',
-  },
-  isInUseAndCannot: {
-    id: 'architect.assetBrowser.assetCard.isInUseAndCannot',
-    defaultMessage: '{name} is in use and cannot be deleted',
-    description:
-      'Accessible name of the delete button on a resource card when a stage still uses the resource, so it cannot be deleted; read only by screen readers. name is the resource name.',
-  },
-  delete: {
-    id: 'architect.assetBrowser.assetCard.delete',
-    defaultMessage: 'Delete {name}',
-    description:
-      'Accessible name of the icon button on a resource card that deletes the resource; read only by screen readers. name is the resource name.',
   },
   thisResourceIsInUseBy: {
     id: 'architect.assetBrowser.assetCard.thisResourceIsInUseBy',
@@ -93,12 +63,6 @@ const messages = defineMessages({
     defaultMessage: 'File missing',
     description:
       'Badge on a resource card showing that the protocol lists this resource but its file is not stored, because the imported protocol file did not contain it.',
-  },
-  replace: {
-    id: 'architect.assetBrowser.assetCard.replace',
-    defaultMessage: 'Add the file for {name}',
-    description:
-      'Accessible name of the icon button on a resource card that lets the researcher choose the missing file for the resource; read only by screen readers. name is the resource name.',
   },
   replaceResource: {
     id: 'architect.assetBrowser.assetCard.replaceResource',
@@ -231,7 +195,6 @@ const AssetPreview = ({
   source?: string;
   type: AssetType;
 }) => {
-  const intl = useAppIntl();
   const previewUrl = useAssetPreviewUrl(id, source, type);
   const Icon = RESOURCE_KIND_ICONS[type];
 
@@ -259,7 +222,8 @@ const AssetPreview = ({
       >
         <video
           src={previewUrl}
-          aria-label={intl.formatMessage(messages.videoPreview, { name: name })}
+          aria-label={`${name} video preview`}
+          lang="en"
           className="size-full object-contain"
           muted
           playsInline
@@ -333,7 +297,7 @@ const AssetCard = ({
         <IconButton
           key="replace"
           icon={<Upload />}
-          aria-label={intl.formatMessage(messages.replace, { name: name })}
+          aria-label={`Add the file for ${name}`}
           title={intl.formatMessage(messages.replaceResource)}
           color="primary"
           variant="text"
@@ -347,7 +311,7 @@ const AssetCard = ({
         <IconButton
           key="preview"
           icon={<Eye />}
-          aria-label={intl.formatMessage(messages.preview, { name: name })}
+          aria-label={`Preview ${name}`}
           title={intl.formatMessage(messages.previewResource)}
           color="info"
           variant="text"
@@ -360,7 +324,7 @@ const AssetCard = ({
         <IconButton
           key="download"
           icon={<Download />}
-          aria-label={intl.formatMessage(messages.download, { name: name })}
+          aria-label={`Download ${name}`}
           title={intl.formatMessage(messages.downloadResource)}
           color="success"
           variant="text"
@@ -375,8 +339,8 @@ const AssetCard = ({
           icon={<Trash2 />}
           aria-label={
             isUsed
-              ? intl.formatMessage(messages.isInUseAndCannot, { name: name })
-              : intl.formatMessage(messages.delete, { name: name })
+              ? `${name} is in use and cannot be deleted`
+              : `Delete ${name}`
           }
           title={
             isUsed

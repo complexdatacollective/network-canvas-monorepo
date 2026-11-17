@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import {
+  parseIssues,
+  unionBranchIssues,
+} from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { asEntityAttributeReference } from '../entity-attribute-reference.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
@@ -30,7 +34,9 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = { default: 'hexagon' as 'circle' };
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'codebook.node.person.shape.default', code: 'invalid_union' },
+    ]);
   });
 
   it('accepts a discrete shape mapping', () => {
@@ -119,7 +125,12 @@ describe('Shape Mapping Validation', () => {
     };
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'codebook.node.person.shape.dynamic.thresholds',
+        code: 'too_small',
+      },
+    ]);
   });
 
   it('rejects a breakpoint shape mapping with 3 thresholds', () => {
@@ -138,7 +149,12 @@ describe('Shape Mapping Validation', () => {
     };
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'codebook.node.person.shape.dynamic', code: 'invalid_union' },
+    ]);
+    expect(unionBranchIssues(result)).toContainEqual([
+      { path: 'thresholds', code: 'too_big' },
+    ]);
   });
 
   it('rejects a node definition without shape field', () => {
@@ -147,7 +163,9 @@ describe('Shape Mapping Validation', () => {
     delete personDef.shape;
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      { path: 'codebook.node.person.shape', code: 'invalid_type' },
+    ]);
   });
 
   it('rejects discrete mapping with duplicate values', () => {
@@ -165,7 +183,13 @@ describe('Shape Mapping Validation', () => {
     };
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'codebook.node.person.shape.dynamic.map',
+        code: 'custom',
+        message: 'Discrete shape mapping values must be unique',
+      },
+    ]);
   });
 
   it('rejects breakpoint thresholds not in ascending order', () => {
@@ -183,6 +207,13 @@ describe('Shape Mapping Validation', () => {
     };
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'codebook.node.person.shape.dynamic.thresholds',
+        code: 'custom',
+        message:
+          'Breakpoint thresholds must be sorted ascending with no duplicates',
+      },
+    ]);
   });
 });

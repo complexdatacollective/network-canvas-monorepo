@@ -143,8 +143,7 @@ export const useProtocolTabLock = (
         // OPEN, not dirty. An editor with nothing typed into it still has a
         // baseline, taken from the editing buffer as it stood when it opened,
         // and it goes on showing those values after the refresh below replaces
-        // that buffer — it does not re-seed itself
-        // (`EntityTypeDialog.bufferRefresh.test.tsx`). The researcher would
+        // that buffer — it does not re-seed itself. The researcher would
         // then change one field, save, and write the rest of the definition
         // they had before back over what the other tab saved, with nothing on
         // screen to say so. Closing the editor is what makes it safe, and it

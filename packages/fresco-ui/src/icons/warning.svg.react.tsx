@@ -5,6 +5,8 @@ import type { CSSProperties, SVGProps } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { isDecorativeIcon } from './isDecorativeIcon';
+
 type IconStyle = CSSProperties & {
   '--warning-icon-accent'?: string;
   '--warning-icon-accent-dark'?: string;
@@ -33,7 +35,9 @@ export default function Icon({ style, ...props }: SVGProps<SVGSVGElement>) {
       style={iconStyle}
       {...props}
     >
-      <title>{intl.formatMessage(messages.title)}</title>
+      {isDecorativeIcon(props) ? null : (
+        <title>{intl.formatMessage(messages.title)}</title>
+      )}
       <circle className="fill-platinum" cx="90" cy="17.5" r="17.5" />
       <circle className="fill-platinum" cx="17.5" cy="142.5" r="17.5" />
       <circle className="fill-platinum-dark" cx="162.5" cy="142.5" r="17.5" />

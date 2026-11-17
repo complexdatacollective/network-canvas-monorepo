@@ -1,0 +1,129 @@
+---
+navOrder: 1
+title: Flux de travail des protocoles et des données
+wip: false
+toc: true
+translatedFrom: 5d853f875d9a857318e50ec85075e853e2f6436e
+---
+
+<SummaryCard duration="15 minutes">
+<SummarySection>
+
+Ce tutoriel décrit un flux de travail des protocoles et des données pour utiliser les outils Network Canvas.
+
+</SummarySection>
+<PrerequisitesSection>
+
+Pour suivre ce tutoriel, vous devez :
+
+- Connaître Network Canvas et son processus de collecte de données.
+- Avoir accès aux appareils que vous utiliserez pour mener les entretiens.
+- Pour les flux de travail d’Interviewer Classic, pouvoir installer des logiciels ou configurer vos appareils, ou bénéficier de l’aide d’une personne qui le peut (par exemple, le service informatique de votre établissement). Interviewer, qui fonctionne dans le navigateur, et Fresco n’ont besoin que d’un navigateur web pris en charge.
+- Créer ou obtenir le fichier de protocole que vous souhaitez distribuer (consultez [construire un protocole](/fr/design-protocols/tutorials/building-a-protocol)).
+
+</PrerequisitesSection>
+</SummaryCard>
+
+## Introduction {#introduction}
+
+Ce guide présente trois flux de travail possibles pour mener une recherche avec les outils Network Canvas : comment votre protocole arrive sur chaque appareil d’entretien, et comment les données recueillies vous reviennent.
+
+- **[Le flux de travail d’Interviewer](#the-interviewer-workflow)** — réalisez dans [Interviewer](/fr/collect-data/interviewer) des sessions d’entretien en présentiel, guidées par la personne qui mène l’entretien. Interviewer fonctionne localement dans le navigateur web d’un membre de l’équipe de recherche, sans rien à installer. Les protocoles sont importés et les données exportées depuis l’application elle-même.
+- **[Le flux de travail de Fresco](#the-fresco-workflow)** — créez vos protocoles dans [Architect](/fr/design-protocols/getting-started), téléversez-les (envoyez-les vers le serveur) depuis le tableau de bord de [Fresco](/fr/collect-data/fresco/about), et laissez les personnes participantes réaliser les entretiens à distance dans leur navigateur, toutes les données étant stockées de façon centralisée et exportées depuis le tableau de bord.
+- **[Les flux de travail d’Interviewer Classic](#the-interviewer-classic-workflow)** — pour les études qui utilisent **Interviewer Classic**, l’application téléchargeable pour ordinateur et tablette. Il faut alors copier le fichier de protocole sur chaque appareil et récupérer une exportation distincte de chacun, soit par un service de partage de fichiers dans le cloud, soit avec une clé USB.
+
+Chaque flux de travail part d’un protocole que vous avez déjà conçu : utilisez [Architect](/fr/design-protocols/getting-started) pour Interviewer et Fresco, et [Architect Classic](/fr/design-protocols/choosing-architect) pour Interviewer Classic, qui n’exécute que des protocoles en schéma 7.
+
+Avec Interviewer et Interviewer Classic, c’est vous qui copiez les fichiers sur chaque appareil d’entretien et qui récupérez ceux qu’il produit. [Flux de travail en ligne et hors ligne d’Interviewer](/fr/collect-data/interviewer-online-and-offline-workflows) explique comment procéder, avec ou sans connexion Internet.
+
+## Le flux de travail d’Interviewer {#the-interviewer-workflow}
+
+[Interviewer](/fr/collect-data/interviewer) fonctionne dans votre navigateur web, ou peut être installé comme application web progressive sur un appareil que vous contrôlez. Tout ce qu’il enregistre — protocoles, entretiens et paramètres — reste sur l’appareil, sans aucun composant serveur, si bien que tout le cycle du protocole et des données se déroule dans l’application :
+
+1. **Importez votre protocole** depuis un fichier `.netcanvas` présent sur l’appareil. Les protocoles sont validés à l’importation. Les protocoles en schéma 8 s’exécutent tels quels, et les protocoles en schéma 7 issus des applications Classic sont automatiquement migrés vers le schéma 8.
+2. **Menez vos entretiens.** Les sessions sont guidées par la personne qui mène l’entretien et stockées sur l’appareil — chiffrées au repos lorsque vous configurez un verrouillage de l’application —, et peuvent être reprises plus tard en cas d’interruption.
+3. **Exportez vos données** depuis l’application elle-même en sélectionnant les sessions dans la vue **Données**. Interviewer les regroupe dans une seule archive `.zip` de fichiers CSV, GraphML ou les deux, selon les formats et les options que vous configurez une seule fois dans **Paramètres → Exportation des données**.
+
+[Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer) détaille chacune de ces opérations. Comme les données recueillies restent sur chaque appareil jusqu’à ce que vous les exportiez, exportez-les régulièrement, et suivez les [bonnes pratiques d’organisation et de sauvegarde des données](#data-organization-and-backup-best-practices) ci-dessous pour décider où les fichiers exportés doivent aboutir.
+
+<TipBox>
+
+Vous pouvez tester tout ce cycle à blanc avant de recueillir des données réelles : Interviewer peut générer des sessions d’entretien synthétiques (depuis **Paramètres → Données synthétiques**) qui s’exportent exactement comme les vraies. Consultez [Mener une étude pilote](/fr/get-started/planning-a-study/piloting-your-study).
+
+</TipBox>
+
+## Le flux de travail de Fresco {#the-fresco-workflow}
+
+Si vous souhaitez mener des entretiens à distance dans un navigateur web sans installer de logiciel sur chaque appareil, vous pouvez utiliser les outils web : créez votre protocole dans [Architect](/fr/design-protocols/getting-started) et menez votre étude avec [Fresco](/fr/collect-data/fresco/about).
+
+Ce flux de travail supprime entièrement la logistique propre à chaque appareil. Il n’y a aucun protocole à importer sur chaque appareil d’entretien ni aucune exportation distincte à récupérer de chacun : les protocoles sont mis en place une seule fois, par téléversement sur votre tableau de bord Fresco, et toutes les données recueillies sont exportées de façon centralisée depuis ce même tableau de bord.
+
+<TipBox>
+
+Le flux de travail de Fresco nécessite une instance de Fresco déployée. Fresco est auto-hébergé : vous (ou le service informatique de votre établissement) devrez donc le déployer avant de pouvoir mener une étude. Consultez le [guide de déploiement](/fr/collect-data/fresco/guide) pour commencer, ou explorez le [bac à sable](/fr/collect-data/fresco/sandbox) pour essayer Fresco sans le déployer vous-même.
+
+</TipBox>
+
+### Mettre en place le protocole dans Fresco {#deploying-the-protocol-to-fresco}
+
+Plutôt que d’importer le fichier de protocole sur chaque appareil d’entretien, vous le téléversez une seule fois sur votre tableau de bord Fresco. Fresco valide le protocole, téléverse les ressources qu’il contient vers son service de stockage et le met à la disposition des personnes participantes.
+
+1. Ouvrez votre instance de Fresco déployée et connectez-vous au tableau de bord.
+2. Rendez-vous sur la page **Protocoles** du tableau de bord.
+3. Cliquez sur le bouton **Téléverser un protocole**.
+4. Sélectionnez le fichier `.netcanvas` que vous avez exporté depuis Architect.
+5. Cliquez sur **Téléverser**.
+
+Une fois le protocole affiché sur la page des protocoles, vous pouvez ajouter des personnes participantes et partager avec elles une URL de participation. Pour l’ensemble des opérations — notamment l’ajout de personnes participantes, le choix d’une stratégie de recrutement et la génération des URL des personnes participantes —, consultez le [guide Utiliser Fresco](/fr/collect-data/fresco/using-fresco).
+
+### Mener les entretiens {#conducting-interviews}
+
+Les personnes participantes réalisent l’entretien **dans un navigateur web** en se rendant sur une URL de participation — il n’y a aucune application à installer ni aucun protocole à mettre en place sur chaque appareil. Les personnes participantes peuvent utiliser n’importe quel ordinateur ou tablette doté d’un [navigateur pris en charge](/fr/collect-data/fresco/faq#which-browsers-are-supported) ; les tablettes doivent être utilisées en mode paysage. Les smartphones et les appareils à petit écran ne sont pas pris en charge.
+
+### Exporter les données depuis Fresco {#exporting-data-from-fresco}
+
+Les données d’entretien sont stockées de façon centralisée dans la base de données de Fresco (PostgreSQL) : il n’y a donc aucune exportation par appareil à gérer. Une fois que des personnes participantes ont terminé leurs entretiens, vous exportez toutes les données recueillies directement depuis le tableau de bord Fresco.
+
+1. Rendez-vous sur la page **Entretiens** du tableau de bord.
+2. Cochez les cases des entretiens que vous souhaitez exporter et cliquez sur **Exporter la sélection**, ou cliquez sur **Exporter les données d’entretien** pour exporter tous les entretiens (ou tous ceux qui n’ont pas encore été exportés).
+3. Confirmez les types de fichiers et les options d’exportation que vous souhaitez utiliser (les mêmes options CSV et GraphML que celles décrites dans le [guide d’exportation des données](/fr/analyze-data/data-export)).
+4. Cliquez sur **Lancer l’exportation**.
+
+Comme les données sont recueillies et exportées de façon centralisée, la logistique de transfert par appareil décrite dans [Flux de travail en ligne et hors ligne d’Interviewer](/fr/collect-data/interviewer-online-and-offline-workflows) ne s’applique pas. Pour tous les détails sur l’exportation et le suivi de votre étude, consultez le [guide Utiliser Fresco](/fr/collect-data/fresco/using-fresco#exporting-data).
+
+#### Récupérer les données par programmation avec l’API de Fresco {#pulling-data-programmatically-with-the-fresco-api}
+
+Si vous préférez automatiser la récupération des données plutôt que de télécharger les fichiers à la main depuis le tableau de bord, Fresco propose aussi l’[API Interview Data](/fr/analyze-data/fresco-api) (l’API des données d’entretien), accessible en lecture seule. Elle vous permet de lister et de récupérer les données d’entretien et de protocole directement depuis votre instance via HTTP — elle renvoie du JSON, y compris le réseau complet de chaque entretien —, afin que vous puissiez mettre en place des chaînes d’exportation et d’analyse reproductibles (par exemple en R ou en Python) qui récupèrent les nouveaux entretiens à intervalles réguliers.
+
+L’API est désactivée par défaut ; vous l’activez et créez un jeton d’accès depuis **Paramètres → Jetons d’API** dans le tableau de bord. Pour des téléchargements ponctuels de fichiers CSV ou GraphML mis en forme, l’exportation depuis le tableau de bord décrite ci-dessus est généralement plus simple. Consultez la [référence de l’API de Fresco](/fr/analyze-data/fresco-api) pour connaître les points de terminaison disponibles, l’authentification et des exemples complets en R et en Python.
+
+<TipBox>
+
+Fresco présente quelques [limites connues](/fr/collect-data/fresco/about#known-limitations) par rapport à Interviewer. Prenez-en connaissance avant de choisir le flux de travail de Fresco, en particulier si vous comptez comparer des données recueillies avec Fresco à des données recueillies avec Interviewer.
+
+</TipBox>
+
+## Le flux de travail d’Interviewer Classic {#the-interviewer-classic-workflow}
+
+Si votre étude utilise **[Interviewer Classic](/fr/collect-data/interviewer/installing-interviewer)** — l’application téléchargeable pour ordinateur et tablette —, le flux de travail a la même structure que celui d’Interviewer décrit ci-dessus : le protocole est importé sur chaque appareil, les entretiens sont stockés sur cet appareil, et chaque appareil produit sa propre exportation.
+
+1. **Installez Interviewer Classic** sur chaque appareil d’entretien, et [configurez les appareils](/fr/collect-data/interviewer/configuring-devices) avant le début de la collecte des données.
+2. **Importez votre protocole** sur chaque appareil depuis un fichier `.netcanvas`. Interviewer Classic exécute les protocoles en schéma 7 et fonctionne entièrement hors ligne.
+3. **Menez vos entretiens** : chaque session est guidée par la personne qui mène l’entretien.
+4. **Exportez vos données** depuis la carte **Manage or Export Sessions** (gérer ou exporter les sessions) de l’écran d’accueil, en choisissant à chaque fois vos types de fichiers et vos options d’exportation, et enregistrez le `.zip` obtenu à un emplacement que vous contrôlez.
+
+[Flux de travail en ligne et hors ligne d’Interviewer](/fr/collect-data/interviewer-online-and-offline-workflows) détaille les points 2 et 4, pour les appareils connectés (via un service de partage de fichiers dans le cloud) et pour les appareils sans connexion Internet (via un support de stockage externe).
+
+## Bonnes pratiques d’organisation et de sauvegarde des données {#data-organization-and-backup-best-practices}
+
+Quel que soit le flux de travail choisi, il est important de réfléchir à la manière dont vous allez organiser et sauvegarder vos données. Voici quelques bonnes pratiques à prendre en compte :
+
+1. Dans le dossier où sont rassemblées vos exportations — en local, dans le cloud ou sur un support de stockage externe —, créez des sous-dossiers pour classer et organiser vos données Network Canvas par projet, par date ou selon tout autre critère pertinent.
+2. Sauvegardez régulièrement les données en copiant ou en synchronisant le dossier local vers un périphérique de stockage externe ou un autre service de stockage dans le cloud. Le simple fait de placer les données chez votre fournisseur de cloud ne constitue pas une sauvegarde : les données ne se trouvent toujours qu’à un seul endroit.
+3. Envisagez de mettre en œuvre un système de gestion de versions ou de conserver des sauvegardes à différents intervalles de temps, afin de garantir l’intégrité des données et de réduire au minimum le risque de perte de données.
+4. Utilisez les fonctions de contrôle d’accès de votre service de stockage dans le cloud pour que seules les personnes autorisées aient accès aux données, et qu’elles ne disposent que du niveau d’accès nécessaire à leur rôle.
+5. Donnez des instructions claires aux personnes qui mènent les entretiens sur la manière et le moment d’exporter les données. Envisagez de créer une liste de vérification ou une autre documentation pour les aider à se souvenir des opérations. Ces instructions doivent indiquer, par exemple, combien de sessions et lesquelles exporter ensemble, et quelles options d’exportation sélectionner. N’oubliez pas que l’exportation produit un fichier zip unique : une fois l’exportation terminée, vous ne pourrez pas savoir quelles sessions elle regroupe ni avec quelles options elle a été réalisée tant que les données n’auront pas été extraites.
+
+## Types de fichiers et options d’exportation {#file-types-and-export-options}
+
+Quel que soit le flux de travail utilisé, l’exportation propose les deux mêmes formats de fichier — CSV et GraphML — ainsi qu’un petit ensemble d’options d’exportation, et nous vous recommandons d’exporter les données dans les deux formats le temps de déterminer lequel convient à vos outils d’analyse. Pour une description complète du contenu des fichiers exportés et du rôle de chaque option d’exportation, consultez le [guide d’exportation des données](/fr/analyze-data/data-export).

@@ -1,0 +1,79 @@
+---
+title: Choix de la langue
+navOrder: 23
+date: 7th October 2026
+translatedFrom: e871d25c6dc260991079fb66b70cbbce7224e564
+---
+
+<InterfaceSummary type="LanguageChooser">
+
+<InterfaceMeta type="Utilitaire" creates="Ne crée pas d’entités" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+L’interface « Choix de la langue » est un écran où les personnes participantes choisissent la langue du reste de l’entretien, parmi les langues dans lesquelles votre protocole est rédigé. Elle est utile chaque fois que votre protocole comporte plusieurs langues et que rien ne garantit que l’appareil ou le navigateur d’une personne participante est réglé sur la langue qu’elle souhaite utiliser.
+
+Pour définir les langues parmi lesquelles une personne participante peut choisir, consultez [Traduire votre protocole](/fr/design-protocols/translating-your-protocol). Vous pouvez aussi ajouter et supprimer des langues dans l’éditeur de cette étape (consultez [Configurer l’étape « Choix de la langue »](#configuring-the-language-chooser)).
+
+## Ce que voient les personnes participantes {#what-participants-see}
+
+L’écran se compose d’un titre placé au-dessus d’une liste de langues. Le titre peut être défini dans votre protocole, comme le reste de son texte : il indique « Choisissez une langue », dans chacune des langues de votre protocole pour lesquelles Network Canvas dispose de formulations, jusqu’à ce que vous le modifiiez ou le traduisiez vous-même (consultez [Configurer l’étape « Choix de la langue »](#configuring-the-language-chooser)). Le titre s’affiche dans la langue dans laquelle l’entretien est affiché à ce moment-là : il change donc dès que la personne participante choisit une autre langue.
+
+La liste contient exactement les langues dans lesquelles votre protocole est rédigé, classées selon l’ordre alphabétique propre à la langue dans laquelle l’entretien est affiché. Chaque langue est désignée par son nom dans cette langue et dans son écriture : une personne qui parle espagnol voit **Español** et une personne qui parle japonais voit **日本語**, quelle que soit la langue dans laquelle l’écran est affiché à ce moment-là. Les langues ne suivent aucun autre ordre : l’ordre dans lequel votre protocole les enregistre ne change rien.
+
+La langue dans laquelle l’entretien est affiché à ce moment-là est déjà sélectionnée. Lorsque la personne participante en choisit une autre, le changement est immédiat : le texte de votre protocole passe dans cette langue, y compris les boutons et les messages de l’entretien que contient votre protocole (consultez [Textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text)), de même que tous les écrans suivants de l’entretien. La personne participante peut changer d’avis autant de fois qu’elle le souhaite avant de continuer. Un texte qui n’a pas de traduction dans la langue choisie s’affiche dans une autre des langues de votre protocole (consultez [La langue par défaut et la traduction que voient les personnes participantes](/fr/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see)).
+
+![Une étape « Choix de la langue » en aperçu, avec español sélectionné. Le titre s’affiche en espagnol, « Elige un idioma », et chaque langue est indiquée par son propre nom.](/assets/img/architect/localization/preview-language.png)
+
+La personne participante peut toujours passer à l’écran suivant, même si elle ne choisit pas de langue. Si elle laisse la langue sélectionnée telle quelle, l’entretien continue de choisir sa langue d’après les paramètres de langue de son appareil ou de son navigateur, comme avant cet écran. Une fois qu’elle a choisi une langue, l’entretien la conserve jusqu’à la fermeture de l’onglet du navigateur, y compris si la page est rechargée. Ce choix n’est pas enregistré avec l’entretien : un entretien repris dans un nouvel onglet ou sur un autre appareil repart des paramètres de langue de cet appareil ou de ce navigateur.
+
+## Configurer l’étape « Choix de la langue » {#configuring-the-language-chooser}
+
+L’éditeur d’étape comporte les sections suivantes :
+
+- **Langues** liste les langues parmi lesquelles les personnes participantes peuvent choisir : toutes les langues dans lesquelles votre protocole est rédigé, dans l’ordre alphabétique. Vous pouvez les gérer directement ici. C’est la même liste que sur la page **Langues** d’Architect, avec les mêmes règles (consultez [Gérer les langues de votre protocole](/fr/design-protocols/translating-your-protocol#managing-your-protocols-languages)) : une modification faite à un endroit apparaît donc à l’autre. Une modification de cette liste s’applique aussi aux changements de cette étape que vous n’avez pas encore enregistrés. Vous pouvez :
+  - ajouter des langues avec **Ajouter des langues**. Une nouvelle langue ne contient au départ aucune traduction de votre propre texte, mais les formulations fournies par Network Canvas, comme le titre de cette étape, s’y affichent déjà lorsque Network Canvas dispose de ces formulations dans cette langue.
+  - choisir la langue par défaut dans la liste **Langue par défaut**, dès que votre protocole comporte plusieurs langues.
+  - cesser de proposer une langue avec le bouton « Supprimer la langue » situé au bout de sa ligne, ce qui supprime ses traductions. Vous ne pouvez pas supprimer la langue par défaut tant qu’une autre langue n’est pas devenue la langue par défaut. Vous ne pouvez pas supprimer une langue qui contient la seule traduction d’un texte tant que ce texte n’a pas été traduit dans une autre langue. Cela inclut le texte de cette étape que vous n’avez pas encore enregistré. Lorsque vous ne pouvez pas supprimer une langue, son bouton « Supprimer la langue » est indisponible. Survolez-le avec le pointeur, ou atteignez-le avec le clavier, pour en voir la raison.
+  - enregistrer les traductions d’une langue comme celles d’une autre langue avec le bouton « Changer la langue » situé au bout de sa ligne, par exemple lorsqu’une formulation enregistrée dans une langue est en réalité rédigée dans une autre (consultez [Changer la langue dans laquelle votre texte est enregistré](/fr/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as)). Vos propres formulations sont déplacées telles quelles. Les formulations fournies par Network Canvas que vous n’avez pas modifiées deviennent ses formulations dans la langue choisie ou, si Network Canvas n’en dispose pas dans cette langue, sont supprimées pour que vous les rédigiez.
+
+  Un badge **Traductions manquantes** signale chaque langue dans laquelle certains textes ne sont pas encore traduits. L’éditeur d’étape n’ouvre pas [le tableau des traductions](/fr/design-protocols/translating-your-protocol#the-translation-table) : traduisez ces textes depuis la page **Langues** d’Architect.
+
+- **Personnaliser la formulation intégrée** contient le **Titre** affiché au-dessus de la liste des langues. Il indique « Choisissez une langue » dans chacune des langues de votre protocole pour lesquelles Network Canvas dispose de formulations, jusqu’à ce que vous le modifiiez. Modifiez-le comme n’importe quel autre texte, et traduisez-le dans les langues où il manque, comme le reste de votre protocole (consultez [Traduire votre protocole](/fr/design-protocols/translating-your-protocol)). Lorsque vous ajoutez une langue pour laquelle Network Canvas dispose de formulations, le titre reprend aussi la formulation de Network Canvas dans cette langue, jusqu’à ce que vous le traduisiez vous-même.
+- La [logique de saut](/fr/design-protocols/key-concepts/skip-logic) et la section **Guide d’entretien** (les indications destinées à la personne qui mène l’entretien) fonctionnent comme dans les autres étapes.
+
+![L’éditeur de l’étape « Choix de la langue ». La section Personnaliser la formulation intégrée contient le Titre, « Choose a language », en anglais américain, la langue par défaut.](/assets/img/architect/localization/language-chooser-editor.png)
+
+## Données {#data}
+
+L’étape « Choix de la langue » ne crée ni nœuds ni liens, et n’ajoute rien au réseau de la personne participante. Le choix de la personne participante n’est ni enregistré avec l’entretien ni inclus dans vos données exportées. Il reste valable pour le reste de sa visite dans cet onglet du navigateur, y compris si elle recharge la page.
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Placez l’étape « Choix de la langue » tout au début de votre protocole, avant tout écran comportant du texte que les personnes participantes doivent comprendre.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Traduisez chaque texte de votre protocole dans chacune de ses langues avant de commencer à recueillir des données. Le tableau des traductions indique tout ce qui manque encore (consultez [Repérer les traductions manquantes](/fr/design-protocols/translating-your-protocol#finding-missing-translations)).
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Évitez d’ajouter une étape « Choix de la langue » à un protocole qui ne comporte qu’une seule langue. Les personnes participantes verraient une seule langue à choisir, ce qui allongerait l’entretien d’un écran sans leur laisser de choix.
+
+</BadPractice>
+
+<BadPractice>
+
+Évitez de vous en remettre à l’appareil de la personne participante pour choisir la bonne langue lorsque c’est important pour votre étude. Un appareil partagé entre plusieurs personnes, ou configuré par quelqu’un d’autre, peut être réglé sur une langue que la personne participante ne lit pas.
+
+</BadPractice>

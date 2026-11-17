@@ -5,6 +5,8 @@ import type { CSSProperties, SVGProps } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { isDecorativeIcon } from './isDecorativeIcon';
+
 type IconStyle = CSSProperties & {
   '--icon-tone-primary'?: string;
   '--icon-tone-secondary'?: string;
@@ -33,7 +35,9 @@ export default function Icon({ style, ...props }: SVGProps<SVGSVGElement>) {
       style={iconStyle}
       {...props}
     >
-      <title>{intl.formatMessage(messages.title)}</title>
+      {isDecorativeIcon(props) ? null : (
+        <title>{intl.formatMessage(messages.title)}</title>
+      )}
       <circle fill="var(--icon-tone-primary)" cx="49" cy="11" r="11" />
       <circle fill="var(--icon-tone-primary)" cx="49" cy="49" r="11" />
       <circle fill="var(--icon-tone-primary)" cx="11" cy="30" r="11" />

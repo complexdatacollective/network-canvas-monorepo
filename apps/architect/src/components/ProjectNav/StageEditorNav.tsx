@@ -42,24 +42,6 @@ const messages = defineMessages({
     description:
       'Button in the stage editor toolbar that saves the stage and returns to the timeline. Finished is the past tense: the researcher has finished editing.',
   },
-  stageEditorActions: {
-    id: 'architect.projectNav.stageEditorNav.stageEditorActions',
-    defaultMessage: 'Stage editor actions',
-    description:
-      'Accessible name of the toolbar at the bottom of the stage editor, which holds the editing and preview buttons; read only by screen readers.',
-  },
-  editingActions: {
-    id: 'architect.projectNav.stageEditorNav.editingActions',
-    defaultMessage: 'Editing actions',
-    description:
-      'Accessible name of the group of toolbar buttons that cancel or finish editing the stage; read only by screen readers.',
-  },
-  previewActions: {
-    id: 'architect.projectNav.stageEditorNav.previewActions',
-    defaultMessage: 'Preview actions',
-    description:
-      'Accessible name of the group of toolbar buttons that preview the stage and open the preview settings; read only by screen readers.',
-  },
   preview: {
     id: 'architect.projectNav.stageEditorNav.preview',
     defaultMessage: 'Preview',
@@ -209,16 +191,13 @@ export const StageEditorToolbar = ({
 
   const toolbarProps = useMemo(
     () => ({
-      'aria-label': intl.formatMessage(messages.stageEditorActions),
+      'aria-label': 'Stage editor actions',
       'children': [
         reviewControl,
         reviewControl ? <ToolbarSeparator key="review-separator" /> : null,
         issuesControl,
         issuesControl ? <ToolbarSeparator key="issues-separator" /> : null,
-        <ToolbarGroup
-          key="stage-editing"
-          aria-label={intl.formatMessage(messages.editingActions)}
-        >
+        <ToolbarGroup key="stage-editing" aria-label={'Editing actions'}>
           <ToolbarButton icon={<X />} onClick={onCancel}>
             {intl.formatMessage(commonMessages.cancel)}
           </ToolbarButton>
@@ -235,7 +214,7 @@ export const StageEditorToolbar = ({
         <ToolbarSeparator key="stage-preview-separator" />,
         <ToolbarGroup
           key="stage-preview"
-          aria-label={intl.formatMessage(messages.previewActions)}
+          aria-label={'Preview actions'}
           className="gap-[0.16em]"
         >
           <ToolbarButton

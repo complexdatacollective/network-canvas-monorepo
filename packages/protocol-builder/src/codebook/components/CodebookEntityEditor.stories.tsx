@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen, within } from 'storybook/test';
+import { expect, screen, userEvent, within } from 'storybook/test';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import { buttonPaint, TRANSPARENT } from '../../testing/buttonPaint.ts';
+import { ProtocolWithShapeImages } from '../../testing/ProtocolWithShapeImages.tsx';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import CodebookEntityEditor from './CodebookEntityEditor.tsx';
 
@@ -44,6 +45,24 @@ const PERSON_WITH_SHAPE_MAPPING: SectionDoc = {
   },
 };
 
+/** A type that draws itself with the researcher's own SVG shapes. */
+const PLACE_WITH_CUSTOM_SHAPES: SectionDoc = {
+  ...PERSON,
+  name: 'Place',
+  customShapes: {
+    home: { name: 'Home', asset: 'home-image' },
+    school: { name: 'School', asset: 'school-image' },
+  },
+  shape: {
+    default: 'custom:home',
+    dynamic: {
+      variable: 'ethnicity',
+      type: 'discrete',
+      map: [{ value: 'asian', shape: 'custom:school' }],
+    },
+  },
+};
+
 function ExistingNodeEditor() {
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -77,11 +96,13 @@ const meta = {
   tags: ['autodocs'],
   decorators: [
     (Story) => (
-      <ProtocolLocalizationProvider
-        localization={{ defaultLocale: 'en', locales: ['en'] }}
-      >
-        <Story />
-      </ProtocolLocalizationProvider>
+      <ProtocolWithShapeImages>
+        <ProtocolLocalizationProvider
+          localization={{ defaultLocale: 'en', locales: ['en'] }}
+        >
+          <Story />
+        </ProtocolLocalizationProvider>
+      </ProtocolWithShapeImages>
     ),
   ],
 } satisfies Meta<typeof ExistingNodeEditor>;
@@ -202,16 +223,160 @@ export const WithAShapeMapping: Story = {
       dialog.getByRole('switch', { name: 'Map attribute to shape' }),
     ).toBeChecked();
     await expect(
-      within(
-        dialog.getByRole('radiogroup', { name: 'Shape for Asian' }),
-      ).getByRole('radio', { name: 'Select shape Square' }),
+      within(dialog.getByRole('radiogroup', { name: 'Asian' })).getByRole(
+        'radio',
+        { name: 'Select shape Square' },
+      ),
     ).toHaveAttribute('aria-checked', 'true');
     // The other answer has no shape of its own yet, which the editor says
     // rather than leaving the researcher to notice.
     await expect(
-      dialog.getByText(
-        'Some values are unmapped and will use the default shape.',
+      dialog.getByRole('radiogroup', { name: 'White' }),
+    ).toHaveAccessibleDescription('Uses the default shape');
+  },
+};
+
+/**
+ * A node type with its own shapes: each is listed with a preview and a name,
+ * offered in the default picker and in every mapping row after the built-in
+ * shapes, and cannot be removed while the type still uses it.
+ */
+export const WithCustomShapes: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-place-custom-shapes-1"
+      dialog={{ title: 'Edit this node type', open: true }}
+      subject={{ entity: 'node', type: 'place' }}
+      initialDraft={PLACE_WITH_CUSTOM_SHAPES}
+      authoritativeDocument={PLACE_WITH_CUSTOM_SHAPES}
+      existingEntityNames={['Person']}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'unreachable' }),
+          refusal: { kind: 'unreachable' } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await expect(
+      within(dialog.getByRole('radiogroup', { name: /^Shape/ })).getByRole(
+        'radio',
+        { name: 'Select shape Home' },
+      ),
+    ).toHaveAttribute('aria-checked', 'true');
+    await expect(
+      within(dialog.getByRole('radiogroup', { name: 'Asian' })).getByRole(
+        'radio',
+        { name: 'Select shape School' },
+      ),
+    ).toHaveAttribute('aria-checked', 'true');
+    await expect(
+      dialog.getByRole('button', { name: 'Remove shape Home' }),
+    ).toBeDisabled();
+    await expect(
+      dialog.getByRole('button', { name: 'Remove shape School' }),
+    ).toBeDisabled();
+  },
+};
+
+/**
+ * A save refused because the image behind one custom shape has gone: the
+ * refusal is shown under the custom shapes field and names the shape, and
+ * focus moves to that field.
+ */
+export const ShapeImageUnavailable: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-place-image-unavailable-1"
+      dialog={{ title: 'Edit this node type', open: true }}
+      subject={{ entity: 'node', type: 'place' }}
+      initialDraft={PLACE_WITH_CUSTOM_SHAPES}
+      authoritativeDocument={PLACE_WITH_CUSTOM_SHAPES}
+      existingEntityNames={['Person']}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'promotionFailed' }),
+          refusal: {
+            kind: 'promotionFailed',
+            resourceId: 'school-image',
+          } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await userEvent.type(
+      dialog.getByRole('textbox', { name: /Node type name/ }),
+      ' (changed)',
+    );
+    await userEvent.click(dialog.getByRole('button', { name: 'Save entity' }));
+
+    await expect(
+      await dialog.findByText(
+        'The image for the shape "School" is no longer available. Remove this shape and add it again.',
       ),
     ).toBeVisible();
+  },
+};
+
+/**
+ * Adding a shape: "Add a shape" opens a browser where the researcher imports
+ * an SVG file or picks an SVG image the protocol already holds. Choosing one
+ * adds a shape named after the image.
+ */
+export const AddingAShape: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-person-add-shape-1"
+      dialog={{ title: 'Edit this node type', open: true }}
+      subject={{ entity: 'node', type: 'person' }}
+      initialDraft={PERSON}
+      authoritativeDocument={PERSON}
+      existingEntityNames={['Place']}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'unreachable' }),
+          refusal: { kind: 'unreachable' } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const editor = within(
+      await screen.findByRole('dialog', { name: 'Edit this node type' }),
+    );
+    await userEvent.click(editor.getByRole('button', { name: 'Add a shape' }));
+
+    const browser = within(
+      await screen.findByRole('dialog', { name: 'Choose a node shape' }),
+    );
+    await expect(
+      browser.getByText('Import a shape from an SVG file'),
+    ).toBeVisible();
+    await userEvent.click(
+      await browser.findByRole('button', { name: 'school.svg' }),
+    );
+
+    await expect(await editor.findByDisplayValue('school')).toBeInTheDocument();
+    await expect(
+      within(editor.getByRole('radiogroup', { name: /^Shape/ })).getByRole(
+        'radio',
+        { name: 'Select shape school' },
+      ),
+    ).toBeInTheDocument();
   },
 };

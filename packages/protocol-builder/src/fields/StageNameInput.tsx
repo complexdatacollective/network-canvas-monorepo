@@ -1,5 +1,6 @@
 import type { ChangeEvent, FocusEvent, KeyboardEvent } from 'react';
 
+import { textEntryDirection } from '@codaco/fresco-ui/form/textEntryDirection';
 import useSelectOnFocus from '@codaco/fresco-ui/hooks/useSelectOnFocus';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -134,6 +135,10 @@ const StageNameInput = ({
   const selectOnFocusHandlers =
     useSelectOnFocus<HTMLTextAreaElement>(selectOnFocus);
 
+  // The editing language's direction when there is one; otherwise the name
+  // is read by its own first letter.
+  const direction = textEntryDirection({ dir });
+
   return (
     /*
      * A textarea cannot size itself to its content, so the same text is laid
@@ -148,7 +153,15 @@ const StageNameInput = ({
       dir={dir}
       className="grid w-full grid-cols-[minmax(0,1fr)]"
     >
-      <div aria-hidden="true" className={cx(sharedTextLayout, 'invisible')}>
+      {/*
+       * Both the copy that sizes the box and the box itself take the same
+       * direction (`textEntryDirection`), so they wrap alike.
+       */}
+      <div
+        aria-hidden="true"
+        dir={direction.dir}
+        className={cx(sharedTextLayout, direction.className, 'invisible')}
+      >
         {/*
          * The trailing space holds the height of a line ending in whitespace,
          * which a block collapses away and the textarea shows a caret on.
@@ -176,8 +189,10 @@ const StageNameInput = ({
         aria-invalid={ariaInvalid}
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
+        dir={direction.dir}
         className={cx(
           sharedTextLayout,
+          direction.className,
           'focusable h-full resize-none overflow-hidden bg-transparent outline-none placeholder:opacity-40',
           ariaInvalid && 'text-destructive-ink',
         )}

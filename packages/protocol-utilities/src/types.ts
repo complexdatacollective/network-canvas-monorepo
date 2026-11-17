@@ -29,6 +29,14 @@ export type TextInput = string | LocalizedString;
 export type LocalizationInput = {
   defaultLocale: LocaleTag;
   locales: readonly LocaleTag[];
+  /**
+   * The protocol's fallback language, which a protocol names when Network
+   * Canvas has no wording in its default language (`needsFallbackLanguage`
+   * in `@codaco/protocol-validation`). The built protocol names it as given:
+   * a fixture in such a language without one is a protocol still being
+   * written.
+   */
+  fallbackLocale?: LocaleTag;
 };
 
 /**

@@ -1,4 +1,4 @@
-import { mount, shallow } from 'enzyme';
+import { mount } from 'enzyme';
 import { Provider } from 'react-redux';
 import { createStore } from 'redux';
 import { vi } from 'vitest';
@@ -24,12 +24,6 @@ const props = (testProps) => ({
 });
 
 describe('<Form />', () => {
-  it('should render', () => {
-    const subject = shallow(<Form {...props()} store={mockStore()} />);
-
-    expect(subject).toMatchSnapshot();
-  });
-
   it('should render custom button', () => {
     const customSubmit = mount(
       <Form
@@ -74,5 +68,4 @@ describe('<Form />', () => {
 
     expect(subject.find(Field).length).toBe(2);
   });
-  it('Calls autoPopulate on Field blur', () => {});
 });

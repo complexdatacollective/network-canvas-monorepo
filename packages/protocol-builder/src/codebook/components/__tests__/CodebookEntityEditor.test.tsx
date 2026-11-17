@@ -7,27 +7,28 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement, ReactNode } from 'react';
-import { describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
-import CodebookEntityEditor, {
-  type CodebookEntityEditorProps,
-} from '../CodebookEntityEditor.tsx';
+import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
 
 /** Every editor here edits a protocol written in English. */
 function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <ProtocolLocalizationProvider
-      localization={{ defaultLocale: 'en', locales: ['en'] }}
-    >
-      {children}
-    </ProtocolLocalizationProvider>
+    <CodebookEditorHost>
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en'] }}
+      >
+        {children}
+      </ProtocolLocalizationProvider>
+    </CodebookEditorHost>
   );
 }
 
@@ -78,16 +79,6 @@ const renderUpdateEditor = (onSubmit: SubmitEntity) =>
   );
 
 describe('CodebookEntityEditor', () => {
-  it('requires create mode to provide a successful completion callback', () => {
-    type CreateEditorProps = Extract<
-      CodebookEntityEditorProps,
-      Readonly<{ mode: 'create' }>
-    >;
-    expectTypeOf<CreateEditorProps['onApplied']>().toEqualTypeOf<
-      (outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>) => void
-    >();
-  });
-
   it('does not submit an unchanged existing entity', () => {
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     const { container } = render(
@@ -108,37 +99,6 @@ describe('CodebookEntityEditor', () => {
     if (form === null) throw new Error('expected entity editor form');
     fireEvent.submit(form);
     expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  /**
-   * The dialog's title already names the editor, so the editor writes no
-   * heading of its own: Architect's `TypeEditor` had four topic sections and
-   * no restatement of the title above them.
-   */
-  it('names its groups after Architect’s topics and restates no dialog title', () => {
-    render(
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="topics"
-        dialog={{ title: 'Edit this node type', open: true }}
-        subject={NODE_SUBJECT}
-        initialDraft={NODE_DOCUMENT}
-        authoritativeDocument={NODE_DOCUMENT}
-        existingEntityNames={[]}
-        onSubmit={async () => applied()}
-      />,
-    );
-
-    const dialog = within(screen.getByRole('dialog'));
-    expect(
-      dialog.getAllByRole('heading').map((heading) => heading.textContent),
-    ).toEqual([
-      'Edit this node type',
-      'Type identity',
-      'Type color',
-      'Node appearance',
-      'Interface icon',
-    ]);
   });
 
   it.each([
@@ -190,35 +150,6 @@ describe('CodebookEntityEditor', () => {
       expect(screen.queryByText(/Protocol color|color reference/)).toBeNull();
     },
   );
-
-  /**
-   * Cancel and the save belong to the dialog's own footer, in that order: the
-   * footer is what pins the first of its children left, so a control rendered
-   * anywhere else reads as part of the form rather than as what commits it.
-   */
-  it('puts Cancel and the save in the dialog’s footer, cancel first', () => {
-    render(
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="footer"
-        dialog={{ title: 'Edit this node type', open: true }}
-        subject={NODE_SUBJECT}
-        initialDraft={NODE_DOCUMENT}
-        authoritativeDocument={NODE_DOCUMENT}
-        existingEntityNames={[]}
-        onCancel={() => undefined}
-        onSubmit={async () => applied()}
-      />,
-    );
-
-    const footer = screen.getByRole('dialog').querySelector('footer');
-    if (footer === null) throw new Error('expected a dialog footer');
-    expect(
-      within(footer)
-        .getAllByRole('button')
-        .map((button) => button.textContent),
-    ).toEqual(['Cancel', 'Save entity']);
-  });
 
   /**
    * And it still commits from there. The save sits outside the `<form>`
@@ -491,6 +422,7 @@ describe('CodebookEntityEditor', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ icon: 'add-a-place' }),
+        undefined,
       );
     });
   });

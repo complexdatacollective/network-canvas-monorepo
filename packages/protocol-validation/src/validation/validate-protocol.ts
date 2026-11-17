@@ -4,6 +4,7 @@ import { ensureError } from '@codaco/shared-consts';
 
 import { labelCollisionIssues } from '../localization/labelCollisions.ts';
 import { findBuiltInWordingProblems } from '../schemas/9/built-in-wording.ts';
+import { findMissingFallbackLanguage } from '../schemas/9/fallback-language.ts';
 import { findFinishStageTextProblems } from '../schemas/9/finish-stage-text.ts';
 import {
   type VersionedProtocol,
@@ -118,10 +119,38 @@ const builtInWordingIssues = (
       }));
 
 /**
+ * The issue code for a protocol that needs a fallback language and names
+ * none.
+ */
+export const FALLBACK_LANGUAGE_MISSING = 'fallback_language_missing';
+
+/**
+ * The fallback language a protocol needs and does not name, as a validation
+ * issue: something only a protocol being written may lack (see
+ * `findMissingFallbackLanguage`).
+ */
+const fallbackLanguageIssues = (
+  protocol: VersionedProtocol,
+): ProtocolValidationIssue[] => {
+  if (protocol.schemaVersion !== 9) return [];
+  const locale = findMissingFallbackLanguage(protocol.localization);
+  return locale === undefined
+    ? []
+    : [
+        {
+          code: FALLBACK_LANGUAGE_MISSING,
+          path: ['localization', 'fallbackLocale'],
+          message: `Network Canvas has no wording of its own in the protocol's default language (${locale}), so the protocol must name a fallback language, or a language Network Canvas has wording in made the default.`,
+        },
+      ];
+};
+
+/**
  * What a protocol being written may hold but a protocol handed over may not:
  * text in its default language that Network Canvas has no wording in it for
  * (the finish stage's closing and finished text, and its other built-in
- * wording), and two labels a participant chooses between that read the same
+ * wording), no fallback language where its default language needs one, and
+ * two labels a participant chooses between that read the same
  * (`labelCollisionIssues`), which a change of the protocol's languages can
  * leave through fallback.
  */
@@ -133,6 +162,7 @@ export const releaseIssues = (
     : [
         ...finishStageTextIssues(protocol),
         ...builtInWordingIssues(protocol),
+        ...fallbackLanguageIssues(protocol),
         ...labelCollisionIssues(protocol),
       ];
 

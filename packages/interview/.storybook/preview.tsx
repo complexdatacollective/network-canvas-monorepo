@@ -26,6 +26,7 @@ import './preview.css';
 import {
   globalTypes as i18nGlobalTypes,
   initialGlobals as i18nInitialGlobals,
+  mirrorAddon,
   withAppI18n,
 } from './i18n';
 import Providers from './Providers';
@@ -83,7 +84,12 @@ const isReducedMotion = (value: unknown): value is ReducedMotion =>
   typeof value === 'string' && Object.hasOwn(REDUCED_MOTION, value);
 
 export default definePreview({
-  addons: [addonDocs(), addonA11y(), addonVitest()],
+  // Every story is checked right to left after its play function (see
+  // `mirrorAddon` in @codaco/storybook-config, first in `addons` so it runs
+  // after the accessibility audit); a story that is not a layout in the
+  // reading direction opts out with the `!mirror` tag and says why.
+  tags: ['mirror'],
+  addons: [mirrorAddon, addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     controls: {
       matchers: {

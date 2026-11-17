@@ -1,43 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createInitialNetwork } from '../../../src/contract/network';
-import type { SessionSnapshot } from '../../../src/contract/types';
-import { makeMockAssetRequest, mockFinish, mockSync } from './mockCallbacks';
-
-function makeSession(): SessionSnapshot {
-  return {
-    id: 'session-1',
-    startTime: new Date().toISOString(),
-    finishTime: null,
-    exportTime: null,
-    lastUpdated: new Date().toISOString(),
-    network: createInitialNetwork(),
-  };
-}
-
-describe('mockSync', () => {
-  it('is a no-op (Shell owns state in Redux; tests read it via window.__interviewStore)', async () => {
-    await expect(
-      mockSync('interview-1', makeSession(), {
-        immediate: false,
-        unloading: false,
-      }),
-    ).resolves.toBeUndefined();
-  });
-});
-
-describe('mockFinish', () => {
-  it('resolves without error', async () => {
-    const controller = new AbortController();
-    await expect(
-      mockFinish(
-        'interview-1',
-        { stageId: 'finish', outcome: 'completed' },
-        controller.signal,
-      ),
-    ).resolves.toBeUndefined();
-  });
-});
+import { makeMockAssetRequest } from './mockCallbacks';
 
 describe('makeMockAssetRequest', () => {
   it('resolves the URL for a known assetId', async () => {

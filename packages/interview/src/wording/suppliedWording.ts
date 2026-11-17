@@ -3,6 +3,7 @@ import {
   type SuppliedWordingCatalogues,
 } from '@codaco/protocol-validation';
 
+import ar from '../locales/wording/ar.json' with { type: 'json' };
 import de from '../locales/wording/de.json' with { type: 'json' };
 import enGB from '../locales/wording/en-GB.json' with { type: 'json' };
 import en from '../locales/wording/en.json' with { type: 'json' };
@@ -50,6 +51,7 @@ import zhHant from '../locales/wording/zh-Hant.json' with { type: 'json' };
 export const SUPPLIED_WORDING: SuppliedWordingCatalogues = {
   en,
   'en-GB': enGB,
+  ar,
   de,
   es,
   fr,

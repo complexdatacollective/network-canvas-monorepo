@@ -40,6 +40,7 @@ import {
   InterviewCompletionProvider,
   useInterviewCompletion,
 } from './contexts/InterviewCompletionContext';
+import { InterviewQueryClientProvider } from './contexts/InterviewQueryClientProvider';
 import { StageMetadataProvider } from './contexts/StageMetadataContext';
 import { ContractProvider } from './contract/context';
 import type {
@@ -68,7 +69,7 @@ import {
   ProtocolLocalizationProvider,
   useProtocolLocale,
 } from './localization/ProtocolLocalizationProvider';
-import { getInterviewId } from './selectors/session';
+import { getInterviewId, getPromptIndex } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { getInterviewProgress } from './selectors/utils';
 import {
@@ -313,6 +314,7 @@ function ActiveInterview({
     pulseNext,
     progress,
   } = useInterviewNavigation(initialStageOverrideIndex, reviewMode);
+  const promptIndex = useSelector(getPromptIndex);
 
   useStageNavigationAnalytics({
     stage_index: displayedStep,
@@ -443,6 +445,7 @@ function ActiveInterview({
                 disableMoveForward={disableMoveForward}
                 disableMoveBackward={disableMoveBackward}
                 pulseNext={pulseNext}
+                screenId={`${displayedStep}:${promptIndex}`}
                 progress={progress}
                 orientation={navigationOrientation}
                 className={navigationClassnames?.[navigationOrientation]}
@@ -942,36 +945,40 @@ const Shell = ({
                 flags={flags}
                 finishConfirmationDescription={finishConfirmationDescription}
               >
-                <InterviewCompletionProvider
-                  // A new payload is a new interview.
-                  key={payload.session.id}
-                  initialCompletion={initialCompletion}
-                  completedActions={completedActions}
+                <InterviewQueryClientProvider
+                  protocolKey={`${payload.protocol.id}\n${payload.protocol.hash}\n${payload.protocol.importedAt}`}
                 >
-                  <CurrentStepProvider
-                    currentStep={reviewEntry.currentStep}
-                    onStepChange={onStepChange}
+                  <InterviewCompletionProvider
+                    // A new payload is a new interview.
+                    key={payload.session.id}
+                    initialCompletion={initialCompletion}
+                    completedActions={completedActions}
                   >
-                    <Interview
-                      onExit={onExit}
-                      hideNavigation={hideNavigation}
-                      navigationOrientation={navigationOrientation}
-                      navigationClassnames={navigationClassnames}
-                      allowStageNavigation={
-                        allowStageNavigation &&
-                        (currentStep === undefined ||
-                          onStepChange !== undefined)
-                      }
-                      allowUserScaling={allowUserScaling}
-                      initialTextScale={initialTextScale}
-                      onTextScaleChange={onTextScaleChange}
-                      initialStageOverrideIndex={
-                        reviewEntry.initialStageOverrideIndex
-                      }
-                      reviewMode={reviewMode}
-                    />
-                  </CurrentStepProvider>
-                </InterviewCompletionProvider>
+                    <CurrentStepProvider
+                      currentStep={reviewEntry.currentStep}
+                      onStepChange={onStepChange}
+                    >
+                      <Interview
+                        onExit={onExit}
+                        hideNavigation={hideNavigation}
+                        navigationOrientation={navigationOrientation}
+                        navigationClassnames={navigationClassnames}
+                        allowStageNavigation={
+                          allowStageNavigation &&
+                          (currentStep === undefined ||
+                            onStepChange !== undefined)
+                        }
+                        allowUserScaling={allowUserScaling}
+                        initialTextScale={initialTextScale}
+                        onTextScaleChange={onTextScaleChange}
+                        initialStageOverrideIndex={
+                          reviewEntry.initialStageOverrideIndex
+                        }
+                        reviewMode={reviewMode}
+                      />
+                    </CurrentStepProvider>
+                  </InterviewCompletionProvider>
+                </InterviewQueryClientProvider>
               </ContractProvider>
             </WritesInFlightProvider>
           </SyncFlushProvider>

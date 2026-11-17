@@ -22,12 +22,6 @@ const messages = defineMessages({
     description:
       'Title across the top of the cover page of the printable protocol summary.',
   },
-  aNetworkCanvasProject: {
-    id: 'architect.protocolSummary.cover.aNetworkCanvasProject',
-    defaultMessage: 'A Network Canvas project',
-    description:
-      'Accessible name of the Network Canvas logo on the cover page of the printable protocol summary; read only by screen readers.',
-  },
   documentCreated: {
     id: 'architect.protocolSummary.cover.documentCreated',
     defaultMessage: 'Document Created: {now}',
@@ -40,6 +34,12 @@ const messages = defineMessages({
     description:
       'Heading on the cover of the printable protocol summary, above the list of the languages the protocol is written in. Shown only for a protocol with more than one language.',
   },
+  fallbackLanguage: {
+    id: 'architect.protocolSummary.cover.fallbackLanguage',
+    defaultMessage: 'Fallback language: {language}',
+    description:
+      'Line on the cover of the printable protocol summary naming the protocol’s fallback language: the language participants see text in when an update adds that text to the interview and the protocol has no translation of it. Shown only for a protocol that names one, which is one whose default language Network Canvas has no built-in wording in. language is the name of the fallback language, for example “Spanish”.',
+  },
 });
 
 const Cover = () => {
@@ -48,6 +48,7 @@ const Cover = () => {
   const multilingual = useMultilingualSummary();
   const languages = useSummaryLanguages();
   const languageName = useLanguageName();
+  const { fallbackLocale } = protocol.localization;
 
   // The moment the document was made: read once, when the cover mounts, so a
   // re-render does not move it.
@@ -74,7 +75,9 @@ const Cover = () => {
           <img
             className="size-19"
             src={networkCanvasLogo}
-            alt={intl.formatMessage(messages.aNetworkCanvasProject)}
+            // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+            alt="A Network Canvas project"
+            lang="en"
           />
           <span className="font-heading text-xl leading-none font-bold">
             {/* Product name is an invariant brand. */}
@@ -110,6 +113,15 @@ const Cover = () => {
             ))}
           </ul>
         </div>
+      )}
+      {/* Printed with one language too: a protocol written only in a
+          language Network Canvas has no wording in names one as well. */}
+      {fallbackLocale !== undefined && (
+        <p className="mt-4 mb-0 text-sm">
+          {intl.formatMessage(messages.fallbackLanguage, {
+            language: languageName(fallbackLocale),
+          })}
+        </p>
       )}
       <br />
       <br />

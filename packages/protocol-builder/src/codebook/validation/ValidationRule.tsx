@@ -20,18 +20,6 @@ import {
 } from '../variableValidation.ts';
 
 const messages = defineMessages({
-  increase: {
-    id: 'protocolBuilder.variableValidation.increaseRuleValue',
-    defaultMessage: 'Increase {label}',
-    description:
-      'Accessible name of the button raising one validation rule’s number by one. label is that rule’s own name — "Minimum length", "Maximum value" — which is translated beside it.',
-  },
-  decrease: {
-    id: 'protocolBuilder.variableValidation.decreaseRuleValue',
-    defaultMessage: 'Decrease {label}',
-    description:
-      'Accessible name of the button lowering one validation rule’s number by one. label is that rule’s own name — "Minimum length", "Maximum value" — which is translated beside it.',
-  },
   selectTarget: {
     id: 'protocolBuilder.variableValidation.selectTarget',
     defaultMessage: 'Select an attribute',
@@ -147,8 +135,8 @@ export default function ValidationRule({
             // carries the value from BEFORE the step.
             onStep={(value: string) => onCommit(ruleKey, value)}
             stepperLabels={{
-              increase: intl.formatMessage(messages.increase, { label }),
-              decrease: intl.formatMessage(messages.decrease, { label }),
+              increase: `Increase ${label}`,
+              decrease: `Decrease ${label}`,
             }}
             onKeyDown={handleValueKeyDown}
             type="number"

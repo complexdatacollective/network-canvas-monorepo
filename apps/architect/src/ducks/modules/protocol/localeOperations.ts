@@ -15,6 +15,7 @@ import {
   findInterfaceOwnedOptionBindings,
   isBlankMessage,
   isBlankText,
+  isFallbackLanguageChoice,
   isFinishSessionStage,
   isSuppliedOptionLabelSet,
   isUndeterminedLocale,
@@ -23,7 +24,9 @@ import {
   type LocalizedStringHit,
   defaultFinishSessionTextAfterLanguageChange,
   type LanguageChange,
+  needsFallbackLanguage,
   suppliedOptionLabelsAfterLanguageChange,
+  withFallbackLanguage,
 } from '@codaco/protocol-validation';
 import { withTranslation } from '~/utils/localizedText';
 
@@ -39,7 +42,12 @@ export type LocaleOperationFailure =
   /** The path is not where the protocol holds a participant-facing text. */
   | 'not-localized-string'
   /** A translation participants would see as nothing. */
-  | 'blank-text';
+  | 'blank-text'
+  /**
+   * Not a fallback language this protocol may name: its default language
+   * needs none, or the language is not one Network Canvas has wording in.
+   */
+  | 'not-fallback-choice';
 
 export type LocaleOperationResult =
   | { ok: true; protocol: CurrentProtocol }
@@ -183,6 +191,12 @@ export const stageAfterLanguageChange = <
  * every protocol is (`withoutSuppliedWording`), so a text of that wording
  * whose only translation the change removed is no longer held, rather than
  * held with no translation.
+ *
+ * The protocol's fallback language follows its default language: it is kept
+ * while the default language is one Network Canvas has no wording in, and
+ * goes when one it has wording in becomes the default
+ * (`withFallbackLanguage`). None is chosen for the researcher, so a protocol
+ * that comes to need one has none until they choose it.
  */
 const withLanguageChange = (
   original: CurrentProtocol,
@@ -190,10 +204,13 @@ const withLanguageChange = (
   change: LanguageChange,
 ): CurrentProtocol => {
   const changed = createNextState(rewritten, (draft) => {
-    draft.localization = {
-      defaultLocale: change.after.defaultLocale,
-      locales: [...change.after.locales],
-    };
+    draft.localization = withFallbackLanguage(
+      {
+        defaultLocale: change.after.defaultLocale,
+        locales: [...change.after.locales],
+      },
+      original.localization.fallbackLocale,
+    );
     for (const binding of findInterfaceOwnedOptionBindings(original)) {
       const set = binding.optionSet;
       if (!isSuppliedOptionLabelSet(set)) continue;
@@ -362,6 +379,33 @@ export const setDefaultLocale = (
       before,
       after: { ...before, defaultLocale: locale },
     }),
+  };
+};
+
+/**
+ * Names the protocol's fallback language: the language the interview shows
+ * its own text in when it has that text in none of the languages a
+ * participant would otherwise be shown. Only a protocol whose default
+ * language Network Canvas has no wording in names one, and only a language
+ * Network Canvas has wording in can be it (`needsFallbackLanguage`). No text
+ * changes.
+ */
+export const setFallbackLocale = (
+  protocol: CurrentProtocol,
+  locale: LocaleTag,
+): LocaleOperationResult => {
+  if (
+    !needsFallbackLanguage(protocol.localization.defaultLocale) ||
+    !isFallbackLanguageChoice(locale)
+  ) {
+    return fail('not-fallback-choice');
+  }
+  return {
+    ok: true,
+    protocol: {
+      ...protocol,
+      localization: withFallbackLanguage(protocol.localization, locale),
+    },
   };
 };
 

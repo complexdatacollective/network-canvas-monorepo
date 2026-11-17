@@ -161,14 +161,16 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
             messages: activeMessages,
             onError,
             timeZone,
+            direction: active.direction,
           })
         : createAppIntl({
             locale: active.locale,
             messages: activeMessages,
             onError,
             timeZone,
+            direction: active.direction,
           }),
-    [active.locale, activeMessages, onError, timeZone],
+    [active.locale, active.direction, activeMessages, onError, timeZone],
   );
 
   const setLocale = useCallback(

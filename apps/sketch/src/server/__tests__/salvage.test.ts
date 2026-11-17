@@ -31,10 +31,25 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
 });
 
 describe('salvage', () => {
-  // the review starts from the salvaged design and may return it unchanged
-  const salvaged = {
-    ...friendshipDesign,
-    stages: friendshipDesign.stages.filter((s) => s.id !== 'wellbeing'),
+  // the review edits the salvaged design
+  const welcome = friendshipDesign.stages.find((s) => s.id === 'welcome')!;
+  const critique = {
+    issues: [],
+    verdict: 'Fine.',
+    stages: [
+      {
+        action: 'replace',
+        afterStageId: '',
+        stage: { ...welcome, content: 'Welcome to the study.' },
+      },
+    ],
+    removeStageIds: [],
+    attributes: [],
+    removeAttributes: [],
+    relationships: [],
+    endings: [],
+    consentText: '',
+    rationaleNote: '',
   };
 
   it.each([
@@ -45,11 +60,8 @@ describe('salvage', () => {
     async (_, review) => {
       const { adapters } = scriptedAdapter({
         screening: [reply(STUDY_SCREENING)],
-        study_design: [
-          reply(friendshipDesign),
-          reply(friendshipDesign),
-          ...(review ? [reply(salvaged)] : []),
-        ],
+        study_design: [reply(friendshipDesign), reply(friendshipDesign)],
+        critique: review ? [reply(critique)] : [],
         wording: [reply(friendshipWording)],
       });
       const outcome = await runPipeline(

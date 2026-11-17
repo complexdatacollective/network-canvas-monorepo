@@ -1064,7 +1064,16 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
             ],
           }),
         ),
-      ).resolves.toBeDefined();
+      ).resolves.toMatchObject({ deduped: false });
+      expect(
+        (await run(getDraftDocument(TEST_TEAM_ID, draftId))).assetManifest,
+      ).toMatchObject({
+        map: {
+          name: 'Districts',
+          type: 'geojson',
+          source: 'districts.geojson',
+        },
+      });
     });
 
     it('admits a sync commit on the assets section of a protocol with a sealed key', async () => {
@@ -1093,7 +1102,16 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
             ],
           }),
         ),
-      ).resolves.toBeDefined();
+      ).resolves.toMatchObject({ deduped: false });
+      expect(
+        (await run(getDraftDocument(TEST_TEAM_ID, draftId))).assetManifest,
+      ).toMatchObject({
+        map: {
+          name: 'Districts',
+          type: 'geojson',
+          source: 'districts.geojson',
+        },
+      });
 
       const docs = await store.rows<{ doc: string }>(
         `SELECT doc::text AS doc FROM sections`,

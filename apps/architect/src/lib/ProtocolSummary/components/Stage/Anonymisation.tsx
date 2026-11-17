@@ -164,7 +164,7 @@ const Anonymisation = ({
                   link
                 />,
                 <DualLink key={`link-${id}`} to={`#variable-${id}`}>
-                  {name}
+                  <bdi>{name}</bdi>
                 </DualLink>,
               ]),
             ]}

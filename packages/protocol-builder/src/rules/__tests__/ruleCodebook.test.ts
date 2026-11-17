@@ -504,7 +504,7 @@ describe('codebook entries that are legal but sparse', () => {
   });
 
   it('falls back to the first edge colour when an edge has none', () => {
-    expect(ruleEntityTypeOptions(sparseCodebook, 'edge')).toEqual([
+    expect(ruleEntityTypeOptions(sparseCodebook, 'edge', {})).toEqual([
       { value: 'plain', label: 'plain', color: 'edge-color-seq-1' },
     ]);
   });
@@ -512,7 +512,7 @@ describe('codebook entries that are legal but sparse', () => {
   it('names an entity type and an attribute by id when neither has a name', () => {
     // A blank label would leave the researcher with a rule they cannot read,
     // and a radio with no accessible name at all.
-    expect(ruleEntityTypeOptions(sparseCodebook, 'node')[0]?.label).toBe(
+    expect(ruleEntityTypeOptions(sparseCodebook, 'node', {})[0]?.label).toBe(
       'blank',
     );
     expect(
@@ -595,7 +595,7 @@ describe('reading the codebook for a rule', () => {
   });
 
   it('lists the entity types a rule may be pointed at', () => {
-    expect(ruleEntityTypeOptions(codebook, 'node')).toEqual([
+    expect(ruleEntityTypeOptions(codebook, 'node', {})).toEqual([
       {
         value: 'person',
         label: 'Person',
@@ -609,7 +609,7 @@ describe('reading the codebook for a rule', () => {
         shape: 'circle',
       },
     ]);
-    expect(ruleEntityTypeOptions(codebook, 'edge')).toEqual([
+    expect(ruleEntityTypeOptions(codebook, 'edge', {})).toEqual([
       { value: 'friend', label: 'Friend', color: 'edge-color-seq-3' },
     ]);
   });

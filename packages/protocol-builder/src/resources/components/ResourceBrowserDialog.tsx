@@ -1,16 +1,24 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Redacted } from 'effect';
 import { useCallback, useRef } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
+import { useProtocolBuilderContext } from '../../state/context.ts';
+import { useOpenEditId } from '../client.tsx';
 import { resourceOk, type ResourceDescriptor } from '../types.ts';
+import {
+  checkExistingNodeShape,
+  isNodeShapeResource,
+  type NodeShapeNotice,
+} from './nodeShapeResource.ts';
 import ResourceChoiceCard from './ResourceChoiceCard.tsx';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
@@ -36,6 +44,13 @@ const messages = defineMessages({
     description:
       'Description under the heading of the resource list. "Stage" is one step of an interview.',
   },
+  shapeLibraryDescription: {
+    id: 'protocolBuilder.resourceBrowser.shapeLibraryDescription',
+    defaultMessage:
+      'SVG images already saved in this protocol, and any imported since this node type was opened.',
+    description:
+      'Description under the heading of the resource list when a researcher is choosing an SVG image to use as a node shape, while editing a node type in the codebook.',
+  },
   retryLibrary: {
     id: 'protocolBuilder.resourceBrowser.retryLibrary',
     defaultMessage: 'Try loading the resource list again',
@@ -56,14 +71,25 @@ const messages = defineMessages({
   },
 });
 
+/**
+ * Called with the chosen resource. A node shape picker also says what in the
+ * SVG a node will not draw.
+ */
+type SelectResource = (
+  descriptor: ResourceDescriptor,
+  nodeShape?: NodeShapeNotice,
+) => void;
+
 export type ResourceBrowserDialogProps = Readonly<{
   open: boolean;
   kind: ResourcePickerKind;
   /** The resource the field currently holds, marked as the current one. */
   selectedId?: string;
-  onSelect: (descriptor: ResourceDescriptor) => void;
+  onSelect: SelectResource;
   onClose: () => void;
   disabled?: boolean;
+  /** Where focus goes when the dialog closes; the opening button by default. */
+  finalFocus?: DialogProps['finalFocus'];
 }>;
 
 /**
@@ -82,6 +108,7 @@ export default function ResourceBrowserDialog({
   onSelect,
   onClose,
   disabled = false,
+  finalFocus,
 }: ResourceBrowserDialogProps) {
   const intl = useAppIntl();
   const copy = RESOURCE_PICKER_COPY[kind];
@@ -112,6 +139,7 @@ export default function ResourceBrowserDialog({
       title={intl.formatMessage(copy.browserTitle)}
       description={intl.formatMessage(copy.browserDescription)}
       size="workspace"
+      {...(finalFocus === undefined ? {} : { finalFocus })}
       footer={
         <Button type="button" color="default" onClick={requestClose}>
           {intl.formatMessage(commonMessages.cancel)}
@@ -136,7 +164,7 @@ export default function ResourceBrowserDialog({
 type ResourceBrowserBodyProps = Readonly<{
   kind: ResourcePickerKind;
   selectedId?: string;
-  onSelect: (descriptor: ResourceDescriptor) => void;
+  onSelect: SelectResource;
   /** Reports whether the import control is holding unsaved researcher input. */
   onDraftChange: (hasDraft: boolean) => void;
   disabled: boolean;
@@ -151,8 +179,50 @@ function ResourceBrowserBody({
 }: ResourceBrowserBodyProps) {
   const intl = useAppIntl();
   const copy = RESOURCE_PICKER_COPY[kind];
+  const queryClient = useQueryClient();
+  const host = useProtocolBuilderContext();
+  const editId = useOpenEditId();
   const library = useResourceLibrary(browsableKinds(kind));
   const readLibrary = library.read;
+  const offered =
+    kind === 'nodeShape'
+      ? library.resources.filter(isNodeShapeResource)
+      : library.resources;
+  // Fails with why the stored image cannot draw a node, encoded.
+  const shapeCheck = useMutation({
+    mutationFn: async (descriptor: ResourceDescriptor) => {
+      const result = await checkExistingNodeShape(
+        queryClient,
+        host,
+        editId,
+        descriptor,
+      );
+      if (!result.success) throw new Error(result.error);
+      return result.notice;
+    },
+    // Reads an image the host already holds, so it runs offline too.
+    networkMode: 'always',
+  });
+  const checkShape = shapeCheck.mutate;
+
+  // A stored image is read and checked before it is handed over, because a
+  // shape the interview cannot draw would only be found once a node needs it.
+  // Only the check started last hands its image over: `mutate`'s own callbacks
+  // are called for the latest call alone.
+  const chooseExisting = useCallback(
+    (descriptor: ResourceDescriptor) => {
+      if (kind !== 'nodeShape') {
+        onSelect(descriptor);
+        return;
+      }
+      checkShape(descriptor, {
+        onSuccess: (notice) => onSelect(descriptor, notice),
+      });
+    },
+    [checkShape, kind, onSelect],
+  );
+  const shapeRefusal = shapeCheck.error?.message;
+  const checkingShape = shapeCheck.isPending;
   // Read where the browser reads it, but when the key is submitted rather
   // than when this dialog opened: the list below is what there was, and a
   // name is refused for what there is.
@@ -188,7 +258,11 @@ function ResourceBrowserBody({
 
       <Section
         title={intl.formatMessage(messages.libraryTitle)}
-        description={intl.formatMessage(messages.libraryDescription)}
+        description={intl.formatMessage(
+          kind === 'nodeShape'
+            ? messages.shapeLibraryDescription
+            : messages.libraryDescription,
+        )}
       >
         {library.failure !== undefined && (
           <ResourceFailureNotice
@@ -199,7 +273,7 @@ function ResourceBrowserBody({
           />
         )}
 
-        {library.failure === undefined && library.resources.length === 0 && (
+        {library.failure === undefined && offered.length === 0 && (
           <Paragraph margin="none" emphasis="muted">
             {intl.formatMessage(
               library.busy ? messages.loading : messages.emptyState,
@@ -207,23 +281,38 @@ function ResourceBrowserBody({
           </Paragraph>
         )}
 
-        {library.resources.length > 0 && (
+        {shapeRefusal !== undefined && (
+          <div role="alert" className="text-destructive-ink text-sm">
+            {formatMessageError(shapeRefusal, intl) ?? shapeRefusal}
+          </div>
+        )}
+
+        {offered.length > 0 && (
           <ul
             aria-label={intl.formatMessage(messages.libraryTitle)}
             className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-4"
           >
-            {library.resources.map((descriptor) => (
+            {offered.map((descriptor) => (
               <li key={descriptor.id} className="flex min-w-0">
                 <ResourceChoiceCard
                   descriptor={descriptor}
                   current={descriptor.id === selectedId}
-                  onSelect={onSelect}
-                  disabled={disabled}
+                  onSelect={chooseExisting}
+                  disabled={disabled || checkingShape}
                 />
               </li>
             ))}
           </ul>
         )}
+
+        <span
+          className="sr-only"
+          aria-live="polite"
+          aria-atomic="true"
+          lang="en"
+        >
+          {checkingShape ? 'Checking the image…' : ''}
+        </span>
       </Section>
     </div>
   );

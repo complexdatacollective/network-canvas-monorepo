@@ -182,15 +182,14 @@ describe('Node label reveal', () => {
     await pressAndHold(node(CLIPPED_LABEL));
     await waitFor(() => expect(getPopup()).not.toBeNull());
 
-    expect(getPopup()).toHaveClass(
+    const reveal = getPopup()!.querySelector('[data-node-label-reveal]');
+    // The surface around the label, inside the popup, is what is bounded.
+    expect(reveal?.parentElement).toHaveClass(
       'max-h-(--available-height)',
       'flex',
       'flex-col',
     );
-    expect(getPopup()!.querySelector('[data-node-label-reveal]')).toHaveClass(
-      'overflow-y-auto',
-      'overscroll-contain',
-    );
+    expect(reveal).toHaveClass('overflow-y-auto', 'overscroll-contain');
     expect(getPopup()!.closest('[data-base-ui-portal] > *')).not.toHaveClass(
       'pointer-events-none!',
     );

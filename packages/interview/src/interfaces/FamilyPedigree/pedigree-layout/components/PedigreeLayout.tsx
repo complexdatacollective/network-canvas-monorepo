@@ -83,7 +83,10 @@ export default function PedigreeLayout({
 
   if (nodeWidth === 0 || nodeHeight === 0) {
     return (
-      <div className="flex size-full items-center justify-center">
+      <div
+        className="flex size-full items-center justify-center"
+        data-testid="pedigree-layout-spinner"
+      >
         <Spinner />
       </div>
     );
@@ -142,6 +145,9 @@ export default function PedigreeLayout({
 
   return (
     <div
+      // A family is drawn the same way round in every language, so the
+      // right-to-left mirror check leaves the drawing out.
+      data-direction-exempt
       className="relative"
       style={{ width: totalWidth, height: totalHeight }}
     >

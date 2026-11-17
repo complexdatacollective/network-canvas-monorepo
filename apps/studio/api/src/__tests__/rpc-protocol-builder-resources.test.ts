@@ -16,6 +16,7 @@ import { TenantScope } from '../db/tenant.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { testDb } from './support/database.ts';
+import { asTheEditorShowsIt } from './support/messages.ts';
 import { memoryObjectStore } from './support/object-store.ts';
 import {
   ADA,
@@ -471,11 +472,15 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: {
         reason: 'not-found',
-        message: 'no such staged resource',
+        message: expect.any(String),
         retryable: false,
         resourceId: staged.data.descriptor.id,
       },
     });
+    if (again.status !== 'failed') return;
+    expect(asTheEditorShowsIt(again.failure.message)).toBe(
+      'That import is no longer waiting to be added. Import the file again.',
+    );
   });
 
   it('promotes a staged resource with the stage being created', async () => {
@@ -1130,6 +1135,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: { reason: 'unavailable', retryable: true },
     });
+    if (refused.status === 'failed') {
+      expect(asTheEditorShowsIt(refused.failure.message)).toBe(
+        'The resource could not be reached. Try again in a moment.',
+      );
+    }
     expect(await stagedIds(edit)).toEqual([]);
   });
 
@@ -1148,6 +1158,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         status: 'failed',
         failure: { reason: 'unsupported-kind', retryable: false },
       });
+      if (refused.status === 'failed') {
+        expect(asTheEditorShowsIt(refused.failure.message)).toBe(
+          'This Studio has no file storage set up, so files cannot be added or opened. Ask whoever runs it to set up storage.',
+        );
+      }
     } finally {
       await storeless.dispose();
     }
@@ -1305,6 +1320,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: { reason: 'invalid-content' },
     });
+    if (empty.status === 'failed') {
+      expect(asTheEditorShowsIt(empty.failure.message)).toBe(
+        'That file is empty. Choose a file with something in it.',
+      );
+    }
     const listed = await call(
       ADA,
       host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
@@ -1336,6 +1356,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: { reason: 'too-large' },
     });
+    if (oversized.status === 'failed') {
+      expect(asTheEditorShowsIt(oversized.failure.message)).toBe(
+        'That file is too large to import. Files can be up to 100.0 MB.',
+      );
+    }
     const listed = await call(
       ADA,
       host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
@@ -1415,13 +1440,13 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // where the interview would fill one variable from both columns.
     expect(refused).toMatchObject({
       status: 'failed',
-      failure: {
-        reason: 'invalid-content',
-        retryable: false,
-        message:
-          'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
-      },
+      failure: { reason: 'invalid-content', retryable: false },
     });
+    if (refused.status === 'failed') {
+      expect(asTheEditorShowsIt(refused.failure.message)).toBe(
+        'the "caf\u00e9" and "cafe\u0301" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other',
+      );
+    }
     const listed = await call(
       ADA,
       host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),

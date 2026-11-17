@@ -8,11 +8,16 @@ import { definePreview } from '@storybook/react-vite';
 import { StrictMode } from 'react';
 
 import './preview.css';
-import { globalTypes, initialGlobals, withAppI18n } from './i18n';
+import { globalTypes, initialGlobals, mirrorAddon, withAppI18n } from './i18n';
 import Providers from './Providers';
 
 export default definePreview({
-  addons: [addonDocs(), addonA11y(), addonVitest()],
+  // Every story is checked right to left after its play function (see
+  // `mirrorAddon` in @codaco/storybook-config, first in `addons` so it runs
+  // after the accessibility audit); a story that is not a layout in the
+  // reading direction opts out with the `!mirror` tag and says why.
+  tags: ['mirror'],
+  addons: [mirrorAddon, addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     controls: {
       matchers: {

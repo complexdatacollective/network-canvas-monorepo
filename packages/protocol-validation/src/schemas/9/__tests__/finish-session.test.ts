@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { withInterfaceText } from '../../../__tests__/suppliedWording.ts';
 import {
   migrateProtocol,
@@ -8,6 +9,7 @@ import {
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
   BUILT_IN_WORDING_MISSING,
+  FALLBACK_LANGUAGE_MISSING,
   FINISH_STAGE_TEXT_MISSING,
 } from '../../../validation/validate-protocol.ts';
 import {
@@ -83,14 +85,16 @@ describe('FinishSession stage schema', () => {
   );
 
   it('refuses an outcome outside the three kinds', () => {
-    expect(finishSessionStage.safeParse(finish('f', 'withdrawn')).success).toBe(
-      false,
-    );
+    expect(
+      parseIssues(finishSessionStage.safeParse(finish('f', 'withdrawn'))),
+    ).toEqual([{ path: 'outcome', code: 'invalid_value' }]);
   });
 
   it('refuses a stage without an outcome', () => {
     const { outcome: _outcome, ...withoutOutcome } = finish();
-    expect(finishSessionStage.safeParse(withoutOutcome).success).toBe(false);
+    expect(parseIssues(finishSessionStage.safeParse(withoutOutcome))).toEqual([
+      { path: 'outcome', code: 'invalid_value' },
+    ]);
   });
 
   it.each(['confirmation', 'automatic'])('accepts the %s mode', (mode) => {
@@ -101,29 +105,36 @@ describe('FinishSession stage schema', () => {
 
   it('refuses a stage without a mode, or with another one', () => {
     const { mode: _mode, ...withoutMode } = finish();
-    expect(finishSessionStage.safeParse(withoutMode).success).toBe(false);
+    expect(parseIssues(finishSessionStage.safeParse(withoutMode))).toEqual([
+      { path: 'mode', code: 'invalid_value' },
+    ]);
     expect(
-      finishSessionStage.safeParse({ ...finish(), mode: 'manual' }).success,
-    ).toBe(false);
+      parseIssues(
+        finishSessionStage.safeParse({ ...finish(), mode: 'manual' }),
+      ),
+    ).toEqual([{ path: 'mode', code: 'invalid_value' }]);
   });
 
   it.each(['content', 'finishedContent'] as const)(
     'requires %s text',
     (field) => {
       expect(
-        finishSessionStage.safeParse({ ...finish(), [field]: { en: '' } })
-          .success,
-      ).toBe(false);
+        parseIssues(
+          finishSessionStage.safeParse({ ...finish(), [field]: { en: '' } }),
+        ),
+      ).toEqual([{ path: `${field}.en`, code: 'too_small' }]);
     },
   );
 
   it('refuses skip logic: every route ends at a finish stage', () => {
     expect(
-      finishSessionStage.safeParse({
-        ...finish(),
-        skipLogic: { action: 'SKIP', filter: { rules: [] } },
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        finishSessionStage.safeParse({
+          ...finish(),
+          skipLogic: { action: 'SKIP', filter: { rules: [] } },
+        }),
+      ),
+    ).toEqual([{ path: 'skipLogic', code: 'invalid_type' }]);
   });
 });
 
@@ -657,6 +668,12 @@ describe('closing text missing in the default language', () => {
       builtIn('finishLabel'),
       builtIn('finishConfirmation'),
       builtIn('finishFailed'),
+      {
+        code: FALLBACK_LANGUAGE_MISSING,
+        path: ['localization', 'fallbackLocale'],
+        message:
+          "Network Canvas has no wording of its own in the protocol's default language (ja), so the protocol must name a fallback language, or a language Network Canvas has wording in made the default.",
+      },
     ]);
   });
 

@@ -258,7 +258,7 @@ export function useIssuesToolbarControl(
           </ToolbarButton>
         }
       >
-        <div className="flex flex-col overflow-hidden rounded-[inherit]">
+        <div className="flex flex-col">
           <div className="flex items-center gap-4 px-5 py-2.5">
             <TriangleAlert className="size-4 shrink-0" aria-hidden />
             <span className="text-sm font-semibold tracking-wider uppercase">

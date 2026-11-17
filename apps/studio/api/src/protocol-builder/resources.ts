@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 import { Context, Effect, Exit, Layer, Option, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import { createMessageError } from '@codaco/app-i18n/message-errors';
 import {
   ResourceKindSchema,
   type ResourceDescriptorSchema,
@@ -23,6 +24,10 @@ import {
   type ResourcePreviewSchema,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  oversizeFileMessage,
+  resourceFailureMessages,
+} from '@codaco/protocol-builder/resources/resourceMessages';
 import {
   findCollidingAttributeNames,
   findRosterCharacterProblems,
@@ -48,6 +53,7 @@ import {
   type StagingKey,
 } from '../storage/object-store.ts';
 import { sessionOwner, type ProtocolBuilderSession } from './host.ts';
+import { studioResourceFailureMessages } from './resourceFailureMessages.ts';
 import {
   deleteStagedRows,
   findStagedByRequest,
@@ -89,11 +95,17 @@ type StagingError = Forbidden | SqlError.SqlError;
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const FALLBACK_MEDIA_TYPE = 'application/octet-stream';
-const UNREACHABLE = 'the object store could not be reached';
-const NO_STORE = 'this deployment has no object storage configured';
-const NOT_RECORDED = 'the staged resource could not be recorded';
-const NO_BYTES = 'this host holds no bytes for that resource';
-const NOT_STAGED = 'no such staged resource';
+// Every message a failure carries is an encoded reference the editor formats
+// in the reader's language: the protocol builder's own words where it has them
+// for the same refusal, and Studio's for what only a storing host can meet.
+const UNREACHABLE = createMessageError(resourceFailureMessages.unreachable);
+const NO_STORE = createMessageError(studioResourceFailureMessages.noStorage);
+const NOT_RECORDED = createMessageError(studioResourceFailureMessages.notSaved);
+const NO_BYTES = createMessageError(studioResourceFailureMessages.noCopy);
+const NOT_STAGED = createMessageError(studioResourceFailureMessages.importGone);
+const NOT_IN_PROTOCOL = createMessageError(
+  studioResourceFailureMessages.notInProtocol,
+);
 
 const decodeKind = Schema.decodeUnknownOption(ResourceKindSchema);
 
@@ -149,7 +161,9 @@ async function rosterCharacterFailure(
     status: 'failed',
     failure: {
       reason: 'invalid-content',
-      message: 'the roster holds a character an export cannot carry',
+      message: createMessageError(
+        studioResourceFailureMessages.rosterCharacter,
+      ),
       retryable: false,
       detail: { code: 'roster-characters', problem, total },
     },
@@ -188,16 +202,27 @@ function isCsvRoster(source: string, contentType: string): boolean {
   return contentType.split(';')[0]?.trim().toLowerCase() === 'text/csv';
 }
 
-const EMPTY_ROSTER = 'the roster holds no nodes';
+const EMPTY_ROSTER = createMessageError(resourceFailureMessages.rosterEmpty);
+const UNREADABLE_ROSTER = createMessageError(
+  resourceFailureMessages.rosterUnreadable,
+);
+
+/** The unreadable-roster refusal with the fault named, as the editor says it. */
+function unreadableRoster(detail: string): string {
+  return createMessageError(resourceFailureMessages.rosterUnreadableDetail, {
+    detail: { messageError: detail },
+  });
+}
 
 /** Read with the interview's own reader, so its columns are the interview's. */
 async function csvRosterProblem(text: string): Promise<string | undefined> {
   const csv = await readRosterCsv(text).catch(() => undefined);
-  if (csv === undefined) return 'the roster cannot be read as CSV';
+  if (csv === undefined) return UNREADABLE_ROSTER;
   const { columns, rows } = csv;
-  const mismatched = rows.find(({ cells }) => cells !== columns.length);
-  if (mismatched !== undefined) {
-    return `row ${mismatched.row} of the roster has a different number of cells from its header`;
+  // Refused as the editor refuses it, without the row: its words for an
+  // unreadable roster are the ones a researcher has already been shown.
+  if (rows.some(({ cells }) => cells !== columns.length)) {
+    return UNREADABLE_ROSTER;
   }
   if (rows.length === 0) return EMPTY_ROSTER;
   return attributeNameProblem(rows.map(({ values }) => values));
@@ -213,29 +238,43 @@ function jsonRosterProblem(text: string): string | undefined {
   try {
     parsed = JSON.parse(text);
   } catch {
-    return 'the roster cannot be read as JSON';
+    return UNREADABLE_ROSTER;
   }
-  if (!isRecord(parsed)) return 'the roster is not a JSON object';
+  if (!isRecord(parsed)) return UNREADABLE_ROSTER;
   const nodes: readonly unknown[] | undefined = Array.isArray(parsed.nodes)
     ? parsed.nodes
     : undefined;
-  if (nodes === undefined) return 'the roster has no list of nodes';
+  if (nodes === undefined) return UNREADABLE_ROSTER;
 
   const nodeAttributes: Record<string, unknown>[] = [];
   for (const [index, node] of nodes.entries()) {
     const position = index + 1;
     if (!isRecord(node)) {
-      return `node ${position} of the roster is not an object`;
+      return unreadableRoster(
+        createMessageError(resourceFailureMessages.rosterNodeNotObject, {
+          position,
+        }),
+      );
     }
     const attributes: unknown = node[entityAttributesProperty];
     if (attributes === undefined) continue;
     if (!isRecord(attributes)) {
-      return `the attributes of node ${position} of the roster are not an object`;
+      return unreadableRoster(
+        createMessageError(
+          resourceFailureMessages.rosterNodeAttributesNotObject,
+          { position },
+        ),
+      );
     }
     for (const [name, value] of Object.entries(attributes)) {
       if (value === null || value === undefined) continue;
       if (VariableValueSchema.safeParse(value).success) continue;
-      return `the ${JSON.stringify(name)} attribute of node ${position} of the roster is not a value a variable can hold`;
+      return unreadableRoster(
+        createMessageError(resourceFailureMessages.rosterValueUnusableInNode, {
+          name,
+          position,
+        }),
+      );
     }
     nodeAttributes.push(attributes);
   }
@@ -255,12 +294,18 @@ function attributeNameProblem(
   const names = [...new Set(records.flatMap((record) => Object.keys(record)))];
   const unusable = names.find((name) => !isUsableExternalAttributeName(name));
   if (unusable !== undefined) {
-    return `the roster's attribute name ${JSON.stringify(unusable)} cannot be a variable name`;
+    return createMessageError(
+      resourceFailureMessages.rosterAttributeNameUnusable,
+      { name: unusable },
+    );
   }
   const [collision] = findCollidingAttributeNames(names);
   const [first, second] = collision ?? [];
   if (first !== undefined && second !== undefined) {
-    return `the roster's attribute names ${JSON.stringify(first)} and ${JSON.stringify(second)} are the same name written two ways`;
+    return createMessageError(
+      resourceFailureMessages.rosterAttributeNameDuplicate,
+      { first, second },
+    );
   }
   return undefined;
 }
@@ -330,13 +375,13 @@ function refusedContent(request: ContentRequest) {
     // show: an image with no pixels, a roster with no network. The contract's
     // own host refuses it, and a picker that offers it here and nowhere else
     // would be Studio disagreeing with the contract it serves.
-    return failure('invalid-content', 'that file is empty');
+    return failure(
+      'invalid-content',
+      createMessageError(studioResourceFailureMessages.emptyFile),
+    );
   }
   if (bytes.byteLength > MAX_UPLOAD_BYTES) {
-    return failure(
-      'too-large',
-      `this deployment stores at most ${MAX_UPLOAD_BYTES} bytes per resource`,
-    );
+    return failure('too-large', oversizeFileMessage(MAX_UPLOAD_BYTES));
   }
   return undefined;
 }
@@ -696,7 +741,7 @@ export class StagedImports extends Context.Service<
             ) {
               return failure(
                 'invalid-content',
-                'staged resource has no bytes',
+                createMessageError(studioResourceFailureMessages.importEmpty),
                 resourceId,
               );
             }
@@ -855,7 +900,7 @@ export function committedInspection(
 ): ResourceOutcome<Inspection> {
   const descriptor = committedDescriptor(assets, resourceId);
   if (descriptor === undefined) {
-    return failure('not-found', 'no such resource', resourceId);
+    return failure('not-found', NOT_IN_PROTOCOL, resourceId);
   }
   // An API key's value is in the manifest — promotion put it there, and the
   // interview runtime reads it back from the published protocol to build the
@@ -878,7 +923,7 @@ export function committedPreview(
 ): ResourceOutcome<Preview> {
   const descriptor = committedDescriptor(assets, resourceId);
   if (descriptor === undefined) {
-    return failure('not-found', 'no such resource', resourceId);
+    return failure('not-found', NOT_IN_PROTOCOL, resourceId);
   }
   const hash =
     descriptor.source === undefined

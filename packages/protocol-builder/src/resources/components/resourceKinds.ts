@@ -16,6 +16,7 @@ import {
 } from '@codaco/app-i18n/messages';
 import type { BadgeColor } from '@codaco/fresco-ui/Badge';
 
+import { byteLengthMessage } from '../resourceMessages.ts';
 import type { ResourceContentKind, ResourceKind } from '../types.ts';
 
 /**
@@ -25,8 +26,14 @@ import type { ResourceContentKind, ResourceKind } from '../types.ts';
  * browses every content kind, and works out which kind an imported file is
  * from its extension — the same thing Architect's own file field does when a
  * call site names no type.
+ *
+ * `nodeShape` picks the SVG image a custom node shape is drawn from. It stores
+ * an ordinary `image`, but offers and imports only SVG files.
  */
-export type ResourcePickerKind = ResourceKind | 'file';
+export type ResourcePickerKind = ResourceKind | 'file' | 'nodeShape';
+
+const NODE_SHAPE_EXTENSIONS: readonly string[] = Object.freeze(['.svg']);
+const NODE_SHAPE_KINDS: readonly ResourceKind[] = Object.freeze(['image']);
 
 /** Kinds whose content an editor can render as media. */
 export type PreviewableResourceKind = 'audio' | 'image' | 'video';
@@ -88,7 +95,9 @@ export function isPreviewableKind(
 export function browsableKinds(
   kind: ResourcePickerKind,
 ): readonly ResourceKind[] {
-  return kind === 'file' ? CONTENT_KINDS : Object.freeze([kind]);
+  if (kind === 'file') return CONTENT_KINDS;
+  if (kind === 'nodeShape') return NODE_SHAPE_KINDS;
+  return Object.freeze([kind]);
 }
 
 /**
@@ -124,6 +133,7 @@ export function acceptedExtensions(
       CONTENT_KINDS.flatMap((k) => RESOURCE_KIND_EXTENSIONS[k]),
     );
   }
+  if (kind === 'nodeShape') return NODE_SHAPE_EXTENSIONS;
   return RESOURCE_KIND_EXTENSIONS[kind];
 }
 
@@ -138,6 +148,9 @@ export function contentKindForFile(
 ): ResourceContentKind | undefined {
   const extension = fileExtension(filename);
   if (extension === '') return undefined;
+  if (kind === 'nodeShape') {
+    return NODE_SHAPE_EXTENSIONS.includes(extension) ? 'image' : undefined;
+  }
   const match = CONTENT_KINDS.find((candidate) =>
     RESOURCE_KIND_EXTENSIONS[candidate].includes(extension),
   );
@@ -430,6 +443,37 @@ const pickerMessages = defineMessages({
     description:
       'Heading over the file-import area for images inside the resource dialog.',
   },
+  nodeShapeSelectAction: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeSelectAction',
+    defaultMessage: 'Select a node shape',
+    description:
+      'Button that opens the picker for a field that holds the SVG image a custom node shape is drawn from, when the field holds none yet.',
+  },
+  nodeShapeChangeAction: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeChangeAction',
+    defaultMessage: 'Change the node shape',
+    description:
+      'Button that opens the picker for a field that already holds the SVG image a custom node shape is drawn from.',
+  },
+  nodeShapeBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeBrowserTitle',
+    defaultMessage: 'Choose a node shape',
+    description:
+      'Title of the dialog where a researcher picks or imports the SVG image a custom node shape is drawn from.',
+  },
+  nodeShapeBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeBrowserDescription',
+    defaultMessage:
+      'Import an SVG file, or choose an SVG image already stored in this protocol. Nodes of this type can then be drawn with it.',
+    description:
+      'Description under the title of the dialog where a researcher picks or imports the SVG image a custom node shape is drawn from. SVG is a file format name and is not translated.',
+  },
+  nodeShapeImportTitle: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeImportTitle',
+    defaultMessage: 'Import a shape from an SVG file',
+    description:
+      'Heading over the file-import area of the dialog for choosing a custom node shape. Only SVG files can be imported there. SVG is a file format name and is not translated.',
+  },
   networkSelectAction: {
     id: 'protocolBuilder.resourceKinds.networkSelectAction',
     defaultMessage: 'Select a data file',
@@ -540,6 +584,13 @@ export const RESOURCE_PICKER_COPY: Readonly<
     browserDescription: pickerMessages.networkBrowserDescription,
     importTitle: pickerMessages.networkImportTitle,
   }),
+  nodeShape: Object.freeze({
+    selectAction: pickerMessages.nodeShapeSelectAction,
+    changeAction: pickerMessages.nodeShapeChangeAction,
+    browserTitle: pickerMessages.nodeShapeBrowserTitle,
+    browserDescription: pickerMessages.nodeShapeBrowserDescription,
+    importTitle: pickerMessages.nodeShapeImportTitle,
+  }),
   video: Object.freeze({
     selectAction: pickerMessages.videoSelectAction,
     changeAction: pickerMessages.videoChangeAction,
@@ -563,31 +614,6 @@ const refusalMessages = defineMessages({
       'That resource cannot be used in this field. It accepts: {kinds}.',
     description:
       'Refusal shown when a researcher picks a stored resource of a type this stage field cannot hold. kinds is the list of resource-type names it does accept, already joined for the reader’s language.',
-  },
-  oversizeFile: {
-    id: 'protocolBuilder.resourceKinds.oversizeFile',
-    defaultMessage:
-      'That file is too large to import. Files can be up to {size}.',
-    description:
-      'Refusal shown when a researcher chooses a file bigger than the editor will read. size is a rounded human-readable size such as "8.0 MB", already localized.',
-  },
-  byteLengthBytes: {
-    id: 'protocolBuilder.resourceKinds.byteLengthBytes',
-    defaultMessage: '{size, number} bytes',
-    description:
-      'A resource’s stored size when it is under one kilobyte. size is the exact byte count.',
-  },
-  byteLengthKilobytes: {
-    id: 'protocolBuilder.resourceKinds.byteLengthKilobytes',
-    defaultMessage: '{size, number, ::.0} KB',
-    description:
-      'A resource’s stored size in kilobytes, always to one decimal place. size is that already-rounded number; KB is the unit symbol.',
-  },
-  byteLengthMegabytes: {
-    id: 'protocolBuilder.resourceKinds.byteLengthMegabytes',
-    defaultMessage: '{size, number, ::.0} MB',
-    description:
-      'A resource’s stored size in megabytes, always to one decimal place. size is that already-rounded number; MB is the unit symbol.',
   },
 });
 
@@ -619,46 +645,6 @@ export function unsupportedResourceKindMessage(
       })),
     },
   });
-}
-
-/**
- * What a researcher is told when the file they chose is too big to import.
- * One sentence with the limit in it, so it can be translated whole.
- */
-export function oversizeFileMessage(maxByteLength: number): string {
-  const size = byteLengthMessage(maxByteLength);
-  return createMessageError(refusalMessages.oversizeFile, {
-    size: { messageError: createMessageError(size.message, size.values) },
-  });
-}
-
-/**
- * The descriptor and value that say how big a resource's content is.
- *
- * The rounding stays here rather than moving into ICU: `toFixed(1)` is what
- * decides `2.0 KB` rather than `1.953 KB`, and the `::.0` skeleton on each
- * message is only what keeps the trailing zero once it has.
- */
-function byteLengthMessage(byteLength: number): Readonly<{
-  message: MessageDescriptor;
-  values: Readonly<{ size: number }>;
-}> {
-  if (byteLength < 1024) {
-    return {
-      message: refusalMessages.byteLengthBytes,
-      values: { size: byteLength },
-    };
-  }
-  if (byteLength < 1024 * 1024) {
-    return {
-      message: refusalMessages.byteLengthKilobytes,
-      values: { size: Number((byteLength / 1024).toFixed(1)) },
-    };
-  }
-  return {
-    message: refusalMessages.byteLengthMegabytes,
-    values: { size: Number((byteLength / (1024 * 1024)).toFixed(1)) },
-  };
 }
 
 /** Human-readable size for a resource's stored content. */

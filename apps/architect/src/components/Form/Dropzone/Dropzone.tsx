@@ -27,24 +27,12 @@ const renderSelectFileSpan = (chunks: ReactNode[]) => (
 );
 
 const messages = defineMessages({
-  uploadFile: {
-    id: 'architect.form.dropzone.dropzone.uploadFile',
-    defaultMessage: 'Upload file',
-    description:
-      'Accessible name of the file drop area used to import a resource file; read only by screen readers.',
-  },
   dragAndDropAFileHere: {
     id: 'architect.form.dropzone.dropzone.dragAndDropAFileHere',
     defaultMessage:
       'Drag and drop a file here to import it, or <span> click here to select a file from your computer </span> .',
     description:
       "Instruction inside the file drop area for importing a resource. span wraps the words that work as a click target to open the computer's file picker.",
-  },
-  importingFile: {
-    id: 'architect.form.dropzone.dropzone.importingFile',
-    defaultMessage: 'Importing file…',
-    description:
-      'Status announced only to screen readers while a dropped file is being imported.',
   },
 });
 
@@ -303,13 +291,17 @@ const Dropzone = ({
         // drag handlers, and `handleDrop` returns early anyway.
         {...getRootProps({ tabIndex: 0 })}
         role="button"
-        aria-label={intl.formatMessage(messages.uploadFile)}
+        aria-label="Upload file"
         aria-busy={state.isLoading || undefined}
         aria-disabled={isDisabled || undefined}
         aria-describedby={state.error ? errorId : undefined}
         className={dropzoneVariants({ state: dropzoneState, class: className })}
       >
-        <input {...getInputProps()} />
+        {/* The file chooser the button above opens. The button is the control
+            a person reaches and hears, so this is hidden from both, as it is on
+            the start screen; otherwise it is a second control named by
+            react-dropzone's own English "file upload". */}
+        <input {...getInputProps()} aria-hidden="true" tabIndex={-1} />
         <div
           className={cx(
             'absolute inset-0 z-1 bg-transparent transition-[background-color] duration-150 ease-in-out',
@@ -323,8 +315,9 @@ const Dropzone = ({
         <div className={loadingVariants({ state: dropzoneState })}>
           {state.isActive && <Spinner size="sm" />}
         </div>
-        <span className="sr-only" aria-live="polite">
-          {state.isLoading ? intl.formatMessage(messages.importingFile) : ''}
+        <span className="sr-only" aria-live="polite" lang="en">
+          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+          {state.isLoading ? 'Importing file…' : ''}
         </span>
       </div>
       {state.error && (

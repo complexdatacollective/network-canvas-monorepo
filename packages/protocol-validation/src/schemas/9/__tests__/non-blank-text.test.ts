@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { FormFieldSchema, FormSchema } from '../common/forms.ts';
 import { panelSchema } from '../common/panels.ts';
@@ -408,8 +409,16 @@ describe('a scale attribute end label', () => {
 
   it.each(BLANK_TRANSLATIONS)('rejects a translation of %s', (_n, text) => {
     expect(
-      VariableSchema.safeParse(scale({ en: 'Very close', fr: text })).success,
-    ).toBe(false);
+      parseIssues(
+        VariableSchema.safeParse(scale({ en: 'Very close', fr: text })),
+      ),
+    ).toEqual([
+      {
+        path: 'parameters.maxLabel.fr',
+        code: 'custom',
+        message: 'Text cannot be blank.',
+      },
+    ]);
   });
 });
 
@@ -429,8 +438,6 @@ describe.each(REQUIRED_TEXT_SITES)('$name', ({ schema, valid, path }) => {
   );
 });
 
-// The variable schema is a union of every variable type, so a refusal is
-// reported as the union's; whether the variable parses is what is asked.
 describe('option labels', () => {
   const booleanVariable = (label: Record<string, string>) => ({
     name: 'Smokes',
@@ -468,16 +475,23 @@ describe('option labels', () => {
     );
   });
 
+  const empty = { path: 'options.0.label.fr', code: 'too_small' };
+  const blank = {
+    path: 'options.0.label.fr',
+    code: 'custom',
+    message: 'Text cannot be blank.',
+  };
+
   it.each([
-    ['a Boolean choice', '', booleanVariable],
-    ['a Boolean choice', '   ', booleanVariable],
-    ['a categorical option', '', categoricalVariable],
-    ['a categorical option', '   ', categoricalVariable],
-    ['an ordinal option', '', ordinalVariable],
-    ['an ordinal option', '   ', ordinalVariable],
-  ])('%s rejects the label %j', (_n, text, variable) => {
+    ['a Boolean choice', '', empty, booleanVariable],
+    ['a Boolean choice', '   ', blank, booleanVariable],
+    ['a categorical option', '', empty, categoricalVariable],
+    ['a categorical option', '   ', blank, categoricalVariable],
+    ['an ordinal option', '', empty, ordinalVariable],
+    ['an ordinal option', '   ', blank, ordinalVariable],
+  ])('%s rejects the label %j', (_n, text, issue, variable) => {
     expect(
-      VariableSchema.safeParse(variable({ en: 'Red', fr: text })).success,
-    ).toBe(false);
+      parseIssues(VariableSchema.safeParse(variable({ en: 'Red', fr: text }))),
+    ).toEqual([issue]);
   });
 });

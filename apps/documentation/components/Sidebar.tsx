@@ -34,6 +34,7 @@ const PATH_SEPARATOR_REGEX = /[\\/]/;
 import DocSearchComponent from './DocSearchComponent';
 
 const MotionCollapsibleContent = motion.create(CollapsibleContent);
+// oxlint-disable-next-line direction/inline-arrow-turns -- turned where it is drawn, in FolderChevron below
 const MotionChevron = motion.create(ChevronRight);
 
 /**
@@ -113,7 +114,10 @@ const FolderChevron = ({
   if (alwaysOpen) return null;
   return (
     <MotionChevron
-      className="h-4 w-4"
+      // Motion's rotate is a `transform`; the mirror is the separate `scale`
+      // property, so a closed folder points to the line's end in both
+      // directions and turns down when open.
+      className="h-4 w-4 rtl:-scale-x-100"
       initial={{ rotate: isOpen ? 90 : 0 }}
       animate={{ rotate: isOpen ? 90 : 0 }}
       aria-hidden
@@ -213,7 +217,7 @@ const SidebarFolder = ({
         </div>
       </CollapsibleTrigger>
       <MotionCollapsibleContent
-        className="ml-2 flex flex-col overflow-y-hidden"
+        className="ms-2 flex flex-col overflow-y-hidden"
         forceMount
         initial={{ height: isOpen ? 'auto' : 0 }}
         animate={{ height: isOpen ? 'auto' : 0 }}
@@ -252,7 +256,7 @@ const SidebarLink = ({
       ref={ref}
       href={href}
       className={cx(
-        'focusable border-text/5 flex flex-1 border-l-2 py-2 pl-4 text-sm transition-colors',
+        'focusable border-text/5 flex flex-1 border-s-2 py-2 ps-4 text-sm transition-colors',
         'hover:border-accent/100 hover:text-accent',
         isActive && 'border-accent/100 text-accent font-semibold',
       )}

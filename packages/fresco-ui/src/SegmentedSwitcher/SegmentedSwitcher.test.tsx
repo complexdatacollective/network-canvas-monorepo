@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import SegmentedSwitcher from './SegmentedSwitcher';
@@ -42,12 +43,24 @@ describe('SegmentedSwitcher', () => {
   });
 
   it('does not deselect: clicking the active segment keeps it active (no empty emit)', async () => {
-    const { onValueChange } = setup('a');
-    await userEvent.click(screen.getByRole('button', { name: 'Alpha' }));
-    // Either not called, or called again with 'a' — never with an empty/undefined value.
-    for (const call of onValueChange.mock.calls) {
-      expect(call[0]).toBe('a');
+    // Stateful, so an emitted empty value would reach `value` and unpress it.
+    function Harness() {
+      const [value, setValue] = useState<'a' | 'b' | 'c'>('a');
+      return (
+        <SegmentedSwitcher
+          aria-label="Test switcher"
+          value={value}
+          onValueChange={setValue}
+          options={[...OPTIONS]}
+        />
+      );
     }
+    render(<Harness />);
+
+    const alpha = screen.getByRole('button', { name: 'Alpha' });
+    await userEvent.click(alpha);
+
+    expect(alpha).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('does not fire for a disabled segment', async () => {

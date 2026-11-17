@@ -2,6 +2,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { ImportRequest } from '~/lib/protocol/useProtocolImport';
+
 const { mockSubscribe, mockGet, mockTake, EMPTY } = vi.hoisted(() => {
   // Stable empty snapshot: useSyncExternalStore requires getSnapshot to
   // return a cached value, like the real store does.
@@ -41,10 +43,25 @@ describe('useLaunchedProtocolImport', () => {
     const b = new File(['b'], 'b.netcanvas');
     mockGet.mockReturnValue([a, b]);
     mockTake.mockReturnValue([a, b]);
-    const startImport = vi.fn(() => Promise.resolve());
+    let releaseFirst: () => void = () => {};
+    const firstImport = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const startImport = vi
+      .fn<(request: ImportRequest) => Promise<void>>()
+      .mockReturnValueOnce(firstImport)
+      .mockResolvedValue(undefined);
 
     renderHook(() => useLaunchedProtocolImport(startImport));
 
+    await waitFor(() => expect(startImport).toHaveBeenCalledTimes(1));
+    // Let any eagerly started second import surface before releasing the first.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(startImport).toHaveBeenCalledTimes(1);
+
+    releaseFirst();
     await waitFor(() => expect(startImport).toHaveBeenCalledTimes(2));
     expect(startImport).toHaveBeenNthCalledWith(1, {
       source: 'file',

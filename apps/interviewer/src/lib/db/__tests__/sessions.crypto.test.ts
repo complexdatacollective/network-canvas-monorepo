@@ -179,7 +179,7 @@ describe('sessions repo — encryption at boundary', () => {
     setSessionDek(null);
   });
 
-  it('stores no plaintext network/stageMetadata when unlocked', async () => {
+  it('stores the network only encrypted when unlocked', async () => {
     const created = await createSession({
       protocolHash: 'h1',
       protocolName: 'Study',
@@ -413,13 +413,19 @@ describe('sessions repo — date range filtering (#753)', () => {
     expect(result.totalCount).toBe(0);
   });
 
-  it('drops a malformed range bound rather than throwing', async () => {
+  it('excludes every row, without throwing, when a range bound is malformed', async () => {
     await createSession({
       protocolHash: 'h1',
       protocolName: 'Study',
       caseId: 'case-1',
       initialNetwork,
     });
+    const unfiltered = await querySessions({
+      sort: { column: 'startedAt', direction: 'desc' },
+      page: 0,
+      pageSize: 20,
+    });
+    expect(unfiltered.totalCount).toBe(1);
     const result = await querySessions({
       startedRange: { from: 'not-a-date', to: 'also-bad' },
       sort: { column: 'startedAt', direction: 'desc' },
@@ -429,21 +435,28 @@ describe('sessions repo — date range filtering (#753)', () => {
     expect(result.totalCount).toBe(0);
   });
 
-  it('drops an out-of-range (overflow) calendar bound rather than rolling over', async () => {
+  it('excludes every row when a calendar bound overflows, rather than rolling it over', async () => {
     const created = await createSession({
       protocolHash: 'h1',
       protocolName: 'Study',
       caseId: 'case-1',
       initialNetwork,
     });
-    // Pin the session to a real date; the filter bounds are impossible dates
-    // (2026-02-31 rolls over to March 3 if not rejected), so nothing should
-    // match — a shape-valid-but-overflow bound must not become a real filter.
+    // The bounds are impossible dates that would roll over to 3 March and
+    // 1 May, a window holding the session, so only rejecting the overflow
+    // keeps it out.
     await db.sessions.update(created.id, {
-      startedAt: '2026-02-15T12:00:00.000Z',
+      startedAt: new Date(2026, 3, 10, 12, 0, 0, 0).toISOString(),
     });
+    const inRange = await querySessions({
+      startedRange: { from: '2026-04-01', to: '2026-04-30' },
+      sort: { column: 'startedAt', direction: 'desc' },
+      page: 0,
+      pageSize: 20,
+    });
+    expect(inRange.totalCount).toBe(1);
     const result = await querySessions({
-      startedRange: { from: '2026-02-31', to: '2026-13-01' },
+      startedRange: { from: '2026-02-31', to: '2026-04-31' },
       sort: { column: 'startedAt', direction: 'desc' },
       page: 0,
       pageSize: 20,
@@ -494,8 +507,9 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       initialNetwork,
     });
     await markSessionFinished(created.id, finish);
-    await markSessionsExported([created.id]);
+    expect((await listSessions())[0]?.statusKind).toBe('complete');
 
+    await markSessionsExported([created.id]);
     const list = await listSessions();
     expect(list[0]?.statusKind).toBe('complete');
 

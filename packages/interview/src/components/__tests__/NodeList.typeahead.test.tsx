@@ -13,6 +13,7 @@ import {
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
+import { TestInterviewAssets } from '../../interfaces/__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
@@ -117,17 +118,19 @@ async function unlockedStore(nodes: NcNode[]) {
 function renderList(store: EncryptionStore, nodes: NcNode[]) {
   render(
     <Provider store={store}>
-      <TestProtocolLocalization>
-        <InterviewI18nProvider>
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <DndStoreProvider>
-              <motion.div initial="initial" animate="animate">
-                <NodeList id="people" items={nodes} announcedName="People" />
-              </motion.div>
-            </DndStoreProvider>
-          </CurrentStepProvider>
-        </InterviewI18nProvider>
-      </TestProtocolLocalization>
+      <TestInterviewAssets>
+        <TestProtocolLocalization>
+          <InterviewI18nProvider>
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <DndStoreProvider>
+                <motion.div initial="initial" animate="animate">
+                  <NodeList id="people" items={nodes} announcedName="People" />
+                </motion.div>
+              </DndStoreProvider>
+            </CurrentStepProvider>
+          </InterviewI18nProvider>
+        </TestProtocolLocalization>
+      </TestInterviewAssets>
     </Provider>,
   );
 }

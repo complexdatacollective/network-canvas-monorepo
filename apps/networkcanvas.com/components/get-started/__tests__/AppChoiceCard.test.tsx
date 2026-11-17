@@ -32,58 +32,21 @@ if (!architect || !fresco || !architectClassic || !interviewerClassic) {
 }
 
 describe('AppChoiceCard', () => {
-  it('uses the featured treatment declared by current app data', () => {
+  it('names the featured app in a level-3 heading beside a white status badge', () => {
     renderWithIntl(<AppChoiceCard app={architect} />);
 
-    expect(screen.getByRole('article')).toHaveClass(
-      'bg-cyber-grape',
-      'text-white',
-    );
+    expect(
+      screen.getByRole('heading', { level: 3, name: architect.name }),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByText('Recommended for new studies')
+        .style.getPropertyValue('--badge-color'),
+    ).toBe('var(--color-white)');
   });
 
-  it('uses Fresco typography and Badge for the featured app', () => {
-    renderWithIntl(<AppChoiceCard app={architect} />);
-
-    const heading = screen.getByRole('heading', {
-      level: 3,
-      name: architect.name,
-    });
-    const description = screen.getByRole('article').querySelector('p');
-    const status = screen.getByText('Recommended for new studies');
-
-    expect(heading).toHaveClass(
-      'scroll-m-20',
-      'm-0!',
-      'text-2xl',
-      'font-black',
-    );
-    expect(description).not.toBeNull();
-    expect(description).toHaveClass('font-body');
-    expect(description).not.toHaveClass('not-last:mb-[1em]');
-    expect(status.tagName).toBe('DIV');
-    expect(status).toHaveClass('inline-flex', 'border-transparent');
-    expect(status.style.getPropertyValue('--badge-color')).toBe(
-      'var(--color-white)',
-    );
-    expect(status).toHaveTextContent('Recommended for new studies');
-  });
-
-  it('uses the Classic treatment declared by Classic app data', () => {
-    renderWithIntl(<AppChoiceCard app={architectClassic} />);
-
-    expect(screen.getByRole('article')).toHaveClass(
-      'bg-surface/55',
-      'backdrop-blur-md',
-    );
-  });
-
-  it('uses the restrained Fresco treatment declared by app data', () => {
+  it('gives a non-featured app a cyber-grape status badge', () => {
     renderWithIntl(<AppChoiceCard app={fresco} />);
-
-    expect(screen.getByRole('article')).toHaveClass(
-      'bg-slate-blue/10',
-      'backdrop-blur-md',
-    );
 
     expect(
       screen

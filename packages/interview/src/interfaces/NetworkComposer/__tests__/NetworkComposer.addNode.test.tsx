@@ -14,6 +14,7 @@ import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import protocol from '../../../store/modules/protocol';
@@ -124,17 +125,19 @@ function renderInterface() {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <StageMetadataContext.Provider value={registerBeforeNext}>
-              <TestProtocolLocalization>{children}</TestProtocolLocalization>
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
-        </ContractProvider>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider value={registerBeforeNext}>
+                <TestProtocolLocalization>{children}</TestProtocolLocalization>
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </ContractProvider>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }
@@ -152,16 +155,6 @@ async function openAddInput() {
 }
 
 describe('NetworkComposer tool palette', () => {
-  it('renders a Select button in the palette', () => {
-    renderInterface();
-    expect(screen.getByRole('button', { name: /select/i })).toBeTruthy();
-  });
-
-  it('renders an Add Node button in the palette', () => {
-    renderInterface();
-    expect(screen.getByRole('button', { name: /add node/i })).toBeTruthy();
-  });
-
   it('offers the configured edge types via the edge menu', async () => {
     renderInterface();
     // Edge types live behind a single "Draw edge" menu button.
@@ -175,13 +168,6 @@ describe('NetworkComposer tool palette', () => {
     renderInterface();
     const selectBtn = screen.getByRole('button', { name: /select/i });
     expect(selectBtn.getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('clicking Add Node opens the inline name input', async () => {
-    renderInterface();
-
-    const input = await openAddInput();
-    expect(input).toBeTruthy();
   });
 
   it('Select button is no longer aria-pressed after Add Node is activated', async () => {
@@ -221,7 +207,7 @@ describe('NetworkComposer add-node flow', () => {
     });
   });
 
-  it('the new node has a layoutVariable position set', async () => {
+  it('places the first new node in the first cell of the placement grid', async () => {
     const { store } = renderInterface();
 
     const input = await openAddInput();
@@ -235,12 +221,11 @@ describe('NetworkComposer add-node flow', () => {
       const nodes = store.getState().session.network.nodes;
       expect(nodes).toHaveLength(1);
       const node = nodes[0];
-      const pos = node?.[entityAttributesProperty]?.[LAYOUT_VAR] as
-        | { x: number; y: number }
-        | undefined;
-      expect(pos).toBeDefined();
-      expect(typeof pos?.x).toBe('number');
-      expect(typeof pos?.y).toBe('number');
+      // The first free cell of the placement grid, clear of the tool palette.
+      expect(node?.[entityAttributesProperty]?.[LAYOUT_VAR]).toEqual({
+        x: 0.12,
+        y: 0.12,
+      });
     });
   });
 

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, within } from 'storybook/test';
 
+import { buttonVariants } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -43,8 +44,59 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The stage as the protocol holds it: one type chosen out of the two it has. */
-export const Chosen: Story = {};
+/**
+ * The height and text size a design-system button of one size is drawn at,
+ * measured from a probe carrying that size's own classes. Taken from the
+ * system rather than written out, so a change to the scale moves both sides.
+ */
+function drawnSize(
+  host: HTMLElement,
+  size: 'default' | 'sm',
+): { height: number; fontSize: string } {
+  const probe = document.createElement('button');
+  probe.className = buttonVariants({
+    color: 'primary',
+    ...(size === 'sm' ? { size } : {}),
+  });
+  probe.textContent = 'Probe';
+  host.append(probe);
+  const drawn = {
+    height: probe.getBoundingClientRect().height,
+    fontSize: getComputedStyle(probe).fontSize,
+  };
+  probe.remove();
+  return drawn;
+}
+
+/**
+ * The stage as the protocol holds it: one type chosen out of the two it has.
+ *
+ * The buttons that make and change a type are ordinary buttons on the page,
+ * so they are drawn at the size every other button on the screen is. They
+ * shipped a size down, which read as a different class of control.
+ */
+export const Chosen: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const triggers = [
+      await canvas.findByRole('button', { name: 'Create new node type' }),
+      canvas.getByRole('button', { name: 'Edit this node type' }),
+    ];
+    const standard = drawnSize(canvasElement, 'default');
+    const small = drawnSize(canvasElement, 'sm');
+    // Without this the comparison below would hold for a button of any size.
+    await expect(standard.height).not.toBe(small.height);
+
+    for (const trigger of triggers) {
+      await expect(trigger.getBoundingClientRect().height).toBe(
+        standard.height,
+      );
+      await expect(getComputedStyle(trigger).fontSize).toBe(standard.fontSize);
+    }
+  },
+};
 
 /** Held elsewhere: every chip is there to read, and none of them can be picked. */
 export const ASpectator: Story = {

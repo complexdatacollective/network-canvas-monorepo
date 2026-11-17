@@ -27,14 +27,18 @@ const EntityBadge = ({
   } = useContext(SummaryContext);
   const color = get(codebook, [entity, type, 'color']);
   const name = get(codebook, [entity, type, 'name']);
-  const shape = get(codebook, [entity, type, 'shape', 'default']);
+  const nodeType = entity === 'node' ? codebook.node?.[type] : undefined;
   const size = iconSize ?? (tiny ? 'tiny' : small ? 'small' : 'default');
-  const label = small || tiny ? name : <Heading level="h2">{name}</Heading>;
+  // The researcher's name for the type reads in its own direction.
+  const ownName = <bdi>{name}</bdi>;
+  const label =
+    small || tiny ? ownName : <Heading level="h2">{ownName}</Heading>;
   const badge = (
     <EntityIcon
       color={color}
       entity={entity}
-      shape={shape}
+      shape={nodeType?.shape?.default}
+      customShapes={nodeType?.customShapes}
       label={label}
       size={size}
     />

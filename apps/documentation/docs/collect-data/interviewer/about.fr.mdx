@@ -1,0 +1,58 @@
+---
+title: À propos d’Interviewer
+date: 22nd July 2026
+navOrder: 0
+translatedFrom: fcfd298e94ec495c883fc49a7bee84594b3efa87
+---
+
+<Paragraph variant="lead">
+  Interviewer est l’application Network Canvas destinée aux entretiens de
+  réseau menés en face à face, avec l’accompagnement de la personne qui mène
+  l’entretien, sur un appareil que vous contrôlez.
+</Paragraph>
+
+Il fonctionne dans votre navigateur web — ouvrez-le à l’adresse [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com), sans rien télécharger — et peut, si vous le souhaitez, être installé sur votre appareil comme application web progressive (PWA) pour un accès rapide et une utilisation hors ligne.
+
+Tout ce qu’Interviewer stocke — protocoles, entretiens et paramètres — reste sur l’appareil, sans synchronisation dans le cloud ni composant serveur. Vous importez les protocoles, menez les entretiens et exportez les données depuis l’application elle-même.
+
+![Le tableau de bord d’Interviewer.](/assets/img/interviewer-guide/start-screen.png)
+
+## Se lancer tout de suite {#jump-straight-in}
+
+Si vous souhaitez vous lancer tout de suite, ouvrez [Interviewer](https://interviewer.networkcanvas.com) dans votre navigateur et essayez le protocole d’exemple intégré — le tutoriel [Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer) vous guide pas à pas.
+
+Sinon, poursuivez votre lecture pour découvrir ce que fait Interviewer et la place qu’il occupe dans l’écosystème Network Canvas.
+
+## Qu’est-ce qu’Interviewer ? {#what-is-interviewer}
+
+Interviewer est un outil d’administration d’entretiens conçu pour être simple et intuitif pour les personnes participantes à une recherche, et pour s’intégrer au reste de la suite d’outils Network Canvas. C’est la pierre angulaire du projet Network Canvas : ses interfaces sont optimisées pour les besoins propres aux entretiens de réseau, et il se configure à partir des fichiers de protocole que vous concevez pour votre étude.
+
+Interviewer repose sur la même plateforme que Fresco 4.0 et apporte l’expérience d’entretien renouvelée de cette plateforme à la collecte de données menée directement sur l’appareil, avec l’accompagnement de la personne qui mène l’entretien. Alors que [Fresco](/fr/collect-data/fresco/about) permet aux personnes participantes de réaliser les entretiens à distance dans leur propre navigateur, les données étant stockées sur un serveur que vous hébergez, Interviewer s’utilise avec une personne formée pour mener l’entretien, sur un appareil que vous contrôlez, et stocke les données sur cet appareil. Consultez [Mener des entretiens](/fr/collect-data) pour une comparaison complète des deux applications.
+
+## Deux versions d’Interviewer {#two-versions-of-interviewer}
+
+Interviewer existe en deux versions prises en charge :
+
+- L’application actuelle fonctionne dans votre **navigateur web** — installable comme application web progressive sur un appareil que vous contrôlez —, prend en charge les **schémas 8 et 9** et est recommandée pour toutes les nouvelles études.
+- **Interviewer Classic** est l’application éprouvée pour **ordinateur et tablette**, que vous téléchargez et installez sur chaque appareil. Elle exécute les protocoles en schéma 7 et fonctionne entièrement hors ligne.
+
+La version capable d’exécuter un protocole donné dépend de la version de son schéma — consultez [Informations sur le schéma de protocole](/fr/get-started/protocol-schema-information). Le [guide d’installation](/fr/collect-data/interviewer/installing-interviewer) explique comment obtenir chaque version, et le tutoriel [Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer) vous permet de passer d’une version à l’autre tout au long du tutoriel.
+
+## Principales fonctionnalités {#key-capabilities}
+
+- **Exécute les protocoles d’Architect** — Interviewer est compatible avec vos protocoles existants. Il exécute les protocoles en schéma 9 et en schéma 8 dans le schéma pour lequel ils ont été créés, et ne les met jamais à niveau. Un protocole en schéma 7 issu des applications Classic est automatiquement migré vers le schéma 8 lors de son importation. Pour utiliser les fonctionnalités du schéma 9 dans un protocole plus ancien, mettez-le à niveau dans Architect.
+- **Fonctionne hors ligne, avec des exceptions documentées** — une fois installé comme application web progressive, Interviewer reste disponible hors ligne. Interviewer affiche un seul état de disponibilité hors ligne pour toute l’application, qui indique **Utilisable hors ligne** dès que tous les protocoles présents sur l’appareil, y compris les protocoles en schéma 8, peuvent être utilisés sans connexion. Certaines interfaces du schéma 8 (comme l’[interface géospatiale](/fr/design-protocols/interface-documentation/geospatial)) ont besoin d’une connexion Internet pendant l’entretien, et les cartes de protocole affichent l’indicateur **Connexion Internet requise** lorsqu’un protocole les utilise.
+- **Données sur l’appareil, avec une sécurité au niveau de l’application** — lorsque vous configurez un verrouillage de l’application (un code PIN, une phrase secrète ou la biométrie), les données stockées sont chiffrées au repos avec une clé dérivée de ce moyen de déverrouillage. Consultez [Stockage et sécurité des données](/fr/collect-data/interviewer/data-storage) pour savoir ce que cela protège et ce que cela ne protège pas.
+- **Exportation des données en CSV et en GraphML** — exportez les sessions que vous sélectionnez dans une seule archive `.zip`, avec des formats et des options définis une seule fois, dans **Paramètres → Exportation des données**. Consultez le [guide d’exportation des données](/fr/analyze-data/data-export) pour savoir ce que contiennent les fichiers exportés.
+- **Données synthétiques** — générez des sessions d’entretien fictives à partir de n’importe quel protocole installé pour tester et valider votre chaîne d’exportation avant de recueillir de vraies données.
+
+## Pour aller plus loin {#next-steps}
+
+Pour bien démarrer avec Interviewer, nous vous recommandons les ressources suivantes :
+
+- [Installer Interviewer](/fr/collect-data/interviewer/installing-interviewer) — ouvrez l’application dans votre navigateur ou installez-la comme application web progressive, ou téléchargez Interviewer Classic.
+- [Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer) — une présentation guidée du protocole d’exemple, qui couvre l’expérience d’entretien des personnes participantes et les fonctionnalités de l’application destinées à l’équipe de recherche.
+- [Choisir un appareil pour Interviewer](/fr/collect-data/interviewer/choosing-hardware) — des conseils pour choisir un appareil qui offre aux personnes participantes une expérience d’entretien fluide.
+- [Stockage et sécurité des données](/fr/collect-data/interviewer/data-storage) — où se trouvent vos données d’entretien, ce qui les protège et comment les garder en sécurité sur le terrain.
+
+En cas de problème, nous vous invitons à utiliser la fonction de recherche en haut de chaque page, ou à vous rendre sur notre [forum de la communauté](https://community.networkcanvas.com) (en anglais) pour obtenir de l’aide.

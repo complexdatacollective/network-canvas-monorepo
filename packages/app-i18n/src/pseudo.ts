@@ -3,7 +3,7 @@ import type { MessageFormatElement } from '@formatjs/icu-messageformat-parser';
 import type { IntlShape } from 'react-intl';
 
 import { PSEUDO_RTL_LOCALE } from './locales.ts';
-import type { CatalogMessages } from './locales.ts';
+import type { AppLocale, CatalogMessages } from './locales.ts';
 import { createAppIntl } from './messages.ts';
 import type { AppIntlErrorHandler, MessageDescriptor } from './messages.ts';
 
@@ -245,11 +245,14 @@ export function createPseudoIntl(options: {
   messages?: CatalogMessages;
   onError?: AppIntlErrorHandler;
   timeZone?: string;
+  /** See `createAppIntl`. */
+  direction?: AppLocale['direction'];
 }): IntlShape {
   const intl = createAppIntl({
     locale: options.locale,
     onError: options.onError,
     timeZone: options.timeZone,
+    direction: options.direction,
   });
   const transform =
     options.locale === PSEUDO_RTL_LOCALE ? pseudoRtlMessage : pseudoMessage;
@@ -287,5 +290,5 @@ export function createPseudoIntl(options: {
     return intl.formatMessage(pseudoDescriptor, values, opts);
   }) as FormatMessage;
 
-  return { ...intl, formatMessage };
+  return { ...intl, formatMessage, $t: formatMessage };
 }

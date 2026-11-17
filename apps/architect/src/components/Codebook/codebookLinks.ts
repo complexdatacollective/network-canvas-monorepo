@@ -1,7 +1,7 @@
 const CODEBOOK_PATH = '/protocol/codebook';
 
 /** A type on the Codebook page that a link can open the editor of. */
-type CodebookLink = { entity: 'node' | 'edge'; type: string };
+export type CodebookLink = { entity: 'node' | 'edge'; type: string };
 
 /**
  * The Codebook page, opening the type editor named by `link` when one is

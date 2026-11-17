@@ -1,5 +1,9 @@
 {
-  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/direction.json"
+  ],
   "jsPlugins": ["eslint-plugin-formatjs", "oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {

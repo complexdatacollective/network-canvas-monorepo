@@ -175,6 +175,9 @@ describe('the text the interview shows, counting Network Canvas’s own wording'
     const protocol = holdingNothing({ defaultLocale: 'sw', locales: ['sw'] });
     const written = {
       ...protocol,
+      // A protocol in a language Network Canvas has no wording in also names
+      // a fallback language before it is handed over.
+      localization: { ...protocol.localization, fallbackLocale: 'en' },
       interfaceText: interfaceTextWithUpdates(
         undefined,
         interfaceTextShownBy(protocol).map(({ group, key }) => ({

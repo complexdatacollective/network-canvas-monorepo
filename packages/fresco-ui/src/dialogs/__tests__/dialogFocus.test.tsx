@@ -196,10 +196,11 @@ describe('Dialog focus return', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
-    // A detached node cannot take focus; the point is that nothing throws and
-    // focus is not parked on the removed element.
+    // A detached node cannot take focus, so "not the opener" would pass
+    // whatever happened. What matters is that focus is not sent to the first
+    // tabbable element in the document instead.
     expect(opener.isConnected).toBe(false);
-    expect(document.activeElement).not.toBe(opener);
+    expect(document.activeElement).toBe(document.body);
   });
 });
 

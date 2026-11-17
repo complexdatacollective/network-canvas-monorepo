@@ -20,6 +20,7 @@ import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import CategoricalBin from '../CategoricalBin';
 
@@ -126,19 +127,21 @@ function renderInArabic() {
   render(
     <TestProtocolLocalization localization={LOCALIZATION} locale="ar">
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DialogProvider>
-            <DndStoreProvider>
-              <CategoricalBin
-                stage={stage}
-                getNavigationHelpers={() => ({
-                  moveForward: () => {},
-                  moveBackward: () => {},
-                })}
-              />
-            </DndStoreProvider>
-          </DialogProvider>
-        </CurrentStepProvider>
+        <TestInterviewAssets>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <DndStoreProvider>
+                <CategoricalBin
+                  stage={stage}
+                  getNavigationHelpers={() => ({
+                    moveForward: () => {},
+                    moveBackward: () => {},
+                  })}
+                />
+              </DndStoreProvider>
+            </DialogProvider>
+          </CurrentStepProvider>
+        </TestInterviewAssets>
       </Provider>
     </TestProtocolLocalization>,
   );

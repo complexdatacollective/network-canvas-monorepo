@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   DropdownMenu,
@@ -12,36 +12,26 @@ import {
 } from './DropdownMenu';
 
 describe('DropdownMenuItem', () => {
-  it('does not fire onClick for a disabled item', async () => {
-    const onClick = vi.fn();
-    render(
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<button>open</button>} />
-        <DropdownMenuContent>
-          <DropdownMenuItem disabled onClick={onClick}>
-            Add sibling
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>,
-    );
-    await userEvent.click(screen.getByText('open'));
-    await userEvent.click(await screen.findByText('Add sibling'));
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
-  it('carries data-disabled attribute when disabled', async () => {
+  // The wrapper destructures its own props before spreading the rest onto
+  // Base UI's item, so this is the seam that keeps `disabled` from being lost.
+  it('passes disabled through to the menu item', async () => {
     render(
       <DropdownMenu>
         <DropdownMenuTrigger render={<button>open</button>} />
         <DropdownMenuContent>
           <DropdownMenuItem disabled>Add sibling</DropdownMenuItem>
+          <DropdownMenuItem>Add child</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>,
     );
     await userEvent.click(screen.getByText('open'));
-    expect(await screen.findByText('Add sibling')).toHaveAttribute(
-      'data-disabled',
-    );
+
+    expect(
+      await screen.findByRole('menuitem', { name: 'Add sibling' }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByRole('menuitem', { name: 'Add child' }),
+    ).not.toHaveAttribute('aria-disabled');
   });
 });
 

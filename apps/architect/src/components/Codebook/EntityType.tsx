@@ -1,4 +1,4 @@
-import { createElement, useCallback, useState } from 'react';
+import { createElement, useCallback } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 import { Link } from 'wouter';
@@ -9,12 +9,14 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { ColorReference } from '@codaco/protocol-validation';
+import type {
+  ColorReference,
+  NodeDefinition,
+  NodeShapeReference,
+} from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
-import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteTypeAsync } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
@@ -121,18 +123,21 @@ type EntityTypeProps = {
   type: string;
   name: string;
   color: ColorReference;
-  shape?: NodeShape;
+  shape?: NodeShapeReference;
+  customShapes?: NodeDefinition['customShapes'];
   usage: UsageItem[];
   inUse?: boolean;
   search?: string;
   unusedOnly?: boolean;
   onEditEntity?: (entity: Entity, type?: string) => void;
+  onAddVariable?: (entity: Entity, type?: string) => void;
   variables?: Record<string, Variable>;
 };
 const EntityType = ({
   name,
   color,
   shape,
+  customShapes,
   inUse = true,
   usage,
   entity,
@@ -141,12 +146,12 @@ const EntityType = ({
   search = '',
   unusedOnly = false,
   onEditEntity,
+  onAddVariable,
 }: EntityTypeProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const readOnly = useProtocolReadOnly();
   const { confirm, openDialog } = useDialog();
-  const [showAddVariable, setShowAddVariable] = useState(false);
   const variableArray = Object.values(variables);
   // Apply the codebook's "Show unused only" / search filters at the variable
   // level (mirroring EgoType) so a type stays visible when it itself matches
@@ -260,6 +265,7 @@ const EntityType = ({
             color={color}
             entity={entity}
             shape={shape}
+            customShapes={customShapes}
             size="small"
           />
         </div>
@@ -304,7 +310,7 @@ const EntityType = ({
             color="primary"
             size="sm"
             disabled={readOnly}
-            onClick={() => setShowAddVariable(true)}
+            onClick={() => onAddVariable?.(entity, type)}
           >
             {intl.formatMessage(messages.addAttribute)}
           </Button>
@@ -317,13 +323,6 @@ const EntityType = ({
           />
         )}
       </div>
-      <NewVariableWindow
-        show={showAddVariable}
-        entity={entity}
-        type={type}
-        onComplete={() => setShowAddVariable(false)}
-        onCancel={() => setShowAddVariable(false)}
-      />
     </Section>
   );
 };
@@ -345,6 +344,7 @@ type OwnProps = StateProps & {
   search?: string;
   unusedOnly?: boolean;
   onEditEntity?: (entity: Entity, type?: string) => void;
+  onAddVariable?: (entity: Entity, type?: string) => void;
 };
 const ConnectedEntityType = compose<
   EntityTypeProps,

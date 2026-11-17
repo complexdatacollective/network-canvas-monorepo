@@ -35,6 +35,7 @@ import {
   type LocaleOperationResult,
   removeLocale,
   setDefaultLocale,
+  setFallbackLocale,
   setLocalizedStrings,
   setTranslation,
 } from './protocol/localeOperations';
@@ -105,6 +106,13 @@ const activeProtocolSlice = createSlice({
     ) =>
       applyLocaleOperation(state, (protocol) =>
         setDefaultLocale(protocol, action.payload.locale),
+      ),
+    setProtocolFallbackLocale: (
+      state,
+      action: PayloadAction<{ locale: string }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        setFallbackLocale(protocol, action.payload.locale),
       ),
     changeProtocolLocale: (
       state,
@@ -254,6 +262,7 @@ export const {
   addProtocolLocales,
   removeProtocolLocale,
   setProtocolDefaultLocale,
+  setProtocolFallbackLocale,
   changeProtocolLocale,
   setProtocolTranslation,
   setProtocolLocalizedStrings,

@@ -464,7 +464,6 @@ export type AuditEventKey = AuditEventKeyFor<AuditEventInput>;
 
 type AuditEventDefinition = {
   inputSchema: Schema.Codec<AuditEventInput, EncodedAuditEventInput>;
-  title: string;
   detailFields: readonly string[];
   sensitiveFields: readonly string[];
   createsAlert: boolean;
@@ -543,7 +542,6 @@ const FIXTURE_INTERVIEW_V1_COMMON = {
 export const AUDIT_EVENT_REGISTRY = {
   'audit.read_denied@1': {
     inputSchema: AuditReadDeniedV1EventSchema,
-    title: 'Activity log access denied',
     detailFields: ['procedure', 'reason'],
     sensitiveFields: [],
     createsAlert: false,
@@ -564,7 +562,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.created@1': {
     inputSchema: TeamCreatedV1EventSchema,
-    title: 'Team created',
     detailFields: ['role'],
     sensitiveFields: [],
     createsAlert: false,
@@ -579,7 +576,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.member.role_changed@1': {
     inputSchema: TeamMemberRoleChangedV1EventSchema,
-    title: 'Member role changed',
     detailFields: ['previousRoles', 'newRoles'],
     sensitiveFields: [],
     createsAlert: false,
@@ -594,7 +590,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.member.role_change_denied@1': {
     inputSchema: TeamMemberRoleChangeDeniedV1EventSchema,
-    title: 'Member role change denied',
     detailFields: ['requestedRoles', 'reason'],
     sensitiveFields: [],
     createsAlert: false,
@@ -613,7 +608,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.member.role_change_failed@1': {
     inputSchema: TeamMemberRoleChangeFailedV1EventSchema,
-    title: 'Member role change failed',
     detailFields: ['failureCode'],
     sensitiveFields: [],
     createsAlert: false,
@@ -629,7 +623,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'security.denied_attempts.rate_limited@1': {
     inputSchema: DeniedAttemptsRateLimitedV1EventSchema,
-    title: 'Denied attempts rate limited',
     detailFields: [
       'operation',
       'suppressedCount',
@@ -660,7 +653,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.created@1': {
     inputSchema: TeamInvitationCreatedV1EventSchema,
-    title: 'Invitation created',
     detailFields: ['role'],
     sensitiveFields: [],
     createsAlert: false,
@@ -675,7 +667,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.creation_denied@1': {
     inputSchema: TeamInvitationCreationDeniedV1EventSchema,
-    title: 'Invitation creation denied',
     detailFields: ['requestedRole', 'reason'],
     sensitiveFields: [],
     createsAlert: false,
@@ -694,7 +685,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.cancelled@1': {
     inputSchema: TeamInvitationCancelledV1EventSchema,
-    title: 'Invitation cancelled',
     detailFields: ['role'],
     sensitiveFields: [],
     createsAlert: false,
@@ -709,7 +699,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.cancelled@2': {
     inputSchema: TeamInvitationCancelledV2EventSchema,
-    title: 'Invitation cancelled',
     detailFields: ['roles'],
     sensitiveFields: [],
     createsAlert: false,
@@ -724,7 +713,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.cancellation_denied@1': {
     inputSchema: TeamInvitationCancellationDeniedV1EventSchema,
-    title: 'Invitation cancellation denied',
     detailFields: ['reason'],
     sensitiveFields: [],
     createsAlert: false,
@@ -740,7 +728,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.cancellation_failed@1': {
     inputSchema: TeamInvitationCancellationFailedV1EventSchema,
-    title: 'Invitation cancellation failed',
     detailFields: ['failureCode'],
     sensitiveFields: [],
     createsAlert: false,
@@ -756,7 +743,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.accepted@1': {
     inputSchema: TeamInvitationAcceptedV1EventSchema,
-    title: 'Invitation accepted',
     detailFields: ['role', 'memberId'],
     sensitiveFields: [],
     createsAlert: false,
@@ -771,7 +757,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.acceptance_denied@1': {
     inputSchema: TeamInvitationAcceptanceDeniedV1EventSchema,
-    title: 'Invitation acceptance denied',
     detailFields: ['reason'],
     sensitiveFields: [],
     createsAlert: false,
@@ -787,7 +772,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'team.invitation.acceptance_failed@1': {
     inputSchema: TeamInvitationAcceptanceFailedV1EventSchema,
-    title: 'Invitation acceptance failed',
     detailFields: ['failureCode'],
     sensitiveFields: [],
     createsAlert: false,
@@ -803,7 +787,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'protocol.created@1': {
     inputSchema: ProtocolCreatedV1EventSchema,
-    title: 'Protocol created',
     detailFields: ['draftId'],
     sensitiveFields: [],
     createsAlert: false,
@@ -815,7 +798,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'protocol.draft.committed@1': {
     inputSchema: ProtocolDraftCommittedV1EventSchema,
-    title: 'Protocol draft committed',
     detailFields: [
       'draftId',
       'revision',
@@ -839,7 +821,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'study.created@1': {
     inputSchema: StudyCreatedV1EventSchema,
-    title: 'Study created',
     detailFields: ['protocolId', 'draftId', 'participationMode', 'creatorRole'],
     sensitiveFields: [],
     createsAlert: false,
@@ -860,7 +841,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'study.creation_denied@1': {
     inputSchema: StudyCreationDeniedV1EventSchema,
-    title: 'Study creation denied',
     detailFields: ['reason'],
     sensitiveFields: [],
     createsAlert: false,
@@ -876,7 +856,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'interview.started@1': {
     inputSchema: InterviewStartedV1EventSchema,
-    title: 'Interview started',
     detailFields: ['studyId', 'waveId', 'resumed'],
     sensitiveFields: [],
     createsAlert: false,
@@ -892,7 +871,6 @@ export const AUDIT_EVENT_REGISTRY = {
   },
   'interview.completed@1': {
     inputSchema: InterviewCompletedV1EventSchema,
-    title: 'Interview completed',
     detailFields: ['studyId', 'waveId', 'nodeCount', 'edgeCount'],
     sensitiveFields: [],
     createsAlert: false,

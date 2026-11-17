@@ -10,7 +10,6 @@ import ComboboxField from '../form/fields/Combobox/Combobox';
 import { type ComboboxOption } from '../form/fields/Combobox/shared';
 import { type DataTableFeatures } from './features';
 import { isFacetedFilterValue } from './filters/types';
-import { type Option } from './types';
 
 const messages = defineMessages({
   filterPlaceholder: {
@@ -34,10 +33,16 @@ const messages = defineMessages({
 });
 
 type DataTableFacetedFilterProps<TData extends RowData, TValue> = {
-  column?: Column<DataTableFeatures, TData, TValue>;
-  title?: string;
-  options: Option[];
-  className?: string;
+  'column'?: Column<DataTableFeatures, TData, TValue>;
+  'title'?: string;
+  /** A name someone wrote is `{ text, dir: 'auto' }`. */
+  'options': ComboboxOption[];
+  'className'?: string;
+  /**
+   * The id of a visible label naming the filter. Without one, the filter is
+   * named by `title`.
+   */
+  'aria-labelledby'?: string;
 };
 
 export function DataTableFacetedFilter<TData extends RowData, TValue>({
@@ -45,6 +50,7 @@ export function DataTableFacetedFilter<TData extends RowData, TValue>({
   title,
   options,
   className,
+  'aria-labelledby': ariaLabelledBy,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
@@ -75,6 +81,8 @@ export function DataTableFacetedFilter<TData extends RowData, TValue>({
   return (
     <ComboboxField
       name={`filter-${title}`}
+      aria-labelledby={ariaLabelledBy}
+      aria-label={ariaLabelledBy ? undefined : title}
       options={comboboxOptions}
       placeholder={intl.formatMessage(messages.filterPlaceholder, {
         title: columnTitle,

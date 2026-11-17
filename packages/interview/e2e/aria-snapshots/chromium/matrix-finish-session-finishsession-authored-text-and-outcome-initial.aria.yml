@@ -13,4 +13,5 @@
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step" [disabled]
+    - status
   - region "Interview notifications"

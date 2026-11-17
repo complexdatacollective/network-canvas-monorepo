@@ -2,7 +2,7 @@ import { Printer } from 'lucide-react';
 import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, withoutIsolates } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   defineToolbarChild,
@@ -22,10 +22,13 @@ const messages = defineMessages({
 const dateWithSafeChars = (date: string, replaceWith = '-') =>
   date.replace(/[^a-zA-Z\d\s]/gi, replaceWith).toLowerCase();
 
-// Strip characters that are invalid in filenames on common platforms, keeping
-// the name otherwise readable (case and spacing preserved).
+// Strip characters that are invalid in filenames on common platforms, and the
+// invisible isolates a right-to-left interface puts around the protocol's
+// name, keeping the name otherwise readable (case and spacing preserved).
 const fileNameWithSafeChars = (name: string) =>
-  name.replace(/[/\\:*?"<>|]/g, '-').trim();
+  withoutIsolates(name)
+    .replace(/[/\\:*?"<>|]/g, '-')
+    .trim();
 
 type PrintProtocolActionProps = {
   ref?: ToolbarButtonProps['ref'];

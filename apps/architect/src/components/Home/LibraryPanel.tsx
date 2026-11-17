@@ -179,12 +179,6 @@ const messages = defineMessages({
     description:
       'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
   },
-  actionsFor: {
-    id: 'architect.home.libraryPanel.actionsFor',
-    defaultMessage: 'Actions for {name}',
-    description:
-      "Accessible name of the three-dot menu button on a row of the protocol list on the start screen; read only by screen readers. name is the protocol's name.",
-  },
   open: {
     id: 'architect.home.libraryPanel.open',
     defaultMessage: 'Open',
@@ -203,23 +197,11 @@ const messages = defineMessages({
     description:
       "Menu item on a protocol row of the start screen that saves the protocol to the researcher's computer as a .netcanvas file. Download is the action, not a noun.",
   },
-  protocolGallery: {
-    id: 'architect.home.libraryPanel.protocolGallery',
-    defaultMessage: 'Protocol gallery',
-    description:
-      'Accessible name of the card on the start screen that links to the online Protocol Gallery of example protocols; read only by screen readers.',
-  },
   lookingForMore: {
     id: 'architect.home.libraryPanel.lookingForMore',
     defaultMessage: 'Looking for more?',
     description:
       'Heading of the card on the start screen that points to the online Protocol Gallery of example protocols.',
-  },
-  dismiss: {
-    id: 'architect.home.libraryPanel.dismiss',
-    defaultMessage: 'Dismiss',
-    description:
-      'Accessible name of the close button on the Protocol Gallery card of the start screen; it hides the card. Read only by screen readers.',
   },
   someAssetsCouldNotBeIncluded: {
     id: 'architect.home.libraryPanel.someAssetsCouldNotBeIncluded',
@@ -363,23 +345,11 @@ const messages = defineMessages({
     description:
       'Description of the Development Protocol in the Templates tab; shown only in development builds of the app.',
   },
-  whereYourProtocolsAreStored: {
-    id: 'architect.home.libraryPanel.whereYourProtocolsAreStored',
-    defaultMessage: 'Where your protocols are stored',
-    description:
-      'Accessible name of the info button above the Recent list that opens the Protocol Storage dialog; read only by screen readers.',
-  },
   clearAllLocallySavedProtocols: {
     id: 'architect.home.libraryPanel.clearAllLocallySavedProtocols',
     defaultMessage: 'Clear all locally saved protocols',
     description:
       'Accessible name and tooltip of the trash button above the Recent list that starts deleting every saved protocol on this device.',
-  },
-  protocolLibrary: {
-    id: 'architect.home.libraryPanel.protocolLibrary',
-    defaultMessage: 'Protocol library',
-    description:
-      'Accessible name of the tab group on the start screen that switches between Recent protocols and Templates; read only by screen readers.',
   },
   recent: {
     id: 'architect.home.libraryPanel.recent',
@@ -393,23 +363,11 @@ const messages = defineMessages({
     description:
       'Tab label on the start screen for the list of template and sample protocols to start from.',
   },
-  recentProtocols: {
-    id: 'architect.home.libraryPanel.recentProtocols',
-    defaultMessage: 'Recent protocols',
-    description:
-      'Accessible name of the list of recent protocols on the start screen; read only by screen readers.',
-  },
   noRecentProtocolsYet: {
     id: 'architect.home.libraryPanel.noRecentProtocolsYet',
     defaultMessage: 'No recent protocols yet.',
     description:
       'Empty-state message in the Recent tab of the start screen when the researcher has no saved protocols.',
-  },
-  protocolTemplates: {
-    id: 'architect.home.libraryPanel.protocolTemplates',
-    defaultMessage: 'Protocol templates',
-    description:
-      'Accessible name of the list of template protocols on the start screen; read only by screen readers.',
   },
 });
 const extraMessages = defineMessages({
@@ -704,9 +662,8 @@ const PanelRow = ({
                   ref={triggerRef}
                   variant="text"
                   color="dynamic"
-                  aria-label={intl.formatMessage(messages.actionsFor, {
-                    name: name,
-                  })}
+                  aria-label={`Actions for ${name}`}
+                  lang="en"
                   onClick={(event) => event.stopPropagation()}
                   icon={
                     downloading ? (
@@ -808,7 +765,7 @@ const GalleryCard = () => {
       ref={cardRef}
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a labelled card of a link and a dismiss button: not form controls for a <fieldset>, and not worth a landmark.
       role="group"
-      aria-label={intl.formatMessage(messages.protocolGallery)}
+      aria-label={'Protocol gallery'}
       spacing="sm"
       className="mb-4"
     >
@@ -829,7 +786,8 @@ const GalleryCard = () => {
         variant="text"
         color="dynamic"
         size="sm"
-        aria-label={intl.formatMessage(messages.dismiss)}
+        aria-label="Dismiss"
+        lang="en"
         className="absolute inset-e-2 top-1"
         onClick={handleDismiss}
         icon={<X />}
@@ -1440,9 +1398,8 @@ const LibraryPanel = ({
               <IconButton
                 variant="text"
                 size="sm"
-                aria-label={intl.formatMessage(
-                  messages.whereYourProtocolsAreStored,
-                )}
+                aria-label="Where your protocols are stored"
+                lang="en"
                 onClick={handleShowStorageInfo}
                 icon={<Info />}
               />
@@ -1483,7 +1440,7 @@ const LibraryPanel = ({
     // reachable instead of cut off.
     <Surface spacing="sm" className="publish-colors w-full grow" noContainer>
       <Tabs
-        aria-label={intl.formatMessage(messages.protocolLibrary)}
+        aria-label={'Protocol library'}
         layout="top"
         value={activeTab}
         onValueChange={(value) => {
@@ -1508,7 +1465,7 @@ const LibraryPanel = ({
             renderItem={renderLibraryItem}
             selectionMode="none"
             animate={false}
-            aria-label={intl.formatMessage(messages.recentProtocols)}
+            aria-label={'Recent protocols'}
             // className="p-0"
             // viewportClassName={COLLECTION_VIEWPORT_CLASSES}
             emptyState={
@@ -1537,7 +1494,7 @@ const LibraryPanel = ({
                 renderItem={renderLibraryItem}
                 selectionMode="none"
                 animate={false}
-                aria-label={intl.formatMessage(messages.protocolTemplates)}
+                aria-label={'Protocol templates'}
                 scrollable={false}
               >
                 {(CollectionElements) => CollectionElements}

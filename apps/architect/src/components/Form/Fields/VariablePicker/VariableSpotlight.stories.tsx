@@ -31,12 +31,14 @@ const VARIABLE_OPTIONS: StoryArgs['options'] = [
   },
 ];
 
-const createStoryStore = () =>
+const createStoryStore = (
+  personVariables: Record<string, { name: string; type: string }> = {},
+) =>
   createStore(() => ({
     activeProtocol: {
       present: {
         codebook: {
-          node: {},
+          node: { person: { variables: personVariables } },
           edge: {},
           ego: {},
         },
@@ -198,7 +200,17 @@ export const CreateNewVariable: Story = {
     const input = await screen.findByRole('searchbox', {
       name: 'Find or create an attribute',
     });
-    await userEvent.type(input, 'follow_up_notes');
+    await userEvent.type(input, 'participant');
+
+    const results = await screen.findAllByRole('option');
+    await expect(results[0]).toHaveTextContent(
+      'Create new attribute called "participant".',
+    );
+    await expect(results[0]).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(results.slice(1).map((result) => result.textContent)).toEqual([
+      'participant_age',
+      'participant_neighbourhood_connection_frequency',
+    ]);
   },
   parameters: {
     docs: {
@@ -211,11 +223,31 @@ export const CreateNewVariable: Story = {
 };
 
 export const InvalidVariableName: Story = {
+  // The codebook already holds this name on a variable the slot does not
+  // offer, so it cannot be created again.
+  decorators: [
+    (Story) => (
+      <Provider
+        store={createStoryStore({
+          'follow-up-notes': { name: 'follow_up_notes', type: 'text' },
+        })}
+      >
+        <Story />
+      </Provider>
+    ),
+  ],
   play: async () => {
     const input = await screen.findByRole('searchbox', {
       name: 'Find or create an attribute',
     });
-    await userEvent.type(input, 'follow up notes');
+    await userEvent.type(input, 'follow_up_notes');
+
+    const [result] = await screen.findAllByRole('option');
+    await expect(result).toHaveTextContent(
+      'Cannot create attribute named "follow_up_notes": "follow_up_notes" is already in use.',
+    );
+    await expect(result).toHaveAttribute('aria-disabled', 'true');
+    await expect(screen.queryByText(/Create new attribute called/)).toBeNull();
   },
   parameters: {
     docs: {

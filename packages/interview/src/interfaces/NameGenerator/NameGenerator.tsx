@@ -45,7 +45,6 @@ import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { writesEncryptedValue } from '../Anonymisation/utils';
-import { interfaceMessages } from '../messages';
 import NodeForm from './components/NodeForm';
 import NodePanels from './components/NodePanels';
 import QuickNodeForm from './components/QuickNodeForm';
@@ -286,7 +285,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
             breakpoints={[{ value: 25 }, { value: 33 }, { value: 50 }]}
             overrideBasis={isPanelsOpen ? undefined : 0}
             className="min-h-0 w-full flex-1 basis-full"
-            aria-label={intl.formatMessage(interfaceMessages.resizePanels)}
+            aria-label="Resize panel and node list areas"
             orientation={isSmallScreen ? 'vertical' : 'horizontal'}
           >
             <NodePanels
@@ -303,7 +302,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
-              announcedName={intl.formatMessage(interfaceMessages.addedNodes)}
+              announcedName="Added Nodes"
               testId="node-list"
             />
           </ResizableFlexPanel>
@@ -318,7 +317,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
-              announcedName={intl.formatMessage(interfaceMessages.addedNodes)}
+              announcedName="Added Nodes"
               testId="node-list"
             />
           </div>

@@ -51,3 +51,24 @@ export const AtPhoneWidth: Story = {
     expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth + 1);
   },
 };
+
+const TRANSPARENT = 'rgba(0, 0, 0, 0)';
+
+/** The keyboard or pointer highlight, beside an option without it. */
+export const Highlighted: Story = {
+  render: (args) => (
+    <>
+      <Interface {...args} />
+      <Interface {...args} highlighted />
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const [plain, highlighted] = within(canvasElement).getAllByRole('button');
+    if (!plain || !highlighted) throw new Error('both options must render');
+
+    await expect(getComputedStyle(plain).backgroundColor).toBe(TRANSPARENT);
+    await expect(getComputedStyle(highlighted).backgroundColor).not.toBe(
+      TRANSPARENT,
+    );
+  },
+};

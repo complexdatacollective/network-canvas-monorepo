@@ -13,10 +13,16 @@ import {
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
+import {
+  ADDED_TEXT,
+  addedTextById,
+  type AddedTextCatalogues,
+} from '../wording/addedText';
 import { interfaceTextShown } from '../wording/suppliedWording';
 import type { LocalizedMessageValues } from './messageFormatter';
 import {
   useProtocolLocalization,
+  useResolveAddedText,
   useResolveLocalizedMessage,
 } from './ProtocolLocalizationProvider';
 
@@ -65,37 +71,57 @@ const plainValues = (
  * it uses ask their catalogs for them: as the protocol words them where it
  * holds them, and as Network Canvas words them where it does not. A message
  * with no text in any of the protocol's languages keeps its catalog wording.
+ *
+ * Text a correction added to the interview, which no protocol holds, is shown
+ * as Network Canvas words it, in the first language the participant would be
+ * shown that it has wording in, or else in the protocol's fallback language
+ * (see `resolveAddedText`). `addedText` is the catalogues of that text, which
+ * only a test gives.
  */
 export function InterfaceTextOverlay({
   interfaceText,
+  addedText = ADDED_TEXT,
   children,
 }: {
   interfaceText: InterfaceText | undefined;
+  addedText?: AddedTextCatalogues;
   children: ReactNode;
 }) {
   const resolve = useResolveLocalizedMessage();
+  const resolveAdded = useResolveAddedText();
   const localization = useProtocolLocalization();
   const shown = useMemo(
     () => shownTextById(interfaceText, localization),
     [interfaceText, localization],
   );
+  const added = useMemo(() => addedTextById(addedText), [addedText]);
 
   const override = useCallback<AppMessageOverride>(
     (message, values) => {
-      const value =
-        message.id === undefined ? undefined : shown.get(message.id);
+      if (message.id === undefined) return undefined;
+      // A message given markup to wrap its words in keeps its catalog's
+      // wording, since this text is plain.
+      const plain = plainValues(values);
+      if (plain === undefined) return undefined;
+
+      // A protocol that needs a fallback language and names none shows the
+      // catalog's wording: only one still being written, which Architect
+      // previews, is like that.
+      const addedWording = added.get(message.id);
+      if (addedWording !== undefined) {
+        return resolveAdded(addedWording, plain)?.text;
+      }
+
+      const value = shown.get(message.id);
       // Text with no words in any language keeps the catalog's wording: only
       // a protocol still being written in a language Network Canvas has no
       // wording in, which Architect previews, has it.
       if (value === undefined || Object.keys(value).length === 0) {
         return undefined;
       }
-      // A message given markup to wrap its words in keeps its catalog's
-      // wording, since protocol text is plain.
-      const plain = plainValues(values);
-      return plain === undefined ? undefined : resolve(value, plain).text;
+      return resolve(value, plain).text;
     },
-    [shown, resolve],
+    [shown, added, resolve, resolveAdded],
   );
 
   return <AppIntlOverlay override={override}>{children}</AppIntlOverlay>;

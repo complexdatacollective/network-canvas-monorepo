@@ -5,6 +5,7 @@ import type { RpcAdapter } from '@codaco/effect-query/types';
 import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract';
 
 import type { ArchitectStore } from './architectStore.ts';
+import { ResourceBridge } from './resourceBridge.ts';
 import { ArchitectHostClient, makeArchitectHostRuntime } from './runtime.ts';
 
 export type ArchitectClient = Readonly<{
@@ -23,7 +24,12 @@ export function createArchitectClient(
   otherTabName: string,
 ): ArchitectClient {
   let currentOtherTabName = otherTabName;
-  const runtime = makeArchitectHostRuntime(store, () => currentOtherTabName);
+  const resources = new ResourceBridge(store);
+  const runtime = makeArchitectHostRuntime(
+    store,
+    () => currentOtherTabName,
+    resources,
+  );
   return {
     adapter: makeRpcAdapter({ runtime, client: ArchitectHostClient }),
     runtime,

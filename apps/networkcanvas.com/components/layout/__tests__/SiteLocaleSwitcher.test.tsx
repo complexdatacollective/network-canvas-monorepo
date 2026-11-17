@@ -69,7 +69,7 @@ describe('SiteLocaleSwitcher', () => {
     renderWithIntl(<SiteLocaleSwitcher />, 'es');
 
     await waitFor(() =>
-      expect(trigger()).toHaveAccessibleName('Idioma de la interfaz: Español'),
+      expect(trigger()).toHaveAccessibleName('Interface language: Español'),
     );
     expect(trigger()).toHaveTextContent('Español');
   });
@@ -80,7 +80,7 @@ describe('SiteLocaleSwitcher', () => {
 
     await waitFor(() =>
       expect(trigger()).toHaveAccessibleName(
-        'Idioma de la interfaz: Automático (English (United Kingdom))',
+        'Interface language: Automático (English (United Kingdom))',
       ),
     );
     expect(trigger()).toHaveTextContent('English (United Kingdom)');

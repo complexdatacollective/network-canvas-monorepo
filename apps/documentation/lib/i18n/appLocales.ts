@@ -13,7 +13,20 @@ import type { Locale } from './locales';
 export const documentationAppLocales = defineAppLocales([
   { locale: 'en', label: 'English', direction: 'ltr' },
   { locale: 'es', label: 'Español', direction: 'ltr' },
+  { locale: 'fr', label: 'Français', direction: 'ltr' },
 ] as const satisfies readonly (AppLocale & { locale: Locale })[]);
+
+/**
+ * The writing direction of a documentation language, for `<html dir>`. Every
+ * language offered today is left to right; a right-to-left one needs only its
+ * entry above, since the layout is written against the reading direction.
+ */
+export function getLocaleDirection(locale: Locale): 'ltr' | 'rtl' {
+  return (
+    documentationAppLocales.find((entry) => entry.locale === locale)
+      ?.direction ?? 'ltr'
+  );
+}
 
 /**
  * Each documentation language as the Network Canvas websites name it. The
@@ -23,6 +36,7 @@ export const documentationAppLocales = defineAppLocales([
 export const siteLocaleByDocumentationLocale = {
   en: 'en-US',
   es: 'es',
+  fr: 'fr',
 } as const satisfies Record<Locale, SiteLocale>;
 
 /**

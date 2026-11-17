@@ -56,6 +56,7 @@ import { ArchitectHandlers } from '../handlers.ts';
 import { makeInProcessClient } from '../inProcessClient.ts';
 import { ProtocolRevisions } from '../protocolRevisions.ts';
 import { ASSETS_SECTION, STAGE_ORDER_SECTION } from '../protocolSections.ts';
+import { ResourceBridge } from '../resourceBridge.ts';
 import { ArchitectHostClient } from '../runtime.ts';
 import { ArchitectHostSession } from '../session.ts';
 
@@ -588,7 +589,11 @@ describe("Architect's in-process protocol-builder host", () => {
       ).pipe(
         Layer.provide(
           Layer.mergeAll(
-            ArchitectHandlers(store, () => OTHER_TAB),
+            ArchitectHandlers(
+              store,
+              () => OTHER_TAB,
+              new ResourceBridge(store),
+            ),
             ArchitectHostSession,
           ),
         ),

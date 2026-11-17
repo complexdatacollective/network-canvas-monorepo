@@ -1,0 +1,350 @@
+---
+title: Validation des champs
+navOrder: 8
+translatedFrom: f2f48c7d75c7af59731fa48e0b5846269fed4de4
+---
+
+<Definition>
+  La validation des champs garantit que les personnes participantes fournissent
+  des données complètes et valides, en appliquant des règles aux champs de
+  formulaire. La validation améliore la qualité des données et réduit le besoin
+  de les nettoyer au moment de l’analyse.
+</Definition>
+
+## Vue d’ensemble {#overview}
+
+Lorsque vous concevez des [formulaires](/fr/design-protocols/key-concepts/forms) dans Architect, vous pouvez ajouter des règles de validation pour garantir que les personnes participantes saisissent des données valides avant de pouvoir continuer. Les règles de validation s’appliquent à des champs individuels et sont vérifiées lorsque la personne participante tente d’envoyer le formulaire ou de passer à la section suivante de l’entretien.
+
+<AppOnly app="current">
+
+Les règles de validation appartiennent à l’attribut dans le livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête), et elles s’appliquent partout où une personne participante saisit la valeur : dans les champs de formulaire et aux quatre endroits listés ci-dessous. Les interfaces qui enregistrent un attribut à partir de ce que fait la personne participante plutôt qu’à partir de ce qu’elle saisit — une case dans laquelle elle fait glisser un nœud (les cases sont les zones où l’on dépose les nœuds pour les classer), les valeurs d’attribut fixes qu’attribue une consigne, la mise en évidence d’un sociogramme, une évaluation de la force du lien — enregistrent la valeur sans appliquer ces règles : ne comptez donc pas sur une règle pour contraindre des données qui ne sont enregistrées que de l’une de ces façons. En plus de la section **Validation** d’un champ de formulaire, vous pouvez définir les règles d’un attribut partout où vous choisissez un attribut dans lequel les personnes participantes saisissent du texte :
+
+- l’attribut d’ajout rapide d’une étape [« Générateur de noms (ajout rapide) »](/fr/design-protocols/interface-documentation/name-generator-using-quick-add)
+- l’attribut d’ajout rapide d’une étape [« Compositeur de réseau »](/fr/design-protocols/interface-documentation/network-composer)
+- l’attribut de nom d’une étape [« Arbre généalogique »](/fr/design-protocols/interface-documentation/family-pedigree), pour les noms que saisissent les personnes participantes. Un nom peut toujours y être laissé vide, même quand l’attribut est obligatoire, car l’interface enregistre un libellé comme nom de toute personne laissée sans nom
+- l’attribut complémentaire « autre » d’une consigne d’une étape [« Classement par catégories »](/fr/design-protocols/interface-documentation/categorical-bin)
+
+Chacun de ces endroits comporte une section **Validation** sous le sélecteur d’attribut, qui s’ouvre sur les règles actuelles de l’attribut. Les modifications qui y sont faites sont écrites directement dans le livre de codes : annuler vos modifications de l’étape ne les défait pas. Désactiver la section efface les règles de l’attribut.
+
+Lorsqu’un champ de formulaire crée un nouvel attribut, vous pouvez définir les règles du nouvel attribut dans la même boîte de dialogue avant d’enregistrer le champ, et elles sont enregistrées avec lui.
+
+Les règles qui prennent un nombre, comme un minimum ou un maximum, disposent de boutons pour augmenter et diminuer la valeur d’une unité. Un nombre que vous saisissez est appliqué lorsque vous quittez la zone ou appuyez sur Entrée.
+
+</AppOnly>
+
+La validation a deux objectifs importants :
+
+1. **Qualité des données** : elle garantit que vous recueillez des données complètes et exactes, dans le format attendu
+2. **Accompagnement des personnes participantes** : elle leur fournit un retour immédiat et les aide à comprendre quelle réponse est attendue
+
+## Fonctionnement de la validation {#how-validation-works}
+
+Lorsqu’une personne participante tente d’envoyer un formulaire qui contient des erreurs de validation :
+
+1. Le formulaire n’est pas envoyé
+2. Des messages d’erreur apparaissent à côté des champs dont la validation a échoué
+3. La personne participante doit corriger les erreurs avant de continuer
+4. Une fois toutes les règles de validation respectées, le formulaire peut être envoyé
+
+<TipBox>
+
+Utilisez la validation avec discernement. Une validation excessive des formulaires peut agacer les personnes participantes et alourdir la charge de réponse. Trouvez un équilibre entre la garantie de la qualité des données et le bon déroulement de l’entretien.
+
+</TipBox>
+
+## Types de validation {#types-of-validation}
+
+Les options de validation disponibles dépendent du type de [commande de saisie](/fr/design-protocols/key-concepts/input-controls) (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…) utilisé pour le champ. Chaque type de variable prend en charge des règles de validation différentes.
+
+### Validation des champs obligatoires {#required-field-validation}
+
+La validation des champs obligatoires est disponible pour tous les types de commandes de saisie et garantit que la personne participante donne une réponse avant de continuer. Le champ ne peut pas être laissé vide. Pour la configurer, activez l’option « Obligatoire » dans la section de validation.
+
+Utilisez la règle « Obligatoire » pour les données essentielles à votre recherche, les variables nécessaires aux étapes suivantes (comme les variables de nom utilisées comme libellés) et les champs de consentement. Ne l’utilisez pas pour des informations facultatives qui peuvent ne pas concerner toutes les personnes participantes, pour des questions sensibles que les personnes participantes doivent avoir le droit de passer, ni pour des champs où l’absence de réponse est une donnée valable.
+
+Parmi les usages courants figurent la confirmation du consentement, le nom des alters (chaque personne que la personne participante cite pendant l’entretien) dans les générateurs de noms et les informations sociodémographiques essentielles à votre étude.
+
+### Validation des champs de texte {#text-field-validation}
+
+La validation des champs de texte est disponible pour les commandes « Saisie de texte » et « Zone de texte ».
+
+La validation de longueur minimale garantit que la réponse textuelle contient au moins un nombre donné de caractères. Pour la configurer, définissez un nombre minimal de caractères. Utilisez-la lorsque vous avez besoin de réponses développées (comme des descriptions ou des récits) ou pour éviter des réponses d’un seul caractère ou sans intérêt. Par exemple, vous pourriez demander « Veuillez décrire votre relation (10 caractères minimum) ».
+
+La validation de longueur maximale limite la réponse textuelle à un nombre donné de caractères. Pour la configurer, définissez un nombre maximal de caractères. Utilisez-la en cas de limites de taille des champs d’une base de données, pour garder des réponses de longueur homogène ou pour encourager des réponses concises. Par exemple, vous pourriez limiter les champs de nom à 50 caractères. Fixez des limites raisonnables qui ne semblent pas arbitraires, veillez à ce que la taille visible du champ corresponde à la limite de caractères et gardez à l’esprit que certains noms ou certaines descriptions peuvent légitimement être longs.
+
+### Validation des champs numériques {#number-field-validation}
+
+La validation des champs numériques est disponible pour les commandes « Saisie numérique ».
+
+La validation de valeur minimale garantit que le nombre saisi est supérieur ou égal à une valeur minimale donnée. Pour la configurer, définissez une valeur minimale acceptable. Utilisez-la pour des restrictions d’âge (comme un âge minimal de 18 ans), pour garantir des valeurs positives lorsque des nombres négatifs n’ont pas de sens, ou pour limiter les plages de valeurs selon votre plan de recherche. Par exemple, vous pourriez exiger que l’âge soit d’au moins 18 ans.
+
+La validation de valeur maximale garantit que le nombre saisi est inférieur ou égal à une valeur maximale donnée. Pour la configurer, définissez une valeur maximale acceptable. Utilisez-la pour fixer des bornes supérieures réalistes (comme un âge inférieur à 120 ans), pour restreindre les plages aux valeurs valides ou pour éviter les erreurs de saisie. Par exemple, vous pourriez exiger que l’âge soit inférieur à 120 ans. Fixez des plages réalistes qui couvrent les réponses légitimes, pensez aux cas limites (par exemple, 0 est-il une réponse valable ?) et combinez minimum et maximum pour créer des plages valides.
+
+### Validation des champs de date {#date-field-validation}
+
+<AppOnly app="current">
+
+La plage d’un « Sélecteur de date » se définit dans les paramètres de l’attribut plutôt que sous forme de règle de validation. Les personnes participantes ne peuvent pas choisir une date en dehors de cette plage.
+
+**Date minimale** définit la date la plus ancienne qui peut être choisie. Utilisez-la pour exclure des dates trop anciennes, pour limiter les réponses à une période d’étude ou pour maintenir les dates dans un intervalle de temps pertinent. Par exemple, vous pourriez exiger que la date d’une visite soit le 1er janvier 2020 ou une date ultérieure.
+
+**Date maximale** définit la date la plus récente qui peut être choisie. Utilisez-la pour limiter les réponses à une période d’étude ou pour que les dates restent réalistes. Pour des événements historiques, fixez des plages appropriées et demandez-vous quelle précision est nécessaire (date exacte ou mois et année).
+
+Ce qui se passe lorsque vous laissez l’une de ces dates vide dépend de la **Précision de la date** de l’attribut :
+
+- Un sélecteur d’année et de mois, ou d’année seulement, a toujours une plage. Une **Date minimale** vide la fait commencer en 1920, et une **Date maximale** vide la fait finir à la date de l’entretien.
+- Un sélecteur de date complète (année, mois et jour) n’a aucune plage lorsque les deux dates sont vides : les personnes participantes peuvent donc saisir n’importe quelle date, y compris une date future. Dès que vous définissez au moins l’une des deux, celle qui reste vide prend la valeur par défaut indiquée ci-dessus pour cette borne.
+
+Une exception s’applique quelle que soit la précision : si la date que vous avez définie se situe déjà au-delà de la valeur par défaut de la borne vide, par exemple une **Date minimale** postérieure à la date de l’entretien, la borne vide est déplacée au-delà de votre date, afin que le sélecteur propose toujours une plage.
+
+Pour empêcher qu’une date de naissance complète soit dans le futur, définissez une **Date minimale**, par exemple le 1er janvier 1900, et laissez la **Date maximale** vide, afin que la plage se termine à la date de l’entretien.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+La validation des champs de date est disponible pour les commandes « Sélecteur de date ».
+
+La validation du début de la plage de dates définit la date la plus ancienne qui peut être sélectionnée. Pour la configurer, indiquez la date valide la plus ancienne. Utilisez-la pour exclure des dates trop anciennes, pour limiter les réponses à une période d’étude ou pour garantir que les dates se situent dans un intervalle de temps pertinent. Par exemple, vous pourriez préciser que « La date de la visite doit être postérieure au 1er janvier 2020 ».
+
+La validation de la fin de la plage de dates définit la date la plus récente qui peut être sélectionnée. Pour la configurer, indiquez la date valide la plus récente. Utilisez-la pour empêcher des dates futures lorsqu’elles ne conviennent pas (comme des dates de naissance dans le futur), pour limiter les réponses à une période d’étude ou pour garantir que les dates sont réalistes. Par exemple, vous pourriez préciser que « La date de naissance doit être antérieure à aujourd’hui ». Utilisez « aujourd’hui » comme date de fin pour les événements qui ne peuvent pas se situer dans le futur. Pour des événements historiques, fixez des plages appropriées et demandez-vous quelle précision est nécessaire (date exacte ou mois et année).
+
+</AppOnly>
+
+### Validation par comparaison avec un autre attribut {#cross-variable-comparison-validation}
+
+Le schéma 8 ajoute des règles de validation qui comparent un champ à la valeur d’un _autre_ attribut du même formulaire, plutôt qu’à un nombre ou à une date fixes. Elles sont disponibles pour les commandes « Saisie numérique », « Sélecteur de date », « Sélecteur de date relative » et « Échelle visuelle analogique » (scalaire). Lorsque vous ajoutez l’une de ces règles dans l’éditeur de validation, vous sélectionnez la règle, puis vous choisissez l’attribut de comparaison dans une liste déroulante.
+
+Les règles disponibles sont les suivantes :
+
+- **`greaterThanVariable`** : la valeur du champ doit être supérieure à la valeur de l’attribut de comparaison
+- **`lessThanVariable`** : la valeur du champ doit être inférieure à la valeur de l’attribut de comparaison
+- **`greaterThanOrEqualToVariable`** : la valeur du champ doit être supérieure ou égale à la valeur de l’attribut de comparaison
+- **`lessThanOrEqualToVariable`** : la valeur du champ doit être inférieure ou égale à la valeur de l’attribut de comparaison
+
+Utilisez-les pour imposer des relations entre champs, par exemple pour exiger qu’une « date de fin » soit postérieure à une « date de début », ou qu’une valeur « maximale » ne soit pas inférieure à une valeur « minimale » recueillie plus tôt dans le même formulaire. Comme la comparaison porte sur une valeur saisie pendant l’entretien plutôt que sur une borne fixe, la règle s’adapte aux réponses de chaque personne participante.
+
+### Validation des champs catégoriels {#categorical-field-validation}
+
+La validation des champs catégoriels est disponible pour les commandes « Groupe de boutons radio », « Groupe de boutons bascules » et « Groupe de cases à cocher ».
+
+La validation du nombre minimal de sélections, pour les commandes « Groupe de cases à cocher », exige que les personnes participantes sélectionnent au moins un nombre donné d’options. Pour la configurer, définissez un nombre minimal de sélections. Utilisez-la pour vous assurer que les personnes participantes répondent réellement à la question, ou lorsqu’au moins une option doit s’appliquer. Par exemple, vous pourriez demander « Sélectionnez au moins une langue que vous parlez ».
+
+La validation du nombre maximal de sélections, pour les commandes « Groupe de cases à cocher », empêche les personnes participantes de sélectionner plus d’un nombre donné d’options. Pour la configurer, définissez un nombre maximal de sélections. Utilisez-la pour obliger à établir des priorités, pour limiter la réponse aux choix principaux ou pour tenir compte de contraintes de la base de données ou de l’analyse. Par exemple, vous pourriez demander « Sélectionnez vos 3 moyens de contact préférés ».
+
+La validation de sélection obligatoire, pour les commandes « Groupe de boutons radio » et « Groupe de boutons bascules », garantit qu’une option est sélectionnée. Pour la configurer, activez la validation « Obligatoire ». Utilisez-la lorsqu’un choix doit être fait ou pour des options mutuellement exclusives dont l’une doit s’appliquer. Par exemple, vous pourriez demander « Veuillez indiquer votre genre ».
+
+## Stratégies de validation {#validation-strategies}
+
+### Validation progressive {#progressive-validation}
+
+Commencez par une validation minimale au début de l’entretien et renforcez les exigences de validation pour les données essentielles plus tard. Les premières étapes devraient utiliser des champs facultatifs et des plages plus larges, tandis que les étapes suivantes peuvent comporter davantage de champs obligatoires et des plages plus strictes. Cette approche instaure une relation de confiance avant d’introduire des contraintes, et les personnes participantes sont plus impliquées plus tard dans l’entretien.
+
+### Validation adaptée au contexte {#context-appropriate-validation}
+
+Adaptez la rigueur de la validation à la sensibilité et à l’importance des données. Les données à fort enjeu devraient faire l’objet d’une validation plus stricte et de champs obligatoires. Les données exploratoires peuvent se contenter d’une validation plus souple et de champs facultatifs. Pour les données sensibles, envisagez de rendre les champs facultatifs même si les données seraient précieuses.
+
+### Validation et logique de saut {#validation-and-skip-logic}
+
+Combinez la validation avec la [logique de saut](/fr/design-protocols/key-concepts/skip-logic) pour créer des formulaires adaptatifs.
+
+**Exemple :**
+
+- Première question : « Avez-vous utilisé ce service ? » (Oui/Non, obligatoire)
+- Si Oui → afficher des questions complémentaires avec validation
+- Si Non → passer à la section suivante
+
+Cette approche allège la charge, car seuls les champs pertinents pour chaque personne participante sont validés.
+
+## Messages d’erreur de validation {#validation-error-messages}
+
+### Messages d’erreur intégrés {#built-in-error-messages}
+
+<AppOnly app="current">
+
+Network Canvas fournit un message pour chaque règle de validation, comme « Vous devez répondre à cette question avant de continuer. » pour une réponse obligatoire, ou « Saisissez au moins 3 caractères. » pour une longueur minimale. Les messages font partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text) de votre protocole : chacun est donc affiché dans la langue de l’entretien, et vous pouvez les reformuler et les traduire dans le tableau des traductions.
+
+Il existe une seule formulation par règle, partagée par toutes les questions qui utilisent cette règle, et un message peut afficher la limite que fixe la règle, comme la longueur minimale. Votre protocole ne contient que les messages des règles qu’il utilise : vous ne traduisez donc que les messages qu’une personne participante pourrait voir. Lorsque vous ajoutez une règle à une question, Architect ajoute son message, et lorsqu’aucune question n’utilise plus une règle, Architect supprime le message de cette règle.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Network Canvas fournit des messages d’erreur standard pour chaque type de validation :
+
+- **Obligatoire :** « This field is required » (ce champ est obligatoire)
+- **Longueur minimale :** « Response must be at least [X] characters » (la réponse doit comporter au moins [X] caractères)
+- **Longueur maximale :** « Response must be no more than [X] characters » (la réponse ne doit pas dépasser [X] caractères)
+- **Valeur minimale :** « Value must be at least [X] » (la valeur doit être d’au moins [X])
+- **Valeur maximale :** « Value must be no more than [X] » (la valeur ne doit pas dépasser [X])
+- **Plage de dates :** « Please select a date within the specified range » (veuillez sélectionner une date dans la plage indiquée)
+
+</AppOnly>
+
+### Expérience des personnes participantes {#user-experience-considerations}
+
+Les messages d’erreur apparaissent à côté du champ précis dont la validation a échoué, en rouge pour attirer l’attention, et dès que la personne participante tente de continuer. Testez vos règles de validation avec les personnes participantes de l’étude pilote, veillez à ce que les messages d’erreur soient clairs et indiquent quoi faire, et n’affichez pas de messages d’erreur avant que la personne participante ait tenté d’envoyer le formulaire.
+
+## Modèles de validation courants {#common-validation-patterns}
+
+### Informations sociodémographiques {#demographic-information}
+
+```
+Age:
+- Type: Number Input
+- Validation: Required, Minimum: 18, Maximum: 100
+- Rationale: Study limited to adults; realistic upper bound
+
+Date of Birth:
+- Type: Date Picker
+- Validation: Required; earliest date: January 1, 1900; latest date: left empty (the date of the interview)
+- Rationale: Birth date cannot be in the future
+```
+
+### Générateurs de noms {#name-generators}
+
+```
+Alter Name:
+- Type: Text Input
+- Validation: Required
+- Rationale: Name is essential for identifying and displaying nodes throughout interview
+
+Relationship Description:
+- Type: Text Area
+- Validation: Optional
+- Rationale: Participants may not want to elaborate
+```
+
+### Fréquence des contacts {#contact-frequency}
+
+```
+Last Contact:
+- Type: Date Picker
+- Validation: Required; earliest date: [study start]; latest date: left empty (the date of the interview)
+- Rationale: Must fall within study period; cannot be future date
+
+Frequency:
+- Type: Radio Button Group
+- Validation: Required
+- Rationale: Essential data point for network analysis
+```
+
+### Échelles de satisfaction {#satisfaction-scales}
+
+```
+Service Satisfaction:
+- Type: Likert Scale
+- Validation: Required
+- Rationale: Core outcome measure
+
+Additional Comments:
+- Type: Text Area
+- Validation: Optional, Maximum Length: 500
+- Rationale: Qualitative data welcome but not required; character limit for database
+```
+
+## Bonnes pratiques de validation {#validation-best-practices}
+
+Validez à bon escient : utilisez la validation pour garantir la qualité des données destinées à l’analyse, ne rendez obligatoires que les champs vraiment essentiels et fixez des plages et des limites réalistes. Ne validez pas à outrance simplement parce que c’est possible, ne rendez pas des champs obligatoires par habitude et ne fixez pas de restrictions arbitraires.
+
+Pensez à l’expérience des personnes participantes : testez la validation avec les personnes participantes de l’étude pilote, permettez aux personnes participantes de passer les questions sensibles et fournissez des messages d’erreur clairs et utiles. Ne créez pas d’obstacles de validation frustrants, ne validez pas des champs si cela réduit l’implication et n’utilisez pas la validation pour remplacer des consignes claires.
+
+Équilibrez qualité et charge : donnez la priorité à la validation des variables essentielles, rendez les champs facultatifs vraiment facultatifs et tenez compte de la charge cumulée de nombreux champs validés. Ne rendez pas tout obligatoire « au cas où », n’appliquez pas la même validation stricte à tous les champs et ne négligez pas la fatigue des personnes participantes dans les formulaires longs.
+
+Anticipez les cas limites : tenez compte des valeurs extrêmes légitimes (comme des personnes participantes très jeunes ou très âgées), pensez aux différences culturelles (comme la longueur des noms ou les formats de date) et prévoyez les situations où la personne préfère ne pas répondre. Ne fixez pas de plages si étroites qu’elles excluent des réponses valides, ne supposez pas que toutes les personnes participantes correspondent aux profils habituels et n’imposez pas de réponse là où il se peut qu’aucune ne s’applique.
+
+Testez minutieusement : testez toutes les règles de validation en [mode aperçu](/fr/design-protocols/preview-mode), essayez de mettre votre validation en défaut avec des cas limites et recueillez l’avis de collègues et des personnes participantes de l’étude pilote. Ne supposez pas que la validation fonctionne sans l’avoir testée, n’attendez pas la collecte des données pour découvrir des problèmes de validation et ne négligez pas les retours des personnes participantes sur les difficultés que leur pose la validation.
+
+## Quand NE PAS utiliser la validation {#when-not-to-use-validation}
+
+La validation n’est pas toujours appropriée. Évitez la validation dans les cas suivants :
+
+### 1. Questions sensibles {#1-sensitive-questions}
+
+Les questions portant sur des sujets sensibles (santé, finances, relations) peuvent justifier des réponses facultatives.
+
+**Exemple :** au lieu de rendre obligatoire le « revenu annuel », rendez-le facultatif et ajoutez une option « Je préfère ne pas répondre ».
+
+### 2. Données exploratoires {#2-exploratory-data}
+
+Lorsque vous explorez de nouvelles questions ou de nouvelles populations, une validation stricte risque d’exclure des cas limites importants.
+
+**Exemple :** réponses ouvertes sur des phénomènes émergents
+
+### 3. Données qualitatives {#3-qualitative-data}
+
+Les réponses qualitatives riches gagnent à bénéficier de souplesse plutôt que de contraintes.
+
+**Exemple :** descriptions narratives des relations
+
+### 4. Questions complémentaires facultatives {#4-optional-follow-up}
+
+Des détails supplémentaires utiles, mais non essentiels à l’analyse.
+
+**Exemple :** « Souhaitez-vous ajouter quelque chose ? »
+
+## Validation et analyse des données {#validation-and-data-analysis}
+
+Réfléchissez à l’effet de vos choix de validation sur vos données :
+
+### Champs obligatoires {#required-fields}
+
+- **Avantage :** des données complètes pour toutes les personnes participantes
+- **Inconvénient :** peut forcer des réponses arbitraires ; risque d’abandon de personnes participantes
+
+### Champs facultatifs {#optional-fields}
+
+- **Avantage :** des réponses de meilleure qualité de la part des personnes qui choisissent de répondre
+- **Inconvénient :** les données manquantes exigent un traitement statistique approprié
+
+### Restrictions de plage {#range-restrictions}
+
+- **Avantage :** des données propres, dans les bornes attendues
+- **Inconvénient :** peut exclure des valeurs extrêmes légitimes ; un nettoyage des données reste nécessaire
+
+Planifiez votre stratégie d’analyse en même temps que votre stratégie de validation :
+
+- Comment traiterez-vous les données manquantes ?
+- Quelles plages sont justifiables pour votre population ?
+- Quelles variables sont essentielles et lesquelles sont complémentaires ?
+
+## Résoudre les problèmes de validation {#troubleshooting-validation-issues}
+
+### Les personnes participantes ne peuvent pas envoyer le formulaire {#participants-cant-submit-form}
+
+**Vérifiez :**
+
+- Tous les champs obligatoires peuvent-ils réellement recevoir une réponse ?
+- Les plages sont-elles réalistes pour votre population ?
+- Le message d’erreur indique-t-il clairement ce qui ne va pas ?
+
+### Taux d’abandon élevés {#high-drop-out-rates}
+
+**Vérifiez :**
+
+- Rendez-vous trop de champs obligatoires ?
+- Les règles de validation sont-elles trop strictes ?
+- La charge cognitive est-elle trop élevée ?
+
+### Données non valides malgré la validation {#invalid-data-despite-validation}
+
+**N’oubliez pas :**
+
+- La validation évite les erreurs de format, pas les réponses irréfléchies
+- Certaines personnes participantes peuvent saisir n’importe quoi pour satisfaire la validation
+- La validation est une partie de la qualité des données, pas la solution complète
+
+## Concepts associés {#related-concepts}
+
+- [Formulaires](/fr/design-protocols/key-concepts/forms) : apprendre à créer des formulaires avec des champs validés
+- [Commandes de saisie](/fr/design-protocols/key-concepts/input-controls) : savoir quelles options de validation sont disponibles pour chaque type de saisie
+- [Logique de saut](/fr/design-protocols/key-concepts/skip-logic) : combiner la validation avec une logique conditionnelle pour créer des entretiens adaptatifs
+
+## Pour aller plus loin {#next-steps}
+
+Maintenant que vous comprenez la validation des champs, vous pouvez :
+
+1. Vous exercer à ajouter des règles de validation dans Architect
+2. Tester votre validation en [mode aperçu](/fr/design-protocols/preview-mode)
+3. Parcourir le [tutoriel « Construire un protocole »](/fr/design-protocols/tutorials/building-a-protocol) pour voir la validation en situation
+4. Réfléchir à la place de la validation dans votre stratégie globale de qualité des données

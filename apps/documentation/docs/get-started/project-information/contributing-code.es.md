@@ -1,7 +1,7 @@
 ---
 title: Aportar código
 wip: false
-translatedFrom: 42e4a290e8abdf3092dc5566c7811c1a27cbf8ba
+translatedFrom: 022bf1849bf069047a6c81b01e550156edef351f
 ---
 
 ## Aportar código a Network Canvas {#contributing-code-to-network-canvas}
@@ -41,7 +41,7 @@ Los repositorios del proyecto Network Canvas («repositorios principales») se e
 
 El equipo principal del proyecto Network Canvas está formado por las siguientes personas:
 
-- Michelle Birket
+- Michelle Birkett
 - Gregory Phillips II
 - Patrick Janulis
 - Bernie Hogan

@@ -64,12 +64,27 @@ const Fact = ({ label, children }: { label: string; children: ReactNode }) => (
 // Requirements are written in the page's own language, so each kind lists its
 // keywords in every documentation language.
 const REQUIREMENT_KEYWORDS = [
-  { icon: Globe, keywords: ['internet', 'connection', 'conexión'] },
+  {
+    icon: Globe,
+    keywords: ['internet', 'connection', 'conexión', 'connexion'],
+  },
   {
     icon: KeyRound,
-    keywords: ['account', 'api key', 'token', 'cuenta', 'clave de api'],
+    keywords: [
+      'account',
+      'api key',
+      'token',
+      'cuenta',
+      'clave de api',
+      'compte',
+      'clé d’api',
+      'jeton',
+    ],
   },
-  { icon: Database, keywords: ['roster', 'data', 'lista', 'datos'] },
+  {
+    icon: Database,
+    keywords: ['roster', 'data', 'lista', 'datos', 'liste', 'données'],
+  },
 ] as const;
 
 const iconForRequirement = (requirement: string) => {

@@ -12,6 +12,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { useCustomShapeSvgs } from '../hooks/useCustomShapeSvgs';
 import { useStageSelector } from '../hooks/useStageSelector';
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
 import { getNetworkNodes, resolveNodeShape } from '../selectors/session';
@@ -38,8 +39,7 @@ const makeSelectNodeMeta = (
     if (!nodeTypeDefinition || !node) return null;
 
     const color = nodeTypeDefinition.color ?? 'node-color-seq-1';
-    const shapeDef = nodeTypeDefinition.shape;
-    return { shapeDef, color, node };
+    return { nodeTypeDefinition, color, node };
   });
 
 export default function ConnectedNode({
@@ -57,13 +57,18 @@ export default function ConnectedNode({
 
   const node = nodeMeta?.node;
   const label = useNodeLabel(node);
+  const shapeSvgs = useCustomShapeSvgs();
 
   const shape = useMemo(
     () =>
       node
-        ? resolveNodeShape(nodeMeta.shapeDef, node[entityAttributesProperty])
+        ? resolveNodeShape(
+            nodeMeta.nodeTypeDefinition,
+            node[entityAttributesProperty],
+            shapeSvgs,
+          )
         : undefined,
-    [nodeMeta, node],
+    [nodeMeta, node, shapeSvgs],
   );
 
   if (!nodeMeta) return null;

@@ -1,3 +1,4 @@
+/* oxlint-disable direction/inline-arrow-turns -- this is the list of arrows inlineIconClass turns right to left */
 import {
   ArrowLeft,
   ArrowLeftToLine,

@@ -537,7 +537,7 @@ export default function StagesMenu({
       }}
       onFilterResultsChange={(keys) => setMatchingKeys(keys)}
       id={STAGES_MENU_LIST_ID}
-      aria-label={intl.formatMessage(messages.interviewScreens)}
+      aria-label={'Interview screens'}
       className="min-h-0 flex-1"
       viewportClassName={isHorizontal ? 'py-6' : 'py-4'}
       emptyState={
@@ -560,8 +560,8 @@ export default function StagesMenu({
               placeholder={intl.formatMessage(
                 interfaceTextMessages['search.searchLabel'],
               )}
-              loadingText={intl.formatMessage(messages.loadingStatus)}
-              indexingText={intl.formatMessage(messages.loadingStatus)}
+              loadingText="Loading…"
+              indexingText="Loading…"
               size="sm"
               showResultCount={false}
             />

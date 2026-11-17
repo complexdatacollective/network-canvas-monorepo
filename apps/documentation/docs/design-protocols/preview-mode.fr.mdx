@@ -1,0 +1,70 @@
+---
+title: Prévisualiser votre protocole
+navOrder: 3
+toc: false
+date: 7th October 2026
+translatedFrom: 7f094322550f8fd87a33d4e8fee1037ae01dc35a
+---
+
+Pendant la création de votre protocole, vous pouvez prévisualiser n’importe quelle étape pour voir comment elle apparaîtra aux personnes participantes pendant un entretien. C’est utile tout au long de la conception d’un protocole, car vous pouvez vérifier vos modifications immédiatement au lieu d’attendre le déploiement. La manière d’ouvrir un aperçu, et ce qu’il propose, diffère légèrement entre les deux applications.
+
+Prévisualiser les étapes n’est qu’une partie d’une répétition complète de votre étude : voir [Mener une étude pilote](/fr/get-started/planning-a-study/piloting-your-study) pour savoir comment répéter l’ensemble de l’entretien et votre chaîne d’exportation avant le lancement.
+
+<AppSwitch>
+<AppOption label="Architect" icon="globe">
+
+## Prévisualiser une étape {#previewing-a-stage}
+
+Ouvrez une étape dans l’éditeur et cliquez sur **Aperçu**. L’étape s’ouvre dans un nouvel onglet du navigateur et fonctionne exactement comme pendant un véritable entretien. Vous pouvez parcourir les consignes de l’étape et réaliser les activités propres à cette étape, exactement comme le ferait une personne participante.
+
+Lorsque vous atteignez la fin de l’entretien, l’étape [« Écran de fin »](/fr/design-protocols/interface-documentation/finish-screen) termine l’aperçu comme elle terminerait un entretien : appuyez sur **Terminer** et confirmez ou, si l’étape « Écran de fin » est réglée sur **Terminer automatiquement**, l’aperçu se termine dès que vous l’atteignez. L’aperçu affiche alors le « Texte après la fin de l’entretien » défini dans l’étape « Écran de fin » et une action **Relancer l’aperçu** pour l’exécuter de nouveau depuis le début.
+
+Rien de ce que vous saisissez dans l’aperçu n’est enregistré. Fermez l’onglet lorsque vous avez terminé.
+
+![Le bouton Aperçu et le menu des paramètres dans l’éditeur d’étape.](/assets/img/architect/preview-settings.png)
+
+## Paramètres de l’aperçu {#preview-settings}
+
+À côté du bouton **Aperçu**, un menu de paramètres détermine le comportement des aperçus :
+
+- **Lancer l’aperçu avec des données d’exemple** : activé par défaut. Architect remplit l’aperçu avec des nœuds et des liens d’exemple générés automatiquement, afin que les interfaces qui reposent sur un réseau (comme « Sociogramme », « Classement par catégories » et « Classement ordinal ») aient quelque chose à afficher. Les données sont générées aléatoirement : elles diffèrent donc à chaque lancement d’un aperçu et sont purement illustratives, sans être représentatives de réponses réelles de personnes participantes. L’étape que vous prévisualisez est volontairement laissée en partie inachevée, afin que vous puissiez tout de même tester son interaction : par exemple, classer des nœuds dans des cases (les zones où l’on dépose les nœuds) ou positionner des nœuds sur un sociogramme. Désactivez ce paramètre pour prévisualiser avec un réseau vide.
+- **Respecter la logique de saut** : désactivé par défaut. Tant que ce paramètre est désactivé, la logique de saut ne s’applique nulle part dans l’aperçu, de sorte que chaque étape du protocole reste disponible à mesure que vous avancez dans l’entretien. Activez-le pour tester les parcours définis par votre protocole. Architect ouvre tout de même l’étape à partir de laquelle vous avez cliqué sur **Aperçu**, même si les données d’exemple actuelles devraient normalement conduire à la sauter ; une fois que vous la quittez, la logique de saut s’applique normalement.
+
+## Choisir la langue de l’aperçu {#choosing-the-preview-language}
+
+Si votre protocole est rédigé dans plusieurs langues, utilisez le menu **Langue de l’aperçu**, au-dessus de l’aperçu, pour le voir dans chacune d’elles. Le menu présente les langues de votre protocole par ordre alphabétique, chacune écrite dans sa propre langue. Il s’ouvre sur la langue que verrait une personne participante ayant les paramètres de langue de votre navigateur : la langue du protocole qui correspond le mieux aux langues de votre navigateur (une variante régionale proche est aussi acceptée comme correspondance), ou à défaut la langue par défaut du protocole. Si votre protocole n’a qu’une seule langue, le menu l’affiche, mais vous ne pouvez pas en choisir une autre.
+
+Choisir une langue affiche immédiatement l’aperçu dans cette langue. Un texte sans traduction dans cette langue apparaît comme il apparaîtrait à une personne participante qui utilise cette langue (voir [La langue par défaut et la traduction que voient les personnes participantes](/fr/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see)). Si l’aperçu atteint une étape [« Choix de la langue »](/fr/design-protocols/interface-documentation/language-chooser) et que vous y choisissez une langue, le menu suit votre choix. Ce choix n’est pas enregistré : il ne dure que tant que l’onglet de l’aperçu reste ouvert.
+
+Les libellés des boutons et les messages qui font partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text) de votre protocole, comme « Retour », « Continuer » et les messages de validation, suivent la langue de l’aperçu comme le reste du texte de votre protocole. Aucun d’entre eux ne suit la langue que vous avez choisie pour Architect lui-même.
+
+![Un aperçu d’une étape « Choix de la langue » avec le menu « Langue de l’aperçu » réglé sur « español ».](/assets/img/architect/localization/preview-language.png)
+
+Pour rédiger et gérer les langues de votre protocole, voir [Traduire votre protocole](/fr/design-protocols/translating-your-protocol).
+
+## Fonctionnement de l’aperçu dans le navigateur {#how-preview-works-in-the-browser}
+
+Architect prévisualise votre étape dans un onglet du navigateur à la taille actuelle de votre fenêtre, au lieu d’émuler des appareils précis : il n’y a donc pas de préréglages de taille d’appareil ni d’orientation à choisir. Pour voir comment une étape s’affiche à une taille donnée, redimensionnez la fenêtre de votre navigateur.
+
+## Mises en garde {#caveats}
+
+- **Rien n’est enregistré.** L’aperçu est une session jetable. Toutes les données que vous saisissez sont supprimées dès que vous fermez l’onglet.
+- **Les étapes qui dépendent d’un réseau ont besoin de données à afficher.** Des interfaces comme « Sociogramme », « Classement par catégories » et « Classement ordinal » n’ont rien à afficher sans réseau. Laissez **Lancer l’aperçu avec des données d’exemple** activé pour que ces étapes aient des nœuds et des liens d’exemple à afficher.
+
+</AppOption>
+<AppOption label="Architect Classic" icon="desktop">
+
+## Prévisualiser une étape {#previewing-a-stage-1}
+
+Pour utiliser le mode aperçu, cliquez sur la carte de l’étape que vous souhaitez prévisualiser. Une fois sur l’écran de configuration de l’étape, cliquez sur le grand bouton rose dans le coin inférieur gauche. Une fenêtre s’ouvre et affiche l’étape telle qu’elle apparaîtrait dans l’application Interviewer. Vous pouvez alors parcourir les consignes de l’étape et réaliser les activités propres à cette étape. Si vous souhaitez prévisualiser plusieurs étapes, continuez à avancer vers les étapes suivantes jusqu’à atteindre la fin de votre protocole.
+
+![](/assets/img/key-concepts/preview-mode/Preview-Mode.png)
+
+Vous pouvez quitter le mode aperçu à tout moment en fermant la fenêtre. Les données que vous saisissez sont reportées dans les étapes suivantes tant que la fenêtre du mode aperçu reste ouverte. Dès que la fenêtre est fermée, toutes les données saisies sont perdues, car le mode aperçu ne conserve pas les données de façon permanente.
+
+## Mises en garde {#caveats-1}
+
+Notez que, pour prévisualiser efficacement certains écrans, comme le sociogramme, vous devrez commencer l’aperçu dans une étape de type générateur de noms et saisir quelques données fictives qui pourront servir à prévisualiser les écrans suivants. Si vous ne générez pas d’abord des nœuds, les écrans suivants que vous prévisualisez apparaîtront vides, car aucune donnée ne permettra d’y afficher des éléments.
+
+</AppOption>
+</AppSwitch>

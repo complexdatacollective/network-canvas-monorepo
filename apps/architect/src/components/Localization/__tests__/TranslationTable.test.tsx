@@ -237,6 +237,15 @@ describe('TranslationTable', () => {
     ).toBeInTheDocument();
   });
 
+  it('marks every cell as typed in its column’s language, so nothing typed there is laid out by guesswork', () => {
+    renderTable();
+    const cells = [...document.querySelectorAll('td[lang]')];
+    expect(cells.length).toBeGreaterThan(0);
+    for (const element of cells) {
+      expect(element).toHaveAttribute('data-typed-language');
+    }
+  });
+
   it('keeps a translation in the table until the table is saved', async () => {
     const { store, onSaved, user } = renderTable();
     const before = getProtocol(store.getState());

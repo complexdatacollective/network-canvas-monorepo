@@ -58,12 +58,6 @@ const messages = defineMessages({
     description:
       'Title of the error dialog shown when the file the researcher chose to replace a missing resource file could not be added.',
   },
-  chooseTheMissingFile: {
-    id: 'architect.assetBrowser.assetBrowser.chooseTheMissingFile',
-    defaultMessage: 'Choose the missing file for this resource',
-    description:
-      'Accessible name of the hidden file picker that opens when the researcher supplies a file for a resource whose file is missing from the protocol; read only by screen readers.',
-  },
   deleteResourcea742f: {
     id: 'architect.assetBrowser.assetBrowser.deleteResourcea742f',
     defaultMessage: 'Delete Resource',
@@ -275,7 +269,8 @@ const AssetBrowser = ({
         type="file"
         hidden
         disabled={readOnly}
-        aria-label={intl.formatMessage(messages.chooseTheMissingFile)}
+        aria-label="Choose the missing file for this resource"
+        lang="en"
         accept={
           replacingAsset && replacingAsset.type !== 'apikey'
             ? getAccepts(replacingAsset.type).join(',')

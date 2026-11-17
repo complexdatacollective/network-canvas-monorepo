@@ -1,5 +1,6 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderResult } from '@testing-library/react';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
@@ -36,10 +37,11 @@ export type ResourceContextFrameProps = Readonly<{
  * context, with the staging tracker around it that every resource control is
  * given, and the dialog provider a browser opens into.
  *
- * The cache and the protocol channel `<ProtocolBuilder>` also mounts are left
- * out. A resource control reads nothing through them, and a test that runs the
- * clock forward would otherwise be answering for a cache's timers rather than
- * for the component under test. A test about a control INSIDE a stage editor
+ * The protocol channel `<ProtocolBuilder>` also mounts is left out, and the
+ * cache is a bare one of this frame's own: a resource control reads no section
+ * through it, only the shape images a node shape picker checks, and a test
+ * that runs the clock forward would otherwise be answering for the protocol
+ * cache's timers rather than for the component under test. A test about a control INSIDE a stage editor
  * wants `renderResourceEditor` instead, which mounts the whole of it.
  */
 export function ResourceContextFrame({
@@ -49,15 +51,18 @@ export function ResourceContextFrame({
   children,
 }: ResourceContextFrameProps) {
   const value = useMemo(() => ({ adapter, protocolId }), [adapter, protocolId]);
+  const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <DialogProvider>
-      <ProtocolBuilderProvider value={value}>
-        <ResourceClientProvider editId={editId}>
-          {children}
-        </ResourceClientProvider>
-      </ProtocolBuilderProvider>
-    </DialogProvider>
+    <QueryClientProvider client={queryClient}>
+      <DialogProvider>
+        <ProtocolBuilderProvider value={value}>
+          <ResourceClientProvider editId={editId}>
+            {children}
+          </ResourceClientProvider>
+        </ProtocolBuilderProvider>
+      </DialogProvider>
+    </QueryClientProvider>
   );
 }
 

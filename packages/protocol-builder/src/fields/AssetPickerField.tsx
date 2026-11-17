@@ -136,31 +136,6 @@ const messages = defineMessages({
     description:
       'Radio option choosing imported participant data (a roster) rather than the network the interview has built so far.',
   },
-  selectedAnnouncement: {
-    id: 'protocolBuilder.resourcePicker.selectedAnnouncement',
-    defaultMessage: '{name} is now selected.',
-    description:
-      'Announced to assistive technology when a resource is chosen for this field. name is the resource’s name as the protocol records it.',
-  },
-  removedAnnouncement: {
-    id: 'protocolBuilder.resourcePicker.removedAnnouncement',
-    defaultMessage: 'The resource was removed from this field.',
-    description:
-      'Announced to assistive technology when this stage field is cleared, leaving the resource itself in the protocol.',
-  },
-  discardedAnnouncement: {
-    id: 'protocolBuilder.resourcePicker.discardedAnnouncement',
-    defaultMessage: 'The imported resource was discarded.',
-    description:
-      'Announced to assistive technology when a resource imported while this stage has been open is thrown away.',
-  },
-  interviewNetworkAnnouncement: {
-    id: 'protocolBuilder.resourcePicker.interviewNetworkAnnouncement',
-    defaultMessage:
-      'This stage will use the network from the interview itself.',
-    description:
-      'Announced to assistive technology when the field is set to read the network the interview builds rather than an imported file. "Stage" is one step of an interview.',
-  },
 });
 
 export type AssetPickerFieldProps = CreateFormFieldProps<
@@ -221,10 +196,8 @@ export default function AssetPickerField({
   const referenceCount = useStageResourceUsage();
   const [browserOpen, setBrowserOpen] = useState(false);
   /**
-   * What was announced last, encoded for the same reason the refusal below is:
-   * an announcement stays in its live region until another replaces it, so a
-   * sentence formatted when the choice was made would be the one thing left in
-   * the old language after the application changes its own.
+   * What was announced last. English in every language, because it is read
+   * only by a screen reader.
    */
   const [status, setStatus] = useState('');
   /**
@@ -287,11 +260,7 @@ export default function AssetPickerField({
     setRefusal(undefined);
     action.clear();
     onChange?.(chosen.id);
-    setStatus(
-      createMessageError(messages.selectedAnnouncement, {
-        name: Redacted.value(chosen.name),
-      }),
-    );
+    setStatus(`${Redacted.value(chosen.name)} is now selected.`);
   };
 
   const handleRemove = () => {
@@ -301,7 +270,7 @@ export default function AssetPickerField({
     action.clear();
     setRefusal(undefined);
     onChange?.(undefined);
-    setStatus(createMessageError(messages.removedAnnouncement));
+    setStatus('The resource was removed from this field.');
   };
 
   const handleDiscard = () => {
@@ -321,7 +290,7 @@ export default function AssetPickerField({
         // The field goes with it: a discarded resource is gone from the host,
         // so a reference left behind could only ever be dangling.
         onChange?.(undefined);
-        setStatus(createMessageError(messages.discardedAnnouncement));
+        setStatus('The imported resource was discarded.');
       },
     );
   };
@@ -333,7 +302,7 @@ export default function AssetPickerField({
       setRefusal(undefined);
       action.clear();
       onChange?.(INTERVIEW_NETWORK);
-      setStatus(createMessageError(messages.interviewNetworkAnnouncement));
+      setStatus('This stage will use the network from the interview itself.');
       return;
     }
     if (next === 'resource') {
@@ -558,8 +527,8 @@ export default function AssetPickerField({
 
       {/* Mounted with the field rather than with the message, so the first
           announcement is an update to a region that was already there. */}
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {formatMessageError(status, intl) ?? status}
+      <span className="sr-only" aria-live="polite" aria-atomic="true" lang="en">
+        {status}
       </span>
     </div>
   );

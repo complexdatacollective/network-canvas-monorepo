@@ -32,5 +32,6 @@
   "protocolBuilder.pedigree.edgeTypeHint",
   "protocolBuilder.pedigree.memberFormFieldHint",
   "protocolBuilder.pedigree.nodeTypeHint",
-  "protocolBuilder.pedigree.nominationFieldHint"
+  "protocolBuilder.pedigree.nominationFieldHint",
+  "protocolBuilder.anonymisation.attributeGroupLabel"
 ]

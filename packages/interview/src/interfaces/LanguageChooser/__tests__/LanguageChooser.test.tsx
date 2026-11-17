@@ -287,12 +287,37 @@ describe('LanguageChooser', () => {
     const shell = screen.getByRole('main');
     await waitFor(() => expect(shell).toHaveAttribute('dir', 'rtl'));
     expect(shell).toHaveAttribute('lang', 'ar');
-    // The heading has no Arabic, so it falls back to the default language.
+    // The protocol holds no Arabic heading, so Network Canvas's own Arabic
+    // wording shows.
     expect(
-      screen.getByRole('listbox', { name: 'Choose a language' }),
+      await screen.findByRole('listbox', { name: 'اختيار لغة' }),
     ).toBeVisible();
     expect(
       within(group).getByRole('option', { name: label('ar') }),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('switches to a right-to-left language Network Canvas supplies no wording in, heading it in the default language', async () => {
+    renderChooser({
+      payload: makePayload({
+        localization: { defaultLocale: 'en', locales: ['en', 'fa'] },
+      }),
+    });
+    const user = userEvent.setup();
+    const group = await languageGroup();
+
+    await user.click(within(group).getByRole('option', { name: label('fa') }));
+
+    const shell = screen.getByRole('main');
+    await waitFor(() => expect(shell).toHaveAttribute('lang', 'fa'));
+    expect(shell).toHaveAttribute('dir', 'rtl');
+    // Neither the protocol nor Network Canvas has a Persian heading, so the
+    // default language's shows.
+    expect(screen.getByRole('listbox', { name: 'Choose a language' })).toBe(
+      group,
+    );
+    expect(
+      within(group).getByRole('option', { name: label('fa') }),
     ).toHaveAttribute('aria-selected', 'true');
   });
 

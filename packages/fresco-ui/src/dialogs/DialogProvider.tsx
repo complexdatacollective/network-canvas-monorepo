@@ -53,12 +53,6 @@ const messages = defineMessages({
     description:
       'Default cancel action of the dialog asking whether to abandon a wizard mid-way.',
   },
-  pleaseWait: {
-    id: 'frescoUi.dialogProvider.pleaseWait',
-    defaultMessage: 'Please wait...',
-    description:
-      'Announced to screen readers, never shown, while a confirm button’s action is still running; the button shows a spinner.',
-  },
   areYouSure: {
     id: 'frescoUi.dialogProvider.areYouSure',
     defaultMessage: 'Are you sure?',
@@ -481,7 +475,6 @@ function FormDialogContent({
 const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const intl = useAppIntl();
   const [dialogs, setDialogs] = useState<DialogState[]>([]);
   const dialogsRef = useRef<DialogState[]>([]);
   const isMounted = useRef(true);
@@ -836,8 +829,8 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           >
             {dialog.actions.primary.label}
           </Button>
-          <output aria-live="polite" className="sr-only">
-            {isLoading ? intl.formatMessage(messages.pleaseWait) : null}
+          <output aria-live="polite" className="sr-only" lang="en">
+            {isLoading ? 'Please wait...' : null}
           </output>
         </>
       );

@@ -21,12 +21,6 @@ export const COLOR_PALETTES = {
   'cat-color-seq': 10,
 };
 
-export const COLOR_PALETTE_BY_ENTITY = {
-  ordinal: 'ord-color-seq',
-  node: 'node-color-seq',
-  edge: 'edge-color-seq',
-} as const;
-
 /**
  * The protocol schema version this build of Architect authors and edits.
  *

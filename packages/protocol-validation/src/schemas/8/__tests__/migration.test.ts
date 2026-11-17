@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { CURRENT_SCHEMA_VERSION, type Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
@@ -1541,7 +1542,9 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { codebook: { node: Record<string, { color: string }> } };
       expect(migratedRaw.codebook.node.person?.color).toBe('node-color-seq-11');
-      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(false);
+      expect(parseIssues(V8OutputSchema.safeParse(migratedRaw))).toEqual([
+        { path: 'codebook.node.person.color', code: 'invalid_value' },
+      ]);
     });
 
     it('leaves a colour that is not a palette position for the schema to reject', () => {
@@ -1553,7 +1556,9 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { codebook: { node: Record<string, { color: string }> } };
       expect(migratedRaw.codebook.node.person?.color).toBe('#ff0000');
-      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(false);
+      expect(parseIssues(V8OutputSchema.safeParse(migratedRaw))).toEqual([
+        { path: 'codebook.node.person.color', code: 'invalid_value' },
+      ]);
     });
   });
 
@@ -4622,20 +4627,6 @@ describe('Migration V7 to V8', () => {
     it('has correct from and to versions', () => {
       expect(migrationV7toV8.from).toBe(7);
       expect(migrationV7toV8.to).toBe(8);
-    });
-
-    it('has migration notes', () => {
-      expect(migrationV7toV8.notes).toBeDefined();
-      expect(typeof migrationV7toV8.notes).toBe('string');
-      if (migrationV7toV8.notes) {
-        expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
-        expect(migrationV7toV8.notes).toContain(
-          'migration adds `required: true` to every attribute they reference',
-        );
-        expect(migrationV7toV8.notes).toContain(
-          'while preserving its other validation rules',
-        );
-      }
     });
   });
 

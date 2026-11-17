@@ -12,6 +12,7 @@ import {
   findVariableRoleConflicts,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
+  needsFallbackLanguage,
   type VersionedProtocol,
   validateProtocol,
 } from '@codaco/protocol-validation';
@@ -80,6 +81,9 @@ export const buildProtocol = async (
   const validation = await validateProtocol(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the parse is the check
     compiled.protocol as VersionedProtocol,
+    // A language Network Canvas has no wording in leaves its own text in
+    // English for the researcher to translate in Architect: a draft.
+    { draft: needsFallbackLanguage(normalized.language || 'en') },
   );
   return {
     ...compiled,

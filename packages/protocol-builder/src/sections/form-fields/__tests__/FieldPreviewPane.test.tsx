@@ -284,7 +284,6 @@ describe('FieldPreviewPane', () => {
 
     const themed = preview.querySelector('[data-theme-interview]');
     expect(themed).not.toBeNull();
-    expect(themed).toHaveClass('theme-base');
     // The field is inside it, so the participant's control is what the theme
     // is actually applied to rather than a wrapper beside it.
     expect(
@@ -908,7 +907,13 @@ describe('FieldPreviewPane', () => {
 
       const field = screen.getByRole('spinbutton', { name: 'كم عمرك؟' });
       expect(field.closest('[lang]')).toHaveAttribute('lang', 'ar');
-      expect(field.closest('[dir]')).toHaveAttribute('dir', 'rtl');
+      // The number box itself is fixed left to right; the field around it
+      // takes the language's direction.
+      expect(field).toHaveAttribute('dir', 'ltr');
+      expect(field.parentElement?.closest('[dir]')).toHaveAttribute(
+        'dir',
+        'rtl',
+      );
     });
 
     it('shows each answer’s label in the chosen language', async () => {

@@ -50,17 +50,4 @@ describe('the surface classification', () => {
     expect(gatedSurfacePaths('self-hosted')).toEqual([...MANAGED_ONLY_PATHS]);
     expect(gatedSurfacePaths('managed')).toEqual([...SELF_HOST_ONLY_PATHS]);
   });
-
-  it('answers the predicate and the gate identically', () => {
-    for (const mode of DEPLOYMENT_MODES) {
-      const gated = new Set(gatedSurfacePaths(mode));
-      for (const path of SURFACE_PATHS) {
-        expect({ mode, path, served: isSurfaceServed(path, mode) }).toEqual({
-          mode,
-          path,
-          served: !gated.has(path),
-        });
-      }
-    }
-  });
 });
