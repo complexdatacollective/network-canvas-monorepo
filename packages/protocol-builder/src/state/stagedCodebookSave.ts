@@ -61,6 +61,10 @@ export function codebookPayload(
  * from the host rather than made from what was sent: the save's answer names
  * the stage's revision, and a host may store a section differently from how
  * it was sent.
+ *
+ * Every section the stage changed is read, not only those the save sent: a
+ * retry of a save whose first attempt landed finds its changes already in the
+ * protocol and sends none of them, and the editor still has to see them.
  */
 export async function readSavedCodebook(
   queryClient: QueryClient,
@@ -69,11 +73,13 @@ export async function readSavedCodebook(
   codebook: CodebookSave | undefined,
 ): Promise<void> {
   const deps = { adapter, queryClient, protocolId };
-  await Promise.all(
-    (codebook?.sections ?? []).map(({ sectionId: id }) =>
-      readWrittenSection(deps, id),
+  const ids = new Set<ProtocolSectionId>([
+    ...(codebook?.sections ?? []).map(({ sectionId: id }) => id),
+    ...Object.keys(codebook?.staged ?? {}).map((key) =>
+      sectionId(parseSectionId(key)),
     ),
-  );
+  ]);
+  await Promise.all([...ids].map((id) => readWrittenSection(deps, id)));
 }
 
 /**

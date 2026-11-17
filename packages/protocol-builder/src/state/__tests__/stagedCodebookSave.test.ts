@@ -426,6 +426,28 @@ describe('readSavedCodebook', () => {
     expect(cached(queryClient, host, PLACE)).toEqual(host.store.read(PLACE));
   });
 
+  it('reads a section the stage changed even when the save sent nothing for it', async () => {
+    // A retry of a save whose first attempt landed: the change is in the
+    // protocol already, so the save carries no section, but the stage still
+    // changed it and is about to stop holding the change.
+    const host = newHost();
+    const queryClient = new QueryClient();
+    const before = host.store.read(PERSON);
+    queryClient.setQueryData(getKey(host, PERSON), {
+      document: Redacted.make(before.document),
+      revision: before.revision,
+    });
+    const landed = { ...before.document, icon: 'add-a-treatment' };
+    host.store.applyAsCollaborator(PERSON, landed);
+
+    await readSavedCodebook(queryClient, host.adapter, host.protocolId, {
+      sections: [],
+      staged: { [PERSON]: { base: before.document, edited: landed } },
+    });
+
+    expect(cached(queryClient, host, PERSON)).toEqual(host.store.read(PERSON));
+  });
+
   it('reads nothing for a save without a codebook', async () => {
     const host = newHost();
     const queryClient = new QueryClient();
