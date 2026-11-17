@@ -118,59 +118,107 @@ export const fixStaysInBounds = (
     return first === undefined || EDITABLE_PARTS.has(first);
   });
 
-/**
- * What identifies a member of an array across a rewrite of the array: its
- * `id`, or for an answer option (which has none) its `value`, which may be
- * text, a number, or true or false.
- */
-const memberKey = (member: unknown): string | null => {
-  if (!isJsonObject(member)) return null;
-  for (const key of ['id', 'value']) {
-    const found = member[key];
-    if (
-      typeof found === 'string' ||
+type MemberKey = (member: unknown) => string | null;
+
+const scalarKey =
+  (property: string): MemberKey =>
+  (member) => {
+    const found = isJsonObject(member) ? member[property] : undefined;
+    return typeof found === 'string' ||
       typeof found === 'number' ||
       typeof found === 'boolean'
-    ) {
-      return `${key}:${typeof found}:${found}`;
-    }
-  }
-  return null;
-};
+      ? `${typeof found}:${found}`
+      : null;
+  };
 
-const occursOnce = (members: readonly unknown[], key: string): boolean =>
-  members.filter((member) => memberKey(member) === key).length === 1;
+/** A member's `id`. */
+const idOf = scalarKey('id');
+
+/** An answer option's `value` (it has no id): text, a number, true or false. */
+const valueOf: MemberKey = (member) =>
+  idOf(member) === null ? scalarKey('value')(member) : null;
 
 /**
- * The member of `current` that the member at `index` of `written` replaces:
- * the one with the same `memberKey`, when each array has exactly one such
- * member, or the one in the same position when no member of either array
- * can be told apart and both are the same length. Otherwise there is no
- * telling, and nothing is carried over.
+ * An answer option's label, as far as `written` words it: the same key for
+ * an option whose label holds every translation `written` gives, unchanged.
  */
-const replacedMember = (
+const labelAsWordedBy =
+  (written: unknown): MemberKey =>
+  (member) => {
+    if (!isJsonObject(member) || idOf(member) !== null) return null;
+    const { label } = member;
+    if (typeof label === 'string') return label;
+    if (!isJsonObject(label)) return null;
+    const worded = isJsonObject(written) ? written.label : undefined;
+    if (!isJsonObject(worded) || Object.keys(worded).length === 0) return null;
+    const shared = Object.keys(worded).toSorted();
+    return shared.every((locale) => typeof label[locale] === 'string')
+      ? JSON.stringify(shared.map((locale) => [locale, label[locale]]))
+      : null;
+  };
+
+/**
+ * For each member of `written`, the member of `current` it replaces, or
+ * undefined when there is no telling; nothing is carried over to it.
+ *
+ * A member with an `id` replaces the one with that id. An answer option has
+ * none, so it replaces the option whose label it leaves as it was, and
+ * failing that the option with its `value`: a fix that rewords an option
+ * keeps its value, and one that recodes the values keeps the labels, whose
+ * translations belong to the label. Each of these counts only when exactly
+ * one member on each side answers to it. Members that have neither are
+ * paired by position, when no member of either array can be told apart and
+ * both are the same length.
+ */
+const replacedMembers = (
   written: readonly unknown[],
   current: readonly unknown[],
-  index: number,
-): unknown => {
-  const key = memberKey(written[index]);
-  if (key !== null) {
-    return occursOnce(written, key) && occursOnce(current, key)
-      ? current.find((candidate) => memberKey(candidate) === key)
-      : undefined;
-  }
-  const keyed = [...written, ...current].some(
-    (member) => memberKey(member) !== null,
+): unknown[] => {
+  const replaced: unknown[] = written.map(() => undefined);
+  const paired = new Set<number>();
+  const claimed = new Set<number>();
+  const pairBy = (keyOf: (member: unknown, index: number) => MemberKey) => {
+    const pairs: [number, number][] = [];
+    for (const [index, member] of written.entries()) {
+      if (paired.has(index)) continue;
+      const key = keyOf(member, index);
+      const mine = key(member);
+      if (mine === null) continue;
+      const rivals = written.filter(
+        (other, at) => !paired.has(at) && key(other) === mine,
+      );
+      const candidates = current.flatMap((candidate, at) =>
+        !claimed.has(at) && key(candidate) === mine ? [at] : [],
+      );
+      const [only] = candidates;
+      if (
+        rivals.length === 1 &&
+        candidates.length === 1 &&
+        only !== undefined
+      ) {
+        pairs.push([index, only]);
+      }
+    }
+    for (const [index, at] of pairs) {
+      replaced[index] = current[at];
+      paired.add(index);
+      claimed.add(at);
+    }
+  };
+  pairBy(() => idOf);
+  pairBy((member) => labelAsWordedBy(member));
+  pairBy(() => valueOf);
+  const told = [...written, ...current].some(
+    (member) => idOf(member) !== null || valueOf(member) !== null,
   );
-  return !keyed && written.length === current.length
-    ? current[index]
-    : undefined;
+  if (!told && written.length === current.length) return [...current];
+  return replaced;
 };
 
 /**
  * Calls `visit` with every text in `written` that replaces a text `current`
  * holds in the same place, and that text. Members of arrays are paired as
- * `replacedMember` pairs them.
+ * `replacedMembers` pairs them.
  */
 export const eachReplacedText = (
   written: unknown,
@@ -187,13 +235,9 @@ export const eachReplacedText = (
   }
   if (Array.isArray(written)) {
     if (!Array.isArray(current)) return;
+    const replaced = replacedMembers(written, current);
     for (const [index, member] of written.entries()) {
-      eachReplacedText(
-        member,
-        replacedMember(written, current, index),
-        locales,
-        visit,
-      );
+      eachReplacedText(member, replaced[index], locales, visit);
     }
     return;
   }
@@ -211,7 +255,7 @@ export const eachReplacedText = (
  * translations `written` does not name. The review writes only the
  * protocol's default language, so a fix that replaces a whole prompt, option
  * or stage would otherwise delete every other language's text in it. Members
- * of arrays are paired as `replacedMember` pairs them.
+ * of arrays are paired as `replacedMembers` pairs them.
  */
 const keepTranslations = (
   written: unknown,
@@ -225,12 +269,9 @@ const keepTranslations = (
   }
   if (Array.isArray(written)) {
     if (!Array.isArray(current)) return written;
+    const replaced = replacedMembers(written, current);
     return written.map((member: unknown, index) =>
-      keepTranslations(
-        member,
-        replacedMember(written, current, index),
-        locales,
-      ),
+      keepTranslations(member, replaced[index], locales),
     );
   }
   if (isJsonObject(written)) {

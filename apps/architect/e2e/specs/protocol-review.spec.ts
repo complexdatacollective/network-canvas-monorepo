@@ -782,15 +782,17 @@ test.describe('results', () => {
 
     const view = await openProblem(page, popover, title);
     await expect(view.getByText('Problem 1 of 4')).toBeVisible();
-    await expect(view.getByText('Now', { exact: true })).toBeVisible();
+    await expect(
+      view.getByText('Now · English', { exact: true }),
+    ).toBeVisible();
     await expect(view.getByText(OLD_P1_TEXT, { exact: true })).toBeVisible();
     await expect(
-      view.getByText('After the fix', { exact: true }),
+      view.getByText('After the fix · English', { exact: true }),
     ).toBeVisible();
     await expect(view.getByText(NEW_P1_TEXT, { exact: true })).toBeVisible();
     await expect(
       view.getByText(
-        'This protocol also has this text in French. Fix for me does not change that version, so check it after the fix.',
+        'Only the English text changes. The French translation keeps its current wording until you update it.',
       ),
     ).toBeVisible();
 

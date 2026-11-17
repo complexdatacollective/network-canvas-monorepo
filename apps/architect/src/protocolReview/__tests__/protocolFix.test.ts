@@ -162,6 +162,44 @@ describe('a fix that replaces more than one text', () => {
     });
   });
 
+  it('keeps each translation with its label when a fix swaps the values', () => {
+    const protocol = withOptions([
+      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
+      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Often' }, value: 2 },
+        { label: { en: 'Rarely' }, value: 1 },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Often', fr: 'Souvent' }, value: 2 },
+        { label: { en: 'Rarely', fr: 'Rarement' }, value: 1 },
+      ],
+    });
+  });
+
+  it('gives a new option nothing when it takes the value of one that keeps its label', () => {
+    const protocol = withOptions([
+      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
+      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+    ]);
+    const options = rewritten(protocol, [
+      { label: { en: 'Often' }, value: 3 },
+      { label: { en: 'Every day' }, value: 1 },
+      { label: { en: 'Seldom' }, value: 2 },
+    ]);
+    expect(options).toMatchObject({
+      options: [
+        { label: { en: 'Often', fr: 'Souvent' }, value: 3 },
+        { label: { en: 'Every day' }, value: 1 },
+        { label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
+      ],
+    });
+    expect(options && options.options?.[1]?.label).toEqual({ en: 'Every day' });
+  });
+
   it('carries nothing over to options that share a value', () => {
     const protocol = withOptions([
       { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
