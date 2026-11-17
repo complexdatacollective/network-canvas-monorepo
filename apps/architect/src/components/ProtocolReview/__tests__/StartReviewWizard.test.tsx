@@ -628,10 +628,22 @@ describe('choosing the model', () => {
         'You’re offline. Protocol review needs an internet connection; you can start the review when you are back online.',
       ),
     ).toBeVisible();
+    // Nothing can be sent, so the button saves the details instead.
     expect(
-      requestDialog().getByRole('button', { name: 'Start review' }),
-    ).toBeDisabled();
+      requestDialog().queryByRole('button', { name: 'Start review' }),
+    ).not.toBeInTheDocument();
     // Asked once, when the button came on screen and there was a connection.
     expect(client.requestProviderStatus).toHaveBeenCalledTimes(1);
+
+    await pressNext('Save details');
+    await waitFor(() =>
+      expect(getProtocolReviewStudyContext(store.getState())).toEqual(
+        STUDY_CONTEXT,
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId('wizard-next')).not.toBeInTheDocument(),
+    );
+    expect(client.requestReview).not.toHaveBeenCalled();
   });
 });

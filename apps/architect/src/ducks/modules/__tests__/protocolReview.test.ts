@@ -54,6 +54,7 @@ import {
 } from '~/protocolReview/__tests__/fixtures';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import {
+  clearReviewRecords,
   FINDING_DECISIONS,
   readReviewRecord,
 } from '~/protocolReview/reviewStore';
@@ -1159,6 +1160,62 @@ describe('dismissing a review', () => {
       reviewId,
     );
     expect((await readReviewRecord(id)).review?.reviewId).toBe(reviewId);
+  });
+});
+
+describe('a review that is stopped, replaced or outlived', () => {
+  it('counts a review cancelled while running against the displayed quota', async () => {
+    const quota = {
+      limit: 5,
+      remaining: 3,
+      resetsAt: '2099-01-01T00:00:00.000Z',
+    };
+    localStorage.setItem(PROTOCOL_REVIEW_QUOTA_KEY, JSON.stringify(quota));
+    await open(store);
+    expect(store.getState().protocolReview.quota?.remaining).toBe(3);
+    const answer = gatedAnswer();
+    vi.stubGlobal('fetch', answer.fetchImpl);
+    const run = store.dispatch(startReview());
+    await vi.waitFor(() => expect(answer.fetchImpl).toHaveBeenCalled());
+    store.dispatch(cancelReview());
+    expect(await run).toEqual({ status: 'cancelled' });
+
+    expect(store.getState().protocolReview.quota?.remaining).toBe(2);
+    expect(
+      JSON.parse(localStorage.getItem(PROTOCOL_REVIEW_QUOTA_KEY) ?? 'null'),
+    ).toMatchObject({ remaining: 2 });
+    // Nothing running, nothing to count.
+    store.dispatch(cancelReview());
+    expect(store.getState().protocolReview.quota?.remaining).toBe(2);
+  });
+
+  it('saves nothing when every review was cleared while it ran', async () => {
+    const id = await open(store);
+    const answer = gatedAnswer();
+    vi.stubGlobal('fetch', answer.fetchImpl);
+    const run = store.dispatch(startReview());
+    await vi.waitFor(() => expect(answer.fetchImpl).toHaveBeenCalled());
+
+    await clearReviewRecords();
+    answer.finish();
+
+    expect(await run).toEqual({ status: 'cancelled' });
+    expect((await readReviewRecord(id)).review).toBeNull();
+    expect(getProtocolReviewRun(store.getState())).toEqual({ status: 'idle' });
+  });
+
+  it('does not apply Fix for me to a review dismissed while the edit was checked', async () => {
+    const id = await reviewed(store);
+    const before = store.getState().activeProtocol.present;
+
+    const deciding = store.dispatch(decideFinding('title', 'fix'));
+    const dismissing = store.dispatch(dismissReview());
+
+    expect(await deciding).toEqual({ ok: false, reason: 'no_review' });
+    await dismissing;
+    expect(store.getState().activeProtocol.present).toBe(before);
+    expect((await readReviewRecord(id)).review).toBeNull();
+    expect(store.getState().protocolReview.record?.review).toBeNull();
   });
 });
 

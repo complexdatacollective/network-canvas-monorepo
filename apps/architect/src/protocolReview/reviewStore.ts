@@ -162,6 +162,15 @@ export const readReviewRecord = async (
   return memory.get(protocolId) ?? emptyReviewRecord(protocolId);
 };
 
+let clearEpoch = 0;
+
+/**
+ * Changes whenever every record is cleared (`clearReviewRecords`). A caller
+ * that holds a record across an await compares it before writing, and drops
+ * the write when it changed: the record was cleared meanwhile.
+ */
+export const getReviewClearEpoch = (): number => clearEpoch;
+
 /** Saves the record. Never throws: a failed write leaves the session copy. */
 export const writeReviewRecord = async (
   record: StoredReviewRecord,
@@ -190,6 +199,9 @@ export const writeReviewRecord = async (
  * cleared; nothing is removed then, the session copy included.
  */
 export const clearReviewRecords = async (): Promise<() => Promise<void>> => {
+  // Before anything is awaited: a review that finishes from here on must not
+  // write its record back into a store that is being emptied.
+  clearEpoch += 1;
   const db = getReviewDb();
   const stored = await db.reviews.toArray();
   await db.reviews.clear();

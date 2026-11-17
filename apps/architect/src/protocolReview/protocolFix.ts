@@ -72,6 +72,25 @@ const parseJson = (value: string | null): unknown => {
 };
 
 /**
+ * A placeholder as the review writes one where a fix needs a fact it cannot
+ * know: square brackets around capitals, such as [HELPLINE NAME].
+ */
+const PLACEHOLDER = /\[[A-Z][A-Z0-9 _/'-]+\]/;
+
+const holdsPlaceholder = (value: unknown): boolean => {
+  if (typeof value === 'string') return PLACEHOLDER.test(value);
+  if (Array.isArray(value)) return value.some(holdsPlaceholder);
+  return isJsonObject(value) && Object.values(value).some(holdsPlaceholder);
+};
+
+/**
+ * Whether `operation` writes a placeholder: a text the researcher has still to
+ * supply, which a participant must never be shown.
+ */
+export const writesPlaceholder = (operation: StoredOperation): boolean =>
+  operation.op !== 'remove' && holdsPlaceholder(parseJson(operation.value));
+
+/**
  * The fix's operations rewritten to treat translations the way Architect's
  * own editors do. Editing a text in Architect replaces the translation in the
  * language being edited and keeps every other translation as it is
@@ -183,7 +202,13 @@ export const recordFix = (
     normalizeOperations(reviewed, operations),
   );
   const applied = applyOperations(reviewed, recorded);
-  if (!applied.ok) {
+  // A placeholder inside something the fix adds cannot be replaced before the
+  // fix is made (only the texts a fix sets can be edited), so such a fix is
+  // not offered: it would put the placeholder in front of participants.
+  if (
+    !applied.ok ||
+    recorded.some((o) => o.op === 'insert' && writesPlaceholder(o))
+  ) {
     return { operations: recorded, targets: null, expected: null };
   }
   const plan = planFix(reviewed, recorded, normalizeProtocol);

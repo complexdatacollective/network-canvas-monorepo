@@ -32,6 +32,7 @@ import {
   applyFixEdits,
   describeFixTextEdits,
   type FindingLocation,
+  placeholdersReplaceable,
   type FixPlace,
   type FixEdits,
   type FixTextEdit,
@@ -65,6 +66,7 @@ import {
 } from '~/protocolReview/reviewClient';
 import {
   type FindingDecision,
+  getReviewClearEpoch,
   readReviewRecord,
   type StoredFinding,
   type StoredReviewRecord,
@@ -592,6 +594,7 @@ const availabilityOf = (
 ): FixAvailability => {
   if (stored.operations.length === 0) return 'none';
   if (stored.targets === null) return 'invalid';
+  if (!placeholdersReplaceable(protocol, stored.operations)) return 'invalid';
   if (
     !fixFits(protocolAsReviewed(protocol), stored.operations, stored.targets)
   ) {
@@ -702,6 +705,24 @@ const abortInflight = (): InflightRun | null => {
 };
 
 /**
+ * Counts a review that was stopped against the displayed quota. The service
+ * counts a review it admitted against the hourly limit even when the client
+ * goes away, and the client cannot tell whether the request was admitted
+ * before it was stopped; so it assumes it was, until the next answer from the
+ * service states the quota. An under-count of slots is the safe error.
+ */
+const countStoppedRun = (dispatch: AppDispatch) => {
+  const quota = effectiveQuota(readStoredQuota(), Date.now());
+  if (quota === null) return;
+  const counted: ReviewQuota = {
+    ...quota,
+    remaining: Math.max(0, quota.remaining - 1),
+  };
+  writeStoredQuota(counted);
+  dispatch(actions.quotaUpdated(counted));
+};
+
+/**
  * Brings the slice into line with the active protocol: reads its record when
  * one becomes active, clears the slice when it closes, and aborts a review in
  * flight for a protocol that is no longer the active one. Dispatched by
@@ -712,6 +733,7 @@ export const syncProtocolReview =
     const protocolId = getActiveProtocolId(getState());
     if (inflight && inflight.protocolId !== protocolId) {
       abortInflight();
+      countStoppedRun(dispatch);
     }
     dispatch(actions.reviewCleared());
     dispatch(actions.quotaUpdated(readStoredQuota()));
@@ -886,6 +908,7 @@ export const startReview =
     const { runId } = run;
     inflight = run;
     const startedAt = Date.now();
+    const clearEpoch = getReviewClearEpoch();
     // What is sent, and what every fix is recorded against: the protocol with
     // the wording a participant is shown written out.
     const reviewed = protocolAsReviewed(protocol);
@@ -916,7 +939,10 @@ export const startReview =
     if (
       inflight !== run ||
       outcome.kind === 'aborted' ||
-      !isStillActive(getState(), protocolId)
+      !isStillActive(getState(), protocolId) ||
+      // Every saved review was cleared (Clear all) while this one ran:
+      // saving it would bring a record back into a library being emptied.
+      getReviewClearEpoch() !== clearEpoch
     ) {
       if (inflight === run) inflight = null;
       dispatch(actions.runFinished({ runId }));
@@ -1026,10 +1052,15 @@ export const refreshReviewProviders =
     await providerStatus;
   };
 
-/** Stops the review in flight. Nothing is saved and nothing is counted. */
+/**
+ * Stops the review in flight. Nothing is saved. The service still counts it
+ * against the hourly limit, so the displayed quota does too.
+ */
 export const cancelReview = (): Thunk<void> => (dispatch) => {
   const aborted = abortInflight();
-  if (aborted) dispatch(actions.runFinished({ runId: aborted.runId }));
+  if (!aborted) return;
+  dispatch(actions.runFinished({ runId: aborted.runId }));
+  countStoppedRun(dispatch);
 };
 
 /**
@@ -1088,6 +1119,20 @@ const findStored = (getState: GetState, findingId: string) => {
     (candidate) => candidate.finding.id === findingId,
   );
   return stored ? { record, stored } : undefined;
+};
+
+/** Whether the active protocol still holds the review these edits were asked of. */
+const holdsReview = (
+  getState: GetState,
+  protocolId: string,
+  reviewId: string | undefined,
+) => {
+  const record = selectRecord(getState());
+  return (
+    isStillActive(getState(), protocolId) &&
+    record?.protocolId === protocolId &&
+    record.review?.reviewId === reviewId
+  );
 };
 
 const withFinding = (
@@ -1193,9 +1238,16 @@ export const decideFinding =
     );
     if (operations === null) return refused('invalid');
     const edit = await editProtocol(protocol, operations);
-    // Another protocol opened while the edit was worked out: nothing here is
-    // about it, so nothing is dispatched or saved.
-    if (!isStillActive(getState(), found.record.protocolId)) {
+    // Another protocol opened, or this review was dismissed or replaced,
+    // while the edit was worked out: nothing here is about what is open now,
+    // so nothing is dispatched or saved.
+    if (
+      !holdsReview(
+        getState,
+        found.record.protocolId,
+        found.record.review?.reviewId,
+      )
+    ) {
       return refused('no_review');
     }
     if (!edit.ok) {
@@ -1259,9 +1311,16 @@ export const undoFix =
     }
     if (!getProtocolOwnedHere(getState())) return refused('not_owned');
     const edit = await editProtocol(protocol, stored.inverse);
-    // Another protocol opened while the edit was worked out: nothing here is
-    // about it, so nothing is dispatched or saved.
-    if (!isStillActive(getState(), found.record.protocolId)) {
+    // Another protocol opened, or this review was dismissed or replaced,
+    // while the edit was worked out: nothing here is about what is open now,
+    // so nothing is dispatched or saved.
+    if (
+      !holdsReview(
+        getState,
+        found.record.protocolId,
+        found.record.review?.reviewId,
+      )
+    ) {
       return refused('no_review');
     }
     if (!edit.ok) {

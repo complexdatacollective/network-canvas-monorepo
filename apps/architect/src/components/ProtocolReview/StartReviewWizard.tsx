@@ -702,8 +702,7 @@ function ModelStep() {
   const intl = useAppIntl();
   const store = useAppStore();
   const dispatch = useAppDispatch();
-  const { data, setStepData, setBeforeNext, setNextEnabled, setNextLabel } =
-    useWizard();
+  const { data, setStepData, setBeforeNext, setNextLabel } = useWizard();
   const { now, online, limit, remaining, providers } = useReviewAvailability();
   const lastChosen = useAppSelector((state) => state.protocolReview.provider);
   const labelId = useId();
@@ -715,21 +714,19 @@ function ModelStep() {
   }, [dispatch, online]);
 
   const anyAvailable = providers.some((choice) => choice.available);
-  useEffect(() => {
-    setNextEnabled(online);
-    return () => setNextEnabled(true);
-  }, [online, setNextEnabled]);
-
   // With every budget spent no review can start, perhaps not until next
   // month, and what was typed in the earlier steps lives only in this dialog.
   // The button then saves it instead: the dialog completes as usual, the
   // review that follows is refused for want of a budget, and the panel says
-  // when one starts again.
+  // when one starts again. Being offline is the same: nothing can be sent, so
+  // the button saves what was typed, and the review is started once the
+  // connection is back.
   const allSpent = online && !anyAvailable;
+  const saveOnly = !online || allSpent;
   useEffect(() => {
-    setNextLabel(allSpent ? intl.formatMessage(messages.saveDetails) : null);
+    setNextLabel(saveOnly ? intl.formatMessage(messages.saveDetails) : null);
     return () => setNextLabel(null);
-  }, [allSpent, intl, setNextLabel]);
+  }, [saveOnly, intl, setNextLabel]);
 
   // Completing the wizard writes the study details into the protocol, a write
   // only the tab that owns the saved copy can keep. Another tab can take the

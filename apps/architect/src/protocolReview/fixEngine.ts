@@ -72,14 +72,16 @@ export type FixFailure = { kind: FixFailureKind; operation: number };
  * What the document held at an operation's target just before it applied: for
  * `set`, whether the key was there and its value; for `remove`, the value it
  * removed. An `insert` that applies has already shown that its array and anchor
- * exist and that its id is free, so it records nothing more. Neither does the
- * `remove` half of a move (`move`): what the member holds goes with it, so a
+ * exist and that its id is free, so it records nothing more, unless it is placed
+ * by position before a member that has no id: that member is the anchor, and
+ * what it held is recorded (`anchor`), since an index names no member. The
+ * `remove` half of a move (`move`) records nothing: what the member holds goes with it, so a
  * move fits whatever that is.
  */
 export type TargetSnapshot =
   | { op: 'set'; present: boolean; value: unknown }
   | { op: 'remove'; value: unknown }
-  | { op: 'insert' }
+  | { op: 'insert'; anchor?: unknown }
   | { op: 'move' };
 
 export type ApplyResult =
@@ -247,7 +249,10 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
         path: pathOf(back),
         value: null,
       },
-      target: { op: 'insert' },
+      target:
+        last !== '-' && !hasStringId(parent[position])
+          ? { op: 'insert', anchor: parent[position] }
+          : { op: 'insert' },
     };
   }
 

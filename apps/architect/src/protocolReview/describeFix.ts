@@ -17,7 +17,7 @@ import {
   parsePath,
   readPath,
 } from './fixPath';
-import { isLocalizedValue } from './protocolFix';
+import { isLocalizedValue, writesPlaceholder } from './protocolFix';
 
 /**
  * What a fix and a finding mean on screen, as data: the UI turns it into
@@ -285,7 +285,8 @@ const editedValue = (edit: FixTextEdit, input: string): unknown => {
 /**
  * A fix's operations with the researcher's own values, keyed by edit path,
  * in place of the suggested ones. Null when a value cannot be written, such
- * as a number field that does not hold a number.
+ * as a number field that does not hold a number, or when a placeholder
+ * (`writesPlaceholder`) is still left to replace.
  */
 export const applyFixEdits = (
   protocol: CurrentProtocol,
@@ -314,11 +315,32 @@ export const applyFixEdits = (
       }
       changed = true;
     }
-    result.push(
-      changed ? { ...operation, value: JSON.stringify(value) } : operation,
-    );
+    const written = changed
+      ? { ...operation, value: JSON.stringify(value) }
+      : operation;
+    if (writesPlaceholder(written)) return null;
+    result.push(written);
   }
   return result;
+};
+
+/**
+ * Whether the researcher can replace every placeholder the fix writes by
+ * editing its texts. A placeholder anywhere else (in something the fix adds,
+ * or in a text it sets that cannot be edited) can only reach participants as
+ * it is, so such a fix is not offered.
+ */
+export const placeholdersReplaceable = (
+  protocol: CurrentProtocol,
+  operations: readonly StoredOperation[],
+): boolean => {
+  const replaced = Object.fromEntries(
+    describeFixTextEdits(protocol, operations)
+      .filter((edit) => edit.editable && edit.kind === 'text')
+      .map((edit) => [edit.path, 'text']),
+  );
+  const result = applyFixEdits(protocol, operations, replaced);
+  return result !== null && !result.some(writesPlaceholder);
 };
 
 /**

@@ -8,6 +8,7 @@ import {
 import {
   applyFixEdits,
   describeFixTextEdits,
+  placeholdersReplaceable,
   resolveFindingLocation,
   resolveFixPlace,
 } from '../describeFix';
@@ -81,6 +82,75 @@ describe('recordFix', () => {
     expect(
       recordFix(makeProtocol(), [op('set', '/stages/gone/label', 'x')]).targets,
     ).toBeNull();
+  });
+});
+
+describe('a fix that writes a placeholder', () => {
+  it('is not offered when the placeholder is in something it adds', () => {
+    const record = recordFix(makeProtocol(), [
+      op('insert', '/stages/-', {
+        id: 'support',
+        type: 'Information',
+        label: { en: 'Support' },
+        text: { en: 'Call [PHONE NUMBER]' },
+      }),
+    ]);
+    expect(record.targets).toBeNull();
+    expect(
+      recordFix(makeProtocol(), [
+        op('insert', '/stages/-', { id: 'plain', label: { en: 'Plain' } }),
+      ]).targets,
+    ).not.toBeNull();
+  });
+
+  it('is made only once the researcher has replaced the placeholder', () => {
+    const protocol = makeProtocol();
+    const operations = [
+      op('set', '/stages/names/prompts/p1/text', {
+        en: 'Name people, or call [PHONE NUMBER]',
+      }),
+    ];
+    const path = '/stages/names/prompts/p1/text/en';
+    expect(applyFixEdits(protocol, operations, {})).toBeNull();
+    expect(
+      applyFixEdits(protocol, operations, { [path]: 'Name people' }),
+    ).not.toBeNull();
+    expect(
+      applyFixEdits(protocol, operations, { [path]: 'Call [PHONE NUMBER]' }),
+    ).toBeNull();
+  });
+
+  it('is offered only when every placeholder is in a text the researcher can edit', () => {
+    const protocol = makeProtocol();
+    expect(
+      placeholdersReplaceable(protocol, [
+        op('set', '/stages/names/prompts/p1/text', {
+          en: 'Name people, or call [PHONE NUMBER]',
+        }),
+      ]),
+    ).toBe(true);
+    expect(
+      placeholdersReplaceable(protocol, [
+        op('set', '/stages/names/prompts/p1', {
+          id: 'p1',
+          text: { en: 'Name people, or call [PHONE NUMBER]' },
+        }),
+      ]),
+    ).toBe(false);
+    expect(
+      placeholdersReplaceable(protocol, [
+        op('insert', '/stages/-', {
+          id: 'support',
+          type: 'Information',
+          text: { en: 'Call [PHONE NUMBER]' },
+        }),
+      ]),
+    ).toBe(false);
+    expect(
+      placeholdersReplaceable(protocol, [
+        op('set', '/stages/names/prompts/p1/text', { en: 'Name people' }),
+      ]),
+    ).toBe(true);
   });
 });
 

@@ -284,6 +284,35 @@ const writtenBy = (root: unknown, operations: StoredOperation[]) => {
 const expectedOf = (root: unknown, operations: StoredOperation[]) =>
   writtenBy(root, operations).written;
 
+describe('an insert placed by position', () => {
+  const inserting = [op('insert', '/codebook/node/person/options/1', 'new')];
+
+  it('stops fitting once the member it was placed before is not the one reviewed', () => {
+    const { targets } = apply(doc(), inserting);
+    expect(fixFits(doc(), inserting, targets)).toBe(true);
+    const renamed = apply(doc(), [
+      op('set', '/codebook/node/person/options/1', 'edited'),
+    ]).result;
+    expect(fixFits(renamed, inserting, targets)).toBe(false);
+    const reordered = apply(doc(), [
+      op('remove', '/codebook/node/person/options/1'),
+      op('insert', '/codebook/node/person/options/-', 'y'),
+    ]).result;
+    expect(fixFits(reordered, inserting, targets)).toBe(false);
+  });
+
+  it('records nothing for an insert placed by id or at the end', () => {
+    expect(
+      apply(doc(), [op('insert', '/stages/b~1c', { id: 'n', label: 'N' })])
+        .targets,
+    ).toEqual([{ op: 'insert' }]);
+    expect(
+      apply(doc(), [op('insert', '/codebook/node/person/options/-', 'w')])
+        .targets,
+    ).toEqual([{ op: 'insert' }]);
+  });
+});
+
 describe('fixInEffect', () => {
   it('holds once the protocol already has what every edit writes, however it got there', () => {
     const operations = [
