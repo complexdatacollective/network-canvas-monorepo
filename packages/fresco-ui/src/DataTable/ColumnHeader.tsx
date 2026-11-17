@@ -10,7 +10,7 @@ import {
   ArrowUpAZ,
   Filter,
 } from 'lucide-react';
-import React, { type ReactNode, useRef, useState } from 'react';
+import React, { type ReactNode, useId, useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -108,6 +108,7 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
   const isSorted = column.getIsSorted();
 
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [stagedValue, setStagedValue] = useState<FilterValue | undefined>(
@@ -202,7 +203,7 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
           }
           nativeButton
         >
-          {title}
+          <span id={titleId}>{title}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {canSort && (
@@ -260,6 +261,7 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
           >
             <div className="flex flex-col gap-2">
               <FilterRenderer
+                labelledBy={titleId}
                 filterConfig={filterConfig}
                 value={stagedValue}
                 onChange={setStagedValue}
@@ -286,12 +288,15 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
   );
 }
 
+// Each filter's controls are named by the column's title.
 function FilterRenderer({
+  labelledBy,
   filterConfig,
   value,
   onChange,
   data,
 }: {
+  labelledBy: string;
   filterConfig: FilterConfig;
   value: FilterValue | undefined;
   onChange: (value: FilterValue | undefined) => void;
@@ -309,6 +314,7 @@ function FilterRenderer({
     case 'date':
       return (
         <DateFilter
+          aria-labelledby={labelledBy}
           value={isDateFilterValue(value) ? value : undefined}
           onChange={onChange}
           config={filterConfig}
@@ -317,6 +323,7 @@ function FilterRenderer({
     case 'text':
       return (
         <TextFilter
+          aria-labelledby={labelledBy}
           value={typeof value === 'string' ? value : undefined}
           onChange={onChange}
           config={filterConfig}
@@ -325,6 +332,7 @@ function FilterRenderer({
     case 'boolean':
       return (
         <BooleanFilter
+          aria-labelledby={labelledBy}
           value={typeof value === 'boolean' ? value : undefined}
           onChange={onChange}
           config={filterConfig}
@@ -333,6 +341,7 @@ function FilterRenderer({
     case 'faceted':
       return (
         <FacetedFilter
+          aria-labelledby={labelledBy}
           value={isFacetedFilterValue(value) ? value : undefined}
           onChange={onChange}
           config={filterConfig}
@@ -342,6 +351,7 @@ function FilterRenderer({
     case 'operator':
       return (
         <OperatorFilter
+          aria-labelledby={labelledBy}
           value={isOperatorFilterValue(value) ? value : undefined}
           onChange={onChange}
           config={filterConfig}

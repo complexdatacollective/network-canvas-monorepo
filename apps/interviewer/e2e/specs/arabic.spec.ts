@@ -145,9 +145,9 @@ test('every screen of Interviewer reads right to left in Arabic', async ({
 
   // The filters, with the protocols to filter by.
   await page.getByTestId('data-filter-trigger').click();
-  const filters = page.getByRole('dialog').filter({ hasText: FILTERS });
+  const filters = page.getByRole('dialog', { name: FILTERS });
   await expect(filters).toBeVisible();
-  await filters.getByRole('combobox').filter({ hasText: PROTOCOL }).click();
+  await filters.getByRole('combobox', { name: PROTOCOL }).click();
   await expect(
     page.getByRole('option', { name: LEAN_E2E_PROTOCOL_NAME }),
   ).toBeVisible();

@@ -4,20 +4,24 @@ import InputField from '../../form/fields/InputField';
 import { type TextFilterConfig } from './types';
 
 type TextFilterProps = {
-  value: string | undefined;
-  onChange: (value: string | undefined) => void;
-  config: TextFilterConfig;
+  'value': string | undefined;
+  'onChange': (value: string | undefined) => void;
+  'config': TextFilterConfig;
+  /** The id of the visible label naming what is filtered. */
+  'aria-labelledby'?: string;
 };
 
 export default function TextFilter({
   value,
   onChange,
   config,
+  'aria-labelledby': ariaLabelledBy,
 }: TextFilterProps) {
   return (
     <InputField
       type="text"
       name="text-filter"
+      aria-labelledby={ariaLabelledBy}
       size="sm"
       value={value ?? ''}
       placeholder={config.placeholder}

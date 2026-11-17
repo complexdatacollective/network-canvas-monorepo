@@ -1,7 +1,7 @@
 import type { Table } from '@tanstack/react-table';
 import { Download, Filter as FilterIcon, Search, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -15,6 +15,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
   Popover,
   PopoverContent,
+  PopoverTitle,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
 import SegmentedSwitcher, {
@@ -232,6 +233,13 @@ export function DataViewToolbar({
 }) {
   const intl = useAppIntl();
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+  // Each field in the filter panel is named by the heading above it.
+  const headingId = useId();
+  const caseIdHeadingId = `${headingId}-case-id`;
+  const protocolHeadingId = `${headingId}-protocol`;
+  const startedHeadingId = `${headingId}-started`;
+  const updatedHeadingId = `${headingId}-updated`;
+  const exportStatusHeadingId = `${headingId}-export-status`;
 
   const columnFilters = table.atoms.columnFilters.get();
   const isFilterActive = columnFilters.length > 0;
@@ -365,17 +373,24 @@ export function DataViewToolbar({
           />
           <PopoverContent align="end" className="w-md">
             <div className="flex w-full flex-col gap-4 p-1">
-              <div className="font-heading text-text/60 text-xs font-extrabold tracking-widest uppercase">
+              <PopoverTitle
+                render={<div />}
+                className="font-heading text-text/60 text-xs font-extrabold tracking-widest uppercase"
+              >
                 {intl.formatMessage(messages.filters)}
-              </div>
+              </PopoverTitle>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={caseIdHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.caseID)}
                 </div>
                 <InputField
                   type="text"
                   name="filter-case-id"
+                  aria-labelledby={caseIdHeadingId}
                   size="sm"
                   value={caseIdColumnFilter}
                   placeholder={intl.formatMessage(messages.matchByCaseID)}
@@ -386,18 +401,25 @@ export function DataViewToolbar({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={protocolHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.protocol)}
                 </div>
                 <DataTableFacetedFilter
                   column={table.getColumn('protocolName')}
                   title={intl.formatMessage(messages.protocol)}
                   options={protocolOptions}
+                  aria-labelledby={protocolHeadingId}
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={startedHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.started)}
                 </div>
                 <DateFilter
@@ -406,11 +428,15 @@ export function DataViewToolbar({
                     table.getColumn('startedAt')?.setFilterValue(next)
                   }
                   config={{ type: 'date' }}
+                  aria-labelledby={startedHeadingId}
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={updatedHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.updated)}
                 </div>
                 <DateFilter
@@ -419,11 +445,15 @@ export function DataViewToolbar({
                     table.getColumn('updatedAt')?.setFilterValue(next)
                   }
                   config={{ type: 'date' }}
+                  aria-labelledby={updatedHeadingId}
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={exportStatusHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.exportStatus)}
                 </div>
                 <BooleanFilter
@@ -436,6 +466,7 @@ export function DataViewToolbar({
                     trueLabel: intl.formatMessage(messages.exported),
                     falseLabel: intl.formatMessage(messages.notExported),
                   }}
+                  aria-labelledby={exportStatusHeadingId}
                 />
               </div>
 
