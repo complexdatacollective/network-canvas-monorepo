@@ -27,6 +27,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
 import {
   type Codebook,
@@ -51,6 +52,7 @@ import CustomShapesField, {
 import type { NodeLabelDraft } from '../../fields/NodeLabelField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
+import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import {
   ResourceClientProvider,
@@ -223,7 +225,7 @@ export const codebookEntityMessages = defineMessages({
     id: 'protocolBuilder.codebookEntity.colorSectionTitle',
     defaultMessage: 'Type color',
     description:
-      'Heading of the group of the entity editor holding the colour this type is drawn in.',
+      'Heading of the group of the edge type editor holding the colour this type is drawn in.',
   },
   appearanceSectionTitle: {
     id: 'protocolBuilder.codebookEntity.appearanceSectionTitle',
@@ -237,12 +239,6 @@ export const codebookEntityMessages = defineMessages({
       'Choose a default shape and optionally map shapes from an attribute.',
     description:
       'Description of the appearance group of the node type editor, saying that the shape a node is drawn as can also follow one of its attributes.',
-  },
-  iconSectionTitle: {
-    id: 'protocolBuilder.codebookEntity.iconSectionTitle',
-    defaultMessage: 'Interface icon',
-    description:
-      'Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step.',
   },
   shapeImageUnavailable: {
     id: 'protocolBuilder.codebookEntity.shapeImageUnavailable',
@@ -280,9 +276,9 @@ export const codebookEntityMessages = defineMessages({
   dynamicLabelHint: {
     id: 'protocolBuilder.codebookEntity.dynamicLabelHint',
     defaultMessage:
-      "Type text or emoji. Use the syringe button, or type '{', to insert an attribute or the default label. Use the logic button beside it to insert an If, whose rules you set, or different wording for each of an attribute’s answers. Click an inserted pill to write the text for each of its cases; logic can be inserted inside a case too.",
+      'Define the label that nodes of this type should use. Use the syringe button to insert a dynamic attribute. Use the logic button to insert a group that conditionally renders different text. See our <docs>documentation article</docs> for more information.',
     description:
-      'Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button that opens the menu of values that can be inserted; the logic button is the toolbar button beside it, which opens the menu of logic; a pill is the chip an inserted value or piece of logic is shown as. The default label is the label the interview would otherwise choose for a node. The quoted brace is the literal character the researcher types.',
+      'Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button, drawn as a syringe, that opens the menu of values that can be inserted; a dynamic attribute is one of the node’s attributes, shown in the label as whatever value each node holds. The logic button is the toolbar button beside it; the group it inserts is a set of alternative wordings, of which the one whose rules are met is shown. The docs tag wraps the link text for the documentation article about node labels.',
   },
   dynamicLabelTextRequired: {
     id: 'protocolBuilder.codebookEntity.dynamicLabelTextRequired',
@@ -317,6 +313,25 @@ export const codebookEntityMessages = defineMessages({
       'Button that saves the codebook entity being edited. Named for the entity because the editor is commonly mounted inside another form that has a save of its own.',
   },
 });
+
+/**
+ * How the label hint's markup is rendered: its link opens the documentation
+ * in a new tab, so following it does not abandon the edit. Built once, at
+ * module level: a tag function written inline is a component defined during
+ * render, and would remount its link on every render.
+ */
+const dynamicLabelHintTags = {
+  docs: (chunks: ReactNode) => (
+    <NativeLink
+      key="docs"
+      href={protocolAuthoringLinks.nodeLabelling}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {chunks}
+    </NativeLink>
+  ),
+};
 
 const NODE_COLOR_OPTIONS = NodeColorSequence.map((value, index) => ({
   value,
@@ -674,29 +689,33 @@ export function CodebookEntityFields({
         />
       </Section>
 
-      <Section
-        title={intl.formatMessage(codebookEntityMessages.colorSectionTitle)}
-      >
-        <UnconnectedField
-          name="color"
-          label={intl.formatMessage(codebookEntityMessages.colorLabel, {
-            entity: subject.entity,
-          })}
-          hint={intl.formatMessage(codebookEntityMessages.colorHint, {
-            entity: subject.entity,
-          })}
-          component={ColorPickerField}
-          value={currentColor}
-          onChange={(value) =>
-            onChange(replaceDraftProperty(draft, 'color', value))
-          }
-          options={colors}
-          required
-          disabled={disabled}
-          errors={errors.color === undefined ? undefined : [errors.color]}
-          showErrors
-        />
-      </Section>
+      {/* A node's colour is one part of how it is drawn, and sits with
+          the rest of its appearance below. An edge has only its colour. */}
+      {subject.entity === 'edge' && (
+        <Section
+          title={intl.formatMessage(codebookEntityMessages.colorSectionTitle)}
+        >
+          <UnconnectedField
+            name="color"
+            label={intl.formatMessage(codebookEntityMessages.colorLabel, {
+              entity: subject.entity,
+            })}
+            hint={intl.formatMessage(codebookEntityMessages.colorHint, {
+              entity: subject.entity,
+            })}
+            component={ColorPickerField}
+            value={currentColor}
+            onChange={(value) =>
+              onChange(replaceDraftProperty(draft, 'color', value))
+            }
+            options={colors}
+            required
+            disabled={disabled}
+            errors={errors.color === undefined ? undefined : [errors.color]}
+            showErrors
+          />
+        </Section>
+      )}
 
       {subject.entity === 'node' && (
         <>
@@ -708,6 +727,26 @@ export function CodebookEntityFields({
               codebookEntityMessages.appearanceSectionDescription,
             )}
           >
+            <UnconnectedField
+              name="color"
+              label={intl.formatMessage(codebookEntityMessages.colorLabel, {
+                entity: subject.entity,
+              })}
+              hint={intl.formatMessage(codebookEntityMessages.colorHint, {
+                entity: subject.entity,
+              })}
+              component={ColorPickerField}
+              value={currentColor}
+              onChange={(value) =>
+                onChange(replaceDraftProperty(draft, 'color', value))
+              }
+              options={colors}
+              required
+              disabled={disabled}
+              errors={errors.color === undefined ? undefined : [errors.color]}
+              showErrors
+            />
+
             <UnconnectedField
               name="customShapes"
               label={intl.formatMessage(
@@ -747,23 +786,41 @@ export function CodebookEntityFields({
               showErrors
             />
 
-            <NodeShapeMappingFields
-              nodeColor={currentColor}
-              customShapes={customShapes}
-              variables={shapeMappingVariables(draft.variables)}
-              {...(currentDefaultShape === undefined
-                ? {}
-                : { defaultShape: currentDefaultShape })}
-              {...(currentMapping === undefined
-                ? {}
-                : { value: currentMapping })}
-              onChange={(mapping) =>
-                onChange(replaceShapeMapping(draft, mapping))
+            {/* Spaced from the icon below as one field is from the next. */}
+            <div className="mb-8">
+              <NodeShapeMappingFields
+                nodeColor={currentColor}
+                customShapes={customShapes}
+                variables={shapeMappingVariables(draft.variables)}
+                {...(currentDefaultShape === undefined
+                  ? {}
+                  : { defaultShape: currentDefaultShape })}
+                {...(currentMapping === undefined
+                  ? {}
+                  : { value: currentMapping })}
+                onChange={(mapping) =>
+                  onChange(replaceShapeMapping(draft, mapping))
+                }
+                {...(errors['shape.dynamic'] === undefined
+                  ? {}
+                  : { error: errors['shape.dynamic'] })}
+                disabled={disabled}
+              />
+            </div>
+
+            <UnconnectedField
+              name="icon"
+              label={intl.formatMessage(codebookEntityMessages.iconLabel)}
+              hint={intl.formatMessage(codebookEntityMessages.iconHint)}
+              component={IconPicker}
+              value={stringValue(draft.icon)}
+              onChange={(value) =>
+                onChange(replaceDraftProperty(draft, 'icon', value ?? ''))
               }
-              {...(errors['shape.dynamic'] === undefined
-                ? {}
-                : { error: errors['shape.dynamic'] })}
+              required
               disabled={disabled}
+              errors={errors.icon === undefined ? undefined : [errors.icon]}
+              showErrors
             />
           </Section>
 
@@ -796,6 +853,7 @@ export function CodebookEntityFields({
                 )}
                 hint={intl.formatMessage(
                   codebookEntityMessages.dynamicLabelHint,
+                  dynamicLabelHintTags,
                 )}
                 component={NodeLabelField}
                 codebook={nodeLabel.codebook}
@@ -819,25 +877,6 @@ export function CodebookEntityFields({
               />
             </Section>
           )}
-
-          <Section
-            title={intl.formatMessage(codebookEntityMessages.iconSectionTitle)}
-          >
-            <UnconnectedField
-              name="icon"
-              label={intl.formatMessage(codebookEntityMessages.iconLabel)}
-              hint={intl.formatMessage(codebookEntityMessages.iconHint)}
-              component={IconPicker}
-              value={stringValue(draft.icon)}
-              onChange={(value) =>
-                onChange(replaceDraftProperty(draft, 'icon', value ?? ''))
-              }
-              required
-              disabled={disabled}
-              errors={errors.icon === undefined ? undefined : [errors.icon]}
-              showErrors
-            />
-          </Section>
         </>
       )}
     </>

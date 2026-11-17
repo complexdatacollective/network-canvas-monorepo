@@ -2,7 +2,7 @@
 title: À propos de Fresco
 date: 7th October 2026
 navOrder: 1
-translatedFrom: 7b5b2f895279ae19ae792ed60a58d6986271f5e0
+translatedFrom: c75a54da60ab7d084ad33cbab5337fc34a0d87c6
 ---
 
 <Paragraph variant="lead">
@@ -92,13 +92,13 @@ Vous devez avoir conscience de plusieurs différences importantes entre Fresco e
 - **Vous gérez aussi les entretiens dans le navigateur**, depuis un tableau de bord destiné à l’équipe de recherche. Vous pouvez y gérer les protocoles, les personnes participantes, les entretiens et la configuration des paramètres.
 - **Fresco stocke toutes les données dans une base de données**. Les données sont donc stockées sur un serveur accessible par Internet, et non sur un ordinateur local. Cela a des conséquences pour la sécurité et la confidentialité des données : vous devrez donc examiner les implications juridiques et éthiques de l’utilisation de Fresco.
 - Il vous revient d’**héberger et de maintenir Fresco** sur vos propres serveurs. Vous aurez donc besoin de certaines compétences techniques pour déployer et maintenir Fresco.
-- Fresco ne prend pas encore en charge toutes les fonctionnalités des applications de bureau. Par exemple, les libellés de nœuds personnalisés (calculés par un script `nodeLabelWorker.js` inclus dans le protocole) ne sont pas pris en charge, et les vidéos et les sons ne peuvent pas se lancer automatiquement au premier chargement en raison des limites des navigateurs. Pour la liste complète des problèmes connus, consultez la section [Limites connues](#known-limitations) ci-dessous.
+- Fresco ne prend pas encore en charge toutes les fonctionnalités des applications de bureau. Par exemple, les vidéos et les sons ne peuvent pas se lancer automatiquement au premier chargement en raison des limites des navigateurs. Pour la liste complète des problèmes connus, consultez la section [Limites connues](#known-limitations) ci-dessous.
 
 ## Limites connues {#known-limitations}
 
 En raison de la nature de la plateforme web, nous n’avons pas pu mettre en œuvre certaines fonctionnalités de l’application de bureau Interviewer. Parmi elles :
 
-- Les [libellés de nœuds personnalisés](/fr/design-protocols/key-concepts/node-labelling#custom-node-labeling-advanced) (script `nodeLabelWorker.js`) ne sont pas mis en œuvre. Ils auraient pu présenter un risque de sécurité ; nous avons donc décidé de ne pas les mettre en œuvre. Si vous utilisiez cette fonctionnalité et avez besoin d’aide pour trouver une solution de remplacement, contactez-nous.
+- Les scripts de libellés de nœuds (`nodeLabelWorker.js`) ne sont pas pris en charge, car l’exécution d’un script contenu dans un protocole aurait présenté un risque de sécurité. Pour rédiger vos propres libellés de nœuds, utilisez plutôt un [libellé dynamique](/fr/design-protocols/key-concepts/node-labelling#dynamic-labels).
 - Les vidéos et les sons de vos étapes « Information » ne peuvent pas se lancer automatiquement au premier chargement en raison des limites des navigateurs. Les personnes participantes doivent avoir interagi avec l’entretien avant que les médias puissent se lancer automatiquement.
 - La préférence d’affichage « Use fullscreen forms » (utiliser des formulaires en plein écran) n’est pas prise en charge. Cette préférence était utile sur les appareils dotés de grands claviers virtuels, comme les tablettes. Fresco est toutefois conçu pour être utilisé sur un ordinateur de bureau ou un ordinateur portable : cette préférence n’y est donc pas nécessaire.
 - La fonctionnalité de sons d’interaction introduite dans la dernière version de l’application de bureau Interviewer n’a pas encore été reprise dans Fresco.

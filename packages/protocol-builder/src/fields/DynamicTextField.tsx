@@ -64,6 +64,7 @@ import {
   conditionSentence,
   conditionsLeftUntested,
   newConditionId,
+  retireConditionId,
 } from '../localization/conditionText.ts';
 import {
   bindingFor,
@@ -1151,6 +1152,7 @@ export function DynamicMessageEditor({
       const conditionId = conditionIdOf(binding);
       if (conditionId === undefined) continue;
       dropped.push(conditionId);
+      retireConditionId(bindingName);
       removedConditions.current.set(bindingName, {
         binding,
         value: Object.hasOwn(conditionValues, conditionId)

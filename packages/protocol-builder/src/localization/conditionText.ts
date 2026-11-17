@@ -142,11 +142,30 @@ export const conditionSentence = (
   });
 };
 
+/**
+ * Ids of conditions whose last use was removed from some text while the
+ * builder has been open. Undoing that removal brings the text back under the
+ * same id, so the id is not given out again: another field on the stage
+ * would otherwise take it for an "If" of its own, and the undo would then
+ * restore the first text testing the second one's rules. Kept for the whole
+ * session, not per field, because every field of a stage shares its ids.
+ */
+const retiredConditionIds = new Set<string>();
+
+/** Marks `id` as one a removal may yet bring back. */
+export const retireConditionId = (id: string): void => {
+  retiredConditionIds.add(id);
+};
+
 /** A new condition's id, which is also the name its binding takes. */
 export const newConditionId = (taken: (id: string) => boolean): string => {
   for (let number = 1; ; number += 1) {
     const candidate = `if${number}`;
-    if (DYNAMIC_VALUE_NAME.test(candidate) && !taken(candidate)) {
+    if (
+      DYNAMIC_VALUE_NAME.test(candidate) &&
+      !retiredConditionIds.has(candidate) &&
+      !taken(candidate)
+    ) {
       return candidate;
     }
   }

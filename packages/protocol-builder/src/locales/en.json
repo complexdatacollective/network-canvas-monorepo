@@ -821,7 +821,7 @@
   },
   "protocolBuilder.codebookEntity.colorSectionTitle": {
     "defaultMessage": "Type color",
-    "description": "Heading of the group of the entity editor holding the colour this type is drawn in."
+    "description": "Heading of the group of the edge type editor holding the colour this type is drawn in."
   },
   "protocolBuilder.codebookEntity.createAttribute": {
     "defaultMessage": "Create attribute",
@@ -852,8 +852,8 @@
     "description": "Label of the text field in the Dynamic label section of the node type editor, where the researcher writes the label shown on every node of this type."
   },
   "protocolBuilder.codebookEntity.dynamicLabelHint": {
-    "defaultMessage": "Type text or emoji. Use the syringe button, or type '{', to insert an attribute or the default label. Use the logic button beside it to insert an If, whose rules you set, or different wording for each of an attribute’s answers. Click an inserted pill to write the text for each of its cases; logic can be inserted inside a case too.",
-    "description": "Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button that opens the menu of values that can be inserted; the logic button is the toolbar button beside it, which opens the menu of logic; a pill is the chip an inserted value or piece of logic is shown as. The default label is the label the interview would otherwise choose for a node. The quoted brace is the literal character the researcher types."
+    "defaultMessage": "Define the label that nodes of this type should use. Use the syringe button to insert a dynamic attribute. Use the logic button to insert a group that conditionally renders different text. See our <docs>documentation article</docs> for more information.",
+    "description": "Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button, drawn as a syringe, that opens the menu of values that can be inserted; a dynamic attribute is one of the node’s attributes, shown in the label as whatever value each node holds. The logic button is the toolbar button beside it; the group it inserts is a set of alternative wordings, of which the one whose rules are met is shown. The docs tag wraps the link text for the documentation article about node labels."
   },
   "protocolBuilder.codebookEntity.dynamicLabelProblem": {
     "defaultMessage": "The label cannot be used as it is written. Correct the problem shown beneath it.",
@@ -902,10 +902,6 @@
   "protocolBuilder.codebookEntity.iconRequired": {
     "defaultMessage": "Choose an icon.",
     "description": "Refusal shown under the icon field of the node type editor when the researcher has chosen no icon."
-  },
-  "protocolBuilder.codebookEntity.iconSectionTitle": {
-    "defaultMessage": "Interface icon",
-    "description": "Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step."
   },
   "protocolBuilder.codebookEntity.iconUnsupported": {
     "defaultMessage": "Choose an icon supported by Network Canvas.",

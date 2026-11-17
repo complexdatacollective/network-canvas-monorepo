@@ -154,7 +154,7 @@ export const ExistingNode: Story = {
 
 /**
  * The surface a researcher actually meets: the editor inside the dialog its
- * trigger opened, with Architect's four topic sections and no heading
+ * trigger opened, with Architect's topic sections and no heading
  * restating the title above them, and with the two controls that commit it in
  * the dialog's own footer.
  */
@@ -185,13 +185,7 @@ export const InADialog: Story = {
       within(dialog)
         .getAllByRole('heading')
         .map((heading) => heading.textContent),
-    ).toEqual([
-      'Edit this node type',
-      'Type identity',
-      'Type color',
-      'Node appearance',
-      'Interface icon',
-    ]);
+    ).toEqual(['Edit this node type', 'Type identity', 'Node appearance']);
 
     // The dialog's own footer, which is what pins Cancel to the left of the
     // row: a control rendered anywhere else in here is part of the form.
