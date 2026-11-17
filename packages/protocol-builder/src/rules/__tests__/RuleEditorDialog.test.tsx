@@ -26,6 +26,7 @@ import {
   offeredAttributes,
 } from '../../testing/attributePicker.ts';
 import type { RuleDraft } from '../rule.ts';
+import { EdgeCountRulesProvider } from '../ruleCodebookSource.ts';
 import {
   describeRule,
   RULE_PROBLEM_CODES,
@@ -648,6 +649,38 @@ describe('the operand a rule compares against', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('spinbutton', { name: /Selected option count/ }),
+      ).toHaveAccessibleDescription(/greater than or equal to 0\./),
+    );
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('refuses a negative number of edges', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(rule: RuleDraft) => void>();
+    render(
+      <EdgeCountRulesProvider value>
+        <SpiedEditor
+          seed={{
+            type: 'edge',
+            options: { type: 'friend', count: 'GREATER_THAN', value: 2 },
+          }}
+          onSave={onSave}
+          onCancel={() => undefined}
+        />
+      </EdgeCountRulesProvider>,
+    );
+
+    // The control's own `min` refuses nothing with native validation off, and
+    // the protocol schema has no negative count of edges.
+    const edges = await screen.findByRole('spinbutton', {
+      name: /Number of edges/,
+    });
+    fireEvent.change(edges, { target: { value: '-1' } });
+    await finishAndClose(user);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('spinbutton', { name: /Number of edges/ }),
       ).toHaveAccessibleDescription(/greater than or equal to 0\./),
     );
     expect(onSave).not.toHaveBeenCalled();

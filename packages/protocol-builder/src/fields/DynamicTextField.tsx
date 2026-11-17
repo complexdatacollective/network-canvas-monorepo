@@ -1134,7 +1134,11 @@ export function DynamicMessageEditor({
       const conditionId = conditionIdOf(kept.binding);
       if (conditionId === undefined) continue;
       recorded.push([used, kept.binding]);
-      restored.push([conditionId, kept.value]);
+      // Only a condition that went with the text comes back with it: one
+      // another binding kept alive may have been edited since.
+      if (!Object.hasOwn(conditionValues, conditionId)) {
+        restored.push([conditionId, kept.value]);
+      }
     }
     if (recorded.length === 0 && removed.length === 0) return;
     const inUse =
