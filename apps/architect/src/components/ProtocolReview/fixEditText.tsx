@@ -61,6 +61,18 @@ export const fixEditMessages = defineMessages({
     description:
       'Label over a piece of text as the suggested fix would change it.',
   },
+  nowIn: {
+    id: 'architect.protocolReview.problem.nowIn',
+    defaultMessage: 'Now · {language}',
+    description:
+      'Label over a piece of text as it is in the protocol now, when the protocol also has that text in other languages. {language} is the name of the language the text shown is in. The dot is a separator.',
+  },
+  afterFixIn: {
+    id: 'architect.protocolReview.problem.afterFixIn',
+    defaultMessage: 'After the fix · {language}',
+    description:
+      'Label over a piece of text as the suggested fix would change it, when the protocol also has that text in other languages. {language} is the name of the language the text shown is in. The dot is a separator.',
+  },
 });
 
 export const FixText = ({
@@ -173,13 +185,24 @@ export const ChangeLabel = ({
 );
 
 /** One text or number a fix changes, as it is now; absent when it has none. */
-export const NowBox = ({ id, edit }: { id?: string; edit: FixTextEdit }) => {
+export const NowBox = ({
+  id,
+  edit,
+  language,
+}: {
+  id?: string;
+  edit: FixTextEdit;
+  /** The language the text is in, when the label should name it. */
+  language?: string;
+}) => {
   const intl = useAppIntl();
   if (edit.now === null && edit.kind !== 'number') return null;
   return (
     <div id={id} className="flex flex-col gap-2">
       <ChangeLabel side="now">
-        {intl.formatMessage(fixEditMessages.now)}
+        {language
+          ? intl.formatMessage(fixEditMessages.nowIn, { language })
+          : intl.formatMessage(fixEditMessages.now)}
       </ChangeLabel>
       <div className="bg-surface border-outline rounded border p-4">
         {edit.now === null ? (

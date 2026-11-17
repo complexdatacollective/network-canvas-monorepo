@@ -817,7 +817,7 @@ describe('one problem at a time, in the panel', () => {
     expect(within(dialog).getByText('Name everyone you know')).toBeVisible();
     expect(
       within(dialog).getByText(
-        'This protocol also has this text in French. Fix for me does not change that version, so check it after the fix.',
+        'Only the English text changes. The French translation keeps its current wording until you update it.',
       ),
     ).toBeVisible();
 
@@ -902,7 +902,7 @@ describe('one problem at a time, in the panel', () => {
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Edit' }));
     const field = within(dialog).getByRole('textbox', {
-      name: 'Prompt collection › Prompt 1 › Prompt text After the fix',
+      name: 'Prompt collection › Prompt 1 › Prompt text After the fix · English',
     });
     expect(field).toHaveTextContent('Name everyone you know');
     await userEvent.clear(field);
@@ -930,7 +930,7 @@ describe('one problem at a time, in the panel', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Edit' }));
     await userEvent.type(
       within(dialog).getByRole('textbox', {
-        name: 'Prompt collection › Prompt 1 › Prompt text After the fix',
+        name: 'Prompt collection › Prompt 1 › Prompt text After the fix · English',
       }),
       ' today',
     );
@@ -1336,7 +1336,7 @@ describe('one problem at a time, in the panel', () => {
     expect(within(dialog).getByText('Name everyone you know')).toBeVisible();
     expect(
       within(dialog).getByText(
-        'This protocol also has this text in French. Fix for me does not change that version, so check it after the fix.',
+        'Only the English text changes. The French translation keeps its current wording until you update it.',
       ),
     ).toBeVisible();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Back' }));

@@ -2599,6 +2599,10 @@
     "defaultMessage": "After the fix",
     "description": "Label over a piece of text as the suggested fix would change it."
   },
+  "architect.protocolReview.problem.afterFixIn": {
+    "defaultMessage": "After the fix · {language}",
+    "description": "Label over a piece of text as the suggested fix would change it, when the protocol also has that text in other languages. {language} is the name of the language the text shown is in. The dot is a separator."
+  },
   "architect.protocolReview.problem.cannotFix": {
     "defaultMessage": "This fix cannot be made for you. Make the change yourself, using the description below.",
     "description": "Notice on a problem whose suggested fix Architect cannot apply automatically."
@@ -2606,6 +2610,10 @@
   "architect.protocolReview.problem.changed": {
     "defaultMessage": "This fix can no longer be made for you, because that part of the protocol changed after the review. Make the change yourself, using the description below.",
     "description": "Notice on a problem whose suggested fix no longer fits the protocol, because the researcher has since changed what it would edit."
+  },
+  "architect.protocolReview.problem.checkTranslations": {
+    "defaultMessage": "Only the {changed} {changedCount, plural, one {text was} other {texts were}} changed. Check the {languages} {count, plural, one {translation} other {translations}} on the <page>Languages</page> page.",
+    "description": "Notice on a problem that was fixed for the researcher, when the fix reworded text the protocol also has in other languages. {changed} names the language or languages the fix reworded and {languages} the ones it left as they were; both are lists of language names already joined for the reader’s language. {changedCount} and {count} are how many languages each list names. The tag around \"Languages\" makes it a link to the page of that name, where translations are edited; keep the tag around that word, which must match the name of the page."
   },
   "architect.protocolReview.problem.concentricCircles": {
     "defaultMessage": "Number of concentric circles",
@@ -2691,13 +2699,13 @@
     "defaultMessage": "Now",
     "description": "Label over a piece of text as it is in the protocol now, shown beside the same text as the suggested fix would change it."
   },
+  "architect.protocolReview.problem.nowIn": {
+    "defaultMessage": "Now · {language}",
+    "description": "Label over a piece of text as it is in the protocol now, when the protocol also has that text in other languages. {language} is the name of the language the text shown is in. The dot is a separator."
+  },
   "architect.protocolReview.problem.numberSetting": {
     "defaultMessage": "{setting} · {name}",
     "description": "Names a number a fix changes, above its Now and After the fix boxes. {setting} is the setting, such as \"Maximum selected\"; {name} is the attribute or stage it belongs to. The dot is a separator."
-  },
-  "architect.protocolReview.problem.otherTranslations": {
-    "defaultMessage": "This protocol also has this text in {languages}. Fix for me does not change {count, plural, one {that version} other {those versions}}, so check {count, plural, one {it} other {them}} after the fix.",
-    "description": "Note under a suggested change to a text that the protocol also has in other languages. {languages} is a list of language names, already joined for the reader’s language (for example \"Spanish and French\"); {count} is how many. \"Fix for me\" is the name of a button and must match its translation."
   },
   "architect.protocolReview.problem.problemOf": {
     "defaultMessage": "Problem {position, number} of {total, number}",
@@ -2710,6 +2718,14 @@
   "architect.protocolReview.problem.textInLanguage": {
     "defaultMessage": "{name} · {language}",
     "description": "Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as \"Page content › Page heading\"; {language} is the language’s name. The dot is a separator."
+  },
+  "architect.protocolReview.problem.translationsKept": {
+    "defaultMessage": "Only the {changed} {changedCount, plural, one {text changes} other {texts change}}. The {languages} {count, plural, one {translation keeps its current wording until you update it} other {translations keep their current wording until you update them}}.",
+    "description": "Notice in a suggested fix that rewords text the protocol also has in other languages. {changed} names the language or languages the fix rewords and {languages} the ones it leaves as they are; both are lists of language names already joined for the reader’s language (for example \"Spanish and French\"). {changedCount} and {count} are how many languages each list names."
+  },
+  "architect.protocolReview.problem.translationsUnchanged": {
+    "defaultMessage": "Not changed: {languages}",
+    "description": "Short note under one text a suggested fix rewords, naming the languages whose translation of that text the fix leaves as it is. {languages} is a list of language names, already joined for the reader’s language (for example \"Spanish and French\")."
   },
   "architect.protocolReview.problem.undo": {
     "defaultMessage": "Undo",
