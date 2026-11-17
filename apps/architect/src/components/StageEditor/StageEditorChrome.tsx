@@ -42,6 +42,7 @@ import { getProtocol, getStageIndex } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
+import { registerOpenStage } from './openStageChange';
 import {
   closeStageDraft,
   publishStageDraft,
@@ -168,6 +169,7 @@ export default function StageEditorChrome({
   return (
     <>
       <StageDraftPublisher />
+      <OpenStageRegistration />
       {outlineHost !== null &&
         createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
       <StageEditorActions
@@ -204,6 +206,22 @@ export function StageEditorHeader({
       : { index: index + 1, total: protocol.stages.length };
 
   return <StageTitle {...(position === undefined ? {} : { position })} />;
+}
+
+/**
+ * Says which stage this editor has open, and how to carry a change into it,
+ * to whatever changes the stored protocol from outside the editor (see
+ * `openStageChange`). A stage being created is not in the protocol yet, so
+ * nothing outside can change it and it is not said.
+ */
+function OpenStageRegistration() {
+  const { identity, creation, mapDocuments } = useStageEditorForm();
+  const isNew = creation !== undefined;
+  useEffect(
+    () => (isNew ? undefined : registerOpenStage(identity.id, mapDocuments)),
+    [identity.id, isNew, mapDocuments],
+  );
+  return null;
 }
 
 /**

@@ -151,6 +151,26 @@ interview is "القائم بالمقابلة".
 | validation                  | التحقق من الصحة                 | "قواعد التحقق" for validation rules.                                                                                                                                                                                                     |
 | variable                    | متغيّر (متغيّرات)                 | Where the English says "attribute", write "سمة".                                                                                                                                                                                         |
 
+## Logic in text and dynamic labels
+
+Text that shows values (a prompt, a form question, a node type's own label) can
+hold logic: an "If" whose rules the researcher sets, or different wording for
+each of an attribute's answers. The terms are the ones the editors ship.
+
+| English                         | Arabic                       | Notes                                                                                      |
+| ------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------ |
+| dynamic label                   | التسمية الديناميكية          | The node type editor's section and toggle; «التسمية الديناميكية» when named in a sentence. |
+| default label                   | التسمية الافتراضية            | The label the interview would otherwise choose for a node.                                 |
+| logic (inserted in a text)      | منطق                         | "إدراج منطق", "زر المنطق". Not "منطق التخطي", which is skip logic.                         |
+| If / If not                     | إذا / إذا لم تتحقق           | Names of a block's rows; «إذا» in guillemets when named in a sentence.                     |
+| Else if / Else if not           | وإلا فإذا / وإلا فإذا لم تتحقق |                                                                                            |
+| Otherwise                       | وإلا                          | The row shown when no rule set is met.                                                     |
+| wording (one version of a text) | صياغة                        | "صياغة مختلفة لكل إجابة".                                                                  |
+| number of edges                 | عدد الروابط                  | The rule that counts a node's edges.                                                       |
+| pill                            | شارة                         | The chip an inserted value or piece of logic is shown as.                                  |
+| emoji                           | رموز تعبيرية                 |                                                                                            |
+| syringe button                  | زر الحقنة                    | The toolbar button that opens the menu of values.                                          |
+
 ## Editor and form terms
 
 | English                                           | Arabic                                     | Notes                                                                                                                                                                                                                                                                                                                               |

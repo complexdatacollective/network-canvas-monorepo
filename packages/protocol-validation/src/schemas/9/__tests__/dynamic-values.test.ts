@@ -1102,12 +1102,19 @@ describe('dynamic values in stage text', () => {
     // Read from the schema itself, through every optional field and union
     // variant, so a site the complete protocol happens not to fill (a hint,
     // a scale's labels) is inventoried too.
-    const sites = schemaDynamicValueSites();
-    expect(sites.every((site) => site.startsWith('stages '))).toBe(true);
+    const allSites = schemaDynamicValueSites();
+    // The one site outside stages is a node type's own label, which shows
+    // values about the node it is on (`findNodeLabelProblems`).
+    const sites = allSites.filter((site) => site.startsWith('stages '));
+    expect(allSites.filter((site) => !site.startsWith('stages '))).toEqual([
+      'codebook.node.*.dynamicLabel.text nodeLabel',
+    ]);
     const inventory = sites.map((site) => site.slice('stages '.length));
     // What the walk of a document tags is a part of that inventory.
     const collected = collectLocalizedStrings(completeProtocol())
-      .filter((hit) => hit.dynamicValues !== undefined)
+      .filter(
+        (hit) => hit.dynamicValues !== undefined && hit.path[0] === 'stages',
+      )
       .map((hit) => {
         const [, index, ...rest] = hit.path;
         const stage = (completeProtocol().stages as Stage[])[index as number];

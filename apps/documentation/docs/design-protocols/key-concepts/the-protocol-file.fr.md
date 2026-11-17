@@ -1,7 +1,7 @@
 ---
 title: Le fichier de protocole
 navOrder: 1
-translatedFrom: 40092f88310335767b2d6122e9461605a97d223f
+translatedFrom: dcc860974d010f3a1b0539d30b0fa36dc902b62c
 ---
 
 <Definition>
@@ -23,7 +23,7 @@ Dans les deux cas, le fichier `.netcanvas` contient toutes les données de votre
 
 Même si vous pouvez traiter un fichier `.netcanvas` comme un fichier unique, il s’agit en réalité d’un dossier compressé. À l’intérieur, les étapes, les consignes et la logique qui composent votre entretien sont stockées dans un fichier appelé `protocol.json`, et toutes les ressources que vous avez ajoutées, comme des images, des vidéos ou des données de liste, se trouvent à côté, dans un dossier `assets/`.
 
-Pour examiner le contenu d’un protocole, renommez-le pour que son nom se termine par `.zip`, puis décompressez-le. La principale raison de le faire est la procédure des [libellés de nœuds personnalisés](/fr/design-protocols/key-concepts/node-labelling#custom-node-labeling-advanced), qui consiste à placer un fichier `nodeLabelWorker.js` au premier niveau du protocole, dans le même dossier que `protocol.json`. Une fois le fichier ajouté, compressez de nouveau le dossier, renommez-le pour que son nom se termine par `.netcanvas`, et importez-le dans Interviewer. Si vous modifiez ensuite le protocole dans Architect, le fichier JavaScript est conservé lors de l’enregistrement.
+Pour examiner le contenu d’un protocole, renommez-le pour que son nom se termine par `.zip`, puis décompressez-le. Vous aurez rarement besoin de le faire. Pour réutiliser le protocole, compressez de nouveau le dossier et renommez-le pour que son nom se termine par `.netcanvas`.
 
 ## Créer des fichiers de protocole {#authoring-protocol-files}
 

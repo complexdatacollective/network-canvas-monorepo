@@ -19,6 +19,8 @@ import {
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
+  type VariableValue,
+  VariableValueSchema,
 } from '@codaco/shared-consts';
 
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
@@ -29,26 +31,23 @@ import { DynamicValueEntity } from './DynamicValueScope';
 const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
 
 /**
- * The answers a node's label can be read from: text and numbers, and the
- * stored ciphertext of an encrypted one. No other kind of answer is ever a
- * node's label.
+ * The answers as a node stores them: every value a node attribute can hold.
+ * A node type's own label can show or test any of its attributes (a Toggle's
+ * answer, the options chosen for a categorical one), so none of them is
+ * dropped; only what no node could store, such as an answer still empty, is.
  */
-const labelAttributes = (
+const storableAttributes = (
   attributes: Readonly<Record<string, unknown>>,
-): Record<string, string | number | number[]> =>
-  Object.fromEntries(
-    Object.entries(attributes).filter(
-      (entry): entry is [string, string | number | number[]] => {
-        const value: unknown = entry[1];
-        return (
-          typeof value === 'string' ||
-          typeof value === 'number' ||
-          (Array.isArray(value) &&
-            value.every((item) => typeof item === 'number'))
-        );
-      },
-    ),
-  );
+): Record<string, VariableValue> => {
+  const stored: Record<string, VariableValue> = {};
+  for (const [name, value] of Object.entries(attributes)) {
+    const parsed = VariableValueSchema.safeParse(value);
+    // Written as its own property: an attribute's id is any string a
+    // protocol holds, `__proto__` among them.
+    if (parsed.success) writeOwnProperty(stored, name, parsed.data);
+  }
+  return stored;
+};
 
 const nodeWithId = (state: RootState, id: string | undefined) =>
   id === undefined
@@ -231,7 +230,7 @@ export function FormDynamicValues({
       ...storedNode,
       [entityPrimaryKeyProperty]: entityId ?? '',
       type: formSubject.type,
-      [entityAttributesProperty]: labelAttributes(liveAttributes),
+      [entityAttributesProperty]: storableAttributes(liveAttributes),
     };
   }, [labelNode, liveAttributes, formSubject, storedNode, entityId]);
   const ruleLabel = useNodeLabel(liveNode);
@@ -254,6 +253,11 @@ export function FormDynamicValues({
         liveAttributes === undefined || formSubject == null
           ? {}
           : { [ROLES[formSubject.entity]]: liveAttributes },
+      // A node or edge the form is adding is not in the network yet.
+      ids:
+        entityId === undefined || formSubject == null
+          ? {}
+          : { [ROLES[formSubject.entity]]: entityId },
       labels: {
         ...(nodeLabel !== undefined && { node: nodeLabel }),
         ...(fromLabel !== undefined && { edgeFrom: fromLabel }),
@@ -266,7 +270,15 @@ export function FormDynamicValues({
           ? {}
           : { node: isParticipant },
     }),
-    [liveAttributes, formSubject, nodeLabel, fromLabel, toLabel, isParticipant],
+    [
+      liveAttributes,
+      formSubject,
+      entityId,
+      nodeLabel,
+      fromLabel,
+      toLabel,
+      isParticipant,
+    ],
   );
 
   return <DynamicValueEntity {...entities}>{children}</DynamicValueEntity>;

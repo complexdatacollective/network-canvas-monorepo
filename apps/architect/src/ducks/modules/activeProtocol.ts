@@ -12,7 +12,9 @@ import {
   type CurrentProtocol,
   type LocalizedString,
 } from '@codaco/protocol-validation';
+import type { StudyContext } from '@codaco/shared-consts';
 import type { AppDispatch, RootState } from '~/ducks/store';
+import { serializeProtocolReviewSettings } from '~/protocolReview/settings';
 import {
   getProtocol,
   getCanRedo,
@@ -148,6 +150,43 @@ const activeProtocolSlice = createSlice({
       applyLocaleOperation(state, (protocol) =>
         setLocalizedStrings(protocol, action.payload.updates),
       ),
+    // Turning the experiment on keeps every other experiment as it is.
+    enableProtocolReview: (state) => {
+      if (!state) return state;
+      return {
+        ...state,
+        experiments: {
+          ...state.experiments,
+          protocolReview: state.experiments?.protocolReview ?? {},
+        },
+      };
+    },
+    // Turning it off removes the key, and the study details with it; a
+    // protocol left with no experiments stores none.
+    disableProtocolReview: (state) => {
+      if (!state) return state;
+      const { protocolReview: _removed, ...others } = state.experiments ?? {};
+      const { experiments: _previous, ...rest } = state;
+      return Object.keys(others).length > 0
+        ? { ...rest, experiments: others }
+        : rest;
+    },
+    setProtocolReviewStudyContext: (
+      state,
+      action: PayloadAction<StudyContext>,
+    ) => {
+      if (!state) return state;
+      return {
+        ...state,
+        experiments: {
+          ...state.experiments,
+          protocolReview: {
+            ...state.experiments?.protocolReview,
+            ...serializeProtocolReviewSettings(action.payload),
+          },
+        },
+      };
+    },
     clearActiveProtocol: (_state) => {
       // Assets are namespaced per protocol and owned by the library; deleting a
       // protocol (deleteLibraryProtocol) removes its assets. Closing the active
@@ -227,6 +266,9 @@ export const {
   changeProtocolLocale,
   setProtocolTranslation,
   setProtocolLocalizedStrings,
+  enableProtocolReview,
+  disableProtocolReview,
+  setProtocolReviewStudyContext,
 } = activeProtocolSlice.actions;
 
 export const actionCreators = {

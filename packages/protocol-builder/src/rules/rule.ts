@@ -1,3 +1,9 @@
+import {
+  type EdgeCountComparison,
+  EdgeCountComparisons,
+  edgeCountNeedsValue,
+} from '@codaco/protocol-validation';
+
 import { operatorNeedsOperand } from './operators.ts';
 
 /**
@@ -28,6 +34,26 @@ export type RuleDraft = {
   options?: RuleDraftOptions;
   [key: string]: unknown;
 };
+
+const edgeCountComparisons: ReadonlySet<unknown> = new Set(
+  EdgeCountComparisons,
+);
+
+export const isEdgeCountComparison = (
+  value: unknown,
+): value is EdgeCountComparison => edgeCountComparisons.has(value);
+
+/**
+ * Whether a draft counts the edges that join a node to others, rather than
+ * comparing an answer: an edge rule that holds a `count`, as the schema
+ * tells the two apart. Only a condition (what a piece of text chooses its
+ * wording by) builds one, and it may name no edge type, to count every edge.
+ */
+export const isEdgeCountRuleDraft = (rule: RuleDraft): boolean =>
+  rule.type === 'edge' &&
+  typeof rule.options === 'object' &&
+  rule.options !== null &&
+  Object.hasOwn(rule.options, 'count');
 
 /**
  * Whether a field of a rule has actually been answered.
@@ -78,6 +104,13 @@ export const incompleteRulePart = (
   switch (rule.type) {
     case 'node':
     case 'edge': {
+      if (isEdgeCountRuleDraft(rule)) {
+        if (!isEdgeCountComparison(options.count)) return 'operator';
+        return edgeCountNeedsValue(options.count) &&
+          typeof options.value !== 'number'
+          ? 'value'
+          : undefined;
+      }
       if (!isAnswered(options.type)) return 'entityType';
       if (!Object.hasOwn(options, 'attribute')) {
         return isAnswered(options.operator) ? undefined : 'operator';

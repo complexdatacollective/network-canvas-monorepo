@@ -334,7 +334,11 @@ const walk = (
           kind: 'attribute',
           path,
           variableId: parsed.variableId,
-          subject: dynamicValueSubject(parsed.role, ctx.stageSubject),
+          // A binding of a node type's own label is about a node of that
+          // type, which the codebook path names; any other is a stage's.
+          subject:
+            resolveSubject('owningVariable', path, ctx) ??
+            dynamicValueSubject(parsed.role, ctx.stageSubject),
         },
       ];
     }
@@ -520,11 +524,24 @@ export const collectEntityTypeReferencesFromSchema = (
     .filter(isTypeHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
-/** The same question asked of a whole protocol. */
+/**
+ * The same question asked of a whole protocol.
+ *
+ * A type's own definition naming that type is left out: a rule in a node
+ * type's label names the type the label belongs to, which is not a use of it
+ * by anything else. Counted, it would keep a type no stage uses from being
+ * deleted, and list the type as used by itself.
+ */
 export const collectEntityTypeReferences = (
   protocol: unknown,
 ): EntityTypeReferenceHit[] =>
-  collectEntityTypeReferencesFromSchema(ProtocolStructureSchema, protocol);
+  collectEntityTypeReferencesFromSchema(
+    ProtocolStructureSchema,
+    protocol,
+  ).filter(
+    ({ entity, typeId, path }) =>
+      !(path[0] === 'codebook' && path[1] === entity && path[2] === typeId),
+  );
 
 /**
  * Every `assetManifest` entry referenced by a protocol, discovered from the

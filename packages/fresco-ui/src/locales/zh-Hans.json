@@ -141,6 +141,7 @@
   "frescoUi.passwordField.strengthStrong": "强",
   "frescoUi.passwordField.strengthWeak": "弱",
   "frescoUi.richTextEditor.applyLinkShort": "应用",
+  "frescoUi.richTextEditor.emojiMenu": "插入表情符号",
   "frescoUi.richTextEditor.emptyVersion": "不显示任何内容",
   "frescoUi.richTextEditor.insertMenuNoMatches": "没有与搜索匹配的内容。",
   "frescoUi.richTextEditor.insertMenuSearch": "搜索",

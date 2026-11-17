@@ -238,13 +238,14 @@ describe('v8 to v9 localization migration', () => {
     // Schema 8 has no Language Chooser, so a schema 8 document has none of
     // its text to wrap. The migration writes none of the wording Network
     // Canvas supplies (the interview shows it), so those texts are not
-    // wrapped either.
+    // wrapped either. Nor does schema 8 have a node type's own label.
     const missed = [...declarations]
       .filter(([declaration]) => !wrapped.has(declaration))
       .map(([, where]) => where)
       .filter(
         (where) =>
           !where.includes('[type=LanguageChooser]') &&
+          !where.endsWith('.dynamicLabel.text') &&
           !isSuppliedDeclaration(where),
       );
     expect(missed).toEqual([]);

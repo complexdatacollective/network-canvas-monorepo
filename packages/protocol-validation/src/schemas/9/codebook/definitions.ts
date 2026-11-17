@@ -10,6 +10,7 @@ import {
   type NodeColorReference,
 } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { NodeLabelSchema } from '../node-label.ts';
 import {
   EdgeVariablesSchema,
   EgoVariablesSchema,
@@ -157,6 +158,11 @@ const NodeDefinitionSchema = z.strictObject({
   color: NodeColorReferenceSchema,
   customShapes: CustomShapesSchema.optional(),
   shape: ShapeSchema,
+  /**
+   * How nodes of this type are labelled, when the type says so itself;
+   * absent, the interview chooses each node's label by its own rules.
+   */
+  dynamicLabel: NodeLabelSchema.optional(),
 });
 
 export { NodeDefinitionSchema };

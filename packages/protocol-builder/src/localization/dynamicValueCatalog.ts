@@ -5,6 +5,7 @@ import {
   type DynamicValueRole,
   type DynamicValues,
   type DynamicValueSiteContext,
+  dynamicValueConditionPathFor,
   dynamicValueLabelPathFor,
   dynamicValueNamesIn,
   dynamicValueParticipantPathFor,
@@ -19,6 +20,7 @@ import {
   MISSING_CASE,
   messageStructure,
   PARTICIPANT_CASE,
+  TRUE_CASE,
 } from '@codaco/protocol-validation';
 
 /**
@@ -33,7 +35,19 @@ export type DynamicValueChoice = Readonly<{
    * What it is: a value the interview knows, an attribute, the label the
    * interview shows on a node, or whether that node is the participant.
    */
-  kind: 'intrinsic' | 'attribute' | 'label' | 'participant';
+  kind: 'intrinsic' | 'attribute' | 'label' | 'participant' | 'condition';
+  /**
+   * For a node type's own label, where "the label" is the one the interview
+   * would otherwise have chosen for the node.
+   */
+  defaultLabel?: true;
+  /**
+   * For a node type's own label, an attribute of the node the label is on,
+   * which the menu lists as that node's rather than as the context's.
+   */
+  ownNode?: true;
+  /** The condition a condition value names. */
+  condition?: Readonly<{ id: string }>;
   /** The role whose value it is, or undefined for an interview value. */
   role: DynamicValueRole | undefined;
   /** The attribute's name, or the interview value's key; empty for a label. */
@@ -122,8 +136,13 @@ export const dynamicValueChoices = (
 ): DynamicValueChoice[] => {
   const intrinsics =
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the keys of a const object are exactly IntrinsicDynamicValue, which is defined as keyof it
-    (Object.keys(INTRINSIC_DYNAMIC_VALUES) as IntrinsicDynamicValue[]).map(
-      (name): DynamicValueChoice => ({
+    (Object.keys(INTRINSIC_DYNAMIC_VALUES) as IntrinsicDynamicValue[])
+      // A node type's own label shows none of them.
+      .filter(
+        (name) =>
+          dynamicValueStatus({ path: name }, context).status === 'available',
+      )
+      .map((name): DynamicValueChoice => ({
         path: name,
         kind: 'intrinsic',
         role: undefined,
@@ -134,8 +153,7 @@ export const dynamicValueChoices = (
         numeric: false,
         options: [],
         unshowable: undefined,
-      }),
-    );
+      }));
   const labelOf = (role: DynamicValueRole): DynamicValueChoice[] => {
     if (!isLabelledDynamicValueRole(role)) return [];
     const path = dynamicValueLabelPathFor(role);
@@ -154,9 +172,38 @@ export const dynamicValueChoices = (
         numeric: false,
         options: [],
         unshowable: undefined,
+        ...(context.nodeLabel !== undefined && {
+          defaultLabel: true,
+          ownNode: true,
+        }),
       },
     ];
   };
+  // The conditions declared beside the text: each true or false, and so
+  // only ever worded for, as an "If".
+  const conditions = [...(context.conditions ?? [])].flatMap(
+    ([id, { about }]): DynamicValueChoice[] => {
+      const path = dynamicValueConditionPathFor(id);
+      if (dynamicValueStatus({ path }, context).status !== 'available') {
+        return [];
+      }
+      return [
+        {
+          path,
+          kind: 'condition',
+          condition: { id },
+          role: about ?? 'ego',
+          variableId: '',
+          variableName: undefined,
+          variableType: 'boolean',
+          optional: false,
+          numeric: false,
+          options: [{ value: true, label: undefined }],
+          unshowable: 'switch',
+        },
+      ];
+    },
+  );
   // Whether the node is the participant only chooses wording: a version for
   // the participant, and the other for everyone else.
   const participantOf = (role: DynamicValueRole): DynamicValueChoice[] => {
@@ -212,6 +259,7 @@ export const dynamicValueChoices = (
                     : full.component === 'Toggle'
                       ? 'switch'
                       : 'needsLabels',
+                ...(context.nodeLabel !== undefined && { ownNode: true }),
               },
             ];
           },
@@ -226,8 +274,16 @@ export const dynamicValueChoices = (
     ...participantOf(role),
     ...attributesOf(role),
   ]);
-  return [...attributes, ...intrinsics];
+  return [...attributes, ...intrinsics, ...conditions];
 };
+
+/**
+ * Whether `choice` is only ever true or false, and so only chooses between
+ * two versions of the text and is never shown itself: whether a node is the
+ * participant, or a condition declared beside the text.
+ */
+export const isFlagChoice = (choice: DynamicValueChoice): boolean =>
+  choice.kind === 'participant' || choice.kind === 'condition';
 
 /** Words of `text` as an argument name: ASCII letters and digits, camel-cased. */
 const identifierFrom = (text: string): string => {
@@ -281,6 +337,12 @@ const nameFor = (
     return unique(prefix === '' ? 'nodeLabel' : `${prefix}Label`, taken);
   }
   if (choice.kind === 'participant') return unique('isParticipant', taken);
+  if (choice.kind === 'condition') {
+    return unique(
+      identifierFrom(choice.condition?.id ?? '') || 'condition',
+      taken,
+    );
+  }
   const own =
     identifierFrom(choice.variableName ?? '') ||
     identifierFrom(choice.variableId) ||
@@ -348,9 +410,12 @@ export const bindingFor = (
     }
   }
   // Whether the node is the participant has its one case, for the
-  // participant, under the name the schema gives it.
-  const participantCases = { [PARTICIPANT_CASE]: true };
-  if (choice.kind === 'participant') {
+  // participant, under the name the schema gives it; so has anything else
+  // that is only true or false (a condition).
+  const participantCases: Record<string, boolean> = {
+    [choice.kind === 'participant' ? PARTICIPANT_CASE : TRUE_CASE]: true,
+  };
+  if (isFlagChoice(choice)) {
     const bound = Object.entries(bindings).find(
       ([, binding]) => binding.path === choice.path,
     );
@@ -382,12 +447,11 @@ export const bindingFor = (
   );
   return {
     name,
-    binding:
-      choice.kind === 'participant'
-        ? { path: choice.path, cases: participantCases }
-        : choice.options.length === 0
-          ? { path: choice.path }
-          : { path: choice.path, cases: casesFor(choice.options, labelText) },
+    binding: isFlagChoice(choice)
+      ? { path: choice.path, cases: participantCases }
+      : choice.options.length === 0
+        ? { path: choice.path }
+        : { path: choice.path, cases: casesFor(choice.options, labelText) },
   };
 };
 

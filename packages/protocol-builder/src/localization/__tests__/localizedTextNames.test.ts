@@ -87,6 +87,13 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     'Flag for follow-up',
   ],
   [
+    ['codebook', 'node', 'person', 'dynamicLabel'],
+    {
+      text: en('Person {nodeLabel}'),
+      dynamicValues: { nodeLabel: { path: 'node.$label' } },
+    },
+  ],
+  [
     ['codebook', 'node', 'person', 'variables', 'contactType', 'name'],
     'Contact type',
   ],

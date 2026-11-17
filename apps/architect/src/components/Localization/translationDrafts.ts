@@ -22,6 +22,7 @@ import {
   type FieldTextProblem,
   type FieldTextRule,
   findDynamicValueProblems,
+  findNodeLabelProblems,
   findFieldTextProblems,
   isBlankMessage,
   isBlankText,
@@ -351,13 +352,23 @@ const dynamicValueProblem = (
 ): string | undefined => {
   if (row.dynamicValues === undefined) return undefined;
   const at = JSON.stringify([...row.path, locale]);
-  return findDynamicValueProblems(
-    {
-      codebook: protocol.codebook,
-      stages: protocol.stages,
-    },
-    [{ path: [...row.path], value, dynamicValues: row.dynamicValues }],
-  ).find((problem) => JSON.stringify(problem.path) === at)?.message;
+  const hits = [
+    { path: [...row.path], value, dynamicValues: row.dynamicValues },
+  ];
+  // A node type's own label is checked against its codebook entry; any
+  // other text against its stage.
+  const problems =
+    row.dynamicValues === 'nodeLabel'
+      ? findNodeLabelProblems({ codebook: protocol.codebook }, hits)
+      : findDynamicValueProblems(
+          {
+            codebook: protocol.codebook,
+            stages: protocol.stages,
+          },
+          hits,
+        );
+  return problems.find((problem) => JSON.stringify(problem.path) === at)
+    ?.message;
 };
 
 export type Words = Readonly<{

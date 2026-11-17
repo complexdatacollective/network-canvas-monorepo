@@ -19,11 +19,6 @@
     "es": "Icono",
     "from": "74a07e626 architect.typeEditor.typeEditor.icon"
   },
-  "protocolBuilder.codebookEntity.iconSectionTitle": {
-    "en": "Interface icon",
-    "es": "Icono de la interfaz",
-    "from": "74a07e626 architect.typeEditor.typeEditor.interfaceIcon"
-  },
   "protocolBuilder.codebookEntity.identitySectionDescription": {
     "en": "Name this type for the codebook and exported data.",
     "es": "Asigna un nombre a este tipo para el libro de códigos y los datos exportados.",

@@ -420,7 +420,7 @@ describe('TranslationTable: texts with versions', () => {
     inside: RegExp,
   ) => {
     await user.click(
-      within(row).getByRole('button', { name: 'Participant or someone else' }),
+      within(row).getByRole('button', { name: /^Participant or someone else/ }),
     );
     const rows = await screen.findAllByRole('textbox', { name: inside });
     const [first, last] = rows;

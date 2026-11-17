@@ -217,7 +217,7 @@ describe('an editor opened in a dialog', () => {
 
   /**
    * The entity editor writes no heading of its own: the dialog's title already
-   * names it, so its four topic sections — Architect's — start one below that
+   * names it, so its topic sections — Architect's — start one below that
    * title, and the alert it raises is their peer rather than their child.
    */
   it('puts the entity editor’s sections and alert under the dialog title', async () => {
@@ -250,11 +250,9 @@ describe('an editor opened in a dialog', () => {
       'h2: Create node type',
       'h3: Could not save this entity',
       'h3: Type identity',
-      'h3: Type color',
       'h3: Node appearance',
-      'h3: Interface icon',
     ]);
-    await expectHeadingOrder(6);
+    await expectHeadingOrder(4);
   });
 });
 

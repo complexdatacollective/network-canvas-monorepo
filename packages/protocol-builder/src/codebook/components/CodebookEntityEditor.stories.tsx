@@ -3,10 +3,12 @@ import { expect, screen, userEvent, within } from 'storybook/test';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import NodeLabelField from '../../fields/NodeLabelField.tsx';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import { buttonPaint, TRANSPARENT } from '../../testing/buttonPaint.ts';
 import { ProtocolWithShapeImages } from '../../testing/ProtocolWithShapeImages.tsx';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
+import { NodeLabelFieldProvider } from '../nodeLabelFieldSlot.ts';
 import CodebookEntityEditor from './CodebookEntityEditor.tsx';
 
 const PERSON: SectionDoc = {
@@ -31,6 +33,17 @@ const PERSON: SectionDoc = {
     },
   },
 };
+
+/** The type as the protocol's codebook holds it, for a label to be written against. */
+const PERSON_NODE = {
+  name: 'Person',
+  color: 'node-color-seq-1',
+  icon: 'add-a-person',
+  shape: { default: 'circle' },
+  variables: {
+    name: { name: 'Name', type: 'text', component: 'Text' },
+  },
+} as const;
 
 /** The same type, already drawing itself from one of its own attributes. */
 const PERSON_WITH_SHAPE_MAPPING: SectionDoc = {
@@ -100,7 +113,9 @@ const meta = {
         <ProtocolLocalizationProvider
           localization={{ defaultLocale: 'en', locales: ['en'] }}
         >
-          <Story />
+          <NodeLabelFieldProvider value={NodeLabelField}>
+            <Story />
+          </NodeLabelFieldProvider>
         </ProtocolLocalizationProvider>
       </ProtocolWithShapeImages>
     ),
@@ -139,7 +154,7 @@ export const ExistingNode: Story = {
 
 /**
  * The surface a researcher actually meets: the editor inside the dialog its
- * trigger opened, with Architect's four topic sections and no heading
+ * trigger opened, with Architect's topic sections and no heading
  * restating the title above them, and with the two controls that commit it in
  * the dialog's own footer.
  */
@@ -170,13 +185,7 @@ export const InADialog: Story = {
       within(dialog)
         .getAllByRole('heading')
         .map((heading) => heading.textContent),
-    ).toEqual([
-      'Edit this node type',
-      'Type identity',
-      'Type color',
-      'Node appearance',
-      'Interface icon',
-    ]);
+    ).toEqual(['Edit this node type', 'Type identity', 'Node appearance']);
 
     // The dialog's own footer, which is what pins Cancel to the left of the
     // row: a control rendered anywhere else in here is part of the form.
@@ -378,5 +387,62 @@ export const AddingAShape: Story = {
         { name: 'Select shape school' },
       ),
     ).toBeInTheDocument();
+  },
+};
+
+/** The same type, labelling its own nodes with one of their attributes. */
+const PERSON_WITH_DYNAMIC_LABEL: SectionDoc = {
+  ...PERSON,
+  dynamicLabel: {
+    text: { en: '{name} 🙂' },
+    dynamicValues: { name: { path: 'node.name' } },
+  },
+};
+
+/**
+ * A node type that writes its own label: the Dynamic label section, switched
+ * on, between the appearance and the icon. Opened on a label already written,
+ * which is the state a reviewer cannot reach by looking at a fresh type.
+ */
+export const WithADynamicLabel: Story = {
+  render: () => (
+    <CodebookEntityEditor
+      mode="update"
+      sessionKey="storybook-person-label-1"
+      dialog={{ title: 'Edit this node type', open: true }}
+      subject={{ entity: 'node', type: 'person' }}
+      initialDraft={PERSON_WITH_DYNAMIC_LABEL}
+      authoritativeDocument={PERSON_WITH_DYNAMIC_LABEL}
+      existingEntityNames={['Place']}
+      codebook={{ node: { person: PERSON_NODE } }}
+      onCancel={() => undefined}
+      onSubmit={() =>
+        Promise.resolve({
+          status: 'refused' as const,
+          message: codebookRefusalMessage({ kind: 'unreachable' }),
+          refusal: { kind: 'unreachable' } as const,
+        })
+      }
+    />
+  ),
+  play: async () => {
+    const editor = within(
+      await screen.findByRole('dialog', { name: 'Edit this node type' }),
+    );
+    await expect(
+      editor.getByRole('switch', { name: 'Dynamic label' }),
+    ).toBeChecked();
+    // The label as it is stored: the attribute it shows, then its emoji.
+    const label = await editor.findByRole('textbox', { name: /^Label/ });
+    await expect(label).toHaveTextContent(/Name/);
+    await expect(label).toHaveTextContent('🙂');
+
+    // Switched off, the label's field goes with it.
+    await userEvent.click(
+      editor.getByRole('switch', { name: 'Dynamic label' }),
+    );
+    await expect(
+      editor.queryByRole('textbox', { name: /^Label/ }),
+    ).not.toBeInTheDocument();
   },
 };

@@ -253,7 +253,7 @@ export const ChoiceInASentence: Story = {
       name: 'Missing parents item',
     });
     const pill = within(line).getByRole('button', {
-      name: 'Participant or someone else',
+      name: /^Participant or someone else/,
     });
     await expect(pill).toHaveAttribute('aria-expanded', 'false');
     await expect(
@@ -295,7 +295,7 @@ export const ChoiceInASentenceInsideAnOpenRow: Story = {
       name: 'About someone else',
     });
     const pill = within(last).getByRole('button', {
-      name: 'Participant or someone else',
+      name: /^Participant or someone else/,
     });
     await expect(pill).toHaveAttribute('aria-expanded', 'false');
 

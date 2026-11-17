@@ -47,6 +47,7 @@ import {
 
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import {
+  useConditionsRegistration,
   useDynamicValuesRegistration,
   withoutUnusedBindings,
 } from '../localization/useDynamicValueSite.ts';
@@ -801,11 +802,19 @@ function StageEditorFormBody({
  * route passes through untouched.
  */
 /**
- * Puts the stage's dynamic value bindings among what a save writes, whichever
- * sections the stage has: a text field anywhere in it may add one.
+ * Puts the stage's dynamic value bindings, and the conditions its text tests,
+ * among what a save writes, whichever sections the stage has: a text field
+ * anywhere in it may add one.
  */
 function DynamicValuesRegistration() {
-  return <div hidden {...useDynamicValuesRegistration()} />;
+  const bindings = useDynamicValuesRegistration();
+  const conditions = useConditionsRegistration();
+  return (
+    <>
+      <div hidden {...bindings} />
+      <div hidden {...conditions} />
+    </>
+  );
 }
 
 function sectionProblems(sections: readonly StageSection[]): string[] {

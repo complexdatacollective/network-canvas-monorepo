@@ -427,6 +427,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           withDynamicValueEntities(dynamicValueSources, {
             attributes: { node: node[entityAttributesProperty] },
             labels: { node: nodeLabel },
+            ids: { node: node[entityPrimaryKeyProperty] },
           }),
       );
 

@@ -51,6 +51,15 @@ export type RichTextInsertMenuItem = Readonly<{
    */
   disabled?: boolean;
   content: JSONContent | readonly JSONContent[];
+  /**
+   * For something that has to be set up before it can be inserted (the
+   * rules of an "If"): chosen, the menu closes and calls this in place of
+   * inserting `content`. Calling `insert` then inserts what it is given
+   * where the caret was; never calling it inserts nothing.
+   */
+  request?: (
+    insert: (content: JSONContent | readonly JSONContent[]) => void,
+  ) => void;
 }>;
 
 /**
@@ -86,9 +95,12 @@ const groupsOf = (items: readonly RichTextInsertMenuItem[]): Group[] => {
 export function InsertMenuList({
   menu,
   onPick,
+  limit,
 }: {
   menu: RichTextInsertMenu;
   onPick: (item: RichTextInsertMenuItem) => void;
+  /** The most items listed at once, for a menu too long to draw whole. */
+  limit?: number;
 }) {
   const intl = useAppIntl();
   const groups = useMemo(() => groupsOf(menu.items), [menu.items]);
@@ -100,6 +112,7 @@ export function InsertMenuList({
       inline
       open
       autoHighlight="always"
+      {...(limit !== undefined && { limit })}
       itemToStringValue={(item: RichTextInsertMenuItem) =>
         [presentationalTextValue(item.label), item.description, item.group]
           .filter(Boolean)

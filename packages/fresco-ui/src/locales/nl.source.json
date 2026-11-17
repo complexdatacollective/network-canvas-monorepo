@@ -141,6 +141,7 @@
   "frescoUi.passwordField.strengthStrong": "Strong",
   "frescoUi.passwordField.strengthWeak": "Weak",
   "frescoUi.richTextEditor.applyLinkShort": "Apply",
+  "frescoUi.richTextEditor.emojiMenu": "Insert emoji",
   "frescoUi.richTextEditor.emptyVersion": "Shows nothing",
   "frescoUi.richTextEditor.insertMenuNoMatches": "Nothing matches your search.",
   "frescoUi.richTextEditor.insertMenuSearch": "Search",

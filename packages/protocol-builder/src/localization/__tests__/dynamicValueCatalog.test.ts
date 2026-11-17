@@ -6,10 +6,12 @@ import {
   dynamicValueParticipantRolesAt,
   dynamicValueRolesAt,
   type MessageNode,
+  nodeLabelValueContext,
 } from '@codaco/protocol-validation';
 
 import {
   bindingFor,
+  isFlagChoice,
   bindingRecordedFor,
   dynamicValueChoices,
   dynamicValueNamesUsedIn,
@@ -437,5 +439,70 @@ describe('dynamicValueNamesUsedIn', () => {
         }),
       ].toSorted(),
     ).toEqual(['braces', 'name', 'today']);
+  });
+});
+
+describe('what a node type’s own label can show', () => {
+  const context = nodeLabelValueContext({
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            nameVar: { name: 'name', type: 'text' },
+            secret: { name: 'secret', type: 'text', encrypted: true },
+          },
+        },
+      },
+      edge: { knows: { name: 'Knows' }, likes: { name: 'Likes a lot' } },
+    },
+    nodeType: 'person',
+    conditions: {
+      isOld: {
+        about: 'node',
+        rules: [
+          {
+            id: 'r1',
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'nameVar',
+              operator: 'EXISTS',
+            },
+          },
+        ],
+      },
+    },
+  });
+  const choices = dynamicValueChoices(context);
+
+  it('offers the default label and the node’s attributes, but no encrypted one, no ego attribute and no date', () => {
+    expect(
+      choices
+        .filter(
+          (choice) => choice.kind === 'label' || choice.kind === 'attribute',
+        )
+        .map((choice) => choice.path),
+    ).toEqual(['node.$label', 'node.nameVar']);
+    expect(
+      choices.find((choice) => choice.kind === 'label')?.defaultLabel,
+    ).toBe(true);
+    expect(choices.some((choice) => choice.kind === 'intrinsic')).toBe(false);
+    expect(choices.some((choice) => choice.role === 'ego')).toBe(false);
+  });
+
+  it('offers each condition the label declares, to be tested and never shown', () => {
+    const conditions = choices.filter((choice) => choice.kind === 'condition');
+    expect(conditions.map((choice) => choice.path)).toEqual([
+      '$condition.isOld',
+    ]);
+    expect(conditions.every(isFlagChoice)).toBe(true);
+    expect(conditions[0]?.unshowable).toBe('switch');
+  });
+
+  it('offers nothing about how the node is connected: that is a rule of a condition', () => {
+    expect(choices.some((choice) => choice.path.includes('onnected'))).toBe(
+      false,
+    );
   });
 });

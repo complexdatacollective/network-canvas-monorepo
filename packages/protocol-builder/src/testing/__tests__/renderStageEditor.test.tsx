@@ -233,7 +233,12 @@ describe('the stage-editor test harness', () => {
     // by the harness's own host chrome, as a host draws it, so it is a field of
     // the form wherever it sits on the page. `dynamicValues` likewise: the
     // shell registers the stage's bindings whichever sections it holds.
-    expect(harness.ownedKeys()).toEqual(['dynamicValues', 'label', 'subject']);
+    expect(harness.ownedKeys()).toEqual([
+      'conditions',
+      'dynamicValues',
+      'label',
+      'subject',
+    ]);
     await expect(harness.roundTrip()).rejects.toThrow(/keys: form, prompts/);
 
     // Declared, the same mount round-trips: the list is a statement an editor

@@ -142,6 +142,18 @@ const EVERY_STAGE = {
   skipLogic,
   // No editor manages bindings yet, so they must survive a save untouched.
   dynamicValues: { today: { path: 'now' } },
+  // No text here tests it, so it too must survive a save as it was given.
+  conditions: {
+    consented: {
+      rules: [
+        {
+          id: 'consented-rule',
+          type: 'ego',
+          options: { attribute: 'consent', operator: 'EXISTS' },
+        },
+      ],
+    },
+  },
 };
 
 const MAXIMAL_STAGES: MaximalStage[] = [
@@ -154,6 +166,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Read this aloud.',
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
+      conditions: EVERY_STAGE.conditions,
       items: [
         {
           id: 'info-item-1',
@@ -180,6 +193,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Ask about them.',
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
+      conditions: EVERY_STAGE.conditions,
       introductionPanel: {
         title: { 'en-US': 'Introduction' },
         text: { 'en-US': 'A few questions.' },
@@ -206,6 +220,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Ask about each person.',
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
+      conditions: EVERY_STAGE.conditions,
       filter: nodeFilter,
       subject: { entity: 'node', type: 'person' },
       form: {
@@ -230,6 +245,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Ask about each relationship.',
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
+      conditions: EVERY_STAGE.conditions,
       filter: edgeFilter,
       subject: { entity: 'edge', type: 'knows' },
       form: {
@@ -254,6 +270,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Guidance.',
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
+      conditions: EVERY_STAGE.conditions,
       subject: { entity: 'node', type: 'person' },
       form: {
         title: { 'en-US': 'Add a person' },
@@ -360,6 +377,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('finish', {
       interviewScript: EVERY_STAGE.interviewScript,
       dynamicValues: EVERY_STAGE.dynamicValues,
+      conditions: EVERY_STAGE.conditions,
     }),
   },
   {

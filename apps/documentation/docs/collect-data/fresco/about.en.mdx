@@ -91,13 +91,13 @@ You should be aware of several key differences between Fresco and the desktop ap
 - **You also conduct interview management in the browser** via a researcher-facing dashboard. You can manage protocols, participants, interviews, and settings configuration through the browser interface.
 - **Fresco stores all data in a database**. This means data is stored on a server on the internet, rather than on a local computer. This has implications for data security and privacy, so you will need to consider the legal and ethical implications of using Fresco.
 - You are responsible for **hosting and maintaining Fresco** on your own servers. This means you will need some technical knowledge to deploy and maintain Fresco.
-- Fresco does not currently support all features of the desktop apps. For example, custom node label workers are not implemented, and videos and audio cannot autoplay on first load due to browser limitations. For a full list of known issues, see the [known limitations](#known-limitations) section below.
+- Fresco does not currently support all features of the desktop apps. For example, videos and audio cannot autoplay on first load due to browser limitations. For a full list of known issues, see the [known limitations](#known-limitations) section below.
 
 ## Known limitations
 
 Because of the nature of the web platform, we could not implement some features from Interviewer. These include:
 
-- [Custom node label workers](/en/design-protocols/key-concepts/node-labelling#custom-node-labeling-advanced) are not implemented. This would have posed a potential security risk, so we made the decision not to implement them. If you were using this feature and need help with an alternative, please contact us.
+- Node label workers (`nodeLabelWorker.js` scripts) are not supported, because running a script from a protocol would have posed a security risk. To write your own node labels, use a [dynamic label](/en/design-protocols/key-concepts/node-labelling#dynamic-labels) instead.
 - Videos and audio on your information screens cannot autoplay on first load due to browser limitations. Participants must have interacted with the interview before media can autoplay.
 - The 'Use fullscreen forms' visual preference is not supported. This preference was useful for devices that have large software keyboards, such as tablets. However, Fresco is designed to be used on a desktop or laptop computer, and so this preference is not necessary.
 - The interaction sounds feature introduced in the last release of Interviewer has not been brought over to Fresco yet.

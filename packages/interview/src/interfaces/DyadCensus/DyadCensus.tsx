@@ -12,6 +12,7 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
+  entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
@@ -301,6 +302,10 @@ export default function DyadCensus(props: DyadCensusProps) {
       dyadTarget: toNode?.[entityAttributesProperty],
     },
     labels: { dyadSource: fromLabel, dyadTarget: toLabel },
+    ids: {
+      dyadSource: fromNode?.[entityPrimaryKeyProperty],
+      dyadTarget: toNode?.[entityPrimaryKeyProperty],
+    },
   });
 
   return (
