@@ -244,6 +244,44 @@ describe('asking for a first review', () => {
     );
   });
 
+  it('does not bring a removed question back when one is added after returning to the step', async () => {
+    await openDialog();
+    await fillToQuestions();
+    await userEvent.type(question(1), 'Kept question');
+    await userEvent.click(
+      requestDialog().getByRole('button', { name: 'Add a research question' }),
+    );
+    await userEvent.type(question(2), 'Removed question');
+    await pressNext();
+    await requestStep('Choose a model');
+    await userEvent.click(
+      requestDialog().getByRole('button', { name: 'Back' }),
+    );
+    await userEvent.click(
+      requestDialog().getByRole('button', {
+        name: 'Remove research question 2',
+      }),
+    );
+    await pressNext();
+    await requestStep('Choose a model');
+    await userEvent.click(
+      requestDialog().getByRole('button', { name: 'Back' }),
+    );
+    await userEvent.click(
+      requestDialog().getByRole('button', { name: 'Add a research question' }),
+    );
+
+    expect(question(2)).toHaveValue('');
+    await pressNext();
+    await requestStep('Choose a model');
+    await pressNext('Start review');
+    await waitFor(() =>
+      expect(
+        getProtocolReviewStudyContext(store.getState())?.researchQuestions,
+      ).toEqual(['Kept question']),
+    );
+  });
+
   it('writes nothing when cancelled, and returns to the button', async () => {
     await openDialog();
     const before = store.getState().activeProtocol.present;

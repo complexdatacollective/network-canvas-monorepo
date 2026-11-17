@@ -16,7 +16,10 @@ import {
   type ReviewQuota,
 } from '@codaco/protocol-review-worker/contract';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { carryIntoOpenStage } from '~/components/StageEditor/openStageChange';
+import {
+  carryIntoOpenStage,
+  openStageId,
+} from '~/components/StageEditor/openStageChange';
 import type { AppDispatch } from '~/ducks/store';
 import { getArchitectIntl } from '~/i18n/imperative';
 import {
@@ -1183,6 +1186,17 @@ const commitProtocolEdit = (
   const state = getState();
   if (!getProtocolOwnedHere(state)) return 'not_owned';
   if (getProtocol(state) !== from) return 'changed';
+  // Removing the stage an editor has open would take its unsaved draft with
+  // it (there is nothing left to carry the draft into, and Undo restores only
+  // the saved stage), so such an edit is left to the researcher.
+  const held = openStageId();
+  if (
+    held !== null &&
+    from.stages.some((stage) => stage.id === held) &&
+    !to.stages.some((stage) => stage.id === held)
+  ) {
+    return 'invalid';
+  }
   dispatch(activeProtocolActions.updateProtocol(protocolReplacement(from, to)));
   const committed = getProtocol(getState()) ?? to;
   // A stage editor that is open holds its stage as a draft and saves the

@@ -16,6 +16,7 @@ import {
 } from '@codaco/protocol-review-worker/contract';
 import { type CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
+import { registerOpenStage } from '~/components/StageEditor/openStageChange';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import {
   setActiveProtocol,
@@ -688,6 +689,38 @@ describe('decisions', () => {
 
     store.dispatch(timelineActions.redo());
     expect(findingOf(store, 'prompt').status).toBe('fixed');
+  });
+
+  it('does not remove the stage an editor has open, which would lose its draft', async () => {
+    await open(store);
+    const [first] = protocolOf(store).stages;
+    if (!first) throw new Error('The fixture needs a stage');
+    const removal = makeFinding('drop', [op('remove', `/stages/${first.id}`)], {
+      stageId: first.id,
+      category: 'structure',
+    });
+    vi.stubGlobal(
+      'fetch',
+      answering({ ...RESULT, findings: [removal] }).fetchImpl,
+    );
+    await store.dispatch(startReview());
+    await store.dispatch(checkFixAvailability());
+    const before = protocolOf(store);
+
+    const close = registerOpenStage(first.id, () => {});
+    expect(await store.dispatch(decideFinding('drop', 'fix'))).toEqual({
+      ok: false,
+      reason: 'invalid',
+    });
+    expect(protocolOf(store)).toBe(before);
+
+    close();
+    expect(await store.dispatch(decideFinding('drop', 'fix'))).toEqual({
+      ok: true,
+    });
+    expect(protocolOf(store).stages.map((stage) => stage.id)).not.toContain(
+      first.id,
+    );
   });
 
   it('returns a fix that reorders stages to undecided when the order is put back', async () => {

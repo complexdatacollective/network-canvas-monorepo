@@ -33,6 +33,9 @@ export function registerOpenStage(stageId: string, carry: Carry): () => void {
   };
 }
 
+/** The stage an editor has open, if any (a stage being created is not). */
+export const openStageId = (): string | null => open?.stageId ?? null;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 

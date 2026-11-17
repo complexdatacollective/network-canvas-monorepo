@@ -610,7 +610,14 @@ function QuestionsStep() {
   }, [keys, setStepData]);
 
   const addQuestion = () => {
-    const key = `q${nextKey.current}`;
+    // The wizard keeps what was typed in a removed question's box, and the
+    // counter starts again from the keys on the list when this step returns:
+    // a key whose box still has an answer would bring that answer back.
+    let key = `q${nextKey.current}`;
+    while (keys.includes(key) || data[questionField(key)] !== undefined) {
+      nextKey.current += 1;
+      key = `q${nextKey.current}`;
+    }
     nextKey.current += 1;
     focusKey.current = key;
     setKeys((current) => [...current, key]);
