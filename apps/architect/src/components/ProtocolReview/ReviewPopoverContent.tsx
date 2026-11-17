@@ -69,7 +69,7 @@ const messages = defineMessages({
   ready: {
     id: 'architect.protocolReview.popover.ready',
     defaultMessage:
-      'A review lists the problems it finds in your protocol, most serious first. Nothing in your protocol changes until you choose.',
+      'A review lists the problems it finds in your protocol, most serious first. Nothing in your protocol changes until you choose to fix a problem.',
     description:
       'Shown in the review panel while the protocol has no review: what a review gives the researcher.',
   },
@@ -112,12 +112,6 @@ const messages = defineMessages({
     description:
       'Line under the progress bar during the second part of an automated review, while the reviewer (an AI model) writes its answer.',
   },
-  progress: {
-    id: 'architect.protocolReview.popover.progress',
-    defaultMessage: 'Review progress',
-    description:
-      'Accessible name, read by screen readers, of the progress bar shown while an automated review runs.',
-  },
   cancelReview: {
     id: 'architect.protocolReview.popover.cancelReview',
     defaultMessage: 'Cancel review',
@@ -141,12 +135,6 @@ const messages = defineMessages({
     id: 'architect.protocolReview.popover.noProblems',
     defaultMessage: 'The review found no problems.',
     description: 'Shown in place of the list when a review found nothing.',
-  },
-  problemsFound: {
-    id: 'architect.protocolReview.popover.problemsFound',
-    defaultMessage: 'Problems found',
-    description:
-      'Accessible name, read by screen readers, of the list of problems the review found.',
   },
   meta: {
     id: 'architect.protocolReview.popover.meta',
@@ -183,23 +171,11 @@ const messages = defineMessages({
     description:
       'Button beside "Fixed for you" that takes the fix back out of the protocol.',
   },
-  fixUndone: {
-    id: 'architect.protocolReview.popover.fixUndone',
-    defaultMessage: 'Fix undone: {title}',
-    description:
-      'Read by screen readers after Undo in the review list took a fix back out of the protocol. {title} is the problem’s title, written by the review service.',
-  },
   undoDismiss: {
     id: 'architect.protocolReview.popover.undoDismiss',
     defaultMessage: 'Undo dismiss',
     description:
       'Button beside a dismissed problem in the review list that returns it to the problems still to decide.',
-  },
-  filter: {
-    id: 'architect.protocolReview.popover.filter',
-    defaultMessage: 'Show',
-    description:
-      'Accessible name, read by screen readers, of the switch above the list of problems that chooses between all of them and those the researcher chose to fix themselves.',
   },
   filterAll: {
     id: 'architect.protocolReview.popover.filterAll',
@@ -237,12 +213,6 @@ const messages = defineMessages({
     defaultMessage: 'Dismiss review',
     description:
       'Button under the list of problems that removes the review. The protocol is then as if it had not been reviewed, and a new review can be started.',
-  },
-  reviewDismissed: {
-    id: 'architect.protocolReview.popover.reviewDismissed',
-    defaultMessage: 'Review dismissed.',
-    description:
-      'Read by screen readers after Dismiss review removed the review.',
   },
   dismissRefused: {
     id: 'architect.protocolReview.popover.dismissRefused',
@@ -660,11 +630,7 @@ const ReviewPopoverContent = ({
                 onClick={async () => {
                   const result = await dispatch(undoFix(finding.id));
                   if (result.ok) {
-                    announce(
-                      intl.formatMessage(messages.fixUndone, {
-                        title: finding.title,
-                      }),
-                    );
+                    announce(`Fix undone: ${finding.title}`);
                   }
                 }}
               >
@@ -715,7 +681,7 @@ const ReviewPopoverContent = ({
     const dismissed = await dispatch(dismissReview());
     setDismissRefused(!dismissed);
     if (!dismissed) return;
-    announce(intl.formatMessage(messages.reviewDismissed));
+    announce('Review dismissed.');
     onClose();
   };
 
@@ -733,7 +699,8 @@ const ReviewPopoverContent = ({
         orientation="horizontal"
         tone="info"
         nudge={false}
-        label={intl.formatMessage(messages.progress)}
+        // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+        label="Review progress"
         percentProgress={Math.round((progress ?? 0) * 100)}
       />
       {/* A status, so the change from thinking to writing is read out once. */}
@@ -759,7 +726,7 @@ const ReviewPopoverContent = ({
         <div className="px-6 pb-4">
           <SegmentedSwitcher
             size="sm"
-            aria-label={intl.formatMessage(messages.filter)}
+            aria-label="Show"
             value={filter}
             onValueChange={setFilter}
             options={[
@@ -783,7 +750,8 @@ const ReviewPopoverContent = ({
       ) : (
         <ScrollArea className="min-h-0 flex-1" fade>
           <ol
-            aria-label={intl.formatMessage(messages.problemsFound)}
+            aria-label="Problems found"
+            lang="en"
             className="m-0 list-none p-0"
           >
             {listed.map(renderRow)}

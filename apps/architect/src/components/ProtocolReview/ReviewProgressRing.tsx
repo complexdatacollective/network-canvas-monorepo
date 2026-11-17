@@ -1,14 +1,4 @@
-import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-
-const messages = defineMessages({
-  label: {
-    id: 'architect.protocolReview.progressRing.label',
-    defaultMessage: 'Review progress',
-    description:
-      'Accessible name, read by screen readers, of the small circular progress indicator on the Review protocol toolbar button while an automated protocol review runs.',
-  },
-});
 
 const RADIUS = 9;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -25,7 +15,7 @@ const ReviewProgressRing = ({ fraction }: { fraction: number }) => {
   return (
     <svg
       role="progressbar"
-      aria-label={intl.formatMessage(messages.label)}
+      aria-label="Review progress"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={percent}

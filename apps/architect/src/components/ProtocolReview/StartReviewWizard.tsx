@@ -83,12 +83,6 @@ const messages = defineMessages({
     description:
       'Text of the first step of the dialog that starts an automated protocol review. An LLM is a large language model. "Anthropic" and "OpenAI" are company names and are not translated. An IRB is an institutional review board, the body that approves research involving people.',
   },
-  sentTable: {
-    id: 'architect.protocolReview.wizard.before.sentTable',
-    defaultMessage: 'What is sent for review, and what is never sent',
-    description:
-      'Accessible name, read by screen readers, of the two-column table listing what the automated protocol review sends and what it never sends.',
-  },
   whatIsSent: {
     id: 'architect.protocolReview.wizard.sending.whatIsSent',
     defaultMessage: 'What is sent',
@@ -283,12 +277,6 @@ const messages = defineMessages({
     description:
       'Label of one research question’s text box. {number} counts the questions from 1.',
   },
-  removeQuestion: {
-    id: 'architect.protocolReview.wizard.questions.remove',
-    defaultMessage: 'Remove research question {number, number}',
-    description:
-      'Accessible name of the button beside a research question that removes it from the list. {number} counts the questions from 1.',
-  },
   addQuestion: {
     id: 'architect.protocolReview.wizard.questions.add',
     defaultMessage: 'Add a research question',
@@ -455,7 +443,8 @@ function BeforeStep() {
       {/* Two equal columns of sentences that wrap: the table's own cells
           size to their content on one line, which suits data, not prose. */}
       <Table
-        aria-label={intl.formatMessage(messages.sentTable)}
+        aria-label="What is sent for review, and what is never sent"
+        lang="en"
         className="table-fixed"
       >
         <TableHeader>
@@ -674,9 +663,8 @@ function QuestionsStep() {
                   icon={<X />}
                   variant="text"
                   className="mt-8"
-                  aria-label={intl.formatMessage(messages.removeQuestion, {
-                    number: index + 1,
-                  })}
+                  aria-label={`Remove research question ${index + 1}`}
+                  lang="en"
                   onClick={() => removeQuestion(key)}
                 />
               )}

@@ -126,12 +126,6 @@ const messages = defineMessages({
     defaultMessage: 'You dismissed this problem.',
     description: 'Notice on a problem the researcher already dismissed.',
   },
-  back: {
-    id: 'architect.protocolReview.problem.back',
-    defaultMessage: 'Back',
-    description:
-      'Button on one problem found by the automated protocol review that returns to the list of all the problems.',
-  },
   dismiss: {
     id: 'architect.protocolReview.problem.dismiss',
     defaultMessage: 'Dismiss',
@@ -187,12 +181,6 @@ const messages = defineMessages({
     description:
       'Button that makes the suggested fix in the protocol now (it can be undone), and moves to the next problem.',
   },
-  checkingFix: {
-    id: 'architect.protocolReview.problem.checkingFix',
-    defaultMessage: 'Checking whether this fix can be made for you…',
-    description:
-      'Read by screen readers with the Fix for me button while Architect works out whether the fix leaves a valid protocol.',
-  },
   undo: {
     id: 'architect.protocolReview.problem.undo',
     defaultMessage: 'Undo',
@@ -210,25 +198,6 @@ const messages = defineMessages({
     defaultMessage: 'Next problem',
     description:
       'Button that moves on from a problem already fixed to the next problem still to decide.',
-  },
-  fixApplied: {
-    id: 'architect.protocolReview.problem.fixApplied',
-    defaultMessage: 'Fixed for you: {title}',
-    description:
-      'Read by screen readers after Fix for me changed the protocol. {title} is the problem’s title, written by the review service.',
-  },
-  fixUndone: {
-    id: 'architect.protocolReview.problem.fixUndone',
-    defaultMessage: 'Fix undone: {title}',
-    description:
-      'Read by screen readers after a fix made for the researcher was taken back out. {title} is the problem’s title, written by the review service.',
-  },
-  allDecided: {
-    id: 'architect.protocolReview.problem.allDecided',
-    defaultMessage:
-      'You have been through every problem. Back at the list of problems.',
-    description:
-      'Read by screen readers when the researcher decides about the last problem still open and the panel returns to the list of all the problems.',
   },
 });
 
@@ -475,7 +444,9 @@ const ReviewProblemView = ({
       onOpenFinding(next.id);
       return;
     }
-    announce(intl.formatMessage(messages.allDecided));
+    announce(
+      'You have been through every problem. Back at the list of problems.',
+    );
     onBack();
   };
 
@@ -502,9 +473,7 @@ const ReviewProblemView = ({
     }
     if (decision === 'fix') {
       setEdits({});
-      announce(
-        intl.formatMessage(messages.fixApplied, { title: current.title }),
-      );
+      announce(`Fixed for you: ${current.title}`);
       titleRef.current?.focus({ preventScroll: true });
       // Back to the top, where the notice says it was fixed and how to undo it.
       scrollRef.current?.scrollTo({
@@ -537,7 +506,7 @@ const ReviewProblemView = ({
       });
       return;
     }
-    announce(intl.formatMessage(messages.fixUndone, { title: current.title }));
+    announce(`Fix undone: ${current.title}`);
   };
 
   const shownRefusal =
@@ -754,8 +723,9 @@ const ReviewProblemView = ({
               ))}
             </section>
             {availability === 'checking' && (
-              <span id={checkingId} className="sr-only">
-                {intl.formatMessage(messages.checkingFix)}
+              <span id={checkingId} className="sr-only" lang="en">
+                {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+                Checking whether this fix can be made for you…
               </span>
             )}
           </div>
@@ -766,7 +736,8 @@ const ReviewProblemView = ({
           <IconButton
             variant="text"
             icon={<ArrowLeft className="rtl:rotate-180" />}
-            aria-label={intl.formatMessage(messages.back)}
+            aria-label="Back"
+            lang="en"
             onClick={onBack}
           />
           <span aria-hidden className="min-w-0 flex-1">

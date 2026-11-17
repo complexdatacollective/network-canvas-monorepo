@@ -50,33 +50,6 @@ const messages = defineMessages({
     description:
       'Label of the Review protocol toolbar button while an automated review runs.',
   },
-  undecided: {
-    id: 'architect.protocolReview.button.undecided',
-    defaultMessage:
-      'Review protocol, {count, plural, one {# problem still to decide} other {# problems still to decide}}',
-    description:
-      'Accessible name, read by screen readers, of the Review protocol toolbar button while it shows a count badge. It must start with the button’s visible text ("Review protocol", as translated for that button). {count} is how many problems from the last review the researcher has not decided about.',
-  },
-  finished: {
-    id: 'architect.protocolReview.button.finished',
-    defaultMessage:
-      'Protocol review finished. {count, plural, =0 {It found no problems.} one {It found # problem.} other {It found # problems.}}',
-    description:
-      'Read by screen readers when an automated review finishes. {count} is how many problems it found.',
-  },
-  failed: {
-    id: 'architect.protocolReview.button.failed',
-    defaultMessage:
-      'Protocol review could not be completed. Open Review protocol to see why.',
-    description:
-      'Read by screen readers when an automated review fails. "Review protocol" is the name of the toolbar button and must match its translation.',
-  },
-  notStarted: {
-    id: 'architect.protocolReview.button.notStarted',
-    defaultMessage: 'The review could not start. Review protocol says why.',
-    description:
-      'Read by screen readers when a review could not start (offline, the hourly limit, or another reason shown in the panel). "Review protocol" is the name of the toolbar button.',
-  },
 });
 
 type ReviewProtocolActionProps = {
@@ -139,11 +112,19 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
     previous.current = { status: run.status, startedFrom };
     if (before.status !== 'running' || run.status === 'running') return;
     if (run.status === 'failed') {
-      announce(intl.formatMessage(messages.failed));
+      announce(
+        'Protocol review could not be completed. Open Review protocol to see why.',
+      );
     } else if (reviewId !== null && reviewId !== startedFrom) {
-      announce(intl.formatMessage(messages.finished, { count: counts.total }));
+      announce(
+        `Protocol review finished. ${
+          counts.total === 0
+            ? 'It found no problems.'
+            : `It found ${counts.total} ${counts.total === 1 ? 'problem' : 'problems'}.`
+        }`,
+      );
     }
-  }, [announce, counts.total, intl, reviewId, run.status]);
+  }, [announce, counts.total, reviewId, run.status]);
 
   // A refused start changes nothing on screen, so it is said aloud; the
   // popover shows why.
@@ -153,9 +134,9 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
   const start = useCallback(async () => {
     const result = await dispatch(startReview(protocolId ?? undefined));
     if (result.status === 'refused') {
-      announce(intl.formatMessage(messages.notStarted));
+      announce('The review could not start. Review protocol says why.');
     }
-  }, [announce, dispatch, intl, protocolId]);
+  }, [announce, dispatch, protocolId]);
 
   // Every review is asked for through the dialog. Completing it opens the
   // panel, where the review is seen running; leaving it returns the
@@ -173,7 +154,6 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
   const running = run.status === 'running';
   let icon: ReactNode = <ReviewSparklesIcon aria-hidden />;
   let label: ReactNode = intl.formatMessage(messages.reviewProtocol);
-  let ariaLabel: string | undefined;
   if (running && open) {
     icon = <Loader2 className="motion-safe:animate-spin" aria-hidden />;
     label = intl.formatMessage(messages.reviewing);
@@ -181,9 +161,6 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
     icon = <ReviewProgressRing fraction={progress ?? 0} />;
     label = intl.formatMessage(messages.reviewing);
   } else if (summary && counts.undecided > 0) {
-    ariaLabel = intl.formatMessage(messages.undecided, {
-      count: counts.undecided,
-    });
     label = (
       <>
         {intl.formatMessage(messages.reviewProtocol)}
@@ -192,6 +169,11 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
           className="bg-primary text-primary-contrast ms-1 inline-flex min-w-6 items-center justify-center rounded-full px-1.5 text-xs leading-6 font-bold"
         >
           {intl.formatNumber(counts.undecided)}
+        </span>
+        {/* Screen-reader text: English, after the translated visible label. */}
+        <span className="sr-only" lang="en">
+          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+          {`, ${counts.undecided} ${counts.undecided === 1 ? 'problem' : 'problems'} still to decide`}
         </span>
       </>
     );
@@ -231,7 +213,6 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
           <ToolbarButton
             ref={triggerRef}
             icon={icon}
-            aria-label={ariaLabel}
             aria-busy={running || undefined}
           >
             {label}

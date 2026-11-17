@@ -59,7 +59,7 @@ const RECLAIM_BLOCKED_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
     'study-details': {
       id: 'architect.constants.utils.protocollockmessages.reclaimBlockedMessages.studyDetails',
       defaultMessage:
-        'These changes cannot be saved over the version the other tab saved. What you have entered here is kept. Deal with the other unsaved changes in this tab first, then try again.',
+        'These changes cannot be saved over the version the other tab saved. The study details you entered are kept. First choose whether to keep or discard this tab’s unsaved changes elsewhere in the protocol, then try again.',
       description:
         'Error on the last step of the study details dialog for the automated protocol review, when saving is refused: the other tab saved the protocol meanwhile and this tab has other unsaved changes waiting for a decision. The dialog stays open with what the researcher entered.',
     },
