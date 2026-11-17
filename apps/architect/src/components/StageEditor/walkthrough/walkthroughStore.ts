@@ -37,7 +37,7 @@ let state: WalkthroughState = CLOSED;
  * dialog, and reading this then puts it back where it was, while writing it
  * on every drag would re-render the panel for nothing.
  */
-let position: Position = { x: 0, y: 0 };
+let position: Position | undefined;
 let returnFocusTo: HTMLElement | null = null;
 /**
  * The step each stage's walkthrough was left on, so opening it again carries
@@ -115,7 +115,8 @@ export function goToDetourStep(serial: number, index: number) {
   set({ ...state, detours: { ...state.detours, [serial]: index } });
 }
 
-export const getWalkthroughPosition = (): Position => position;
+/** Where the panel was last put, if anywhere: it opens in the corner. */
+export const getWalkthroughPosition = (): Position | undefined => position;
 
 export function setWalkthroughPosition(next: Position) {
   position = next;

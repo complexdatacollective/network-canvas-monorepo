@@ -37,6 +37,7 @@ export const StartWalkthroughControl = defineToolbarChild(
       <ToolbarButton
         ref={ref}
         icon={<CircleHelp />}
+        color="info"
         onClick={(event) => openWalkthrough(event.currentTarget, stage)}
       >
         {intl.formatMessage(messages.start)}
