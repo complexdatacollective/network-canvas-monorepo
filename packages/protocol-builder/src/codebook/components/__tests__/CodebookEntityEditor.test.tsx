@@ -12,20 +12,25 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import NodeLabelField from '../../../fields/NodeLabelField.tsx';
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
+import { NodeLabelFieldProvider } from '../../nodeLabelFieldSlot.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
 
 /** Every editor here edits a protocol written in English. */
 function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <ProtocolLocalizationProvider
-      localization={{ defaultLocale: 'en', locales: ['en'] }}
-    >
-      {children}
-    </ProtocolLocalizationProvider>
+    <CodebookEditorHost>
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en'] }}
+      >
+        {children}
+      </ProtocolLocalizationProvider>
+    </CodebookEditorHost>
   );
 }
 
@@ -419,6 +424,7 @@ describe('CodebookEntityEditor', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ icon: 'add-a-place' }),
+        undefined,
       );
     });
   });
@@ -638,5 +644,111 @@ describe('CodebookEntityEditor', () => {
     expect(screen.getByRole('combobox', { name: 'Icon' })).toHaveTextContent(
       'add-a-place',
     );
+  });
+});
+
+describe('a node type’s Dynamic label', () => {
+  const CODEBOOK = {
+    node: {
+      'person:adult': {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        icon: 'add-a-person',
+        shape: { default: 'circle' },
+        variables: {
+          age: { name: 'Age', type: 'number', component: 'Number' },
+        },
+      },
+    },
+  } as const;
+
+  const LABELLED: SectionDoc = {
+    ...NODE_DOCUMENT,
+    dynamicLabel: { text: { en: 'Friend' } },
+  };
+
+  const renderWithCodebook = (document: SectionDoc, onSubmit: SubmitEntity) =>
+    render(
+      <NodeLabelFieldProvider value={NodeLabelField}>
+        <CodebookEntityEditor
+          mode="update"
+          sessionKey="label"
+          subject={NODE_SUBJECT}
+          initialDraft={document}
+          authoritativeDocument={document}
+          existingEntityNames={[]}
+          codebook={CODEBOOK}
+          onSubmit={onSubmit}
+        />
+      </NodeLabelFieldProvider>,
+    );
+
+  const labelSwitch = () =>
+    screen.getByRole('switch', { name: 'Dynamic label' });
+
+  it('is offered only where there is a codebook to write it against', () => {
+    render(
+      <NodeLabelFieldProvider value={NodeLabelField}>
+        <CodebookEntityEditor
+          mode="update"
+          sessionKey="no-codebook"
+          subject={NODE_SUBJECT}
+          initialDraft={NODE_DOCUMENT}
+          authoritativeDocument={NODE_DOCUMENT}
+          existingEntityNames={[]}
+          onSubmit={async () => applied()}
+        />
+      </NodeLabelFieldProvider>,
+    );
+    expect(
+      screen.queryByRole('switch', { name: 'Dynamic label' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens switched off on a type that holds no label, and on with one', () => {
+    const { unmount } = renderWithCodebook(NODE_DOCUMENT, async () =>
+      applied(),
+    );
+    expect(labelSwitch()).not.toBeChecked();
+    unmount();
+    renderWithCodebook(LABELLED, async () => applied());
+    expect(labelSwitch()).toBeChecked();
+  });
+
+  it('refuses a save while it is switched on with nothing written', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(NODE_DOCUMENT, onSubmit);
+
+    await user.click(labelSwitch());
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(
+      await screen.findByText('Write the label, or turn off Dynamic label.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('removes the stored label when it is switched off', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(LABELLED, onSubmit);
+
+    await user.click(labelSwitch());
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('dynamicLabel');
+  });
+
+  it('keeps the label through switching it off and on again in one edit', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(LABELLED, onSubmit);
+
+    await user.click(labelSwitch());
+    await user.click(labelSwitch());
+    // Back where it started, so there is nothing to save.
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
   });
 });

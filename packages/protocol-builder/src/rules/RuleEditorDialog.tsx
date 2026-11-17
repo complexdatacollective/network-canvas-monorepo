@@ -1470,7 +1470,9 @@ function RuleEditorFields({
                   },
                 ]
               : []),
-            ...ruleEntityTypeOptions(codebook, target).map(
+            // Only each type's name is offered here, so no shape image
+            // is needed to draw one.
+            ...ruleEntityTypeOptions(codebook, target, {}).map(
               ({ value, label }) => ({ value, label }),
             ),
           ]

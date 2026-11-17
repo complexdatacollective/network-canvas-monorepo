@@ -26,8 +26,14 @@ import type { ResourceContentKind, ResourceKind } from '../types.ts';
  * browses every content kind, and works out which kind an imported file is
  * from its extension — the same thing Architect's own file field does when a
  * call site names no type.
+ *
+ * `nodeShape` picks the SVG image a custom node shape is drawn from. It stores
+ * an ordinary `image`, but offers and imports only SVG files.
  */
-export type ResourcePickerKind = ResourceKind | 'file';
+export type ResourcePickerKind = ResourceKind | 'file' | 'nodeShape';
+
+const NODE_SHAPE_EXTENSIONS: readonly string[] = Object.freeze(['.svg']);
+const NODE_SHAPE_KINDS: readonly ResourceKind[] = Object.freeze(['image']);
 
 /** Kinds whose content an editor can render as media. */
 export type PreviewableResourceKind = 'audio' | 'image' | 'video';
@@ -89,7 +95,9 @@ export function isPreviewableKind(
 export function browsableKinds(
   kind: ResourcePickerKind,
 ): readonly ResourceKind[] {
-  return kind === 'file' ? CONTENT_KINDS : Object.freeze([kind]);
+  if (kind === 'file') return CONTENT_KINDS;
+  if (kind === 'nodeShape') return NODE_SHAPE_KINDS;
+  return Object.freeze([kind]);
 }
 
 /**
@@ -125,6 +133,7 @@ export function acceptedExtensions(
       CONTENT_KINDS.flatMap((k) => RESOURCE_KIND_EXTENSIONS[k]),
     );
   }
+  if (kind === 'nodeShape') return NODE_SHAPE_EXTENSIONS;
   return RESOURCE_KIND_EXTENSIONS[kind];
 }
 
@@ -139,6 +148,9 @@ export function contentKindForFile(
 ): ResourceContentKind | undefined {
   const extension = fileExtension(filename);
   if (extension === '') return undefined;
+  if (kind === 'nodeShape') {
+    return NODE_SHAPE_EXTENSIONS.includes(extension) ? 'image' : undefined;
+  }
   const match = CONTENT_KINDS.find((candidate) =>
     RESOURCE_KIND_EXTENSIONS[candidate].includes(extension),
   );
@@ -431,6 +443,37 @@ const pickerMessages = defineMessages({
     description:
       'Heading over the file-import area for images inside the resource dialog.',
   },
+  nodeShapeSelectAction: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeSelectAction',
+    defaultMessage: 'Select a node shape',
+    description:
+      'Button that opens the picker for a field that holds the SVG image a custom node shape is drawn from, when the field holds none yet.',
+  },
+  nodeShapeChangeAction: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeChangeAction',
+    defaultMessage: 'Change the node shape',
+    description:
+      'Button that opens the picker for a field that already holds the SVG image a custom node shape is drawn from.',
+  },
+  nodeShapeBrowserTitle: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeBrowserTitle',
+    defaultMessage: 'Choose a node shape',
+    description:
+      'Title of the dialog where a researcher picks or imports the SVG image a custom node shape is drawn from.',
+  },
+  nodeShapeBrowserDescription: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeBrowserDescription',
+    defaultMessage:
+      'Import an SVG file, or choose an SVG image already stored in this protocol. Nodes of this type can then be drawn with it.',
+    description:
+      'Description under the title of the dialog where a researcher picks or imports the SVG image a custom node shape is drawn from. SVG is a file format name and is not translated.',
+  },
+  nodeShapeImportTitle: {
+    id: 'protocolBuilder.resourceKinds.nodeShapeImportTitle',
+    defaultMessage: 'Import a shape from an SVG file',
+    description:
+      'Heading over the file-import area of the dialog for choosing a custom node shape. Only SVG files can be imported there. SVG is a file format name and is not translated.',
+  },
   networkSelectAction: {
     id: 'protocolBuilder.resourceKinds.networkSelectAction',
     defaultMessage: 'Select a data file',
@@ -540,6 +583,13 @@ export const RESOURCE_PICKER_COPY: Readonly<
     browserTitle: pickerMessages.networkBrowserTitle,
     browserDescription: pickerMessages.networkBrowserDescription,
     importTitle: pickerMessages.networkImportTitle,
+  }),
+  nodeShape: Object.freeze({
+    selectAction: pickerMessages.nodeShapeSelectAction,
+    changeAction: pickerMessages.nodeShapeChangeAction,
+    browserTitle: pickerMessages.nodeShapeBrowserTitle,
+    browserDescription: pickerMessages.nodeShapeBrowserDescription,
+    importTitle: pickerMessages.nodeShapeImportTitle,
   }),
   video: Object.freeze({
     selectAction: pickerMessages.videoSelectAction,

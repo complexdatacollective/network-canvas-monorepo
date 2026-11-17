@@ -189,7 +189,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
             /^0 unplaced\b/,
           );
-          expect(await interview.nextButtonHasPulse()).toBe(true);
+          await interview.expectReadyToContinue();
         },
       };
     })(),
@@ -336,7 +336,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           await stage.categoricalBin.dragNodeToBin('Alice', 'Work');
           await stage.categoricalBin.dragNodeToBin('Bob', 'Work');
-          expect(await interview.nextButtonHasPulse()).toBe(true);
+          await interview.expectReadyToContinue();
 
           await interview.nextButton.click();
 
@@ -1169,7 +1169,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview, stage }) => {
-        expect(await interview.nextButtonHasPulse()).toBe(false);
+        await interview.expectNotReadyToContinue();
         // Uncategorised nodes: forward navigation is blocked with the notice.
         await interview.nextButton.click();
         await expect(page.getByText(/must place every item/i)).toBeVisible();
@@ -1183,7 +1183,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         // Every node placed: advancing succeeds.
         await stage.categoricalBin.dragNodeToBin('Jon', 'Work');
         // Ready for the next stage once every node is placed.
-        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
         await interview.next();
         await expect(
           page.getByRole('heading', { name: 'All done' }),

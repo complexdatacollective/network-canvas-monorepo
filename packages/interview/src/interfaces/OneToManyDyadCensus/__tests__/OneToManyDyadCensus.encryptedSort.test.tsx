@@ -21,6 +21,7 @@ import type {
   RegisterBeforeNext,
   StageProps,
 } from '../../../types';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
@@ -136,21 +137,26 @@ async function renderCensus({
   const { container } = render(
     <AnalyticsContext.Provider value={tracker}>
       <Provider store={store}>
-        <TestProtocolLocalization>
-          <InterviewI18nProvider>
-            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-              <StageMetadataContext.Provider value={registerBeforeNext}>
-                <OneToManyDyadCensus
-                  stage={stage}
-                  getNavigationHelpers={() => ({
-                    moveForward: vi.fn(),
-                    moveBackward: vi.fn(),
-                  })}
-                />
-              </StageMetadataContext.Provider>
-            </CurrentStepProvider>
-          </InterviewI18nProvider>
-        </TestProtocolLocalization>
+        <TestInterviewAssets>
+          <TestProtocolLocalization>
+            <InterviewI18nProvider>
+              <CurrentStepProvider
+                currentStep={0}
+                onStepChange={() => undefined}
+              >
+                <StageMetadataContext.Provider value={registerBeforeNext}>
+                  <OneToManyDyadCensus
+                    stage={stage}
+                    getNavigationHelpers={() => ({
+                      moveForward: vi.fn(),
+                      moveBackward: vi.fn(),
+                    })}
+                  />
+                </StageMetadataContext.Provider>
+              </CurrentStepProvider>
+            </InterviewI18nProvider>
+          </TestProtocolLocalization>
+        </TestInterviewAssets>
       </Provider>
     </AnalyticsContext.Provider>,
   );

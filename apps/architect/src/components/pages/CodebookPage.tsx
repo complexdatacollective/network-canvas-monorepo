@@ -1,18 +1,13 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useSearchParams } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { focusRouteTarget } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Codebook from '~/components/Codebook/Codebook';
 import { readCodebookLink } from '~/components/Codebook/codebookLinks';
-import type { Entity } from '~/components/Codebook/EntityType';
-import EntityTypeDialog from '~/components/Codebook/EntityTypeDialog';
 import UnusedVariablesAlert from '~/components/Codebook/UnusedVariablesAlert';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
-import { useAppSelector } from '~/ducks/hooks';
-import { getCodebook } from '~/selectors/protocol';
 const messages = defineMessages({
   codebook: {
     id: 'architect.pages.codebookPage.codebook',
@@ -29,66 +24,26 @@ const messages = defineMessages({
   },
 });
 
-type DialogState = {
-  entity?: Entity;
-  type?: string;
-};
-
-// A dialog opened by a link has no trigger on this page to return focus to.
-const returnFocusToHeading = () => focusRouteTarget() ?? true;
-
 const CodebookPage = () => {
   const intl = useAppIntl();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogState, setDialogState] = useState<DialogState>({});
   const [searchParams, setSearchParams] = useSearchParams();
   const link = readCodebookLink(searchParams);
-  // A link to a type that no longer exists opens nothing: the dialog would
-  // otherwise write a new type under the stale id.
-  const linkedTypeExists = useAppSelector(
-    (state) =>
-      link !== undefined &&
-      getCodebook(state)?.[link.entity]?.[link.type] !== undefined,
-  );
-  const linkedType = linkedTypeExists ? link : undefined;
-
-  const handleOpenEntityDialog = useCallback(
-    (entity: Entity, type?: string) => {
-      setDialogState({ entity, type });
-      setDialogOpen(true);
-    },
-    [],
-  );
-
-  const handleCloseDialog = useCallback(() => {
-    setDialogOpen(false);
-    setDialogState({});
-  }, []);
 
   const handleCloseLink = useCallback(() => {
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
   return (
-    <>
-      <div className={pageInsetClasses}>
-        <PageHeading
-          title={intl.formatMessage(messages.codebook)}
-          description={intl.formatMessage(messages.overviewOfTheEgoNodeAnd)}
-        />
-        <div className="mx-auto mt-6 w-full max-w-6xl">
-          <UnusedVariablesAlert />
-          <Codebook onEditEntity={handleOpenEntityDialog} />
-        </div>
-      </div>
-      <EntityTypeDialog
-        show={linkedType !== undefined || dialogOpen}
-        entity={linkedType?.entity ?? dialogState.entity}
-        type={linkedType?.type ?? dialogState.type}
-        onClose={linkedType ? handleCloseLink : handleCloseDialog}
-        finalFocus={linkedType ? returnFocusToHeading : undefined}
+    <div className={pageInsetClasses}>
+      <PageHeading
+        title={intl.formatMessage(messages.codebook)}
+        description={intl.formatMessage(messages.overviewOfTheEgoNodeAnd)}
       />
-    </>
+      <div className="mx-auto mt-6 w-full max-w-6xl">
+        <UnusedVariablesAlert />
+        <Codebook link={link} onLinkClosed={handleCloseLink} />
+      </div>
+    </div>
   );
 };
 

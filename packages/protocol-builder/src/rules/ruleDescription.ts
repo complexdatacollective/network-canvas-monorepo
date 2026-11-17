@@ -6,8 +6,9 @@ import {
   type EdgeCountComparison,
   type FilterOperator,
   type LocaleTag,
-  type NodeShape,
   type VariableType,
+  resolveNodeShapeReference,
+  type ResolvedNodeShape,
 } from '@codaco/protocol-validation';
 
 import {
@@ -76,7 +77,7 @@ export type RuleDescriptionEntity =
       typeId: string | undefined;
       label: string;
       color: ColorReference;
-      shape: NodeShape | undefined;
+      shape: ResolvedNodeShape | undefined;
       missing: boolean;
     }>
   | Readonly<{
@@ -265,6 +266,12 @@ export type DescribeRuleInput = Readonly<{
    * committing a second copy of one.
    */
   duplicateIds?: ReadonlySet<string>;
+  /**
+   * The SVG text of the codebook's custom shape assets, keyed by asset id, so
+   * a node type drawn in one of its own shapes is drawn in it. Without it such
+   * a type is drawn as a circle.
+   */
+  shapeSvgs?: Readonly<Record<string, string>>;
   /**
    * Whether the rule set holding this rule may compare an encrypted
    * attribute's answers, rather than only check whether it is answered.
@@ -740,6 +747,7 @@ export function describeRule({
   codebook,
   targets,
   duplicateIds,
+  shapeSvgs = {},
   allowEncryptedAttributes = false,
   intl = englishIntl,
   localization,
@@ -802,7 +810,13 @@ export function describeRule({
       : undefined;
   const hasAttributeKey = Object.hasOwn(options, 'attribute');
 
-  const entity = describeEntity(codebook, target, entityTypeId, intl);
+  const entity = describeEntity(
+    codebook,
+    target,
+    entityTypeId,
+    shapeSvgs,
+    intl,
+  );
   // A rule that counts edges may name no type, to count every edge.
   const countsEveryEdge =
     isEdgeCountRuleDraft(rule) && entityTypeId === undefined;
@@ -1150,6 +1164,7 @@ function describeEntity(
   codebook: Readonly<Codebook>,
   target: RuleTargetType | undefined,
   entityTypeId: string | undefined,
+  shapeSvgs: Readonly<Record<string, string>>,
   intl: IntlShape,
 ): RuleDescriptionEntity | undefined {
   if (target === undefined) return undefined;
@@ -1181,7 +1196,11 @@ function describeEntity(
     typeId: entityTypeId,
     label: codebookLabel(definition?.name, entityTypeId ?? ''),
     color: definition?.color ?? DEFAULT_NODE_COLOR,
-    shape: definition?.shape.default,
+    shape: resolveNodeShapeReference(
+      definition?.shape.default,
+      definition?.customShapes,
+      shapeSvgs,
+    ),
     missing: definition === undefined,
   });
 }

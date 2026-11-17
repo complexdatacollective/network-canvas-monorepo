@@ -1,0 +1,912 @@
+{
+  "name": "Custom Node Shapes",
+  "description": "An example of custom node shapes for a study with children. The things in a child's world are drawn with a picture chosen by a \"type\" attribute. One node type uses pictures with their own colours; a second uses the node type's colour for the main parts of each picture.",
+  "schemaVersion": 9,
+  "localization": {
+    "defaultLocale": "en",
+    "locales": ["en"]
+  },
+  "lastModified": "2026-11-13T00:00:00.000Z",
+  "experiments": {},
+  "codebook": {
+    "node": {
+      "world_illustrated": {
+        "name": "Part of my world",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "customShapes": {
+          "person": {
+            "name": "Person",
+            "asset": "shape-illustrated-person"
+          },
+          "group": {
+            "name": "Group",
+            "asset": "shape-illustrated-group"
+          },
+          "home": {
+            "name": "Home",
+            "asset": "shape-illustrated-home"
+          },
+          "school": {
+            "name": "School",
+            "asset": "shape-illustrated-school"
+          },
+          "place": {
+            "name": "Place",
+            "asset": "shape-illustrated-place"
+          },
+          "activity": {
+            "name": "Activity",
+            "asset": "shape-illustrated-activity"
+          },
+          "community": {
+            "name": "Community or faith setting",
+            "asset": "shape-illustrated-community"
+          },
+          "professional": {
+            "name": "Professional or service",
+            "asset": "shape-illustrated-professional"
+          },
+          "animal": {
+            "name": "Animal",
+            "asset": "shape-illustrated-animal"
+          },
+          "online": {
+            "name": "Online space",
+            "asset": "shape-illustrated-online"
+          },
+          "memory": {
+            "name": "Object or memory",
+            "asset": "shape-illustrated-memory"
+          },
+          "other": {
+            "name": "Something else",
+            "asset": "shape-illustrated-other"
+          }
+        },
+        "shape": {
+          "default": "custom:other",
+          "dynamic": {
+            "variable": "world_illustrated_type",
+            "type": "discrete",
+            "map": [
+              {
+                "value": "person",
+                "shape": "custom:person"
+              },
+              {
+                "value": "group",
+                "shape": "custom:group"
+              },
+              {
+                "value": "home",
+                "shape": "custom:home"
+              },
+              {
+                "value": "school",
+                "shape": "custom:school"
+              },
+              {
+                "value": "place",
+                "shape": "custom:place"
+              },
+              {
+                "value": "activity",
+                "shape": "custom:activity"
+              },
+              {
+                "value": "community",
+                "shape": "custom:community"
+              },
+              {
+                "value": "professional",
+                "shape": "custom:professional"
+              },
+              {
+                "value": "animal",
+                "shape": "custom:animal"
+              },
+              {
+                "value": "online",
+                "shape": "custom:online"
+              },
+              {
+                "value": "memory",
+                "shape": "custom:memory"
+              },
+              {
+                "value": "other",
+                "shape": "custom:other"
+              }
+            ]
+          }
+        },
+        "variables": {
+          "world_illustrated_name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true
+            }
+          },
+          "world_illustrated_type": {
+            "name": "type",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": {
+                  "en": "A person"
+                },
+                "value": "person"
+              },
+              {
+                "label": {
+                  "en": "A group"
+                },
+                "value": "group"
+              },
+              {
+                "label": {
+                  "en": "A home"
+                },
+                "value": "home"
+              },
+              {
+                "label": {
+                  "en": "A school"
+                },
+                "value": "school"
+              },
+              {
+                "label": {
+                  "en": "A place"
+                },
+                "value": "place"
+              },
+              {
+                "label": {
+                  "en": "An activity"
+                },
+                "value": "activity"
+              },
+              {
+                "label": {
+                  "en": "A community or faith setting"
+                },
+                "value": "community"
+              },
+              {
+                "label": {
+                  "en": "A professional or service"
+                },
+                "value": "professional"
+              },
+              {
+                "label": {
+                  "en": "An animal"
+                },
+                "value": "animal"
+              },
+              {
+                "label": {
+                  "en": "An online space"
+                },
+                "value": "online"
+              },
+              {
+                "label": {
+                  "en": "An object or memory"
+                },
+                "value": "memory"
+              },
+              {
+                "label": {
+                  "en": "Something else"
+                },
+                "value": "other"
+              }
+            ],
+            "validation": {
+              "required": true,
+              "maxSelected": 1
+            }
+          },
+          "world_illustrated_layout": {
+            "name": "layout",
+            "type": "layout"
+          }
+        }
+      },
+      "world_accented": {
+        "name": "Part of my world (node colour)",
+        "color": "node-color-seq-6",
+        "icon": "add-a-person",
+        "customShapes": {
+          "person": {
+            "name": "Person",
+            "asset": "shape-accented-person"
+          },
+          "group": {
+            "name": "Group",
+            "asset": "shape-accented-group"
+          },
+          "home": {
+            "name": "Home",
+            "asset": "shape-accented-home"
+          },
+          "school": {
+            "name": "School",
+            "asset": "shape-accented-school"
+          },
+          "place": {
+            "name": "Place",
+            "asset": "shape-accented-place"
+          },
+          "activity": {
+            "name": "Activity",
+            "asset": "shape-accented-activity"
+          },
+          "community": {
+            "name": "Community or faith setting",
+            "asset": "shape-accented-community"
+          },
+          "professional": {
+            "name": "Professional or service",
+            "asset": "shape-accented-professional"
+          },
+          "animal": {
+            "name": "Animal",
+            "asset": "shape-accented-animal"
+          },
+          "online": {
+            "name": "Online space",
+            "asset": "shape-accented-online"
+          },
+          "memory": {
+            "name": "Object or memory",
+            "asset": "shape-accented-memory"
+          },
+          "other": {
+            "name": "Something else",
+            "asset": "shape-accented-other"
+          }
+        },
+        "shape": {
+          "default": "custom:other",
+          "dynamic": {
+            "variable": "world_accented_type",
+            "type": "discrete",
+            "map": [
+              {
+                "value": "person",
+                "shape": "custom:person"
+              },
+              {
+                "value": "group",
+                "shape": "custom:group"
+              },
+              {
+                "value": "home",
+                "shape": "custom:home"
+              },
+              {
+                "value": "school",
+                "shape": "custom:school"
+              },
+              {
+                "value": "place",
+                "shape": "custom:place"
+              },
+              {
+                "value": "activity",
+                "shape": "custom:activity"
+              },
+              {
+                "value": "community",
+                "shape": "custom:community"
+              },
+              {
+                "value": "professional",
+                "shape": "custom:professional"
+              },
+              {
+                "value": "animal",
+                "shape": "custom:animal"
+              },
+              {
+                "value": "online",
+                "shape": "custom:online"
+              },
+              {
+                "value": "memory",
+                "shape": "custom:memory"
+              },
+              {
+                "value": "other",
+                "shape": "custom:other"
+              }
+            ]
+          }
+        },
+        "variables": {
+          "world_accented_name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true
+            }
+          },
+          "world_accented_type": {
+            "name": "type",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": {
+                  "en": "A person"
+                },
+                "value": "person"
+              },
+              {
+                "label": {
+                  "en": "A group"
+                },
+                "value": "group"
+              },
+              {
+                "label": {
+                  "en": "A home"
+                },
+                "value": "home"
+              },
+              {
+                "label": {
+                  "en": "A school"
+                },
+                "value": "school"
+              },
+              {
+                "label": {
+                  "en": "A place"
+                },
+                "value": "place"
+              },
+              {
+                "label": {
+                  "en": "An activity"
+                },
+                "value": "activity"
+              },
+              {
+                "label": {
+                  "en": "A community or faith setting"
+                },
+                "value": "community"
+              },
+              {
+                "label": {
+                  "en": "A professional or service"
+                },
+                "value": "professional"
+              },
+              {
+                "label": {
+                  "en": "An animal"
+                },
+                "value": "animal"
+              },
+              {
+                "label": {
+                  "en": "An online space"
+                },
+                "value": "online"
+              },
+              {
+                "label": {
+                  "en": "An object or memory"
+                },
+                "value": "memory"
+              },
+              {
+                "label": {
+                  "en": "Something else"
+                },
+                "value": "other"
+              }
+            ],
+            "validation": {
+              "required": true,
+              "maxSelected": 1
+            }
+          },
+          "world_accented_layout": {
+            "name": "layout",
+            "type": "layout"
+          }
+        }
+      }
+    },
+    "edge": {
+      "goes_with": {
+        "name": "Goes with",
+        "color": "edge-color-seq-1"
+      },
+      "goes_with_accented": {
+        "name": "Goes with (node colour)",
+        "color": "edge-color-seq-3"
+      }
+    }
+  },
+  "assetManifest": {
+    "shape-illustrated-person": {
+      "id": "shape-illustrated-person",
+      "type": "image",
+      "name": "person.svg (illustrated)",
+      "source": "shape-illustrated-person.svg"
+    },
+    "shape-illustrated-group": {
+      "id": "shape-illustrated-group",
+      "type": "image",
+      "name": "group.svg (illustrated)",
+      "source": "shape-illustrated-group.svg"
+    },
+    "shape-illustrated-home": {
+      "id": "shape-illustrated-home",
+      "type": "image",
+      "name": "home.svg (illustrated)",
+      "source": "shape-illustrated-home.svg"
+    },
+    "shape-illustrated-school": {
+      "id": "shape-illustrated-school",
+      "type": "image",
+      "name": "school.svg (illustrated)",
+      "source": "shape-illustrated-school.svg"
+    },
+    "shape-illustrated-place": {
+      "id": "shape-illustrated-place",
+      "type": "image",
+      "name": "place.svg (illustrated)",
+      "source": "shape-illustrated-place.svg"
+    },
+    "shape-illustrated-activity": {
+      "id": "shape-illustrated-activity",
+      "type": "image",
+      "name": "activity.svg (illustrated)",
+      "source": "shape-illustrated-activity.svg"
+    },
+    "shape-illustrated-community": {
+      "id": "shape-illustrated-community",
+      "type": "image",
+      "name": "community.svg (illustrated)",
+      "source": "shape-illustrated-community.svg"
+    },
+    "shape-illustrated-professional": {
+      "id": "shape-illustrated-professional",
+      "type": "image",
+      "name": "professional.svg (illustrated)",
+      "source": "shape-illustrated-professional.svg"
+    },
+    "shape-illustrated-animal": {
+      "id": "shape-illustrated-animal",
+      "type": "image",
+      "name": "animal.svg (illustrated)",
+      "source": "shape-illustrated-animal.svg"
+    },
+    "shape-illustrated-online": {
+      "id": "shape-illustrated-online",
+      "type": "image",
+      "name": "online.svg (illustrated)",
+      "source": "shape-illustrated-online.svg"
+    },
+    "shape-illustrated-memory": {
+      "id": "shape-illustrated-memory",
+      "type": "image",
+      "name": "memory.svg (illustrated)",
+      "source": "shape-illustrated-memory.svg"
+    },
+    "shape-illustrated-other": {
+      "id": "shape-illustrated-other",
+      "type": "image",
+      "name": "other.svg (illustrated)",
+      "source": "shape-illustrated-other.svg"
+    },
+    "shape-accented-person": {
+      "id": "shape-accented-person",
+      "type": "image",
+      "name": "person.svg (accented)",
+      "source": "shape-accented-person.svg"
+    },
+    "shape-accented-group": {
+      "id": "shape-accented-group",
+      "type": "image",
+      "name": "group.svg (accented)",
+      "source": "shape-accented-group.svg"
+    },
+    "shape-accented-home": {
+      "id": "shape-accented-home",
+      "type": "image",
+      "name": "home.svg (accented)",
+      "source": "shape-accented-home.svg"
+    },
+    "shape-accented-school": {
+      "id": "shape-accented-school",
+      "type": "image",
+      "name": "school.svg (accented)",
+      "source": "shape-accented-school.svg"
+    },
+    "shape-accented-place": {
+      "id": "shape-accented-place",
+      "type": "image",
+      "name": "place.svg (accented)",
+      "source": "shape-accented-place.svg"
+    },
+    "shape-accented-activity": {
+      "id": "shape-accented-activity",
+      "type": "image",
+      "name": "activity.svg (accented)",
+      "source": "shape-accented-activity.svg"
+    },
+    "shape-accented-community": {
+      "id": "shape-accented-community",
+      "type": "image",
+      "name": "community.svg (accented)",
+      "source": "shape-accented-community.svg"
+    },
+    "shape-accented-professional": {
+      "id": "shape-accented-professional",
+      "type": "image",
+      "name": "professional.svg (accented)",
+      "source": "shape-accented-professional.svg"
+    },
+    "shape-accented-animal": {
+      "id": "shape-accented-animal",
+      "type": "image",
+      "name": "animal.svg (accented)",
+      "source": "shape-accented-animal.svg"
+    },
+    "shape-accented-online": {
+      "id": "shape-accented-online",
+      "type": "image",
+      "name": "online.svg (accented)",
+      "source": "shape-accented-online.svg"
+    },
+    "shape-accented-memory": {
+      "id": "shape-accented-memory",
+      "type": "image",
+      "name": "memory.svg (accented)",
+      "source": "shape-accented-memory.svg"
+    },
+    "shape-accented-other": {
+      "id": "shape-accented-other",
+      "type": "image",
+      "name": "other.svg (accented)",
+      "source": "shape-accented-other.svg"
+    }
+  },
+  "stages": [
+    {
+      "id": "welcome",
+      "type": "Information",
+      "label": {
+        "en": "Welcome"
+      },
+      "title": {
+        "en": "My world"
+      },
+      "items": [
+        {
+          "id": "welcome-text",
+          "type": "text",
+          "content": {
+            "en": "We are going to make a picture of **your world**: the people, places, animals and things that matter to you.\n\nThere are no right or wrong answers. You can skip anything you do not want to talk about."
+          }
+        }
+      ]
+    },
+    {
+      "id": "name-illustrated",
+      "type": "NameGenerator",
+      "label": {
+        "en": "Who and what is in your world?"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "world_illustrated"
+      },
+      "form": {
+        "title": {
+          "en": "Add to my world"
+        },
+        "fields": [
+          {
+            "variable": "world_illustrated_name",
+            "prompt": {
+              "en": "What do you call them or it?"
+            }
+          },
+          {
+            "variable": "world_illustrated_type",
+            "prompt": {
+              "en": "What kind of thing is it?"
+            }
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "name-illustrated-prompt",
+          "text": {
+            "en": "Who and what is **important to you**? Add each one, and choose what kind of thing it is."
+          }
+        }
+      ]
+    },
+    {
+      "id": "map-illustrated",
+      "type": "Sociogram",
+      "label": {
+        "en": "Make your map"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "world_illustrated"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "map-illustrated-prompt",
+          "text": {
+            "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
+          },
+          "layout": {
+            "layoutVariable": "world_illustrated_layout"
+          },
+          "edges": {
+            "create": "goes_with",
+            "display": ["goes_with"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "accented-introduction",
+      "type": "Information",
+      "label": {
+        "en": "Node-coloured shapes"
+      },
+      "title": {
+        "en": "The same shapes in the node colour"
+      },
+      "items": [
+        {
+          "id": "accented-introduction-text",
+          "type": "text",
+          "content": {
+            "en": "_For researchers._ The next two screens repeat the task with a second node type. The main parts of its shapes are drawn in the node type's own colour (`var(--node-color)` and `var(--node-color-dark)`), and the details keep colours of their own. Change the node type's colour in Architect and every shape follows."
+          }
+        }
+      ]
+    },
+    {
+      "id": "name-accented",
+      "type": "NameGenerator",
+      "label": {
+        "en": "Add some more"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "world_accented"
+      },
+      "form": {
+        "title": {
+          "en": "Add to my world"
+        },
+        "fields": [
+          {
+            "variable": "world_accented_name",
+            "prompt": {
+              "en": "What do you call them or it?"
+            }
+          },
+          {
+            "variable": "world_accented_type",
+            "prompt": {
+              "en": "What kind of thing is it?"
+            }
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "name-accented-prompt",
+          "text": {
+            "en": "Add a few more things from your world, and choose what kind of thing each one is."
+          }
+        }
+      ]
+    },
+    {
+      "id": "map-accented",
+      "type": "Sociogram",
+      "label": {
+        "en": "Make another map"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "world_accented"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "map-accented-prompt",
+          "text": {
+            "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
+          },
+          "layout": {
+            "layoutVariable": "world_accented_layout"
+          },
+          "edges": {
+            "create": "goes_with_accented",
+            "display": ["goes_with_accented"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "finish",
+      "finishLabel": {
+        "en": "Finish"
+      },
+      "finishConfirmation": {
+        "en": "Are you sure you want to finish the interview?"
+      },
+      "finishFailed": {
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "type": "FinishSession",
+      "mode": "confirmation",
+      "label": {
+        "en": "Finish Interview"
+      },
+      "content": {
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "finishedContent": {
+        "en": "# Interview Finished\n\nThank you for participating!"
+      },
+      "outcome": "completed"
+    }
+  ],
+  "interfaceText": {
+    "navigation": {
+      "exitInterview": {
+        "en": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en": "Your answers so far will be saved and you can continue later."
+      },
+      "back": {
+        "en": "Back"
+      },
+      "continue": {
+        "en": "Continue"
+      },
+      "exitFailed": {
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en": "Show screen"
+      }
+    },
+    "buttons": {
+      "cancel": {
+        "en": "Cancel"
+      },
+      "done": {
+        "en": "Done"
+      },
+      "yes": {
+        "en": "Yes"
+      },
+      "no": {
+        "en": "No"
+      },
+      "pauseLayout": {
+        "en": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en": "Resume automatic layout"
+      },
+      "copy": {
+        "en": "Copy"
+      },
+      "copied": {
+        "en": "Copied"
+      }
+    },
+    "messages": {
+      "stageError": {
+        "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "error": {
+        "en": "An error occurred."
+      },
+      "unnamed": {
+        "en": "Unnamed"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
+      }
+    },
+    "forms": {
+      "discardChangesTitle": {
+        "en": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en": "Do you want to discard your changes?"
+      }
+    },
+    "validation": {
+      "required": {
+        "en": "You must answer this question before continuing."
+      },
+      "maxSelected": {
+        "en": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
+      },
+      "unique": {
+        "en": "Must be unique."
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en": "Reset annotations"
+      }
+    }
+  }
+}

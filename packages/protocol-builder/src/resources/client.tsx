@@ -147,6 +147,14 @@ export function useStagedResources(): StagedResources {
   return staged;
 }
 
+/**
+ * The open edit's id, or `undefined` outside one. For readers that work with
+ * or without an edit, such as a preview that should also show staged files.
+ */
+export function useOpenEditId(): string | undefined {
+  return useContext(StagedResourcesContext)?.editId;
+}
+
 type ProviderProps = Readonly<{
   /**
    * Which edit this is, when the host wants to name it rather than let one be

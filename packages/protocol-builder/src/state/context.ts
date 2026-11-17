@@ -27,6 +27,16 @@ export function useProtocolBuilderContext(): ProtocolBuilderContextValue {
 }
 
 /**
+ * The protocol host above this component, or `undefined` where there is none:
+ * for a reader that draws something either way, such as a node's custom shape.
+ */
+export function useOptionalProtocolBuilderContext():
+  | ProtocolBuilderContextValue
+  | undefined {
+  return useContext(ProtocolBuilderContext);
+}
+
+/**
  * Whether there is a protocol host above this component at all.
  *
  * The one question about this context with an answer outside a

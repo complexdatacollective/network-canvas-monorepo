@@ -307,3 +307,17 @@ Sources: `docs/collect-data/fresco/guide.en.mdx` and `docs/collect-data/fresco/g
 
 - `fresco2.png` — UploadThing token form (Configure Storage step) — ✅ Replaced.
 - `configure-storage-s3.png` — Configure Storage step with S3-compatible selected — ✅ Added to the basic guides (`guide.en.mdx` / `guide-vercel.en.mdx`) in the new "Use an S3-compatible bucket" steps. (The advanced guide is env-based: no screenshot.)
+
+## Custom node shapes (schema 9)
+
+The Node appearance section of the node type editor gained a **Custom
+shapes** area, and the Codebook page now opens the same node type editor as
+the stage editors (titled **Edit this node type**, with a **Save entity**
+button). The captures of that dialog were retaken to show both. The other
+images in `/assets/img/custom-node-shapes/` are new and current.
+
+| Image                                                                   | Status        |
+| ----------------------------------------------------------------------- | ------------- |
+| `/assets/img/architect/edit-node-type-web.png` (Codebook)               | ✅ Recaptured |
+| `/assets/img/architect-guide/node-type-shape.png` (Building a protocol) | ✅ Recaptured |
+| `/assets/img/custom-node-shapes/architect-custom-shapes.png`            | ✅ Recaptured |

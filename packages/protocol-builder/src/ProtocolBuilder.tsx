@@ -3,6 +3,8 @@ import { useMemo, type ReactNode } from 'react';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { NodeLabelFieldProvider } from './codebook/nodeLabelFieldSlot.ts';
+import NodeLabelField from './fields/NodeLabelField.tsx';
 import { protocolLocalizationOf } from './localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from './localization/ProtocolLocalization.tsx';
 import { useProtocolChannel } from './state/channel.ts';
@@ -38,7 +40,10 @@ export function ProtocolBuilder({
     <QueryClientProvider client={queryClient}>
       <ProtocolBuilderProvider value={value}>
         <ProtocolChannel protocolId={protocolId} />
-        <ProtocolLanguages>{children}</ProtocolLanguages>
+        {/* Supplied here, above every editor: see `nodeLabelFieldSlot`. */}
+        <NodeLabelFieldProvider value={NodeLabelField}>
+          <ProtocolLanguages>{children}</ProtocolLanguages>
+        </NodeLabelFieldProvider>
       </ProtocolBuilderProvider>
     </QueryClientProvider>
   );

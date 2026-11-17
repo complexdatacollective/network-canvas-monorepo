@@ -114,6 +114,7 @@ export default defineConfig({
             '@codaco/fresco-ui > gemoji',
             '@codaco/fresco-ui > remark-gemoji',
             '@codaco/fresco-ui > remark-gfm',
+            '@codaco/fresco-ui > saxes',
             '@codaco/fresco-ui > tailwind-merge',
             '@codaco/fresco-ui > usehooks-ts',
             '@codaco/protocol-utilities > @faker-js/faker',

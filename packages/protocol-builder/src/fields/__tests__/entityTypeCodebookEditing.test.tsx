@@ -255,6 +255,9 @@ describe('making and changing a codebook type from the control that names it', (
       'abandoned',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });

@@ -43,10 +43,6 @@
     "defaultMessage": "More examples of Network Canvas protocols can be found on our <ExternalLink>Protocol Gallery</ExternalLink>.",
     "description": "Text of the Looking for more card on the start screen. ExternalLink wraps the words Protocol Gallery, which link to the online gallery of example protocols."
   },
-  "architect.additional.newVariableWindow.newVariableWindow.createNewOption": {
-    "defaultMessage": "Create new option",
-    "description": "Label of the button that adds one more option to the list of allowed values, in the window for creating a new codebook variable (called an attribute here)."
-  },
   "architect.additional.pages.assetsPage.importExternalDataResourcesToUse": {
     "defaultMessage": "Import external data resources to use in your protocol — images, video, audio, or network data. See our <ExternalLink> documentation </ExternalLink> for more information.",
     "description": "Introductory text under the heading of the Resource Library page. The <ExternalLink> tag wraps the words that link to the documentation about resources (uploaded files)."
@@ -98,14 +94,6 @@
   "architect.additional.protocolOpenDialogs.upgradeToContinue": {
     "defaultMessage": "Upgrade to continue",
     "description": "Title of the dialog shown when the researcher opens a protocol made for an older schema and the only option is to upgrade a copy of it to the current schema."
-  },
-  "architect.additional.typeEditor.shapeVariableMapping.addThreshold": {
-    "defaultMessage": "Add threshold",
-    "description": "Button below the list of thresholds in the node type editor's shape mapping. Adds a threshold: a number at or above which nodes are drawn with a chosen shape."
-  },
-  "architect.additional.typeEditor.shapeVariableMapping.noThresholdsYetEveryValue": {
-    "defaultMessage": "No thresholds yet — every value uses the default shape.",
-    "description": "Empty-state message in the thresholds list of the node type editor's shape mapping, shown before any threshold is added."
   },
   "architect.app.storageFailure": {
     "defaultMessage": "Your recent changes could not be saved to this device, which can happen if local storage is full or unavailable. To avoid losing work, download a copy of your protocol.",
@@ -315,22 +303,6 @@
     "defaultMessage": "In use — cannot be deleted",
     "description": "Tooltip and accessible name of the disabled delete button in a row of the codebook variables table, shown when a stage uses the variable so it cannot be deleted."
   },
-  "architect.chrome.codebook.entityTypeDialog.createType": {
-    "defaultMessage": "Create {entityLabel} Type",
-    "description": "Title of the dialog for creating a new node type or edge type. entityLabel is the word Node or Edge."
-  },
-  "architect.chrome.codebook.entityTypeDialog.edge": {
-    "defaultMessage": "Edge",
-    "description": "The word Edge, inserted as entityLabel into the title of the dialog for creating or editing an edge type (a kind of relationship between nodes)."
-  },
-  "architect.chrome.codebook.entityTypeDialog.editType": {
-    "defaultMessage": "Edit {entityLabel} Type",
-    "description": "Title of the dialog for editing an existing node type or edge type. entityLabel is the word Node or Edge."
-  },
-  "architect.chrome.codebook.entityTypeDialog.node": {
-    "defaultMessage": "Node",
-    "description": "The word Node, inserted as entityLabel into the title of the dialog for creating or editing a node type (a kind of person or thing participants name)."
-  },
   "architect.chrome.home.libraryPanel.anExampleIntroducingTheKeyFeatures": {
     "defaultMessage": "An example introducing the key features and techniques available in Network Canvas.",
     "description": "Description of the Sample Protocol in the Templates tab of the start screen; used only if the sample protocol has no description of its own."
@@ -518,22 +490,6 @@
   "architect.codebook.entityType.usedIn": {
     "defaultMessage": "used in:",
     "description": "Label before the list of stage links on a node type or edge type section of the Codebook page, introducing the stages that use the type."
-  },
-  "architect.codebook.entityTypeDialog.couldNotCreateType": {
-    "defaultMessage": "Could not create type",
-    "description": "Title of the error dialog shown when saving a new node type or edge type fails."
-  },
-  "architect.codebook.entityTypeDialog.couldNotUpdateType": {
-    "defaultMessage": "Could not update type",
-    "description": "Title of the error dialog shown when saving changes to an existing node type or edge type fails."
-  },
-  "architect.codebook.entityTypeDialog.oK": {
-    "defaultMessage": "OK",
-    "description": "Button that dismisses the could-not-save-type error dialog."
-  },
-  "architect.codebook.entityTypeDialog.saveAndClose": {
-    "defaultMessage": "Save and Close",
-    "description": "Submit button of the node type or edge type dialog that saves the type and closes the dialog."
   },
   "architect.codebook.error.attributeInUse": {
     "defaultMessage": "This attribute is in use and cannot be deleted. Remove it from the stages listed under \"Used In\" first.",
@@ -738,30 +694,6 @@
   "architect.constants.components.stageeditor.stagedraftconflictdialog.pendingDescription": {
     "defaultMessage": "The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your unsaved changes to this stage.",
     "description": "Body of the dialog asking what to do with unsaved stage changes after the other browser tab closed. Explains that the two versions cannot be combined and describes what downloading a copy or discarding the changes does."
-  },
-  "architect.constants.components.typeeditor.validateentitytype.conditionRulesMessage": {
-    "defaultMessage": "Every “If” in the label needs at least one rule. Open it and choose “Edit rules”, or remove it.",
-    "description": "Validation error on the Dynamic label section of the node type editor when an “If” in the label text has no rules. “Edit rules” is the name of the button on each row of an “If”."
-  },
-  "architect.constants.components.typeeditor.validateentitytype.labelProblemMessage": {
-    "defaultMessage": "The label cannot be used as it is written. Correct the problem shown beneath it.",
-    "description": "Validation error on the Dynamic label section of the node type editor when the label text is not valid, for example because it shows a value in a place where the value could be missing. The specific problem is already shown directly beneath the label field."
-  },
-  "architect.constants.components.typeeditor.validateentitytype.labelTextMessage": {
-    "defaultMessage": "Write the label, or turn off Dynamic label.",
-    "description": "Validation error on the Dynamic label section of the node type editor when the section is switched on but no label text has been written. Dynamic label is the name of the section and of its on/off toggle."
-  },
-  "architect.constants.components.typeeditor.validateentitytype.selectVariableMessage": {
-    "defaultMessage": "Select an attribute to map to a shape, or turn off shape mapping.",
-    "description": "Validation error on the shape mapping setting of the node type editor when shape mapping is on but no attribute (codebook variable) has been chosen to drive the node shape."
-  },
-  "architect.constants.components.typeeditor.validateentitytype.thresholdsAscendingMessage": {
-    "defaultMessage": "Thresholds must increase in value, with no duplicates.",
-    "description": "Validation error on the shape mapping setting of the node type editor when the thresholds (numeric cut-off values that select a shape) are not in strictly increasing order or contain a duplicate."
-  },
-  "architect.constants.components.typeeditor.validateentitytype.thresholdsMinMessage": {
-    "defaultMessage": "Add at least one threshold, or turn off shape mapping.",
-    "description": "Validation error on the shape mapping setting of the node type editor when breakpoint mapping is chosen but no thresholds (numeric cut-off values that select a shape) have been added."
   },
   "architect.constants.hooks.useprotocolnavguard.discarddescriptions.openElsewhere": {
     "defaultMessage": "Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.",
@@ -2019,66 +1951,6 @@
     "defaultMessage": "Use a short, recognizable name of up to {PROTOCOL_NAME_MAX_LENGTH, number} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.",
     "description": "Hint for the new protocol name. PROTOCOL_NAME_MAX_LENGTH is the maximum number of user-perceived characters allowed in that name."
   },
-  "architect.newVariableWindow.newVariableWindow.allowedValues": {
-    "defaultMessage": "Allowed values",
-    "description": "Heading of the section in the new variable window listing the options a participant can choose from; shown only for variable types that have options."
-  },
-  "architect.newVariableWindow.newVariableWindow.attributeDefinition": {
-    "defaultMessage": "Attribute definition",
-    "description": "Title of the window for creating a new codebook variable (called an attribute here) from inside a stage editor."
-  },
-  "architect.newVariableWindow.newVariableWindow.attributeName": {
-    "defaultMessage": "Attribute name",
-    "description": "Label of the variable name field in the new variable window; also the accessible description of that section."
-  },
-  "architect.newVariableWindow.newVariableWindow.attributeType": {
-    "defaultMessage": "Attribute type",
-    "description": "Label of the dropdown for choosing the data type of the new variable; also the accessible description of the Data type section."
-  },
-  "architect.newVariableWindow.newVariableWindow.createNewAttribute": {
-    "defaultMessage": "Create New Attribute",
-    "description": "Title of the dialog form for creating a new codebook variable (called an attribute here)."
-  },
-  "architect.newVariableWindow.newVariableWindow.createTheValuesThisInputControl": {
-    "defaultMessage": "Create the values this input control offers the participant.",
-    "description": "Hint under the options list in the new variable window; the input control is the question control the participant uses to answer."
-  },
-  "architect.newVariableWindow.newVariableWindow.dataType": {
-    "defaultMessage": "Data type",
-    "description": "Heading of the section in the new variable window where the researcher chooses the variable type (text, number, categorical and so on)."
-  },
-  "architect.newVariableWindow.newVariableWindow.defineTheAttributeSIdentityDataType": {
-    "defaultMessage": "Define the attribute's identity, data type, and available values.",
-    "description": "Subtitle under the title of the window for creating a new codebook variable (called an attribute here); summarises what the window asks for."
-  },
-  "architect.newVariableWindow.newVariableWindow.eGNickname": {
-    "defaultMessage": "e.g. Nickname",
-    "description": "Placeholder example in the empty variable name field in the new variable window; Nickname is an example variable name."
-  },
-  "architect.newVariableWindow.newVariableWindow.identity": {
-    "defaultMessage": "Identity",
-    "description": "Heading of the section in the new variable window that holds the variable name."
-  },
-  "architect.newVariableWindow.newVariableWindow.options": {
-    "defaultMessage": "Options",
-    "description": "Label of the list of options for the new variable in the new variable window."
-  },
-  "architect.newVariableWindow.newVariableWindow.saveAndClose": {
-    "defaultMessage": "Save and Close",
-    "description": "Label of the submit button that saves the new variable and closes the window."
-  },
-  "architect.newVariableWindow.newVariableWindow.selectAttributeType": {
-    "defaultMessage": "Select attribute type",
-    "description": "Placeholder of the data type dropdown in the new variable window before a type is chosen."
-  },
-  "architect.newVariableWindow.newVariableWindow.theAttributeNameIsHowYou": {
-    "defaultMessage": "The attribute name is how you will reference the attribute elsewhere, including in exported data.",
-    "description": "Hint under the variable name field in the new variable window; explains the name identifies the variable elsewhere and in exported data."
-  },
-  "architect.notice.caption": {
-    "defaultMessage": "These options are automatically configured by the interface and cannot be modified.",
-    "description": "Caption above the read-only options table, read aloud by screen readers; explains the options come from the interface the stage uses and cannot be edited."
-  },
   "architect.notice.unsavedWorkCaveat": {
     "defaultMessage": "Installing the update will reload only this tab. Any unsaved work in this tab will be lost. Other open Architect tabs will keep running until they are reloaded.",
     "description": "Warning shown with the update-available pill, before the researcher installs a new Architect version. Explains that installing reloads only the current browser tab, so unsaved work in this tab is lost, while other open Architect tabs keep running."
@@ -2098,14 +1970,6 @@
   "architect.optionValidation.uniqueValues": {
     "defaultMessage": "Every option needs a unique value.",
     "description": "Validation for an ordinal or categorical attribute option list."
-  },
-  "architect.options.lockedOptions.label": {
-    "defaultMessage": "Label",
-    "description": "Column header of the read-only options table; this column shows the option text a participant sees."
-  },
-  "architect.options.lockedOptions.value": {
-    "defaultMessage": "Value",
-    "description": "Column header of the read-only options table; this column shows the stored value recorded for each option."
   },
   "architect.pages.assetsPage.resourceLibrary": {
     "defaultMessage": "Resource Library",
@@ -3434,134 +3298,6 @@
   "architect.timeline.timelineStageRow.hasSkipLogic": {
     "defaultMessage": "Has skip logic",
     "description": "Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has skip logic set."
-  },
-  "architect.typeEditor.shapePicker.config.circle": {
-    "defaultMessage": "Circle",
-    "description": "Name of the circle node shape, shown under its swatch in the shape picker of the node type editor."
-  },
-  "architect.typeEditor.shapePicker.config.diamond": {
-    "defaultMessage": "Diamond",
-    "description": "Name of the diamond node shape, shown under its swatch in the shape picker of the node type editor."
-  },
-  "architect.typeEditor.shapePicker.config.square": {
-    "defaultMessage": "Square",
-    "description": "Name of the square node shape, shown under its swatch in the shape picker of the node type editor."
-  },
-  "architect.typeEditor.shapeVariableMapping.attribute": {
-    "defaultMessage": "Attribute",
-    "description": "Label of the dropdown in the node type editor's shape mapping that chooses which variable of the node type decides the node's shape. Attribute means a codebook variable."
-  },
-  "architect.typeEditor.shapeVariableMapping.belowFirstThreshold": {
-    "defaultMessage": "Below first threshold",
-    "description": "Label of the fixed first row in the thresholds list of the shape mapping. It covers values lower than the lowest threshold, which use the default shape."
-  },
-  "architect.typeEditor.shapeVariableMapping.false": {
-    "defaultMessage": "False",
-    "description": "Label of the False value of a yes/no variable in the shape mapping of the node type editor, beside the picker for the shape used when the variable is false."
-  },
-  "architect.typeEditor.shapeVariableMapping.mapAttributeToShape": {
-    "defaultMessage": "Map attribute to shape",
-    "description": "Label and accessible name of the on/off toggle in the node type editor that lets a variable of the node type decide the node shape instead of one default shape."
-  },
-  "architect.typeEditor.shapeVariableMapping.overrideTheDefaultShapeBasedOn": {
-    "defaultMessage": "Override the default shape based on the value of a node's attribute.",
-    "description": "Hint below the Map attribute to shape toggle. Attribute means a variable recorded about each node of this type."
-  },
-  "architect.typeEditor.shapeVariableMapping.shapeForEachValue": {
-    "defaultMessage": "Shape for each value",
-    "description": "Heading above the list of a categorical, ordinal or yes/no variable's values in the shape mapping, each with a picker for the shape used for that value."
-  },
-  "architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill": {
-    "defaultMessage": "Some values are unmapped and will use the default shape.",
-    "description": "Warning below the list of values in the shape mapping, shown while at least one value has no shape chosen. Those nodes use the node type's default shape."
-  },
-  "architect.typeEditor.shapeVariableMapping.thresholds": {
-    "defaultMessage": "Thresholds",
-    "description": "Heading and accessible name of the list of numeric thresholds in the shape mapping for a number or scale variable. Each threshold is a value at or above which nodes use a chosen shape."
-  },
-  "architect.typeEditor.shapeVariableMapping.true": {
-    "defaultMessage": "True",
-    "description": "Label of the True value of a yes/no variable in the shape mapping of the node type editor, beside the picker for the shape used when the variable is true."
-  },
-  "architect.typeEditor.shapeVariableMapping.usesDefaultShape": {
-    "defaultMessage": "uses default shape",
-    "description": "Small note at the end of the fixed Below first threshold row, saying that values below the first threshold use the node type's default shape."
-  },
-  "architect.typeEditor.typeEditor.chooseAColorForThisType": {
-    "defaultMessage": "Choose a color for this {entity, select, node {node} edge {edge} other {ego}} type.",
-    "description": "Hint under the colour picker in the type editor. entity is node, edge or ego, the kind of type being edited."
-  },
-  "architect.typeEditor.typeEditor.chooseADefaultShapeAndOptionally": {
-    "defaultMessage": "Choose a default shape and optionally map shapes from an attribute.",
-    "description": "Description under the Node appearance heading in the node type editor. Attribute means a variable recorded about each node of this type."
-  },
-  "architect.typeEditor.typeEditor.chooseADefaultShapeForThis": {
-    "defaultMessage": "Choose a default shape for this node type.",
-    "description": "Hint under the default shape picker in the node type editor."
-  },
-  "architect.typeEditor.typeEditor.chooseAnIconToDisplayOn": {
-    "defaultMessage": "Choose an icon to display on interfaces that create this {entity, select, node {node} edge {edge} other {ego}}.",
-    "description": "Hint under the icon picker in the node type editor. entity is node, edge or ego, the kind of type being edited. Interfaces here are interview stages that create nodes."
-  },
-  "architect.typeEditor.typeEditor.color": {
-    "defaultMessage": "Color",
-    "description": "Label of the colour picker field in the node or edge type editor."
-  },
-  "architect.typeEditor.typeEditor.dynamicLabel": {
-    "defaultMessage": "Dynamic label",
-    "description": "Heading of an optional section of the node type editor, switched on with a toggle. When it is on, the researcher writes the label shown on every node of this type, which can show the node’s attributes and change with them, in place of the label the interview would otherwise choose."
-  },
-  "architect.typeEditor.typeEditor.dynamicLabelDescription": {
-    "defaultMessage": "Write the label shown on every node of this type, in place of the label the interview chooses on its own. The label can show the node’s attributes, add text or emoji, and change depending on an attribute’s value or on rules you set, such as how many edges the node has. It updates as the interview goes on.",
-    "description": "Description under the Dynamic label heading in the node type editor. Attributes are the variables recorded about each node of this type; an edge joins a node to another node."
-  },
-  "architect.typeEditor.typeEditor.enterANameForThisType": {
-    "defaultMessage": "Enter a name for this {entity, select, node {node} edge {edge} other {ego}} type...",
-    "description": "Placeholder inside the type name field. entity is node, edge or ego, the kind of type being named."
-  },
-  "architect.typeEditor.typeEditor.icon": {
-    "defaultMessage": "Icon",
-    "description": "Label of the icon picker field in the node type editor."
-  },
-  "architect.typeEditor.typeEditor.interfaceIcon": {
-    "defaultMessage": "Interface icon",
-    "description": "Heading of the section of the node type editor where an icon is chosen for the interface stages that create nodes of this type."
-  },
-  "architect.typeEditor.typeEditor.label": {
-    "defaultMessage": "Label",
-    "description": "Label of the text field in the Dynamic label section of the node type editor, where the researcher writes the label shown on every node of this type."
-  },
-  "architect.typeEditor.typeEditor.labelHint": {
-    "defaultMessage": "Type text or emoji. Use the syringe button, or type '{', to insert an attribute or the default label. Use the logic button beside it to insert an If, whose rules you set, or different wording for each of an attribute’s answers. Click an inserted pill to write the text for each of its cases; logic can be inserted inside a case too.",
-    "description": "Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button that opens the menu of values that can be inserted; the logic button is the toolbar button beside it, which opens the menu of logic; a pill is the chip an inserted value or piece of logic is shown as. The default label is the label the interview would otherwise choose for a node. The quoted brace is the literal character the researcher types."
-  },
-  "architect.typeEditor.typeEditor.nameThisTypeForTheCodebook": {
-    "defaultMessage": "Name this type for the codebook and exported data.",
-    "description": "Description under the Type identity section heading in the node or edge type editor."
-  },
-  "architect.typeEditor.typeEditor.nodeAppearance": {
-    "defaultMessage": "Node appearance",
-    "description": "Heading of the section of the node type editor that sets how nodes of this type look (their shape)."
-  },
-  "architect.typeEditor.typeEditor.shape": {
-    "defaultMessage": "Shape",
-    "description": "Label of the default node shape picker in the node type editor."
-  },
-  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": {
-    "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Colleagues\".}}",
-    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. A type name can be any text: spaces and any script are allowed. Translate the example names naturally, as a researcher working in the target language would name a kind of person, place, organization or relationship, even if that makes them several words long."
-  },
-  "architect.typeEditor.typeEditor.typeColor": {
-    "defaultMessage": "Type color",
-    "description": "Heading of the section of the node or edge type editor where the type's colour is chosen."
-  },
-  "architect.typeEditor.typeEditor.typeIdentity": {
-    "defaultMessage": "Type identity",
-    "description": "Heading of the first section of the node or edge type editor, containing the type's name."
-  },
-  "architect.typeEditor.typeEditor.typeName": {
-    "defaultMessage": "{entity, select, node {Node} other {Edge}} type name",
-    "description": "Label of the name field in the type editor. entity is node or edge, depending on which kind of type is being edited."
   },
   "architect.utility.dialogForm.confirmDiscardNestedDraft.closeWithoutSaving": {
     "defaultMessage": "Close Without Saving",

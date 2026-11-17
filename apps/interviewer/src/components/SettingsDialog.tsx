@@ -873,7 +873,8 @@ export function SettingsDialog({
 
   const protocolOptions = protocols.map((p) => ({
     value: p.hash,
-    label: p.name,
+    // A protocol's name reads in its own direction.
+    label: { text: p.name, dir: 'auto' as const },
   }));
   const noProtocols = protocols.length === 0;
   const percentProgress =

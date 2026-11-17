@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 
@@ -6,7 +5,6 @@ import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import type { RootState } from '~/ducks/store';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 
@@ -49,15 +47,16 @@ type EgoTypeProps = {
   variables?: Record<string, Variable>;
   search?: string;
   unusedOnly?: boolean;
+  onAddVariable?: (entity: 'ego') => void;
 };
 const EgoType = ({
   variables = {},
   search = '',
   unusedOnly = false,
+  onAddVariable,
 }: EgoTypeProps) => {
   const intl = useAppIntl();
   const readOnly = useProtocolReadOnly();
-  const [showAddVariable, setShowAddVariable] = useState(false);
   const variableArray = Object.values(variables);
   const term = search.trim().toLowerCase();
   const filteredVariables = variableArray.filter((variable) => {
@@ -76,7 +75,7 @@ const EgoType = ({
           color="primary"
           size="sm"
           disabled={readOnly}
-          onClick={() => setShowAddVariable(true)}
+          onClick={() => onAddVariable?.('ego')}
         >
           {intl.formatMessage(messages.addAttribute)}
         </Button>
@@ -90,13 +89,6 @@ const EgoType = ({
             : intl.formatMessage(messages.noEgoAttributesMatchTheCurrent)}
         </Paragraph>
       )}
-      <NewVariableWindow
-        show={showAddVariable}
-        entity="ego"
-        type=""
-        onComplete={() => setShowAddVariable(false)}
-        onCancel={() => setShowAddVariable(false)}
-      />
     </div>
   );
 };
@@ -108,6 +100,7 @@ const mapStateToProps = (state: RootState, { intl }: { intl: IntlShape }) => {
 type EgoOwnProps = {
   search?: string;
   unusedOnly?: boolean;
+  onAddVariable?: (entity: 'ego') => void;
 };
 const ConnectedEgoType = compose<
   EgoTypeProps,

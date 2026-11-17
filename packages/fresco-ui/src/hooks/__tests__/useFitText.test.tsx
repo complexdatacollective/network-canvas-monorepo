@@ -485,4 +485,74 @@ describe('useFitText', () => {
       'line-clamp-4',
     );
   });
+
+  describe('overflow', () => {
+    let textHeight = 60;
+    const prototypes = [HTMLSpanElement.prototype, HTMLDivElement.prototype];
+
+    beforeEach(() => {
+      uninstallLabelMetrics();
+      textHeight = 60;
+      const define = (
+        prototype: HTMLElement,
+        metric: string,
+        get: () => number,
+      ) => {
+        Object.defineProperty(prototype, metric, { configurable: true, get });
+      };
+      // The text fits its own box, which has no height limit and so reaches
+      // below the 40px container.
+      for (const metric of ['clientWidth', 'scrollWidth']) {
+        define(HTMLSpanElement.prototype, metric, () => 100);
+      }
+      for (const metric of ['clientHeight', 'scrollHeight', 'offsetHeight']) {
+        define(HTMLSpanElement.prototype, metric, () => textHeight);
+      }
+      define(HTMLDivElement.prototype, 'clientHeight', () => 40);
+    });
+
+    afterEach(() => {
+      for (const prototype of prototypes) {
+        for (const metric of [
+          'clientWidth',
+          'scrollWidth',
+          'clientHeight',
+          'scrollHeight',
+          'offsetHeight',
+        ]) {
+          Reflect.deleteProperty(prototype, metric);
+        }
+      }
+    });
+
+    function OverflowProbe({ text }: { text: string }) {
+      const containerRef = useRef<HTMLDivElement>(null);
+      const { ref, overflow } = useFitText<HTMLSpanElement>({
+        steps: SINGLE_STEP,
+        containerRef,
+        watch: text,
+      });
+      return (
+        <div ref={containerRef} style={{ height: '40px' }}>
+          <span ref={ref}>{text}</span>
+          <output data-testid="overflow">{overflow}</output>
+        </div>
+      );
+    }
+
+    const overflow = () => screen.getByTestId('overflow').textContent;
+
+    it('reports how far the text reaches below its container', async () => {
+      render(<OverflowProbe text="tall" />);
+      await waitFor(() => expect(overflow()).toBe('0.5'));
+    });
+
+    it('reports none once the text is back inside its container', async () => {
+      const { rerender } = render(<OverflowProbe text="tall" />);
+      await waitFor(() => expect(overflow()).toBe('0.5'));
+      textHeight = 30;
+      rerender(<OverflowProbe text="short" />);
+      await waitFor(() => expect(overflow()).toBe('0'));
+    });
+  });
 });

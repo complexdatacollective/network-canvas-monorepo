@@ -45,7 +45,13 @@ export * from './variables/index.ts';
 
 import { findEmptyTextPaths } from './built-in-wording.ts';
 // Import what we need for the ProtocolSchema
-import type { Codebook, NodeDefinition } from './codebook/index.ts';
+import {
+  getCustomShapeId,
+  isCustomShapeReference,
+  type Codebook,
+  type NodeDefinition,
+  type NodeShapeReference,
+} from './codebook/index.ts';
 import type { FormField, StageSubject } from './common/index.ts';
 import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
 import type { FilterRule } from './filters/index.ts';
@@ -1661,6 +1667,68 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     for (const [nodeType, nodeDef] of Object.entries(
       protocol.codebook.node,
     ) as [string, NodeDefinition][]) {
+      const shapePath = ['codebook', 'node', nodeType, 'shape'];
+      const shapeReferences: [NodeShapeReference, (string | number)[]][] = [
+        [nodeDef.shape.default, [...shapePath, 'default']],
+      ];
+      const mapping = nodeDef.shape.dynamic;
+      if (mapping?.type === 'discrete') {
+        mapping.map.forEach((entry, index) => {
+          shapeReferences.push([
+            entry.shape,
+            [...shapePath, 'dynamic', 'map', index, 'shape'],
+          ]);
+        });
+      } else if (mapping?.type === 'breakpoints') {
+        mapping.thresholds.forEach((threshold, index) => {
+          shapeReferences.push([
+            threshold.shape,
+            [...shapePath, 'dynamic', 'thresholds', index, 'shape'],
+          ]);
+        });
+      }
+      for (const [reference, path] of shapeReferences) {
+        if (!isCustomShapeReference(reference)) continue;
+        const shapeId = getCustomShapeId(reference);
+        if (
+          !nodeDef.customShapes ||
+          !Object.hasOwn(nodeDef.customShapes, shapeId)
+        ) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Shape "${reference}" refers to a custom shape "${shapeId}" that node type "${nodeDef.name}" does not define`,
+            path,
+          });
+        }
+      }
+
+      for (const [shapeId, customShape] of Object.entries(
+        nodeDef.customShapes ?? {},
+      )) {
+        const assetPath = [
+          'codebook',
+          'node',
+          nodeType,
+          'customShapes',
+          shapeId,
+          'asset',
+        ];
+        const asset = protocol.assetManifest?.[customShape.asset];
+        if (!asset) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Custom shape "${customShape.name}" uses the image "${customShape.asset}", which is not an asset in the manifest.`,
+            path: assetPath,
+          });
+        } else if (asset.type !== 'image') {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Custom shape "${customShape.name}" must use an 'image' asset, but "${customShape.asset}" is of type "${asset.type}".`,
+            path: assetPath,
+          });
+        }
+      }
+
       if (nodeDef.shape?.dynamic) {
         const { dynamic } = nodeDef.shape;
         const basePath = ['codebook', 'node', nodeType, 'shape', 'dynamic'];

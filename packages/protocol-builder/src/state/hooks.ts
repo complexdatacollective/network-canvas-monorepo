@@ -17,7 +17,10 @@ import type {
   SectionHolderSchema,
   SectionIssueSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
-import type { InterfaceTextUpdate } from '@codaco/protocol-validation';
+import type {
+  InterfaceTextUpdate,
+  NodeShapeReference,
+} from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -25,6 +28,11 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import {
+  type CustomShapes,
+  isNodeShapeReference,
+  readCustomShapes,
+} from '../codebook/customShapes.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { attempt } from './attempt.ts';
 import {
@@ -93,7 +101,9 @@ export type EntityTypeSummary = Readonly<{
   name: string;
   color?: string;
   /** How a node of this type is drawn. Node types only; edges have no shape. */
-  shape?: string;
+  shape?: NodeShapeReference;
+  /** The type's own shapes, which `shape` may name. */
+  customShapes?: CustomShapes;
 }>;
 
 /** Every node or edge type in the codebook, for a picker's options. */
@@ -542,15 +552,17 @@ function entityTypeSummary(
       ? ref.typeId
       : id;
   const shape = document.shape;
-  const defaultShape =
+  const storedDefault =
     shape !== null && typeof shape === 'object' && 'default' in shape
       ? shape.default
       : undefined;
+  const customShapes = readCustomShapes(document.customShapes);
   return {
     id: typeId,
     name: typeof document.name === 'string' ? document.name : typeId,
     ...(typeof document.color === 'string' ? { color: document.color } : {}),
-    ...(typeof defaultShape === 'string' ? { shape: defaultShape } : {}),
+    ...(isNodeShapeReference(storedDefault) ? { shape: storedDefault } : {}),
+    ...(customShapes === undefined ? {} : { customShapes }),
   };
 }
 

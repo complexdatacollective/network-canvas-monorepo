@@ -6,12 +6,12 @@ import {
 const defaultIntl = createAppIntl({ locale: 'en' });
 import { createSelector } from '@reduxjs/toolkit';
 
-import type { NodeShape } from '@codaco/fresco-ui/Node';
 import {
   type ColorReference,
   type EdgeDefinition,
   type EgoDefinition,
   type NodeDefinition,
+  type NodeShapeReference,
   type Stage,
   type Variable,
   type Variables,
@@ -309,7 +309,9 @@ type VariableWithUsage = Variable & {
 type EntityProperties = {
   name: string;
   color?: ColorReference;
-  shape?: NodeShape;
+  /** A node type's default shape, as stored; `EntityIcon` resolves it. */
+  shape?: NodeShapeReference;
+  customShapes?: NodeDefinition['customShapes'];
   variables: Record<string, VariableWithUsage>;
 };
 
@@ -352,6 +354,10 @@ export const getEntityProperties = (
   const shape =
     entity === 'node' && 'shape' in entityType
       ? entityType.shape?.default
+      : undefined;
+  const customShapes =
+    entity === 'node' && 'customShapes' in entityType
+      ? entityType.customShapes
       : undefined;
 
   const variableMeta = getVariableMetaByIndex(state);
@@ -402,6 +408,7 @@ export const getEntityProperties = (
     name,
     color,
     shape,
+    customShapes,
     variables: variablesWithUsage,
   };
 };

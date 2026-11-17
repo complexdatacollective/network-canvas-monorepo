@@ -14,7 +14,7 @@ export async function requireApiTokenAuth(
   req: NextRequest,
 ): Promise<{ valid: true } | { error: NextResponse }> {
   const authHeader = req.headers.get('authorization');
-  const token = authHeader?.replace('Bearer ', '');
+  const token = authHeader?.replace(/^bearer /i, '');
 
   if (!token) {
     return {

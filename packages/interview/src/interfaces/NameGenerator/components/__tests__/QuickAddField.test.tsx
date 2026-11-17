@@ -15,6 +15,10 @@ vi.mock('../../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
 }));
 
+vi.mock('../../../../hooks/useCustomShapeSvgs', () => ({
+  useCustomShapeSvgs: () => ({}),
+}));
+
 // The stable `name` is protocol bookkeeping; only the localized `label` is
 // shown to the participant, so the two deliberately differ.
 const { nodeTypeDefinition } = vi.hoisted(() => ({
@@ -216,6 +220,30 @@ describe('QuickAddField', () => {
 
     expect(input).toHaveAccessibleName('Type a name');
     expect(input).not.toHaveAccessibleName(/person_internal/);
+  });
+
+  // The icon is decoration: a title on it would show as a tooltip, in
+  // English whatever the interview's language.
+  it('is named in English from its icon, which shows no title', async () => {
+    renderField(
+      <Form onSubmit={vi.fn(async () => ({ success: true }))}>
+        <QuickAddField
+          hint={HINT}
+          name="name"
+          placeholder="Type a name"
+          disabled={false}
+        />
+      </Form>,
+    );
+
+    const toggle = screen.getByTestId('quick-add-toggle');
+    expect(toggle).toHaveAccessibleName('Add a person');
+    expect(toggle).toHaveAttribute('lang', 'en');
+    expect(toggle.querySelector('svg title')).toBeNull();
+
+    // Open, it shows the name being typed, which is not English.
+    await openField();
+    expect(toggle).not.toHaveAttribute('lang');
   });
 
   it('closes when the user blurs the enabled input', async () => {

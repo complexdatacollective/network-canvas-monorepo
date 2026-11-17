@@ -738,3 +738,195 @@ export const SettingsMenuScalingOnly: Story = {
     ).toBeInTheDocument();
   },
 };
+
+// A form with one required question, so the screen is ready to continue only
+// while that question is answered.
+function buildRequiredAnswerPayload(): string {
+  const si = new SyntheticInterview();
+
+  const stage = si.addStage('EgoForm', {
+    label: 'About you',
+    introductionPanel: { title: 'About you' },
+  });
+  const nameVar = si.addEgoVariable({
+    type: 'text',
+    component: 'Text',
+    name: 'fullName',
+    validation: { required: true },
+  });
+  stage.addFormField({
+    variable: nameVar.id,
+    component: 'Text',
+    prompt: 'What is your name?',
+  });
+
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'Thank you for taking part.',
+  });
+
+  return SuperJSON.stringify(si.getInterviewPayload({ currentStep: 0 }));
+}
+
+let requiredAnswerPayload: string | undefined;
+const getRequiredAnswerPayload = () =>
+  (requiredAnswerPayload ??= buildRequiredAnswerPayload());
+
+const READY_TO_CONTINUE = 'You can continue to the next step.';
+
+export const ReadyToContinue: Story = {
+  name: 'Ready to continue (status message)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRequiredAnswerPayload()}
+        navigationOrientation="vertical"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const next = await canvas.findByRole('button', { name: 'Next Step' });
+    const announcer = canvas.getByTestId('ready-to-continue-announcer');
+    const name = await canvas.findByRole('textbox', {
+      name: /what is your name/i,
+    });
+
+    await expect(announcer).toHaveRole('status');
+
+    // The synthetic interview fills the answer in, so clear it first.
+    await userEvent.clear(name);
+    await waitFor(() => expect(next).not.toHaveAccessibleDescription());
+    await expect(announcer).toBeEmptyDOMElement();
+
+    await userEvent.type(name, 'Ada');
+    await userEvent.tab();
+    await waitFor(() =>
+      expect(next).toHaveAccessibleDescription(READY_TO_CONTINUE),
+    );
+    await expect(next).toHaveAccessibleName('Next Step');
+    await expect(announcer).toHaveTextContent(READY_TO_CONTINUE);
+    const firstAnnouncement = announcer.firstElementChild;
+    await expect(firstAnnouncement).not.toBeNull();
+
+    await userEvent.clear(name);
+    await waitFor(() => expect(next).not.toHaveAccessibleDescription());
+    await expect(announcer).toBeEmptyDOMElement();
+
+    await userEvent.type(name, 'Grace');
+    await waitFor(() =>
+      expect(next).toHaveAccessibleDescription(READY_TO_CONTINUE),
+    );
+    await expect(announcer).toHaveTextContent(READY_TO_CONTINUE);
+    // Regaining readiness adds a fresh node to the region.
+    await expect(announcer.firstElementChild).not.toBeNull();
+    await expect(announcer.firstElementChild).not.toBe(firstAnnouncement);
+  },
+};
+
+// A Welcome screen, then name generators with no minimum, which are ready as
+// soon as they appear, and finally one that needs a person first.
+function buildReadyScreensPayload(): string {
+  const si = new SyntheticInterview();
+
+  si.addInformationStage({
+    title: 'Welcome',
+    text: 'Welcome to the interview.',
+  });
+
+  const person = si.addNodeType({ name: 'Person' });
+  const nameVar = person.addVariable({ type: 'text', name: 'fullName' });
+  const addQuickAddStage = (
+    label: string,
+    prompts: string[],
+    behaviours?: { minNodes: number },
+  ) => {
+    const stage = si.addStage('NameGeneratorQuickAdd', {
+      label,
+      subject: { entity: 'node', type: person.id },
+      quickAdd: nameVar.id,
+      ...(behaviours && { behaviours }),
+    });
+    for (const text of prompts) stage.addPrompt({ text });
+  };
+
+  addQuickAddStage('Friends', ['Name your friends', 'Name your neighbours']);
+  addQuickAddStage('Family', ['Name your family']);
+  addQuickAddStage('Clubs', ['Name your club members']);
+  addQuickAddStage('Colleagues', ['Name your colleagues'], { minNodes: 1 });
+
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'Thank you for taking part.',
+  });
+
+  return SuperJSON.stringify(si.getInterviewPayload({ currentStep: 0 }));
+}
+
+let readyScreensPayload: string | undefined;
+const getReadyScreensPayload = () =>
+  (readyScreensPayload ??= buildReadyScreensPayload());
+
+export const ReadyToContinueAcrossScreens: Story = {
+  name: 'Ready to continue across stages and prompts',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getReadyScreensPayload()}
+        navigationOrientation="vertical"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const next = await canvas.findByRole('button', { name: 'Next Step' });
+    await canvas.findByText('Welcome to the interview.');
+    const announcer = canvas.getByTestId('ready-to-continue-announcer');
+
+    const added: Node[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) added.push(...record.addedNodes);
+    });
+    observer.observe(announcer, { childList: true, subtree: true });
+
+    const goForwardTo = async (prompt: string) => {
+      await userEvent.click(next);
+      await canvas.findByText(prompt);
+    };
+    const expectAnnouncements = async (count: number) => {
+      await waitFor(() => expect(added).toHaveLength(count));
+      await expect(added.at(-1)?.textContent).toBe(READY_TO_CONTINUE);
+      await expect(added.at(-1)?.isConnected).toBe(true);
+    };
+
+    try {
+      await expect(announcer).toBeEmptyDOMElement();
+
+      await goForwardTo('Name your friends');
+      await expectAnnouncements(1);
+
+      await goForwardTo('Name your neighbours');
+      await expectAnnouncements(2);
+
+      await goForwardTo('Name your family');
+      await expectAnnouncements(3);
+
+      await goForwardTo('Name your club members');
+      await expectAnnouncements(4);
+
+      // Not ready on arrival, so nothing is added for it.
+      await goForwardTo('Name your colleagues');
+      await waitFor(() => expect(next).not.toHaveAccessibleDescription());
+      // Nothing signals that the sentence will not arrive, so wait well past
+      // the task that would release it for this screen before checking that
+      // the leaving stage's readiness added nothing.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await expect(announcer).toBeEmptyDOMElement();
+      await expect(added).toHaveLength(4);
+    } finally {
+      observer.disconnect();
+    }
+  },
+};

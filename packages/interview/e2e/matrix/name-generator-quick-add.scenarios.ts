@@ -392,7 +392,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
 
         await stage.quickAdd.addNode('Alice');
         await expect(page.getByText(/completed this task/i)).toBeVisible();
-        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
         expect(await stage.quickAdd.isDisabled()).toBe(true);
 
         const panelOption = stage.nodePanel
@@ -571,7 +571,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         expect(
           network!.nodes.filter((n) => n.type === priya!.type),
         ).toHaveLength(1);
-        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
       },
     },
 

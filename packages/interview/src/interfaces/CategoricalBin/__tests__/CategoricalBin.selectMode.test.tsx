@@ -31,6 +31,7 @@ import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
@@ -225,24 +226,26 @@ function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
     <InterviewI18nProvider>
       <TestProtocolLocalization>
         <Provider store={store}>
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <DialogProvider>
-              <DndStoreProvider>
-                <CaptureDndStore
-                  onStore={(s) => {
-                    dndStore = s;
-                  }}
-                />
-                <CategoricalBin
-                  stage={buildStage(mode)}
-                  getNavigationHelpers={() => ({
-                    moveForward: () => {},
-                    moveBackward: () => {},
-                  })}
-                />
-              </DndStoreProvider>
-            </DialogProvider>
-          </CurrentStepProvider>
+          <TestInterviewAssets>
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <DialogProvider>
+                <DndStoreProvider>
+                  <CaptureDndStore
+                    onStore={(s) => {
+                      dndStore = s;
+                    }}
+                  />
+                  <CategoricalBin
+                    stage={buildStage(mode)}
+                    getNavigationHelpers={() => ({
+                      moveForward: () => {},
+                      moveBackward: () => {},
+                    })}
+                  />
+                </DndStoreProvider>
+              </DialogProvider>
+            </CurrentStepProvider>
+          </TestInterviewAssets>
         </Provider>
       </TestProtocolLocalization>
     </InterviewI18nProvider>,
