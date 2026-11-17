@@ -1,5 +1,35 @@
 # @codaco/documentation
 
+## 0.9.0
+
+### Minor Changes
+
+- A new Custom Node Shapes article explains how to add your own SVG drawings to a
+  node type in Architect from the protocol's resources, use the node type's color in a drawing, and position
+  the node's label, including a label plate that grows for long labels. The
+  codebook article, the Building a Protocol tutorial and the schema 9 notes now
+  mention custom shapes and link to it.
+- The Node Labeling article now explains dynamic labels: how to switch one on for
+  a node type in Architect, write it with values and logic, set rules about a
+  node's attributes and edges, and how participants see it. It replaces the
+  description of the `nodeLabelWorker.js` script, which current versions of
+  Interviewer and Fresco do not run. The protocol file and Fresco articles no
+  longer point to the script.
+
+### Patch Changes
+
+- The screenshots of the node type editor in the Codebook article, the Building a
+  Protocol tutorial and the Custom Node Shapes article show the editor as it now
+  appears in Architect, with its Custom shapes area and Save entity button.
+- The Family Pedigree and Narrative Pedigree articles (English, Spanish and French) now describe how custom node shapes are drawn on a pedigree: with the person's own drawing, with lines that end at the edge of the box the drawing fills, and as a circle in the Narrative Pedigree once a condition is chosen.
+- The protocol schema page now says that schema 9 has one experiment, Automated
+  Protocol Review, which you turn on from the Experimental features page in
+  Architect. It said that schema 9 had no experiments and that Architect had no
+  such page.
+- The language picker no longer shows an "Interface language" heading above its list of languages. Screen readers still announce the picker as "Interface language".
+- The Narrative Pedigree page, in English, Spanish and French, now explains three things about X-linked recessive conditions: the daughters of an affected woman may carry the condition and her sons may develop it, and on its own her being affected adds nothing about her parents; a woman carries the condition when it appears on two sides of her, a side being the line of one of her children or her mother's family, as long as no one man could account for every side through his daughters, with the conditions on the fathers of the females in between; and the path of a woman who carries it and whose father is affected runs only through her father, unless she is herself affected.
+- Text that only a screen reader reads, such as the language menu's name and the names of icon-only buttons, is now English in every language, and is marked `lang="en"` where that does not also mark translated text, so a screen reader reads it in an English voice. Visible text, placeholders and tooltips stay translated.
+
 ## 0.8.0
 
 ### Minor Changes
