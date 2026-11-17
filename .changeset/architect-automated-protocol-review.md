@@ -21,7 +21,9 @@ asks an AI model to look for problems in your protocol and suggest fixes.
   changes the protocol straight away and can be undone, **I will fix this**,
   which keeps the problem on your list with a link to where it is, or
   **Dismiss**. A fix is only offered while it still fits your protocol and
-  leaves it valid.
+  leaves it valid. A fix changes only your stages and codebook, and writes
+  text only in the protocol's default language: translations into your other
+  languages are left as they were, and a notice reminds you to check them.
 - **Dismiss review** removes a review when you have finished with it, so that
   you can ask for a new one.
 - The review and your choices are kept in your browser, beside the protocol.

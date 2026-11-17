@@ -73,9 +73,13 @@ const parseJson = (value: string | null): unknown => {
 
 /**
  * A placeholder as the review writes one where a fix needs a fact it cannot
- * know: square brackets around capitals, such as [HELPLINE NAME].
+ * know: square brackets around capitals, such as [HELPLINE NAME]. The review
+ * writes it in the protocol's language, so "capitals" means no lower-case
+ * letter in any script: [NÚMERO DE TELÉFONO], and [热线名称] in a script that
+ * has no case. The brackets must hold a letter, so [1] is not one, and the
+ * text of a Markdown link ([NHS 111](https://…)) is not one either.
  */
-const PLACEHOLDER = /\[[A-Z][A-Z0-9 _/'-]+\]/;
+const PLACEHOLDER = /\[(?=[^[\]\n]*\p{L})[^[\]\n\p{Ll}]{2,}\](?!\()/u;
 
 const holdsPlaceholder = (value: unknown): boolean => {
   if (typeof value === 'string') return PLACEHOLDER.test(value);
@@ -91,6 +95,88 @@ export const writesPlaceholder = (operation: StoredOperation): boolean =>
   operation.op !== 'remove' && holdsPlaceholder(parseJson(operation.value));
 
 /**
+ * The top-level parts of a protocol a fix may edit: the interview and its
+ * data model. The rest is not the review's to change: the protocol's name
+ * and description, its languages, its assets (an API key among them, which
+ * the review is sent a stand-in for), Network Canvas's own wording, and the
+ * study details the review itself is kept in.
+ */
+const EDITABLE_PARTS = new Set(['stages', 'codebook']);
+
+/**
+ * Whether every operation is inside a part of the protocol a fix may edit.
+ * A path that is not a pointer is left for applying it to refuse.
+ */
+export const fixStaysInBounds = (
+  operations: readonly StoredOperation[],
+): boolean =>
+  operations.every((operation) => {
+    const first = parsePath(operation.path)?.[0];
+    return first === undefined || EDITABLE_PARTS.has(first);
+  });
+
+/**
+ * What identifies a member of an array across a rewrite of the array: its
+ * `id`, or for an answer option (which has none) its `value`.
+ */
+const memberKey = (member: unknown): string | null => {
+  if (!isJsonObject(member)) return null;
+  for (const key of ['id', 'value']) {
+    const found = member[key];
+    if (typeof found === 'string' || typeof found === 'number') {
+      return `${key}:${typeof found}:${found}`;
+    }
+  }
+  return null;
+};
+
+/**
+ * `written` with, in every text that `current` holds in the same place, the
+ * translations `written` does not name. The review writes only the
+ * protocol's default language, so a fix that replaces a whole prompt, option
+ * or stage would otherwise delete every other language's text in it. A
+ * member of an array is matched to the one it replaces by `memberKey`, or by
+ * position when neither array's members can be told apart and both are the
+ * same length.
+ */
+const keepTranslations = (
+  written: unknown,
+  current: unknown,
+  locales: readonly string[],
+): unknown => {
+  if (isLocalizedValue(written, locales)) {
+    return isLocalizedValue(current, locales)
+      ? { ...current, ...written }
+      : written;
+  }
+  if (Array.isArray(written)) {
+    if (!Array.isArray(current)) return written;
+    return written.map((member: unknown, index) => {
+      const key = memberKey(member);
+      const replaced: unknown =
+        key === null
+          ? written.length === current.length
+            ? current[index]
+            : undefined
+          : current.find((candidate) => memberKey(candidate) === key);
+      return keepTranslations(member, replaced, locales);
+    });
+  }
+  if (isJsonObject(written)) {
+    if (!isJsonObject(current)) return written;
+    return Object.fromEntries(
+      Object.entries(written).map(([key, value]) => [
+        key,
+        Object.hasOwn(current, key)
+          ? keepTranslations(value, current[key], locales)
+          : value,
+      ]),
+    );
+  }
+  return written;
+};
+
+/**
  * The fix's operations rewritten to treat translations the way Architect's
  * own editors do. Editing a text in Architect replaces the translation in the
  * language being edited and keeps every other translation as it is
@@ -99,7 +185,10 @@ export const writesPlaceholder = (operation: StoredOperation): boolean =>
  * - a `set` of plain text where the protocol holds a localized string writes
  *   that text as the default language's translation, keeping the others;
  * - a `set` of a localized string over a localized string replaces the
- *   translations it names and keeps the ones it does not.
+ *   translations it names and keeps the ones it does not;
+ * - a `set` of anything that holds texts (a prompt, an option, a list of
+ *   them, a stage) does the same for each text inside it
+ *   (`keepTranslations`).
  *
  * Read sequentially against `protocol` with each operation applied in turn,
  * so a later operation sees what an earlier one made. Operations past one
@@ -131,19 +220,22 @@ const normalizeEach = (
     if (applying && operation.op === 'set' && segments !== null) {
       const target = readPath(current, segments);
       const value = parseJson(operation.value);
-      if (target.found && isLocalizedValue(target.value, locales)) {
-        if (typeof value === 'string') {
-          next = {
-            op: 'set',
-            path: formatPath([...segments, defaultLocale]),
-            value: operation.value,
-          };
-        } else if (isLocalizedValue(value, locales)) {
-          next = {
-            op: 'set',
-            path: operation.path,
-            value: JSON.stringify({ ...target.value, ...value }),
-          };
+      if (
+        target.found &&
+        isLocalizedValue(target.value, locales) &&
+        typeof value === 'string'
+      ) {
+        next = {
+          op: 'set',
+          path: formatPath([...segments, defaultLocale]),
+          value: operation.value,
+        };
+      } else if (target.found && value !== undefined) {
+        const kept = JSON.stringify(
+          keepTranslations(value, target.value, locales),
+        );
+        if (kept !== JSON.stringify(value)) {
+          next = { op: 'set', path: operation.path, value: kept };
         }
       }
     }
@@ -204,9 +296,11 @@ export const recordFix = (
   const applied = applyOperations(reviewed, recorded);
   // A placeholder inside something the fix adds cannot be replaced before the
   // fix is made (only the texts a fix sets can be edited), so such a fix is
-  // not offered: it would put the placeholder in front of participants.
+  // not offered: it would put the placeholder in front of participants. Nor
+  // is one that reaches outside the interview and its data model.
   if (
     !applied.ok ||
+    !fixStaysInBounds(recorded) ||
     recorded.some((o) => o.op === 'insert' && writesPlaceholder(o))
   ) {
     return { operations: recorded, targets: null, expected: null };

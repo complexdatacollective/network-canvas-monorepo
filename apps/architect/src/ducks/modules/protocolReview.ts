@@ -51,6 +51,7 @@ import {
 } from '~/protocolReview/fixEngine';
 import {
   editProtocol,
+  fixStaysInBounds,
   protocolAsReviewed,
   protocolReplacement,
   recordFix,
@@ -597,6 +598,7 @@ const availabilityOf = (
 ): FixAvailability => {
   if (stored.operations.length === 0) return 'none';
   if (stored.targets === null) return 'invalid';
+  if (!fixStaysInBounds(stored.operations)) return 'invalid';
   if (!placeholdersReplaceable(protocol, stored.operations)) return 'invalid';
   if (
     !fixFits(protocolAsReviewed(protocol), stored.operations, stored.targets)
@@ -1255,7 +1257,11 @@ export const decideFinding =
 
     if (!getProtocolOwnedHere(getState())) return refused('not_owned');
     const { stored } = found;
-    if (stored.operations.length === 0 || stored.targets === null) {
+    if (
+      stored.operations.length === 0 ||
+      stored.targets === null ||
+      !fixStaysInBounds(stored.operations)
+    ) {
       return refused('invalid');
     }
     if (

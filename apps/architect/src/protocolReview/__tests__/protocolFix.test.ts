@@ -15,9 +15,11 @@ import {
 import { applyOperations } from '../fixEngine';
 import {
   editProtocol,
+  fixStaysInBounds,
   normalizeOperations,
   protocolReplacement,
   recordFix,
+  writesPlaceholder,
 } from '../protocolFix';
 import { makeFinding, makeProtocol, op } from './fixtures';
 
@@ -65,6 +67,128 @@ describe('translations, as Architect’s editors treat them', () => {
       op('set', '/codebook/node/person/name', 'Friend'),
     ];
     expect(normalizeOperations(protocol, operations)).toEqual(operations);
+  });
+});
+
+describe('a fix that replaces more than one text', () => {
+  const variable = (protocol: unknown) =>
+    (protocol as CurrentProtocol).codebook.node?.person?.variables?.freq;
+
+  it('keeps the other translations of a prompt it replaces whole', () => {
+    const protocol = makeProtocol();
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/stages/names/prompts/p1', {
+        id: 'p1',
+        text: { en: 'In the past 6 months, who?' },
+      }),
+    ]);
+    const applied = applyOperations(protocol, normalized);
+    expect(applied.ok && promptText(applied.result)).toEqual({
+      en: 'In the past 6 months, who?',
+      fr: 'Nommez',
+    });
+  });
+
+  it('keeps each option’s translations when the list is rewritten, matching options by value', () => {
+    const protocol = makeProtocol();
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/codebook/node/person/variables/freq/options', [
+        { label: { en: 'Seldom' }, value: 2 },
+        { label: { en: 'Sometimes' }, value: 3 },
+        { label: { en: 'Frequently' }, value: 1 },
+      ]),
+    ]);
+    const applied = applyOperations(protocol, normalized);
+    expect(applied.ok && variable(applied.result)).toMatchObject({
+      options: [
+        { label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
+        { label: { en: 'Sometimes' }, value: 3 },
+        { label: { en: 'Frequently', fr: 'Souvent' }, value: 1 },
+      ],
+    });
+  });
+
+  it('keeps the translations of every text in a stage it replaces whole', () => {
+    const protocol = makeProtocol();
+    const stage = protocol.stages[0];
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/stages/welcome', {
+        ...stage,
+        label: { en: 'Start' },
+        title: { en: 'Hi' },
+      }),
+    ]);
+    const applied = applyOperations(protocol, normalized);
+    expect(
+      applied.ok && (applied.result as CurrentProtocol).stages[0],
+    ).toMatchObject({
+      label: { en: 'Start', fr: 'Bienvenue' },
+      title: { en: 'Hi', fr: 'Bonjour' },
+    });
+  });
+
+  it('leaves a value that names every translation as written', () => {
+    const protocol = makeProtocol();
+    const operations = [
+      op('set', '/stages/names/prompts/p1', {
+        id: 'p1',
+        text: { en: 'Who?', fr: 'Qui ?' },
+      }),
+    ];
+    expect(normalizeOperations(protocol, operations)).toEqual(operations);
+  });
+});
+
+describe('a fix that reaches outside the interview and its data model', () => {
+  it.each([
+    ['an asset', op('set', '/assetManifest/map', { id: 'map', value: 'x' })],
+    ['the study details', op('remove', '/experiments')],
+    ['the default language', op('set', '/localization/defaultLocale', 'fr')],
+    ['the protocol’s name', op('set', '/name', 'Renamed')],
+    ['Network Canvas’s wording', op('remove', '/interfaceText')],
+  ])('is not offered when it edits %s', (_, operation) => {
+    expect(fixStaysInBounds([operation])).toBe(false);
+    expect(recordFix(makeProtocol(), [operation]).targets).toBeNull();
+  });
+
+  it('is offered for edits to stages and the codebook', () => {
+    const operations = [
+      op('set', '/stages/names/prompts/p1/text', 'Name people you know'),
+      op('set', '/codebook/node/person/name', 'Friend'),
+    ];
+    expect(fixStaysInBounds(operations)).toBe(true);
+    expect(recordFix(makeProtocol(), operations).targets).not.toBeNull();
+  });
+});
+
+describe('what counts as a placeholder', () => {
+  const writes = (text: string) =>
+    writesPlaceholder(op('set', '/stages/names/prompts/p1/text/en', text));
+
+  it.each([
+    '[PHONE NUMBER]',
+    '[CORREO ELECTRÓNICO]',
+    '[NUMÉRO DE TÉLÉPHONE]',
+    '[ÖFFNUNGSZEITEN]',
+    '[热线名称]',
+    '[رقم الهاتف]',
+    '[UNIVERSITY’S ETHICS OFFICE]',
+    '[HELPLINE NAME, E.G. SAMARITANS]',
+    '[PHONE NUMBER: 24H]',
+    '[NAME (OPTIONAL)]',
+    '[ORGANISATION & PHONE]',
+  ])('reads %s as one', (placeholder) => {
+    expect(writes(`Call ${placeholder} now`)).toBe(true);
+  });
+
+  it.each([
+    'Call [NHS 111](https://111.nhs.uk) now',
+    'See note [1]',
+    'Tick the box [ ]',
+    'Choose one [optional]',
+    'No brackets at all',
+  ])('does not read "%s" as one', (text) => {
+    expect(writes(text)).toBe(false);
   });
 });
 
