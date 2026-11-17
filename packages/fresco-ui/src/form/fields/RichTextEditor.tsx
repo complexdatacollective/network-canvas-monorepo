@@ -108,6 +108,7 @@ import {
   suggestEmoji,
   typedEmojiName,
 } from './richText/emojiMenu';
+import { setEmojiSuggestionsShowing } from './richText/emojiSuggestionState';
 import { documentInSchema, marksInSchema } from './richText/fitToSchema';
 import {
   InsertMenuList,
@@ -864,6 +865,7 @@ const createEmojiSuggestions = (hooks: EmojiSuggestionHooks) =>
       let dismissedAt: number | undefined;
       const report = (found: TypedEmoji | null) => {
         open = found !== null;
+        setEmojiSuggestionsShowing(editor.view, open);
         hooks.onTyped(editor, found);
       };
       return [

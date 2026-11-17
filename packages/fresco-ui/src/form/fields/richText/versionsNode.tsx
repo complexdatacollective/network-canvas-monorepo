@@ -45,6 +45,7 @@ import {
   useTokenPillLanguage,
 } from '../../../TokenPill';
 import { cx } from '../../../utils/cva';
+import { emojiSuggestionsShowing } from './emojiSuggestionState';
 import { contentInSchema, readableContent } from './fitToSchema';
 
 /**
@@ -516,6 +517,10 @@ function VersionEditor({
           'data-version': version.key,
         },
         handleKeyDown: (view, event) => {
+          // While emoji are being suggested the keys below are the list's:
+          // an arrow moves through it and Escape puts it away, where they
+          // would otherwise leave the version or fold the whole element.
+          if (emojiSuggestionsShowing(view)) return false;
           if (
             (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
             !event.shiftKey &&

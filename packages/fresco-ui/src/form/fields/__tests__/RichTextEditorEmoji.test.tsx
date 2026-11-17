@@ -260,3 +260,86 @@ describe('the emoji menu in the toolbar', () => {
     await waitFor(() => expect(editor).toHaveFocus());
   });
 });
+
+// A version's own editor uses the arrow keys to move between rows and Escape
+// to fold the element. While emoji are being suggested there, those keys are
+// the list's.
+describe('emoji suggestions inside a version', () => {
+  function VersionsHost() {
+    const [value, setValue] = useState<JSONContent | undefined>({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Hello' },
+            {
+              type: 'versions',
+              attrs: {
+                label: 'Depending on the name',
+                versions: [
+                  { key: 'known', label: 'If known', content: [] },
+                  { key: 'missing', label: 'If not known', content: [] },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    return (
+      <RichTextEditorField
+        id="note"
+        name="note"
+        aria-describedby="note-hint"
+        aria-label="Note"
+        singleLine
+        versions
+        changeMode="input"
+        value={value}
+        onChange={setValue}
+      />
+    );
+  }
+
+  const openFirstVersion = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByRole('textbox', { name: 'Note' });
+    await user.click(
+      await screen.findByRole('button', { name: 'Depending on the name' }),
+    );
+    const version = await screen.findByRole('textbox', { name: 'If known' });
+    await user.click(version);
+    await user.keyboard(':roc');
+    return { version, list: await screen.findByRole('listbox') };
+  };
+
+  it('moves through the list with the arrow keys, not on to the next version', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(<VersionsHost />);
+    const { version, list } = await openFirstVersion(user);
+
+    const options = within(list).getAllByRole('option');
+    expect(options.length).toBeGreaterThan(1);
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() =>
+      expect(options[1]).toHaveAttribute('aria-selected', 'true'),
+    );
+    expect(version).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    expect(version.textContent).not.toContain(':roc');
+    expect(version.textContent).not.toBe('');
+  });
+
+  it('is put away by Escape, which leaves the version open', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(<VersionsHost />);
+    const { version } = await openFirstVersion(user);
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    expect(version).toHaveFocus();
+    expect(version).toHaveTextContent(':roc');
+  });
+});
