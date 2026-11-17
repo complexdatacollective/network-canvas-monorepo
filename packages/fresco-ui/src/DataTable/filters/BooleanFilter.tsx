@@ -4,15 +4,18 @@ import CheckboxGroupField from '../../form/fields/CheckboxGroup';
 import { type BooleanFilterConfig } from './types';
 
 type BooleanFilterProps = {
-  value: boolean | undefined;
-  onChange: (value: boolean | undefined) => void;
-  config: BooleanFilterConfig;
+  'value': boolean | undefined;
+  'onChange': (value: boolean | undefined) => void;
+  'config': BooleanFilterConfig;
+  /** The id of the visible label naming what is filtered. */
+  'aria-labelledby'?: string;
 };
 
 export default function BooleanFilter({
   value,
   onChange,
   config,
+  'aria-labelledby': ariaLabelledBy,
 }: BooleanFilterProps) {
   const options = [
     { value: 'true', label: config.trueLabel },
@@ -43,6 +46,7 @@ export default function BooleanFilter({
   return (
     <CheckboxGroupField
       name="boolean-filter"
+      aria-labelledby={ariaLabelledBy}
       options={options}
       value={selected}
       onChange={handleChange}
