@@ -296,7 +296,7 @@ describe('the button', () => {
     });
     await waitFor(() =>
       expect(reviewButton()).toHaveAccessibleName(
-        'Review protocol, 4 problems still to decide',
+        'Review protocol (4 problems still to decide)',
       ),
     );
     expect(

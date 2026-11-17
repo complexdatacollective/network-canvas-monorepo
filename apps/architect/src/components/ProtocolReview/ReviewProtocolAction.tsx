@@ -170,10 +170,11 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
         >
           {intl.formatNumber(counts.undecided)}
         </span>
-        {/* Screen-reader text: English, after the translated visible label. */}
+        {/* Screen-reader text: English, after the translated visible label. In
+            parentheses because browsers put a space before a hidden span. */}{' '}
         <span className="sr-only" lang="en">
           {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
-          {`, ${counts.undecided} ${counts.undecided === 1 ? 'problem' : 'problems'} still to decide`}
+          {`(${counts.undecided} ${counts.undecided === 1 ? 'problem' : 'problems'} still to decide)`}
         </span>
       </>
     );

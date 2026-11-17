@@ -32,6 +32,7 @@ import {
   getProtocolReviewFindings,
   getProtocolReviewPhase,
   getProtocolReviewProgress,
+  getProtocolReviewQuota,
   getProtocolReviewRun,
   getProtocolReviewStartBlock,
   dismissReview,
@@ -1187,6 +1188,31 @@ describe('a review that is stopped, replaced or outlived', () => {
     // Nothing running, nothing to count.
     store.dispatch(cancelReview());
     expect(store.getState().protocolReview.quota?.remaining).toBe(2);
+  });
+
+  it('counts a review cancelled after the saved quota ran out into a new window', async () => {
+    localStorage.setItem(
+      PROTOCOL_REVIEW_QUOTA_KEY,
+      JSON.stringify({
+        limit: 5,
+        remaining: 0,
+        resetsAt: '2000-01-01T00:00:00.000Z',
+      }),
+    );
+    await open(store);
+    const answer = gatedAnswer();
+    vi.stubGlobal('fetch', answer.fetchImpl);
+    const run = store.dispatch(startReview());
+    await vi.waitFor(() => expect(answer.fetchImpl).toHaveBeenCalled());
+    store.dispatch(cancelReview());
+    expect(await run).toEqual({ status: 'cancelled' });
+
+    expect(getProtocolReviewQuota(store.getState())?.remaining).toBe(4);
+    const saved = JSON.parse(
+      localStorage.getItem(PROTOCOL_REVIEW_QUOTA_KEY) ?? 'null',
+    );
+    expect(saved).toMatchObject({ remaining: 4 });
+    expect(Date.parse(saved.resetsAt)).toBeGreaterThan(Date.now());
   });
 
   it('saves nothing when every review was cleared while it ran', async () => {

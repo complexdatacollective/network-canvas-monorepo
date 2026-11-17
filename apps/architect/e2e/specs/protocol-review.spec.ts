@@ -59,7 +59,7 @@ const fixForMe = (view: Locator) =>
   view.getByRole('button', { name: 'Fix for me', exact: true });
 
 const countName = (count: number) =>
-  `Review protocol, ${count} ${count === 1 ? 'problem' : 'problems'} still to decide`;
+  `Review protocol (${count} ${count === 1 ? 'problem' : 'problems'} still to decide)`;
 
 const mainNav = (page: Page) =>
   page.getByRole('navigation', { name: 'Main navigation' });

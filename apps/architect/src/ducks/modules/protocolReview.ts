@@ -693,6 +693,9 @@ type InflightRun = {
   runId: number;
 };
 
+/** The service counts reviews against an hourly limit. */
+const QUOTA_WINDOW_MS = 60 * 60 * 1000;
+
 let inflight: InflightRun | null = null;
 let lastRunId = 0;
 
@@ -712,11 +715,19 @@ const abortInflight = (): InflightRun | null => {
  * service states the quota. An under-count of slots is the safe error.
  */
 const countStoppedRun = (dispatch: AppDispatch) => {
-  const quota = effectiveQuota(readStoredQuota(), Date.now());
+  const now = Date.now();
+  const quota = effectiveQuota(readStoredQuota(), now);
   if (quota === null) return;
+  // A window that has run out is replenished on reading, so the count goes
+  // into a new one, as the service opens one with the review it admits;
+  // otherwise the next read would replenish it straight away.
+  const expired = Date.parse(quota.resetsAt) <= now;
   const counted: ReviewQuota = {
     ...quota,
     remaining: Math.max(0, quota.remaining - 1),
+    resetsAt: expired
+      ? new Date(now + QUOTA_WINDOW_MS).toISOString()
+      : quota.resetsAt,
   };
   writeStoredQuota(counted);
   dispatch(actions.quotaUpdated(counted));
