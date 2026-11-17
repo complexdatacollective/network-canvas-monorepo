@@ -781,10 +781,9 @@ describe('VariableEditor', () => {
     expect(alert).toHaveTextContent(TOO_FEW_OPTIONS);
     expect(alert).not.toHaveTextContent(REFUSED.threw);
     expect(alert).not.toHaveTextContent('the variable draft is invalid');
-    expect(
-      screen.getByRole('group', { name: /Choice values/ }),
-    ).toHaveAccessibleDescription(TOO_FEW_OPTIONS);
-    expect(alert).toHaveFocus();
+    const choices = screen.getByRole('group', { name: /Choice values/ });
+    expect(choices).toHaveAccessibleDescription(TOO_FEW_OPTIONS);
+    expect(choices.contains(document.activeElement)).toBe(true);
     expect(
       screen.getByRole('textbox', { name: /attribute name/i }),
     ).toHaveValue('choice');

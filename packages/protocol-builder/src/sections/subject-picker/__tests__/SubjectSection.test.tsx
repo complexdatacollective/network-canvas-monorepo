@@ -5,7 +5,7 @@ import { COLOR_SEQUENCE_HUE_NAMES } from '@codaco/fresco-ui/form/fields/ColorPic
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { newEntityDraft } from '../../../fields/EntityTypePickerField.tsx';
+import { newEntityDraft } from '../../../codebook/components/CodebookEntityEditorDialog.tsx';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import { beforeCall } from '../../../testing/host/beforeCall.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
@@ -718,6 +718,9 @@ describe('dismissing the create dialog while it is submitting', () => {
     expect(nodeTypeNames(harness)).toEqual(['person', 'family member']);
 
     await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -725,8 +728,8 @@ describe('dismissing the create dialog while it is submitting', () => {
 });
 
 /**
- * Node and edge types share one namespace, which is what Architect has always
- * enforced (`TypeEditor` validates a new name against both codebook maps).
+ * Node and edge types share one namespace: the editor validates a new name
+ * against both codebook maps.
  *
  * A node named like an edge is two different things a researcher cannot tell
  * apart afterwards: the codebook lists them by name, every export names them,

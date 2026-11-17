@@ -44,10 +44,12 @@ const messages = defineMessages({
 });
 
 type FacetedFilterProps = {
-  value: string[] | undefined;
-  onChange: (value: string[] | undefined) => void;
-  config: FacetedFilterConfig;
-  data: unknown[];
+  'value': string[] | undefined;
+  'onChange': (value: string[] | undefined) => void;
+  'config': FacetedFilterConfig;
+  'data': unknown[];
+  /** The id of the visible label naming what is filtered. */
+  'aria-labelledby'?: string;
 };
 
 export default function FacetedFilter({
@@ -55,6 +57,7 @@ export default function FacetedFilter({
   onChange,
   config,
   data,
+  'aria-labelledby': ariaLabelledBy,
 }: FacetedFilterProps) {
   const intl = useAppIntl();
   const resolvedOptions =
@@ -110,6 +113,7 @@ export default function FacetedFilter({
     >
       <div className="flex flex-col gap-3">
         <Combobox.Input
+          aria-labelledby={ariaLabelledBy}
           placeholder={intl.formatMessage(messages.searchPlaceholder)}
           render={({ onChange: renderOnChange, ...rest }) => {
             const inputFieldProps =

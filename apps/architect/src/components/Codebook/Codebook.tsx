@@ -19,10 +19,12 @@ import NodeLabelWorkerSection from '~/components/NodeLabelWorker/NodeLabelWorker
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { getCodebook } from '~/selectors/protocol';
 
+import type { CodebookLink } from './codebookLinks';
 import EgoType from './EgoType';
-import EntityType, { type Entity } from './EntityType';
+import EntityType from './EntityType';
 import ExternalEntity from './ExternalEntity';
 import { useCodebookData } from './useCodebookData';
+import { useCodebookEditors } from './useCodebookEditors';
 const messages = defineMessages({
   searchTheCodebookByName: {
     id: 'architect.codebook.codebook.searchTheCodebookByName',
@@ -112,7 +114,10 @@ const messages = defineMessages({
 });
 
 type CodebookProps = {
-  onEditEntity?: (entity: Entity, type?: string) => void;
+  /** A type whose editor the page's URL asked to open. */
+  link?: CodebookLink;
+  /** Told when the editor opened by `link` closes. */
+  onLinkClosed?: () => void;
 };
 
 const CodebookSearchObserver = ({
@@ -129,8 +134,12 @@ const CodebookSearchObserver = ({
   return null;
 };
 
-const Codebook = ({ onEditEntity }: CodebookProps) => {
+const Codebook = ({ link, onLinkClosed }: CodebookProps) => {
   const intl = useAppIntl();
+  const { editEntity, addVariable, dialogs } = useCodebookEditors(
+    link,
+    onLinkClosed,
+  );
   const readOnly = useProtocolReadOnly();
   const codebook = useSelector(getCodebook);
   const {
@@ -200,7 +209,11 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
             messages.reviewTheAttributesCollectedAboutThe,
           )}
         >
-          <EgoType search={search} unusedOnly={unusedOnly} />
+          <EgoType
+            search={search}
+            unusedOnly={unusedOnly}
+            onAddVariable={addVariable}
+          />
         </Section>
       </div>
 
@@ -214,7 +227,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
             size="sm"
             icon={<Plus />}
             disabled={readOnly}
-            onClick={() => onEditEntity?.('node')}
+            onClick={() => editEntity('node')}
           >
             {intl.formatMessage(messages.createNodeType)}
           </Button>
@@ -234,7 +247,8 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
                 usage={[...node.usage]}
                 search={search}
                 unusedOnly={unusedOnly}
-                onEditEntity={onEditEntity}
+                onEditEntity={editEntity}
+                onAddVariable={addVariable}
               />
             ))}
           </div>
@@ -253,7 +267,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
             size="sm"
             icon={<Plus />}
             disabled={readOnly}
-            onClick={() => onEditEntity?.('edge')}
+            onClick={() => editEntity('edge')}
           >
             {intl.formatMessage(messages.createEdgeType)}
           </Button>
@@ -273,7 +287,8 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
                 usage={[...edge.usage]}
                 search={search}
                 unusedOnly={unusedOnly}
-                onEditEntity={onEditEntity}
+                onEditEntity={editEntity}
+                onAddVariable={addVariable}
               />
             ))}
           </div>
@@ -296,6 +311,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           ))}
         </div>
       )}
+      {dialogs}
     </div>
   );
 };

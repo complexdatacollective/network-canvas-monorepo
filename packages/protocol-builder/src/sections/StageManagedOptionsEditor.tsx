@@ -1,14 +1,13 @@
 import { Pencil } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { Button } from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import type { VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import VariableEditor from '../codebook/components/VariableEditor.tsx';
+import VariableEditorDialog from '../codebook/components/VariableEditorDialog.tsx';
 import { documentWithRebasedVariable } from '../codebook/editing.ts';
 import type {
   OptionRowChoiceValue,
@@ -80,38 +79,22 @@ export default function StageManagedOptionsEditor({
   const document = useCodebookSectionDocument(subject);
   const { session, openSession, closeSession, onSessionExited } =
     useDialogSession<{ key: string; openedDocument: SectionDoc }>();
-  const [submitting, setSubmitting] = useState(false);
-  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
 
   const variable = variablesForSubject(protocolContext, subject)[variableId];
   const attribute = variable === undefined ? undefined : { ...variable };
 
-  const requestClose = () => {
-    if (submitting) return;
-    closeSession();
-  };
-
   // Laid over the section the lock hands back, not the one the editor read,
   // so an attribute a collaborator added while this was open is not deleted.
-  const submit = async (
-    submitted: SectionDoc,
-    ownedProperties?: readonly string[],
-  ) => {
-    setSubmitting(true);
-    try {
-      return await writeSection(subject, (authoritativeDocument) =>
-        documentWithRebasedVariable({
-          subject,
-          authoritativeDocument,
-          variableId,
-          submittedDocument: submitted,
-          ...(ownedProperties === undefined ? {} : { ownedProperties }),
-        }),
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const submit = (submitted: SectionDoc, ownedProperties?: readonly string[]) =>
+    writeSection(subject, (authoritativeDocument) =>
+      documentWithRebasedVariable({
+        subject,
+        authoritativeDocument,
+        variableId,
+        submittedDocument: submitted,
+        ...(ownedProperties === undefined ? {} : { ownedProperties }),
+      }),
+    );
 
   return (
     <div className="mb-8 flex flex-col items-start gap-2">
@@ -130,39 +113,26 @@ export default function StageManagedOptionsEditor({
         </Button>
       )}
       {session !== null && attribute !== undefined && (
-        <Dialog
+        <VariableEditorDialog
           open={session.open}
           onExitComplete={onSessionExited}
           title={dialogTitle}
-          // Wider for a stage that adds a choice to every option row, which
-          // then needs the room for a third field beside the label and value.
-          size={
-            editorOptions?.optionRowChoice === undefined ? 'readable' : 'editor'
-          }
-          dismissible={!submitting}
-          closeDialog={requestClose}
-          footer={<div ref={setFooterSlot} className="contents" />}
-        >
-          <VariableEditor
-            mode="update"
-            openId={session.key}
-            subject={subject}
-            authoritativeDocument={document ?? session.openedDocument}
-            variableId={variableId}
-            initialDraft={attribute}
-            allowedVariableTypes={allowedVariableTypes}
-            readOnly={readOnly}
-            chrome="dialog"
-            footerSlot={footerSlot}
-            onCancel={requestClose}
-            onSubmitDocument={submit}
-            onComplete={(_variableId, _variableName, optionRowChoices) => {
-              onSaved?.(optionRowChoices);
-              closeSession();
-            }}
-            {...editorOptions}
-          />
-        </Dialog>
+          onClose={closeSession}
+          mode="update"
+          openId={session.key}
+          subject={subject}
+          authoritativeDocument={document ?? session.openedDocument}
+          variableId={variableId}
+          initialDraft={attribute}
+          allowedVariableTypes={allowedVariableTypes}
+          readOnly={readOnly}
+          onSubmitDocument={submit}
+          onComplete={(_variableId, _variableName, optionRowChoices) => {
+            onSaved?.(optionRowChoices);
+            closeSession();
+          }}
+          {...editorOptions}
+        />
       )}
     </div>
   );

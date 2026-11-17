@@ -24,6 +24,7 @@ import ColorPickerField, {
 } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Section from '@codaco/fresco-ui/Section';
@@ -43,6 +44,7 @@ import CustomShapesField, {
   customShapesGuidance,
 } from '../../fields/CustomShapesField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
+import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import {
   ResourceClientProvider,
@@ -52,6 +54,7 @@ import type { ResourcePromotion } from '../../state/hooks.ts';
 import { codebookEditingMessages } from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
+  customShapeForAsset,
   customShapesIssue,
   customShapeUsage,
   defaultShapeIssue,
@@ -233,6 +236,20 @@ export const codebookEntityMessages = defineMessages({
     defaultMessage: 'Interface icon',
     description:
       'Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step.',
+  },
+  shapeImageUnavailable: {
+    id: 'protocolBuilder.codebookEntity.shapeImageUnavailable',
+    defaultMessage:
+      'The image for the shape "{name}" is no longer available. Remove this shape and add it again.',
+    description:
+      'Refusal shown under the custom shapes field of the node type editor when saving fails because the SVG image one custom shape is drawn from can no longer be kept with the protocol. name is the name the researcher gave that shape.',
+  },
+  imageUnavailable: {
+    id: 'protocolBuilder.codebookEntity.imageUnavailable',
+    defaultMessage:
+      'An image added to this node type is no longer available. Remove the shape that uses it, then add the shape again.',
+    description:
+      'Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified.',
   },
   failureTitle: {
     id: 'protocolBuilder.codebookEntity.failureTitle',
@@ -421,6 +438,28 @@ const validateFields = (
     }
   }
   return errors;
+};
+
+/**
+ * What to say under the custom shapes field when the host would not keep an
+ * image imported in this edit, naming the shape drawn from it where the host
+ * said which image it stopped at.
+ */
+const unavailableImageIssue = (
+  draft: CodebookEntityDraft,
+  resourceId: string | undefined,
+): string => {
+  const shapes = readCustomShapes(draft.customShapes);
+  const shapeId =
+    resourceId === undefined
+      ? undefined
+      : customShapeForAsset(shapes, resourceId);
+  const name = shapeId === undefined ? undefined : shapes?.[shapeId]?.name;
+  return name === undefined
+    ? createMessageError(codebookEntityMessages.imageUnavailable)
+    : createMessageError(codebookEntityMessages.shapeImageUnavailable, {
+        name,
+      });
 };
 
 export type CodebookEntityFieldsProps = Readonly<{
@@ -623,8 +662,7 @@ export function CodebookEntityFields({
  *
  * Given, the editor renders the dialog itself and puts its Cancel and its save
  * in the dialog's own `footer`, where every other dialog in the package keeps
- * them — Architect's `EntityTypeDialog` did the same, through `DialogForm`.
- * That is only possible from here: the footer pins the first of its children
+ * them. That is only possible from here: the footer pins the first of its children
  * left, so the two controls have to BE the footer's children rather than
  * arrive inside something the host wrapped around them.
  *
@@ -724,6 +762,9 @@ function EntityEditor({
   // names the form it submits rather than being inside it.
   const formDomId = useId();
   const [draft, setDraft] = useState<CodebookEntityDraft>(initialDraft);
+  // The draft as it opened. `initialDraft` follows the live section on an
+  // update, so a collaborator's change would otherwise read as unsaved work.
+  const [openedDraft] = useState(() => canonicalize(initialDraft));
   const [errors, setErrors] = useState<EntityFieldErrors>({});
   // A record rather than the sentence, so a second refusal saying the same
   // thing is still a new failure for the effect below to move focus to.
@@ -731,10 +772,27 @@ function EntityEditor({
     useState<Readonly<{ message: string; held: boolean }>>();
   const [busy, setBusy] = useState(false);
   const failureRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (failure !== undefined) failureRef.current?.focus();
   }, [failure]);
+
+  // Errors are only ever set by a refused save, so each new set is a refusal
+  // whose first field the researcher is taken to.
+  useEffect(() => {
+    const fieldErrors = Object.fromEntries(
+      Object.entries(errors).map(([field, message]) => [field, [message]]),
+    );
+    focusFirstError({ formErrors: [], fieldErrors }, formRef.current);
+  }, [errors]);
+
+  const requestClose = useDiscardDraftGuard({
+    hasDraft: () => canonicalize(draft) !== openedDraft,
+    onClose: () => onCancel?.(),
+    open: dialog?.open ?? true,
+    blocked: busy,
+  });
 
   const dirty =
     modeProps.mode === 'create' ||
@@ -795,6 +853,21 @@ function EntityEditor({
         else modeProps.onApplied?.(outcome);
         return;
       }
+      if (
+        outcome.refusal.kind === 'promotionFailed' &&
+        subject.entity === 'node'
+      ) {
+        // The one promotion failure the researcher fixes in a field: the
+        // image behind a custom shape has gone, and removing the shape is
+        // what lets the save through.
+        setErrors({
+          customShapes: unavailableImageIssue(
+            draft,
+            outcome.refusal.resourceId,
+          ),
+        });
+        return;
+      }
       setFailure({
         message: outcome.message,
         held: outcome.refusal.kind === 'held',
@@ -814,8 +887,7 @@ function EntityEditor({
 
   // The editor writes no heading of its own: it is opened under a title that
   // already names it — the dialog's, or the page host's — and a second one
-  // saying the same thing is the restatement Architect's `TypeEditor` never
-  // had. Its sections and its alert count from that title instead.
+  // would only restate it. Its sections and its alert count from that title instead.
   const body = (
     <>
       {failure !== undefined && (
@@ -859,7 +931,7 @@ function EntityEditor({
         <Button
           type="button"
           color="default"
-          onClick={onCancel}
+          onClick={requestClose}
           disabled={busy}
         >
           {intl.formatMessage(commonMessages.cancel)}
@@ -884,6 +956,7 @@ function EntityEditor({
 
   const form = (tail?: ReactNode) => (
     <form
+      ref={formRef}
       id={formDomId}
       onSubmit={(event) => void handleSubmit(event)}
       noValidate
@@ -902,13 +975,11 @@ function EntityEditor({
         size="readable"
         // A save in flight refuses every way out, because the dialog is about
         // to show what became of it. Escape, a press outside and the close
-        // button all arrive at `closeDialog`, so refusing there covers all
-        // three — and `dismissible` takes the close button away rather than
-        // leaving a control on screen that does nothing.
+        // button all arrive at `closeDialog`, so the guard refusing there
+        // covers all three — and `dismissible` takes the close button away
+        // rather than leaving a control on screen that does nothing.
         dismissible={!busy}
-        closeDialog={() => {
-          if (!busy) onCancel?.();
-        }}
+        closeDialog={requestClose}
         {...(dialog.finalFocus === undefined
           ? {}
           : { finalFocus: dialog.finalFocus })}

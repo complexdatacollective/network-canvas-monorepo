@@ -310,11 +310,14 @@ Sources: `docs/collect-data/fresco/guide.en.mdx` and `docs/collect-data/fresco/g
 
 ## Custom node shapes (schema 9)
 
-The Node appearance section of the Edit Node Type dialog gained a **Custom
-shapes** area, so the two captures of that dialog no longer show all of it.
-The images in `/assets/img/custom-node-shapes/` are new and current.
+The Node appearance section of the node type editor gained a **Custom
+shapes** area, and the Codebook page now opens the same node type editor as
+the stage editors (titled **Edit this node type**, with a **Save entity**
+button). The captures of that dialog were retaken to show both. The other
+images in `/assets/img/custom-node-shapes/` are new and current.
 
-| Image                                                                   | Status         |
-| ----------------------------------------------------------------------- | -------------- |
-| `/assets/img/architect/edit-node-type-web.png` (Codebook)               | ⏳ Outstanding |
-| `/assets/img/architect-guide/node-type-shape.png` (Building a protocol) | ⏳ Outstanding |
+| Image                                                                   | Status        |
+| ----------------------------------------------------------------------- | ------------- |
+| `/assets/img/architect/edit-node-type-web.png` (Codebook)               | ✅ Recaptured |
+| `/assets/img/architect-guide/node-type-shape.png` (Building a protocol) | ✅ Recaptured |
+| `/assets/img/custom-node-shapes/architect-custom-shapes.png`            | ✅ Recaptured |

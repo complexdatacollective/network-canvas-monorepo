@@ -101,6 +101,11 @@ const protocolRefusal = (
   return { kind: 'unreachable' };
 };
 
+const promotionRefusal = (resourceId: string | undefined): CodebookRefusal =>
+  resourceId === undefined
+    ? { kind: 'promotionFailed' }
+    : { kind: 'promotionFailed', resourceId };
+
 const heldRefusal = (holder: Presence | undefined): CodebookRefusal =>
   holder === undefined
     ? { kind: 'held' }
@@ -261,7 +266,7 @@ async function rewriteSection(
       return refused({ kind: 'invalidShape' });
     }
     if (refusal?._tag === 'PromotionFailed') {
-      return refused({ kind: 'promotionFailed' });
+      return refused(promotionRefusal(refusal.failure.resourceId));
     }
     return refused(protocolRefusal(refusal));
   } finally {
@@ -374,7 +379,7 @@ async function createEgoCodebook(
     return refused({ kind: 'sectionCreatedElsewhere' });
   }
   if (refusal?._tag === 'PromotionFailed') {
-    return refused({ kind: 'promotionFailed' });
+    return refused(promotionRefusal(refusal.failure.resourceId));
   }
   return refused(protocolRefusal(refusal));
 }
@@ -431,7 +436,7 @@ export function useCreateCodebookEntity(): (
         return refused(blockedRefusal(refusal.blocked));
       }
       if (refusal?._tag === 'PromotionFailed') {
-        return refused({ kind: 'promotionFailed' });
+        return refused(promotionRefusal(refusal.failure.resourceId));
       }
       return refused(protocolRefusal(refusal));
     },

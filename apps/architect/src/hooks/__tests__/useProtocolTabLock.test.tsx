@@ -669,9 +669,8 @@ describe('useProtocolTabLock', () => {
 
   // An untouched nested editor is no safer than a dirty one. It was seeded from
   // the editing buffer as it stood when it opened and goes on showing those
-  // values after a refresh replaces that buffer — it does not re-seed itself
-  // (`Codebook/__tests__/EntityTypeDialog.bufferRefresh.test.tsx`) — so
-  // refreshing under it sets up a save that writes the older definition back
+  // values after a refresh replaces that buffer — it does not re-seed itself —
+  // so refreshing under it sets up a save that writes the older definition back
   // over what the other tab saved. Closing it is what makes the refresh safe,
   // and costs a pristine editor nothing.
   it('does not refresh under an open nested editor with nothing in it', async () => {

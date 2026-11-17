@@ -23,21 +23,15 @@ import {
   type StageSubject,
   resolveNodeShapeReference,
 } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
-import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
+import CodebookEntityEditorDialog, {
+  createEntityLabels,
+  editEntityLabels,
+  type CodebookEntityEditorSession,
+} from '../codebook/components/CodebookEntityEditorDialog.tsx';
 import { shapeAssetIds } from '../codebook/customShapes.ts';
-import {
-  type CodebookEntityDraft,
-  documentWithEntityProperties,
-} from '../codebook/editing.ts';
 import { useCodebookSectionDocument } from '../codebook/useCodebookVariableEdits.ts';
 import { useNodeShapeSvgs } from '../codebook/useNodeShapeSvgs.ts';
-import {
-  useCodebookSectionWrite,
-  useCreateCodebookEntity,
-} from '../codebook/writes.ts';
 import { READ_ONLY_MESSAGE } from '../form/readOnlyRefusal.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolColor } from '../protocolColor.ts';
@@ -49,7 +43,6 @@ import {
   type RuleEntityTypeOption,
 } from '../rules/ruleCodebook.ts';
 import { useEntityTypes, type EntityTypeSummary } from '../state/hooks.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
 import { useLatest } from '../state/useLatest.ts';
 
 /**
@@ -203,52 +196,6 @@ const GROUP_LABELS: Readonly<Record<RuleEntityTarget, string>> = {
   node: 'Node type options',
   edge: 'Edge type options',
 };
-
-/**
- * What making a type from inside a stage is called — Architect's own words
- * (`EntitySelectField`'s `createNewType`), written out per entity kind for the
- * reason `EMPTY_MESSAGES` gives.
- *
- * Also the title of the dialog it opens: what the researcher pressed is what
- * the thing they are now looking at is called.
- */
-const CREATE_LABELS = defineMessages({
-  node: {
-    id: 'protocolBuilder.entitySelect.nodeCreateLabel',
-    defaultMessage: 'Create new node type',
-    description:
-      'Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens. A node type is a kind of network member the study records, such as a person or a place.',
-  },
-  edge: {
-    id: 'protocolBuilder.entitySelect.edgeCreateLabel',
-    defaultMessage: 'Create new edge type',
-    description:
-      'Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens. An edge type is a kind of relationship between two network members, such as a friendship.',
-  },
-}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
-
-/**
- * What changing the held type's own definition is called, written out per
- * entity kind for the reason `EMPTY_MESSAGES` gives.
- *
- * "This" rather than the type's name: the button is beside the chip that shows
- * which one it is, and a name dropped into a frame is a sentence no translator
- * saw whole.
- */
-const EDIT_LABELS = defineMessages({
-  node: {
-    id: 'protocolBuilder.entitySelect.nodeEditLabel',
-    defaultMessage: 'Edit this node type',
-    description:
-      'Button that opens an editor for the kind of network member a stage is already configured for, so its name, colour, shape or icon can be changed without leaving the stage. Also the title of the dialog it opens.',
-  },
-  edge: {
-    id: 'protocolBuilder.entitySelect.edgeEditLabel',
-    defaultMessage: 'Edit this edge type',
-    description:
-      'Button that opens an editor for the kind of relationship a stage is already configured for, so its name or colour can be changed without leaving the stage. Also the title of the dialog it opens.',
-  },
-}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
 
 /**
  * What a refused change is called, written out per entity kind for the reason
@@ -544,71 +491,6 @@ function EntityOption({
 }
 
 /**
- * A brand-new type the researcher only has to name.
- *
- * Every property the schema requires is pre-filled, because the point of
- * creating a type from inside a stage is to get back to configuring the stage:
- * the colour, shape and icon are all editable afterwards — from the codebook,
- * or from this same control's own edit dialog.
- *
- * The colour is the next one along the palette, counting the types the
- * codebook already holds — two types drawn in the same colour are two a
- * participant cannot tell apart on a canvas, and picking one out of a palette
- * is not what creating a type from inside a stage is for. It wraps once the
- * palette runs out, which is the point at which no distinct colour is left to
- * give.
- */
-export function newEntityDraft(
-  entity: RuleEntityTarget,
-  existingTypes: number,
-): CodebookEntityDraft {
-  if (entity === 'edge') {
-    const palette = EdgeColorSequence;
-    return {
-      name: '',
-      color: palette[existingTypes % palette.length] ?? palette[0],
-    };
-  }
-  const palette = NodeColorReferences;
-  return {
-    name: '',
-    color: palette[existingTypes % palette.length] ?? palette[0],
-    shape: { default: 'circle' },
-    // The icon an interface draws on the control that adds one of these. A
-    // node type is a member of the network, and this is the one every
-    // interface has always shown for one.
-    icon: 'add-a-person',
-  };
-}
-
-/**
- * One opening of the codebook's entity editor from inside this control.
- *
- * The key is what resets the editor's draft, and it is minted per opening
- * rather than per type: reopening the same type after backing out of it is a
- * new question, and an editor that kept the abandoned draft would answer the
- * old one. `typeId` is the id the create RESERVES so the editor has a subject
- * to be about; the id the stage ends up naming is the host's, read off the
- * write.
- */
-type EditorSession = Readonly<{
-  key: string;
-  typeId: string;
-  mode: 'create' | 'edit';
-  /**
-   * The section the edit opened against, kept for the case where it goes.
-   *
-   * A collaborator deleting the type takes the document away under a
-   * researcher who is mid-edit; what they have on screen is still their own
-   * work, so it stays, and the save is refused for the reason it is actually
-   * refused — there is nowhere left to write it. The same rule
-   * `AttributeCodebookControls` follows for an attribute deleted under an open
-   * editor.
-   */
-  openedDocument?: SectionDoc;
-}>;
-
-/**
  * Making a node or edge type, and changing the one this control holds.
  *
  * Inside the field rather than beside it, which is Josh's instruction and
@@ -647,64 +529,15 @@ function EntityTypeCodebookControls({
   select: (typeId: string) => Promise<void>;
 }>) {
   const intl = useAppIntl();
-  const codebook = useProtocolContext().codebook;
-  const createEntity = useCreateCodebookEntity();
-  const writeSection = useCodebookSectionWrite();
   const { session, openSession, closeSession, onSessionExited } =
-    useDialogSession<EditorSession>();
+    useDialogSession<CodebookEntityEditorSession>();
   const createTrigger = useRef<HTMLButtonElement>(null);
   const editTrigger = useRef<HTMLButtonElement>(null);
-
-  const editing = session?.mode === 'edit' ? session : undefined;
-  const editedSubject =
-    editing === undefined
-      ? undefined
-      : ({ entity: entityType, type: editing.typeId } as const);
-  const liveDocument = useCodebookSectionDocument(editedSubject);
-  const editedDocument = liveDocument ?? editing?.openedDocument;
   const heldDocument = useCodebookSectionDocument(
     heldType === undefined
       ? undefined
       : ({ entity: entityType, type: heldType } as const),
   );
-
-  /**
-   * Every type name the protocol already carries, of BOTH kinds, minus the one
-   * being edited.
-   *
-   * Node and edge types share one namespace — `CodebookSchema` refuses a
-   * protocol that reuses a name across the two maps — so a type judged against
-   * its own kind alone could be given the other kind's name, and the refusal
-   * would arrive from the schema after the researcher had finished the dialog,
-   * with no name field to act on. Its own name is left out, or an edit that
-   * changes nothing but the colour would be refused for colliding with itself.
-   *
-   * Read map by map rather than by a computed key: the codebook's two maps
-   * hold different definition types, and one indexed by a union is a union of
-   * maps nothing can be read out of without narrowing it again. Each map is
-   * carried with its kind for the same reason the name is judged across both:
-   * a record key is an id that belongs to ONE map, and nothing keeps the two
-   * maps' ids apart, so a codebook may legally key a node and an edge the
-   * same. Excluded by id alone, editing that node would take the edge's
-   * name out of the collision list too, and the rename would be refused by
-   * the schema instead of by the field.
-   */
-  const existingEntityNames = useMemo(() => {
-    const edited = editing?.typeId;
-    return [
-      ...Object.entries(codebook.node ?? {}).map(
-        ([typeId, definition]) => ['node', typeId, definition.name] as const,
-      ),
-      ...Object.entries(codebook.edge ?? {}).map(
-        ([typeId, definition]) => ['edge', typeId, definition.name] as const,
-      ),
-    ].flatMap(([kind, typeId, name]) =>
-      kind === entityType && typeId === edited ? [] : [name],
-    );
-  }, [codebook, editing?.typeId, entityType]);
-
-  const createLabel = intl.formatMessage(CREATE_LABELS[entityType]);
-  const editLabel = intl.formatMessage(EDIT_LABELS[entityType]);
 
   /*
     The triggers go when editing does, because an act nobody may start is not
@@ -726,10 +559,15 @@ function EntityTypeCodebookControls({
             color="primary"
             icon={<Plus aria-hidden="true" />}
             onClick={() =>
-              openSession({ key: uuid(), typeId: uuid(), mode: 'create' })
+              openSession({
+                key: uuid(),
+                entity: entityType,
+                typeId: uuid(),
+                mode: 'create',
+              })
             }
           >
-            {createLabel}
+            {intl.formatMessage(createEntityLabels[entityType])}
           </Button>
           {/* Only for a type that is still there to edit. A stored id the
               codebook no longer describes is shown as the current choice so
@@ -744,124 +582,36 @@ function EntityTypeCodebookControls({
               onClick={() =>
                 openSession({
                   key: uuid(),
+                  entity: entityType,
                   typeId: heldType,
                   mode: 'edit',
-                  openedDocument: heldDocument,
                 })
               }
             >
-              {editLabel}
+              {intl.formatMessage(editEntityLabels[entityType])}
             </Button>
           )}
         </div>
       )}
-      {/* A CLOSED session is still rendered, until its dialog reports that it
-          has finished animating out. Rendering the editor only while there is
-          something to edit is what made both of these dialogs disappear
-          instead of closing: the exit animation is run by the
-          `AnimatePresence` inside the dialog, so unmounting the editor on
-          close takes the animation away with it. */}
-      {session !== null &&
-        (session.mode === 'create' ? (
-          <CodebookEntityEditor
-            mode="create"
-            sessionKey={session.key}
-            /*
-              The editor opens its own dialog, because the two controls that
-              commit it belong in that dialog's footer and only their owner can
-              put them there. It holds its own draft, so it also knows whether
-              a write is in flight — which is what refuses every way out while
-              one is: dismissed mid-flight, the handler awaiting the request
-              stays alive and a success arriving afterwards still selects the
-              new type on the stage, so the researcher would watch everything
-              describing the old type disappear for a type they never saw
-              arrive.
-            */
-            dialog={{
-              title: createLabel,
-              open: session.open,
-              onExitComplete: onSessionExited,
-              finalFocus: () => createTrigger.current,
-            }}
-            subject={{ entity: entityType, type: session.typeId }}
-            initialDraft={newEntityDraft(
-              entityType,
-              Object.keys(codebook[entityType] ?? {}).length,
-            )}
-            readOnly={readOnly}
-            existingEntityNames={existingEntityNames}
-            onSubmit={(document, promote) =>
-              createEntity(entityType, document, promote)
-            }
-            onApplied={(outcome) => {
-              // The id the HOST minted, read off the write: it is the host's
-              // to issue, and the stage has to name the type it created.
-              const ref = parseSectionId(outcome.sectionId);
-              if (ref.kind !== 'codebookNode' && ref.kind !== 'codebookEdge') {
-                closeSession();
-                return;
-              }
-              // Asked while this dialog is still open, and it closes on
-              // either answer: the type has been created and there is
-              // nothing left to do in here, and the dialog outliving the
-              // question is what keeps focus on a live control — the
-              // confirm returns focus to the Save it was raised from, and
-              // this dialog then returns it to its own trigger.
-              void select(ref.typeId).finally(closeSession);
-            }}
-            onCancel={closeSession}
-          />
-        ) : (
-          editedDocument !== undefined && (
-            <CodebookEntityEditor
-              mode="update"
-              sessionKey={session.key}
-              dialog={{
-                title: editLabel,
-                open: session.open,
-                onExitComplete: onSessionExited,
-                finalFocus: () => editTrigger.current,
-              }}
-              subject={{ entity: entityType, type: session.typeId }}
-              initialDraft={editedDocument}
-              authoritativeDocument={editedDocument}
-              readOnly={readOnly}
-              existingEntityNames={existingEntityNames}
-              onSubmit={(document, promote) => {
-                const subject = {
-                  entity: entityType,
-                  type: session.typeId,
-                } as const;
-                // Laid over the document the LOCK hands back, not over the
-                // one the editor read: `variables` is the half of a type
-                // this form does not own, and writing the form's copy of
-                // it whole would delete an attribute a collaborator added
-                // while this save was taking the lock. The editor has
-                // already rebased once, on the document it last rendered;
-                // this is the same rebase re-asked at the only moment the
-                // answer is authoritative, and the helper keeps `variables`
-                // for exactly this reason.
-                return writeSection(
-                  subject,
-                  (authoritativeDocument) =>
-                    documentWithEntityProperties({
-                      subject,
-                      authoritativeDocument,
-                      draft: document,
-                      // A type left with no custom shapes is saved without
-                      // the key, which would otherwise keep the stored ones.
-                      ...(Object.hasOwn(document, 'customShapes')
-                        ? {}
-                        : { unsetProperties: ['customShapes'] }),
-                    }),
-                  promote,
-                );
-              }}
-              onApplied={closeSession}
-              onCancel={closeSession}
-            />
-          )
-        ))}
+      {session !== null && (
+        <CodebookEntityEditorDialog
+          session={session}
+          onClose={closeSession}
+          onExitComplete={onSessionExited}
+          finalFocus={() =>
+            session.mode === 'create'
+              ? createTrigger.current
+              : editTrigger.current
+          }
+          readOnly={readOnly}
+          // The selection goes through the picker's own `select`, so it is
+          // refused and confirmed by the same rules as pressing a chip. A
+          // success arriving after a dismissal would otherwise select a type
+          // the researcher never saw arrive, which is why the editor refuses
+          // every way out while its save is in flight.
+          onCreated={select}
+        />
+      )}
     </>
   );
 }

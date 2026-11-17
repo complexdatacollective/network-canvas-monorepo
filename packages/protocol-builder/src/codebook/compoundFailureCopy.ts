@@ -19,8 +19,11 @@ export type CodebookRefusal =
   /** Something the host cannot rewrite still names what was to be deleted. */
   | Readonly<{ kind: 'referencesRemain'; references: number }>
   | Readonly<{ kind: 'invalidShape' }>
-  /** The host would not take the files imported while the editor was open. */
-  | Readonly<{ kind: 'promotionFailed' }>
+  /**
+   * The host would not take the files imported while the editor was open.
+   * `resourceId` names the file it stopped at, when the host said which.
+   */
+  | Readonly<{ kind: 'promotionFailed'; resourceId?: string }>
   | Readonly<{ kind: 'sectionGone' }>
   /** A collaborator created the section this change would have created. */
   | Readonly<{ kind: 'sectionCreatedElsewhere' }>

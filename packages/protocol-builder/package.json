@@ -13,7 +13,9 @@
   "exports": {
     "./locales": "./src/locales/catalogs.ts",
     "./codebook/components/CodebookEntityEditor": "./src/codebook/components/CodebookEntityEditor.tsx",
+    "./codebook/components/CodebookEntityEditorDialog": "./src/codebook/components/CodebookEntityEditorDialog.tsx",
     "./codebook/components/CodebookSurface": "./src/codebook/components/CodebookSurface.tsx",
+    "./codebook/components/CreateCodebookVariableDialog": "./src/codebook/components/CreateCodebookVariableDialog.tsx",
     "./codebook/components/VariableEditor": "./src/codebook/components/VariableEditor.tsx",
     "./codebook/customShapes": "./src/codebook/customShapes.ts",
     "./codebook/editing": "./src/codebook/editing.ts",
