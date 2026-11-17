@@ -42,14 +42,6 @@ The map is drawn by Mapbox, a map service, so the stage needs an internet connec
 
 Read the full [Geospatial documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/geospatial).
 
-## What data it collects
-
-<!-- scene: geospatial-data -->
-
-This stage collects a location for each alter. Each prompt records one location attribute, which fills one column of your exported data with a value for every alter the participant placed. When the participant selects an area, the stage saves the value of one of that area's properties, such as its census tract ID. An alter marked as outside the selectable areas gets the value `outside-selectable-areas`.
-
-> Do: Optionally merge all GeoJSON properties with your alter data during data cleaning and analysis. For example, you can match the `zipcode` to other attributes like `population` contained in the GeoJSON file.
-
 ## When to use it
 
 Use this stage to record where alters are, such as the area each one lives or works in, when you can supply those areas as a map file.
@@ -145,16 +137,7 @@ Type the longitude and latitude the map is centered on and its **Starting zoom**
 
 > Do: Make sure the selectable areas from your GeoJSON file are visible within the initial map view.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-<!-- scene: geospatial-outside -->
-
-This section holds the wording Network Canvas supplies for the map, which you can change and translate. **Outside selectable areas** labels the button in the prompt panel that marks the alter as outside the areas the map allows. Selecting the map outside every area also marks the alter as outside.
-
-Under **Shared by every stage of this kind** are the messages shown when the map can't be used as usual: while the device is offline, when the map can't be drawn, and when a search fails. A change to these messages applies to every Geospatial stage.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

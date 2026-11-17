@@ -40,12 +40,6 @@ The Ego Form collects data about the participant, known as **ego**, rather than 
 
 Read the full [Ego Form documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ego-form).
 
-## What data it collects
-
-<!-- scene: ego-form-data -->
-
-This stage collects attributes of the participant. Each field on the form records one attribute of ego. In your exported data, the answers go in the ego list, which has one row for the interview and one column for each field.
-
 ## When to use it
 
 Use this stage to ask the participant a few questions about themselves.
@@ -75,16 +69,7 @@ For a new attribute, the input control you choose for its field also sets the ki
 
 Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-<!-- scene: ego-form-scroll -->
-
-When a form runs past the bottom of the screen and the participant has not used it for 15 seconds, a scroll button with bouncing arrows appears below the form. Pressing the button scrolls to the end of the form. This section changes the wording of that button, which screen readers announce as **Scroll to see more questions**.
-
-This wording is shared by every Ego Form stage, so changing it here changes it on all of them. This section appears only after an Ego Form stage has been saved to the protocol.
-
-Read more about [translating your protocol](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

@@ -17,14 +17,6 @@ The stage turns the answers into a picture that a participant, researcher or cli
 
 Read the full [Narrative Pedigree documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree).
 
-## What data it collects
-
-<!-- scene: narrative-pedigree-data -->
-
-This stage collects no data. It reads the family and the nominations recorded on the Family Pedigree, and writes nothing back to the participant's network. Picking conditions and selecting people leave your exported data exactly as it was.
-
-**Save snapshot** saves an image of the pedigree and its key. The image is a file for the participant to keep, not interview data.
-
 ## When to use it
 
 Use this stage to show a participant how a condition may run through their family, as a starting point for discussion.
@@ -69,14 +61,7 @@ Possible statuses are off by default. While **Show possible (at-risk) statuses**
 
 > Avoid: Turning on possible statuses for participant-facing use without a clinician. Inferred "may develop" and "may carry" symbols can be mistaken for a diagnosis.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-<!-- scene: narrative-pedigree-snapshot -->
-
-This section holds the wording Network Canvas supplies for this stage: the **Save snapshot** button, the "Select a condition" choice in the menu, and the titles of saved snapshots. The zoom button labels, which this stage shares with the Family Pedigree, are under **Shared by every stage of this kind**.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

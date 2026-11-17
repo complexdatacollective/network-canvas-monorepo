@@ -36,33 +36,31 @@
 
 <!-- scene: categorical-bin-intro -->
 
-The Categorical Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into a colored circle. Each circle stands for one category, such as _Family_, _Work_ or _School_. Tapping a circle opens it, so the participant can move the alters inside to another category.
+The Categorical Bin is a name interpreter designed specifically for categorical attributes. It collects information about alters already named, rather than creating new ones.
+
+Participants place each alter from the drawer at the bottom of the screen into a colored circle. Each circle represents one category value for the categorical attribute, such as _Family_, _Work_ or _School_. Tapping a circle opens it, so the participant can move the alters inside to another category.
 
 Read the full [Categorical Bin documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin).
 
-## What data it collects
-
-<!-- scene: categorical-bin-data -->
-
-This stage collects one categorical attribute for each prompt. The circle an alter is placed in sets the value of that attribute. In your exported data, the attribute becomes one true or false column for each category, named after the attribute and the category's value, such as `group_family`. A placed alter has true in the column for its circle. If a prompt offers an Other circle, the answer the participant types for it is kept in its own column.
-
 ## When to use it
 
-Use this stage to sort alters into categories that have no order.
+Use this stage to assign a categorical attribute to alters by sorting them.
 
-> Do: Use it to collect nominal data on alters. A toggle button group [input control](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls) on another interface can collect the same data, but dragging alters into bins is more tactile and engaging for participants.
+> Do: Use it to collect categorical data in a tactile and engaging way.
 
-> Avoid: More than eight categories. More make the category labels hard to read and crowd the rest of the screen.
+> Avoid: More than eight categories. More thank this number will make the category labels hard to read and crowd the rest of the screen.
 
 > Avoid: Dichotomous variables. A yes-or-no answer is better collected with a toggle [input control](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls) on a [Name Generator](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms) or [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), or by attribute toggling on a [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
-## Choose what this stage shows
+> Avoid: Several consecutive categorical bin stages. Consider grouping attributes onto a single [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form).
+
+## Choose the node type
 
 <!-- section: node-type -->
 
-Choose the **node type** this stage sorts, such as _Person_. Every node of that type already in the participant's network waits in the drawer.
+Choose the **node type** that this stage will use. Every node of this type already in the participant's network will appear in the drawer to be sorted.
 
-Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type.
 
 <!-- include: stage-filter -->
 
@@ -70,9 +68,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 <!-- section: prompts -->
 
-Each prompt asks one question and sorts the alters by one categorical attribute. The participant sees one prompt at a time, in the order you set. An alter waits in the drawer until it has a value for the current prompt's attribute, or an answer for the prompt's Other circle.
-
-Each of the attribute's values becomes a circle. A prompt can have at most ten circles, including the Other circle you add with **Follow-up other option**, which asks a follow-up question and saves the answer in a text attribute.
+Each prompt asks the participant a question and selects a categorical attribute used to generate the circles. You can define multiple prompts to collect multiple attributes. The participant sees one prompt at a time, in the order you set, and moves to the next prompt using the next button.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
@@ -84,23 +80,21 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 **Interaction mode** decides how the participant puts each alter into a circle. With **Drag and drop**, the participant drags each alter from the drawer at the bottom of the screen. With **Tap to place**, Network Canvas selects one alter in the drawer, the participant taps the circle that alter belongs in, and the next alter is selected.
 
+> Avoid: Don't use drag and drop if your research population may have issues with performing the interaction. For example those using a mouse who might find accurate movement while holding a button down difficult.
+
+> Do: Use drag and drop in situations where it feels natural and comfortable, such as when using a touch screen device for interviews.
+
 ## Require every alter to be placed
 
 <!-- section: placing-nodes -->
 <!-- field: behaviours.requireCompletePlacement -->
 <!-- scene: categorical-bin-require -->
 
-Switch on **Require every node to be placed** to stop the participant from leaving a prompt while any alter is still in the drawer. If they try, they are told to place every alter first.
+Switch on **Require every node to be placed** to stop the participant from leaving a prompt while any alter is still in the drawer.
 
-## Customize built-in wording
+> Avoid: Turning this option on when there is no "other"/"don't know"/"don't want to answer" option available.
 
-<!-- section: built-in-wording -->
-
-While **Require every node to be placed** is switched on, this section holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. The message can include the node type's name, so give the node type a name that reads naturally to participants.
-
-Once the protocol has a Categorical Bin stage, the section also holds **Place here**, the wording of the button on an opened circle while **Tap to place** is on. It is under **Shared by every stage of this kind**, so changing it changes it on every Categorical Bin stage.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

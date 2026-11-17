@@ -40,12 +40,6 @@ The Information stage is a page the participant reads before moving on. It shows
 
 Read the full [Information documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/information).
 
-## What data it collects
-
-<!-- scene: information-data -->
-
-This stage collects no data. Nothing the participant does here, such as reading the page or playing its media, is added to your exported data.
-
 ## When to use it
 
 Use this stage to introduce your study, or to explain the task on the stage that follows it, such as before a [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census).

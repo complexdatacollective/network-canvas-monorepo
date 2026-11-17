@@ -48,14 +48,6 @@ In the Name Generator for Roster Data, the participant does not type anything. I
 
 If participants should name alters you can't list in advance, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms) or the [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add).
 
-## What data it collects
-
-<!-- scene: roster-data -->
-
-This stage collects alters from the roster, along with what the roster records about each one. Each card the participant adds becomes one node in the network and one row in your exported data, and every column of the alter's roster row is copied onto the node as an attribute.
-
-Once an alter is added, its card leaves the list for the rest of the interview, so each roster entry can be added only once.
-
 ## When to use it
 
 Use this stage when participants will nominate from a known set of alters, such as a class, a team or an organization.
@@ -158,21 +150,7 @@ Switch on this section to set a minimum or maximum number of alters the particip
 
 Once the participant reaches the maximum, the cards can no longer be dragged and they are prompted to continue to the next stage. Until they reach the minimum, they can't move past the last prompt.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-
-Network Canvas supplies the messages this stage shows. Switch on this section to rewrite them for your study:
-
-- **Minimum not reached** and **Maximum reached**: shown only when the stage has those limits.
-- **Everything added**: shown when every card has been added.
-- **Unnamed label**: the numbered label for an entry with no name.
-
-These messages can include the node type's name, so give the node type a name that reads naturally to participants.
-
-A message also appears when the participant drags an added alter back to remove it. Its wording is under **Shared by every stage of this kind**, so changing it changes it on every roster stage. **Shared by every stage of this kind** appears only after a roster stage has been saved to the protocol.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

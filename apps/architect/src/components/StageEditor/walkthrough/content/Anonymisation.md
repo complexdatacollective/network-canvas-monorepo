@@ -40,16 +40,6 @@ The Anonymisation stage allows the participant to choose a passphrase that prote
 
 Read the full [Anonymisation documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/anonymisation).
 
-## What data it collects
-
-<!-- scene: anonymisation-data -->
-
-This stage asks for a passphrase but doesn't save it. Instead it turns the passphrase into a key, which is remembered in memory only while the interview is open. On all stages that create or modify an encrypted attribute, the value is encrypted with that key before it is saved.
-
-The interview data contains only the encrypted answers. In exported CSV and GraphML files, each encrypted answer is replaced by the text `ENCRYPTED`. In GraphML, a node whose label comes from an encrypted attribute gets the label `Encrypted`.
-
-No one, including the researcher, can recover a forgotten passphrase, and the answers it protects stay unreadable.
-
 ## Unlocking encrypted data
 
 <!-- scene: anonymisation-return -->

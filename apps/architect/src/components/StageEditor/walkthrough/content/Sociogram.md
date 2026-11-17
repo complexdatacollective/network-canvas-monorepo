@@ -42,16 +42,6 @@ Its companion, the [Narrative](https://documentation.networkcanvas.com/design-pr
 
 Read the full [Sociogram documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
-## What data it collects
-
-<!-- scene: sociogram-data -->
-
-This stage can collect three kinds of data: where alters are placed, the edges between them, and which alters are highlighted.
-
-- Positions: each alter's position on the canvas is saved to a layout attribute as a pair of coordinates. In your exported data, a layout attribute becomes two columns named after it, such as position\_x and position\_y.
-- Edges: each edge the participant draws is saved as one of the stage's edge types, and becomes one row in the edge list.
-- Highlighted alters: tapping an alter highlights it and sets a true/false attribute to true. Tapping it again sets the attribute to false, and an alter that is never tapped has no value for the attribute.
-
 ## When to use it
 
 Use this stage when you want participants to build a visual picture of their network by positioning alters, drawing the ties between them, and marking a yes/no attribute, such as group membership, directly on the canvas.

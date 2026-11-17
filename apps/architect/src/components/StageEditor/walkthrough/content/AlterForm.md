@@ -52,7 +52,7 @@ Use this stage in situations where you want to follow-up about named alters, and
 
 > Avoid: Too many fields or text-heavy questions. Consider more interactive interfaces, such as the [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) and [Ordinal Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin), to ease participant burden.
 
-## Choose what this stage shows
+## Choose the node type
 
 <!-- section: node-type -->
 

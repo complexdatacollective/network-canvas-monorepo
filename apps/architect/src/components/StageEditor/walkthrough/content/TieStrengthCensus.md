@@ -40,12 +40,6 @@ The Tie-Strength Census is a name interpreter that collects edges between alters
 
 Read the full [Tie-Strength Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/tie-strength-census).
 
-## What data it collects
-
-<!-- scene: tie-strength-data -->
-
-This stage collects edges between alters already named, along with how strong each tie is. When the participant chooses an option on the scale, the pair is joined by one edge of the edge type set on the prompt, and the option chosen is saved on that edge in an ordinal attribute. Each edge is one row in your exported edge list, with a column named after the attribute that holds the value of the option chosen. A pair given the no-tie option has no edge and adds no row.
-
 ## When to use it
 
 <!-- scene: dyad-census-pairs -->

@@ -19,12 +19,6 @@ The stage suits family-history taking, such as a quick survey of a condition acr
 
 Read the full [Family Pedigree documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/family-pedigree).
 
-## What data it collects
-
-<!-- scene: family-pedigree-data -->
-
-This stage collects a participant's family: its members and the relationships between them. In your exported data, each family member is a node of the type you choose, with their name, sex assigned at birth and the other attributes you set up. Each partnership and parent-child relationship is an edge. All of these edges have the same edge type, and an attribute on each edge says what kind of relationship it is. Later stages can use this data.
-
 ## When to use it
 
 Use this stage when you need a participant's family as a structure: who is related to whom, and how. Pair it with a [Narrative Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree) to show the participant how a condition may run through the family they drew.
@@ -190,13 +184,7 @@ A ring in the toolbar fills as the family nears what you require, and pointing a
 - **Required**: participants cannot continue until the required relatives and details are recorded.
 - **Recommended**: participants are shown what is missing, and may continue.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-
-This section holds the wording Network Canvas supplies for this stage, including the side panel's questions, the connect and disconnect messages, and the completeness checklist when completeness is switched on. Many of these items have one version about the participant and another about someone else. Wording that every Family Pedigree stage shows, such as the tool names, is under **Shared by every stage of this kind**, and a change there applies to every stage that shows it.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+<!-- include: built-in-wording -->
 
 ## Ask about the whole family
 

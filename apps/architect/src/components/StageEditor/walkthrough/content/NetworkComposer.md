@@ -17,15 +17,6 @@ The Network Composer is dense and fast to use. It is meant for a researcher or i
 
 Read the full [Network Composer documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/network-composer).
 
-## What data it collects
-
-<!-- scene: network-composer-data -->
-
-This stage collects alters, the edges between them, and attributes about both. Everything made on this stage is saved to the participant's network:
-
-- **Nodes** of the stage's node type. Each node has the name typed when it was added, its position on the canvas, the groups it belongs to, and the answers to its attribute form.
-- **Edges** of each type you allow. Each edge has the answers to its type's attribute form. In your exported data, each edge is one row in the edge list.
-
 ## When to use it
 
 Use this stage when you want to build and edit a whole network from a single screen, rather than leading the participant through one task at a time.
@@ -142,15 +133,7 @@ Each edge type can be added only once. The Draw edge tool appears when the stage
 
 Each connection type gets its own list of **editable attributes**, below the list of connection types. When the interviewer selects an edge on the canvas, the same panel opens as for a node, titled with the connection type's label and holding its fields. You set up these fields in the same window as node fields.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-
-This section holds the wording Network Canvas supplies for the canvas, including the name box placeholder, the tooltips of the add node, automatic layout and draw edge tools, and the heading of the groups list. Every Network Composer stage shows the same wording, so a change here applies to all Network Composer stages in the protocol. A change is saved as soon as you leave the field.
-
-**Connection label** is the panel title for an edge whose type this stage does not draw, such as an edge drawn on an earlier stage.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+<!-- include: built-in-wording -->
 
 ## Choose the background
 

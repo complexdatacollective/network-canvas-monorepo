@@ -40,12 +40,6 @@ The One to Many Dyad Census is a name interpreter that collects edges between al
 
 Read the full [One to Many Dyad Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/one-to-many-dyad-census).
 
-## What data it collects
-
-<!-- scene: one-to-many-data -->
-
-This stage collects edges between alters already named. Each alter the participant taps is joined to the focal node by one edge of the edge type set on the prompt, and each edge is one row in your exported edge list. Tapping a selected alter again removes its edge, so nothing is exported for that pair.
-
 ## When to use it
 
 > Do: Use this interface to encourage participants to add edges that they might not have considered, especially when one alter has relationships with multiple others.

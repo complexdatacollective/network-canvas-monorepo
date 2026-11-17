@@ -40,12 +40,6 @@ The Ordinal Bin is a name interpreter: it collects information about alters alre
 
 Read the full [Ordinal Bin documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin).
 
-## What data it collects
-
-<!-- scene: ordinal-bin-data -->
-
-This stage collects one ordinal attribute for each prompt. The bin an alter is placed in sets the value of that attribute. In your exported data, each prompt's attribute is one column, with a value for every alter placed.
-
 ## When to use it
 
 Use this stage to rate alters on an ordered scale.
@@ -90,13 +84,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 Switch on **Require every node to be placed** to stop the participant from leaving a prompt while any alter is still in the drawer. If they try, they are told to place every alter first.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-
-This section appears only while **Require every node to be placed** is switched on. It holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. The message can include the node type's name, so give the node type a name that reads naturally to participants.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

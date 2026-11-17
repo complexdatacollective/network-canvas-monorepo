@@ -50,12 +50,6 @@ In the Name Generator (using forms), the add button opens a **form** that the pa
 
 If you only need names, the [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants. If you already have a list of the alters they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
 
-## What data it collects
-
-<!-- scene: name-generator-data -->
-
-This stage collects new alters and attributes of each one. In your exported data, each alter named here is one row, and each field on the form is one column.
-
 ## When to use it
 
 Use this stage when you want to collect a small amount of information about each alter at the moment it is named.
@@ -110,13 +104,7 @@ Switch on this section to set a minimum or maximum number of alters the particip
 
 Once the participant reaches the maximum, the add button is switched off and they are prompted to continue to the next stage. Until they reach the minimum, they can't move past the last prompt.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-
-This section appears only once the stage has a nomination limit. It holds the **Minimum not reached** and **Maximum reached** messages that Network Canvas supplies. Switch it on to rewrite them for your study. Both messages can include the node type's name, so give the node type a name that reads naturally to participants.
-
-Read more about [translating your protocol](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

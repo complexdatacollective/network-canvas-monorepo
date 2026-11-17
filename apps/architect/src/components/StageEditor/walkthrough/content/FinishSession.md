@@ -40,14 +40,6 @@ The Finish Screen is the last screen of an interview. It ends the interview, eit
 
 Read the full [Finish Screen documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/finish-screen).
 
-## What data it collects
-
-<!-- scene: finish-session-data -->
-
-This stage creates no nodes or edges, and adds nothing to the participant's network. It records two things: when the interview finished, and how it ended. How it ended is the outcome you choose under **Outcome**.
-
-Both appear in your exported data. The CSV ego list has a `sessionFinish` column for the time and a `networkCanvasFinishOutcome` column for the outcome, which is `completed`, `ineligible` or `terminated`. GraphML files include them as `nc:sessionFinishTime` and `nc:finishOutcome`. If an interview hasn't been finished, both CSV columns are empty and GraphML leaves them out.
-
 ## When to use it
 
 <!-- scene: finish-session-outcomes -->
@@ -96,15 +88,7 @@ A new Finish Screen starts with closing text that Network Canvas supplies, which
 
 > Avoid: Telling participants to press an **Exit** or **Close** button in the text. Which action, if any, the finished screen offers depends on the app running the interview, and Fresco offers none.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-
-This section holds the wording the participant reads while finishing, apart from the closing text and the finished text. Network Canvas supplies starting wording for each item, in each of your protocol's languages that it has wording for. While the section is switched off, the stage uses Network Canvas's wording. Switch the section on to change it.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
-
-> Do: Check the closing text, the finished text and the words in **Customize built-in wording** in every language of your protocol. If you have added languages after changing the text, translate it in each one.
+<!-- include: built-in-wording -->
 
 ## Word the Finish button
 

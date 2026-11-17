@@ -42,14 +42,6 @@ Its companion, the [Sociogram](https://documentation.networkcanvas.com/design-pr
 
 Read the full [Narrative documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative).
 
-## What data it collects
-
-<!-- scene: narrative-data -->
-
-This stage collects no data. Nothing done here is saved to the participant's network: switching presets, moving nodes and drawing on the canvas all leave your exported data exactly as it was.
-
-> Avoid: Relying on the Narrative to collect data. If you need to record an attribute or an edge a participant identifies while talking, gather it on a data-collecting stage such as the [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram) or a name interpreter.
-
 ## When to use it
 
 Use this stage to talk through the network with the participant after they have built it, for example to ask about the groups in it or about who provides support.
@@ -108,13 +100,7 @@ With **Free-draw** on, the interviewer or participant can draw on the canvas wit
 
 With **Allow repositioning** on, nodes can be dragged around the canvas while you talk. Moved nodes keep their new places only while the stage is on screen, and the positions saved in the layout attribute never change.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-
-This section appears when any preset groups nodes, draws edges or highlights attributes, or when free-draw is on. It holds the headings of the preset switcher's lists: **Attributes**, **Links** and **Groups**. While free-draw is on, it also holds the names of the drawing buttons.
-
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

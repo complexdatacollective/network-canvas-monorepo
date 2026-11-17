@@ -48,10 +48,6 @@ In the Name Generator (using quick add), the add button opens a text box. The pa
 
 If you also want to ask a few questions about each alter as it is named, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms). If you already have a list of the alters participants might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
 
-## What data it collects
-
-This stage collects new alters and a name or label for each one. In your exported data, each alter named here is one row, and what the participant types is saved in a single column named after the quick add attribute.
-
 ## When to use it
 
 Use this stage when you want participants to name alters quickly, without collecting anything else about them at the same time.
@@ -111,20 +107,7 @@ Switch on this section to set a minimum or maximum number of alters the particip
 
 Once the participant reaches the maximum, the add button is switched off and they are prompted to continue to the next stage. Until they reach the minimum, they can't move past the last prompt.
 
-## Customize built-in wording
-
-<!-- section: built-in-wording -->
-
-Network Canvas supplies the wording this stage shows. This section lets you rewrite it for your study:
-
-- **Quick-add placeholder**: shown in the box until the participant starts typing. Use it to say what to type for this node type, such as _a first name or nickname_.
-- **Minimum not reached** and **Maximum reached**: shown only when the stage has those limits.
-
-Each of these messages can include the node type's name, so give the node type a name that reads naturally to participants.
-
-If the participant hasn't pressed Enter after a few seconds, a hint reminds them to. The wording of this hint is under **Shared by every stage of this kind**, so changing it changes it on every quick-add stage. **Shared by every stage of this kind** appears only after a quick-add stage has been saved to the protocol.
-
-Read more about [translating your protocol](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol).
+<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

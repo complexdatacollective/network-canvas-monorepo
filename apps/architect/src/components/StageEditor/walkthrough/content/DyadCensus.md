@@ -36,25 +36,23 @@
 
 <!-- scene: dyad-census-intro -->
 
-The Dyad Census is a name interpreter that collects edges between alters already named. It shows the participant two alters at a time and asks a yes or no question about them. Answering yes creates an edge between the two alters, and either answer moves the participant straight on to the next pair, until every pair has been asked about.
+The Dyad Census is an edge generator that systematically shows every possible pair of alters and asks the participant to confirm or deny if there is an edge between them.
+
+Answering yes creates an edge, and answering no is recorded in the interview session but not in the network data. Either answer moves the participant straight on to the next pair, until every pair has been asked about.
 
 Read the full [Dyad Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census).
-
-## What data it collects
-
-<!-- scene: dyad-census-data -->
-
-This stage collects edges between alters already named. Each yes creates one edge of the edge type set on the prompt, and each edge is one row in your exported edge list. A no leaves the pair without that edge, and nothing is exported for it.
 
 ## When to use it
 
 <!-- scene: dyad-census-pairs -->
 
-Use this stage to ask about the relationships between alters systematically. Participants need to understand the task before they start, so place an [Information](https://documentation.networkcanvas.com/design-protocols/interface-documentation/information) stage before this one.
+Use this stage to systematically survey edges between alters, specifically in situations where every possible pair must be confirmed or refused.
 
-> Do: Use it to encourage participants to add edges they might not have considered.
+> Do: Use this interface when you need every possible pair to be considered.
 
-> Avoid: Using it with a large number of alters, which results in a large number of screens.
+> Avoid: Using it with a large number of alters, which results in a large number of screens. This is the most high-burden way to collect alter-alter edge data.
+
+> Do: Consider using alternative methods of capturing alter-alter edges instead, such as the one-to-many dyad census, or the sociogram.
 
 ## Choose what this stage shows
 

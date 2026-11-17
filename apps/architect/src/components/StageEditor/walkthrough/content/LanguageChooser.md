@@ -42,14 +42,6 @@ When the participant chooses a language, this screen and every screen after it s
 
 Read the full [Language Chooser documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/language-chooser).
 
-## What data it collects
-
-<!-- scene: language-chooser-data -->
-
-This stage collects no data. It creates no nodes or edges, and the participant's choice is not saved with the interview or included in your exported data.
-
-The choice is kept in the browser tab running the interview, so it is still there if the page reloads. If the interview is resumed in another tab or on another device, it uses that browser's language settings instead.
-
 ## When to use it
 
 <!-- scene: language-chooser-order -->
