@@ -149,7 +149,7 @@ catalog:
   jszip: ^3.10.2
   lucide-react: ^1.61.0
   motion: ^14.6.0
-  next: ^16.4.2
+  next: ^16.4.5
   # Catalogued so the root's formatter and Architect's cannot drift apart.
   # Architect's E2E helper formats stage snapshots in-process (see
   # `apps/architect/e2e/helpers/normalize-stage.ts`) and depends on producing
