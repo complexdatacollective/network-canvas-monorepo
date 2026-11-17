@@ -4,7 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { DIRECTIVES, parse, serialize } from '../walkthrough-editor/format.mjs';
+import {
+  DIRECTIVES,
+  parse,
+  problems,
+  serialize,
+} from '../walkthrough-editor/format.mjs';
+import { sceneNamesIn } from '../walkthrough-editor/sceneNames.mjs';
 
 // The walkthrough editor saves a file by rebuilding it from its parsed form,
 // so every content file must come back unchanged: otherwise saving one step
@@ -86,5 +92,56 @@ describe('walkthrough editor format', () => {
         { type: 'text', text: 'More text.' },
       ],
     });
+  });
+
+  it('refuses a file the app would refuse', () => {
+    expect(() =>
+      parse('# T\n\n## One\n\n<!-- scene: a -->\n<!-- scene: b -->\n'),
+    ).toThrow(/more than one "scene:" directive/);
+    expect(() =>
+      parse('# T\n\n## One\n\nText.\n\n<!-- scene: a -->\n'),
+    ).toThrow(/comes after the step's text/);
+  });
+
+  it('keeps each card its own block, in a group the app shows together', () => {
+    const doc = parse('# T\n\n## One\n\n> Do: A.\n\n> Avoid: B.\n');
+    expect(doc.items[0]).toMatchObject({
+      blocks: [
+        { type: 'do', text: 'A.' },
+        { type: 'avoid', text: 'B.' },
+      ],
+    });
+  });
+
+  it('flags what a saved file could not say', () => {
+    const doc = parse('# T\n\n## One\n\nText.\n');
+    const step = doc.items[0];
+    if (step?.type !== 'step') throw new Error('Expected a step');
+    step.blocks.push({ type: 'text', text: '<!-- scene: typed -->' });
+    step.directives.push({ name: 'control', value: 'nowhere' });
+    expect(
+      problems(doc, { scenes: [], shared: [] }).map(({ message }) => message),
+    ).toEqual([
+      'No control called "nowhere". Known controls: preview.',
+      'A heading, directive or include in the text. Use the fields and buttons for those instead.',
+    ]);
+  });
+});
+
+describe('scene names', () => {
+  it('reads the keys of a SCENES object', () => {
+    expect(
+      sceneNamesIn(
+        "import { A } from './A';\nexport const SCENES: Record<string, C> = {\n  'a-one': A,\n  \"b\": lazy(() => import('./B')),\n};\n",
+      ),
+    ).toEqual(['a-one', 'b']);
+  });
+
+  it('prefers a SCENE_NAMES array', () => {
+    expect(
+      sceneNamesIn(
+        "type Name = (typeof SCENE_NAMES)[number];\nexport const SCENE_NAMES: readonly string[] = [\n  'a-one',\n  'b',\n] as const;\nconst SCENES = {\n  'c': C,\n};\n",
+      ),
+    ).toEqual(['a-one', 'b']);
   });
 });

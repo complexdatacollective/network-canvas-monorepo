@@ -1,4 +1,3 @@
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 // A local editor for the stage walkthrough content.
 //
 //   pnpm --filter @codaco/architect walkthrough-editor
@@ -7,11 +6,16 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 // src/components/StageEditor/walkthrough/content directly, so with
 // `pnpm --filter @codaco/architect dev` running alongside, every save updates
 // the walkthrough panel in Architect live. Commit the files as usual.
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { stripTypeScriptTypes } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parse } from './format.mjs';
+// Node strips the types from this file as it loads it.
+import { SECTION_KEYS } from '../../../../packages/protocol-builder/src/sections/sectionKeys.ts';
+import { CONTROLS, parse } from './format.mjs';
+import { sceneNamesIn } from './sceneNames.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const walkthrough = join(here, '../../src/components/StageEditor/walkthrough');
@@ -36,21 +40,31 @@ const resolveFile = (path) => {
   return join(content, path);
 };
 
+// The page's modules, served at their paths under apps/architect so that
+// format.mjs's relative import of walkthroughFormat.ts resolves in the browser
+// as it does in Node. The browser cannot read TypeScript, so that file goes
+// out with its types stripped (it uses only erasable syntax for this reason).
+const architect = join(here, '../..');
+const MODULES = {
+  '/scripts/walkthrough-editor/format.mjs': (source) => source,
+  '/src/components/StageEditor/walkthrough/walkthroughFormat.ts': (source) =>
+    stripTypeScriptTypes(source),
+};
+
 const sceneNames = () => {
-  const registry = readFileSync(
-    join(walkthrough, 'scenes/sceneRegistry.ts'),
-    'utf8',
-  );
-  const body = registry.slice(registry.indexOf('export const SCENES'));
-  return [...body.matchAll(/^\s*'([a-z0-9-]+)':/gm)].map((match) => match[1]);
+  const registry = join(walkthrough, 'scenes/sceneRegistry.ts');
+  return existsSync(registry)
+    ? sceneNamesIn(readFileSync(registry, 'utf8'))
+    : [];
 };
 
 const meta = () => {
   const values = {
-    section: new Set(),
+    // Every section key a stage editor has, not only those already used.
+    section: new Set(SECTION_KEYS),
     field: new Set(),
     // The controls outside the sections that carry data-walkthrough-control.
-    control: new Set(['preview']),
+    control: new Set(CONTROLS),
   };
   const shared = {};
   const files = [];
@@ -58,7 +72,9 @@ const meta = () => {
     let doc;
     try {
       doc = parse(readFileSync(join(content, path), 'utf8'));
-    } catch {
+    } catch (error) {
+      // Listed, so the page can say what to fix, but not editable here.
+      files.push({ path, title: null, steps: 0, error: String(error.message) });
       continue;
     }
     const steps = doc.items.filter((item) => item.type === 'step');
@@ -75,6 +91,7 @@ const meta = () => {
   return {
     files,
     scenes: sceneNames(),
+    sections: SECTION_KEYS,
     shared,
     values: Object.fromEntries(
       Object.entries(values).map(([name, set]) => [
@@ -121,11 +138,12 @@ const server = createServer(async (request, response) => {
         'text/html',
       );
     }
-    if (request.method === 'GET' && url.pathname === '/format.mjs') {
+    if (request.method === 'GET' && Object.hasOwn(MODULES, url.pathname)) {
+      const source = readFileSync(join(architect, url.pathname), 'utf8');
       return send(
         response,
         200,
-        readFileSync(join(here, 'format.mjs'), 'utf8'),
+        MODULES[url.pathname](source),
         'text/javascript',
       );
     }

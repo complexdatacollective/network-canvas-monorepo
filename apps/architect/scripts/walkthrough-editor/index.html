@@ -464,7 +464,12 @@
     <datalist id="values-control"></datalist>
 
     <script type="module">
-      import { DIRECTIVES, parse, problems, serialize } from '/format.mjs';
+      import {
+        DIRECTIVES,
+        parse,
+        problems,
+        serialize,
+      } from '/scripts/walkthrough-editor/format.mjs';
 
       const DIRECTIVE_LABELS = {
         section: 'Highlight section',
@@ -473,15 +478,23 @@
         scene: 'Animation',
       };
       const DIRECTIVE_HINTS = {
-        section: "The editor section's title, e.g. Participant prompts",
+        section:
+          "The editor section's key (not its title), e.g. prompts or skip-logic",
         field: 'A form field name inside that section',
         control:
           'A control outside the sections, e.g. preview (the toolbar Preview button)',
         scene: 'An animation from scenes/sceneRegistry.ts',
       };
 
-      let meta = { files: [], scenes: [], shared: {}, values: {} };
+      let meta = {
+        files: [],
+        scenes: [],
+        sections: [],
+        shared: {},
+        values: {},
+      };
       let current; // { path, base, doc }
+      let unreadable; // the path of an open file that breaks the format
       const collapsed = new Set();
 
       const $ = (selector) => document.querySelector(selector);
@@ -623,7 +636,9 @@
             h(
               'small',
               {},
-              `${current?.path === file.path && isDirty() ? '● ' : ''}${file.steps}`,
+              file.error
+                ? 'error'
+                : `${current?.path === file.path && isDirty() ? '● ' : ''}${file.steps}`,
             ),
           );
         };
@@ -1041,6 +1056,7 @@
         const found = problems(doc, {
           scenes: meta.scenes,
           shared: Object.keys(meta.shared),
+          sections: meta.sections,
         });
         const children = [];
 
@@ -1194,10 +1210,35 @@
           toast(body.error);
           return;
         }
-        current = { path, base: body.source, doc: parse(body.source) };
         $('#path').textContent = `content/${path}`;
         $('main').scrollTop = 0;
+        let doc;
+        try {
+          doc = parse(body.source);
+        } catch (error) {
+          showUnreadable(path, error);
+          return;
+        }
+        current = { path, base: body.source, doc };
+        unreadable = undefined;
         render();
+        updateStatus();
+      }
+
+      // A file that breaks the walkthrough format cannot be shown as fields
+      // (saving would rewrite what the editor could not read), so say what
+      // is wrong and leave the fix to a text editor.
+      function showUnreadable(path, error) {
+        current = undefined;
+        unreadable = path;
+        $('#editor').replaceChildren(
+          h(
+            'div',
+            { className: 'banner' },
+            `content/${path} cannot be edited here until it is fixed in a text editor:`,
+            h('ul', {}, h('li', {}, error.message)),
+          ),
+        );
         updateStatus();
       }
 
@@ -1250,7 +1291,11 @@
       // Pick up changes made outside the editor (git pull, another editor)
       // when the tab comes back, unless there are unsaved edits.
       window.addEventListener('focus', async () => {
-        if (current === undefined) return;
+        if (current === undefined) {
+          // Retry a file that could not be read, in case it has been fixed.
+          if (unreadable !== undefined) await load(unreadable);
+          return;
+        }
         const { ok, body } = await api(
           `/api/file?path=${encodeURIComponent(current.path)}`,
         );
@@ -1261,8 +1306,13 @@
           );
           return;
         }
-        current = { ...current, base: body.source, doc: parse(body.source) };
         meta = (await api('/api/meta')).body;
+        try {
+          current = { ...current, base: body.source, doc: parse(body.source) };
+        } catch (error) {
+          showUnreadable(current.path, error);
+          return;
+        }
         render();
         updateStatus();
         toast(`Reloaded ${current.path}: it changed on disk`);

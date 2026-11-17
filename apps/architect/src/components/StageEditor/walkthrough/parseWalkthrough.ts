@@ -1,4 +1,14 @@
-export type Practice = Readonly<{ kind: 'do' | 'avoid'; text: string }>;
+import {
+  type DirectiveName,
+  includedNames,
+  type LexedFile,
+  type LexedStep,
+  lexWalkthrough,
+  type Practice,
+  stepsWithIncludes,
+} from './walkthroughFormat';
+
+export type { Practice } from './walkthroughFormat';
 
 export type WalkthroughBlock =
   | Readonly<{ kind: 'markdown'; text: string }>
@@ -22,142 +32,134 @@ export type Walkthrough = Readonly<{
   steps: readonly WalkthroughStep[];
 }>;
 
-const DIRECTIVES = ['section', 'field', 'control', 'scene'] as const;
-type Directive = (typeof DIRECTIVES)[number];
-
-const isDirective = (value: string): value is Directive =>
-  (DIRECTIVES as readonly string[]).includes(value);
-
-const DIRECTIVE = new RegExp(
-  `^<!--\\s*(${DIRECTIVES.join('|')}):\\s*(.*?)\\s*-->$`,
-);
-const CALLOUT = /^>\s*(Do|Avoid):\s*(.*)$/i;
-
-function parseBlocks(lines: readonly string[]): WalkthroughBlock[] {
-  const blocks: WalkthroughBlock[] = [];
-  let markdown: string[] = [];
-  let practices: Practice[] = [];
-  const flushMarkdown = () => {
-    const text = markdown.join('\n').trim();
-    if (text !== '') blocks.push({ kind: 'markdown', text });
-    markdown = [];
+const toStep = (step: LexedStep): WalkthroughStep => {
+  const directives: { [Name in DirectiveName]?: string } = {};
+  for (const { name, value } of step.directives) directives[name] = value;
+  return {
+    title: step.title,
+    blocks: step.blocks.map((block): WalkthroughBlock =>
+      block.kind === 'text'
+        ? { kind: 'markdown', text: block.text.trim() }
+        : { kind: 'practices', items: block.items },
+    ),
+    ...directives,
   };
-  const flushPractices = () => {
-    if (practices.length > 0)
-      blocks.push({ kind: 'practices', items: practices });
-    practices = [];
-  };
-  for (const line of lines) {
-    const callout = CALLOUT.exec(line.trim());
-    if (callout?.[1] !== undefined && callout[2] !== undefined) {
-      flushMarkdown();
-      practices.push({
-        kind: callout[1].toLowerCase() === 'do' ? 'do' : 'avoid',
-        text: callout[2],
-      });
-    } else if (line.trim() === '' && practices.length > 0) {
-      continue;
-    } else {
-      flushPractices();
-      markdown.push(line);
-    }
-  }
-  flushMarkdown();
-  flushPractices();
-  return blocks;
-}
+};
 
-function parseWalkthrough(source: string): Walkthrough {
-  const lines = source.split(/\r?\n/);
-  const start = lines.findIndex((line) => line.startsWith('# '));
-  const title = start === -1 ? '' : (lines[start]?.slice(2).trim() ?? '');
+/** Prefixes an error with the file it came from. */
+const inFile = (file: string, error: unknown) =>
+  new Error(
+    `${file}: ${error instanceof Error ? error.message : String(error)}`,
+    { cause: error },
+  );
 
-  const steps: WalkthroughStep[] = [];
-  let current:
-    | { title: string; lines: string[]; directives: Map<Directive, string> }
-    | undefined;
-  const push = () => {
-    if (current === undefined) return;
-    const directives = Object.fromEntries(current.directives) as Partial<
-      Record<Directive, string>
-    >;
-    steps.push({
-      title: current.title,
-      blocks: parseBlocks(current.lines),
-      ...directives,
-    });
-  };
-
-  for (const line of lines.slice(start + 1)) {
-    if (line.startsWith('## ')) {
-      push();
-      current = {
-        title: line.slice(3).trim(),
-        lines: [],
-        directives: new Map(),
-      };
-      continue;
-    }
-    if (current === undefined) continue;
-    const directive = DIRECTIVE.exec(line.trim());
-    const name = directive?.[1];
-    if (
-      name !== undefined &&
-      isDirective(name) &&
-      directive?.[2] !== undefined
-    ) {
-      current.directives.set(name, directive[2]);
-    } else {
-      current.lines.push(line);
-    }
-  }
-  push();
-
-  return { title, steps };
-}
-
-const sources = import.meta.glob<string>('./content/*.md', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-});
-
-const sharedSources = import.meta.glob<string>('./content/shared/*.md', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-});
-
-const shared = new Map(
-  Object.entries(sharedSources).map(([path, source]) => [
-    path.replace(/^\.\/content\/shared\/(.*)\.md$/, '$1'),
-    source.slice(Math.max(0, source.indexOf('\n## ') + 1)),
-  ]),
-);
-
-const INCLUDE = /^<!--\s*include:\s*(.*?)\s*-->$/;
-
-/** The source with each include line replaced by that shared file's steps. */
-const withIncludes = (source: string) =>
-  source
-    .split(/\r?\n/)
-    .map((line) => {
-      const name = INCLUDE.exec(line.trim())?.[1];
-      if (name === undefined) return line;
-      const steps = shared.get(name);
-      if (steps === undefined) {
-        throw new Error(`Walkthrough includes unknown shared steps "${name}"`);
+function walkthroughFrom(
+  file: LexedFile,
+  shared: ReadonlyMap<string, string>,
+): Walkthrough {
+  const lexedShared = new Map<string, LexedFile>();
+  const steps = stepsWithIncludes(file, (name) => {
+    const source = shared.get(name);
+    if (source === undefined) return undefined;
+    let lexed = lexedShared.get(name);
+    if (lexed === undefined) {
+      try {
+        lexed = lexWalkthrough(source);
+      } catch (error) {
+        throw inFile(`shared/${name}.md`, error);
       }
-      return steps;
-    })
-    .join('\n');
+      lexedShared.set(name, lexed);
+    }
+    return lexed;
+  });
+  return { title: file.title ?? '', steps: steps.map(toStep) };
+}
 
-const walkthroughs = new Map(
-  Object.entries(sources).map(([path, source]) => [
-    path.replace(/^\.\/content\/(.*)\.md$/, '$1'),
-    parseWalkthrough(withIncludes(source)),
-  ]),
+/**
+ * Parses a walkthrough content file. `shared` holds the source of each shared
+ * file it may include, by name (`skip-logic` for `shared/skip-logic.md`).
+ * Throws when the file breaks the format (see walkthroughFormat.ts) or
+ * includes a shared file that `shared` does not hold.
+ */
+export const parseWalkthrough = (
+  source: string,
+  shared: ReadonlyMap<string, string>,
+): Walkthrough => walkthroughFrom(lexWalkthrough(source), shared);
+
+type Loader = () => Promise<string>;
+
+const byName = (loaders: Record<string, Loader>, folder: string) =>
+  new Map(
+    Object.entries(loaders).map(([path, load]) => [
+      path.slice(folder.length, -'.md'.length),
+      load,
+    ]),
+  );
+
+// Nothing is loaded until a walkthrough is asked for: each file is its own
+// chunk, so one broken file cannot stop the others, or the editor, loading.
+const contentFiles = byName(
+  import.meta.glob<string>('./content/*.md', {
+    query: '?raw',
+    import: 'default',
+  }),
+  './content/',
+);
+const sharedFiles = byName(
+  import.meta.glob<string>('./content/shared/*.md', {
+    query: '?raw',
+    import: 'default',
+  }),
+  './content/shared/',
 );
 
-export const walkthroughFor = (stageType: string): Walkthrough | undefined =>
-  walkthroughs.get(stageType);
+/** Whether the stage type has a walkthrough. Loads nothing. */
+export const hasWalkthrough = (stageType: string): boolean =>
+  contentFiles.has(stageType);
+
+async function readWalkthrough(
+  stageType: string,
+): Promise<Walkthrough | undefined> {
+  const load = contentFiles.get(stageType);
+  if (load === undefined) return undefined;
+  const fileName = `${stageType}.md`;
+  let file: LexedFile;
+  try {
+    file = lexWalkthrough(await load());
+  } catch (error) {
+    throw inFile(fileName, error);
+  }
+  const shared = new Map<string, string>();
+  await Promise.all(
+    includedNames(file).map(async (name) => {
+      const loadShared = sharedFiles.get(name);
+      if (loadShared !== undefined) shared.set(name, await loadShared());
+    }),
+  );
+  try {
+    return walkthroughFrom(file, shared);
+  } catch (error) {
+    throw inFile(fileName, error);
+  }
+}
+
+const loaded = new Map<string, Promise<Walkthrough | undefined>>();
+
+/**
+ * The walkthrough for a stage type, or undefined when it has none. Loads and
+ * parses its content file and the shared files it includes the first time it
+ * is asked for, and returns the same promise after that. Rejects when the
+ * file breaks the format, includes a shared file that does not exist, or
+ * cannot be fetched; a rejection is not kept, so asking again tries again.
+ */
+export function loadWalkthrough(
+  stageType: string,
+): Promise<Walkthrough | undefined> {
+  let walkthrough = loaded.get(stageType);
+  if (walkthrough === undefined) {
+    walkthrough = readWalkthrough(stageType);
+    loaded.set(stageType, walkthrough);
+    walkthrough.catch(() => loaded.delete(stageType));
+  }
+  return walkthrough;
+}
