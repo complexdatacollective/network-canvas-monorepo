@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -55,7 +58,7 @@ Use this stage to ask the participant a few questions about themselves.
 
 ## Introduce the form
 
-<!-- section: Task introduction -->
+<!-- section: introduction -->
 <!-- field: introductionPanel.title -->
 <!-- scene: ego-form-introduction -->
 
@@ -63,7 +66,7 @@ The introduction sits above the form, so the participant knows what the question
 
 ## Build the form
 
-<!-- section: Form configuration -->
+<!-- section: form-fields -->
 <!-- scene: ego-form-intro -->
 
 The form holds the questions the participant answers about themselves. Each field records one attribute of ego, and the fields appear in the order listed here, in a single form the participant scrolls through.
@@ -74,7 +77,7 @@ Read more about [forms](https://documentation.networkcanvas.com/design-protocols
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 <!-- scene: ego-form-scroll -->
 
 When a form runs past the bottom of the screen and the participant has not used it for 15 seconds, a scroll button with bouncing arrows appears below the form. Pressing the button scrolls to the end of the form. This section changes the wording of that button, which screen readers announce as **Scroll to see more questions**.

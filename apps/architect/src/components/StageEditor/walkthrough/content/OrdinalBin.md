@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -55,7 +58,7 @@ Use this stage to rate alters on an ordered scale.
 
 ## Choose what this stage shows
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
 Choose the **node type** this stage sorts, such as _Person_. Every node of that type already in the participant's network waits in the drawer.
 
@@ -65,7 +68,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 ## Write the prompts
 
-<!-- section: Prompt collection -->
+<!-- section: prompts -->
 
 Each prompt asks one question and sorts the alters by one ordinal attribute. The participant sees one prompt at a time, in the order you set. An alter waits in the drawer until it has a value for the current prompt's attribute, so if a prompt reuses an earlier prompt's attribute, the alters placed on the earlier prompt start out in their bins. The attribute's values become the bins, in the attribute's own order.
 
@@ -73,7 +76,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 ## Choose how alters are placed
 
-<!-- section: Placing nodes -->
+<!-- section: placing-nodes -->
 <!-- field: behaviours.interactionMode -->
 <!-- scene: ordinal-bin-tap -->
 
@@ -81,7 +84,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 ## Require every alter to be placed
 
-<!-- section: Placing nodes -->
+<!-- section: placing-nodes -->
 <!-- field: behaviours.requireCompletePlacement -->
 <!-- scene: ordinal-bin-require -->
 
@@ -89,7 +92,7 @@ Switch on **Require every node to be placed** to stop the participant from leavi
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 
 This section appears only while **Require every node to be placed** is switched on. It holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. The message can include the node type's name, so give the node type a name that reads naturally to participants.
 

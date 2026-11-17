@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -53,7 +56,7 @@ This stage collects edges between alters already named. Each alter the participa
 
 ## Choose what this stage shows
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
 Choose the **node type** whose alters are asked about, such as _Person_. Each node of that type already in the participant's network takes a turn as the focal node. If there are fewer than two nodes of that type, the stage is skipped.
 
@@ -63,7 +66,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 ## Write the prompts
 
-<!-- section: Prompt collection -->
+<!-- section: prompts -->
 
 Each prompt asks about one kind of relationship. The participant goes through every focal node for the first prompt, then every focal node again for the next.
 
@@ -73,7 +76,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 ## Choose what happens after a turn
 
-<!-- section: Node availability -->
+<!-- section: node-availability -->
 <!-- field: behaviours.removeAfterConsideration -->
 <!-- scene: one-to-many-remove -->
 

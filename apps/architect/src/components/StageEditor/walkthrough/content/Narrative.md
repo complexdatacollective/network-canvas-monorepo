@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -55,7 +58,7 @@ This stage collects no data, so plan separately how you will capture the discuss
 
 ## Choose what this stage shows
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
 Choose the **node type** this stage shows on the canvas, such as _Person_. Each preset has its own layout attribute, and a node of that type appears only when it has a position saved in the layout attribute of the preset on screen.
 
@@ -65,7 +68,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 ## Build the presets
 
-<!-- section: Visualization presets -->
+<!-- section: presets -->
 
 A preset is one view of the network. The participant sees the first preset when the stage opens, and steps through the others in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset, and you can add presets once you have chosen a node type.
 
@@ -77,7 +80,7 @@ Each preset draws nodes where its **Layout attribute** puts them, so reuse the l
 
 ## Choose the background
 
-<!-- section: Background -->
+<!-- section: background -->
 
 The background sits behind the whole stage. **Concentric Circles** draws rings, and you choose how many. **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.
 
@@ -85,14 +88,14 @@ Read more about [responsive SVG backgrounds](https://documentation.networkcanvas
 
 ## Arrange nodes automatically
 
-<!-- section: Narrative behaviors -->
+<!-- section: canvas-permissions -->
 <!-- field: behaviours.automaticLayout -->
 
 With **Automatic layout** on, Network Canvas moves the nodes by simulating attraction and repulsion. The simulation starts from the nodes' saved positions and pulls grouped nodes together. A pause button in the toolbar at the bottom left stops and restarts the simulation. With **Automatic layout** off, nodes stay exactly where the layout attribute puts them. New Narrative stages start with **Automatic layout** and **Allow repositioning** switched on.
 
 ## Allow drawing on the canvas
 
-<!-- section: Narrative behaviors -->
+<!-- section: canvas-permissions -->
 <!-- field: behaviours.freeDraw -->
 <!-- scene: narrative-draw -->
 
@@ -100,14 +103,14 @@ With **Free-draw** on, the interviewer or participant can draw on the canvas wit
 
 ## Allow moving nodes
 
-<!-- section: Narrative behaviors -->
+<!-- section: canvas-permissions -->
 <!-- field: behaviours.allowRepositioning -->
 
 With **Allow repositioning** on, nodes can be dragged around the canvas while you talk. Moved nodes keep their new places only while the stage is on screen, and the positions saved in the layout attribute never change.
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 
 This section appears when any preset groups nodes, draws edges or highlights attributes, or when free-draw is on. It holds the headings of the preset switcher's lists: **Attributes**, **Links** and **Groups**. While free-draw is on, it also holds the names of the drawing buttons.
 

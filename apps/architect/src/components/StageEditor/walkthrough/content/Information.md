@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -53,14 +56,14 @@ Use this stage to introduce your study, or to explain the task on the stage that
 
 ## Write the page heading
 
-<!-- section: Page content -->
+<!-- section: page-content -->
 <!-- field: title -->
 
 The **Page heading** is required, and is shown large and centered at the top of the page. To insert one of the participant's ego attributes or today's date, use the syringe button in the toolbar.
 
 ## Build the page
 
-<!-- section: Page content -->
+<!-- section: page-content -->
 <!-- field: items -->
 <!-- scene: information-blocks -->
 

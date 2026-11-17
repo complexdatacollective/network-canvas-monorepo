@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -69,7 +72,7 @@ Use this stage when participants will nominate from a known set of alters, such 
 
 ## Choose what this stage creates
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
 Choose the **node type** this stage creates, such as _Person_. Each alter added here becomes a node of that type.
 
@@ -77,7 +80,7 @@ If the type you need does not exist yet, you can create it here.
 
 ## Choose the roster
 
-<!-- section: Roster source -->
+<!-- section: roster-source -->
 <!-- field: dataSource -->
 
 The roster is the network data file that supplies this stage's alters. Choose the file first, because the later roster settings, such as what the cards show and what can be searched, are chosen from its columns. Once you choose a file, the editor lists the attributes its entries have.
@@ -88,7 +91,7 @@ Read more about [preparing a roster file](https://documentation.networkcanvas.co
 
 ## Write the prompts
 
-<!-- section: Prompt collection -->
+<!-- section: prompts -->
 
 The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Which of your classmates do you spend time with outside school?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
 
@@ -100,14 +103,14 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 ## Title the list of cards
 
-<!-- section: Roster panel -->
+<!-- section: roster-panel -->
 <!-- field: panelTitle -->
 
 The title is shown above the cards, so participants know what the list is. A new stage starts with the title _Available to add_. Change it to say what the list holds, for example _Your classmates_.
 
 ## Choose what each card shows
 
-<!-- section: Card display -->
+<!-- section: card-display -->
 <!-- scene: roster-card-display -->
 
 Every card is titled with the entry's name from the data file. Switch on **Card display** to list more of the entry's attributes under its name, such as class or department. Each attribute is shown with a label.
@@ -118,20 +121,20 @@ Read more about [formatting the display of the roster](https://documentation.net
 
 ## Set the starting order
 
-<!-- section: Roster sorting -->
+<!-- section: roster-sorting -->
 
 Switch on **Roster sorting** and add a **Sort rule** to choose the order the cards first appear in, such as by surname. Without a sort rule, the cards keep their order from the data file.
 
 ## Let participants sort
 
-<!-- section: Roster sorting -->
+<!-- section: roster-sorting -->
 <!-- scene: roster-sort -->
 
 Each of the **Sortable properties** becomes a button above the cards, with the label you give it. Participants use these buttons to re-sort the list themselves.
 
 ## Let participants search
 
-<!-- section: Roster search -->
+<!-- section: roster-search -->
 <!-- scene: roster-search -->
 
 Switch on **Roster search** to put a search box above the cards. Under **Searchable attributes**, choose which attributes a search looks in. While this section is switched off, there is no search box and participants find entries by scrolling.
@@ -140,7 +143,7 @@ Each attribute you add makes searching a long roster slower and can make matches
 
 ## Choose how closely searches match
 
-<!-- section: Roster search -->
+<!-- section: roster-search -->
 
 **Search accuracy** sets how close what the participant types must be to an entry to count as a match, from **Exact** to **Low accuracy**. Low accuracy forgives typos and spelling mistakes. Higher accuracy narrows the results when a roster has many similar names.
 
@@ -148,7 +151,7 @@ As a rule of thumb, the larger the roster, the higher the accuracy should be.
 
 ## Limit how many alters can be named
 
-<!-- section: Nomination limits -->
+<!-- section: nomination-limits -->
 <!-- scene: roster-limits -->
 
 Switch on this section to set a minimum or maximum number of alters the participant can add. The limits count every alter added on the stage, across all of its prompts.
@@ -157,7 +160,7 @@ Once the participant reaches the maximum, the cards can no longer be dragged and
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 
 Network Canvas supplies the messages this stage shows. Switch on this section to rewrite them for your study:
 

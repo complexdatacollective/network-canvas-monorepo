@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -61,7 +64,7 @@ Use this stage whenever your protocol has more than one language and you can't b
 
 ## Write the heading
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 <!-- field: title -->
 
 The **Heading** is shown above the list of languages. A new Language Chooser starts with the heading _Choose a language_, in each of your protocol's languages that Network Canvas has wording for, and you can change it. The participant reads the heading in the language the interview is currently shown in, so it changes as soon as they choose.
@@ -72,7 +75,7 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 
 ## See where the languages come from
 
-<!-- section: Languages -->
+<!-- section: languages -->
 <!-- scene: language-chooser-languages -->
 
 Participants choose from every language your protocol is written in. You choose these languages when you create the protocol, and they belong to the whole protocol. This section shows the same list as the **Languages** page in the project navigation, and a change made in either place applies to the whole protocol.
@@ -85,7 +88,7 @@ Read more about [managing your protocol's languages](https://documentation.netwo
 
 ## Choose the default language
 
-<!-- section: Languages -->
+<!-- section: languages -->
 <!-- field: default-language -->
 
 Once your protocol has more than one language, choose its **Default language** here. Participants see the default language wherever text has no translation in the language they use. The interview also starts in the default language if the participant's browser doesn't prefer any of your protocol's languages.
@@ -94,13 +97,13 @@ Read more about [the default language](https://documentation.networkcanvas.com/d
 
 ## Add a language
 
-<!-- section: Languages -->
+<!-- section: languages -->
 
 Click **Add languages** to offer participants another language. Text you have written has no translation in the new language until you add one. Wording that Network Canvas supplies, such as this stage's heading, is filled in for the new language if Network Canvas has wording in that language and you haven't changed that wording in your default language.
 
 ## Remove or relabel a language
 
-<!-- section: Languages -->
+<!-- section: languages -->
 
 The delete button at the end of a language's row removes that language and deletes its translations. Architect asks you to confirm first. You can't delete the default language, or a language that holds the only translation of some text, including text on this stage that isn't saved yet. Point to the delete button to see why it is unavailable.
 

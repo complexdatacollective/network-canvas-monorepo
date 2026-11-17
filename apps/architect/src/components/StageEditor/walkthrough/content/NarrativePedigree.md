@@ -1,7 +1,7 @@
 <!--
   Walkthrough for the "Narrative Pedigree" stage. See Sociogram.md for how
   this file becomes a walkthrough: "## " headings are steps, and HTML-comment
-  directives (section:, field:, scene:, include:) say where a step
+  directives (section:, field:, control:, scene:, include:) say where a step
   points.
 -->
 
@@ -35,7 +35,7 @@ Use this stage to show a participant how a condition may run through their famil
 
 ## Choose the family to show
 
-<!-- section: Pedigree source -->
+<!-- section: pedigree-source -->
 <!-- field: sourceStageId -->
 <!-- scene: narrative-pedigree-source -->
 
@@ -45,7 +45,7 @@ Changing the source stage removes every condition you have added, because each c
 
 ## Add the conditions
 
-<!-- section: Disease mappings -->
+<!-- section: disease-mappings -->
 <!-- field: diseases -->
 <!-- scene: narrative-pedigree-conditions -->
 
@@ -59,7 +59,7 @@ Each condition reads a true or false attribute recorded by a nomination prompt o
 
 ## Show possible statuses
 
-<!-- section: At-risk statuses -->
+<!-- section: at-risk-statuses -->
 <!-- field: showAtRiskStatuses -->
 <!-- scene: narrative-pedigree-at-risk -->
 
@@ -71,7 +71,7 @@ Possible statuses are off by default. While **Show possible (at-risk) statuses**
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 <!-- scene: narrative-pedigree-snapshot -->
 
 This section holds the wording Network Canvas supplies for this stage: the **Save snapshot** button, the "Select a condition" choice in the menu, and the titles of saved snapshots. The zoom button labels, which this stage shares with the Family Pedigree, are under **Shared by every stage of this kind**.

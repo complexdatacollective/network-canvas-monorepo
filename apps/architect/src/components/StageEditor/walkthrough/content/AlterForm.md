@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -33,21 +36,17 @@
 
 <!-- scene: alter-form-intro -->
 
-The Per Alter Form is a name interpreter: it collects information about alters already named, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms) for each alter in turn. The alter is shown beside the form, or above it on a screen that is taller than it is wide, and the participant moves on to the next alter with the Next arrow.
+The Per Alter Form is a name interpreter: it collects attributes about alters already named, rather than creating new ones.
+
+The participant completes the same [form](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms) for each alter in turn. The alter is shown next to the form, and the participant moves on to the next alter with the Next button.
 
 Read the full [Per Alter Form documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form).
 
-## What data it collects
-
-<!-- scene: name-generator-data -->
-
-This stage collects attributes of alters already named. Each field on the form records one attribute of the alter. In your exported data, each alter the form is shown for is one row, and each field is one column.
-
 ## When to use it
 
-Use this stage to ask the same few questions about every alter.
+Use this stage in situations where you want to follow-up about named alters, and capture a set of attributes in one go.
 
-> Do: Use it as a simple way to collect data on alters systematically.
+> Do: Use it as a simple way to collect multiple alter attributes systematically.
 
 > Do: Place an [Information](https://documentation.networkcanvas.com/design-protocols/interface-documentation/information) stage before it, to tell participants about the form they will complete for each alter.
 
@@ -55,22 +54,22 @@ Use this stage to ask the same few questions about every alter.
 
 ## Choose what this stage shows
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
-Choose the **node type** the form asks about, such as _Person_. The form is shown once for every node of that type already in the participant's network.
+Choose the **node type** that this stage uses. The form is shown once for every node of this type already in the participant's network.
 
-Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
+If you create a new node type here, remember to also add a name generator interface using this type before this stage.
+
+Changing the node type later clears this stage's other configuration.
 
 <!-- include: stage-filter -->
 
 ## Build the form
 
-<!-- section: Form configuration -->
+<!-- section: form-fields -->
 <!-- scene: alter-form-intro -->
 
-The form holds the questions asked about each alter. Each field records one attribute of the alter, and the fields appear in the order listed here. The form has no title of its own. Instead, the alter it asks about is shown beside it.
-
-For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
+The form contains the questions asked about each alter. Each field records one attribute of the alter, and the fields appear in the order listed.
 
 Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
 

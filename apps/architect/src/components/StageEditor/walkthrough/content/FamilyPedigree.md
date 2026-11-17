@@ -1,7 +1,7 @@
 <!--
   Walkthrough for the "Family Pedigree" stage. See Sociogram.md for how
   this file becomes a walkthrough: "## " headings are steps, and HTML-comment
-  directives (section:, field:, scene:, include:) say where a step
+  directives (section:, field:, control:, scene:, include:) say where a step
   points.
 -->
 
@@ -56,13 +56,13 @@ Pointing at a person shows four buttons for adding a relative: a parent above, a
 
 ## Choose who the family members are
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
 Pick the **node type** each family member is saved as, for example _Person_. If a Narrative Pedigree reads this stage's family, you can't change the node type.
 
 ## Write the prompt
 
-<!-- section: Prompt -->
+<!-- section: pedigree-prompt -->
 <!-- field: prompt -->
 
 The prompt appears above the canvas while the participant draws their family. Use it to invite the participant to add the people in their family, and to tell them how.
@@ -71,7 +71,7 @@ The prompt appears above the canvas while the participant draws their family. Us
 
 ## Name each person
 
-<!-- section: Person attributes -->
+<!-- section: person-attributes -->
 <!-- field: nodeConfiguration.nameAttribute -->
 <!-- scene: family-pedigree-labels -->
 
@@ -79,21 +79,21 @@ The **Name** attribute holds the name typed in the side panel. Names are optiona
 
 ## Record sex assigned at birth
 
-<!-- section: Person attributes -->
+<!-- section: person-attributes -->
 <!-- field: nodeConfiguration.sexAssignedAtBirthAttribute -->
 
 **Sex assigned at birth** is always asked. It decides who can be a genetic parent of whom, and a Narrative Pedigree reads it to trace sex-linked conditions. The stage sets this attribute's options, but you can reword and translate their labels.
 
 ## Mark the participant
 
-<!-- section: Person attributes -->
+<!-- section: person-attributes -->
 <!-- field: nodeConfiguration.egoAttribute -->
 
 The **Participant marker** is true on the participant's own node and blank on everyone else. Use it in a stage filter to keep the participant out of later stages about their relatives. Everyone else has no value rather than false, so filter for "is not" true.
 
 ## Ask about gender identity
 
-<!-- section: Ask about gender identity -->
+<!-- section: gender-identity -->
 <!-- field: nodeConfiguration.genderIdentity.attribute -->
 <!-- scene: family-pedigree-gender -->
 
@@ -107,7 +107,7 @@ The options belong to this stage, because it decides their words, so another Fam
 
 ## Choose the symbols
 
-<!-- section: Person attributes -->
+<!-- section: person-attributes -->
 <!-- field: pedigree-symbols -->
 <!-- scene: family-pedigree-symbols -->
 
@@ -121,7 +121,7 @@ The choice changes the codebook straight away, and it applies wherever nodes of 
 
 ## Record how each person is related
 
-<!-- section: Record each person’s relationship to the participant -->
+<!-- section: relationship-to-participant -->
 <!-- field: nodeConfiguration.relationshipToParticipantAttribute -->
 <!-- scene: family-pedigree-relationship -->
 
@@ -131,7 +131,7 @@ Switch on **Record each person’s relationship to the participant** to save eac
 
 ## Choose how relationships are saved
 
-<!-- section: Relationships -->
+<!-- section: relationships -->
 <!-- field: edgeConfiguration.type -->
 <!-- scene: family-pedigree-relationships -->
 
@@ -145,7 +145,7 @@ Changing the edge type clears these attributes from the stage, because they depe
 
 ## Choose the words for family members
 
-<!-- section: Wording -->
+<!-- section: pedigree-wording -->
 <!-- field: framing -->
 <!-- scene: family-pedigree-framing -->
 
@@ -159,7 +159,7 @@ The choice changes only the words participants read, and adds nothing to your ex
 
 ## Ask more about each person
 
-<!-- section: Additional person fields -->
+<!-- section: person-form-fields -->
 <!-- field: form.fields -->
 
 Switch on **Additional person fields** to ask more about each family member, such as whether they are still living. These questions come last in the side panel. The participant answers them for every person they add, and for themselves. For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
@@ -170,7 +170,7 @@ Switch on **Additional person fields** to ask more about each family member, suc
 
 ## Check the family is complete enough
 
-<!-- section: Completeness -->
+<!-- section: completeness -->
 <!-- field: completeness.scope -->
 <!-- scene: family-pedigree-completeness -->
 
@@ -182,7 +182,7 @@ A ring in the toolbar fills as the family nears what you require, and pointing a
 
 ## Make completeness required or recommended
 
-<!-- section: Completeness -->
+<!-- section: completeness -->
 <!-- field: completeness.enforcement -->
 
 **When the family is incomplete** sets how firm the requirement is:
@@ -192,7 +192,7 @@ A ring in the toolbar fills as the family nears what you require, and pointing a
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 
 This section holds the wording Network Canvas supplies for this stage, including the side panel's questions, the connect and disconnect messages, and the completeness checklist when completeness is switched on. Many of these items have one version about the participant and another about someone else. Wording that every Family Pedigree stage shows, such as the tool names, is under **Shared by every stage of this kind**, and a change there applies to every stage that shows it.
 
@@ -200,7 +200,7 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 
 ## Ask about the whole family
 
-<!-- section: Nomination prompts -->
+<!-- section: nomination-prompts -->
 <!-- field: nominationPrompts -->
 <!-- scene: family-pedigree-nomination -->
 

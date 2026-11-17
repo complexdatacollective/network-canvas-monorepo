@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -57,7 +60,7 @@ Only Finish Screens can come after a Finish Screen, so they stay together at the
 
 ## Let participants confirm
 
-<!-- section: How participants finish -->
+<!-- section: finish-mode -->
 <!-- field: mode -->
 <!-- scene: finish-session-intro -->
 
@@ -65,7 +68,7 @@ With **Participants confirm** selected, the closing screen shows a **Finish** bu
 
 ## Or finish automatically
 
-<!-- section: How participants finish -->
+<!-- section: finish-mode -->
 <!-- field: mode -->
 <!-- scene: finish-session-automatic -->
 
@@ -73,7 +76,7 @@ With **Participants confirm** selected, the closing screen shows a **Finish** bu
 
 ## Write the closing screen
 
-<!-- section: Closing screen -->
+<!-- section: closing-screen -->
 <!-- field: content -->
 
 **Closing text** is what the participant reads before they finish, above the **Finish** button. It is shown only when the **Participants confirm** option is selected. Start the closing text with a heading, then add the rest of the text.
@@ -82,7 +85,7 @@ A new Finish Screen starts with closing text that Network Canvas supplies, which
 
 ## Write the finished screen
 
-<!-- section: Finished screen -->
+<!-- section: finished-screen -->
 <!-- field: finishedContent -->
 
 **Finished text** is what the participant reads once the interview has finished, however it finished. Like the closing text, it starts with a heading. A new Finish Screen starts with finished text that Network Canvas supplies. The protocol can't be downloaded until it has finished text in your default language.
@@ -95,7 +98,7 @@ A new Finish Screen starts with closing text that Network Canvas supplies, which
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 
 This section holds the wording the participant reads while finishing, apart from the closing text and the finished text. Network Canvas supplies starting wording for each item, in each of your protocol's languages that it has wording for. While the section is switched off, the stage uses Network Canvas's wording. Switch the section on to change it.
 
@@ -105,21 +108,21 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 
 ## Word the Finish button
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 <!-- field: finishLabel -->
 
 **Finish button** sets the label of the button that ends the interview, which reads _Finish_ unless you change it. The same label is used for the button that confirms in the confirmation question. When the interview finishes automatically, the participant sees the button only if finishing fails, so that they can try again.
 
 ## Word the confirmation question
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 <!-- field: finishConfirmation -->
 
 **Confirmation question** is the question asked after the participant presses the **Finish** button and before the interview ends, such as _"Are you sure you want to finish the interview?"_. **Cancel** takes the participant back to the closing screen. The question is asked only when the **Participants confirm** option is selected, so the editor shows this field only for that option.
 
 ## Word the message for when finishing fails
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 <!-- field: finishFailed -->
 <!-- scene: finish-session-failed -->
 
@@ -127,7 +130,7 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 
 ## Record how the interview ended
 
-<!-- section: Outcome -->
+<!-- section: outcome -->
 <!-- field: outcome -->
 <!-- scene: finish-session-outcomes -->
 

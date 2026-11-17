@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -65,7 +68,7 @@ Use this stage when you want to collect a small amount of information about each
 
 ## Choose what this stage creates
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
 Choose the **node type** this stage creates, such as _Person_. Each alter named here becomes a node of that type, and the answers on the form are saved as attributes of that type.
 
@@ -73,7 +76,7 @@ If the type you need does not exist yet, you can create it here.
 
 ## Build the form
 
-<!-- section: Form configuration -->
+<!-- section: form-fields -->
 <!-- field: form.title -->
 <!-- scene: name-generator-form -->
 
@@ -87,7 +90,7 @@ Read more about [forms](https://documentation.networkcanvas.com/design-protocols
 
 ## Write the prompts
 
-<!-- section: Prompt collection -->
+<!-- section: prompts -->
 <!-- scene: name-generator-prompts -->
 
 The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Who have you discussed important matters with in the last six months?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
@@ -100,7 +103,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 ## Limit how many alters can be named
 
-<!-- section: Nomination limits -->
+<!-- section: nomination-limits -->
 <!-- scene: name-generator-limits -->
 
 Switch on this section to set a minimum or maximum number of alters the participant can name. The limits count every alter named on the stage, across all of its prompts.
@@ -109,7 +112,7 @@ Once the participant reaches the maximum, the add button is switched off and the
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 
 This section appears only once the stage has a nomination limit. It holds the **Minimum not reached** and **Maximum reached** messages that Network Canvas supplies. Switch it on to rewrite them for your study. Both messages can include the node type's name, so give the node type a name that reads naturally to participants.
 

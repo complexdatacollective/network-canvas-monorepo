@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -51,16 +54,16 @@ Use this stage to ask set questions about every edge of a given type.
 
 ## Choose which edges this stage shows
 
-<!-- section: Edge setup -->
+<!-- section: edge-type -->
 <!-- scene: edge-form-source -->
 
-Choose the **edge type** the form asks about, such as _Knows_. The form is shown once for every edge of that type already in the participant's network. If there are no edges of that type, the stage is empty and will be automatically skipped.
+Choose the **edge type** the form asks about. The form is shown once for every edge of that type already in the interview network. If there are no edges of that type, the stage is empty and will be automatically skipped.
 
 Changing the edge type later clears this stage's other configuration, because they depend on the edge type.
 
 ## Show the form for only some edges
 
-<!-- section: Filter network -->
+<!-- section: filter-network -->
 
 Switch on **Filter network** to narrow the network this stage works with. Filtering happens _before_ the available edges for this stage are calculated. If filtering removes the source or target node, the edge is also removed.
 
@@ -70,11 +73,9 @@ Read more about [network filtering](https://documentation.networkcanvas.com/desi
 
 ## Build the form
 
-<!-- section: Form configuration -->
+<!-- section: form-fields -->
 
-The form contains the questions asked about each edge. Each field records one attribute of the edge, and the fields appear in the order listed here.
-
-For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
+The form contains the questions asked about each edge. Each field records one attribute of the edge, and the fields appear in the order listed.
 
 Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
 

@@ -9,11 +9,14 @@
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
     **bold**, images, > quotes).
   - Directives are HTML comments on their own line inside a step, e.g.
-    "section: Participant prompts" wrapped in an HTML comment:
-      section: <title>   highlight and scroll to the editor section whose
-                         title this is
+    "section: prompts" wrapped in an HTML comment:
+      section: <key>     highlight and scroll to the editor section with this
+                         key (its data-section-key; the keys are listed in
+                         protocol-builder's sections/sectionKeys.ts)
       field: <name>      within that section, highlight the field with this
                          form name instead of the whole section
+      control: <name>    highlight a control outside the sections instead
+                         (only "preview": the toolbar's Preview button)
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
@@ -57,7 +60,7 @@ Use this stage when you want participants to build a visual picture of their net
 
 ## Choose what this stage shows
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
 Choose the **node type** this stage places on the canvas, such as _Person_. Every node of that type that is already in the participant's network appears on this stage.
 
@@ -67,7 +70,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 ## Write the prompts
 
-<!-- section: Prompt collection -->
+<!-- section: prompts -->
 
 Each prompt sets one task on the canvas, such as placing nodes, drawing one kind of edge, or marking nodes with a characteristic. The participant works through the prompts one at a time, in the order you set, on the same canvas.
 
@@ -77,7 +80,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 ## Choose the background
 
-<!-- section: Background -->
+<!-- section: background -->
 <!-- scene: sociogram-background -->
 
 The background sits behind the whole stage. **Concentric Circles** draws a number of rings that you choose, and **Skew circle sizes** makes the inner rings larger, which can reduce crowding in the center. **Image** uses a picture of your own instead.
@@ -88,7 +91,7 @@ Read more about [responsive SVG backgrounds](https://documentation.networkcanvas
 
 ## Choose how nodes are first arranged
 
-<!-- section: Node layout -->
+<!-- section: node-layout -->
 <!-- scene: sociogram-layout-mode -->
 <!-- field: behaviours.automaticLayout -->
 

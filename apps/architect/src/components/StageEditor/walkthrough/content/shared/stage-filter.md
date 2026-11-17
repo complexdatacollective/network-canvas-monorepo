@@ -6,7 +6,7 @@
 
 ## Show only some nodes
 
-<!-- section: Filter network -->
+<!-- section: filter-network -->
 <!-- scene: stage-filter -->
 
 Switch on **Filter network** to include only some of the nodes on this stage, for example only those whose `close_friend` attribute is true. Without a filter, every node of the chosen type appears.

@@ -1,7 +1,7 @@
 <!--
   Walkthrough for the "Network Composer" stage. See Sociogram.md for how
   this file becomes a walkthrough: "## " headings are steps, and HTML-comment
-  directives (section:, field:, scene:, include:) say where a step
+  directives (section:, field:, control:, scene:, include:) say where a step
   points.
 -->
 
@@ -52,7 +52,7 @@ A palette of tools runs down the left of the canvas. A tool stays active until t
 
 ## Choose what this stage builds
 
-<!-- section: Node setup -->
+<!-- section: node-type -->
 
 Choose what kind of node this canvas creates, such as _Person_. Every node of that type already in the participant's network, such as alters named on an earlier stage, also appears on the canvas. The interviewer can move, connect and group those nodes too.
 
@@ -60,7 +60,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 ## Choose where typed names are saved
 
-<!-- section: Node configuration -->
+<!-- section: composer-nodes -->
 <!-- field: quickAdd -->
 <!-- scene: network-composer-add -->
 
@@ -72,7 +72,7 @@ Pick a text attribute, or type a new name in the picker to create one. No window
 
 ## Choose where positions are saved
 
-<!-- section: Node configuration -->
+<!-- section: composer-nodes -->
 <!-- field: layoutVariable -->
 <!-- scene: network-composer-positions -->
 
@@ -82,7 +82,7 @@ The **layout attribute** stores where each node sits on the canvas, as a pair of
 
 ## Choose how the canvas starts
 
-<!-- section: Node configuration -->
+<!-- section: composer-nodes -->
 <!-- field: behaviours.automaticLayout -->
 <!-- scene: network-composer-auto-layout -->
 
@@ -92,7 +92,7 @@ Unlike on the Sociogram, automatic layout is not fixed when you design the stage
 
 ## Group alters
 
-<!-- section: Node configuration -->
+<!-- section: composer-nodes -->
 <!-- field: convexHullVariable -->
 <!-- scene: network-composer-groups -->
 
@@ -104,7 +104,7 @@ Grouping is optional. Without a grouping attribute, the Groups tool is not shown
 
 ## Group several alters at once
 
-<!-- section: Node configuration -->
+<!-- section: composer-nodes -->
 <!-- field: convexHullVariable -->
 <!-- scene: network-composer-lasso -->
 
@@ -112,7 +112,7 @@ Once the stage has a grouping attribute, the interviewer can also select several
 
 ## Ask about each node
 
-<!-- section: Editable attributes -->
+<!-- section: composer-node-form -->
 <!-- field: nodeForm.fields -->
 <!-- scene: network-composer-inspector -->
 
@@ -124,7 +124,7 @@ A field's question starts as the attribute's name, so change it to the words you
 
 ## Choose the edges that can be drawn
 
-<!-- section: Edge configuration -->
+<!-- section: composer-connections -->
 <!-- scene: network-composer-edges -->
 
 Add a **connection type** for each kind of relationship the interviewer can draw, such as _Friends_ or _Family_. Each connection type uses one edge type from the codebook.
@@ -137,14 +137,14 @@ Each edge type can be added only once. The Draw edge tool appears when the stage
 
 ## Ask about each edge
 
-<!-- section: Edge configuration -->
+<!-- section: composer-connections -->
 <!-- scene: network-composer-edge-inspector -->
 
 Each connection type gets its own list of **editable attributes**, below the list of connection types. When the interviewer selects an edge on the canvas, the same panel opens as for a node, titled with the connection type's label and holding its fields. You set up these fields in the same window as node fields.
 
 ## Customize built-in wording
 
-<!-- section: Customize built-in wording -->
+<!-- section: built-in-wording -->
 
 This section holds the wording Network Canvas supplies for the canvas, including the name box placeholder, the tooltips of the add node, automatic layout and draw edge tools, and the heading of the groups list. Every Network Composer stage shows the same wording, so a change here applies to all Network Composer stages in the protocol. A change is saved as soon as you leave the field.
 
@@ -154,7 +154,7 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 
 ## Choose the background
 
-<!-- section: Background -->
+<!-- section: background -->
 <!-- scene: sociogram-background -->
 
 The background sits behind the whole canvas. **Concentric Circles** draws rings, and you choose how many. **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.

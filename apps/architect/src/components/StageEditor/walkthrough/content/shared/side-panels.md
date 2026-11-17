@@ -5,7 +5,7 @@
 
 ## Offer nodes from elsewhere
 
-<!-- section: Side panels -->
+<!-- section: side-panels -->
 <!-- scene: name-generator-panel-sources -->
 
 A side panel lists nodes beside the question, so the participant can drag them in instead of typing them again. Each panel takes its nodes from one of two sources:

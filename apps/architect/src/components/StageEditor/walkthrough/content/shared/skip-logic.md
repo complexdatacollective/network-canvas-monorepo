@@ -5,7 +5,7 @@
 
 ## Decide when this stage appears
 
-<!-- section: Skip logic -->
+<!-- section: skip-logic -->
 <!-- scene: skip-logic -->
 
 Skip logic uses rules to decide whether this stage is shown or skipped. You can also choose where the interview goes next after the stage is skipped.
