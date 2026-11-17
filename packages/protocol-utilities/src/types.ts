@@ -273,6 +273,7 @@ type FormFieldEntry = {
 // with an optional `label` (the runtime falls back to the variable's name).
 // Mirrors the schema's ComposerFormFieldSchema: `component` is required.
 export type NetworkComposerFormFieldEntry = {
+  id: string;
   variable: string;
   component: ComponentType;
   parameters?: Record<string, unknown>;

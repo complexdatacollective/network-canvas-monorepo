@@ -1099,6 +1099,7 @@ export const compile = (
         const composerField = (sc: string, a: string) => {
           const f = field(sc, a);
           return {
+            id: f.id,
             variable: f.variable,
             component: variableFor(attrIn(sc, a)!, a, true).component,
             label: f.prompt,

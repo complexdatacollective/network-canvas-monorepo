@@ -197,11 +197,13 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
   nodeForm: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference(NOTES_VAR),
         component: 'Text',
         label: { en: 'Notes' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference(PLACE_VAR),
         component: 'Text',
         label: { en: 'Place' },
@@ -997,6 +999,7 @@ describe('NetworkComposer side panel checking an answer against a protected one'
     nodeForm: {
       fields: [
         {
+          id: 'field-1',
           variable: asEntityAttributeReference(PLACE_VAR),
           component: 'Text',
           label: { en: 'Place' },

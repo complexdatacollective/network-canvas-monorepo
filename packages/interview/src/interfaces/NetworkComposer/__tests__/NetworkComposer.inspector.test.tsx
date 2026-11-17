@@ -114,6 +114,7 @@ const PROTOTYPE_VAR = '__proto__';
 const nodeForm = {
   fields: [
     {
+      id: 'field-1',
       variable: NODE_NAME_VAR,
       component: 'Text',
       label: { en: 'Full name' },
@@ -124,6 +125,7 @@ const nodeForm = {
 const edgeForm = {
   fields: [
     {
+      id: 'field-1',
       variable: EDGE_STRENGTH_VAR,
       component: 'Text',
       label: { en: 'Strength' },
@@ -411,6 +413,7 @@ describe('NetworkComposer inspector — node', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: PROTOTYPE_VAR,
             component: 'Text',
             label: { en: 'Prototype value' },

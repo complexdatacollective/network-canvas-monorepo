@@ -348,7 +348,12 @@ describe('FieldPreviewPane', () => {
 
   it('names a composer’s field by its label, and stands in when it has none', () => {
     renderPreview(
-      { variable: 'age', component: 'Number', label: en('Research_Label_Á1') },
+      {
+        id: 'field-L351',
+        variable: 'age',
+        component: 'Number',
+        label: en('Research_Label_Á1'),
+      },
       { mode: 'composer' },
     );
     expect(
@@ -377,7 +382,12 @@ describe('FieldPreviewPane', () => {
     // The same rule the schema applies: text of nothing but spaces says
     // nothing, so a stray space is not a caption.
     renderPreview(
-      { variable: 'age', component: 'Number', label: en('   ') },
+      {
+        id: 'field-L380',
+        variable: 'age',
+        component: 'Number',
+        label: en('   '),
+      },
       { mode: 'composer' },
     );
     expect(
@@ -390,7 +400,7 @@ describe('FieldPreviewPane', () => {
 
     // An emptied box reads the same way, and an authored one still wins.
     renderPreview(
-      { variable: 'age', component: 'Number', label: en('') },
+      { id: 'field-L393', variable: 'age', component: 'Number', label: en('') },
       { mode: 'composer' },
     );
     expect(
@@ -402,7 +412,12 @@ describe('FieldPreviewPane', () => {
     cleanup();
 
     renderPreview(
-      { variable: 'age', component: 'Number', label: en('Research_Label_Á1') },
+      {
+        id: 'field-L405',
+        variable: 'age',
+        component: 'Number',
+        label: en('Research_Label_Á1'),
+      },
       { mode: 'composer' },
     );
     expect(
@@ -711,6 +726,7 @@ describe('FieldPreviewPane', () => {
     // preview reads the composer's own key.
     renderPreview(
       {
+        id: 'field-L713',
         variable: CREATE_NEW_ATTRIBUTE,
         _newVariableName: 'favouriteFood',
         component: 'Text',
@@ -733,6 +749,7 @@ describe('FieldPreviewPane', () => {
     // will never meet.
     renderPreview(
       {
+        id: 'field-L735',
         variable: 'favouriteFood',
         component: 'Text',
         label: en('Favourite food'),

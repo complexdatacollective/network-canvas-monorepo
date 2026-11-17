@@ -332,6 +332,7 @@ describe('useProtocolForm variableLabels', () => {
     // A NetworkComposer field whose caption is blank: the codebook variable's
     // name must NOT stand in for one.
     const blankCaptionField: ComposerFormField = {
+      id: 'field-L334',
       variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
       label: { en: '   ' },
       component: 'Text',

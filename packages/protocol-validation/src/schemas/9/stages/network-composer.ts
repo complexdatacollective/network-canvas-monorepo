@@ -5,7 +5,7 @@ import {
   EdgeStageSubjectSchema,
   imageOrCirclesBackgroundSchema,
   NodeStageSubjectSchema,
-  uniqueFormFieldVariables,
+  uniqueFormFields,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
@@ -43,10 +43,11 @@ const ComposerComponentSchema = z.enum([
 // field's `prompt`: the codebook variable's own label is plain text that is
 // never translated, so it cannot stand in for a caption the participant reads.
 const composerFormFieldShape = {
-  // Architect assigns a stable id (uuid) on creation so the editor's
-  // OrderedList / motion Reorder keying survives reorder + delete; it is
-  // persisted, so the schema must tolerate it.
-  id: z.string().optional(),
+  // A stable identity for the field, as on a shared form field: Architect
+  // assigns a uuid when it creates one. Required, and unique within its form
+  // (`uniqueFormFields`). The schema 8 to 9 migration gives one to every
+  // field that has none.
+  id: z.string().min(1),
   variable: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
@@ -138,13 +139,13 @@ export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
 // strips an empty fields array on save. The runtime renders "No attributes to
 // edit" for an empty/absent form.
 export const ComposerFormSchema = z.strictObject({
-  // `uniqueFormFieldVariables` is the SAME rule the shared form schemas apply
+  // `uniqueFormFields` is the SAME rule the shared form schemas apply
   // (see its definition in `common/forms.ts` for why one form may not write a
   // variable twice); a composer field is structurally a form field, so it uses
   // the shared refinement rather than a second copy that could drift.
   fields: z
     .array(ComposerFormFieldSchema)
-    .superRefine(uniqueFormFieldVariables)
+    .superRefine(uniqueFormFields)
     .optional(),
 });
 export type ComposerForm = z.infer<typeof ComposerFormSchema>;

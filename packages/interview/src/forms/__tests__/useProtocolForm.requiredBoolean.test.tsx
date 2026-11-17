@@ -155,6 +155,7 @@ describe('useProtocolForm required boolean rendering', () => {
       <FormHarness
         fields={[
           {
+            id: 'field-L157',
             variable: asEntityAttributeReference('singletonOptions'),
             component: 'Toggle',
             label: { en: 'Are you employed?' },

@@ -96,6 +96,7 @@ function codebookWith(options: {
 function referencedField(field: ComposerField) {
   return {
     ...field,
+    id: `field-${field.variable}`,
     variable: asEntityAttributeReference(field.variable),
     label: { 'en-US': field.variable },
   };

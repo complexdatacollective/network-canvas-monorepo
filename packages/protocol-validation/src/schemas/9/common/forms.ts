@@ -85,7 +85,7 @@ export const duplicateFormFieldIndices = (
  * The scope is ONE form: separate forms resolve their references against
  * different subjects and are checked independently.
  */
-export const uniqueFormFieldVariables = (
+const uniqueFormFieldVariables = (
   fields: readonly { variable: string }[],
   ctx: z.RefinementCtx,
 ): void => {
@@ -122,7 +122,12 @@ const uniqueFormFieldIds = (
   });
 };
 
-const uniqueFormFields = (
+/**
+ * Both uniqueness rules of one form: no variable twice (`uniqueFormFieldVariables`)
+ * and no id twice (`uniqueFormFieldIds`). Every form surface applies this one
+ * function, the Network Composer's included, so a rule added here reaches them all.
+ */
+export const uniqueFormFields = (
   fields: readonly { id: string; variable: string }[],
   ctx: z.RefinementCtx,
 ): void => {

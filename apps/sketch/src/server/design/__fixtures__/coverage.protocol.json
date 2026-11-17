@@ -1505,6 +1505,7 @@
       "nodeForm": {
         "fields": [
           {
+            "id": "field-mentor_role",
             "variable": "mentor_role",
             "component": "Text",
             "label": {
@@ -1534,6 +1535,7 @@
           "form": {
             "fields": [
               {
+                "id": "field-mentors_know_met_through",
                 "variable": "mentors_know_met_through",
                 "component": "Text",
                 "label": {

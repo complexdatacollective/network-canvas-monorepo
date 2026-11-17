@@ -377,6 +377,7 @@ const protocolDocument = () => ({
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'closeness',
             component: 'VisualAnalogScale',
             label: localized('How close?'),
@@ -387,6 +388,7 @@ const protocolDocument = () => ({
             },
           },
           {
+            id: 'field-2',
             variable: 'nickname',
             component: 'Text',
             label: localized('Nickname?'),
@@ -401,6 +403,7 @@ const protocolDocument = () => ({
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'note',
                 component: 'Text',
                 label: localized('Anything to add?'),

@@ -2073,6 +2073,94 @@ describe('Migrating form field ids from schema 8 to 9', () => {
     expect(ids[1]).not.toBe('mine');
   });
 
+  describe('on a Network Composer stage', () => {
+    // A schema 8 Network Composer: a node form and two edge forms, whose
+    // fields have no id, except the ones that say so.
+    const composer = (): Schema8Stage => ({
+      id: 'composer',
+      type: 'NetworkComposer',
+      label: 'Compose',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      layoutVariable: 'layoutPosition',
+      background: { concentricCircles: 1 },
+      nodeForm: {
+        fields: [
+          { variable: 'age', component: 'Number' },
+          { id: 'kept', variable: 'category', component: 'ToggleButtonGroup' },
+        ],
+      },
+      edges: [
+        {
+          id: 'knows-edge',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              { variable: 'closeness', component: 'RadioGroup' },
+              { variable: 'duration', component: 'Number' },
+            ],
+          },
+        },
+        {
+          id: 'collaborates-edge',
+          subject: { entity: 'edge', type: 'collaborates' },
+          form: {
+            fields: [
+              { id: 'field-1', variable: 'frequency', component: 'RadioGroup' },
+            ],
+          },
+        },
+      ],
+    });
+
+    const migratedComposer = () =>
+      migratedStage(schema8WithStages(composer()), 'composer') as {
+        nodeForm: { fields: { id: string }[] };
+        edges: { form: { fields: { id: string }[] } }[];
+      };
+
+    it('gives every field of the node form and each edge form an id', () => {
+      const stage = migratedComposer();
+      const forms = [stage.nodeForm, ...stage.edges.map(({ form }) => form)];
+
+      expect(forms).toHaveLength(3);
+      for (const form of forms) {
+        const ids = form.fields.map(({ id }) => id);
+        expect(ids.every((id) => typeof id === 'string' && id !== '')).toBe(
+          true,
+        );
+        expect(new Set(ids).size).toBe(ids.length);
+      }
+    });
+
+    it('keeps the ids fields already have', () => {
+      const stage = migratedComposer();
+
+      expect(stage.nodeForm.fields[1]?.id).toBe('kept');
+      expect(stage.edges[1]?.form.fields[0]?.id).toBe('field-1');
+    });
+
+    it('does not repeat an id within one form', () => {
+      const document = schema8WithStages({
+        ...composer(),
+        nodeForm: {
+          fields: [
+            { id: 'field-2', variable: 'age', component: 'Number' },
+            { variable: 'category', component: 'ToggleButtonGroup' },
+          ],
+        },
+      });
+      const { nodeForm } = migratedStage(document, 'composer') as {
+        nodeForm: { fields: { id: string }[] };
+      };
+
+      expect(nodeForm.fields.map(({ id }) => id)).toEqual([
+        'field-2',
+        'field-3',
+      ]);
+    });
+  });
+
   it('gives the same ids when the same document is migrated twice', () => {
     const document = schema8WithStages(...formStages());
     expect(migratedStages(document)).toEqual(migratedStages(document));

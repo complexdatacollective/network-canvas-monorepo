@@ -1512,6 +1512,7 @@ export class SyntheticInterview {
     const nodeType = this.nodeTypes.get(nodeTypeId);
     const variable = nodeType?.variables.get(variableId);
     return {
+      id: formFieldId(variableId),
       variable: variableId,
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
@@ -1539,6 +1540,7 @@ export class SyntheticInterview {
     const edgeType = this.edgeTypes.get(edgeTypeId);
     const variable = edgeType?.variables.get(variableId);
     return {
+      id: formFieldId(variableId),
       variable: variableId,
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),

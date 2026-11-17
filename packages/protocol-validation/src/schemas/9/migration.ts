@@ -485,41 +485,54 @@ const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
 
 /**
  * Schema 9 gives every form field an `id`, a stable identity apart from its
- * position and its attribute, which schema 8 did not record (Architect only
- * began writing one late in schema 8). A field without a usable one is given
- * `field-` and its position in the form, or the next free number if that is
- * taken, so migrating one document twice gives one result. A field that has an
- * id keeps it; a blank, non-text or repeated one is not usable, as ids must be
- * unique within a form, and is replaced. Every stage that holds a form of the
- * shared field shape is covered; a Network Composer stage is not, as it did
- * not exist in schema 8 and its fields are a different shape.
+ * position and its attribute, which schema 8 did not require. A field without
+ * a usable one is given `field-` and its position in the form, or the next
+ * free number if that is taken, so migrating one document twice gives one
+ * result. A field that has an id keeps it; a blank, non-text or repeated one
+ * is not usable, as ids must be unique within a form, and is replaced.
+ */
+const giveFieldsIds = (fields: unknown) => {
+  if (!Array.isArray(fields)) return;
+  const taken = new Set<string>();
+  const needsId = new Set<Record<string, unknown>>();
+  for (const field of fields) {
+    if (!isRecord(field)) continue;
+    const { id } = field;
+    if (typeof id === 'string' && id !== '' && !taken.has(id)) {
+      taken.add(id);
+    } else {
+      needsId.add(field);
+    }
+  }
+  fields.forEach((field: unknown, index: number) => {
+    if (!isRecord(field) || !needsId.has(field)) return;
+    let count = index + 1;
+    while (taken.has(`field-${count}`)) count += 1;
+    const id = `field-${count}`;
+    field.id = id;
+    taken.add(id);
+  });
+};
+
+/**
+ * Every form of every stage: the `form` of an Ego Form, Alter Form, Alter Edge
+ * Form, Name Generator and the Family Pedigree conversion, and a Network
+ * Composer's node form and each edge type's form.
  */
 const addFormFieldIds = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   for (const stage of protocol.stages) {
-    if (!isRecord(stage) || stage.type === 'NetworkComposer') continue;
-    if (!isRecord(stage.form) || !Array.isArray(stage.form.fields)) continue;
-    const fields: unknown[] = stage.form.fields;
-    const taken = new Set<string>();
-    const needsId: Record<string, unknown>[] = [];
-    for (const field of fields) {
-      if (!isRecord(field)) continue;
-      const { id } = field;
-      if (typeof id === 'string' && id !== '' && !taken.has(id)) {
-        taken.add(id);
-      } else {
-        needsId.push(field);
+    if (!isRecord(stage)) continue;
+    if (stage.type === 'NetworkComposer') {
+      if (isRecord(stage.nodeForm)) giveFieldsIds(stage.nodeForm.fields);
+      if (!Array.isArray(stage.edges)) continue;
+      for (const edge of stage.edges) {
+        if (isRecord(edge) && isRecord(edge.form)) {
+          giveFieldsIds(edge.form.fields);
+        }
       }
-    }
-    let position = 0;
-    for (const field of fields) {
-      position += 1;
-      if (!isRecord(field) || !needsId.includes(field)) continue;
-      let count = position;
-      while (taken.has(`field-${count}`)) count += 1;
-      const id = `field-${count}`;
-      field.id = id;
-      taken.add(id);
+    } else if (isRecord(stage.form)) {
+      giveFieldsIds(stage.form.fields);
     }
   }
 };

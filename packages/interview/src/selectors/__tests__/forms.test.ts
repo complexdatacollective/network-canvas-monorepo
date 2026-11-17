@@ -13,6 +13,7 @@ describe('selectFieldMetadataFromVariables', () => {
     };
     const fields = [
       {
+        id: 'field-L15',
         variable: 'closeness',
         component: 'VisualAnalogScale',
         label: { en: 'How close?' },

@@ -31,6 +31,7 @@ const scaleVariable = (name: string, minLabel: string, maxLabel: string) => ({
 });
 
 const composerScaleField = (variable: string, label: string) => ({
+  id: 'field-L33',
   variable,
   component: 'VisualAnalogScale',
   label: en(label),

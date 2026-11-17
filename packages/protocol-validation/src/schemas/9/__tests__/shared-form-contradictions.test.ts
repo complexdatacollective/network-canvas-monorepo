@@ -317,6 +317,7 @@ describe('shared form stage-effective validation contradictions', () => {
           nodeForm: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'boolB',
                 component: 'Toggle',
                 label: localized('Second?'),
@@ -355,6 +356,7 @@ describe('shared form stage-effective validation contradictions', () => {
           nodeForm: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'boolB',
                 component: 'Toggle',
                 label: localized('Second?'),

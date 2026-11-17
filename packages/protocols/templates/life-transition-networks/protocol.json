@@ -540,6 +540,7 @@
       "nodeForm": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "knew_before",
             "component": "Toggle",
             "label": {
@@ -547,6 +548,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "arrived_with_change",
             "component": "Toggle",
             "label": {
@@ -554,6 +556,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "helped_through",
             "component": "Toggle",
             "label": {
@@ -561,6 +564,7 @@
             }
           },
           {
+            "id": "field-4",
             "variable": "made_it_harder",
             "component": "Toggle",
             "label": {
@@ -568,6 +572,7 @@
             }
           },
           {
+            "id": "field-5",
             "variable": "lost_touch",
             "component": "Toggle",
             "label": {
@@ -575,6 +580,7 @@
             }
           },
           {
+            "id": "field-6",
             "variable": "closeness_before",
             "component": "LikertScale",
             "label": {
@@ -582,6 +588,7 @@
             }
           },
           {
+            "id": "field-7",
             "variable": "closeness_now",
             "component": "LikertScale",
             "label": {
@@ -589,6 +596,7 @@
             }
           },
           {
+            "id": "field-8",
             "variable": "how_we_met",
             "component": "TextArea",
             "label": {

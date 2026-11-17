@@ -129,6 +129,7 @@ describe('a Network Composer field caption', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'age',
             label: { en: '   ' },
             component: ComponentTypes.Number,
