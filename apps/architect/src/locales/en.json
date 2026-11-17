@@ -3577,7 +3577,7 @@
   },
   "architect.stageEditor.walkthrough.collapse": {
     "defaultMessage": "Hide the walkthrough for now",
-    "description": "Button that folds the walkthrough panel down to a small bar, so the researcher can work on the page behind it."
+    "description": "Button that minimises the walkthrough panel to a progress ring in the stage editor toolbar, so the researcher can work on the page behind it. The ring opens it again at the same step."
   },
   "architect.stageEditor.walkthrough.do": {
     "defaultMessage": "Do",
@@ -3585,7 +3585,7 @@
   },
   "architect.stageEditor.walkthrough.eyebrow": {
     "defaultMessage": "Walkthrough",
-    "description": "Small label above the name of the stage type at the top of the walkthrough, and on the minimized walkthrough."
+    "description": "Small label at the top of the walkthrough panel, above the name of the stage type it is about."
   },
   "architect.stageEditor.walkthrough.finish": {
     "defaultMessage": "Finish",
@@ -3597,7 +3597,7 @@
   },
   "architect.stageEditor.walkthrough.progressShort": {
     "defaultMessage": "{index, number}/{total, number}",
-    "description": "Compact step count inside the progress ring of the minimized walkthrough, e.g. \"1/8\". index is one-based."
+    "description": "Compact step count in the centre of the progress ring the minimized walkthrough becomes in the stage editor toolbar, such as “3/18”. index is the current step and total the number of steps."
   },
   "architect.stageEditor.walkthrough.resumeEyebrow": {
     "defaultMessage": "Resume walkthrough · {index} of {total}",

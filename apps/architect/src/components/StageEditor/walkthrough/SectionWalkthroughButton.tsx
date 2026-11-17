@@ -3,9 +3,15 @@ import { Info } from 'lucide-react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
+import type { SectionKey } from '@codaco/protocol-builder/sections/sectionKeys';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
 
-import { useStageWalkthrough } from './StageWalkthrough';
+import { useWalkthrough } from './useWalkthrough';
 import { openWalkthrough } from './walkthroughStore';
 
 const messages = defineMessages({
@@ -17,34 +23,42 @@ const messages = defineMessages({
   },
 });
 
+type Section = Readonly<{ key: SectionKey; title: string }>;
+
 /**
  * Beside a section's title, opens the walkthrough at the first step about
  * that section. Shown only for a section a step is about.
  */
-function SectionWalkthroughButton({ title }: Readonly<{ title: string }>) {
+function SectionWalkthroughButton({ section }: Readonly<{ section: Section }>) {
   const intl = useAppIntl();
-  const walkthrough = useStageWalkthrough();
   const { identity } = useStageEdit();
+  const walkthrough = useWalkthrough(identity?.type);
   const step =
     walkthrough?.steps.findIndex(
-      (candidate) => candidate.section?.toLowerCase() === title.toLowerCase(),
+      (candidate) => candidate.section === section.key,
     ) ?? -1;
   if (step === -1) return null;
-  const label = intl.formatMessage(messages.label, { section: title });
+  const label = intl.formatMessage(messages.label, { section: section.title });
   return (
-    <IconButton
-      size="sm"
-      variant="text"
-      icon={<Info aria-hidden />}
-      title={label}
-      aria-label={label}
-      onClick={(event) =>
-        openWalkthrough(event.currentTarget, identity?.id ?? '', step)
-      }
-    />
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            size="sm"
+            variant="text"
+            icon={<Info aria-hidden />}
+            aria-label={label}
+            onClick={(event) =>
+              openWalkthrough(event.currentTarget, identity?.id ?? '', step)
+            }
+          />
+        }
+      />
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
-export const renderSectionWalkthroughButton = (title: string) => (
-  <SectionWalkthroughButton title={title} />
+export const renderSectionWalkthroughButton = (section: Section) => (
+  <SectionWalkthroughButton section={section} />
 );

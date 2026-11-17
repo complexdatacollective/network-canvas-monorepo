@@ -51,12 +51,11 @@ import {
 } from './stageDraftBeacon';
 import StageSectionOutline from './StageSectionOutline';
 import StageTitle from './StageTitle';
-import { ResumeWalkthroughControl } from './walkthrough/ResumeWalkthroughControl';
-import StageWalkthrough, {
-  useStageWalkthrough,
-} from './walkthrough/StageWalkthrough';
-import { StartWalkthroughControl } from './walkthrough/StartWalkthroughControl';
+import { hasWalkthrough } from './walkthrough/parseWalkthrough';
+import StageWalkthrough from './walkthrough/StageWalkthrough';
 import { useWalkthroughState } from './walkthrough/walkthroughStore';
+import { WalkthroughToolbarControl } from './walkthrough/WalkthroughToolbarControl';
+
 const messages = defineMessages({
   openingPreview: {
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
@@ -178,7 +177,7 @@ export default function StageEditorChrome({
       <OpenStageRegistration />
       {outlineHost !== null &&
         createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
-      <StageWalkthrough sections={sections} />
+      <StageWalkthrough />
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}
@@ -313,14 +312,12 @@ function StageEditorActions({
   const protocol = useSelector(getProtocol);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
   const respectSkipLogic = useSelector(getPreviewRespectSkipLogic);
-  const walkthroughState = useWalkthroughState();
   const { identity } = useStageEdit();
-  const walkthroughSteps = useStageWalkthrough()?.steps;
-  const minimisedIndex = Math.min(
-    walkthroughState.step,
-    (walkthroughSteps?.length ?? 1) - 1,
+  // The toolbar offers the walkthrough while it is closed, and a ring to
+  // restore it while it is minimised; its open panel needs neither.
+  const walkthroughPanelOpen = useWalkthroughState(
+    (state) => state.open && !state.collapsed,
   );
-  const minimisedStep = walkthroughSteps?.[minimisedIndex];
 
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   // Disabled until the stage is known to be previewable, so Preview cannot be
@@ -479,20 +476,13 @@ function StageEditorActions({
         isStageInvalid={!isStageValid}
         isOpeningPreview={isOpeningPreview}
         walkthrough={
-          // Offered while the walkthrough is closed, a ring to resume it while
-          // it is minimised, and nothing while its panel is open.
-          walkthroughSteps ===
-          undefined ? undefined : !walkthroughState.open ? (
-            <StartWalkthroughControl
-              key="start-walkthrough"
-              stage={identity?.id ?? ''}
-            />
-          ) : walkthroughState.collapsed && minimisedStep !== undefined ? (
-            <ResumeWalkthroughControl
-              key="resume-walkthrough"
-              index={minimisedIndex}
-              total={walkthroughSteps.length}
-              title={minimisedStep.title}
+          identity !== undefined &&
+          hasWalkthrough(identity.type) &&
+          !walkthroughPanelOpen ? (
+            <WalkthroughToolbarControl
+              key="walkthrough"
+              stage={identity.id}
+              type={identity.type}
             />
           ) : undefined
         }

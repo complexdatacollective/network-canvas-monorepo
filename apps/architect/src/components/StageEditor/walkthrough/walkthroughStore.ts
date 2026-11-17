@@ -4,7 +4,10 @@ type WalkthroughState = Readonly<{
   open: boolean;
   step: number;
   collapsed: boolean;
-  /** The editor section the current step is about, for the section list. */
+  /**
+   * The key of the editor section the current step is about, which the
+   * section list marks. Set by the panel, which knows the steps.
+   */
   section: string | undefined;
   /** The stage the walkthrough is about. */
   stage: string | undefined;
@@ -12,7 +15,12 @@ type WalkthroughState = Readonly<{
   focusRequest: number;
 }>;
 
-type Position = Readonly<{ x: number; y: number }>;
+/**
+ * The panel's offset from its home in the corner, and whether the researcher
+ * dragged it there, in which case it stays put until a step about another
+ * section.
+ */
+type Position = Readonly<{ x: number; y: number; byHand: boolean }>;
 
 const CLOSED: WalkthroughState = {
   open: false,
@@ -25,10 +33,10 @@ const CLOSED: WalkthroughState = {
 
 let state: WalkthroughState = CLOSED;
 /**
- * Where the panel is, from its home in the corner, until the walkthrough
- * closes. Kept apart from the state above: the panel remounts when it is
- * restored from the toolbar, and reading this then puts it back where it was,
- * while writing it on every move would re-render the panel for nothing.
+ * Where the panel is until the walkthrough closes. Kept apart from the state
+ * above: the panel remounts when it is restored from the toolbar, and reading
+ * this then puts it back where it was, while writing it on every move would
+ * re-render the panel for nothing.
  */
 let position: Position | undefined;
 let returnFocusTo: HTMLElement | null = null;
@@ -47,16 +55,28 @@ function subscribe(listener: () => void) {
   };
 }
 
-const getSnapshot = () => state;
+const whole = (snapshot: WalkthroughState) => snapshot;
 
-export function useWalkthroughState(): WalkthroughState {
+/**
+ * The walkthrough's state, or the part of it `select` picks. A component
+ * re-renders only when what it picked changes, so `select` should return a
+ * primitive or a part of the state as it is, not a new object.
+ */
+export function useWalkthroughState(): WalkthroughState;
+export function useWalkthroughState<T>(
+  select: (snapshot: WalkthroughState) => T,
+): T;
+export function useWalkthroughState<T>(
+  select: (snapshot: WalkthroughState) => T | WalkthroughState = whole,
+) {
+  const getSnapshot = () => select(state);
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 /**
- * Opens the walkthrough for `stage` at `step`, or at its start, with the panel
- * in the corner. Already open, it moves to `step` if one is given, is restored
- * if minimised, and is brought to their attention.
+ * Opens the walkthrough for `stage` at `step`, or at its start. Already open,
+ * it moves to `step` if one is given, is restored if minimised, and is brought
+ * to the researcher's attention.
  */
 export function openWalkthrough(
   launcher: HTMLElement | null,
@@ -93,11 +113,15 @@ export function takeWalkthroughFocus(): boolean {
   return pending;
 }
 
+/** `step`, kept within a walkthrough of `total` steps. */
+export const stepWithin = (step: number, total: number) =>
+  Math.min(step, Math.max(0, total - 1));
+
 export function goToWalkthroughStep(step: number) {
   set({ ...state, step });
 }
 
-/** Where the panel was last put, if anywhere: it opens in the corner. */
+/** Where the panel was last put since the walkthrough opened, if anywhere. */
 export const getWalkthroughPosition = (): Position | undefined => position;
 
 export function setWalkthroughPosition(next: Position) {
@@ -126,5 +150,12 @@ export function closeWalkthrough({ restoreFocus = true } = {}) {
   set(CLOSED);
   const target = returnFocusTo;
   returnFocusTo = null;
-  if (restoreFocus && target?.isConnected) target.focus();
+  if (!restoreFocus) return;
+  if (target?.isConnected) {
+    target.focus();
+    return;
+  }
+  // The control that opened it is gone (it is replaced while the walkthrough
+  // is open): the toolbar control that comes back takes focus instead.
+  focusPending = true;
 }

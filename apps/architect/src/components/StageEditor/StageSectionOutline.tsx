@@ -144,7 +144,9 @@ function StageSectionOutlineItem({
   const intl = useAppIntl();
   const presentation = STATUS_PRESENTATION[section.status];
   // The section the walkthrough's current step is about.
-  const current = useWalkthroughState().section === section.id;
+  const current = useWalkthroughState(
+    (state) => state.section === section.sectionKey,
+  );
   const StatusIcon = presentation.icon;
   // The control's own words come first, one problem at a time. A control
   // showing a message beside itself has already said what is wrong in the
