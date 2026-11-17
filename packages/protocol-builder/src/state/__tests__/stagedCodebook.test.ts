@@ -60,6 +60,23 @@ describe('mergeEdit', () => {
     );
   });
 
+  it('removes only the rules the edit removed when it removed the last one', () => {
+    // The researcher switched off the attribute's one rule, which writes it
+    // without rules at all; a collaborator added a rule of their own meanwhile.
+    const base = person({ required: true });
+    const edited = person();
+    const current = person({ required: true, maxLength: 20 });
+
+    expect(mergeEdit(base, edited, current)).toEqual(person({ maxLength: 20 }));
+  });
+
+  it('leaves an attribute without rules when the edit removed all it had', () => {
+    const base = person({ required: true });
+    expect(mergeEdit(base, person(), person({ required: true }))).toEqual(
+      person(),
+    );
+  });
+
   it('takes the mapping a shape is drawn from whole', () => {
     const shaped = (dynamic: Record<string, unknown>) => ({
       ...person(),

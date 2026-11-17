@@ -82,7 +82,16 @@ export function cacheSavedCodebook(
       (cached) =>
         cached !== undefined && cached.revision.sequence >= revision.sequence
           ? cached
-          : { document: Redacted.make(section.document), revision },
+          : {
+              document: Redacted.make(section.document),
+              // The save's place in the protocol's history, and the hash of
+              // this section's own document: what a section's revision says
+              // everywhere else, and what derivations of it are keyed by.
+              revision: {
+                sequence: revision.sequence,
+                contentHash: contentHash(section.document),
+              },
+            },
     );
     // A section the save created is one the protocol's list does not hold yet
     // either: without it, the type or attribute would be passed over by

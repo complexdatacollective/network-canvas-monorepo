@@ -394,7 +394,12 @@ describe('cacheSavedCodebook', () => {
     );
 
     const cached = cachedAt(queryClient, host, host.adapter);
-    expect(cached?.revision).toEqual(revisionAt(7n));
+    // At the save's place in the history, under this section's own hash: the
+    // save's revision names the stage's document, not this one.
+    expect(cached?.revision).toEqual({
+      sequence: 7n,
+      contentHash: contentHash(document),
+    });
     expect(
       cached === undefined ? undefined : Redacted.value(cached.document),
     ).toEqual(document);

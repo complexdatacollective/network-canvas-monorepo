@@ -48,8 +48,22 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
  */
 const WHOLE_VALUES: readonly (readonly string[])[] = [['shape', 'dynamic']];
 
-const isWholeValue = (path: readonly string[]): boolean =>
-  WHOLE_VALUES.some(
+/**
+ * The records whose entries are each a change of their own: an attribute's
+ * rules. Removing one of these whole (an attribute whose last rule was
+ * switched off is written without `validation`) removes the entries it held,
+ * not the record: a rule a collaborator added meanwhile is one the researcher
+ * never switched off, and stays.
+ */
+const ENTRY_BY_ENTRY: readonly (readonly string[])[] = [
+  ['variables', '*', 'validation'],
+];
+
+const matchesAny = (
+  patterns: readonly (readonly string[])[],
+  path: readonly string[],
+): boolean =>
+  patterns.some(
     (pattern) =>
       pattern.length === path.length &&
       pattern.every((part, index) => part === '*' || part === path[index]),
@@ -60,7 +74,8 @@ const isWholeValue = (path: readonly string[]): boolean =>
  *
  * A three-way merge over plain records, key by key: a key the edit did not
  * change takes whatever `current` holds for it (including its absence), a key
- * the edit removed is removed, and a key the edit changed takes the edit's
+ * the edit removed is removed (of an attribute's rules, only the rules it
+ * held: `ENTRY_BY_ENTRY`), and a key the edit changed takes the edit's
  * value — merged again where all three are records, so an attribute whose
  * name the researcher changed keeps the options a collaborator gave it. A key
  * a collaborator removed after the edit was made stays removed, edited or not:
@@ -81,7 +96,11 @@ export function mergeEdit(
   path: readonly string[] = [],
 ): unknown {
   if (isEqual(base, edited)) return current;
-  if (isWholeValue(path) || !isRecord(edited) || !isRecord(current)) {
+  if (
+    matchesAny(WHOLE_VALUES, path) ||
+    !isRecord(edited) ||
+    !isRecord(current)
+  ) {
     return edited;
   }
   const from = isRecord(base) ? base : {};
@@ -96,8 +115,18 @@ export function mergeEdit(
     const inEdited = Object.hasOwn(edited, key);
     const inCurrent = Object.hasOwn(current, key);
     if (!inEdited) {
-      // Removed by the edit, or never there and left alone by it.
-      if (!inBase && inCurrent) merged[key] = current[key];
+      // Never there and left alone by the edit: whatever the protocol holds.
+      if (!inBase) {
+        if (inCurrent) merged[key] = current[key];
+        continue;
+      }
+      // Removed by the edit: gone, unless what it removed is a record of
+      // entries (`ENTRY_BY_ENTRY`), of which only those it held go.
+      const entryPath = [...path, key];
+      if (inCurrent && matchesAny(ENTRY_BY_ENTRY, entryPath)) {
+        const left = mergeEdit(from[key], {}, current[key], entryPath);
+        if (isRecord(left) && Object.keys(left).length > 0) merged[key] = left;
+      }
       continue;
     }
     if (inBase && !inCurrent) {
