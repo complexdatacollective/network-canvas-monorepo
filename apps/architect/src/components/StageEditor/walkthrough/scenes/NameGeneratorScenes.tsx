@@ -11,6 +11,7 @@ import {
   FORM_SUBMIT,
   FormCard,
   lerp,
+  NAMES,
   NEXT_BUTTON,
   PersonNode,
   pressAt,
@@ -25,6 +26,7 @@ import {
   TextBox,
   Toast,
   travel,
+  typed,
   type Point,
 } from './parts';
 
@@ -48,8 +50,6 @@ const TEXT = {
     'arrow to continue.',
   ],
 } as const;
-
-const NAMES = { sam: 'Sam', alex: 'Alex' } as const;
 
 const ROW_Y = STAGE.y + 190;
 
@@ -112,7 +112,7 @@ const CHIP_Y = FORM_CARD.y + 195;
 export const NameGeneratorFormScene = defineScene(4.4, ({ t, id }) => {
   const nodeAt: Point = [STAGE_CENTER_X + 90, ROW_Y + 30];
   const chosen: Point = [chipX(1), CHIP_Y];
-  const typed = 'Alex'.slice(0, Math.floor(segment(t, 1.6, 0.6) * 4));
+  const name = typed(t, NAMES.alex, 1.75, 0.15);
   return {
     rail: { progress: 0.3 },
     body: (
@@ -145,7 +145,7 @@ export const NameGeneratorFormScene = defineScene(4.4, ({ t, id }) => {
           x={FORM_CARD.x + 34}
           y={FORM_CARD.y + 96}
           width={FORM_CARD.width - 68}
-          text={typed}
+          text={name}
           caret={t > 1.4 && t < 2.3 && Math.floor(t * 3) % 2 === 0}
         />
         <TextBar x={FORM_CARD.x + 34} y={FORM_CARD.y + 164} width={170} />

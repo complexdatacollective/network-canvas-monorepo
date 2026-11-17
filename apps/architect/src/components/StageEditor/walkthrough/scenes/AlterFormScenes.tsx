@@ -4,6 +4,7 @@ import {
   Click,
   defineScene,
   lerp,
+  NAMES,
   NEXT_BUTTON,
   PersonNode,
   pressAt,
@@ -19,9 +20,6 @@ const TEXT = {
   options: ['Not close', 'Close', 'Very close'],
   typed: 'Sammy',
 } as const;
-
-const SAM = 'Sam';
-const ANA = 'Ana';
 
 const CARD = {
   width: 360,
@@ -191,7 +189,7 @@ export const AlterFormIntroScene = defineScene(5.4, ({ t }) => {
               x={NODE[0]}
               y={NODE[1]}
               r={NODE_R}
-              label={SAM}
+              label={NAMES.sam}
               k={1 - personOut * 0.4}
             />
           </g>
@@ -202,7 +200,7 @@ export const AlterFormIntroScene = defineScene(5.4, ({ t }) => {
               x={NODE[0]}
               y={NODE[1] - (1 - personIn) * 56}
               r={NODE_R}
-              label={ANA}
+              label={NAMES.ana}
               k={0.7 + personIn * 0.3}
             />
           </g>

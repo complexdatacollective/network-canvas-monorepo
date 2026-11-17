@@ -1,228 +1,260 @@
-import type { ComponentType } from 'react';
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 
-import { AlterFormIntroScene } from './AlterFormScenes';
-import {
-  AnonymisationDataScene,
-  AnonymisationIntroScene,
-  AnonymisationReturnScene,
-  AnonymisationRulesScene,
-} from './AnonymisationScenes';
-import {
-  CategoricalBinDataScene,
-  CategoricalBinIntroScene,
-  CategoricalBinRequireScene,
-  CategoricalBinTapScene,
-  OrdinalBinDataScene,
-  OrdinalBinIntroScene,
-  OrdinalBinRequireScene,
-  OrdinalBinTapScene,
-  StageFilterScene,
-} from './BinScenes';
-import {
-  OneToManyDataScene,
-  OneToManyIntroScene,
-  OneToManyRemoveScene,
-  TieStrengthDataScene,
-  TieStrengthIntroScene,
-} from './CensusScenes';
-import {
-  FamilyPedigreeCompletenessScene,
-  FamilyPedigreeDataScene,
-  FamilyPedigreeAddScene,
-  FamilyPedigreeFramingScene,
-  FamilyPedigreeGenderScene,
-  FamilyPedigreeIntroScene,
-  FamilyPedigreeLabelsScene,
-  FamilyPedigreeNominationScene,
-  FamilyPedigreeRelationshipScene,
-  FamilyPedigreeRelationshipsScene,
-  FamilyPedigreeSymbolsScene,
-  FamilyPedigreeToolsScene,
-} from './FamilyPedigreeScenes';
-import {
-  FinishSessionAutomaticScene,
-  FinishSessionDataScene,
-  FinishSessionFailedScene,
-  FinishSessionIntroScene,
-  FinishSessionOutcomesScene,
-} from './FinishSessionScenes';
-import {
-  GeospatialDataScene,
-  GeospatialIntroScene,
-  GeospatialOutsideScene,
-  GeospatialPropertyScene,
-} from './GeospatialScenes';
-import {
-  InformationBlocksScene,
-  InformationDataScene,
-  InformationIntroScene,
-} from './InformationScenes';
-import {
-  DyadCensusDataScene,
-  DyadCensusIntroScene,
-  DyadCensusPairsScene,
-  DyadCensusPromptsScene,
-  EdgeFormDataScene,
-  EdgeFormIntroScene,
-  EdgeFormSourceScene,
-  EgoFormDataScene,
-  EgoFormIntroductionScene,
-  EgoFormIntroScene,
-  EgoFormScrollScene,
-} from './InterpreterScenes';
-import {
-  LanguageChooserDataScene,
-  LanguageChooserIntroScene,
-  LanguageChooserLanguagesScene,
-  LanguageChooserOrderScene,
-} from './LanguageChooserScenes';
-import {
-  NameGeneratorDataScene,
-  NameGeneratorSkipLogicScene,
-} from './NameGeneratorConsequenceScenes';
-import {
-  NameGeneratorFormScene,
-  NameGeneratorIntroScene,
-  NameGeneratorLimitsScene,
-  NameGeneratorPanelSourcesScene,
-  NameGeneratorPromptsScene,
-} from './NameGeneratorScenes';
-import {
-  NarrativePedigreeAtRiskScene,
-  NarrativePedigreeConditionsScene,
-  NarrativePedigreeDataScene,
-  NarrativePedigreeIntroScene,
-  NarrativePedigreeSnapshotScene,
-  NarrativePedigreeSourceScene,
-} from './NarrativePedigreeScenes';
-import {
-  NarrativeDataScene,
-  NarrativeDrawScene,
-  NarrativeIntroScene,
-} from './NarrativeScenes';
-import {
-  NetworkComposerAddScene,
-  NetworkComposerAutoLayoutScene,
-  NetworkComposerDataScene,
-  NetworkComposerEdgeInspectorScene,
-  NetworkComposerEdgesScene,
-  NetworkComposerGroupsScene,
-  NetworkComposerInspectorScene,
-  NetworkComposerIntroScene,
-  NetworkComposerLassoScene,
-  NetworkComposerPositionsScene,
-  NetworkComposerToolsScene,
-} from './NetworkComposerScenes';
-import {
-  RosterCardDisplayScene,
-  RosterDataScene,
-  RosterIntroScene,
-  RosterLimitsScene,
-  RosterSearchScene,
-  RosterSortScene,
-} from './RosterScenes';
-import {
-  SociogramBackgroundScene,
-  SociogramDataScene,
-  SociogramIntroScene,
-  SociogramLayoutModeScene,
-} from './SociogramScenes';
+/**
+ * Loads one scene from a scene file. Each file is its own chunk, fetched the
+ * first time a walkthrough shows one of its scenes; the scenes in a file share
+ * that one fetch.
+ */
+function scene<M extends Record<K, ComponentType>, K extends keyof M>(
+  load: () => Promise<M>,
+  name: K,
+): LazyExoticComponent<ComponentType> {
+  return lazy(() =>
+    load().then((m): { default: ComponentType } => ({ default: m[name] })),
+  );
+}
+
+const alterFormScenes = () => import('./AlterFormScenes');
+const anonymisationScenes = () => import('./AnonymisationScenes');
+const binScenes = () => import('./BinScenes');
+const censusScenes = () => import('./CensusScenes');
+const familyPedigreeScenes = () => import('./FamilyPedigreeScenes');
+const finishSessionScenes = () => import('./FinishSessionScenes');
+const geospatialScenes = () => import('./GeospatialScenes');
+const informationScenes = () => import('./InformationScenes');
+const interpreterScenes = () => import('./InterpreterScenes');
+const languageChooserScenes = () => import('./LanguageChooserScenes');
+const nameGeneratorConsequenceScenes = () =>
+  import('./NameGeneratorConsequenceScenes');
+const nameGeneratorScenes = () => import('./NameGeneratorScenes');
+const narrativePedigreeScenes = () => import('./NarrativePedigreeScenes');
+const narrativeScenes = () => import('./NarrativeScenes');
+const networkComposerScenes = () => import('./NetworkComposerScenes');
+const rosterScenes = () => import('./RosterScenes');
+const sociogramScenes = () => import('./SociogramScenes');
 
 /** Scenes a walkthrough step can name with a `scene:` directive. */
-export const SCENES: Readonly<Record<string, ComponentType>> = {
-  'name-generator-intro': NameGeneratorIntroScene,
-  'name-generator-form': NameGeneratorFormScene,
-  'name-generator-prompts': NameGeneratorPromptsScene,
-  'name-generator-limits': NameGeneratorLimitsScene,
-  'name-generator-panel-sources': NameGeneratorPanelSourcesScene,
-  'name-generator-data': NameGeneratorDataScene,
-  'skip-logic': NameGeneratorSkipLogicScene,
-  'sociogram-intro': SociogramIntroScene,
-  'sociogram-data': SociogramDataScene,
-  'sociogram-background': SociogramBackgroundScene,
-  'sociogram-layout-mode': SociogramLayoutModeScene,
-  'roster-intro': RosterIntroScene,
-  'roster-data': RosterDataScene,
-  'roster-card-display': RosterCardDisplayScene,
-  'roster-sort': RosterSortScene,
-  'roster-search': RosterSearchScene,
-  'roster-limits': RosterLimitsScene,
-  'ordinal-bin-intro': OrdinalBinIntroScene,
-  'ordinal-bin-data': OrdinalBinDataScene,
-  'ordinal-bin-tap': OrdinalBinTapScene,
-  'ordinal-bin-require': OrdinalBinRequireScene,
-  'categorical-bin-intro': CategoricalBinIntroScene,
-  'categorical-bin-data': CategoricalBinDataScene,
-  'categorical-bin-tap': CategoricalBinTapScene,
-  'categorical-bin-require': CategoricalBinRequireScene,
-  'stage-filter': StageFilterScene,
-  'alter-form-intro': AlterFormIntroScene,
-  'ego-form-intro': EgoFormIntroScene,
-  'ego-form-introduction': EgoFormIntroductionScene,
-  'ego-form-scroll': EgoFormScrollScene,
-  'ego-form-data': EgoFormDataScene,
-  'edge-form-intro': EdgeFormIntroScene,
-  'edge-form-data': EdgeFormDataScene,
-  'edge-form-source': EdgeFormSourceScene,
-  'dyad-census-intro': DyadCensusIntroScene,
-  'dyad-census-prompts': DyadCensusPromptsScene,
-  'dyad-census-data': DyadCensusDataScene,
-  'dyad-census-pairs': DyadCensusPairsScene,
-  'tie-strength-intro': TieStrengthIntroScene,
-  'tie-strength-data': TieStrengthDataScene,
-  'one-to-many-intro': OneToManyIntroScene,
-  'one-to-many-data': OneToManyDataScene,
-  'one-to-many-remove': OneToManyRemoveScene,
-  'narrative-intro': NarrativeIntroScene,
-  'narrative-data': NarrativeDataScene,
-  'narrative-draw': NarrativeDrawScene,
-  'information-intro': InformationIntroScene,
-  'information-data': InformationDataScene,
-  'information-blocks': InformationBlocksScene,
-  'geospatial-intro': GeospatialIntroScene,
-  'geospatial-data': GeospatialDataScene,
-  'geospatial-property': GeospatialPropertyScene,
-  'geospatial-outside': GeospatialOutsideScene,
-  'finish-session-intro': FinishSessionIntroScene,
-  'finish-session-data': FinishSessionDataScene,
-  'finish-session-automatic': FinishSessionAutomaticScene,
-  'finish-session-failed': FinishSessionFailedScene,
-  'finish-session-outcomes': FinishSessionOutcomesScene,
-  'language-chooser-intro': LanguageChooserIntroScene,
-  'language-chooser-data': LanguageChooserDataScene,
-  'language-chooser-order': LanguageChooserOrderScene,
-  'language-chooser-languages': LanguageChooserLanguagesScene,
-  'anonymisation-intro': AnonymisationIntroScene,
-  'anonymisation-data': AnonymisationDataScene,
-  'anonymisation-rules': AnonymisationRulesScene,
-  'anonymisation-return': AnonymisationReturnScene,
-  'network-composer-intro': NetworkComposerIntroScene,
-  'network-composer-data': NetworkComposerDataScene,
-  'network-composer-tools': NetworkComposerToolsScene,
-  'network-composer-add': NetworkComposerAddScene,
-  'network-composer-positions': NetworkComposerPositionsScene,
-  'network-composer-auto-layout': NetworkComposerAutoLayoutScene,
-  'network-composer-groups': NetworkComposerGroupsScene,
-  'network-composer-lasso': NetworkComposerLassoScene,
-  'network-composer-inspector': NetworkComposerInspectorScene,
-  'network-composer-edges': NetworkComposerEdgesScene,
-  'network-composer-edge-inspector': NetworkComposerEdgeInspectorScene,
-  'family-pedigree-intro': FamilyPedigreeIntroScene,
-  'family-pedigree-data': FamilyPedigreeDataScene,
-  'family-pedigree-tools': FamilyPedigreeToolsScene,
-  'family-pedigree-add': FamilyPedigreeAddScene,
-  'family-pedigree-labels': FamilyPedigreeLabelsScene,
-  'family-pedigree-gender': FamilyPedigreeGenderScene,
-  'family-pedigree-symbols': FamilyPedigreeSymbolsScene,
-  'family-pedigree-relationship': FamilyPedigreeRelationshipScene,
-  'family-pedigree-relationships': FamilyPedigreeRelationshipsScene,
-  'family-pedigree-framing': FamilyPedigreeFramingScene,
-  'family-pedigree-completeness': FamilyPedigreeCompletenessScene,
-  'family-pedigree-nomination': FamilyPedigreeNominationScene,
-  'narrative-pedigree-intro': NarrativePedigreeIntroScene,
-  'narrative-pedigree-data': NarrativePedigreeDataScene,
-  'narrative-pedigree-source': NarrativePedigreeSourceScene,
-  'narrative-pedigree-conditions': NarrativePedigreeConditionsScene,
-  'narrative-pedigree-at-risk': NarrativePedigreeAtRiskScene,
-  'narrative-pedigree-snapshot': NarrativePedigreeSnapshotScene,
+export const SCENES: Readonly<
+  Record<string, LazyExoticComponent<ComponentType>>
+> = {
+  'name-generator-intro': scene(nameGeneratorScenes, 'NameGeneratorIntroScene'),
+  'name-generator-form': scene(nameGeneratorScenes, 'NameGeneratorFormScene'),
+  'name-generator-prompts': scene(
+    nameGeneratorScenes,
+    'NameGeneratorPromptsScene',
+  ),
+  'name-generator-limits': scene(
+    nameGeneratorScenes,
+    'NameGeneratorLimitsScene',
+  ),
+  'name-generator-panel-sources': scene(
+    nameGeneratorScenes,
+    'NameGeneratorPanelSourcesScene',
+  ),
+  'name-generator-data': scene(
+    nameGeneratorConsequenceScenes,
+    'NameGeneratorDataScene',
+  ),
+  'skip-logic': scene(
+    nameGeneratorConsequenceScenes,
+    'NameGeneratorSkipLogicScene',
+  ),
+  'sociogram-intro': scene(sociogramScenes, 'SociogramIntroScene'),
+  'sociogram-data': scene(sociogramScenes, 'SociogramDataScene'),
+  'sociogram-background': scene(sociogramScenes, 'SociogramBackgroundScene'),
+  'sociogram-layout-mode': scene(sociogramScenes, 'SociogramLayoutModeScene'),
+  'roster-intro': scene(rosterScenes, 'RosterIntroScene'),
+  'roster-data': scene(rosterScenes, 'RosterDataScene'),
+  'roster-card-display': scene(rosterScenes, 'RosterCardDisplayScene'),
+  'roster-sort': scene(rosterScenes, 'RosterSortScene'),
+  'roster-search': scene(rosterScenes, 'RosterSearchScene'),
+  'roster-limits': scene(rosterScenes, 'RosterLimitsScene'),
+  'ordinal-bin-intro': scene(binScenes, 'OrdinalBinIntroScene'),
+  'ordinal-bin-data': scene(binScenes, 'OrdinalBinDataScene'),
+  'ordinal-bin-tap': scene(binScenes, 'OrdinalBinTapScene'),
+  'ordinal-bin-require': scene(binScenes, 'OrdinalBinRequireScene'),
+  'categorical-bin-intro': scene(binScenes, 'CategoricalBinIntroScene'),
+  'categorical-bin-data': scene(binScenes, 'CategoricalBinDataScene'),
+  'categorical-bin-tap': scene(binScenes, 'CategoricalBinTapScene'),
+  'categorical-bin-require': scene(binScenes, 'CategoricalBinRequireScene'),
+  'stage-filter': scene(binScenes, 'StageFilterScene'),
+  'alter-form-intro': scene(alterFormScenes, 'AlterFormIntroScene'),
+  'ego-form-intro': scene(interpreterScenes, 'EgoFormIntroScene'),
+  'ego-form-introduction': scene(interpreterScenes, 'EgoFormIntroductionScene'),
+  'ego-form-scroll': scene(interpreterScenes, 'EgoFormScrollScene'),
+  'ego-form-data': scene(interpreterScenes, 'EgoFormDataScene'),
+  'edge-form-intro': scene(interpreterScenes, 'EdgeFormIntroScene'),
+  'edge-form-source': scene(interpreterScenes, 'EdgeFormSourceScene'),
+  'dyad-census-intro': scene(interpreterScenes, 'DyadCensusIntroScene'),
+  'dyad-census-prompts': scene(interpreterScenes, 'DyadCensusPromptsScene'),
+  'dyad-census-data': scene(interpreterScenes, 'DyadCensusDataScene'),
+  'dyad-census-pairs': scene(interpreterScenes, 'DyadCensusPairsScene'),
+  'tie-strength-intro': scene(censusScenes, 'TieStrengthIntroScene'),
+  'tie-strength-data': scene(censusScenes, 'TieStrengthDataScene'),
+  'one-to-many-intro': scene(censusScenes, 'OneToManyIntroScene'),
+  'one-to-many-data': scene(censusScenes, 'OneToManyDataScene'),
+  'one-to-many-remove': scene(censusScenes, 'OneToManyRemoveScene'),
+  'narrative-intro': scene(narrativeScenes, 'NarrativeIntroScene'),
+  'narrative-data': scene(narrativeScenes, 'NarrativeDataScene'),
+  'narrative-draw': scene(narrativeScenes, 'NarrativeDrawScene'),
+  'information-intro': scene(informationScenes, 'InformationIntroScene'),
+  'information-data': scene(informationScenes, 'InformationDataScene'),
+  'information-blocks': scene(informationScenes, 'InformationBlocksScene'),
+  'geospatial-intro': scene(geospatialScenes, 'GeospatialIntroScene'),
+  'geospatial-data': scene(geospatialScenes, 'GeospatialDataScene'),
+  'geospatial-property': scene(geospatialScenes, 'GeospatialPropertyScene'),
+  'geospatial-outside': scene(geospatialScenes, 'GeospatialOutsideScene'),
+  'finish-session-intro': scene(finishSessionScenes, 'FinishSessionIntroScene'),
+  'finish-session-data': scene(finishSessionScenes, 'FinishSessionDataScene'),
+  'finish-session-automatic': scene(
+    finishSessionScenes,
+    'FinishSessionAutomaticScene',
+  ),
+  'finish-session-failed': scene(
+    finishSessionScenes,
+    'FinishSessionFailedScene',
+  ),
+  'finish-session-outcomes': scene(
+    finishSessionScenes,
+    'FinishSessionOutcomesScene',
+  ),
+  'language-chooser-intro': scene(
+    languageChooserScenes,
+    'LanguageChooserIntroScene',
+  ),
+  'language-chooser-data': scene(
+    languageChooserScenes,
+    'LanguageChooserDataScene',
+  ),
+  'language-chooser-order': scene(
+    languageChooserScenes,
+    'LanguageChooserOrderScene',
+  ),
+  'language-chooser-languages': scene(
+    languageChooserScenes,
+    'LanguageChooserLanguagesScene',
+  ),
+  'anonymisation-intro': scene(anonymisationScenes, 'AnonymisationIntroScene'),
+  'anonymisation-data': scene(anonymisationScenes, 'AnonymisationDataScene'),
+  'anonymisation-rules': scene(anonymisationScenes, 'AnonymisationRulesScene'),
+  'anonymisation-return': scene(
+    anonymisationScenes,
+    'AnonymisationReturnScene',
+  ),
+  'network-composer-intro': scene(
+    networkComposerScenes,
+    'NetworkComposerIntroScene',
+  ),
+  'network-composer-data': scene(
+    networkComposerScenes,
+    'NetworkComposerDataScene',
+  ),
+  'network-composer-tools': scene(
+    networkComposerScenes,
+    'NetworkComposerToolsScene',
+  ),
+  'network-composer-add': scene(
+    networkComposerScenes,
+    'NetworkComposerAddScene',
+  ),
+  'network-composer-positions': scene(
+    networkComposerScenes,
+    'NetworkComposerPositionsScene',
+  ),
+  'network-composer-auto-layout': scene(
+    networkComposerScenes,
+    'NetworkComposerAutoLayoutScene',
+  ),
+  'network-composer-groups': scene(
+    networkComposerScenes,
+    'NetworkComposerGroupsScene',
+  ),
+  'network-composer-lasso': scene(
+    networkComposerScenes,
+    'NetworkComposerLassoScene',
+  ),
+  'network-composer-inspector': scene(
+    networkComposerScenes,
+    'NetworkComposerInspectorScene',
+  ),
+  'network-composer-edges': scene(
+    networkComposerScenes,
+    'NetworkComposerEdgesScene',
+  ),
+  'network-composer-edge-inspector': scene(
+    networkComposerScenes,
+    'NetworkComposerEdgeInspectorScene',
+  ),
+  'family-pedigree-intro': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeIntroScene',
+  ),
+  'family-pedigree-data': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeDataScene',
+  ),
+  'family-pedigree-tools': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeToolsScene',
+  ),
+  'family-pedigree-add': scene(familyPedigreeScenes, 'FamilyPedigreeAddScene'),
+  'family-pedigree-labels': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeLabelsScene',
+  ),
+  'family-pedigree-gender': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeGenderScene',
+  ),
+  'family-pedigree-symbols': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeSymbolsScene',
+  ),
+  'family-pedigree-relationship': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeRelationshipScene',
+  ),
+  'family-pedigree-relationships': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeRelationshipsScene',
+  ),
+  'family-pedigree-framing': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeFramingScene',
+  ),
+  'family-pedigree-completeness': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeCompletenessScene',
+  ),
+  'family-pedigree-nomination': scene(
+    familyPedigreeScenes,
+    'FamilyPedigreeNominationScene',
+  ),
+  'narrative-pedigree-intro': scene(
+    narrativePedigreeScenes,
+    'NarrativePedigreeIntroScene',
+  ),
+  'narrative-pedigree-data': scene(
+    narrativePedigreeScenes,
+    'NarrativePedigreeDataScene',
+  ),
+  'narrative-pedigree-source': scene(
+    narrativePedigreeScenes,
+    'NarrativePedigreeSourceScene',
+  ),
+  'narrative-pedigree-conditions': scene(
+    narrativePedigreeScenes,
+    'NarrativePedigreeConditionsScene',
+  ),
+  'narrative-pedigree-at-risk': scene(
+    narrativePedigreeScenes,
+    'NarrativePedigreeAtRiskScene',
+  ),
+  'narrative-pedigree-snapshot': scene(
+    narrativePedigreeScenes,
+    'NarrativePedigreeSnapshotScene',
+  ),
 };
+
+/** The name of every scene, known without loading any of them. */
+export const SCENE_NAMES: readonly string[] = Object.keys(SCENES);

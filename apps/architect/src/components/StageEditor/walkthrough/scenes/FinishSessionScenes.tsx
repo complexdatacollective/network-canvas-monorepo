@@ -1,17 +1,19 @@
 import { backOut, segment } from '@codaco/art/illustration/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import { Card, DataTable, Heading } from './InterpreterScenes';
+import { Card, Heading } from './InterpreterScenes';
 import {
   Chip,
   Click,
   CONTENT,
+  DataTable,
   defineScene,
   lerp,
   NEXT_BUTTON,
   pivot,
   pressAt,
   smooth,
+  squashed,
   STAGE,
   STAGE_CENTER_X,
   TextBar,
@@ -77,7 +79,7 @@ function Screen({
   if (k <= 0) return null;
   const height = button ? SCREEN.height : SCREEN.height - 60;
   const left = center - SCREEN.width / 2;
-  const squash = 1 - Math.sin(Math.PI * press) * 0.12;
+  const squash = squashed(press);
   return (
     <g
       transform={pivot(center, SCREEN.y + height / 2, k)}
@@ -129,7 +131,7 @@ const DIALOG_FINISH: Point = [
  */
 function ConfirmDialog({ k, press = 0 }: { k: number; press?: number }) {
   if (k <= 0) return null;
-  const squash = 1 - Math.sin(Math.PI * press) * 0.12;
+  const squash = squashed(press);
   return (
     <g opacity={Math.min(1, k)}>
       <rect
@@ -276,7 +278,7 @@ export const FinishSessionDataScene = defineScene(
             y={top}
             columns={TEXT.columns}
             rows={TEXT.rows}
-            reveal={(row, cell) =>
+            cellReveal={(row, cell) =>
               smooth(segment(t, 0.4 + row * 0.7 + cell * 0.3, 0.4))
             }
             colWidth={250}

@@ -20,11 +20,15 @@ import {
   Chip,
   Click,
   CONTENT,
+  DataTable,
   defineScene,
   lerp,
+  midpoint,
+  NAMES,
   smooth,
   STAGE,
   STAGE_CENTER_X,
+  typed,
   type Point,
 } from './parts';
 import {
@@ -72,11 +76,6 @@ const TEXT = {
 
 const CX = STAGE_CENTER_X;
 const [G0, G1, G2] = GENERATION_Y;
-
-const midpoint = (a: Point, b: Point): Point => [
-  (a[0] + b[0]) / 2,
-  (a[1] + b[1]) / 2,
-];
 
 /** The family the participant builds: parents, a brother, a partner, a child. */
 const BUILT = {
@@ -647,88 +646,14 @@ export const FamilyPedigreeIntroScene = defineScene(7.4, ({ t }) => {
   };
 });
 
-/** A small table in the exported-data scene. */
-function Table({
-  x,
-  y,
-  title,
-  columns,
-  offsets,
-  rows,
-  t,
-  from,
-  width,
-}: {
-  x: number;
-  y: number;
-  title: string;
-  columns: readonly string[];
-  offsets: readonly number[];
-  rows: readonly (readonly string[])[];
-  t: number;
-  from: number;
-  width: number;
-}) {
-  return (
-    <g>
-      <text
-        x={x}
-        y={y - 10}
-        fontSize={12}
-        fontWeight={800}
-        className="fill-white/60 uppercase"
-      >
-        {title}
-      </text>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={28}
-        rx={8}
-        className="fill-cyber-grape"
-      />
-      {columns.map((c, i) => (
-        <text
-          key={c}
-          x={x + 10 + (offsets[i] ?? 0)}
-          y={y + 19}
-          fontSize={11}
-          fontWeight={800}
-          className="fill-white"
-        >
-          {c}
-        </text>
-      ))}
-      {rows.map((cells, r) => (
-        <g
-          key={cells.join('-')}
-          opacity={smooth(segment(t, from + r * 0.25, 0.3))}
-        >
-          <rect
-            x={x}
-            y={y + 28 * (r + 1)}
-            width={width}
-            height={28}
-            className={r % 2 === 0 ? 'fill-white/5' : 'fill-white/10'}
-          />
-          {cells.map((cell, i) => (
-            <text
-              key={`${columns[i] ?? i}`}
-              x={x + 10 + (offsets[i] ?? 0)}
-              y={y + 28 * (r + 1) + 19}
-              fontSize={11}
-              fontWeight={700}
-              className="fill-white"
-            >
-              {cell}
-            </text>
-          ))}
-        </g>
-      ))}
-    </g>
-  );
-}
+/** The size of the exported-data scene's tables. */
+const TABLE = {
+  rowHeight: 28,
+  fontSize: 11,
+  baseline: 19,
+  inset: 10,
+  rx: 8,
+} as const;
 
 /**
  * Shows how a family pedigree's data is exported: each family member becomes a
@@ -743,7 +668,7 @@ export const FamilyPedigreeDataScene = defineScene(
     return {
       body: (
         <>
-          <Table
+          <DataTable
             x={x}
             y={CONTENT.y + 40}
             width={300}
@@ -756,10 +681,10 @@ export const FamilyPedigreeDataScene = defineScene(
               ['Father', 'male', 'parent'],
               ['Brother', 'male', 'sibling'],
             ]}
-            t={t}
-            from={0.5}
+            reveal={(r) => smooth(segment(t, 0.5 + r * 0.25, 0.3))}
+            {...TABLE}
           />
-          <Table
+          <DataTable
             x={x + 330}
             y={CONTENT.y + 40}
             width={300}
@@ -772,8 +697,8 @@ export const FamilyPedigreeDataScene = defineScene(
               ['Father', 'You', 'biological'],
               ['Mother', 'Brother', 'biological'],
             ]}
-            t={t}
-            from={1.6}
+            reveal={(r) => smooth(segment(t, 1.6 + r * 0.25, 0.3))}
+            {...TABLE}
           />
           <Chip
             x={CX}
@@ -866,8 +791,7 @@ export const FamilyPedigreeAddScene = defineScene(6.2, ({ t }) => {
     smooth(segment(t, openAt, 0.4)) *
     (1 - smooth(segment(t, saveAt + 0.1, 0.4)));
   const added = backOut(segment(t, saveAt + 0.3, 0.4));
-  const typed =
-    t < nameAt ? '' : 'Sam'.slice(0, Math.floor((t - nameAt) / 0.12) + 1);
+  const name = typed(t, NAMES.sam, nameAt, 0.12);
   const you = BUILT.you.at;
   return {
     rail: { progress: 0.4 },
@@ -882,7 +806,7 @@ export const FamilyPedigreeAddScene = defineScene(6.2, ({ t }) => {
         <Toolbars />
         <SidePanel k={panel}>
           <PanelLabel y={CONTENT.y + 34} text="Name (optional)" />
-          <PanelBox y={CONTENT.y + 44} text={typed} />
+          <PanelBox y={CONTENT.y + 44} text={name} />
           <PanelLabel y={CONTENT.y + 100} text="Sex assigned at birth" />
           <PanelChoices
             y={CONTENT.y + 110}
@@ -988,8 +912,7 @@ export const FamilyPedigreeLabelsScene = defineScene(6.0, ({ t }) => {
   const panel =
     smooth(segment(t, openAt + 0.1, 0.4)) *
     (1 - smooth(segment(t, saveAt + 0.1, 0.4)));
-  const typed =
-    t < nameAt ? '' : 'Rose'.slice(0, Math.floor((t - nameAt) / 0.12) + 1);
+  const name = typed(t, 'Rose', nameAt, 0.12);
   const named = t >= saveAt + 0.2;
   return {
     rail: { progress: 0.4 },
@@ -1020,7 +943,7 @@ export const FamilyPedigreeLabelsScene = defineScene(6.0, ({ t }) => {
         />
         <SidePanel k={panel}>
           <PanelLabel y={CONTENT.y + 34} text="Name (optional)" />
-          <PanelBox y={CONTENT.y + 44} text={typed} />
+          <PanelBox y={CONTENT.y + 44} text={name} />
           <PanelSave />
         </SidePanel>
       </>

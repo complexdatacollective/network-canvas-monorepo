@@ -10,13 +10,15 @@ import {
 import { backOut, segment } from '@codaco/art/illustration/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import { Card, DataTable, Heading } from './InterpreterScenes';
+import { Card, Heading } from './InterpreterScenes';
 import {
   Chip,
   Click,
   CONTENT,
+  DataTable,
   defineScene,
   lerp,
+  NAMES,
   NEXT_BUTTON,
   PersonNode,
   pressAt,
@@ -25,10 +27,6 @@ import {
   STAGE_CENTER_X,
   type Point,
 } from './parts';
-
-const SAM = 'Sam';
-const ANA = 'Ana';
-const JO = 'Jo';
 
 const OUTSIDE_VALUE = 'outside-selectable-areas';
 
@@ -376,7 +374,7 @@ export const GeospatialIntroScene = defineScene(6.4, ({ t }) => {
           fill={t < next ? firstFill : secondFill}
         />
         <MapToolbar />
-        <PromptPanel from={SAM} to={ANA} swap={swap} />
+        <PromptPanel from={NAMES.sam} to={NAMES.ana} swap={swap} />
       </>
     ),
     overlay: (
@@ -405,9 +403,9 @@ export const GeospatialDataScene = defineScene(
   5.4,
   ({ t }) => {
     const answers = [
-      { name: SAM, value: '1702' },
-      { name: ANA, value: '1703' },
-      { name: JO, value: OUTSIDE_VALUE },
+      { name: NAMES.sam, value: '1702' },
+      { name: NAMES.ana, value: '1703' },
+      { name: NAMES.jo, value: OUTSIDE_VALUE },
     ];
     const tableX = CONTENT.x + 272;
     const top = CONTENT.y + 70;
@@ -449,7 +447,7 @@ export const GeospatialDataScene = defineScene(
             y={top}
             columns={TEXT.columns}
             rows={answers.map((a) => [a.name, a.value])}
-            reveal={(row, cell) =>
+            cellReveal={(row, cell) =>
               smooth(segment(t, answeredAt(row) + (cell === 1 ? 0.4 : 0), 0.4))
             }
             colWidth={205}
@@ -537,7 +535,7 @@ export const GeospatialPropertyScene = defineScene(
           <PersonNode
             x={lerp(card.x + 40, card.x + 60, save)}
             y={CONTENT.bottom - 50}
-            label={SAM}
+            label={NAMES.sam}
             k={save}
             r={26}
           />
@@ -579,7 +577,7 @@ export const GeospatialOutsideScene = defineScene(6.0, ({ t }) => {
         <Areas />
         <MapToolbar />
         <OutsideOverlay k={overlay} />
-        <PromptPanel from={SAM} outsideDisabled={outside} />
+        <PromptPanel from={NAMES.sam} outsideDisabled={outside} />
       </>
     ),
     overlay: (

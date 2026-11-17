@@ -19,11 +19,16 @@ import {
   Chip,
   Click,
   CONTENT,
+  DataTable,
   defineScene,
   lerp,
+  midpoint,
+  NAMES,
+  settle,
   smooth,
   STAGE,
   STAGE_CENTER_X,
+  typed,
   type Point,
   type Stop,
 } from './parts';
@@ -57,12 +62,6 @@ const TEXT = {
   edgeColumns: ['from', 'to', 'type'],
 } as const;
 
-const SAM = 'Sam';
-const ANA = 'Ana';
-const JO = 'Jo';
-const KAI = 'Kai';
-const LIN = 'Lin';
-
 /** The width and height of the canvas beside the navigation rail. */
 const WIDTH = STAGE.right - STAGE.x;
 const HEIGHT = STAGE.bottom - STAGE.y;
@@ -76,11 +75,11 @@ const normalised = ([x, y]: Point) =>
 
 /** One network, as the interviewer might leave it. */
 const PEOPLE: readonly { label: string; at: Point }[] = [
-  { label: SAM, at: [CANVAS.x - 110, CANVAS.y - 50] },
-  { label: ANA, at: [CANVAS.x - 20, CANVAS.y - 110] },
-  { label: JO, at: [CANVAS.x - 10, CANVAS.y + 40] },
-  { label: KAI, at: [CANVAS.x + 110, CANVAS.y - 10] },
-  { label: LIN, at: [CANVAS.x + 90, CANVAS.y + 110] },
+  { label: NAMES.sam, at: [CANVAS.x - 110, CANVAS.y - 50] },
+  { label: NAMES.ana, at: [CANVAS.x - 20, CANVAS.y - 110] },
+  { label: NAMES.jo, at: [CANVAS.x - 10, CANVAS.y + 40] },
+  { label: NAMES.kai, at: [CANVAS.x + 110, CANVAS.y - 10] },
+  { label: NAMES.lin, at: [CANVAS.x + 90, CANVAS.y + 110] },
 ];
 
 const at = (label: string, dx = 0): Point => {
@@ -93,19 +92,6 @@ const at = (label: string, dx = 0): Point => {
 
 /** Network positions shifted left, clear of the inspector. */
 const SHIFT = -80;
-
-const midpoint = (a: Point, b: Point): Point => [
-  (a[0] + b[0]) / 2,
-  (a[1] + b[1]) / 2,
-];
-
-/** A spring that overshoots a little and settles, like the force layout. */
-const settle = (k: number) =>
-  k <= 0 ? 0 : 1 - Math.exp(-3 * k) * Math.cos(k * 5);
-
-/** The letters of `text` typed so far, one every `pace` seconds. */
-const typed = (t: number, text: string, start: number, pace = 0.08) =>
-  t < start ? '' : text.slice(0, Math.floor((t - start) / pace) + 1);
 
 const TOOLS = [
   { key: 'select', icon: MousePointer2 },
@@ -492,10 +478,10 @@ const pulseFor = (t: number, from: number, to: number) =>
  */
 export const NetworkComposerIntroScene = defineScene(8.0, ({ t }) => {
   const people = [
-    { label: SAM, typing: 0.8, to: at(SAM) },
-    { label: ANA, typing: 1.5, to: at(ANA) },
-    { label: JO, typing: 2.2, to: at(JO) },
-    { label: KAI, typing: 2.9, to: at(KAI) },
+    { label: NAMES.sam, typing: 0.8, to: at(NAMES.sam) },
+    { label: NAMES.ana, typing: 1.5, to: at(NAMES.ana) },
+    { label: NAMES.jo, typing: 2.2, to: at(NAMES.jo) },
+    { label: NAMES.kai, typing: 2.9, to: at(NAMES.kai) },
   ].map((p, i) => {
     const added = p.typing + 0.4;
     const spread = settle(segment(t, added, 1.0));
@@ -517,8 +503,8 @@ export const NetworkComposerIntroScene = defineScene(8.0, ({ t }) => {
   const tool: Tool =
     t < 0.5 ? 'select' : t < 3.5 ? 'add' : t < 6.2 ? 'edge' : 'groups';
   const family = [
-    { label: SAM, at: 6.7 },
-    { label: ANA, at: 7.1 },
+    { label: NAMES.sam, at: 6.7 },
+    { label: NAMES.ana, at: 7.1 },
   ].filter((m) => t >= m.at);
   return {
     rail: { progress: 0.6 },
@@ -529,13 +515,13 @@ export const NetworkComposerIntroScene = defineScene(8.0, ({ t }) => {
           <Hull points={family.map((m) => position(m.label))} color={1} k={1} />
         ) : null}
         <Edge
-          from={position(SAM)}
-          to={position(ANA)}
+          from={position(NAMES.sam)}
+          to={position(NAMES.ana)}
           k={smooth(segment(t, 4.5, 0.3))}
         />
         <Edge
-          from={position(JO)}
-          to={position(KAI)}
+          from={position(NAMES.jo)}
+          to={position(NAMES.kai)}
           k={smooth(segment(t, 5.5, 0.3))}
         />
         {people.map((p) => (
@@ -546,9 +532,9 @@ export const NetworkComposerIntroScene = defineScene(8.0, ({ t }) => {
             k={p.k}
             r={24}
             pulse={
-              p.label === SAM
+              p.label === NAMES.sam
                 ? pulseFor(t, 4.0, 4.5)
-                : p.label === JO
+                : p.label === NAMES.jo
                   ? pulseFor(t, 5.0, 5.5)
                   : undefined
             }
@@ -570,13 +556,13 @@ export const NetworkComposerIntroScene = defineScene(8.0, ({ t }) => {
         stops={[
           { to: toolAt('add'), at: 0.5 },
           { to: toolAt('edge'), at: 3.5 },
-          { to: at(SAM), at: 4.0 },
-          { to: at(ANA), at: 4.5 },
-          { to: at(JO), at: 5.0 },
-          { to: at(KAI), at: 5.5 },
+          { to: at(NAMES.sam), at: 4.0 },
+          { to: at(NAMES.ana), at: 4.5 },
+          { to: at(NAMES.jo), at: 5.0 },
+          { to: at(NAMES.kai), at: 5.5 },
           { to: toolAt('groups'), at: 6.2 },
-          { to: at(SAM), at: 6.7 },
-          { to: at(ANA), at: 7.1 },
+          { to: at(NAMES.sam), at: 6.7 },
+          { to: at(NAMES.ana), at: 7.1 },
         ]}
         leave={7.5}
       />
@@ -584,89 +570,14 @@ export const NetworkComposerIntroScene = defineScene(8.0, ({ t }) => {
   };
 });
 
-/** A small table in the exported-data scene. */
-function Table({
-  x,
-  y,
-  title,
-  columns,
-  offsets,
-  rows,
-  t,
-  from,
-}: {
-  x: number;
-  y: number;
-  title: string;
-  columns: readonly string[];
-  offsets: readonly number[];
-  rows: readonly (readonly string[])[];
-  t: number;
-  from: number;
-}) {
-  const height = 30;
-  const width = CONTENT.right - 16 - x;
-  return (
-    <g>
-      <text
-        x={x}
-        y={y - 10}
-        fontSize={12}
-        fontWeight={800}
-        className="fill-white/60 uppercase"
-      >
-        {title}
-      </text>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        rx={8}
-        className="fill-cyber-grape"
-      />
-      {columns.map((c, i) => (
-        <text
-          key={c}
-          x={x + 12 + (offsets[i] ?? 0)}
-          y={y + 20}
-          fontSize={12}
-          fontWeight={800}
-          className="fill-white"
-        >
-          {c}
-        </text>
-      ))}
-      {rows.map((cells, r) => {
-        const rowY = y + height * (r + 1);
-        const k = smooth(segment(t, from + r * 0.35, 0.3));
-        return (
-          <g key={cells.join('-')} opacity={k}>
-            <rect
-              x={x}
-              y={rowY}
-              width={width}
-              height={height}
-              className={r % 2 === 0 ? 'fill-white/5' : 'fill-white/10'}
-            />
-            {cells.map((cell, i) => (
-              <text
-                key={`${columns[i] ?? i}`}
-                x={x + 12 + (offsets[i] ?? 0)}
-                y={rowY + 20}
-                fontSize={12}
-                fontWeight={700}
-                className="fill-white"
-              >
-                {cell}
-              </text>
-            ))}
-          </g>
-        );
-      })}
-    </g>
-  );
-}
+/** The size of the exported-data scene's tables. */
+const TABLE = {
+  rowHeight: 30,
+  fontSize: 12,
+  baseline: 20,
+  inset: 12,
+  rx: 8,
+} as const;
 
 /**
  * Shows how a network composer's data is exported: each node becomes a row with
@@ -678,9 +589,9 @@ export const NetworkComposerDataScene = defineScene(
   ({ t }) => {
     const small = { x: CONTENT.x + 140, y: CONTENT.y + 180, r: 120 };
     const nodes: { label: string; at: Point }[] = [
-      { label: SAM, at: [small.x - 55, small.y - 30] },
-      { label: ANA, at: [small.x + 20, small.y - 70] },
-      { label: JO, at: [small.x + 30, small.y + 55] },
+      { label: NAMES.sam, at: [small.x - 55, small.y - 30] },
+      { label: NAMES.ana, at: [small.x + 20, small.y - 70] },
+      { label: NAMES.jo, at: [small.x + 30, small.y + 55] },
     ];
     const node = (i: number): Point => nodes[i]?.at ?? [small.x, small.y];
     const tableX = CONTENT.x + 290;
@@ -694,32 +605,34 @@ export const NetworkComposerDataScene = defineScene(
           {nodes.map((n) => (
             <CanvasNode key={n.label} at={n.at} label={n.label} r={22} />
           ))}
-          <Table
+          <DataTable
             x={tableX}
             y={CONTENT.y + 40}
             title={TEXT.nodes}
             columns={TEXT.nodeColumns}
             offsets={[0, 70, 170, 270]}
             rows={[
-              [SAM, '0.31', '0.42', 'true'],
-              [ANA, '0.42', '0.27', 'true'],
-              [JO, '0.44', '0.61', 'false'],
+              [NAMES.sam, '0.31', '0.42', 'true'],
+              [NAMES.ana, '0.42', '0.27', 'true'],
+              [NAMES.jo, '0.44', '0.61', 'false'],
             ]}
-            t={t}
-            from={0.6}
+            reveal={(r) => smooth(segment(t, 0.6 + r * 0.35, 0.3))}
+            width={CONTENT.right - 16 - tableX}
+            {...TABLE}
           />
-          <Table
+          <DataTable
             x={tableX}
             y={CONTENT.y + 220}
             title={TEXT.edges}
             columns={TEXT.edgeColumns}
             offsets={[0, 110, 220]}
             rows={[
-              [SAM, ANA, 'friends'],
-              [ANA, JO, 'family'],
+              [NAMES.sam, NAMES.ana, 'friends'],
+              [NAMES.ana, NAMES.jo, 'family'],
             ]}
-            t={t}
-            from={2.0}
+            reveal={(r) => smooth(segment(t, 2.0 + r * 0.35, 0.3))}
+            width={CONTENT.right - 16 - tableX}
+            {...TABLE}
           />
         </>
       ),
@@ -772,9 +685,9 @@ export const NetworkComposerToolsScene = defineScene(9.6, ({ t }) => {
  */
 export const NetworkComposerAddScene = defineScene(5.6, ({ t }) => {
   const names = [
-    { label: SAM, typing: 0.9 },
-    { label: ANA, typing: 1.9 },
-    { label: JO, typing: 2.9 },
+    { label: NAMES.sam, typing: 0.9 },
+    { label: NAMES.ana, typing: 1.9 },
+    { label: NAMES.jo, typing: 2.9 },
   ].map((n) => ({ ...n, added: n.typing + 0.5 }));
   const typing = names.find((n) => t >= n.typing && t < n.added);
   return {
@@ -834,12 +747,12 @@ export const NetworkComposerPositionsScene = defineScene(5.2, ({ t }) => {
   const sam = smooth(segment(t, 0.8, 1.0));
   const ana = smooth(segment(t, 2.6, 1.0));
   const samAt: Point = [
-    lerp(gridCell(0)[0], at(SAM)[0], sam),
-    lerp(gridCell(0)[1], at(SAM)[1], sam),
+    lerp(gridCell(0)[0], at(NAMES.sam)[0], sam),
+    lerp(gridCell(0)[1], at(NAMES.sam)[1], sam),
   ];
   const anaAt: Point = [
-    lerp(gridCell(1)[0], at(ANA)[0] + 60, ana),
-    lerp(gridCell(1)[1], at(ANA)[1] + 20, ana),
+    lerp(gridCell(1)[0], at(NAMES.ana)[0] + 60, ana),
+    lerp(gridCell(1)[1], at(NAMES.ana)[1] + 20, ana),
   ];
   const moving = t < 2.4 ? samAt : anaAt;
   const [x, y] = normalised(moving);
@@ -848,9 +761,19 @@ export const NetworkComposerPositionsScene = defineScene(5.2, ({ t }) => {
     body: (
       <>
         <Circles n={4} />
-        <CanvasNode at={samAt} label={SAM} r={22} ring={t < 2.4 ? 1 : 0} />
-        <CanvasNode at={anaAt} label={ANA} r={22} ring={t >= 2.4 ? 1 : 0} />
-        <CanvasNode at={gridCell(2)} label={JO} r={22} />
+        <CanvasNode
+          at={samAt}
+          label={NAMES.sam}
+          r={22}
+          ring={t < 2.4 ? 1 : 0}
+        />
+        <CanvasNode
+          at={anaAt}
+          label={NAMES.ana}
+          r={22}
+          ring={t >= 2.4 ? 1 : 0}
+        />
+        <CanvasNode at={gridCell(2)} label={NAMES.jo} r={22} />
         <Palette active={['select']} />
         <Chip
           x={STAGE.right - 130}
@@ -875,10 +798,10 @@ export const NetworkComposerPositionsScene = defineScene(5.2, ({ t }) => {
         t={t}
         stops={[
           { to: gridCell(0), at: 0.7, ring: false },
-          { to: at(SAM), at: 1.8, glide: 1.0, ring: false },
+          { to: at(NAMES.sam), at: 1.8, glide: 1.0, ring: false },
           { to: gridCell(1), at: 2.5, ring: false },
           {
-            to: [at(ANA)[0] + 60, at(ANA)[1] + 20],
+            to: [at(NAMES.ana)[0] + 60, at(NAMES.ana)[1] + 20],
             at: 3.6,
             glide: 1.0,
             ring: false,
@@ -913,10 +836,14 @@ export const NetworkComposerAutoLayoutScene = defineScene(6.0, ({ t }) => {
     body: (
       <>
         <Circles n={4} />
-        <Hull points={[pos(SAM), pos(ANA), pos(JO)]} color={1} k={1} />
-        <Edge from={pos(SAM)} to={pos(ANA)} />
-        <Edge from={pos(JO)} to={pos(KAI)} />
-        <Edge from={pos(KAI)} to={pos(LIN)} type={2} />
+        <Hull
+          points={[pos(NAMES.sam), pos(NAMES.ana), pos(NAMES.jo)]}
+          color={1}
+          k={1}
+        />
+        <Edge from={pos(NAMES.sam)} to={pos(NAMES.ana)} />
+        <Edge from={pos(NAMES.jo)} to={pos(NAMES.kai)} />
+        <Edge from={pos(NAMES.kai)} to={pos(NAMES.lin)} type={2} />
         {positions.map((p) => (
           <CanvasNode key={p.label} at={p.at} label={p.label} r={22} />
         ))}
@@ -943,14 +870,14 @@ export const NetworkComposerAutoLayoutScene = defineScene(6.0, ({ t }) => {
  */
 export const NetworkComposerGroupsScene = defineScene(6.4, ({ t }) => {
   const family = [
-    { label: SAM, at: 1.5 },
-    { label: ANA, at: 1.9 },
-    { label: JO, at: 2.3 },
+    { label: NAMES.sam, at: 1.5 },
+    { label: NAMES.ana, at: 1.9 },
+    { label: NAMES.jo, at: 2.3 },
   ].filter((m) => t >= m.at);
   const work = [
-    { label: JO, at: 4.0 },
-    { label: KAI, at: 4.4 },
-    { label: LIN, at: 4.8 },
+    { label: NAMES.jo, at: 4.0 },
+    { label: NAMES.kai, at: 4.4 },
+    { label: NAMES.lin, at: 4.8 },
   ].filter((m) => t >= m.at);
   const menu = t >= 0.5 && t < 1.0 ? 1 : t >= 3.0 && t < 3.5 ? 1 : 0;
   const group = t < 3.5 ? 0 : 1;
@@ -981,14 +908,14 @@ export const NetworkComposerGroupsScene = defineScene(6.4, ({ t }) => {
         stops={[
           { to: toolAt('groups'), at: 0.5 },
           { to: menuItemAt('groups', 0), at: 1.0, glide: 0.4 },
-          { to: at(SAM), at: 1.5, glide: 0.4 },
-          { to: at(ANA), at: 1.9, glide: 0.35 },
-          { to: at(JO), at: 2.3, glide: 0.35 },
+          { to: at(NAMES.sam), at: 1.5, glide: 0.4 },
+          { to: at(NAMES.ana), at: 1.9, glide: 0.35 },
+          { to: at(NAMES.jo), at: 2.3, glide: 0.35 },
           { to: toolAt('groups'), at: 3.0 },
           { to: menuItemAt('groups', 1), at: 3.5, glide: 0.4 },
-          { to: at(JO), at: 4.0, glide: 0.4 },
-          { to: at(KAI), at: 4.4, glide: 0.35 },
-          { to: at(LIN), at: 4.8, glide: 0.35 },
+          { to: at(NAMES.jo), at: 4.0, glide: 0.4 },
+          { to: at(NAMES.kai), at: 4.4, glide: 0.35 },
+          { to: at(NAMES.lin), at: 4.8, glide: 0.35 },
         ]}
         leave={5.3}
       />
@@ -1025,7 +952,7 @@ export const NetworkComposerLassoScene = defineScene(5.8, ({ t }) => {
   const selected = t >= 2.3;
   const rise = backOut(segment(t, 2.4, 0.5));
   const joined = t >= 3.4;
-  const lassoed = [SAM, ANA, JO];
+  const lassoed: readonly string[] = [NAMES.sam, NAMES.ana, NAMES.jo];
   const d = `M ${LASSO.map((p) => `${p[0]} ${p[1]}`).join(' L ')}`;
   return {
     rail: { progress: 0.6 },
@@ -1130,19 +1057,19 @@ export const NetworkComposerInspectorScene = defineScene(5.4, ({ t }) => {
     body: (
       <>
         <Circles n={4} x={CANVAS.x + SHIFT} />
-        <Edge from={at(SAM, SHIFT)} to={at(ANA, SHIFT)} />
-        <Edge from={at(JO, SHIFT)} to={at(KAI, SHIFT)} />
+        <Edge from={at(NAMES.sam, SHIFT)} to={at(NAMES.ana, SHIFT)} />
+        <Edge from={at(NAMES.jo, SHIFT)} to={at(NAMES.kai, SHIFT)} />
         {PEOPLE.slice(0, 4).map((p) => (
           <CanvasNode
             key={p.label}
             at={at(p.label, SHIFT)}
             label={p.label}
             r={24}
-            ring={p.label === SAM && t >= 0.7 ? 1 : 0}
+            ring={p.label === NAMES.sam && t >= 0.7 ? 1 : 0}
           />
         ))}
         <Palette active={['select']} />
-        <Drawer k={open} title={SAM}>
+        <Drawer k={open} title={NAMES.sam}>
           <FieldLabel y={closeY - 10} text={TEXT.closeness} />
           <Options y={closeY} labels={['1', '2', '3']} chosen={2} k={close} />
           <FieldLabel y={nicknameY - 10} text={TEXT.nickname} />
@@ -1180,7 +1107,7 @@ export const NetworkComposerInspectorScene = defineScene(5.4, ({ t }) => {
       <Click
         t={t}
         stops={[
-          { to: at(SAM, SHIFT), at: 0.7 },
+          { to: at(NAMES.sam, SHIFT), at: 0.7 },
           { to: optionAt(closeY, 2), at: 1.9 },
           { to: [DRAWER.x + 60, nicknameY + 17], at: 2.6, glide: 0.5 },
         ]}
@@ -1197,8 +1124,8 @@ export const NetworkComposerInspectorScene = defineScene(5.4, ({ t }) => {
 export const NetworkComposerEdgeInspectorScene = defineScene(4.6, ({ t }) => {
   const open = smooth(segment(t, 0.8, 0.4));
   const selected = t >= 0.7;
-  const from = at(SAM, SHIFT);
-  const to = at(ANA, SHIFT);
+  const from = at(NAMES.sam, SHIFT);
+  const to = at(NAMES.ana, SHIFT);
   const talkY = CONTENT.y + 96;
   return {
     rail: { progress: 0.6 },
@@ -1217,7 +1144,7 @@ export const NetworkComposerEdgeInspectorScene = defineScene(4.6, ({ t }) => {
           />
         ) : null}
         <Edge from={from} to={to} />
-        <Edge from={at(JO, SHIFT)} to={at(KAI, SHIFT)} type={2} />
+        <Edge from={at(NAMES.jo, SHIFT)} to={at(NAMES.kai, SHIFT)} type={2} />
         {PEOPLE.slice(0, 4).map((p) => (
           <CanvasNode
             key={p.label}
@@ -1265,15 +1192,19 @@ export const NetworkComposerEdgesScene = defineScene(7.2, ({ t }) => {
     body: (
       <>
         <Circles n={4} />
-        <Edge from={at(SAM)} to={at(ANA)} k={smooth(segment(t, 2.0, 0.3))} />
         <Edge
-          from={at(ANA)}
-          to={at(JO)}
+          from={at(NAMES.sam)}
+          to={at(NAMES.ana)}
+          k={smooth(segment(t, 2.0, 0.3))}
+        />
+        <Edge
+          from={at(NAMES.ana)}
+          to={at(NAMES.jo)}
           k={smooth(segment(t, 3.1, 0.3)) * (1 - removed)}
         />
         <Edge
-          from={at(JO)}
-          to={at(KAI)}
+          from={at(NAMES.jo)}
+          to={at(NAMES.kai)}
           type={2}
           k={smooth(segment(t, 6.3, 0.3))}
         />
@@ -1284,11 +1215,11 @@ export const NetworkComposerEdgesScene = defineScene(7.2, ({ t }) => {
             label={p.label}
             r={24}
             pulse={
-              p.label === SAM
+              p.label === NAMES.sam
                 ? pulseFor(t, 1.5, 2.0)
-                : p.label === ANA
+                : p.label === NAMES.ana
                   ? (pulseFor(t, 2.6, 3.1) ?? pulseFor(t, 3.7, 4.2))
-                  : p.label === JO
+                  : p.label === NAMES.jo
                     ? pulseFor(t, 5.8, 6.3)
                     : undefined
             }
@@ -1307,16 +1238,16 @@ export const NetworkComposerEdgesScene = defineScene(7.2, ({ t }) => {
         stops={[
           { to: toolAt('edge'), at: 0.5 },
           { to: menuItemAt('edge', 0), at: 1.0, glide: 0.4 },
-          { to: at(SAM), at: 1.5, glide: 0.4 },
-          { to: at(ANA), at: 2.0, glide: 0.4 },
-          { to: at(ANA), at: 2.6, glide: 0.2 },
-          { to: at(JO), at: 3.1, glide: 0.4 },
-          { to: at(ANA), at: 3.7, glide: 0.4 },
-          { to: at(JO), at: 4.2, glide: 0.4 },
+          { to: at(NAMES.sam), at: 1.5, glide: 0.4 },
+          { to: at(NAMES.ana), at: 2.0, glide: 0.4 },
+          { to: at(NAMES.ana), at: 2.6, glide: 0.2 },
+          { to: at(NAMES.jo), at: 3.1, glide: 0.4 },
+          { to: at(NAMES.ana), at: 3.7, glide: 0.4 },
+          { to: at(NAMES.jo), at: 4.2, glide: 0.4 },
           { to: toolAt('edge'), at: 4.8 },
           { to: menuItemAt('edge', 1), at: 5.3, glide: 0.4 },
-          { to: at(JO), at: 5.8, glide: 0.4 },
-          { to: at(KAI), at: 6.3, glide: 0.4 },
+          { to: at(NAMES.jo), at: 5.8, glide: 0.4 },
+          { to: at(NAMES.kai), at: 6.3, glide: 0.4 },
         ]}
         leave={6.7}
       />

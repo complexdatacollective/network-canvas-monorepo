@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { backOut } from '@codaco/art/illustration/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import { pivot, STAGE, STAGE_CENTER_X, type Point } from './parts';
+import { midpoint, pivot, STAGE, STAGE_CENTER_X, type Point } from './parts';
 
 export type PedigreeShape = 'circle' | 'square' | 'diamond';
 
@@ -85,11 +85,6 @@ export const FAMILY_MEMBERS: readonly FamilyMember[] = [
   'tom',
   'you',
   'sam',
-];
-
-const midpoint = (a: Point, b: Point): Point => [
-  (a[0] + b[0]) / 2,
-  (a[1] + b[1]) / 2,
 ];
 
 /** The outline of a symbol centred on `at`. */

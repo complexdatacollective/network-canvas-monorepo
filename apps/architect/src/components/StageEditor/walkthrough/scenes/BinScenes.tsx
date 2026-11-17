@@ -1,4 +1,3 @@
-import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { backOut, segment } from '@codaco/art/illustration/motion';
@@ -7,14 +6,19 @@ import {
   Chip,
   Click,
   CONTENT,
+  DataTable,
   defineScene,
+  Drawer,
+  drawerSlot,
   lerp,
+  NAMES,
   PersonNode,
   Prompt,
   smooth,
   STAGE,
   STAGE_CENTER_X,
   Toast,
+  type DrawerStyle,
   type Point,
   type Stop,
 } from './parts';
@@ -46,53 +50,18 @@ const TEXT = {
     more > 0 ? `${name} +${more}` : name,
 } as const;
 
-const SAM = 'Sam';
-const ANA = 'Ana';
-const JO = 'Jo';
-const KAI = 'Kai';
-const LEE = 'Lee';
-
 const NODE_R = 24;
 
 /* The drawer at the foot of a bin stage, where unplaced alters wait. */
-const DRAWER = { width: 280, height: 60, bottom: STAGE.bottom } as const;
-
-const drawerSlot = (i: number, count: number): Point => [
-  STAGE_CENTER_X + (i - (count - 1) / 2) * 52,
-  DRAWER.bottom - DRAWER.height / 2 + 2,
-];
-
-function Drawer({ width = DRAWER.width }: { width?: number }) {
-  const y = DRAWER.bottom - DRAWER.height;
-  return (
-    <g>
-      <rect
-        x={STAGE_CENTER_X - 40}
-        y={y - 24}
-        width={80}
-        height={32}
-        rx={12}
-        className="fill-cyber-grape"
-      />
-      <ChevronDown
-        x={STAGE_CENTER_X - 11}
-        y={y - 22}
-        width={22}
-        height={22}
-        strokeWidth={3}
-        className="text-white"
-      />
-      <rect
-        x={STAGE_CENTER_X - width / 2}
-        y={y}
-        width={width}
-        height={DRAWER.height + 12}
-        rx={14}
-        className="fill-cyber-grape"
-      />
-    </g>
-  );
-}
+const DRAWER: DrawerStyle = {
+  width: 280,
+  gap: 52,
+  handle: 22,
+  handleWidth: 80,
+  overhang: 12,
+  rx: 14,
+  drop: 2,
+};
 
 /** A node as a bin stage draws it, with the white ring of a selected one. */
 function BinNode({
@@ -284,18 +253,18 @@ function OrdinalBins({
  */
 export const OrdinalBinIntroScene = defineScene(5.6, ({ t, id }) => {
   const moves: Move[] = [
-    { label: SAM, to: ordSlot(2, 0), at: 0.7 },
-    { label: ANA, to: ordSlot(3, 0), at: 1.9 },
-    { label: JO, to: ordSlot(0, 0), at: 3.1 },
+    { label: NAMES.sam, to: ordSlot(2, 0), at: 0.7 },
+    { label: NAMES.ana, to: ordSlot(3, 0), at: 1.9 },
+    { label: NAMES.jo, to: ordSlot(0, 0), at: 3.1 },
   ];
-  const from = (i: number) => drawerSlot(i, moves.length);
+  const from = (i: number) => drawerSlot(i, moves.length, DRAWER);
   return {
     rail: { progress: 0.45 },
     body: (
       <>
         <Prompt text={TEXT.ordinalPrompt} y={STAGE.y + 32} size={19} />
         <OrdinalBins id={id} labels={TEXT.closeness} />
-        <Drawer />
+        <Drawer style={DRAWER} />
         {moves.map((m, i) => {
           const { pos } = moved(t, m, from(i));
           return <BinNode key={m.label} at={pos} label={m.label} />;
@@ -316,13 +285,13 @@ const ordHeader = (i: number): Point => [
  * alter in it, and the next alter in the drawer is then selected.
  */
 export const OrdinalBinTapScene = defineScene(5.2, ({ t, id }) => {
-  const order = [SAM, ANA, JO];
+  const order = [NAMES.sam, NAMES.ana, NAMES.jo];
   const moves: Move[] = [
-    { label: SAM, to: ordSlot(3, 0), at: 1.0 },
-    { label: ANA, to: ordSlot(1, 0), at: 2.4 },
-    { label: JO, to: ordSlot(3, 1), at: 3.8 },
+    { label: NAMES.sam, to: ordSlot(3, 0), at: 1.0 },
+    { label: NAMES.ana, to: ordSlot(1, 0), at: 2.4 },
+    { label: NAMES.jo, to: ordSlot(3, 1), at: 3.8 },
   ];
-  const from = (i: number) => drawerSlot(i, order.length);
+  const from = (i: number) => drawerSlot(i, order.length, DRAWER);
   const selectedIndex = moves.findIndex((m) => t < m.at);
   const pressedBin =
     t >= 0.8 && t < 1.1
@@ -338,7 +307,7 @@ export const OrdinalBinTapScene = defineScene(5.2, ({ t, id }) => {
       <>
         <Prompt text={TEXT.ordinalPrompt} y={STAGE.y + 32} size={19} />
         <OrdinalBins id={id} labels={TEXT.closeness} pressed={pressedBin} />
-        <Drawer />
+        <Drawer style={DRAWER} />
         {moves.map((m, i) => {
           const { pos } = moved(t, m, from(i), 0.5);
           return (
@@ -370,11 +339,11 @@ export const OrdinalBinTapScene = defineScene(5.2, ({ t, id }) => {
 function requireScene(kind: 'ordinal' | 'categorical') {
   return defineScene(5.6, ({ t, id }) => {
     const last: Move = {
-      label: JO,
+      label: NAMES.jo,
       to: kind === 'ordinal' ? ordSlot(1, 0) : catCentre(2),
       at: 2.7,
     };
-    const from = drawerSlot(0, 1);
+    const from = drawerSlot(0, 1, DRAWER);
     const { pos, done } = moved(t, last, from);
     const toast =
       backOut(segment(t, 0.95, 0.4)) * (1 - smooth(segment(t, 2.5, 0.3)));
@@ -391,8 +360,8 @@ function requireScene(kind: 'ordinal' | 'categorical') {
             <>
               <Prompt text={TEXT.ordinalPrompt} y={STAGE.y + 32} size={19} />
               <OrdinalBins id={id} labels={TEXT.closeness} />
-              <BinNode at={ordSlot(2, 0)} label={SAM} />
-              <BinNode at={ordSlot(4, 0)} label={ANA} />
+              <BinNode at={ordSlot(2, 0)} label={NAMES.sam} />
+              <BinNode at={ordSlot(4, 0)} label={NAMES.ana} />
             </>
           ) : (
             <>
@@ -403,11 +372,17 @@ function requireScene(kind: 'ordinal' | 'categorical') {
               />
               <CategoryCircles
                 labels={TEXT.categories}
-                members={[[SAM], [ANA], done ? [JO] : [], [], []]}
+                members={[
+                  [NAMES.sam],
+                  [NAMES.ana],
+                  done ? [NAMES.jo] : [],
+                  [],
+                  [],
+                ]}
               />
             </>
           )}
-          <Drawer />
+          <Drawer style={DRAWER} />
           {done && kind === 'categorical' ? null : (
             <BinNode at={pos} label={last.label} />
           )}
@@ -607,11 +582,11 @@ function ExpandedCategory({
  */
 export const CategoricalBinIntroScene = defineScene(6.0, ({ t }) => {
   const moves: Move[] = [
-    { label: SAM, to: catCentre(0), at: 0.7, bin: 0 },
-    { label: ANA, to: catCentre(1), at: 1.9, bin: 1 },
-    { label: JO, to: catCentre(1), at: 3.1, bin: 1 },
+    { label: NAMES.sam, to: catCentre(0), at: 0.7, bin: 0 },
+    { label: NAMES.ana, to: catCentre(1), at: 1.9, bin: 1 },
+    { label: NAMES.jo, to: catCentre(1), at: 3.1, bin: 1 },
   ];
-  const from = (i: number) => drawerSlot(i, moves.length);
+  const from = (i: number) => drawerSlot(i, moves.length, DRAWER);
   const placed = moves.map((m, i) => moved(t, m, from(i)));
   const members = TEXT.categories.map((_, ci) =>
     moves
@@ -639,7 +614,7 @@ export const CategoricalBinIntroScene = defineScene(6.0, ({ t }) => {
           names={members[1] ?? []}
           k={open}
         />
-        <Drawer />
+        <Drawer style={DRAWER} />
         {moves.map((m, i) => {
           const p = placed[i];
           if (p === undefined || p.done) return null;
@@ -663,11 +638,11 @@ export const CategoricalBinIntroScene = defineScene(6.0, ({ t }) => {
  */
 export const CategoricalBinTapScene = defineScene(5.2, ({ t }) => {
   const moves: Move[] = [
-    { label: SAM, to: catCentre(0), at: 1.0, bin: 0 },
-    { label: ANA, to: catCentre(2), at: 2.4, bin: 2 },
-    { label: JO, to: catCentre(0), at: 3.8, bin: 0 },
+    { label: NAMES.sam, to: catCentre(0), at: 1.0, bin: 0 },
+    { label: NAMES.ana, to: catCentre(2), at: 2.4, bin: 2 },
+    { label: NAMES.jo, to: catCentre(0), at: 3.8, bin: 0 },
   ];
-  const from = (i: number) => drawerSlot(i, moves.length);
+  const from = (i: number) => drawerSlot(i, moves.length, DRAWER);
   const placed = moves.map((m, i) => moved(t, m, from(i), 0.5));
   const selectedIndex = moves.findIndex((m) => t < m.at);
   const members = TEXT.categories.map((_, ci) =>
@@ -693,7 +668,7 @@ export const CategoricalBinTapScene = defineScene(5.2, ({ t }) => {
           members={members}
           highlight={tapped}
         />
-        <Drawer />
+        <Drawer style={DRAWER} />
         {moves.map((m, i) => {
           const p = placed[i];
           if (p === undefined || p.done) return null;
@@ -729,89 +704,22 @@ export const CategoricalBinTapScene = defineScene(5.2, ({ t }) => {
  */
 export const CategoricalBinRequireScene = requireScene('categorical');
 
-function DataTable({
-  x,
-  y,
-  columns,
-  rows,
-  reveal,
-  colWidth = 120,
-}: {
-  x: number;
-  y: number;
-  columns: readonly string[];
-  rows: readonly (readonly string[])[];
-  /** 0 to 1 for each row, its arrival. */
-  reveal: readonly number[];
-  colWidth?: number;
-}) {
-  const rowHeight = 40;
-  const width = colWidth * columns.length;
-  return (
-    <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={rowHeight}
-        rx={10}
-        className="fill-cyber-grape"
-      />
-      {columns.map((c, i) => (
-        <text
-          key={c}
-          x={x + 16 + i * colWidth}
-          y={y + 26}
-          fontSize={15}
-          fontWeight={800}
-          className="fill-white"
-        >
-          {c}
-        </text>
-      ))}
-      {rows.map((cells, r) => (
-        <g key={cells[0]} opacity={reveal[r] ?? 0}>
-          <rect
-            x={x}
-            y={y + rowHeight * (r + 1)}
-            width={width}
-            height={rowHeight}
-            className={r % 2 === 0 ? 'fill-white/5' : 'fill-white/10'}
-          />
-          {cells.map((cell, i) => (
-            <text
-              key={`${cells[0]}-${i}`}
-              x={x + 16 + i * colWidth}
-              y={y + rowHeight * (r + 1) + 26}
-              fontSize={15}
-              fontWeight={700}
-              className="fill-white"
-            >
-              {cell}
-            </text>
-          ))}
-        </g>
-      ))}
-    </g>
-  );
-}
-
 function binDataScene(kind: 'ordinal' | 'categorical') {
   return defineScene(
     5.0,
     ({ t }) => {
-      const people = [SAM, ANA, JO];
+      const people = [NAMES.sam, NAMES.ana, NAMES.jo];
       const rows =
         kind === 'ordinal'
           ? [
-              [SAM, '3'],
-              [ANA, '4'],
-              [JO, '1'],
+              [NAMES.sam, '3'],
+              [NAMES.ana, '4'],
+              [NAMES.jo, '1'],
             ]
           : [
-              [SAM, TEXT.yes, TEXT.no],
-              [ANA, TEXT.no, TEXT.yes],
-              [JO, TEXT.no, TEXT.yes],
+              [NAMES.sam, TEXT.yes, TEXT.no],
+              [NAMES.ana, TEXT.no, TEXT.yes],
+              [NAMES.jo, TEXT.no, TEXT.yes],
             ];
       const placesTo =
         kind === 'ordinal'
@@ -872,7 +780,8 @@ function binDataScene(kind: 'ordinal' | 'categorical') {
                   : [TEXT.nameColumn, ...TEXT.categoryColumns]
               }
               rows={rows}
-              reveal={reveal}
+              reveal={(r) => reveal[r] ?? 0}
+              inset={16}
               colWidth={kind === 'ordinal' ? 120 : 125}
             />
           </>
@@ -904,11 +813,11 @@ export const StageFilterScene = defineScene(
   5.0,
   ({ t }) => {
     const people = [
-      { name: SAM, tagged: true },
-      { name: ANA, tagged: false },
-      { name: JO, tagged: true },
-      { name: KAI, tagged: false },
-      { name: LEE, tagged: true },
+      { name: NAMES.sam, tagged: true },
+      { name: NAMES.ana, tagged: false },
+      { name: NAMES.jo, tagged: true },
+      { name: NAMES.kai, tagged: false },
+      { name: NAMES.lee, tagged: true },
     ];
     const box = { y: CONTENT.y + 70, height: 230, width: 270 };
     const leftX = CONTENT.x + 40;

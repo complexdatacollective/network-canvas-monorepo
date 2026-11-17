@@ -16,6 +16,7 @@ import {
   CONTENT,
   defineScene,
   lerp,
+  NAMES,
   smooth,
   STAGE,
   type Point,
@@ -36,35 +37,29 @@ const TEXT = {
   unchanged: 'Nothing from this stage',
 } as const;
 
-const SAM = 'Sam';
-const ANA = 'Ana';
-const JO = 'Jo';
-const KAI = 'Kai';
-const LIN = 'Lin';
-
 /** One network, laid out as a participant left it on a sociogram. */
 const PEOPLE: readonly { label: string; at: Point }[] = [
-  { label: SAM, at: [CANVAS.x - 95, CANVAS.y - 60] },
-  { label: ANA, at: [CANVAS.x - 30, CANVAS.y - 105] },
-  { label: JO, at: [CANVAS.x - 70, CANVAS.y + 30] },
-  { label: KAI, at: [CANVAS.x + 85, CANVAS.y + 20] },
-  { label: LIN, at: [CANVAS.x + 60, CANVAS.y + 95] },
+  { label: NAMES.sam, at: [CANVAS.x - 95, CANVAS.y - 60] },
+  { label: NAMES.ana, at: [CANVAS.x - 30, CANVAS.y - 105] },
+  { label: NAMES.jo, at: [CANVAS.x - 70, CANVAS.y + 30] },
+  { label: NAMES.kai, at: [CANVAS.x + 85, CANVAS.y + 20] },
+  { label: NAMES.lin, at: [CANVAS.x + 60, CANVAS.y + 95] },
 ];
 
 const at = (label: string): Point =>
   PEOPLE.find((p) => p.label === label)?.at ?? [CANVAS.x, CANVAS.y];
 
 const EDGES: readonly [string, string][] = [
-  [SAM, ANA],
-  [SAM, JO],
-  [KAI, LIN],
-  [JO, KAI],
+  [NAMES.sam, NAMES.ana],
+  [NAMES.sam, NAMES.jo],
+  [NAMES.kai, NAMES.lin],
+  [NAMES.jo, NAMES.kai],
 ];
 
 /** The groups a categorical attribute draws, Jo in both. */
 const GROUPS: readonly { members: readonly string[]; color: number }[] = [
-  { members: [SAM, ANA, JO], color: 1 },
-  { members: [JO, KAI, LIN], color: 2 },
+  { members: [NAMES.sam, NAMES.ana, NAMES.jo], color: 1 },
+  { members: [NAMES.jo, NAMES.kai, NAMES.lin], color: 2 },
 ];
 
 const HULL_FILLS = ['fill-cat-1', 'fill-cat-2'] as const;
@@ -224,7 +219,7 @@ export const NarrativeIntroScene = defineScene(6.2, ({ t }) => {
           edges={1 - toGroups}
           hulls={toGroups * (1 - toSupport)}
           highlighted={(label) =>
-            label === ANA || label === KAI ? toSupport : 0
+            label === NAMES.ana || label === NAMES.kai ? toSupport : 0
           }
         />
         <PresetSwitcher
@@ -257,9 +252,21 @@ export const NarrativeDataScene = defineScene(
   ({ t }) => {
     const small = { x: CONTENT.x + 150, y: CONTENT.y + 180, r: 130 };
     const nodes: { label: string; at: Point; xy: [string, string] }[] = [
-      { label: SAM, at: [small.x - 50, small.y - 40], xy: ['0.31', '0.42'] },
-      { label: ANA, at: [small.x + 45, small.y - 55], xy: ['0.58', '0.33'] },
-      { label: JO, at: [small.x + 10, small.y + 55], xy: ['0.55', '0.66'] },
+      {
+        label: NAMES.sam,
+        at: [small.x - 50, small.y - 40],
+        xy: ['0.31', '0.42'],
+      },
+      {
+        label: NAMES.ana,
+        at: [small.x + 45, small.y - 55],
+        xy: ['0.58', '0.33'],
+      },
+      {
+        label: NAMES.jo,
+        at: [small.x + 10, small.y + 55],
+        xy: ['0.55', '0.66'],
+      },
     ];
     const drag = smooth(segment(t, 0.6, 0.8));
     const dragged: Point = [

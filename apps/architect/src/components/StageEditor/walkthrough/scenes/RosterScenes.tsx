@@ -17,6 +17,7 @@ import {
   STAGE,
   Toast,
   travel,
+  typed,
   type Point,
   type Stop,
 } from './parts';
@@ -621,9 +622,9 @@ const SEARCH_Y = PANEL.y + 68;
 
 /** The search box above the cards, with what the participant has typed. */
 function SearchBox({
-  typed,
+  query,
   caret,
-}: Readonly<{ typed: string; caret: boolean }>) {
+}: Readonly<{ query: string; caret: boolean }>) {
   const x = PANEL.x + 14;
   const width = PANEL.width - 28;
   return (
@@ -654,13 +655,13 @@ function SearchBox({
         y={SEARCH_Y + 5}
         fontSize={14}
         fontWeight={600}
-        className={typed === '' ? 'fill-white/50' : 'fill-white'}
+        className={query === '' ? 'fill-white/50' : 'fill-white'}
       >
-        {typed === '' ? TEXT.search : typed}
+        {query === '' ? TEXT.search : query}
       </text>
       {caret ? (
         <rect
-          x={x + 37 + typed.length * 8.2}
+          x={x + 37 + query.length * 8.2}
           y={SEARCH_Y - 9}
           width={2}
           height={18}
@@ -671,13 +672,6 @@ function SearchBox({
   );
 }
 
-const typedAt = (t: number, from: number, to: number) => {
-  const letters = Math.floor(
-    TEXT.typed.length * Math.min(1, Math.max(0, (t - from) / (to - from))),
-  );
-  return TEXT.typed.slice(0, letters);
-};
-
 /**
  * Shows a roster name generator where typing the misspelled "Rossa" at low
  * search accuracy still finds Rosa, but the same search at exact accuracy finds
@@ -685,7 +679,7 @@ const typedAt = (t: number, from: number, to: number) => {
  */
 export const RosterSearchScene = defineScene(7.0, ({ t, id }) => {
   const second = t >= 3.4;
-  const typed = second ? typedAt(t, 3.9, 4.7) : typedAt(t, 0.7, 1.5);
+  const search = typed(t, TEXT.typed, second ? 4.06 : 0.86, 0.16);
   const slot = (i: number) => gridSlot(i, SEARCH_Y + 30, cardHeight(0));
   const placed = flow(
     [SEARCH_CARDS, ['Rosa'], SEARCH_CARDS, []],
@@ -702,7 +696,7 @@ export const RosterSearchScene = defineScene(7.0, ({ t, id }) => {
         <Prompt text={TEXT.prompt} size={20} y={STAGE.y + 40} />
         <RosterPanel id={id}>
           <SearchBox
-            typed={typed}
+            query={search}
             caret={caret && Math.floor(t * 3) % 2 === 0}
           />
           {SEARCH_CARDS.map((label) => {

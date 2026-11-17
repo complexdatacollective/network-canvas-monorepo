@@ -2,11 +2,12 @@ import { KeyRound, Lock } from 'lucide-react';
 
 import { backOut, segment } from '@codaco/art/illustration/motion';
 
-import { Card, DataTable, Heading } from './InterpreterScenes';
+import { Card, Heading } from './InterpreterScenes';
 import {
   Chip,
   Click,
   CONTENT,
+  DataTable,
   defineScene,
   lerp,
   PersonNode,
@@ -15,10 +16,12 @@ import {
   Prompt,
   row,
   smooth,
+  squashed,
   STAGE,
   STAGE_CENTER_X,
   TextBar,
   TextBox,
+  typed,
   type Point,
 } from './parts';
 
@@ -54,9 +57,12 @@ const SCRAMBLE = '#%&@*?$0123456789';
 
 /* ------------------------------------------------------------- pieces */
 
-/** How much of `count` characters have been typed by `t`. */
-const typed = (t: number, start: number, count: number, length = 0.8) =>
-  DOT.repeat(Math.round(count * segment(t, start, length)));
+/**
+ * A passphrase of `count` characters, masked, typed across `length` seconds
+ * from `start`: each dot lands halfway through its share of the time.
+ */
+const dots = (t: number, start: number, count: number, length = 0.8) =>
+  typed(t, DOT.repeat(count), start + length / count / 2, length / count);
 
 /**
  * The names drifting down behind the stage. Below the threshold, as a share
@@ -157,7 +163,7 @@ function ContinueButton({
   y: number;
   press: number;
 }) {
-  const squash = 1 - Math.sin(Math.PI * press) * 0.12;
+  const squash = squashed(press);
   return (
     <g transform={pivot(x, y, squash)}>
       <Chip
@@ -289,8 +295,8 @@ export const AnonymisationIntroScene = defineScene(6.2, ({ t }) => {
       <>
         <NameRain t={t} threshold={unlocked ? 0.2 : 1.1} />
         <PassphraseScreen
-          first={typed(t, 1.0, 12)}
-          second={typed(t, 2.4, 12)}
+          first={dots(t, 1.0, 12)}
+          second={dots(t, 2.4, 12)}
           focus={t < 2.2 ? 'first' : t < 3.5 ? 'second' : undefined}
           press={pressAt(t, [3.6])}
           accepted={accepted}
@@ -378,7 +384,7 @@ export const AnonymisationDataScene = defineScene(
             y={middle - 60}
             columns={TEXT.columns}
             rows={TEXT.rows}
-            reveal={(r, cell) =>
+            cellReveal={(r, cell) =>
               smooth(segment(t, 3.0 + r * 0.4 + cell * 0.2, 0.4))
             }
             colWidth={105}
@@ -419,8 +425,8 @@ export const AnonymisationRulesScene = defineScene(7.4, ({ t }) => {
       <>
         <NameRain t={t} threshold={t >= 5.6 ? 0.2 : 1.1} />
         <PassphraseScreen
-          first={retyping ? typed(t, 3.6, 10, 0.6) : typed(t, 0.9, 5, 0.4)}
-          second={retyping ? typed(t, 4.4, 10, 0.6) : typed(t, 1.6, 5, 0.4)}
+          first={retyping ? dots(t, 3.6, 10, 0.6) : dots(t, 0.9, 5, 0.4)}
+          second={retyping ? dots(t, 4.4, 10, 0.6) : dots(t, 1.6, 5, 0.4)}
           focus={
             t < 1.5
               ? 'first'
@@ -475,7 +481,7 @@ const DIALOG_CONTINUE: Point = [
  */
 function KeyButton({ k, press }: { k: number; press: number }) {
   if (k <= 0) return null;
-  const squash = 1 - Math.sin(Math.PI * press) * 0.12;
+  const squash = squashed(press);
   return (
     <>
       <rect
@@ -638,7 +644,7 @@ export const AnonymisationReturnScene = defineScene(7.6, ({ t }) => {
         />
         <PassphraseDialog
           k={open}
-          value={retyping ? typed(t, 3.9, 12, 0.7) : typed(t, 1.6, 9, 0.6)}
+          value={retyping ? dots(t, 3.9, 12, 0.7) : dots(t, 1.6, 9, 0.6)}
           caret={t < 2.6 || (retyping && t < 4.8)}
           error={t >= 2.9 && t < 3.9}
           press={pressAt(t, [2.7, 5.0])}

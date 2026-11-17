@@ -5,8 +5,10 @@ import {
   Chip,
   Click,
   CONTENT,
+  DataTable,
   defineScene,
   lerp,
+  NAMES,
   NEXT_BUTTON,
   PersonNode,
   pressAt,
@@ -18,11 +20,6 @@ import {
   TextBox,
   type Point,
 } from './parts';
-
-const SAM = 'Sam';
-const ANA = 'Ana';
-const JO = 'Jo';
-const KAI = 'Kai';
 
 const TEXT = {
   aboutYou: 'About you',
@@ -41,9 +38,7 @@ const TEXT = {
   known: 'How long have you known each other?',
   typedKnown: '5 years',
   edgeList: 'Edge list',
-  edgeColumns: ['from', 'to', 'type', 'known_for'],
   knows: 'knows',
-  fromForm: 'From the form',
   oneForm: 'One form for each edge',
   ofThree: ['1 of 3', '2 of 3', '3 of 3'],
   noEdge: 'No edge, no form',
@@ -217,75 +212,6 @@ export function JoinedNodes({
       {from ? <PersonNode x={left} y={cy} r={r} label={from} k={1} /> : null}
       {to ? <PersonNode x={right} y={cy} r={r} label={to} k={1} /> : null}
     </>
-  );
-}
-
-export function DataTable({
-  x,
-  y,
-  columns,
-  rows,
-  reveal,
-  colWidth = 110,
-}: {
-  x: number;
-  y: number;
-  columns: readonly string[];
-  rows: readonly (readonly string[])[];
-  /** For each row, 0 to 1 for each cell's arrival. */
-  reveal: (row: number, cell: number) => number;
-  colWidth?: number;
-}) {
-  const rowHeight = 40;
-  const width = colWidth * columns.length;
-  return (
-    <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={rowHeight}
-        rx={10}
-        className="fill-cyber-grape"
-      />
-      {columns.map((c, i) => (
-        <text
-          key={c}
-          x={x + 14 + i * colWidth}
-          y={y + 26}
-          fontSize={15}
-          fontWeight={800}
-          className="fill-white"
-        >
-          {c}
-        </text>
-      ))}
-      {rows.map((cells, r) => (
-        <g key={cells.join('-')}>
-          <rect
-            x={x}
-            y={y + rowHeight * (r + 1)}
-            width={width}
-            height={rowHeight}
-            opacity={reveal(r, 0)}
-            className={r % 2 === 0 ? 'fill-white/5' : 'fill-white/10'}
-          />
-          {cells.map((cell, i) => (
-            <text
-              key={`${cells.join('-')}-${columns[i] ?? i}`}
-              x={x + 14 + i * colWidth}
-              y={y + rowHeight * (r + 1) + 26}
-              fontSize={15}
-              fontWeight={700}
-              opacity={reveal(r, i)}
-              className="fill-white"
-            >
-              {cell}
-            </text>
-          ))}
-        </g>
-      ))}
-    </g>
   );
 }
 
@@ -574,7 +500,7 @@ export const EgoFormDataScene = defineScene(
             y={top}
             columns={TEXT.egoColumns}
             rows={[[TEXT.typedAge, TEXT.trueValue]]}
-            reveal={(_, cell) => smooth(segment(t, 1.0 + cell * 0.7, 0.4))}
+            cellReveal={(_, cell) => smooth(segment(t, 1.0 + cell * 0.7, 0.4))}
             colWidth={130}
           />
           <Chip
@@ -633,14 +559,14 @@ export const EdgeFormIntroScene = defineScene(5.8, ({ t }) => {
           height={10}
           className="fill-edge-1"
         />
-        <PersonNode x={leftX} y={PAIR_Y} r={38} label={SAM} k={1} />
+        <PersonNode x={leftX} y={PAIR_Y} r={38} label={NAMES.sam} k={1} />
         {leaving < 1 ? (
           <g opacity={1 - leaving}>
             <PersonNode
               x={rightX}
               y={PAIR_Y}
               r={38}
-              label={ANA}
+              label={NAMES.ana}
               k={1 - leaving * 0.3}
             />
           </g>
@@ -651,7 +577,7 @@ export const EdgeFormIntroScene = defineScene(5.8, ({ t }) => {
               x={rightX}
               y={PAIR_Y - (1 - arriving) * 40}
               r={38}
-              label={JO}
+              label={NAMES.jo}
               k={0.85 + arriving * 0.15}
             />
           </g>
@@ -686,49 +612,6 @@ export const EdgeFormIntroScene = defineScene(5.8, ({ t }) => {
 });
 
 /**
- * Shows how a per alter edge form's data is exported: each edge is one row of
- * the edge list, and the answers from the form fill in one column, row by row.
- */
-export const EdgeFormDataScene = defineScene(
-  4.6,
-  ({ t }) => {
-    const rows = [
-      [SAM, ANA, TEXT.knows, '5 years'],
-      [ANA, JO, TEXT.knows, '2 years'],
-      [JO, KAI, TEXT.knows, '10 years'],
-    ] as const;
-    const x = CONTENT.x + 130;
-    const y = CONTENT.y + 70;
-    return {
-      body: (
-        <>
-          <Heading x={x} y={CONTENT.y + 44} text={TEXT.edgeList} />
-          <DataTable
-            x={x}
-            y={y}
-            columns={TEXT.edgeColumns}
-            rows={rows}
-            reveal={(row, cell) =>
-              cell < 3
-                ? smooth(segment(t, 0.2 + row * 0.15, 0.4))
-                : smooth(segment(t, 1.4 + row * 0.6, 0.4))
-            }
-          />
-          <Chip
-            x={x + 385}
-            y={y + 190}
-            text={TEXT.fromForm}
-            size={13}
-            k={backOut(segment(t, 1.3, 0.4))}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
-
-/**
  * Shows how a per alter edge form chooses what to ask about: the form is shown
  * once for each of the three edges in the network, and a pair with no edge gets
  * no form.
@@ -738,21 +621,21 @@ export const EdgeFormSourceScene = defineScene(
   ({ t }) => {
     const c: Point = [CONTENT.x + 230, CONTENT.y + 200];
     const nodes: Record<string, Point> = {
-      [SAM]: [c[0] - 110, c[1] - 90],
-      [ANA]: [c[0] + 110, c[1] - 90],
-      [JO]: [c[0] + 110, c[1] + 90],
-      [KAI]: [c[0] - 110, c[1] + 90],
+      [NAMES.sam]: [c[0] - 110, c[1] - 90],
+      [NAMES.ana]: [c[0] + 110, c[1] - 90],
+      [NAMES.jo]: [c[0] + 110, c[1] + 90],
+      [NAMES.kai]: [c[0] - 110, c[1] + 90],
     };
     const edges: readonly (readonly [string, string])[] = [
-      [SAM, ANA],
-      [ANA, JO],
-      [JO, KAI],
+      [NAMES.sam, NAMES.ana],
+      [NAMES.ana, NAMES.jo],
+      [NAMES.jo, NAMES.kai],
     ];
     const current = t < 0.8 ? -1 : Math.min(2, Math.floor((t - 0.8) / 1.0));
     const missing = smooth(segment(t, 3.9, 0.4));
     const at = (name: string): Point => nodes[name] ?? c;
-    const sam = at(SAM);
-    const kai = at(KAI);
+    const sam = at(NAMES.sam);
+    const kai = at(NAMES.kai);
     return {
       body: (
         <>
@@ -939,9 +822,23 @@ function chosenAt(t: number, pairs: readonly DyadPair[]) {
  */
 export const DyadCensusIntroScene = defineScene(6.0, ({ t }) => {
   const pairs: readonly DyadPair[] = [
-    { from: SAM, to: ANA, enter: 0, leave: 1.9, answer: 'yes', answerAt: 1.2 },
-    { from: SAM, to: JO, enter: 2.0, leave: 4.1, answer: 'no', answerAt: 3.5 },
-    { from: ANA, to: JO, enter: 4.2, leave: 99 },
+    {
+      from: NAMES.sam,
+      to: NAMES.ana,
+      enter: 0,
+      leave: 1.9,
+      answer: 'yes',
+      answerAt: 1.2,
+    },
+    {
+      from: NAMES.sam,
+      to: NAMES.jo,
+      enter: 2.0,
+      leave: 4.1,
+      answer: 'no',
+      answerAt: 3.5,
+    },
+    { from: NAMES.ana, to: NAMES.jo, enter: 4.2, leave: 99 },
   ];
   return {
     rail: { progress: t < 2 ? 0.7 : t < 4.2 ? 0.72 : 0.74 },
@@ -972,10 +869,17 @@ export const DyadCensusIntroScene = defineScene(6.0, ({ t }) => {
 export const DyadCensusPromptsScene = defineScene(5.6, ({ t }) => {
   const second = t >= 1.9;
   const pairs: readonly DyadPair[] = [
-    { from: ANA, to: JO, enter: 0, leave: 1.8, answer: 'yes', answerAt: 0.9 },
     {
-      from: SAM,
-      to: ANA,
+      from: NAMES.ana,
+      to: NAMES.jo,
+      enter: 0,
+      leave: 1.8,
+      answer: 'yes',
+      answerAt: 0.9,
+    },
+    {
+      from: NAMES.sam,
+      to: NAMES.ana,
       enter: 1.9,
       leave: 99,
       answer: 'yes',
@@ -1023,9 +927,9 @@ export const DyadCensusDataScene = defineScene(
   4.8,
   ({ t }) => {
     const answers = [
-      { from: SAM, to: ANA, yes: true },
-      { from: SAM, to: JO, yes: false },
-      { from: ANA, to: JO, yes: true },
+      { from: NAMES.sam, to: NAMES.ana, yes: true },
+      { from: NAMES.sam, to: NAMES.jo, yes: false },
+      { from: NAMES.ana, to: NAMES.jo, yes: true },
     ];
     const left = CONTENT.x + 30;
     const tableX = CONTENT.x + 380;
@@ -1066,7 +970,7 @@ export const DyadCensusDataScene = defineScene(
             y={top}
             columns={TEXT.dyadColumns}
             rows={yesRows.map((a) => [a.from, a.to, TEXT.knows])}
-            reveal={(row) => smooth(segment(t, 1.8 + row * 0.8, 0.4))}
+            cellReveal={(row) => smooth(segment(t, 1.8 + row * 0.8, 0.4))}
             colWidth={95}
           />
         </>

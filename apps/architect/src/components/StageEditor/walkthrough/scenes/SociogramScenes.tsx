@@ -1,4 +1,4 @@
-import { ChevronDown, GripHorizontal, Pause, Play } from 'lucide-react';
+import { GripHorizontal, Pause, Play } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { backOut, segment } from '@codaco/art/illustration/motion';
@@ -8,12 +8,17 @@ import {
   Click,
   CONTENT,
   defineScene,
+  Drawer,
+  drawerSlot,
   lerp,
+  NAMES,
   PersonNode,
   PromptPips,
+  settle,
   smooth,
   STAGE,
   STAGE_CENTER_X,
+  type DrawerStyle,
   type Point,
 } from './parts';
 
@@ -45,10 +50,6 @@ const TEXT = {
   marked: 'Marked: true or false',
 } as const;
 
-const SAM = 'Sam';
-const ANA = 'Ana';
-const JO = 'Jo';
-const KAI = 'Kai';
 /** The canvas the interview draws: concentric circles filling its height. */
 export const CANVAS = {
   x: STAGE_CENTER_X,
@@ -246,47 +247,14 @@ function PromptCard({
 }
 
 /** The drawer of nodes still to be placed, at the bottom of the canvas. */
-const DRAWER = {
+const DRAWER: DrawerStyle = {
   width: 300,
-  height: 60,
-  bottom: STAGE.bottom,
-} as const;
-const drawerSlot = (i: number, count: number): Point => [
-  STAGE_CENTER_X + (i - (count - 1) / 2) * 58,
-  DRAWER.bottom - DRAWER.height / 2,
-];
-
-function Drawer({ open = 1 }: { open?: number }) {
-  const y = DRAWER.bottom - DRAWER.height * open;
-  return (
-    <g>
-      <rect
-        x={STAGE_CENTER_X - 45}
-        y={y - 26}
-        width={90}
-        height={34}
-        rx={14}
-        className="fill-cyber-grape"
-      />
-      <ChevronDown
-        x={STAGE_CENTER_X - 12}
-        y={y - 24}
-        width={24}
-        height={24}
-        strokeWidth={3}
-        className="text-white"
-      />
-      <rect
-        x={STAGE_CENTER_X - DRAWER.width / 2}
-        y={y}
-        width={DRAWER.width}
-        height={DRAWER.height + 10}
-        rx={10}
-        className="fill-cyber-grape"
-      />
-    </g>
-  );
-}
+  gap: 58,
+  handle: 24,
+  handleWidth: 90,
+  overhang: 10,
+  rx: 10,
+};
 
 type Placement = Readonly<{ label: string; to: Point; at: number }>;
 
@@ -311,13 +279,13 @@ function placed(
  */
 export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
   const plan: Placement[] = [
-    { label: SAM, to: [CANVAS.x - 60, CANVAS.y - 30], at: 0.7 },
-    { label: ANA, to: [CANVAS.x + 40, CANVAS.y - 70], at: 1.6 },
-    { label: JO, to: [CANVAS.x + 20, CANVAS.y + 60], at: 2.5 },
+    { label: NAMES.sam, to: [CANVAS.x - 60, CANVAS.y - 30], at: 0.7 },
+    { label: NAMES.ana, to: [CANVAS.x + 40, CANVAS.y - 70], at: 1.6 },
+    { label: NAMES.jo, to: [CANVAS.x + 20, CANVAS.y + 60], at: 2.5 },
   ];
   const nodes = plan.map((p, i) => ({
     ...p,
-    ...placed(t, p, drawerSlot(i, plan.length)),
+    ...placed(t, p, drawerSlot(i, plan.length, DRAWER)),
   }));
   const drawerOpen = 1 - smooth(segment(t, 3.3, 0.4));
   const sam = plan[0]?.to ?? [0, 0];
@@ -325,7 +293,7 @@ export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
   const edge = smooth(segment(t, 4.3, 0.3));
   const stops = [
     ...plan.flatMap((p, i) => [
-      { to: drawerSlot(i, plan.length), at: p.at - 0.05, ring: false },
+      { to: drawerSlot(i, plan.length, DRAWER), at: p.at - 0.05, ring: false },
       { to: p.to, at: p.at + 0.7, glide: 0.7, ring: false },
     ]),
     { to: sam, at: 3.8 },
@@ -344,18 +312,20 @@ export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
             label={n.label}
             k={n.held || n.done ? 1 : drawerOpen}
             r={n.held || n.done ? NODE_R : 22}
-            pulse={n.label === SAM && t >= 3.8 && t < 4.3 ? t - 3.8 : undefined}
+            pulse={
+              n.label === NAMES.sam && t >= 3.8 && t < 4.3 ? t - 3.8 : undefined
+            }
           />
         ))}
         <PromptCard lines={TEXT.place} />
         {drawerOpen > 0 ? (
           <g transform={`translate(0 ${(1 - drawerOpen) * 90})`}>
-            <Drawer />
+            <Drawer style={DRAWER} />
             {nodes.map((n, i) =>
               n.held || n.done ? null : (
                 <CanvasNode
                   key={n.label}
-                  at={drawerSlot(i, plan.length)}
+                  at={drawerSlot(i, plan.length, DRAWER)}
                   label={n.label}
                   r={22}
                 />
@@ -386,19 +356,19 @@ export const SociogramDataScene = defineScene(
       weekly: boolean;
     }[] = [
       {
-        label: SAM,
+        label: NAMES.sam,
         at: [small.x - 50, small.y - 30],
         xy: ['0.31', '0.42'],
         weekly: true,
       },
       {
-        label: ANA,
+        label: NAMES.ana,
         at: [small.x + 40, small.y - 60],
         xy: ['0.58', '0.33'],
         weekly: false,
       },
       {
-        label: JO,
+        label: NAMES.jo,
         at: [small.x + 20, small.y + 55],
         xy: ['0.55', '0.66'],
         weekly: true,
@@ -616,9 +586,6 @@ export const SociogramBackgroundScene = defineScene(6.4, ({ t }) => {
   };
 });
 
-/** A simulation settling: overshoots a little, then comes to rest. */
-const settle = (k: number) => 1 - Math.exp(-3 * k) * Math.cos(k * 5);
-
 /**
  * Shows a sociogram where, side by side, the participant drags alters from the
  * drawer onto a canvas in manual layout, while the nodes on a canvas in
@@ -631,9 +598,9 @@ export const SociogramLayoutModeScene = defineScene(6.2, ({ t }) => {
   const right = { x: CONTENT.x + width * 1.5, y: CONTENT.y + 170, r: 120 };
   const drawerY = CONTENT.bottom - 34;
   const manual = [
-    { label: SAM, dx: -50, dy: -30 },
-    { label: ANA, dx: 40, dy: -50 },
-    { label: JO, dx: 0, dy: 50 },
+    { label: NAMES.sam, dx: -50, dy: -30 },
+    { label: NAMES.ana, dx: 40, dy: -50 },
+    { label: NAMES.jo, dx: 0, dy: 50 },
   ].map(({ label, dx, dy }, i) => {
     const from: Point = [left.x + (i - 1) * 50, drawerY];
     const to: Point = [left.x + dx, left.y + dy];
@@ -642,10 +609,10 @@ export const SociogramLayoutModeScene = defineScene(6.2, ({ t }) => {
   const running = t < 4.6;
   const sim = settle(Math.min(t, 4.6) / 2.2);
   const auto = [
-    { label: SAM, to: [-55, -25] as const },
-    { label: ANA, to: [35, -55] as const },
-    { label: JO, to: [10, 50] as const },
-    { label: KAI, to: [65, 25] as const },
+    { label: NAMES.sam, to: [-55, -25] as const },
+    { label: NAMES.ana, to: [35, -55] as const },
+    { label: NAMES.jo, to: [10, 50] as const },
+    { label: NAMES.kai, to: [65, 25] as const },
   ].map((a, i) => ({
     label: a.label,
     at: [

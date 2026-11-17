@@ -8,7 +8,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useId, type ComponentType, type ReactNode } from 'react';
+import { memo, useId, type ComponentType, type ReactNode } from 'react';
 
 import {
   BrowserWindow,
@@ -62,6 +62,9 @@ export const lerp = (from: number, to: number, k: number) =>
 export const pivot = (x: number, y: number, k: number) =>
   `translate(${x} ${y}) scale(${Math.max(0.001, k)}) translate(${-x} ${-y})`;
 
+/** How far a button shrinks as a press (0 to 1) squashes it and lets go. */
+export const squashed = (press: number) => 1 - Math.sin(Math.PI * press) * 0.12;
+
 /** A press that squashes a button and lets it go, for each time in `at`. */
 export const pressAt = (t: number, at: readonly number[], length = 0.25) =>
   Math.max(
@@ -75,6 +78,30 @@ export const pressAt = (t: number, at: readonly number[], length = 0.25) =>
 /** `count` positions spread evenly across the stage, `gap` apart. */
 export const row = (count: number, gap = 150, centre = STAGE_CENTER_X) =>
   Array.from({ length: count }, (_, i) => centre + (i - (count - 1) / 2) * gap);
+
+export const midpoint = (a: Point, b: Point): Point => [
+  (a[0] + b[0]) / 2,
+  (a[1] + b[1]) / 2,
+];
+
+/** A spring that overshoots a little and settles, like the force layout. */
+export const settle = (k: number) =>
+  k <= 0 ? 0 : 1 - Math.exp(-3 * k) * Math.cos(k * 5);
+
+/** The letters of `text` typed by `t`, one every `pace` seconds from `start`. */
+export const typed = (t: number, text: string, start: number, pace = 0.08) =>
+  t < start ? '' : text.slice(0, Math.floor((t - start) / pace) + 1);
+
+/** The people the scenes use as examples. */
+export const NAMES = {
+  sam: 'Sam',
+  ana: 'Ana',
+  jo: 'Jo',
+  kai: 'Kai',
+  lee: 'Lee',
+  lin: 'Lin',
+  alex: 'Alex',
+} as const;
 
 /** A rough width for SVG text, which cannot be measured before it renders. */
 const textWidth = (text: string, size: number) => text.length * size * 0.56;
@@ -292,7 +319,7 @@ function NavigationRail({
   const barTop = BACK_BUTTON[1] + 42;
   const barBottom = NEXT_BUTTON[1] - 48;
   const glow = ((t - pulseFrom) % 2) / 2;
-  const squash = 1 - Math.sin(Math.PI * press) * 0.12;
+  const squash = squashed(press);
   return (
     <>
       <rect
@@ -473,6 +500,44 @@ export function defineScene(
   draw: (frame: SceneFrame) => SceneDrawing,
   { url = 'Interview' }: { url?: string } = {},
 ): ComponentType {
+  // The clock ticks every frame, but `t` holds still while the scene rests on
+  // its last frame; memoised, the window is not drawn again until it moves.
+  const Window = memo(function Window({
+    t,
+    id,
+    enter,
+  }: SceneFrame & { enter: number }) {
+    const { body, overlay, rail, modal } = draw({ t, id });
+    return (
+      <g
+        opacity={enter}
+        transform={pivot(
+          FRAME.x + FRAME.width / 2,
+          FRAME.y + FRAME.height / 2,
+          lerp(0.96, 1, enter),
+        )}
+      >
+        <BrowserWindow
+          frame={FRAME}
+          url={url}
+          clipId={`${id}-window`}
+          urlWidth={url.length * 10 + 40}
+        >
+          <rect
+            x={CONTENT.x}
+            y={CONTENT.y}
+            width={CONTENT.right - CONTENT.x}
+            height={CONTENT.bottom - CONTENT.y}
+            className="fill-navy-taupe"
+          />
+          {body}
+          {rail ? <NavigationRail t={t} {...rail} /> : null}
+          {modal}
+        </BrowserWindow>
+        {overlay}
+      </g>
+    );
+  });
   return function Scene() {
     const { ref, time } = useIllustrationClock(end, { from: 0 });
     const id = useId().replace(/[^\w-]/g, '');
@@ -481,7 +546,6 @@ export function defineScene(
     // A quiet entrance: the window fades in as it settles from just below
     // full size, rather than popping up from nothing.
     const enter = time < period ? easeOut(segment(t, 0, 0.35)) : 1;
-    const { body, overlay, rail, modal } = draw({ t, id });
     return (
       <svg
         ref={ref}
@@ -489,33 +553,7 @@ export function defineScene(
         className="font-heading block h-auto max-h-full w-full overflow-visible"
         aria-hidden
       >
-        <g
-          opacity={enter}
-          transform={pivot(
-            FRAME.x + FRAME.width / 2,
-            FRAME.y + FRAME.height / 2,
-            lerp(0.96, 1, enter),
-          )}
-        >
-          <BrowserWindow
-            frame={FRAME}
-            url={url}
-            clipId={`${id}-window`}
-            urlWidth={url.length * 10 + 40}
-          >
-            <rect
-              x={CONTENT.x}
-              y={CONTENT.y}
-              width={CONTENT.right - CONTENT.x}
-              height={CONTENT.bottom - CONTENT.y}
-              className="fill-navy-taupe"
-            />
-            {body}
-            {rail ? <NavigationRail t={t} {...rail} /> : null}
-            {modal}
-          </BrowserWindow>
-          {overlay}
-        </g>
+        <Window t={t} id={id} enter={enter} />
       </svg>
     );
   };
@@ -636,7 +674,7 @@ export function AddButton({
   disabled?: boolean;
   press?: number;
 }) {
-  const squash = 1 - Math.sin(Math.PI * press) * 0.12;
+  const squash = squashed(press);
   const clip = `${id}-add-button`;
   return (
     <g
@@ -833,7 +871,7 @@ export function FormCard({
   title,
   submit = true,
   k,
-  settle = 0,
+  settle: closing = 0,
   to = [STAGE_CENTER_X, FORM_CARD.y + FORM_CARD.height / 2],
   children,
 }: {
@@ -847,12 +885,12 @@ export function FormCard({
   to?: Point;
   children?: ReactNode;
 }) {
-  const scale = k * (1 - settle);
+  const scale = k * (1 - closing);
   if (scale <= 0.001) return null;
   const centre: Point = [STAGE_CENTER_X, FORM_CARD.y + FORM_CARD.height / 2];
   return (
     <g
-      transform={`translate(${lerp(0, to[0] - centre[0], settle)} ${lerp(0, to[1] - centre[1], settle)}) ${pivot(centre[0], centre[1], scale)}`}
+      transform={`translate(${lerp(0, to[0] - centre[0], closing)} ${lerp(0, to[1] - centre[1], closing)}) ${pivot(centre[0], centre[1], scale)}`}
     >
       <rect
         x={CONTENT.x}
@@ -860,7 +898,7 @@ export function FormCard({
         width={CONTENT.right - CONTENT.x}
         height={CONTENT.bottom - CONTENT.y}
         className="fill-navy-taupe/60"
-        opacity={1 - settle}
+        opacity={1 - closing}
       />
       <rect
         x={FORM_CARD.x}
@@ -936,5 +974,174 @@ export function TextBox({
         {caret ? CARET : null}
       </text>
     </>
+  );
+}
+
+/**
+ * A table of exported data: an optional title, a header row, then striped
+ * rows. A row fades in with `reveal`, or cell by cell with `cellReveal`, where
+ * the first cell's arrival brings in the row's stripe.
+ */
+export function DataTable({
+  x,
+  y,
+  columns,
+  rows,
+  title,
+  reveal,
+  cellReveal,
+  colWidth = 110,
+  offsets,
+  width = colWidth * columns.length,
+  rowHeight = 40,
+  fontSize = 15,
+  baseline = 26,
+  inset = 14,
+  rx = 10,
+}: {
+  x: number;
+  y: number;
+  columns: readonly string[];
+  rows: readonly (readonly string[])[];
+  title?: string;
+  /** 0 to 1, each row's arrival. */
+  reveal?: (row: number) => number;
+  /** 0 to 1, each cell's arrival. */
+  cellReveal?: (row: number, cell: number) => number;
+  /** The width of each column, when they are even. */
+  colWidth?: number;
+  /** Where each column starts, when they are uneven. */
+  offsets?: readonly number[];
+  width?: number;
+  rowHeight?: number;
+  fontSize?: number;
+  /** How far below a row's top its text sits. */
+  baseline?: number;
+  /** How far in from a column's start its text sits. */
+  inset?: number;
+  rx?: number;
+}) {
+  const columnX = (i: number) =>
+    x + inset + (offsets ? (offsets[i] ?? 0) : i * colWidth);
+  return (
+    <g>
+      {title === undefined ? null : (
+        <text
+          x={x}
+          y={y - 10}
+          fontSize={12}
+          fontWeight={800}
+          className="fill-white/60 uppercase"
+        >
+          {title}
+        </text>
+      )}
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={rowHeight}
+        rx={rx}
+        className="fill-cyber-grape"
+      />
+      {columns.map((c, i) => (
+        <text
+          key={c}
+          x={columnX(i)}
+          y={y + baseline}
+          fontSize={fontSize}
+          fontWeight={800}
+          className="fill-white"
+        >
+          {c}
+        </text>
+      ))}
+      {rows.map((cells, r) => (
+        <g key={cells.join('-')} opacity={reveal?.(r)}>
+          <rect
+            x={x}
+            y={y + rowHeight * (r + 1)}
+            width={width}
+            height={rowHeight}
+            opacity={cellReveal?.(r, 0)}
+            className={r % 2 === 0 ? 'fill-white/5' : 'fill-white/10'}
+          />
+          {cells.map((cell, i) => (
+            <text
+              key={`${columns[i] ?? i}`}
+              x={columnX(i)}
+              y={y + rowHeight * (r + 1) + baseline}
+              fontSize={fontSize}
+              fontWeight={700}
+              opacity={cellReveal?.(r, i)}
+              className="fill-white"
+            >
+              {cell}
+            </text>
+          ))}
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/** How the drawer of unplaced people at the foot of a stage is drawn. */
+export type DrawerStyle = Readonly<{
+  width: number;
+  /** The space between the people waiting in it. */
+  gap: number;
+  /** The size of the chevron on its tab. */
+  handle: number;
+  handleWidth: number;
+  /** How far the drawer runs on below the stage. */
+  overhang: number;
+  rx: number;
+  /** How far below the drawer's middle its people sit. */
+  drop?: number;
+}>;
+
+const DRAWER_HEIGHT = 60;
+
+/** Where the `i`th of `count` people waiting in the drawer sits. */
+export const drawerSlot = (
+  i: number,
+  count: number,
+  { gap, drop = 0 }: DrawerStyle,
+): Point => [
+  STAGE_CENTER_X + (i - (count - 1) / 2) * gap,
+  STAGE.bottom - DRAWER_HEIGHT / 2 + drop,
+];
+
+/** The drawer at the foot of a stage, with the tab that opens and closes it. */
+export function Drawer({ style }: { style: DrawerStyle }) {
+  const { width, handle, handleWidth, overhang, rx } = style;
+  const y = STAGE.bottom - DRAWER_HEIGHT;
+  return (
+    <g>
+      <rect
+        x={STAGE_CENTER_X - handleWidth / 2}
+        y={y - (handle + 2)}
+        width={handleWidth}
+        height={handle + 10}
+        rx={handle - 10}
+        className="fill-cyber-grape"
+      />
+      <ChevronDown
+        x={STAGE_CENTER_X - handle / 2}
+        y={y - handle}
+        width={handle}
+        height={handle}
+        strokeWidth={3}
+        className="text-white"
+      />
+      <rect
+        x={STAGE_CENTER_X - width / 2}
+        y={y}
+        width={width}
+        height={DRAWER_HEIGHT + overhang}
+        rx={rx}
+        className="fill-cyber-grape"
+      />
+    </g>
   );
 }

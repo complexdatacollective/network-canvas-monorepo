@@ -3,7 +3,6 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import {
   Card,
-  DataTable,
   DyadPairs,
   Heading,
   JoinedNodes,
@@ -13,8 +12,10 @@ import {
   Chip,
   Click,
   CONTENT,
+  DataTable,
   defineScene,
   lerp,
+  NAMES,
   NEXT_BUTTON,
   PersonNode,
   pressAt,
@@ -24,12 +25,6 @@ import {
   STAGE_CENTER_X,
   type Point,
 } from './parts';
-
-const SAM = 'Sam';
-const ANA = 'Ana';
-const JO = 'Jo';
-const KAI = 'Kai';
-const LIN = 'Lin';
 
 const TEXT = {
   closeness: 'How close are these two?',
@@ -200,14 +195,26 @@ function chosenOption(t: number, rated: readonly Rated[]) {
 export const TieStrengthIntroScene = defineScene(6.0, ({ t }) => {
   const rated: readonly Rated[] = [
     {
-      pair: { from: SAM, to: ANA, enter: 0, leave: 1.9, answerAt: 1.2 },
+      pair: {
+        from: NAMES.sam,
+        to: NAMES.ana,
+        enter: 0,
+        leave: 1.9,
+        answerAt: 1.2,
+      },
       option: 1,
     },
     {
-      pair: { from: SAM, to: JO, enter: 2.0, leave: 4.1, answerAt: 3.5 },
+      pair: {
+        from: NAMES.sam,
+        to: NAMES.jo,
+        enter: 2.0,
+        leave: 4.1,
+        answerAt: 3.5,
+      },
       option: DECLINE,
     },
-    { pair: { from: ANA, to: JO, enter: 4.2, leave: 99 } },
+    { pair: { from: NAMES.ana, to: NAMES.jo, enter: 4.2, leave: 99 } },
   ];
   return {
     rail: { progress: t < 2 ? 0.7 : t < 4.2 ? 0.72 : 0.74 },
@@ -239,9 +246,9 @@ export const TieStrengthDataScene = defineScene(
   4.8,
   ({ t }) => {
     const answers = [
-      { from: SAM, to: ANA, option: 1 },
-      { from: SAM, to: JO, option: DECLINE },
-      { from: ANA, to: JO, option: 2 },
+      { from: NAMES.sam, to: NAMES.ana, option: 1 },
+      { from: NAMES.sam, to: NAMES.jo, option: DECLINE },
+      { from: NAMES.ana, to: NAMES.jo, option: 2 },
     ];
     const left = CONTENT.x + 30;
     const tableX = CONTENT.x + 340;
@@ -292,7 +299,7 @@ export const TieStrengthDataScene = defineScene(
               TEXT.knows,
               TEXT.values[a.option] ?? '',
             ])}
-            reveal={(row, cell) =>
+            cellReveal={(row, cell) =>
               smooth(segment(t, 1.8 + row * 0.8 + (cell === 3 ? 0.3 : 0), 0.4))
             }
             colWidth={86}
@@ -370,21 +377,33 @@ function TargetPanel() {
  */
 export const OneToManyIntroScene = defineScene(6.4, ({ t }) => {
   const turn = smooth(segment(t, 3.6, 0.6));
-  const first = [ANA, JO, KAI, LIN];
-  const second = [JO, KAI, LIN];
-  const taps: Record<string, number> = { [ANA]: 1.0, [KAI]: 1.8 };
-  const secondTaps: Record<string, number> = { [JO]: 5.0 };
+  const first = [NAMES.ana, NAMES.jo, NAMES.kai, NAMES.lin];
+  const second = [NAMES.jo, NAMES.kai, NAMES.lin];
+  const taps: Record<string, number> = { [NAMES.ana]: 1.0, [NAMES.kai]: 1.8 };
+  const secondTaps: Record<string, number> = { [NAMES.jo]: 5.0 };
   return {
     rail: { progress: t < 3.6 ? 0.6 : 0.62, press: pressAt(t, [3.3]) },
     body: (
       <>
         <g opacity={1 - turn}>
           <Prompt text={TEXT.focalQuestion} y={STAGE.y + 50} size={22} />
-          <PersonNode x={FOCAL[0]} y={FOCAL[1]} label={SAM} k={1} r={42} />
+          <PersonNode
+            x={FOCAL[0]}
+            y={FOCAL[1]}
+            label={NAMES.sam}
+            k={1}
+            r={42}
+          />
         </g>
         <g opacity={turn}>
           <Prompt text={TEXT.focalQuestionAna} y={STAGE.y + 50} size={22} />
-          <PersonNode x={FOCAL[0]} y={FOCAL[1]} label={ANA} k={1} r={42} />
+          <PersonNode
+            x={FOCAL[0]}
+            y={FOCAL[1]}
+            label={NAMES.ana}
+            k={1}
+            r={42}
+          />
         </g>
         <TargetPanel />
         {(turn < 0.5 ? first : second).map((label, i, list) => {
@@ -428,8 +447,8 @@ export const OneToManyDataScene = defineScene(
   ({ t }) => {
     const focal: Point = [CONTENT.x + 160, CONTENT.y + 120];
     const tapped = [
-      { label: ANA, at: [CONTENT.x + 70, CONTENT.y + 290] as Point },
-      { label: KAI, at: [CONTENT.x + 250, CONTENT.y + 290] as Point },
+      { label: NAMES.ana, at: [CONTENT.x + 70, CONTENT.y + 290] as Point },
+      { label: NAMES.kai, at: [CONTENT.x + 250, CONTENT.y + 290] as Point },
     ];
     const tableX = CONTENT.x + 360;
     const top = CONTENT.y + 70;
@@ -453,7 +472,13 @@ export const OneToManyDataScene = defineScene(
               />
             );
           })}
-          <PersonNode x={focal[0]} y={focal[1]} label={SAM} k={1} r={36} />
+          <PersonNode
+            x={focal[0]}
+            y={focal[1]}
+            label={NAMES.sam}
+            k={1}
+            r={36}
+          />
           {tapped.map((n, i) => (
             <PersonNode
               key={n.label}
@@ -469,8 +494,8 @@ export const OneToManyDataScene = defineScene(
             x={tableX}
             y={top}
             columns={TEXT.oneToManyColumns}
-            rows={tapped.map((n) => [SAM, n.label, TEXT.knows])}
-            reveal={(row) => smooth(segment(t, 1.4 + row * 0.6, 0.4))}
+            rows={tapped.map((n) => [NAMES.sam, n.label, TEXT.knows])}
+            cellReveal={(row) => smooth(segment(t, 1.4 + row * 0.6, 0.4))}
             colWidth={100}
           />
         </>
@@ -489,7 +514,7 @@ export const OneToManyDataScene = defineScene(
 export const OneToManyRemoveScene = defineScene(
   6.0,
   ({ t }) => {
-    const names = [SAM, ANA, JO, KAI];
+    const names = [NAMES.sam, NAMES.ana, NAMES.jo, NAMES.kai];
     const width = (CONTENT.right - CONTENT.x) / 2;
     const columns = [
       { x: CONTENT.x + width / 2, label: TEXT.removeMode, remove: true },
@@ -510,7 +535,7 @@ export const OneToManyRemoveScene = defineScene(
             strokeWidth={2}
           />
           {columns.map((c) => {
-            const focal = names[turn] ?? SAM;
+            const focal = names[turn] ?? NAMES.sam;
             const others = names.filter(
               (n, i) => n !== focal && (!c.remove || i > turn),
             );

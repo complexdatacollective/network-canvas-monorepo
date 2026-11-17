@@ -14,6 +14,7 @@ import {
   pivot,
   pressAt,
   smooth,
+  squashed,
   STAGE,
   STAGE_CENTER_X,
   TextBar,
@@ -569,7 +570,7 @@ export const LanguageChooserLanguagesScene = defineScene(
             transform={pivot(
               addButton[0],
               addButton[1],
-              1 - Math.sin(Math.PI * pressAt(t, [1.0])) * 0.12,
+              squashed(pressAt(t, [1.0])),
             )}
           >
             <Chip
