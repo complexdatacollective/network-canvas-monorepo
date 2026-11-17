@@ -156,6 +156,30 @@ describe('stageChangeRewrite', () => {
     ]);
   });
 
+  it('merges a list of plain values as a set, keeping what the draft added', () => {
+    const before = { matchProperties: ['name', 'age'] };
+    const after = { matchProperties: ['name', 'email'] };
+    const draft = { matchProperties: ['name', 'age', 'nickname'] };
+    expect(stageChangeRewrite(before, after)(draft).matchProperties).toEqual([
+      'name',
+      'email',
+      'nickname',
+    ]);
+  });
+
+  it('keeps the draft’s own list when nothing matches its members to the change', () => {
+    const before = { items: [{ text: 'one' }, { text: 'two' }] };
+    const after = { items: [{ text: 'ONE' }] };
+    const draft = {
+      items: [{ text: 'one' }, { text: 'two' }, { text: 'three' }],
+    };
+    expect(stageChangeRewrite(before, after)(draft).items).toEqual(draft.items);
+    // A list the draft has not changed takes the change.
+    expect(stageChangeRewrite(before, after)(before).items).toEqual(
+      after.items,
+    );
+  });
+
   it('takes a list whose members have no ids as the change left it', () => {
     const before = stored();
     const after = { ...stored(), form: { fields: [{ variable: 'a' }] } };

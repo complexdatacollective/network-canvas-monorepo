@@ -40,11 +40,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * What identifies a member of a list across copies: its id, or, for members
- * that have none (such as a form's fields, which may omit theirs), the
- * attribute it records, which a list holds once at most.
+ * What identifies a member of a list across copies: a plain value is its own
+ * identity (such as an attribute named in a list of them); a member with an
+ * id, its id; one without (such as a form's field, which may omit its id),
+ * the attribute it records, which a list holds once at most.
  */
 const idOf = (member: unknown): string | null => {
+  if (typeof member === 'string' || typeof member === 'number') {
+    return `${typeof member}:${member}`;
+  }
   if (!isRecord(member)) return null;
   if (typeof member.id === 'string') return member.id;
   return typeof member.variable === 'string'
@@ -154,6 +158,13 @@ function carried(before: unknown, after: unknown, held: unknown): unknown {
     return held.map((member, index) =>
       carried(before[index], after[index], member),
     );
+  }
+  // Nothing left to match by: the change is taken only where the draft has
+  // not changed the same list. Otherwise the draft's own list is kept, so
+  // unsaved work is never lost; the fix then shows as not made, and can be
+  // made again once the stage is saved.
+  if (Array.isArray(after) && Array.isArray(held) && !isEqual(before, held)) {
+    return held;
   }
   return after;
 }
