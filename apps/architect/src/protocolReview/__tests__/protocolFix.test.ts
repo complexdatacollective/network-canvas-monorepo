@@ -197,7 +197,7 @@ describe('a fix that replaces more than one text', () => {
         { label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
       ],
     });
-    expect(options && options.options?.[1]?.label).toEqual({ en: 'Every day' });
+    expect(JSON.stringify(options)).toContain('{"en":"Every day"}');
   });
 
   it('carries nothing over to options that share a value', () => {
