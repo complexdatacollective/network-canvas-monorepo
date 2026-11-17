@@ -79,6 +79,7 @@ const stage: StageProps<'NameGenerator'>['stage'] = {
     title: { en: 'Add a person' },
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference(NICKNAME_VAR),
         prompt: { en: 'Nickname' },
       },

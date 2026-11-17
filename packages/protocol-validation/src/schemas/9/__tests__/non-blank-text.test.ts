@@ -71,6 +71,7 @@ describe('nonBlankText', () => {
 
 describe('a form field prompt', () => {
   const field = (prompt: Record<string, string>) => ({
+    id: 'field-age',
     variable: 'age',
     prompt,
   });
@@ -232,7 +233,7 @@ const REQUIRED_TEXT_SITES: readonly {
     schema: FormSchema,
     valid: (title) => ({
       title,
-      fields: [{ variable: 'name', prompt: localized('Name?') }],
+      fields: [{ id: 'field-1', variable: 'name', prompt: localized('Name?') }],
     }),
     path: ['title'],
   },

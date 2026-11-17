@@ -35,8 +35,8 @@ const booleanPair = {
 };
 
 const formFields = [
-  { variable: 'boolA', prompt: localized('First?') },
-  { variable: 'boolB', prompt: localized('Second?') },
+  { id: 'field-1', variable: 'boolA', prompt: localized('First?') },
+  { id: 'field-2', variable: 'boolB', prompt: localized('Second?') },
 ];
 
 const withEgoPair = () => {
@@ -277,7 +277,9 @@ describe('shared form stage-effective validation contradictions', () => {
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            fields: [{ variable: 'name', prompt: localized('Name?') }],
+            fields: [
+              { id: 'field-1', variable: 'name', prompt: localized('Name?') },
+            ],
           },
         },
       ],
@@ -299,7 +301,9 @@ describe('shared form stage-effective validation contradictions', () => {
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            fields: [{ variable: 'boolA', prompt: localized('First?') }],
+            fields: [
+              { id: 'field-1', variable: 'boolA', prompt: localized('First?') },
+            ],
           },
         },
         {
@@ -451,7 +455,9 @@ describe('shared form stage-effective validation contradictions', () => {
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            fields: [{ variable: 'age', prompt: localized('Age?') }],
+            fields: [
+              { id: 'field-1', variable: 'age', prompt: localized('Age?') },
+            ],
           },
         },
       ],

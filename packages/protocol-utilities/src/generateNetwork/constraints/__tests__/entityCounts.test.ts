@@ -135,12 +135,12 @@ describe('worstCaseEntityCounts', () => {
   it('counts creation-time writes per variable on a shared node type', () => {
     const first = nameGenerator({
       id: 'names',
-      form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+      form: { fields: [{ id: 'field-1', variable: 'name', prompt: 'Name?' }] },
       behaviours: { minNodes: 5, maxNodes: 5 },
     });
     const second = nameGenerator({
       id: 'ages',
-      form: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+      form: { fields: [{ id: 'field-1', variable: 'age', prompt: 'Age?' }] },
       behaviours: { minNodes: 7, maxNodes: 7 },
     });
 
@@ -153,7 +153,7 @@ describe('worstCaseEntityCounts', () => {
 
   it('counts each prompt write against the capacity left when it runs', () => {
     const stage = nameGenerator({
-      form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+      form: { fields: [{ id: 'field-1', variable: 'name', prompt: 'Name?' }] },
       prompts: [
         {
           id: 'p1',
@@ -185,13 +185,13 @@ describe('worstCaseEntityCounts', () => {
   it('applies a later writer only to nodes that already exist', () => {
     const before = nameGenerator({
       id: 'before',
-      form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+      form: { fields: [{ id: 'field-1', variable: 'name', prompt: 'Name?' }] },
       behaviours: { minNodes: 5, maxNodes: 5 },
     });
     const writeAge = nodeAlterForm('person', 'age');
     const after = nameGenerator({
       id: 'after',
-      form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+      form: { fields: [{ id: 'field-1', variable: 'name', prompt: 'Name?' }] },
       behaviours: { minNodes: 7, maxNodes: 7 },
     });
 
@@ -1381,7 +1381,7 @@ describe('generateNetwork with a filtered writer on existing nodes', () => {
 
   const stages = [
     nameGenerator({
-      form: { fields: [{ variable: 'band', prompt: 'Band?' }] },
+      form: { fields: [{ id: 'field-1', variable: 'band', prompt: 'Band?' }] },
       behaviours: { minNodes: 10, maxNodes: 10 },
     }),
     filteredNodeAlterForm('band', 'selected'),

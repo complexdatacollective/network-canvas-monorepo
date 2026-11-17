@@ -236,6 +236,7 @@ export type PresetEntry = {
 };
 
 type FormFieldEntry = {
+  id: string;
   variable: string;
   prompt: TextInput;
   hint?: TextInput;

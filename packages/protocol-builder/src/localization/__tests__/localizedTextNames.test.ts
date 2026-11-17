@@ -209,6 +209,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     {
       fields: [
         {
+          id: 'field-1',
           variable: 'fm_occupation',
           prompt: en('What do they do?'),
           hint: en('Their main work.'),

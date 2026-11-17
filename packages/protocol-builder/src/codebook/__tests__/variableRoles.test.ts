@@ -64,7 +64,11 @@ const sections = (): Record<string, SectionDoc> => ({
     type: 'AlterForm',
     label: { en: 'Form' },
     subject: SUBJECT,
-    form: { fields: [{ variable: 'category', prompt: { en: 'Category?' } }] },
+    form: {
+      fields: [
+        { id: 'field-1', variable: 'category', prompt: { en: 'Category?' } },
+      ],
+    },
   },
   [sectionId({ kind: 'stage', stageId: BIN_STAGE_ID })]: {
     id: BIN_STAGE_ID,

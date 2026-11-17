@@ -173,6 +173,7 @@ describe('the family pedigree stage editor', () => {
         form: {
           fields: [
             {
+              id: 'field-1',
               variable: 'fm_occupation',
               prompt: { 'en-US': 'What do they do?' },
             },
@@ -2070,7 +2071,13 @@ describe('the nomination prompts', () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         form: {
-          fields: [{ variable: 'has_pets', prompt: { 'en-US': 'Any pets?' } }],
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'has_pets',
+              prompt: { 'en-US': 'Any pets?' },
+            },
+          ],
         },
       }),
       editor: familyPedigreeEditor,

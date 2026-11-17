@@ -111,6 +111,7 @@ describe('useProtocolForm required boolean rendering', () => {
       <FormHarness
         fields={[
           {
+            id: 'field-L113',
             variable: asEntityAttributeReference('requiredToggle'),
             prompt: { en: 'Do you live alone?' },
           },
@@ -136,6 +137,7 @@ describe('useProtocolForm required boolean rendering', () => {
       <FormHarness
         fields={[
           {
+            id: 'field-L138',
             variable: asEntityAttributeReference('optionalToggle'),
             prompt: { en: 'Do you live alone?' },
           },
@@ -176,10 +178,12 @@ describe('useProtocolForm required boolean rendering', () => {
         useProtocolForm({
           fields: [
             {
+              id: 'field-1',
               variable: asEntityAttributeReference('requiredToggle'),
               prompt: { en: 'Do you live alone?' },
             },
             {
+              id: 'field-2',
               variable: asEntityAttributeReference('optionalToggle'),
               prompt: { en: 'Do you have a car?' },
             },

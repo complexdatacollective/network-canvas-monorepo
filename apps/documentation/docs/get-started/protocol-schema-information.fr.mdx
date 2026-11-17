@@ -3,7 +3,7 @@ title: Informations sur le schéma de protocole
 wip: false
 navOrder: 3
 date: 22nd October 2026
-translatedFrom: cd54a86dbc608b9c813eed945609338f04373a84
+translatedFrom: b3d3cea81161868ce59982ad4aacfa1727d07813
 ---
 
 ## Résumé {#summary}
@@ -142,6 +142,7 @@ La migration d’un protocole du schéma 8 vers le schéma 9 conserve l’intég
 - donne un libellé à chaque type de lien que trace un préréglage d’une étape « Narration », et à chaque type de lien qu’une étape « Compositeur de réseau » permet aux personnes participantes de tracer ; ce libellé est au départ le nom du type de lien.
 - donne un libellé à chaque attribut que met en évidence un préréglage d’une étape « Narration » ; ce libellé est au départ le nom de l’attribut.
 - donne un libellé à chaque champ d’une étape « Compositeur de réseau » qui n’en a pas ; ce libellé est au départ le nom de l’attribut.
+- donne à chaque champ de formulaire un `id` qui lui est propre, et qui l’identifie au sein de son formulaire, par exemple `field-1`. Les champs qui ont déjà un `id` le conservent. Architect attribue un `id` à chaque champ qu’il ajoute, si bien que chaque champ d’un protocole en schéma 9 en a un, et qu’un protocole dont des champs de formulaire n’en ont pas n’est pas un protocole en schéma 9 valide.
 - n’écrit dans le protocole aucune des formulations d’étape ni aucun des « Textes de l’entretien » que fournit Network Canvas, si bien que chaque étape se lit comme elle s’est toujours lue jusqu’à ce que vous modifiiez ces formulations (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
 - ajoute une étape [« Écran de fin »](/fr/design-protocols/interface-documentation/finish-screen) à la fin, car tout protocole en schéma 9 doit se terminer par une telle étape. L’écran qui clôt l’entretien est désormais une étape « Écran de fin » à la fin de votre protocole : vous pouvez donc modifier son « Texte de clôture » et son « Texte après la fin de l’entretien », et les traduire comme le reste de votre protocole. Les personnes participantes confirment qu’elles ont terminé, comme elles l’ont toujours fait. Son « Texte de clôture » est au départ le texte que l’entretien a toujours affiché à cet endroit, et son « Texte après la fin de l’entretien » est au départ « Interview Finished » et « Thank you for participating! », tous deux enregistrés comme de l’anglais. Son résultat est **Terminé**. L’identifiant de l’étape est `finish`, ou `finish-2` et ainsi de suite si une autre étape porte déjà cet identifiant.
 - déplace le panneau d’introduction de chaque étape « Formulaire par alter », « Formulaire par lien entre alters », « Recensement des dyades » et « Recensement de la force des liens » vers une étape [« Information »](/fr/design-protocols/interface-documentation/information) placée juste avant son étape, avec le titre et le texte du panneau. La nouvelle étape a la même logique de saut : elle est donc sautée chaque fois que son étape l’est, et une logique de saut qui menait à l’étape mène désormais à la nouvelle étape « Information ». Une étape « Formulaire ego » conserve son panneau d’introduction.

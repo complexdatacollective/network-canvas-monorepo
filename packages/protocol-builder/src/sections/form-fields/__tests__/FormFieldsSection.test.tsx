@@ -199,7 +199,9 @@ const COLLECTS_A_POSITION = {
     ...loadFixtureStage('alter-form-1').fields,
     label: en('Where everyone sits'),
     form: {
-      fields: [{ variable: 'layout', prompt: en('Where do they sit?') }],
+      fields: [
+        { id: 'field-1', variable: 'layout', prompt: en('Where do they sit?') },
+      ],
     },
   },
 } as const;
@@ -268,11 +270,13 @@ describe('the fields a form collects', () => {
 
     const fields = fieldsOf(await harness.submit());
     expect(fields[0]).toEqual({
+      id: 'field-1',
       variable: 'relationship_to_ego',
       prompt: en('How do you know this person?'),
     });
     // The field the researcher did not touch is still exactly as it was.
     expect(fields[1]).toEqual({
+      id: 'field-2',
       variable: 'flagged',
       prompt: en('Does this person have this attribute?'),
     });
@@ -313,7 +317,11 @@ describe('the fields a form collects', () => {
           ...loadFixtureStage('alter-form-1').fields,
           form: {
             fields: [
-              { variable: 'relationship_to_ego', prompt: { en: '   ' } },
+              {
+                id: 'field-1',
+                variable: 'relationship_to_ego',
+                prompt: { en: '   ' },
+              },
             ],
           },
         },
@@ -429,10 +437,15 @@ describe('the fields a form collects', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'relationship_to_ego',
                 prompt: en('How do you know them?'),
               },
-              { variable: 'relationship_to_ego', prompt: en('And how else?') },
+              {
+                id: 'field-2',
+                variable: 'relationship_to_ego',
+                prompt: en('And how else?'),
+              },
             ],
           },
         },
@@ -595,6 +608,7 @@ describe('the fields a form collects', () => {
       'relationship_to_ego',
     ]);
     expect(fields[1]).toEqual({
+      id: 'field-1',
       variable: 'relationship_to_ego',
       prompt: en("What is this person's relationship to you?"),
     });
@@ -785,7 +799,11 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
     expect(fieldsOf(await harness.submit())).toEqual([
-      { variable: 'relationship_to_ego', prompt: en('Where do they sit?') },
+      {
+        id: 'field-1',
+        variable: 'relationship_to_ego',
+        prompt: en('Where do they sit?'),
+      },
     ]);
   });
 });
@@ -1003,7 +1021,13 @@ const STAMPING_NAME_GENERATOR = {
     subject: { entity: 'node', type: 'person' },
     form: {
       title: en('Add a person'),
-      fields: [{ variable: 'name', prompt: en("What is this person's name?") }],
+      fields: [
+        {
+          id: 'field-1',
+          variable: 'name',
+          prompt: en("What is this person's name?"),
+        },
+      ],
     },
     prompts: [
       {
@@ -1835,6 +1859,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     );
 
     expect(fieldsOf(await harness.submit())[0]).toEqual({
+      id: 'field-1',
       variable: 'relationship_to_ego',
       prompt: en('How do you know them?'),
     });
@@ -3078,10 +3103,12 @@ describe('an attribute that stops being collectable under an open row', () => {
 
     expect(fieldsOf(await harness.submit())).toEqual([
       {
+        id: 'field-1',
         variable: 'name',
         prompt: en("What is this person's relationship to you?"),
       },
       {
+        id: 'field-2',
         variable: 'flagged',
         prompt: en('Does this person have this attribute?'),
       },
@@ -3109,6 +3136,7 @@ describe('a form whose list holds something that is not a field', () => {
       form: {
         fields: [
           {
+            id: 'field-1',
             variable: 'relationship_to_ego',
             prompt: en('How do you know them?'),
           },
@@ -3198,12 +3226,14 @@ describe('a stored field the schema refuses for its own shape', () => {
 
   /** A field of the fixture's own form, plus a key no form field has. */
   const CARRIES_AN_UNKNOWN_KEY = {
+    id: 'field-2',
     variable: 'flagged',
     prompt: en('Does this person have this attribute?'),
     notAThing: 'left behind by a half-applied migration',
   };
 
   const RELATIONSHIP = {
+    id: 'field-1',
     variable: 'relationship_to_ego',
     prompt: en('What is this person’s relationship to you?'),
   };

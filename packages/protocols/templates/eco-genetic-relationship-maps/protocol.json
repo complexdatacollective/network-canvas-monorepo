@@ -529,6 +529,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?"
@@ -574,12 +575,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "ego_age",
             "prompt": {
               "en": "How old are you?"
             }
           },
           {
+            "id": "field-2",
             "variable": "ego_education",
             "prompt": {
               "en": "What is the highest level of education you have completed?"
@@ -885,12 +888,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "living_status",
             "prompt": {
               "en": "{isParticipant, select, participant {Are you living or deceased?} other {Is {nodeLabel} living or deceased?}}"
             }
           },
           {
+            "id": "field-2",
             "variable": "birth_year",
             "prompt": {
               "en": "{isParticipant, select, participant {What year were you born?} other {What year was {nodeLabel} born?}}"

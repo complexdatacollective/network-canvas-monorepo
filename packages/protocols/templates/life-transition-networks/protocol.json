@@ -438,6 +438,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?"
@@ -484,12 +485,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "transition_type",
             "prompt": {
               "en": "What kind of change?"
             }
           },
           {
+            "id": "field-2",
             "variable": "transition_when",
             "prompt": {
               "en": "When did it happen?"
@@ -499,6 +502,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "transition_summary",
             "prompt": {
               "en": "In a few sentences, what happened?"

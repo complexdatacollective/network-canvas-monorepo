@@ -362,6 +362,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "ego_name",
             "prompt": {
               "en-US": "What is your name?"
@@ -405,6 +406,7 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "name",
             "prompt": {
               "en-US": "What is this person's name?"
@@ -686,12 +688,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "relationship_to_ego",
             "prompt": {
               "en-US": "What is this person's relationship to you?"
             }
           },
           {
+            "id": "field-2",
             "variable": "flagged",
             "prompt": {
               "en-US": "Does this person have this attribute?"
@@ -713,6 +717,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "edgeNotes",
             "prompt": {
               "en-US": "Add any notes about this relationship"

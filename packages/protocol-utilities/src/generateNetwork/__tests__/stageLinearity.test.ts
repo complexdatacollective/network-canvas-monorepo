@@ -49,7 +49,7 @@ describe('stage-linear node writes', () => {
         },
       ],
       behaviours: { minNodes: 1, maxNodes: 2 },
-      form: { fields: [{ variable: 'name', prompt: 'Name' }] },
+      form: { fields: [{ id: 'field-1', variable: 'name', prompt: 'Name' }] },
     } as unknown as Stage;
 
     let observedSecondPrompt = false;
@@ -119,7 +119,13 @@ describe('stage-linear node writes', () => {
       prompts: [{ id: 'people', text: 'Name people' }],
       behaviours: { minNodes: 2, maxNodes: 2 },
       form: {
-        fields: [{ variable: 'highlightEcho', prompt: 'Initial highlight' }],
+        fields: [
+          {
+            id: 'field-1',
+            variable: 'highlightEcho',
+            prompt: 'Initial highlight',
+          },
+        ],
       },
     } as unknown as Stage;
     const sociogram = {

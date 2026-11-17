@@ -41,7 +41,9 @@ const stage = {
     },
   },
   form: {
-    fields: [{ variable: 'nickname', prompt: { en: 'Your nickname' } }],
+    fields: [
+      { id: 'field-1', variable: 'nickname', prompt: { en: 'Your nickname' } },
+    ],
   },
 } as unknown as StageProps<'EgoForm'>['stage'];
 

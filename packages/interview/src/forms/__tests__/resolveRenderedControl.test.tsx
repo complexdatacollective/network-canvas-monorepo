@@ -66,6 +66,7 @@ describe('every path through the correction agrees', () => {
       { consented: REQUIRED_BOOLEAN },
       [
         {
+          id: 'field-L68',
           variable: asEntityAttributeReference('consented'),
           prompt: { en: 'Do you consent?' },
         },

@@ -432,14 +432,17 @@ export const BasicFields: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('name'),
         prompt: { en: 'What is your name?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('email'),
         prompt: { en: 'What is your email?' },
       },
       {
+        id: 'field-3',
         variable: asEntityAttributeReference('age'),
         prompt: { en: 'How old are you?' },
       },
@@ -460,10 +463,12 @@ export const WithAutoFocus: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('name'),
         prompt: { en: 'What is your name?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('occupation'),
         prompt: { en: 'What is your occupation?' },
       },
@@ -484,10 +489,12 @@ export const SelectionFields: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('gender'),
         prompt: { en: 'What is your gender?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('favoriteColors'),
         prompt: { en: 'Select your favorite colors (1-3)' },
       },
@@ -507,14 +514,17 @@ export const ToggleFields: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('isEmployed'),
         prompt: { en: 'Are you currently employed?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('acceptTerms'),
         prompt: { en: 'I accept the terms and conditions' },
       },
       {
+        id: 'field-3',
         variable: asEntityAttributeReference('preferredContact'),
         prompt: { en: 'Preferred contact method' },
       },
@@ -534,10 +544,12 @@ export const DateFields: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('birthDate'),
         prompt: { en: 'When were you born?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('startDate'),
         prompt: { en: 'When did you start your current job?' },
       },
@@ -557,10 +569,12 @@ export const ScaleFields: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('happiness'),
         prompt: { en: 'How happy are you overall?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('satisfaction'),
         prompt: { en: 'How satisfied are you with your job?' },
       },
@@ -580,10 +594,12 @@ export const TextAreaField: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('name'),
         prompt: { en: 'What is your name?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('bio'),
         prompt: { en: 'Tell us about yourself (max 500 characters)' },
       },
@@ -602,26 +618,32 @@ export const WithInitialValues: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('name'),
         prompt: { en: 'What is your name?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('age'),
         prompt: { en: 'How old are you?' },
       },
       {
+        id: 'field-3',
         variable: asEntityAttributeReference('gender'),
         prompt: { en: 'What is your gender?' },
       },
       {
+        id: 'field-4',
         variable: asEntityAttributeReference('favoriteColors'),
         prompt: { en: 'Select your favorite colors' },
       },
       {
+        id: 'field-5',
         variable: asEntityAttributeReference('isEmployed'),
         prompt: { en: 'Are you currently employed?' },
       },
       {
+        id: 'field-6',
         variable: asEntityAttributeReference('bio'),
         prompt: { en: 'Tell us about yourself' },
       },
@@ -649,42 +671,52 @@ export const ComprehensiveForm: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('name'),
         prompt: { en: 'What is your name?' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('email'),
         prompt: { en: 'What is your email?' },
       },
       {
+        id: 'field-3',
         variable: asEntityAttributeReference('age'),
         prompt: { en: 'How old are you?' },
       },
       {
+        id: 'field-4',
         variable: asEntityAttributeReference('gender'),
         prompt: { en: 'What is your gender?' },
       },
       {
+        id: 'field-5',
         variable: asEntityAttributeReference('occupation'),
         prompt: { en: 'What is your occupation?' },
       },
       {
+        id: 'field-6',
         variable: asEntityAttributeReference('isEmployed'),
         prompt: { en: 'Are you currently employed?' },
       },
       {
+        id: 'field-7',
         variable: asEntityAttributeReference('satisfaction'),
         prompt: { en: 'How satisfied are you with your job?' },
       },
       {
+        id: 'field-8',
         variable: asEntityAttributeReference('favoriteColors'),
         prompt: { en: 'What are your favorite colors? (Select 1-3)' },
       },
       {
+        id: 'field-9',
         variable: asEntityAttributeReference('preferredContact'),
         prompt: { en: 'How should we contact you?' },
       },
       {
+        id: 'field-10',
         variable: asEntityAttributeReference('bio'),
         prompt: { en: 'Tell us about yourself' },
       },
@@ -705,6 +737,7 @@ export const MinimalForm: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('name'),
         prompt: { en: 'What is your name?' },
       },
@@ -723,6 +756,7 @@ export const UniqueValidation: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('nickname'),
         prompt: {
           en: 'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
@@ -744,10 +778,12 @@ export const SameAsValidation: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('password'),
         prompt: { en: 'Enter your password' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('confirmPassword'),
         prompt: { en: 'Confirm your password' },
       },
@@ -767,10 +803,12 @@ export const DifferentFromValidation: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('email'),
         prompt: { en: 'Enter your primary email' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('alternateEmail'),
         prompt: {
           en: 'Enter an alternate email (must be different from primary)',
@@ -792,10 +830,12 @@ export const GreaterThanVariableValidation: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('startAge'),
         prompt: { en: 'Enter start age' },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('endAge'),
         prompt: { en: 'Enter end age (must be greater than start age)' },
       },
@@ -815,34 +855,41 @@ export const ContextDependentValidations: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('nickname'),
         prompt: {
           en: 'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
         },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('password'),
         prompt: { en: 'Enter your password' },
       },
       {
+        id: 'field-3',
         variable: asEntityAttributeReference('confirmPassword'),
         prompt: { en: 'Confirm your password (must match password)' },
       },
       {
+        id: 'field-4',
         variable: asEntityAttributeReference('email'),
         prompt: { en: 'Enter your primary email' },
       },
       {
+        id: 'field-5',
         variable: asEntityAttributeReference('alternateEmail'),
         prompt: {
           en: 'Enter an alternate email (must be different from primary)',
         },
       },
       {
+        id: 'field-6',
         variable: asEntityAttributeReference('startAge'),
         prompt: { en: 'Enter start age' },
       },
       {
+        id: 'field-7',
         variable: asEntityAttributeReference('endAge'),
         prompt: { en: 'Enter end age (must be greater than start age)' },
       },
@@ -862,6 +909,7 @@ export const HintText: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('name'),
         prompt: { en: 'What is your name?' },
         hint: {
@@ -869,11 +917,13 @@ export const HintText: Story = {
         },
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('email'),
         prompt: { en: 'What is your email?' },
         hint: { en: 'We will use this to send you a confirmation.' },
       },
       {
+        id: 'field-3',
         variable: asEntityAttributeReference('age'),
         prompt: { en: 'How old are you?' },
       },
@@ -893,22 +943,26 @@ export const ValidationHints: Story = {
   args: {
     fields: [
       {
+        id: 'field-1',
         variable: asEntityAttributeReference('name'),
         prompt: { en: 'What is your name?' },
         hint: { en: 'Enter your full legal name.' },
         showValidationHints: true,
       },
       {
+        id: 'field-2',
         variable: asEntityAttributeReference('email'),
         prompt: { en: 'What is your email?' },
         showValidationHints: true,
       },
       {
+        id: 'field-3',
         variable: asEntityAttributeReference('age'),
         prompt: { en: 'How old are you?' },
         showValidationHints: true,
       },
       {
+        id: 'field-4',
         variable: asEntityAttributeReference('favoriteColors'),
         prompt: { en: 'Select your favorite colors' },
         hint: { en: 'Pick the colors you like most.' },

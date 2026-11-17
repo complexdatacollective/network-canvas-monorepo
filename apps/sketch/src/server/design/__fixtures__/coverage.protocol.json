@@ -486,6 +486,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-ego_consent",
             "variable": "ego_consent",
             "prompt": {
               "en": "Do you agree to take part in this study?"
@@ -511,12 +512,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-ego_year",
             "variable": "ego_year",
             "prompt": {
               "en": "Which year of study are you in?"
             }
           },
           {
+            "id": "field-ego_commutes",
             "variable": "ego_commutes",
             "prompt": {
               "en": "Do you commute to campus?"
@@ -681,12 +684,14 @@
         },
         "fields": [
           {
+            "id": "field-place_name",
             "variable": "place_name",
             "prompt": {
               "en": "What is this place called?"
             }
           },
           {
+            "id": "field-place_hours",
             "variable": "place_hours",
             "prompt": {
               "en": "How many hours a week do you spend there?"
@@ -973,6 +978,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-friends_since",
             "variable": "friends_since",
             "prompt": {
               "en": "Since when have they been friends?"
@@ -1214,12 +1220,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-classmate_commuter",
             "variable": "classmate_commuter",
             "prompt": {
               "en": "Commutes?"
             }
           },
           {
+            "id": "field-classmate_year_of_study",
             "variable": "classmate_year_of_study",
             "prompt": {
               "en": "Year of study"
@@ -1593,24 +1601,28 @@
       "form": {
         "fields": [
           {
+            "id": "field-ego_satisfaction",
             "variable": "ego_satisfaction",
             "prompt": {
               "en": "How satisfied are you with university life?"
             }
           },
           {
+            "id": "field-ego_notes",
             "variable": "ego_notes",
             "prompt": {
               "en": "Anything else you would like to tell us?"
             }
           },
           {
+            "id": "field-ego_birth_date",
             "variable": "ego_birth_date",
             "prompt": {
               "en": "What is your date of birth?"
             }
           },
           {
+            "id": "field-ego_year_started",
             "variable": "ego_year_started",
             "prompt": {
               "en": "In which year did you start university?"

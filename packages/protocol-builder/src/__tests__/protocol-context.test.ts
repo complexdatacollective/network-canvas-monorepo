@@ -225,7 +225,7 @@ describe('protocolContextFromSections', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: text('Add'),
-        fields: [{ variable: 'name', prompt: text('Name') }],
+        fields: [{ id: 'field-1', variable: 'name', prompt: text('Name') }],
       },
       prompts: [{ id: 'p1', text: text('Who?') }],
       // The only thing this stage gets wrong is the rule.

@@ -57,7 +57,7 @@ const nameGeneratorRankingRank = {
   ...nameGenerator,
   form: {
     title: 'About this person',
-    fields: [{ variable: 'rank', prompt: 'Rank' }],
+    fields: [{ id: 'field-1', variable: 'rank', prompt: 'Rank' }],
   },
 } as unknown as Stage;
 
@@ -130,7 +130,7 @@ describe('a unique variable used only by a binning stage', () => {
       label: 'About each person',
       subject: { entity: 'node', type: 'person' },
       form: {
-        fields: [{ variable: 'rank', prompt: 'Rank' }],
+        fields: [{ id: 'field-1', variable: 'rank', prompt: 'Rank' }],
       },
       skipLogic: {
         action: 'SKIP',

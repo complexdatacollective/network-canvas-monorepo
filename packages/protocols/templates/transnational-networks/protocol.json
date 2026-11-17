@@ -654,6 +654,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?",
@@ -712,6 +713,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "birth_country",
             "prompt": {
               "en": "Were you born in the country where you live now, or in another country?",
@@ -720,6 +722,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "arrival_year",
             "prompt": {
               "en": "In what year did you first come to live in this country?",
@@ -733,6 +736,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "years_since_migration",
             "hint": {
               "en": "{arrivalYear, select, missing {} other {You said you first came to live here in {arrivalYear}.}}",
@@ -746,6 +750,7 @@
             }
           },
           {
+            "id": "field-4",
             "variable": "residency_status",
             "prompt": {
               "en": "Which of the following best describes your current residency or legal status?",
@@ -754,6 +759,7 @@
             }
           },
           {
+            "id": "field-5",
             "variable": "language_proficiency",
             "prompt": {
               "en": "How well do you feel you can speak the main language of this country?",
@@ -762,6 +768,7 @@
             }
           },
           {
+            "id": "field-6",
             "variable": "acculturative_stress",
             "prompt": {
               "en": "How much do you agree with the following: \"Because of where I come from, I often feel out of place or that I do not fully belong here.\"",
@@ -808,6 +815,7 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's name or a nickname you will recognise?",
@@ -876,6 +884,7 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's name or a nickname you will recognise?",
@@ -953,6 +962,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "relationship",
             "prompt": {
               "en": "How would you best categorize {nodeLabel}?",
@@ -961,6 +971,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "shared_language",
             "prompt": {
               "en": "Which language do you mainly speak together?",
@@ -969,6 +980,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "co_ethnic",
             "prompt": {
               "en": "Would you say {nodeLabel} is from the **same ethnic or cultural background** as you?",
@@ -977,6 +989,7 @@
             }
           },
           {
+            "id": "field-4",
             "variable": "support_type",
             "prompt": {
               "en": "What kinds of **support** does {nodeLabel} give you?",

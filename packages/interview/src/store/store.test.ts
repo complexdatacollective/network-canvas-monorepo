@@ -85,6 +85,7 @@ const payload: InterviewPayload = {
           title: { en: 'Add a person' },
           fields: [
             {
+              id: 'field-1',
               variable: asEntityAttributeReference('name'),
               prompt: { en: 'Name' },
             },

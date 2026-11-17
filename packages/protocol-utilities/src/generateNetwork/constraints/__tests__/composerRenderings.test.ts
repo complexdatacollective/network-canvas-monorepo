@@ -141,6 +141,7 @@ function alterFormStage(
     form: {
       fields: [
         {
+          id: 'field-1',
           variable: asEntityAttributeReference(variable),
           prompt: { 'en-US': 'Enter a value' },
         },

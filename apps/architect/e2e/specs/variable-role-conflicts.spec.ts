@@ -94,7 +94,11 @@ function conflictProtocol(): CurrentProtocol {
           subject: { entity: 'node', type: 'person' },
           form: {
             fields: [
-              { variable: 'sharedVar', prompt: { en: 'Shared field prompt' } },
+              {
+                id: 'field-1',
+                variable: 'sharedVar',
+                prompt: { en: 'Shared field prompt' },
+              },
             ],
           },
         },
@@ -106,6 +110,7 @@ function conflictProtocol(): CurrentProtocol {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'formOnlyVar',
                 prompt: { en: 'Form only field prompt' },
               },

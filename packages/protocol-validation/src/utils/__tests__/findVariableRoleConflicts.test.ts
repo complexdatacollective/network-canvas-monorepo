@@ -10,7 +10,7 @@ const egoFormStage = (variable: string) => ({
   type: 'EgoForm',
   label: localized('About you'),
   introductionPanel: { title: localized('T'), text: localized('X') },
-  form: { fields: [{ variable, prompt: localized('Answer') }] },
+  form: { fields: [{ id: 'field-1', variable, prompt: localized('Answer') }] },
 });
 
 const alterFormStage = (variable: string) => ({
@@ -19,7 +19,7 @@ const alterFormStage = (variable: string) => ({
   label: localized('Alter form'),
   subject: { entity: 'node', type: 'person' },
   introductionPanel: { title: localized('T'), text: localized('X') },
-  form: { fields: [{ variable, prompt: localized('Answer') }] },
+  form: { fields: [{ id: 'field-1', variable, prompt: localized('Answer') }] },
 });
 
 const categoricalBinStage = (variable: string) => ({
@@ -52,7 +52,13 @@ const familyPedigreeStage = (formVariable: string) => ({
     currentPartnerAttribute: 'pedigreeCurrent',
   },
   form: {
-    fields: [{ variable: formVariable, prompt: localized('Family history') }],
+    fields: [
+      {
+        id: 'field-1',
+        variable: formVariable,
+        prompt: localized('Family history'),
+      },
+    ],
   },
 });
 

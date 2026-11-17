@@ -140,6 +140,7 @@ const codebookWith = (nodeVariables: Record<string, Variable>): Codebook => ({
 function fieldFor(variable: string): FormField[] {
   return [
     {
+      id: 'field-L142',
       variable: asEntityAttributeReference(variable),
       prompt: { en: 'Answer' },
     },

@@ -686,6 +686,7 @@ export const compile = (
       ? ''
       : W.question.get(qk);
     return {
+      id: `field-${key(scope, attrId)}`,
       variable: key(scope, attrId),
       prompt: localized(pick(polished, a.question, a.label)),
     };
@@ -975,6 +976,7 @@ export const compile = (
                 ),
                 fields: [
                   {
+                    id: `field-${nameKey}`,
                     variable: nameKey,
                     prompt: localized(
                       pick(W.question.get(`${scope}/name`), n.nameQuestion),

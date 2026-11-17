@@ -274,6 +274,7 @@ const protocolDocument = () => ({
       form: {
         fields: [
           {
+            id: 'field-1',
             variable: 'egoName',
             prompt: localized('What is your name?'),
             hint: localized('First name is fine'),
@@ -288,7 +289,9 @@ const protocolDocument = () => ({
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add a person'),
-        fields: [{ variable: 'name', prompt: localized('Their name') }],
+        fields: [
+          { id: 'field-1', variable: 'name', prompt: localized('Their name') },
+        ],
       },
       behaviours: { minNodes: 1, maxNodes: 5 },
       minNodesNotice: localized(
@@ -413,7 +416,13 @@ const protocolDocument = () => ({
       label: localized('About them'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        fields: [{ variable: 'nickname', prompt: localized('Nickname') }],
+        fields: [
+          {
+            id: 'field-1',
+            variable: 'nickname',
+            prompt: localized('Nickname'),
+          },
+        ],
       },
     },
     {
@@ -421,7 +430,11 @@ const protocolDocument = () => ({
       type: 'AlterEdgeForm',
       label: localized('About ties'),
       subject: { entity: 'edge', type: 'knows' },
-      form: { fields: [{ variable: 'note', prompt: localized('Note') }] },
+      form: {
+        fields: [
+          { id: 'field-1', variable: 'note', prompt: localized('Note') },
+        ],
+      },
     },
     {
       id: 'dyadCensus',
@@ -575,6 +588,7 @@ const protocolDocument = () => ({
       form: {
         fields: [
           {
+            id: 'field-1',
             variable: 'birthYear',
             prompt: localized('Birth year?'),
             hint: localized('Approximate is fine'),

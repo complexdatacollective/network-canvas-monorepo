@@ -395,6 +395,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "ego_name",
             "prompt": {
               "en-US": "What is your name?",
@@ -402,6 +403,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "consent",
             "prompt": {
               "en-US": "Do you agree to take part?",
@@ -636,6 +638,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "follow_up",
             "prompt": {
               "en-US": "Should we follow up with {nodeLabel}?",

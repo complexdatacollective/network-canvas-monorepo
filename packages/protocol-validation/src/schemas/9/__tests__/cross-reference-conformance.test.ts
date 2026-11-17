@@ -470,7 +470,13 @@ describe('Cross-reference conformance', () => {
             subject: { entity: 'node', type: 'person' },
             form: {
               title: localized('Add person'),
-              fields: [{ variable: 'name', prompt: localized('Enter name') }],
+              fields: [
+                {
+                  id: 'field-1',
+                  variable: 'name',
+                  prompt: localized('Enter name'),
+                },
+              ],
             },
             prompts: [{ id: 'p1', text: localized('who') }],
             panels: [

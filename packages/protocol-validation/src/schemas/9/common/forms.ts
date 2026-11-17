@@ -4,10 +4,14 @@ import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 
 export const FormFieldSchema = z.strictObject({
-  // Architect assigns a stable id (uuid) on creation so the editor's
-  // OrderedList / motion Reorder keying survives reorder + delete; it is
-  // persisted, so the schema must tolerate it.
-  id: z.string().optional(),
+  // A stable identity for the field, unlike its position or its variable, both
+  // of which an edit can change. Architect assigns a uuid when it creates a
+  // field, and the schema 8 to 9 migration assigns one to every field it
+  // upgrades. Anything that tracks a field across copies of a protocol (the
+  // editor's reordering, the protocol review) relies on every field having
+  // one, so it is required. It is unique within its form
+  // (`uniqueFormFieldIds`).
+  id: z.string().min(1),
   variable: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
@@ -95,12 +99,44 @@ export const uniqueFormFieldVariables = (
 };
 
 /**
- * A bare array of form fields carrying the uniqueness rule — for the surfaces
+ * One form may not give two fields the same id: an id exists to tell the
+ * fields of a form apart across copies, so a repeat defeats it. The second
+ * occurrence is the one rejected, as for a repeated variable; the scope is
+ * ONE form.
+ */
+const uniqueFormFieldIds = (
+  fields: readonly { id: string }[],
+  ctx: z.RefinementCtx,
+): void => {
+  const seen = new Set<string>();
+  fields.forEach((field, index) => {
+    if (seen.has(field.id)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Form fields contain duplicate id "${field.id}"`,
+        path: [index, 'id'],
+      });
+      return;
+    }
+    seen.add(field.id);
+  });
+};
+
+const uniqueFormFields = (
+  fields: readonly { id: string; variable: string }[],
+  ctx: z.RefinementCtx,
+): void => {
+  uniqueFormFieldVariables(fields, ctx);
+  uniqueFormFieldIds(fields, ctx);
+};
+
+/**
+ * A bare array of form fields carrying the uniqueness rules — for the surfaces
  * that hold fields without the surrounding `FormSchema` object.
  */
 export const FormFieldArraySchema = z
   .array(FormFieldSchema)
-  .superRefine(uniqueFormFieldVariables);
+  .superRefine(uniqueFormFields);
 
 export const FormSchema = z.strictObject({
   title: localizedString(
@@ -110,7 +146,7 @@ export const FormSchema = z.strictObject({
       dynamicValues: 'stageText',
     },
   ),
-  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
+  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFields),
 });
 
 export type Form = z.infer<typeof FormSchema>;
@@ -118,7 +154,7 @@ export type Form = z.infer<typeof FormSchema>;
 // EgoForm/AlterForm/AlterEdgeForm never render form.title, so those stages use
 // this title-less variant to keep authored protocols honest.
 export const TitlelessFormSchema = z.strictObject({
-  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
+  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFields),
 });
 
 export type TitlelessForm = z.infer<typeof TitlelessFormSchema>;

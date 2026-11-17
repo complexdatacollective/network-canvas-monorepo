@@ -139,7 +139,11 @@ describe('stage subjects resolve during collection', () => {
       familyPedigree({
         form: {
           fields: [
-            { variable: 'notInCodebook', prompt: localized('Tell us more') },
+            {
+              id: 'field-1',
+              variable: 'notInCodebook',
+              prompt: localized('Tell us more'),
+            },
           ],
         },
       }),
@@ -222,7 +226,11 @@ describe('stage subjects resolve during collection', () => {
       familyPedigree({
         form: {
           fields: [
-            { variable: 'hasConditionX', prompt: localized('Affected?') },
+            {
+              id: 'field-1',
+              variable: 'hasConditionX',
+              prompt: localized('Affected?'),
+            },
           ],
         },
       }),
@@ -238,7 +246,11 @@ describe('stage subjects resolve during collection', () => {
       familyPedigree({
         form: {
           fields: [
-            { variable: 'hasConditionX', prompt: localized('Affected?') },
+            {
+              id: 'field-1',
+              variable: 'hasConditionX',
+              prompt: localized('Affected?'),
+            },
           ],
         },
       }),

@@ -285,7 +285,9 @@ describe('the interface text a protocol shows', () => {
     expect(
       asksToDiscard({
         type: 'NetworkComposer',
-        nodeForm: { fields: [{ variable: 'age', prompt: { en: 'Age' } }] },
+        nodeForm: {
+          fields: [{ id: 'field-1', variable: 'age', prompt: { en: 'Age' } }],
+        },
       }),
     ).toBe(true);
     expect(
@@ -294,7 +296,11 @@ describe('the interface text a protocol shows', () => {
         edges: [
           {
             subject: { entity: 'edge', type: 'knows' },
-            form: { fields: [{ variable: 'since', prompt: { en: 'Since' } }] },
+            form: {
+              fields: [
+                { id: 'field-1', variable: 'since', prompt: { en: 'Since' } },
+              ],
+            },
           },
         ],
       }),

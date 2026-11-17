@@ -622,12 +622,14 @@
         },
         "fields": [
           {
+            "id": "field-world_illustrated_name",
             "variable": "world_illustrated_name",
             "prompt": {
               "en": "What do you call them or it?"
             }
           },
           {
+            "id": "field-world_illustrated_type",
             "variable": "world_illustrated_type",
             "prompt": {
               "en": "What kind of thing is it?"
@@ -709,12 +711,14 @@
         },
         "fields": [
           {
+            "id": "field-world_accented_name",
             "variable": "world_accented_name",
             "prompt": {
               "en": "What do you call them or it?"
             }
           },
           {
+            "id": "field-world_accented_type",
             "variable": "world_accented_type",
             "prompt": {
               "en": "What kind of thing is it?"

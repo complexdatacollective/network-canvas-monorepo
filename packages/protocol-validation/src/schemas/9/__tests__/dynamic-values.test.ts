@@ -235,8 +235,9 @@ describe('dynamic values in stage text', () => {
         };
         stage.form = {
           fields: [
-            { variable: 'nickname', prompt: { en: 'Nickname' } },
+            { id: 'field-1', variable: 'nickname', prompt: { en: 'Nickname' } },
             {
+              id: 'field-2',
               variable: 'name',
               prompt: {
                 en: '{kind, select, missing {Their name?} friend {Your friend’s name?} other {Their name?}}',
@@ -255,6 +256,7 @@ describe('dynamic values in stage text', () => {
         stage.form = {
           fields: [
             {
+              id: 'field-1',
               variable: 'name',
               prompt: {
                 en: '{kind, select, friend {Your friend?} other {Them?}}',
@@ -328,7 +330,9 @@ describe('dynamic values in stage text', () => {
           flag: { path: 'node.flag', ...(cases && { cases }) },
         };
         stage.form = {
-          fields: [{ variable: 'nickname', prompt: { en: message } }],
+          fields: [
+            { id: 'field-1', variable: 'nickname', prompt: { en: message } },
+          ],
         };
       });
     const UNLABELLED =
@@ -486,9 +490,17 @@ describe('dynamic values in stage text', () => {
         };
         stage.form = {
           fields: [
-            { variable: 'nickname', prompt: { en: 'Nickname?' } },
-            { variable: 'name', prompt: { en: 'Name?' } },
-            { variable: 'strength', prompt: { en: 'Strength?' } },
+            {
+              id: 'field-1',
+              variable: 'nickname',
+              prompt: { en: 'Nickname?' },
+            },
+            { id: 'field-2', variable: 'name', prompt: { en: 'Name?' } },
+            {
+              id: 'field-3',
+              variable: 'strength',
+              prompt: { en: 'Strength?' },
+            },
           ],
         };
       });
@@ -512,8 +524,8 @@ describe('dynamic values in stage text', () => {
         };
         stage.form = {
           fields: [
-            { variable: 'egoName', prompt: { en: 'Name?' } },
-            { variable: 'egoAge', prompt: { en: 'Age?' } },
+            { id: 'field-1', variable: 'egoName', prompt: { en: 'Name?' } },
+            { id: 'field-2', variable: 'egoAge', prompt: { en: 'Age?' } },
           ],
         };
       });
@@ -901,7 +913,13 @@ describe('dynamic values in stage text', () => {
       const protocol = editing('alterForm', (stage) => {
         stage.dynamicValues = { secret: { path: 'node.name' } };
         stage.form = {
-          fields: [{ variable: 'nickname', prompt: { en: guarded('secret') } }],
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'nickname',
+              prompt: { en: guarded('secret') },
+            },
+          ],
         };
       });
       const person = (

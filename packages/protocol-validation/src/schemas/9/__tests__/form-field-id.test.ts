@@ -6,12 +6,12 @@ import { ComposerFormFieldSchema } from '../stages/network-composer.ts';
 
 /**
  * Architect assigns every editable form field a stable `id` (uuid) on creation
- * so the OrderedList / motion Reorder keying survives reorder + delete. That id
- * is persisted into the protocol, so the field schemas must tolerate it rather
- * than rejecting the whole protocol as invalid.
+ * so the OrderedList / motion Reorder keying survives reorder + delete, and the
+ * schema 8 to 9 migration gives one to every field it upgrades. A shared form
+ * field must carry one; a NetworkComposer field's id is still optional.
  */
 describe('form field id retention', () => {
-  it('FormFieldSchema accepts an optional stable id', () => {
+  it('FormFieldSchema accepts a stable id', () => {
     const result = FormFieldSchema.safeParse({
       id: 'a-stable-uuid',
       variable: 'personName',
@@ -19,6 +19,13 @@ describe('form field id retention', () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it('FormFieldSchema requires a non-empty id', () => {
+    const field = { variable: 'personName', prompt: localized('Name?') };
+
+    expect(FormFieldSchema.safeParse(field).success).toBe(false);
+    expect(FormFieldSchema.safeParse({ ...field, id: '' }).success).toBe(false);
   });
 
   it('ComposerFormFieldSchema accepts an optional stable id', () => {

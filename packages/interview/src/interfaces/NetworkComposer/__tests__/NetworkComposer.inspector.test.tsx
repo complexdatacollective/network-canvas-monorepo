@@ -602,7 +602,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     nodeForm: {
       fields: [
         ...nodeForm.fields,
-        { variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
+        { id: 'field-2', variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
       ],
     },
   };
@@ -612,7 +612,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     nodeForm: {
       fields: [
         ...twoQuestionStage.nodeForm.fields,
-        { variable: GROUP_VAR, prompt: { en: 'Team' } },
+        { id: 'field-2', variable: GROUP_VAR, prompt: { en: 'Team' } },
       ],
     },
   };

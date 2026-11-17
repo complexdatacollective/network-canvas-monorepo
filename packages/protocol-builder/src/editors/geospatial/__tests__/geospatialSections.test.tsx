@@ -600,7 +600,11 @@ describe('the places a geospatial stage asks about', () => {
           )
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
-          { variable: 'workplace', prompt: { 'en-US': 'Where do they work?' } },
+          {
+            id: 'field-added-1',
+            variable: 'workplace',
+            prompt: { 'en-US': 'Where do they work?' },
+          },
         ],
       },
     }));
@@ -659,7 +663,11 @@ describe('the places a geospatial stage asks about', () => {
           )
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
-          { variable: 'workplace', prompt: { 'en-US': 'Where do they work?' } },
+          {
+            id: 'field-added-1',
+            variable: 'workplace',
+            prompt: { 'en-US': 'Where do they work?' },
+          },
         ],
       },
     }));
@@ -713,8 +721,16 @@ describe('the places a geospatial stage asks about', () => {
           )
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
-          { variable: 'workplace', prompt: { 'en-US': 'Where do they work?' } },
-          { variable: 'location', prompt: { 'en-US': 'Where do they live?' } },
+          {
+            id: 'field-added-1',
+            variable: 'workplace',
+            prompt: { 'en-US': 'Where do they work?' },
+          },
+          {
+            id: 'field-added-2',
+            variable: 'location',
+            prompt: { 'en-US': 'Where do they live?' },
+          },
         ],
       },
     }));

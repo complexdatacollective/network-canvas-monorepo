@@ -94,7 +94,11 @@ function renderForm(
   });
 
   const fields: FormField[] = [
-    { variable: asEntityAttributeReference('note'), prompt: { en: prompt } },
+    {
+      id: 'field-L97',
+      variable: asEntityAttributeReference('note'),
+      prompt: { en: prompt },
+    },
   ];
 
   function PersonFields() {
@@ -299,6 +303,7 @@ describe('useProtocolForm dynamic values on an edge form', () => {
       const { fieldComponents } = useProtocolForm({
         fields: [
           {
+            id: 'field-1',
             variable: asEntityAttributeReference('note'),
             prompt: { en: 'How did {from} meet {to}?' },
           },

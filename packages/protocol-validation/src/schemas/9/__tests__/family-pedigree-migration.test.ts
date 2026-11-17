@@ -289,6 +289,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
             prompt: en('How old is {name}?'),
           },
           {
+            id: 'field-2',
             variable: 'living',
             prompt: en('Is this person living?'),
             hint: en('Say if you do not know.'),
@@ -775,7 +776,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       ];
       const migrated = migrateValid(schema8Protocol([pedigree]));
       expect(pedigreeOf(migrated).form).toEqual({
-        fields: [{ variable: 'living', prompt: en('Living?') }],
+        fields: [{ id: 'field-1', variable: 'living', prompt: en('Living?') }],
       });
     });
 
@@ -878,7 +879,11 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(pedigreeOf(migrateStep(document)).form).toEqual({
         fields: [
           AGE_FIELD,
-          { variable: 'hasCondition', prompt: en('Their hasCondition?') },
+          {
+            id: 'field-2',
+            variable: 'hasCondition',
+            prompt: en('Their hasCondition?'),
+          },
         ],
       });
       expect(() => migrateValid(document)).toThrow(MigrationResultInvalidError);

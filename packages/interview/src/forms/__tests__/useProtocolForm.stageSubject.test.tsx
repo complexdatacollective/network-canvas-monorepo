@@ -132,7 +132,11 @@ function makeWrapper() {
 }
 
 const fields: FormField[] = [
-  { variable: asEntityAttributeReference(NAME_VAR), prompt: { en: 'Name' } },
+  {
+    id: 'field-L135',
+    variable: asEntityAttributeReference(NAME_VAR),
+    prompt: { en: 'Name' },
+  },
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -193,6 +197,7 @@ describe('useProtocolForm stageSubject', () => {
   it('aliases live form values without changing validation references', () => {
     const comparisonFields: FormField[] = [
       {
+        id: 'field-L195',
         variable: asEntityAttributeReference(ALIAS_VAR),
         prompt: { en: 'Alias' },
       },
@@ -223,6 +228,7 @@ describe('useProtocolForm stageSubject', () => {
     const onSubmit = vi.fn();
     const dottedFields: FormField[] = [
       {
+        id: 'field-L225',
         variable: asEntityAttributeReference(DOTTED_VAR),
         prompt: { en: 'Favorite color' },
       },
@@ -271,6 +277,7 @@ describe('useProtocolForm stageSubject', () => {
       );
       const dangerousFields: FormField[] = [
         {
+          id: 'field-L273',
           variable: asEntityAttributeReference(variable),
           prompt: { en: 'Legacy variable' },
         },
@@ -334,6 +341,7 @@ describe('useProtocolForm variableLabels', () => {
         useProtocolForm({
           fields: [
             {
+              id: 'field-1',
               variable: asEntityAttributeReference(NAME_VAR),
               prompt: { en: 'What is your name?' },
             },

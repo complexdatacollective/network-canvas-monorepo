@@ -483,6 +483,47 @@ const shownText = (text: unknown) => {
 const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
   shownText(label) ?? { [defaultLocale]: 'Introduction' };
 
+/**
+ * Schema 9 gives every form field an `id`, a stable identity apart from its
+ * position and its attribute, which schema 8 did not record (Architect only
+ * began writing one late in schema 8). A field without a usable one is given
+ * `field-` and its position in the form, or the next free number if that is
+ * taken, so migrating one document twice gives one result. A field that has an
+ * id keeps it; a blank, non-text or repeated one is not usable, as ids must be
+ * unique within a form, and is replaced. Every stage that holds a form of the
+ * shared field shape is covered; a Network Composer stage is not, as it did
+ * not exist in schema 8 and its fields are a different shape.
+ */
+const addFormFieldIds = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type === 'NetworkComposer') continue;
+    if (!isRecord(stage.form) || !Array.isArray(stage.form.fields)) continue;
+    const fields: unknown[] = stage.form.fields;
+    const taken = new Set<string>();
+    const needsId: Record<string, unknown>[] = [];
+    for (const field of fields) {
+      if (!isRecord(field)) continue;
+      const { id } = field;
+      if (typeof id === 'string' && id !== '' && !taken.has(id)) {
+        taken.add(id);
+      } else {
+        needsId.push(field);
+      }
+    }
+    let position = 0;
+    for (const field of fields) {
+      position += 1;
+      if (!isRecord(field) || !needsId.includes(field)) continue;
+      let count = position;
+      while (taken.has(`field-${count}`)) count += 1;
+      const id = `field-${count}`;
+      field.id = id;
+      taken.add(id);
+    }
+  }
+};
+
 /** The ids the stages already use, which a stage the migration adds must not. */
 const takenStageIds = (stages: unknown): Set<string> =>
   new Set(
@@ -1325,6 +1366,8 @@ const migrationV8toV9 = createMigration({
     // conversion adds are localized with the rest.
     migrateFamilyPedigreeStages(migrated);
     migrateNarrativePedigreeStages(migrated);
+    // After the pedigree conversion, which builds its form from schema 8's.
+    addFormFieldIds(migrated);
     addLegendLabels(migrated);
     addComposerCaptions(migrated);
     moveIntroductionPanelsToInformationStages(migrated, localization);

@@ -280,6 +280,7 @@ export const collectInAnAlterForm = (
       fields: [
         ...fields,
         ...variableIds.map((variable) => ({
+          id: `field-added-${variable}`,
           variable,
           prompt: {
             'en-US': escapeMessageText(`What is this person's ${variable}?`),

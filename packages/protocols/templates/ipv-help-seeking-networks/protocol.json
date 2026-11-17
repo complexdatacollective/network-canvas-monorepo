@@ -484,6 +484,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?"
@@ -544,18 +545,21 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "ego_age",
             "prompt": {
               "en": "How old are you, in years?"
             }
           },
           {
+            "id": "field-2",
             "variable": "relationship_status",
             "prompt": {
               "en": "Which of these best describes your relationship with the person who harmed you **now**?"
             }
           },
           {
+            "id": "field-3",
             "variable": "children_in_home",
             "prompt": {
               "en": "Do any children live with you?"
@@ -577,6 +581,7 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "person_name",
             "prompt": {
               "en": "What is this person's name, nickname, or initials?"
@@ -586,6 +591,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "private_note",
             "prompt": {
               "en": "Is there anything you want to remember about this person?"
@@ -664,6 +670,7 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "service_name",
             "prompt": {
               "en": "What is the name of this service or organisation?"
@@ -673,6 +680,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "service_type",
             "prompt": {
               "en": "What kind of service is it?"
@@ -751,18 +759,21 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "relationship",
             "prompt": {
               "en": "How do you know {nodeLabel}?"
             }
           },
           {
+            "id": "field-2",
             "variable": "contact_frequency",
             "prompt": {
               "en": "How often are you usually in touch with {nodeLabel}?"
             }
           },
           {
+            "id": "field-3",
             "variable": "knows_about_abuse",
             "prompt": {
               "en": "Does {nodeLabel} **know** about what has been happening in your relationship?"
@@ -826,6 +837,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "service_helpful",
             "prompt": {
               "en": "Overall, how helpful was {nodeLabel}?"
