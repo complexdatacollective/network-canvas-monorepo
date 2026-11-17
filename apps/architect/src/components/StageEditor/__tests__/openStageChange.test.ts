@@ -113,6 +113,49 @@ describe('stageChangeRewrite', () => {
     ]);
   });
 
+  it('keeps an unsaved edit to one field when the change edits another, matching fields by attribute', () => {
+    const before = {
+      form: {
+        fields: [
+          { variable: 'a', prompt: 'A?' },
+          { variable: 'b', prompt: 'B?' },
+        ],
+      },
+    };
+    const after = {
+      form: {
+        fields: [
+          { variable: 'a', prompt: 'A, now?' },
+          { variable: 'b', prompt: 'B?' },
+        ],
+      },
+    };
+    const draft = {
+      form: {
+        fields: [
+          { variable: 'a', prompt: 'A?' },
+          { variable: 'b', prompt: 'B, edited' },
+        ],
+      },
+    };
+    expect(stageChangeRewrite(before, after)(draft).form).toEqual({
+      fields: [
+        { variable: 'a', prompt: 'A, now?' },
+        { variable: 'b', prompt: 'B, edited' },
+      ],
+    });
+  });
+
+  it('keeps an unsaved edit to one member of a list nothing identifies, by position', () => {
+    const before = { items: [{ text: 'one' }, { text: 'two' }] };
+    const after = { items: [{ text: 'ONE' }, { text: 'two' }] };
+    const draft = { items: [{ text: 'one' }, { text: 'two, edited' }] };
+    expect(stageChangeRewrite(before, after)(draft).items).toEqual([
+      { text: 'ONE' },
+      { text: 'two, edited' },
+    ]);
+  });
+
   it('takes a list whose members have no ids as the change left it', () => {
     const before = stored();
     const after = { ...stored(), form: { fields: [{ variable: 'a' }] } };

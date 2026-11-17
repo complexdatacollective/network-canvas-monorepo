@@ -39,8 +39,18 @@ export const openStageId = (): string | null => open?.stageId ?? null;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const idOf = (member: unknown): string | null =>
-  isRecord(member) && typeof member.id === 'string' ? member.id : null;
+/**
+ * What identifies a member of a list across copies: its id, or, for members
+ * that have none (such as a form's fields, which may omit theirs), the
+ * attribute it records, which a list holds once at most.
+ */
+const idOf = (member: unknown): string | null => {
+  if (!isRecord(member)) return null;
+  if (typeof member.id === 'string') return member.id;
+  return typeof member.variable === 'string'
+    ? `variable:${member.variable}`
+    : null;
+};
 
 const byId = (members: readonly unknown[]) =>
   new Map(members.map((member) => [idOf(member), member]));
@@ -83,8 +93,10 @@ const carriedMembers = (
   return [...changed, ...onlyInDraft];
 };
 
-const allHaveIds = (members: readonly unknown[]) =>
-  members.every((member) => idOf(member) !== null);
+const allHaveIds = (members: readonly unknown[]) => {
+  const ids = members.map(idOf);
+  return ids.every((id) => id !== null) && new Set(ids).size === ids.length;
+};
 
 /**
  * `held` with the change from `before` to `after` made to it, and nothing
@@ -128,6 +140,20 @@ function carried(before: unknown, after: unknown, held: unknown): unknown {
     [before, after, held].every(allHaveIds)
   ) {
     return carriedMembers(before, after, held);
+  }
+  // Members nothing identifies: matched by position while no copy has added
+  // or removed one, so an unsaved edit to one member survives a change to
+  // another.
+  if (
+    Array.isArray(before) &&
+    Array.isArray(after) &&
+    Array.isArray(held) &&
+    before.length === after.length &&
+    held.length === after.length
+  ) {
+    return held.map((member, index) =>
+      carried(before[index], after[index], member),
+    );
   }
   return after;
 }
