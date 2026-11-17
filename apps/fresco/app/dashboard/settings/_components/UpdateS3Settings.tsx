@@ -17,54 +17,62 @@ const messages = defineMessages({
   secret: {
     id: 'fresco.settings.s3.secret',
     defaultMessage: 'Secret Access Key',
-    description: 'Researcher-facing settings.s3: Secret Access Key',
+    description:
+      'Label and accessible name of a password-style field in the Storage card of Settings: the secret half of the S3 storage credentials. Not a passkey or a two-factor code.',
   },
 
   accessKey: {
     id: 'fresco.settings.s3.accessKey',
     defaultMessage: 'Access Key ID',
-    description: 'Researcher-facing settings.s3: Access Key ID',
+    description:
+      'Label and accessible name of a password-style field in the Storage card of Settings: the identifier half of the S3 storage credentials. Not a passkey.',
   },
 
   region: {
     id: 'fresco.settings.s3.region',
     defaultMessage: 'Region',
-    description: 'Researcher-facing settings.s3: Region',
+    description:
+      'Label and accessible name of the text field in the Storage card of Settings for the cloud region of the S3 storage bucket (a data-centre location, not a country setting).',
   },
 
   bucket: {
     id: 'fresco.settings.s3.bucket',
     defaultMessage: 'Bucket Name',
-    description: 'Researcher-facing settings.s3: Bucket Name',
+    description:
+      'Label and accessible name of the text field in the Storage card of Settings for the name of the S3 bucket that holds uploaded files.',
   },
 
   publicURL: {
     id: 'fresco.settings.s3.publicURL',
     defaultMessage: 'Public URL',
-    description: 'Researcher-facing settings.s3: Public URL',
+    description:
+      "Label and accessible name of the text field in the Storage card of Settings for the public web address (URL) through which the S3 bucket's files are reached.",
   },
 
   endpoint: {
     id: 'fresco.settings.s3.endpoint',
     defaultMessage: 'Endpoint URL',
-    description: 'Researcher-facing settings.s3: Endpoint URL',
+    description:
+      'Label and accessible name of the text field in the Storage card of Settings for the web address (URL) of the S3-compatible storage service Fresco connects to.',
   },
 
   copyFailedToSaveSetting: {
     id: 'fresco.settings.UpdateS3Settings.copyFailedToSaveSetting',
     defaultMessage: 'Failed to save setting',
     description:
-      'Researcher-facing settings / UpdateS3Settings: Failed to save setting',
+      'Error shown in red under an S3 storage field in Settings when saving the value the researcher entered failed.',
   },
   copySaving: {
     id: 'fresco.settings.UpdateS3Settings.copySaving',
     defaultMessage: 'Saving...',
-    description: 'Researcher-facing settings / UpdateS3Settings: Saving...',
+    description:
+      'Label of the Save button under an S3 storage field in Settings while the value is being saved (progress state).',
   },
   reset: {
     id: 'fresco.settings.UpdateS3Settings.reset',
     defaultMessage: 'Reset',
-    description: 'Researcher-facing settings / UpdateS3Settings: Reset',
+    description:
+      'Button beside Save under an S3 storage field in Settings, shown after the text was changed; puts the field back to its last saved value (verb).',
   },
 });
 

@@ -1,8 +1,8 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
+import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
 import type { LocalizedString, Stage } from '@codaco/protocol-validation';
-import { familyPedigreeWordingIn } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 
 import { commitStage } from '../commitStage';
@@ -502,10 +502,9 @@ describe('protocol.stages', () => {
   });
 
   describe('sync action creators', () => {
-    it('moveStage', () => {
-      const action = actionCreators.moveStage(2, 1);
-      expect(action.type).toBe('stages/moveStage');
-      expect(action.payload).toEqual({ oldIndex: 2, newIndex: 1 });
+    it('moveStage moves the stage at its first index to its second', () => {
+      const moved = reducer(mockStages, actionCreators.moveStage(2, 0));
+      expect(moved.map(({ id }) => id)).toEqual(['5', '3', '9']);
     });
   });
 });

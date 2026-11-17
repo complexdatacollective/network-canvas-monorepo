@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { z } from 'zod/mini';
 
+import { isRightToLeft } from '../utils/horizontalOverflow';
 import useSafeLocalStorage from './useSafeLocalStorage';
 
 type Breakpoint = {
@@ -26,11 +27,15 @@ type UseResizablePanelOptions = {
   orientation?: 'horizontal' | 'vertical';
   keyboardStep?: number;
   /**
-   * When true, the resized (first) panel sits at the END of the main axis (right
-   * for horizontal, bottom for vertical) instead of the start. The pointer
-   * position is measured from that end so dragging the handle still grows/shrinks
-   * the panel in the natural direction. Pair with `flex-row-reverse` /
-   * `flex-col-reverse` on the container.
+   * When true, the resized (first) panel sits at the END of the main axis (the
+   * end edge for horizontal, bottom for vertical) instead of the start. The
+   * pointer position is measured from that end so dragging the handle still
+   * grows/shrinks the panel in the natural direction. Pair with
+   * `flex-row-reverse` / `flex-col-reverse` on the container.
+   *
+   * Horizontally, start and end follow the writing direction: the start edge
+   * is the right in a right-to-left language, as it is for the flex row the
+   * panels are laid out in.
    */
   reverse?: boolean;
 };
@@ -130,10 +135,13 @@ export default function useResizablePanel({
 
       const rect = container.getBoundingClientRect();
       const isHorizontal = orientation === 'horizontal';
-      // When reversed the panel grows from the opposite edge, so measure the
-      // pointer from that edge (right/bottom) to keep the drag direction natural.
+      // The panel grows from the edge it sits against, so measure the pointer
+      // from that edge to keep the drag direction natural. A row starts from
+      // the right in a right-to-left language, which puts an unreversed panel
+      // against the right and a reversed one against the left.
+      const fromRight = reverse !== isRightToLeft(container);
       const pos = isHorizontal
-        ? reverse
+        ? fromRight
           ? rect.right - clientX
           : clientX - rect.left
         : reverse
@@ -197,8 +205,15 @@ export default function useResizablePanel({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLElement>) => {
       const isHorizontal = orientation === 'horizontal';
-      const increaseKey = isHorizontal ? 'ArrowRight' : 'ArrowDown';
-      const decreaseKey = isHorizontal ? 'ArrowLeft' : 'ArrowUp';
+      // The key that points towards the end of the row grows the panel, as it
+      // does on any slider: the left arrow in a right-to-left language.
+      const towardsEnd = isRightToLeft(e.currentTarget)
+        ? 'ArrowLeft'
+        : 'ArrowRight';
+      const towardsStart =
+        towardsEnd === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
+      const increaseKey = isHorizontal ? towardsEnd : 'ArrowDown';
+      const decreaseKey = isHorizontal ? towardsStart : 'ArrowUp';
 
       switch (e.key) {
         case increaseKey:

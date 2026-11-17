@@ -12,7 +12,7 @@ export function ListItem({ children, className }: ListItemProps) {
     <li
       className={cx(
         baseParagraphClasses,
-        'pl-2 [&>ol]:mt-2 [&>ol]:mb-0 [&>ul]:mt-2 [&>ul]:mb-0',
+        'ps-2 [&>ol]:mt-2 [&>ol]:mb-0 [&>ul]:mt-2 [&>ul]:mb-0',
         className,
       )}
     >

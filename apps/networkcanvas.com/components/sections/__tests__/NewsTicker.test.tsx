@@ -1,4 +1,4 @@
-import { act, cleanup, screen } from '@testing-library/react';
+import { act, cleanup, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { NewsItem } from '~/lib/siteContent';
@@ -30,14 +30,9 @@ const newsItems: [NewsItem] = [
 ];
 
 describe('NewsTicker', () => {
-  it('switches to the compact marquee at tablet portrait width', () => {
+  it('renders the story in both tickers, with the marquee duplicate kept out of the tab order', () => {
     const { container } = renderWithIntl(<NewsTicker newsItems={newsItems} />);
-    const ticker = container.firstElementChild;
-    const desktopTicker = ticker?.children[0];
-    const mobileTicker = ticker?.children[1];
 
-    expect(desktopTicker).toHaveClass('tablet-portrait:flex', 'hidden');
-    expect(mobileTicker).toHaveClass('tablet-portrait:hidden', 'flex');
     expect(screen.getAllByText('Fixture-only research news')).toHaveLength(3);
     expect(
       screen.getAllByRole('link', {
@@ -49,11 +44,6 @@ describe('NewsTicker', () => {
     ).not.toBeInTheDocument();
     const duplicate = container.querySelector('[aria-hidden="true"] a');
     expect(duplicate).toHaveAttribute('tabindex', '-1');
-    expect(container.querySelector('.animate-marquee')).toHaveClass(
-      'hover:[animation-play-state:paused]',
-      'focus-within:[animation-play-state:paused]',
-      'motion-reduce:animate-none',
-    );
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();
@@ -77,8 +67,14 @@ describe('NewsTicker', () => {
     const ticker = container.firstElementChild;
     if (!ticker) throw new Error('Expected the news ticker to render');
     const desktopTicker = ticker.children[0];
+    if (!(desktopTicker instanceof HTMLElement)) {
+      throw new Error('Expected the desktop ticker to render');
+    }
 
-    expect(container.querySelector('.animate-marquee')).not.toBeInTheDocument();
+    // The marquee would hold every story twice.
+    expect(
+      within(desktopTicker).getAllByText('Fixture-only research news'),
+    ).toHaveLength(1);
     expect(desktopTicker).toHaveTextContent('Fixture-only research news');
     expect(desktopTicker).not.toHaveTextContent(
       'Second fixture research story',

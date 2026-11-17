@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
+import { familyPedigreeWordingIn } from '../../__tests__/suppliedWording.ts';
 import { collectEntityTypeReferences } from '../collectEntityAttributeReferences.ts';
 import { localized } from '../test-utils.ts';
 
@@ -141,5 +141,60 @@ describe('collectEntityTypeReferences', () => {
     expect(pairs).toContain('node:clinic');
     expect(pairs).toContain('edge:referral');
     expect(pairs.some((pair) => pair.endsWith(':ignored'))).toBe(false);
+  });
+});
+
+describe('a node type’s own label', () => {
+  const labelled = {
+    schemaVersion: 9,
+    stages: [],
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: { name: { name: 'name', type: 'text' } },
+          dynamicLabel: {
+            text: localized('{known, select, yes {Named} other {Unnamed}}'),
+            dynamicValues: {
+              known: { path: '$condition.known', cases: { yes: true } },
+            },
+            conditions: {
+              known: {
+                rules: [
+                  {
+                    id: 'own',
+                    type: 'node',
+                    options: {
+                      type: 'person',
+                      attribute: 'name',
+                      operator: 'EXISTS',
+                    },
+                  },
+                  {
+                    id: 'tie',
+                    type: 'edge',
+                    options: { type: 'friendship', operator: 'EXISTS' },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+      edge: { friendship: { name: 'Friendship', color: 'edge-color-seq-1' } },
+    },
+  };
+
+  // A rule in a type's label names the type it belongs to. That is not a use
+  // of the type by anything else, and counting it would keep a type that no
+  // stage uses from ever being deleted.
+  it('is not a use of that type, though the edge types its rules name are', () => {
+    const hits = collectEntityTypeReferences(labelled);
+    expect(hits.filter((hit) => hit.typeId === 'person')).toEqual([]);
+    expect(hits.map((hit) => [hit.entity, hit.typeId])).toEqual([
+      ['edge', 'friendship'],
+    ]);
   });
 });

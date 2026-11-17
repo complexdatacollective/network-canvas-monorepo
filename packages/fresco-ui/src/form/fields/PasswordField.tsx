@@ -21,18 +21,6 @@ const messages = defineMessages({
     defaultMessage: 'Enter password',
     description: 'Default placeholder of a password input.',
   },
-  toggleVisibility: {
-    id: 'frescoUi.passwordField.toggleVisibility',
-    defaultMessage:
-      '{visible, select, true {Hide password} other {Show password}}',
-    description:
-      'Accessible name of the visibility toggle; says what pressing it will do.',
-  },
-  strengthMeterLabel: {
-    id: 'frescoUi.passwordField.strengthMeterLabel',
-    defaultMessage: 'Password strength',
-    description: 'Accessible name of the password strength meter.',
-  },
   strengthWeak: {
     id: 'frescoUi.passwordField.strengthWeak',
     defaultMessage: 'Weak',
@@ -112,14 +100,17 @@ export default function PasswordField({
           <IconButton
             variant="text"
             onClick={() => setShowPassword(!showPassword)}
-            aria-label={intl.formatMessage(messages.toggleVisibility, {
-              visible: String(showPassword),
-            })}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            lang="en"
             icon={showPassword ? <EyeOff /> : <Eye />}
           />
         }
         {...props}
         type={showPassword || masked ? 'text' : 'password'}
+        // A password is left to right however it is shown: revealed, or
+        // masked by `-webkit-text-security`, it is a `text` input, which
+        // would otherwise follow its first letter.
+        dir={props.dir ?? 'ltr'}
         autoComplete={suppressPasswordManager ? 'off' : props.autoComplete}
         className={props.className}
         inputClassName={cx(
@@ -139,7 +130,7 @@ export default function PasswordField({
             orientation="horizontal"
             percentProgress={strength.percent}
             nudge={false}
-            label={intl.formatMessage(messages.strengthMeterLabel)}
+            label="Password strength"
           />
           <span className="text-xs font-medium">
             {intl.formatMessage(strengthLabelMessages[strength.score])}

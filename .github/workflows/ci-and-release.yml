@@ -780,6 +780,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+      # The background-creator suite runs its generated R script and refuses to
+      # skip under CI, so this all-package run needs Rscript and the Latin-1
+      # locale as the shard does. A failed install is reported by name below;
+      # the suite then fails in the test step rather than ending the seed here.
+      - name: Install R for the background-creator script suite
+        id: r
+        continue-on-error: true
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
+      - name: Generate the Latin-1 locale for the background-creator script suite
+        id: latin1-locale
+        continue-on-error: true
+        run: |
+          sudo localedef -i en_US -f ISO-8859-1 en_US.ISO-8859-1
+          locale -a | grep -qx 'en_US.iso88591'
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:
@@ -915,6 +929,8 @@ jobs:
       - name: Report seed step outcomes
         if: always()
         env:
+          R_OUTCOME: ${{ steps.r.outcome }}
+          LATIN1_LOCALE_OUTCOME: ${{ steps.latin1-locale.outcome }}
           OBJECT_STORES_OUTCOME: ${{ steps.object-stores.outcome }}
           STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
           BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
@@ -923,6 +939,8 @@ jobs:
           {
             echo "### Turbo cache seed outcomes"
             echo
+            echo "- R: $R_OUTCOME"
+            echo "- Latin-1 locale: $LATIN1_LOCALE_OUTCOME"
             echo "- object stores: $OBJECT_STORES_OUTCOME"
             echo "- studio-server: $STUDIO_SERVER_OUTCOME"
             echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
@@ -930,6 +948,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           failed=false
           for result in \
+            "R=$R_OUTCOME" \
+            "Latin-1 locale=$LATIN1_LOCALE_OUTCOME" \
             "object stores=$OBJECT_STORES_OUTCOME" \
             "studio-server=$STUDIO_SERVER_OUTCOME" \
             "build typecheck=$BUILD_TYPECHECK_OUTCOME" \
@@ -1076,6 +1096,10 @@ jobs:
           pnpm --filter=@codaco/architect build
           pnpm --filter=@codaco/interviewer build
           pnpm --filter=@codaco/studio-web build
+          # The protocol review Worker is bundled only by `wrangler deploy`,
+          # which otherwise first runs when its release PR has merged. The dry
+          # run bundles it the same way and needs no Cloudflare credentials.
+          pnpm --filter=@codaco/protocol-review-worker bundle
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
       # Builder has no Chromatic project by design, and the build step above
@@ -1681,7 +1705,11 @@ jobs:
             # `.env` in its own package directory. Only its shard writes them,
             # so the secrets never reach a runner with no use for them.
             protocolValidation: true
+          # @codaco/background-creator runs the R script it generates through
+          # Rscript, which the runner image does not ship, and its suite
+          # refuses to skip under CI. Only its shard installs R.
           - shard: 4
+            rscript: true
           - shard: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -1731,6 +1759,16 @@ jobs:
           docker logs studio-sync-postgres || true
           echo "::error::Postgres did not accept connections within 120s"
           exit 1
+      - name: Install R for the background-creator script suite
+        if: matrix.rscript
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
+      # The runner image ships only UTF-8 locales; the suite's Latin-1 case
+      # needs this one and fails under CI without it.
+      - name: Generate the Latin-1 locale for the background-creator script suite
+        if: matrix.rscript
+        run: |
+          sudo localedef -i en_US -f ISO-8859-1 en_US.ISO-8859-1
+          locale -a | grep -qx 'en_US.iso88591'
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         # Only the shard whose bucket holds @codaco/protocol-validation. The
@@ -2873,6 +2911,10 @@ jobs:
       # with a spec's own page.evaluate/addStyleTag calls and surfaces as a
       # spurious action failure (the suite's run.sh explains this at length).
       VITE_DISABLE_ANALYTICS: 'true'
+      # Builds the same deterministic app shell as the Docker pixel lane:
+      # Motion and Base UI animation bookkeeping are both disabled before the
+      # application mounts.
+      VITE_DISABLE_ANIMATIONS: 'true'
       # The suite builds without the pinned Interviewer 8, as the pixel lane
       # does (its run.sh says why).
       INTERVIEWER_SKIP_LEGACY_V8: 'true'
@@ -3708,6 +3750,9 @@ jobs:
           - product: Website
             slug: website
             package_args: "--package 'networkcanvas.com'"
+          - product: Protocol Review Worker
+            slug: protocol-review
+            package_args: "--package '@codaco/protocol-review-worker'"
           - product: Studio
             slug: studio
             package_args: >-
@@ -3783,6 +3828,8 @@ jobs:
       fresco_version: ${{ steps.fresco.outputs.version }}
       interviewer_released: ${{ steps.interviewer.outputs.released }}
       interviewer_version: ${{ steps.interviewer.outputs.version }}
+      protocol_review_released: ${{ steps.protocol_review.outputs.released }}
+      protocol_review_version: ${{ steps.protocol_review.outputs.version }}
       studio_released: ${{ steps.studio.outputs.released }}
       studio_version: ${{ steps.studio.outputs.version }}
       website_released: ${{ steps.website.outputs.released }}
@@ -3825,6 +3872,14 @@ jobs:
           PKG_JSON: apps/interviewer/package.json
           PKG_NAME: '@codaco/interviewer'
           RELEASE_CHANNEL: stable-tagged
+        run: bash .github/scripts/detect-app-release.sh
+      # Diff-driven like Documentation and Website: only the push that lands
+      # the Worker's release PR (the one that moves its version) deploys it.
+      - id: protocol_review
+        env:
+          PKG_JSON: workers/protocol-review/package.json
+          PKG_NAME: '@codaco/protocol-review-worker'
+          RELEASE_CHANNEL: stable
         run: bash .github/scripts/detect-app-release.sh
       # Named by @codaco/studio-api's version and tagged `studio@<version>`,
       # which detect-app-release.sh cannot express; studio-release.mjs also
@@ -4696,6 +4751,132 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           TAG: '@codaco/documentation@${{ needs.apps-release-detect.outputs.documentation_version }}'
+        with:
+          script: |
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${process.env.TAG}`,
+              sha: context.sha,
+            });
+
+  # The protocol review Worker (workers/protocol-review) has a release lane of
+  # its own: merging its "Release Protocol Review Worker" PR moves its version,
+  # and this job deploys that version to Cloudflare. Nothing else deploys it —
+  # not the normal Changesets lane, and not a push that leaves its version
+  # alone.
+  #
+  # Every credential lives in the `protocol-review-worker` environment, whose
+  # deployment branches are restricted to main, so a branch that rewrites this
+  # job cannot read the Cloudflare token or the Anthropic API key. Each one is
+  # scoped to the single step that needs it.
+  #
+  # The Anthropic API key is uploaded with every deploy, from the environment
+  # secret, so the secret is the one place the key is kept and every release
+  # carries its current value. A first deploy needs it this way in any case —
+  # Wrangler refuses to create a Worker whose required secrets are not
+  # supplied with it (wrangler.jsonc, `secrets.required`).
+  apps-release-protocol-review:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.protocol_review_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: protocol-review-worker
+    # One deploy at a time, whatever the version: the Worker has one production
+    # deployment, and the guard below is only sound once this lock is held.
+    concurrency:
+      group: apps-release-@codaco/protocol-review-worker
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-tags: true
+          # The release guard verifies ancestry against the newest released tag.
+          fetch-depth: 0
+          persist-credentials: false
+      # A re-run of an older release's job must not deploy older code over a
+      # newer release: the guard refuses a version already tagged, a version
+      # older than the newest tag, and a tree missing the newest released
+      # commit.
+      - name: Skip if this version should not be deployed
+        id: guard
+        env:
+          PKG_NAME: '@codaco/protocol-review-worker'
+          VERSION: ${{ needs.apps-release-detect.outputs.protocol_review_version }}
+        run: bash .github/scripts/app-release-guard.sh
+      - name: Check the deploy credentials are configured
+        if: steps.guard.outputs.skip != 'true'
+        # Fails here, naming what is missing, rather than inside Wrangler with
+        # an authentication error. Only whether each value is set is read.
+        env:
+          CLOUDFLARE_API_TOKEN_SET: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          CLOUDFLARE_ACCOUNT_ID_SET: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+          ANTHROPIC_API_KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          OPENAI_API_KEY_SET: ${{ secrets.OPENAI_API_KEY != '' }}
+        run: |
+          missing=()
+          [[ "$CLOUDFLARE_API_TOKEN_SET" == "true" ]] || missing+=(CLOUDFLARE_API_TOKEN)
+          [[ "$CLOUDFLARE_ACCOUNT_ID_SET" == "true" ]] || missing+=(CLOUDFLARE_ACCOUNT_ID)
+          [[ "$ANTHROPIC_API_KEY_SET" == "true" ]] || missing+=(ANTHROPIC_API_KEY)
+          [[ "$OPENAI_API_KEY_SET" == "true" ]] || missing+=(OPENAI_API_KEY)
+          if (( ${#missing[@]} > 0 )); then
+            echo "::error::The protocol-review-worker environment has no value for: ${missing[*]}. Add them (workers/protocol-review/README.md, \"Releasing\") and re-run this job."
+            exit 1
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          install: false
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Write the Worker's secrets file
+        if: steps.guard.outputs.skip != 'true'
+        # Its own step so that the providers' keys are in the environment of
+        # nothing but this one Node process. Each value is passed through
+        # JSON.stringify, never through the shell.
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SECRETS_FILE: ${{ runner.temp }}/protocol-review-secrets.json
+        run: |
+          umask 077
+          node -e 'require("node:fs").writeFileSync(process.env.SECRETS_FILE, JSON.stringify({ ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY, OPENAI_API_KEY: process.env.OPENAI_API_KEY }))'
+      - name: Deploy the Worker to Cloudflare
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: workers/protocol-review
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SECRETS_FILE: ${{ runner.temp }}/protocol-review-secrets.json
+          VERSION: ${{ needs.apps-release-detect.outputs.protocol_review_version }}
+        run: |
+          pnpm exec wrangler deploy \
+            --secrets-file "$SECRETS_FILE" \
+            --tag "$VERSION" \
+            --message "Release $VERSION (${GITHUB_SHA::10})"
+      - name: Remove the Worker's secrets file
+        if: always()
+        env:
+          SECRETS_FILE: ${{ runner.temp }}/protocol-review-secrets.json
+        run: rm -f "$SECRETS_FILE"
+      # Tagged only once the service answers at its public address: the tag is
+      # what tells the guard this version is deployed, so a deploy that never
+      # came up stays re-runnable.
+      - name: Check the deployed service answers
+        if: steps.guard.outputs.skip != 'true'
+        run: pnpm --filter=@codaco/protocol-review-worker check:deployment
+      - name: Tag the deployed version
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          TAG: '@codaco/protocol-review-worker@${{ needs.apps-release-detect.outputs.protocol_review_version }}'
         with:
           script: |
             await github.rest.git.createRef({

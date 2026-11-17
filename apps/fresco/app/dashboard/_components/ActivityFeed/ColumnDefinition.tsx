@@ -15,17 +15,20 @@ const messages = defineMessages({
   time: {
     id: 'fresco.ActivityFeed.ColumnDefinition.time',
     defaultMessage: 'Time',
-    description: 'Researcher-facing ActivityFeed / ColumnDefinition: Time',
+    description:
+      'Column heading in the activity feed table on the dashboard; the column shows how long ago each event happened.',
   },
   type: {
     id: 'fresco.ActivityFeed.ColumnDefinition.type',
     defaultMessage: 'Type',
-    description: 'Researcher-facing ActivityFeed / ColumnDefinition: Type',
+    description:
+      'Column heading in the activity feed table on the dashboard; the column shows a badge naming the kind of event (not a verb).',
   },
   details: {
     id: 'fresco.ActivityFeed.ColumnDefinition.details',
     defaultMessage: 'Details',
-    description: 'Researcher-facing ActivityFeed / ColumnDefinition: Details',
+    description:
+      'Column heading in the activity feed table on the dashboard; the column holds a sentence describing what happened in each event.',
   },
 });
 

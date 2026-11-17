@@ -271,6 +271,38 @@ describe('StageDraftConflictDialog', () => {
     );
   });
 
+  // Wording a stage brings in that the protocol does not hold yet is saved
+  // only with the stage, so it is part of what the researcher would lose and
+  // of what the rescue copy keeps, even when nothing else was changed.
+  it('downloads a copy carrying the shared wording held with the stage', async () => {
+    const reworded = { en: 'Go back a step' };
+    publishStageDraft(
+      editedStage,
+      { label: { en: 'A' } },
+      { label: { en: 'A' } },
+      true,
+      {
+        words: [{ group: 'navigation', key: 'back', value: reworded }],
+        reworded: true,
+      },
+    );
+    expect(readStageDraft().dirty).toBe(true);
+    store.dispatch(setProtocolLockState('reclaim-blocked'));
+    openDialogMock
+      .mockResolvedValueOnce('download')
+      .mockReturnValue(new Promise(() => undefined));
+
+    renderDialog(store);
+
+    await waitFor(() => {
+      expect(downloadActiveProtocol).toHaveBeenCalledTimes(1);
+    });
+    const downloaded = downloadActiveProtocol.mock.calls[0]?.[2] as
+      | CurrentProtocol
+      | undefined;
+    expect(downloaded?.interfaceText?.navigation?.back).toEqual(reworded);
+  });
+
   it('discards the draft and leaves the editor only when asked to', async () => {
     openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));

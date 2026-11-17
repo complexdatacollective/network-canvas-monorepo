@@ -1,11 +1,11 @@
 import type { Page } from '@playwright/test';
 
+import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
-  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';

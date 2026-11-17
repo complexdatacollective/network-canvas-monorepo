@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import {
   createBaseProtocol,
   localized,
@@ -12,7 +14,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
@@ -228,6 +229,12 @@ describe('form field variable uniqueness', () => {
         ],
       }),
     );
-    expect(result.success).toBe(false);
+    expect(parseIssues(result)).toEqual([
+      {
+        path: 'stages.2.form.fields.1.variable',
+        code: 'custom',
+        message: 'Form fields contain duplicate attribute "name"',
+      },
+    ]);
   });
 });

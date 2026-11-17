@@ -137,8 +137,8 @@ type IssueTarget = {
  * #1400 fixed for the fields Architect still renders itself.
  *
  * The legacy anchor stays as a second tier for those: Architect's own dialog
- * forms (`ArchitectField`, `NewVariableWindow`) still render one, and it
- * carries a name for surfaces that are not a `Field` at all.
+ * forms (`ArchitectField`) still render one, and it carries a name for
+ * surfaces that are not a `Field` at all.
  */
 const resolveIssueTarget = (field: string): IssueTarget | null => {
   const container = resolveFieldContainer(field);

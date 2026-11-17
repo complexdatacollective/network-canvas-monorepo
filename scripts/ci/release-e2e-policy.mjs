@@ -489,11 +489,12 @@ function suites(...keys) {
 // Maximum suite set for each release lane. The normal Changesets lane versions
 // libraries, Architect, and Interviewer, so it always keeps all three suites.
 // Website renders protocol previews with @codaco/interview, so it keeps the
-// Interview suite. Documentation and Studio ship none of the suite subjects and
-// need no E2E.
+// Interview suite. Documentation, Studio and the protocol review Worker ship
+// none of the suite subjects and need no E2E.
 export const SUITES_BY_RELEASE_REF = {
   'changeset-release/documentation': suites(),
   'changeset-release/main': suites('interview', 'interviewer', 'architect'),
+  'changeset-release/protocol-review': suites(),
   'changeset-release/studio': suites('interview'),
   'changeset-release/website': suites('interview'),
 };

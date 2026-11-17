@@ -9,6 +9,10 @@ vi.mock('../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
 }));
 
+vi.mock('../../hooks/useCustomShapeSvgs', () => ({
+  useCustomShapeSvgs: () => ({}),
+}));
+
 // QuickAddField reads node presentation state through useStageSelector.
 // Dispatch on the selector sentinel exported by the (mocked) selector modules.
 vi.mock('../../selectors/session', () => ({

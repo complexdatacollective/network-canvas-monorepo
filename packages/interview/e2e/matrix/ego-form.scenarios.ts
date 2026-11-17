@@ -576,7 +576,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       run: async ({ page, interview, protocol }) => {
         // Pulse is driven by form validity: a required-empty field registers
         // invalid (formStore.ts:138), so no pulse before any input.
-        expect(await interview.nextButtonHasPulse()).toBe(false);
+        await interview.expectNotReadyToContinue();
 
         const nameError = page.getByTestId(`${requiredNameVarId}-field-error`);
 
@@ -590,9 +590,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         // Filling the (now-blurred) field validates on change → form valid →
         // pulse appears (EgoForm.tsx:192-199).
         await page.getByLabel('Name?').fill('Ada');
-        await expect
-          .poll(async () => interview.nextButtonHasPulse())
-          .toBe(true);
+        await interview.expectReadyToContinue();
 
         await interview.next();
         await expect(page).toHaveURL(/step=1/);
@@ -1478,7 +1476,7 @@ export const egoFormScenarios: InterfaceScenarios = {
 
         await page.getByTestId('previous-button').click();
         await expect(dialog.getByText('Discard changes?')).toBeVisible();
-        await page.getByTestId('dialog-primary').click(); // "Discard changes"
+        await page.getByTestId('dialog-primary').click(); // "Yes"
         await expect(dialog).toBeHidden();
         // moved back to the Information stage; discarded value never persisted
         await expect(
@@ -1499,9 +1497,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         await freshAge.blur();
         // Wait for the field to validate as valid (pulse appears) so beforeNext
         // sees a valid form and autosubmits instead of prompting.
-        await expect
-          .poll(async () => interview.nextButtonHasPulse())
-          .toBe(true);
+        await interview.expectReadyToContinue();
         await page.getByTestId('previous-button').click();
         await expect(page.getByRole('dialog')).toHaveCount(0);
         await expect(
@@ -1764,6 +1760,79 @@ export const egoFormScenarios: InterfaceScenarios = {
           page.getByRole('spinbutton', { name: 'How old are you?' }),
         ).toBeVisible();
         await expect(page.locator('[data-dynamic-value]')).toHaveCount(0);
+      },
+    },
+
+    {
+      id: 'conditions-follow-live-answers',
+      covers: ['conditions'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const ageVar = synth.addEgoVariable({
+          type: 'number',
+          component: 'Number',
+          name: 'age',
+        });
+        const schoolVar = synth.addEgoVariable({
+          type: 'text',
+          component: 'Text',
+          name: 'school',
+        });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
+        // An "If" on a rule about the participant: under 18, or anyone else.
+        stage.stageEntry.conditions = {
+          minor: {
+            rules: [
+              {
+                id: 'under-18',
+                type: 'ego',
+                options: {
+                  attribute: ageVar.id,
+                  operator: 'LESS_THAN',
+                  value: 18,
+                },
+              },
+            ],
+          },
+        };
+        stage.stageEntry.dynamicValues = {
+          minor: { path: '$condition.minor', cases: { yes: true } },
+        };
+        stage.addFormField({
+          variable: ageVar.id,
+          component: 'Number',
+          prompt: 'How old are you?',
+        });
+        stage.addFormField({
+          variable: schoolVar.id,
+          component: 'Text',
+          prompt: {
+            'en-US':
+              '{minor, select, yes {Which school do you go to?} other {Where did you go to school?}}',
+          },
+        });
+        return synth;
+      },
+      run: async ({ page }) => {
+        const age = page.getByRole('spinbutton', { name: 'How old are you?' });
+
+        // Unanswered, the rule is not met: the wording for everyone else.
+        await expect(
+          page.getByRole('textbox', { name: 'Where did you go to school?' }),
+        ).toBeVisible();
+
+        // The later question follows the earlier answer as it is typed.
+        await age.fill('12');
+        await expect(
+          page.getByRole('textbox', { name: 'Which school do you go to?' }),
+        ).toBeVisible();
+
+        await age.fill('40');
+        await expect(
+          page.getByRole('textbox', { name: 'Where did you go to school?' }),
+        ).toBeVisible();
       },
     },
   ],

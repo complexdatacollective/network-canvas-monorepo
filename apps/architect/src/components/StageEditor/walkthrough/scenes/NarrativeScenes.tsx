@@ -175,6 +175,7 @@ function PresetSwitcher({
         rx={SWITCHER.height / 2}
         className="fill-cyber-grape"
       />
+      {/* oxlint-disable-next-line direction/inline-arrow-turns -- the scene is drawn at fixed coordinates and does not mirror, so this marks the switcher's physical left end */}
       <ChevronLeft
         x={SWITCHER.x + 12}
         y={mid - 12}
@@ -193,6 +194,7 @@ function PresetSwitcher({
       >
         {label}
       </text>
+      {/* oxlint-disable-next-line direction/inline-arrow-turns -- the scene is drawn at fixed coordinates and does not mirror, so this marks the switcher's physical right end */}
       <ChevronRight
         x={NEXT_PRESET[0] - 12}
         y={mid - 12}

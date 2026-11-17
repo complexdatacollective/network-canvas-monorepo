@@ -30,63 +30,63 @@ const messages = defineMessages({
     id: 'fresco.actions.appSettings.copyInvalidAppSetting',
     defaultMessage: 'Invalid app setting: {value1}',
     description:
-      'Researcher-facing actions / appSettings: Invalid app setting: value',
+      "Error shown when a researcher's attempt to change an installation setting names a setting that does not exist. value1 is the internal name of that setting.",
   },
   copyStorageIsConfiguredViaEnvironmentVariablesAnd: {
     id: 'fresco.actions.appSettings.copyStorageIsConfiguredViaEnvironmentVariablesAnd',
     defaultMessage:
       'Storage is configured via environment variables and cannot be changed here.',
     description:
-      'Researcher-facing actions / appSettings: Storage is configured via environment variables and cannot be changed here.',
+      'Error shown when a researcher tries to change a file storage setting (S3 or UploadThing) that the server administrator fixed through environment variables, so it cannot be edited in the dashboard.',
   },
   copyCannotSetAppSettingToNull: {
     id: 'fresco.actions.appSettings.copyCannotSetAppSettingToNull',
     defaultMessage: 'Cannot set app setting to null',
     description:
-      'Researcher-facing actions / appSettings: Cannot set app setting to null',
+      'Internal error raised when saving an installation setting is attempted with an empty (null) value. Rarely seen; reported inside the generic failure to save a setting.',
   },
   copyCannotSetAppSettingToUndefined: {
     id: 'fresco.actions.appSettings.copyCannotSetAppSettingToUndefined',
     defaultMessage: 'Cannot set app setting to undefined',
     description:
-      'Researcher-facing actions / appSettings: Cannot set app setting to undefined',
+      'Internal error raised when saving an installation setting is attempted with no value at all (undefined). Rarely seen; reported inside the generic failure to save a setting.',
   },
   copyInvalidValueForAppSetting: {
     id: 'fresco.actions.appSettings.copyInvalidValueForAppSetting',
     defaultMessage: 'Invalid value for app setting {value1}',
     description:
-      'Researcher-facing actions / appSettings: Invalid value for app setting value',
+      'Internal error raised when the value a researcher entered for an installation setting is not acceptable for that setting. value1 is the internal name of the setting.',
   },
   copyFailedToUpdateAppSettings: {
     id: 'fresco.actions.appSettings.copyFailedToUpdateAppSettings',
     defaultMessage: 'Failed to update this setting.',
     description:
-      'Researcher-facing actions / appSettings: Failed to update appSettings: value: value',
+      'Error shown when saving a change to an installation setting in the dashboard or setup wizard fails for any reason.',
   },
   copyTheUploadThingTokenIsConfiguredViaThe: {
     id: 'fresco.actions.appSettings.copyTheUploadThingTokenIsConfiguredViaThe',
     defaultMessage:
       'The UploadThing token is configured via the UPLOADTHING_TOKEN environment variable and cannot be changed here.',
     description:
-      'Researcher-facing actions / appSettings: The UploadThing token is configured via the UPLOADTHING_TOKEN environment variable and cannot be changed here.',
+      'Validation error under the UploadThing token field when the server administrator already set the token through an environment variable, so it cannot be edited in the app. UPLOADTHING_TOKEN is the variable name; keep it.',
   },
   copyTokenIsMissingRequiredFieldsApiKeyAppId: {
     id: 'fresco.actions.appSettings.copyTokenIsMissingRequiredFieldsApiKeyAppId',
     defaultMessage: 'Token is missing required fields (apiKey, appId).',
     description:
-      'Researcher-facing actions / appSettings: Token is missing required fields (apiKey, appId).',
+      'Validation error under the UploadThing token field when the pasted token decodes but lacks the apiKey or appId values it must contain. apiKey and appId are technical names; keep them.',
   },
   copyTokenIsNotValidMakeSureYou: {
     id: 'fresco.actions.appSettings.copyTokenIsNotValidMakeSureYou',
     defaultMessage: 'Token is not valid. Make sure you copied the full token.',
     description:
-      'Researcher-facing actions / appSettings: Token is not valid. Make sure you copied the full token.',
+      'Validation error under the UploadThing token field when the pasted text cannot be read as a token, usually because it was copied incompletely.',
   },
   copyTokenVerificationFailed: {
     id: 'fresco.actions.appSettings.copyTokenVerificationFailed',
     defaultMessage: 'Token verification failed. Check the token and try again.',
     description:
-      'Researcher-facing actions / appSettings: Token verification failed: value',
+      'Validation error under the UploadThing token field when UploadThing rejected the token on a test request, so the token is wrong or revoked.',
   },
 });
 

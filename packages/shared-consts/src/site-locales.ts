@@ -86,6 +86,12 @@ export const supportedSiteLocales = [
     englishName: 'French',
     compactLabel: 'fr',
   },
+  {
+    locale: 'ar',
+    nativeName: 'العربية',
+    englishName: 'Arabic',
+    compactLabel: 'ar',
+  },
 ] as const satisfies readonly SiteLocaleDefinition[];
 
 export type SiteLocale = (typeof supportedSiteLocales)[number]['locale'];

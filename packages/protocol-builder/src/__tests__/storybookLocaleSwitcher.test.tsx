@@ -98,7 +98,9 @@ describe('the Storybook language control', () => {
       'pt-BR',
       'it',
       'fr',
+      'ar',
       'en-XA',
+      'ar-XB',
     ]);
   });
 
@@ -122,7 +124,8 @@ describe('the Storybook language control', () => {
 
     expect(screen.getByText('elemento')).toBeInTheDocument();
     expect(screen.getByText('Cancelar')).toBeInTheDocument();
-    expect(screen.getByText('Obligatorio')).toBeInTheDocument();
+    // Screen-reader-only text stays English in every language, and says so.
+    expect(screen.getByText('Required')).toHaveAttribute('lang', 'en');
   });
 
   it('declares the selected locale on the document, the way a host does', () => {

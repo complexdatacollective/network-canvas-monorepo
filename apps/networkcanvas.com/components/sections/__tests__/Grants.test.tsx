@@ -29,7 +29,12 @@ const page = vi.hoisted(() => ({
 vi.mock('motion/react', async (importOriginal) => {
   const actual = await importOriginal<{ motionValue: typeof motionValue }>();
   page.scrollY = actual.motionValue(0);
-  return { ...actual, useScroll: () => ({ scrollY: page.scrollY }) };
+  // The heading's own scroll progress (target-relative) is not under test.
+  const scrollYProgress = actual.motionValue(0);
+  return {
+    ...actual,
+    useScroll: () => ({ scrollY: page.scrollY, scrollYProgress }),
+  };
 });
 
 function scrollPageTo(top: number) {

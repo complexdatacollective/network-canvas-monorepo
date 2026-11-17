@@ -37,6 +37,8 @@ export type KeptRequestId = Readonly<{
    * The host answered this id — with the write it made, or with a refusal it
    * decided on — so the next attempt is a new operation. Anything else is an
    * answer that may or may not exist, and the id is kept for the retry.
+   * Called when `attempt` says the call was `answered`, which is where that
+   * rule is written down.
    */
   settled(requestId: string): void;
   /** Whatever id is being kept is for work this caller has moved on from. */

@@ -150,10 +150,16 @@ export function GetStartedIntro({ children }: { children?: ReactNode }) {
                   <span className="font-heading text-text tablet-portrait:text-2xl mt-8 block max-w-lg text-xl font-black tracking-tight text-balance">
                     {t(`intro.stages.${stage.id}.title`)}
                   </span>
+                  {/* The arrow points into the corner it sits in and moves
+                      further into it on hover: the end corner, so both
+                      turn round in a right-to-left language. */}
                   <span
-                    className={`${ACCENT_DISC[stage.accent]} tablet-portrait:right-10 tablet-portrait:bottom-10 absolute right-8 bottom-8 flex size-12 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none`}
+                    className={`${ACCENT_DISC[stage.accent]} tablet-portrait:inset-e-10 tablet-portrait:bottom-10 absolute inset-e-8 bottom-8 flex size-12 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none rtl:group-hover:-translate-x-1 rtl:group-focus-visible:-translate-x-1`}
                   >
-                    <ArrowDownRight aria-hidden className="size-6" />
+                    <ArrowDownRight
+                      aria-hidden
+                      className="size-6 rtl:-scale-x-100"
+                    />
                   </span>
                 </motion.a>
               ))}

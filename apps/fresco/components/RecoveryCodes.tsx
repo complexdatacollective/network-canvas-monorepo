@@ -11,46 +11,51 @@ const messages = defineMessages({
   copyFrescoRecoveryCodes: {
     id: 'fresco.RecoveryCodes.copyFrescoRecoveryCodes',
     defaultMessage: 'Fresco Recovery Codes',
-    description: 'Researcher-facing RecoveryCodes: Fresco Recovery Codes',
+    description:
+      'First line (title) of the text file the researcher downloads with their two-factor recovery codes. Content written into a file, not interface text.',
   },
   copySaveTheseCodesInASafePlace: {
     id: 'fresco.RecoveryCodes.copySaveTheseCodesInASafePlace',
     defaultMessage: 'Save these codes in a safe place.',
     description:
-      'Researcher-facing RecoveryCodes: Save these codes in a safe place.',
+      'Instruction line near the top of the downloaded text file of two-factor recovery codes. Content written into a file, not interface text.',
   },
   copyEachCodeCanOnlyBeUsedOnce: {
     id: 'fresco.RecoveryCodes.copyEachCodeCanOnlyBeUsedOnce',
     defaultMessage: 'Each code can only be used once.',
     description:
-      'Researcher-facing RecoveryCodes: Each code can only be used once.',
+      'Second instruction line in the downloaded text file of two-factor recovery codes; each recovery code works for one sign-in only. Content written into a file.',
   },
   copyCopied: {
     id: 'fresco.RecoveryCodes.copyCopied',
     defaultMessage: 'Copied!',
-    description: 'Researcher-facing RecoveryCodes: Copied!',
+    description:
+      'Label the Copy to clipboard button shows for two seconds after the recovery codes were copied (state, past tense).',
   },
   copyCopyToClipboard: {
     id: 'fresco.RecoveryCodes.copyCopyToClipboard',
     defaultMessage: 'Copy to clipboard',
-    description: 'Researcher-facing RecoveryCodes: Copy to clipboard',
+    description:
+      'Button under the list of two-factor recovery codes; copies all the codes to the clipboard (verb).',
   },
   saveYourRecoveryCodes: {
     id: 'fresco.RecoveryCodes.saveYourRecoveryCodes',
     defaultMessage: 'Save your recovery codes',
-    description: 'Researcher-facing RecoveryCodes: Save your recovery codes',
+    description:
+      'Title of the warning alert above the list of two-factor recovery codes, shown when two-factor authentication is set up (imperative).',
   },
   saveTheseRecoveryCodesInASafe: {
     id: 'fresco.RecoveryCodes.saveTheseRecoveryCodesInASafe',
     defaultMessage:
       'Save these recovery codes in a safe place. Each code can only be used once. If you lose access to your authenticator app, you can use these codes to sign in.',
     description:
-      'Researcher-facing RecoveryCodes: Save these recovery codes in a safe place. Each code can only be used once. If you lose access to your authenticator app',
+      'Body of the warning alert above the list of recovery codes. Recovery codes are backup two-factor codes used to sign in when the authenticator app is unavailable.',
   },
   downloadAsText: {
     id: 'fresco.RecoveryCodes.downloadAsText',
     defaultMessage: 'Download as text',
-    description: 'Researcher-facing RecoveryCodes: Download as text',
+    description:
+      'Button under the list of two-factor recovery codes; saves the codes as a plain text file (verb).',
   },
 });
 

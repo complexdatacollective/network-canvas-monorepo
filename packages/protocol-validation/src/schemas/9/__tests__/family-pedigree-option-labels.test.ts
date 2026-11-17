@@ -3,7 +3,6 @@ import { z } from 'zod';
 
 import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
 import {
-  hasSuppliedOptionLabels,
   SUPPLIED_PEDIGREE_OPTION_LABELS,
   suppliedOptionLabel,
   suppliedOptionLabels,
@@ -18,7 +17,10 @@ import { ProtocolSchemaV9 } from '../schema.ts';
 import type { LanguageChange } from '../supplied-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
-const labelSchema = localizedString(z.string().min(1), 'markdown');
+const labelSchema = localizedString(z.string().min(1), {
+  format: 'markdown',
+  lines: 'single',
+});
 
 describe('supplied Family Pedigree option labels', () => {
   it.each(Object.keys(SUPPLIED_PEDIGREE_OPTION_LABELS))(
@@ -112,17 +114,15 @@ describe('supplied Family Pedigree option labels', () => {
     options: ReturnType<typeof optionsFor>,
     change: LanguageChange,
   ) =>
-    suppliedOptionLabelsAfterLanguageChange(SET, options, change)?.map(
+    suppliedOptionLabelsAfterLanguageChange(SET, options, change).map(
       (option) => option.label,
     );
   const english = { defaultLocale: 'en', locales: ['en'] };
   const hungarian = { defaultLocale: 'hu', locales: ['hu'] };
 
-  it('fills in a new language while the default-language labels are still the supplied ones', () => {
-    const options = optionsFor(english);
-    expect(hasSuppliedOptionLabels(SET, options, english)).toBe(true);
+  it('fills in a new language', () => {
     expect(
-      relabelled(options, {
+      relabelled(optionsFor(english), {
         before: english,
         after: { defaultLocale: 'en', locales: ['en', 'es'] },
       }),
@@ -148,13 +148,23 @@ describe('supplied Family Pedigree option labels', () => {
     ).toEqual(labelsIn({ en: 'en', de: 'de' }));
   });
 
-  it('leaves the labels to the researcher once they write them in an unsupported default language', () => {
+  it('fills in a new language once the researcher writes the labels in an unsupported default language', () => {
     const mixed = { defaultLocale: 'hu', locales: ['hu', 'en'] };
     const options = optionsFor(mixed).map((option) => ({
       ...option,
       label: { ...option.label, hu: `${option.value} (hu)` },
     }));
-    expect(hasSuppliedOptionLabels(SET, options, mixed)).toBe(false);
+    expect(
+      relabelled(options, {
+        before: mixed,
+        after: { defaultLocale: 'hu', locales: ['hu', 'en', 'de'] },
+      }),
+    ).toEqual(
+      labelsIn({ en: 'en', de: 'de' }).map((label, index) => ({
+        hu: `${PEDIGREE_SEX_ASSIGNED_AT_BIRTH[index]} (hu)`,
+        ...label,
+      })),
+    );
   });
 
   it('gives a corrected language its own labels, as when an English protocol migrated from schema 8 is really German', () => {
@@ -188,23 +198,52 @@ describe('supplied Family Pedigree option labels', () => {
     ).toEqual(labelsIn({ en: 'en' }));
   });
 
-  it('leaves the labels to the researcher once they have reworded one', () => {
+  it('fills in a new language for every label, reworded or not', () => {
     const options = optionsFor(english).map((option) =>
       option.value === 'intersex'
         ? { ...option, label: { en: 'Intersex or variation of sex' } }
         : option,
     );
+    const filled = suppliedOptionLabelsAfterLanguageChange(SET, options, {
+      before: english,
+      after: { defaultLocale: 'en', locales: ['en', 'fr'] },
+    });
+    expect(filled.find((option) => option.value === 'intersex')?.label).toEqual(
+      {
+        en: 'Intersex or variation of sex',
+        fr: suppliedOptionLabel(SET, 'intersex', 'fr'),
+      },
+    );
+    expect(filled.find((option) => option.value === 'male')?.label).toEqual({
+      en: 'Male',
+      fr: 'Masculin',
+    });
+  });
+
+  it('moves a reworded label unchanged to a corrected language, and gives the others its labels', () => {
+    const options = optionsFor(english).map((option) =>
+      option.value === 'intersex'
+        ? { ...option, label: { en: 'Intersex or variation of sex' } }
+        : option,
+    );
+    const corrected = suppliedOptionLabelsAfterLanguageChange(SET, options, {
+      before: english,
+      after: { defaultLocale: 'de', locales: ['de'] },
+      renamed: { en: 'de' },
+    });
     expect(
-      suppliedOptionLabelsAfterLanguageChange(SET, options, {
-        before: english,
-        after: { defaultLocale: 'de', locales: ['de'] },
-        renamed: { en: 'de' },
-      }),
-    ).toBeUndefined();
+      corrected.find((option) => option.value === 'intersex')?.label,
+    ).toEqual({ de: 'Intersex or variation of sex' });
+    expect(corrected.find((option) => option.value === 'male')?.label).toEqual({
+      de: suppliedOptionLabel(SET, 'male', 'de'),
+    });
   });
 
   it('keeps a label the researcher wrote in another language', () => {
-    const options = optionsFor(english).map((option) =>
+    const options = optionsFor({
+      defaultLocale: 'en',
+      locales: ['en', 'es'],
+    }).map((option) =>
       option.value === 'male'
         ? { ...option, label: { ...option.label, es: 'Varón' } }
         : option,
@@ -213,12 +252,12 @@ describe('supplied Family Pedigree option labels', () => {
       before: { defaultLocale: 'en', locales: ['en', 'es'] },
       after: { defaultLocale: 'en', locales: ['en', 'es', 'fr'] },
     });
-    expect(filled?.find((option) => option.value === 'male')?.label).toEqual({
+    expect(filled.find((option) => option.value === 'male')?.label).toEqual({
       en: 'Male',
       es: 'Varón',
       fr: 'Masculin',
     });
-    expect(filled?.find((option) => option.value === 'female')?.label).toEqual({
+    expect(filled.find((option) => option.value === 'female')?.label).toEqual({
       en: 'Female',
       es: 'Femenino',
       fr: 'Féminin',

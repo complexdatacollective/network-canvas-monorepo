@@ -24,7 +24,6 @@ import { useAppDispatch } from '../../../store/store';
 import { useInterviewToast } from '../../../toast/useInterviewToast';
 import { getEntityAttributes } from '../../../utils/networkEntities';
 import { useNodeLabel } from '../../Anonymisation/useNodeLabel';
-import { interfaceMessages } from '../../messages';
 import type { OrdinalBinItem as OrdinalBinItemType } from '../useOrdinalBins';
 
 type OrdinalBinItemProps = {
@@ -203,9 +202,9 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     missingValue && 'bg-surface-1',
     select?.focalNode && 'cursor-pointer',
     isFirst &&
-      'rounded-tl rounded-bl portrait:rounded-tr portrait:rounded-bl-none',
+      'rounded-ss rounded-es portrait:rounded-se portrait:rounded-es-none',
     isLast &&
-      'rounded-tr rounded-br portrait:rounded-tr-none portrait:rounded-bl',
+      'rounded-se rounded-ee portrait:rounded-se-none portrait:rounded-es',
   );
 
   // `overflow-hidden` keeps the header inside the row the grid gave it: in
@@ -275,10 +274,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
           aria-disabled={!select.focalNode || undefined}
           aria-label={
             select.focalNode
-              ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
-                  name: focalName,
-                  label: spokenLabel,
-                })
+              ? `Place ${focalName} in ${spokenLabel}`
               : spokenLabel
           }
         >
@@ -303,9 +299,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         nodeSize="sm"
         orientation={isPortrait ? 'horizontal' : 'vertical'}
         className={bodyClasses}
-        announcedName={intl.formatMessage(interfaceMessages.ordinalContainer, {
-          label: spokenLabel,
-        })}
+        announcedName={`Container for the value '${spokenLabel}'`}
         {...(select
           ? {
               dragAndDrop: false,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { CURRENT_SCHEMA_VERSION, type Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
@@ -1541,7 +1542,9 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { codebook: { node: Record<string, { color: string }> } };
       expect(migratedRaw.codebook.node.person?.color).toBe('node-color-seq-11');
-      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(false);
+      expect(parseIssues(V8OutputSchema.safeParse(migratedRaw))).toEqual([
+        { path: 'codebook.node.person.color', code: 'invalid_value' },
+      ]);
     });
 
     it('leaves a colour that is not a palette position for the schema to reject', () => {
@@ -1553,7 +1556,9 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { codebook: { node: Record<string, { color: string }> } };
       expect(migratedRaw.codebook.node.person?.color).toBe('#ff0000');
-      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(false);
+      expect(parseIssues(V8OutputSchema.safeParse(migratedRaw))).toEqual([
+        { path: 'codebook.node.person.color', code: 'invalid_value' },
+      ]);
     });
   });
 
@@ -4623,20 +4628,6 @@ describe('Migration V7 to V8', () => {
       expect(migrationV7toV8.from).toBe(7);
       expect(migrationV7toV8.to).toBe(8);
     });
-
-    it('has migration notes', () => {
-      expect(migrationV7toV8.notes).toBeDefined();
-      expect(typeof migrationV7toV8.notes).toBe('string');
-      if (migrationV7toV8.notes) {
-        expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
-        expect(migrationV7toV8.notes).toContain(
-          'migration adds `required: true` to every attribute they reference',
-        );
-        expect(migrationV7toV8.notes).toContain(
-          'while preserving its other validation rules',
-        );
-      }
-    });
   });
 
   describe('DatePicker parameter and validation floor normalisation', () => {
@@ -6587,19 +6578,20 @@ describe('Migration V7 to V8', () => {
     it('keeps the first field for the repeated variable and drops the later one', () => {
       // The first row survives, so the prompt the researcher wrote first is the
       // one the participant sees; "sdfs\n" — the row that was already sharing
-      // its answer with the first — is gone.
+      // its answer with the first — is gone. A form field's question is one
+      // line in schema 9, so its trailing line break goes.
       expect(
         migrateAndParse(alterFormTestProtocol())?.filter(
           (field) => field.variable === NAME,
         ),
-      ).toEqual([{ variable: NAME, prompt: en('sdfsdf\n') }]);
+      ).toEqual([{ variable: NAME, prompt: en('sdfsdf') }]);
     });
 
     it('leaves every other field untouched and in order', () => {
       expect(migrateAndParse(alterFormTestProtocol())).toEqual([
-        { variable: NAME, prompt: en('sdfsdf\n') },
-        { variable: SCALE, prompt: en('sadasd\n') },
-        { variable: CATEGORICAL, prompt: en('asd\n') },
+        { variable: NAME, prompt: en('sdfsdf') },
+        { variable: SCALE, prompt: en('sadasd') },
+        { variable: CATEGORICAL, prompt: en('asd') },
       ]);
     });
 
@@ -6612,8 +6604,8 @@ describe('Migration V7 to V8', () => {
         { variable: NAME, prompt: 'third\n' },
       ];
       expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: en('first\n') },
-        { variable: SCALE, prompt: en('sadasd\n') },
+        { variable: NAME, prompt: en('first') },
+        { variable: SCALE, prompt: en('sadasd') },
       ]);
     });
 

@@ -1,3 +1,4 @@
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,5 +32,32 @@ describe('Reveal', () => {
         ),
       ),
     ).toBe(false);
+  });
+
+  // Motion writes where an element starts from into its style before the
+  // first frame, which is where the reveal is caught here.
+  const startOf = (direction: 'ltr' | 'rtl', from: 'left' | 'right') => {
+    const { container } = render(
+      <DirectionProvider direction={direction}>
+        <Reveal direction={from} distance={40}>
+          <span>Content</span>
+        </Reveal>
+      </DirectionProvider>,
+    );
+    const revealed = container.firstElementChild;
+    if (!(revealed instanceof HTMLElement)) throw new Error('nothing rendered');
+    return revealed.style.transform;
+  };
+
+  it('brings content in from the side named on a left-to-right page', () => {
+    expect(startOf('ltr', 'left')).toContain('translateX(-40px)');
+    cleanup();
+    expect(startOf('ltr', 'right')).toContain('translateX(40px)');
+  });
+
+  it('brings it in from the other side on a right-to-left page', () => {
+    expect(startOf('rtl', 'left')).toContain('translateX(40px)');
+    cleanup();
+    expect(startOf('rtl', 'right')).toContain('translateX(-40px)');
   });
 });

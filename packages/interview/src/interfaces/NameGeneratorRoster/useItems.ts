@@ -17,6 +17,7 @@ import {
   useResolveLocalizedMessage,
   useResolveLocalizedString,
 } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import { getStageCardOptions } from '../../selectors/name-generator';
 import {
   getNetworkNodes,
@@ -80,7 +81,7 @@ const useItems = (props: NameGeneratorRosterProps) => {
   const resolve = useResolveLocalizedString();
   const resolveMessage = useResolveLocalizedMessage();
   const subject = useStageSubjectName();
-  const { unnamedLabel } = props.stage;
+  const unnamedLabel = useStageWording(props.stage).text('unnamedLabel');
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const { externalData, status } = useExternalData(
     props.stage.dataSource,

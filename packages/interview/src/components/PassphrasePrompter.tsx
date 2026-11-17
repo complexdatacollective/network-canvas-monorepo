@@ -9,7 +9,7 @@ import {
 } from 'motion/react';
 import { useCallback, useId, useState } from 'react';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { AppMessage } from '@codaco/app-i18n/react';
 import {
   Tooltip,
   TooltipContent,
@@ -40,7 +40,6 @@ export default function PassphrasePrompter({
   orientation,
   className,
 }: PassphrasePrompterProps) {
-  const intl = useAppIntl();
   const isRtl = useDirection() === 'rtl';
   const { showPassphrasePrompter, passphraseChosen } = usePassphrase();
   // Whether the open dialog chooses the interview's passphrase or asks for
@@ -66,7 +65,8 @@ export default function PassphrasePrompter({
                 render={
                   <motion.button
                     type="button"
-                    aria-label={intl.formatMessage(messages.passphrase)}
+                    aria-label="Passphrase"
+                    lang="en"
                     aria-describedby={descriptionId}
                     key="lock"
                     layout

@@ -22,45 +22,18 @@ import {
   matchRetainedPwaAsset,
 } from '../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
 import { version } from './package.json';
+import { contentSecurityPolicy } from './scripts/content-security-policy';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(rootDir, '../..');
 const legacyArchitect = legacyApp('architect');
 
-// The Content-Security-Policy directives a <meta http-equiv> can express — i.e.
-// everything except frame-ancestors, which is header-only and stays in
-// public/_headers. It is injected into the built HTML (see injectCspMeta) rather
-// than served purely as an HTTP header so that a change to it rides the service
-// worker's content-revisioning: because the app precaches its HTML shell, a
-// header-only CSP change is frozen in the cached response and never reaches
-// already-installed clients, whereas a change to this in-content policy alters
-// the HTML, bumps its precache revision, and propagates on the next update.
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  // No 'wasm-unsafe-eval': mapbox-gl compiles its right-to-left text shaper
-  // (WebAssembly) inside its module worker, a same-origin /assets file that
-  // runs under its own response headers rather than this page policy. A
-  // header that put this policy on /assets would fail that compile for every
-  // map tile with right-to-left text.
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "font-src 'self' data:",
-  "img-src 'self' data: blob:",
-  "media-src 'self' blob:",
-  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com",
-  "worker-src 'self' blob:",
-  "frame-src 'self'",
-  "base-uri 'none'",
-  "object-src 'none'",
-  "form-action 'self'",
-].join('; ');
-
 // Inject the CSP as the first <head> tag of every built HTML entry so it governs
 // every resource parsed after it. Build-only: in dev a <meta> CSP would block
 // Vite's HMR / react-refresh (inline + eval) scripts and the HMR websocket, and
 // the dev server serves no _headers anyway.
-const injectCspMeta = (): Plugin => ({
+const injectCspMeta = (policy: string): Plugin => ({
   name: 'architect-inject-csp-meta',
   apply: 'build',
   transformIndexHtml: {
@@ -70,7 +43,7 @@ const injectCspMeta = (): Plugin => ({
         tag: 'meta',
         attrs: {
           'http-equiv': 'Content-Security-Policy',
-          'content': CONTENT_SECURITY_POLICY,
+          'content': policy,
         },
         injectTo: 'head-prepend',
       },
@@ -124,7 +97,7 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       ...appI18n(),
-      injectCspMeta(),
+      injectCspMeta(contentSecurityPolicy(env.VITE_PROTOCOL_REVIEW_URL)),
       createProtocolSourceAuthoringPlugin({
         repoRoot,
         enabled: env.VITE_PROTOCOL_SOURCE_AUTHORING === 'true',
@@ -204,7 +177,16 @@ export default defineConfig(({ command, mode }) => {
           // installed app loses its connection. Precache every responsive
           // 4:3 candidate so the chooser and timeline work on first offline
           // use, regardless of which width Safari selects from srcset.
-          globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
+          globPatterns: [
+            '**/*.{js,css,html}',
+            '**/*.4x3.*.webp',
+            // Every bundled font face. A browser fetches a face only when
+            // text on the page needs it, and the installing page's requests
+            // never fill a runtime cache, so a device that had not yet shown
+            // a script (Arabic, Cyrillic, the accented Latin letters) would
+            // show it in a system font the first time it is typed offline.
+            '**/*.woff2',
+          ],
           // Architect 8 (dist/v8) has its own worker and precache. It is
           // written after this worker is generated, so this only repeats the
           // build order; setting globIgnores replaces Workbox's default, which
@@ -363,9 +345,10 @@ export default defineConfig(({ command, mode }) => {
               },
             },
             {
-              // Self-hosted fonts (bundled via @codaco/tailwind-config). Matched
-              // before the /assets/ catch-all below so font files get the long
-              // one-year expiry. A function rather than a RegExp so it can leave
+              // Fonts this build does not precache: the faces of an older
+              // bundle a tab still runs, when the font files have changed
+              // since. Matched before the /assets/ catch-all below so they get
+              // the long one-year expiry. A function rather than a RegExp so it can leave
               // Architect 8's fonts to its own worker; `sameOrigin` keeps what
               // the RegExp matched, since Workbox matches a RegExp route
               // cross-origin only from the start of the URL, which a path

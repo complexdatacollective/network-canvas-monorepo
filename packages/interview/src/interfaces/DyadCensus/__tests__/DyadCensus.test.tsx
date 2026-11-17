@@ -28,6 +28,7 @@ import type {
   RegisterBeforeNext,
   StageProps,
 } from '../../../types';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import DyadCensus from '../DyadCensus';
 
@@ -167,13 +168,18 @@ function renderInterface(
     return (
       <TestProtocolLocalization>
         <Provider store={store}>
-          <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
-            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-              <StageMetadataContext.Provider value={registerBeforeNext}>
-                {children}
-              </StageMetadataContext.Provider>
-            </CurrentStepProvider>
-          </MotionConfig>
+          <TestInterviewAssets>
+            <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
+              <CurrentStepProvider
+                currentStep={0}
+                onStepChange={() => undefined}
+              >
+                <StageMetadataContext.Provider value={registerBeforeNext}>
+                  {children}
+                </StageMetadataContext.Provider>
+              </CurrentStepProvider>
+            </MotionConfig>
+          </TestInterviewAssets>
         </Provider>
       </TestProtocolLocalization>
     );

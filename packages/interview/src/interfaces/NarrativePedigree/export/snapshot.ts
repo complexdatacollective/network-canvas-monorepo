@@ -1,5 +1,14 @@
 import { toPng } from 'html-to-image';
 
+import { NodeShapeColorTokens } from '@codaco/fresco-ui/node/nodeShapeSvg';
+
+// html-to-image copies an element's computed properties onto its clone, and
+// that list holds no custom properties. A custom node shape's artwork reads
+// its colours from them, so without these it is drawn black.
+const ARTWORK_COLOR_PROPERTIES = NodeShapeColorTokens.map(
+  (token) => `--${token}`,
+);
+
 export async function exportSnapshot(
   element: HTMLElement,
   filename: string,
@@ -15,6 +24,10 @@ export async function exportSnapshot(
     // whole subtree outside the captured area — producing a blank PNG. Reset the
     // clone (only) to in-flow so it renders at the origin of the capture.
     style: { position: 'static', left: '0px', top: '0px' },
+    includeStyleProperties: [
+      ...Array.from(window.getComputedStyle(document.documentElement)),
+      ...ARTWORK_COLOR_PROPERTIES,
+    ],
   });
 
   const anchor = document.createElement('a');

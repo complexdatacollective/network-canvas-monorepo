@@ -2,19 +2,9 @@
 
 import { Progress } from '@base-ui/react/progress';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { cx } from './utils/cva';
-
-const messages = defineMessages({
-  progressIndicator: {
-    id: 'frescoUi.progressBar.label',
-    defaultMessage: 'Progress indicator',
-    description:
-      'Accessible name of a progress bar whose caller supplied no label.',
-  },
-});
 
 type ProgressBarProps = {
   indeterminate?: boolean;
@@ -49,7 +39,13 @@ const ProgressBar = ({
   return (
     <Progress.Root
       value={value}
-      aria-label={label ?? intl.formatMessage(messages.progressIndicator)}
+      // The spoken value ("50%") is formatted in the interface's language. Left
+      // to its default, Base UI uses the runtime's locale, which is the
+      // server's on the server and the browser's in the browser: two different
+      // strings for one element, and neither is the language on screen.
+      locale={intl.locale}
+      aria-label={label ?? 'Progress indicator'}
+      lang="en"
       onClick={onClick}
       className={cx(
         // Base styles
@@ -92,8 +88,27 @@ const ProgressBar = ({
               'h-full!',
               'transition-[width] duration-(--animation-duration-standard,200ms) ease-(--animation-easing,ease)',
             ],
-            // Indeterminate state
-            'data-indeterminate:animate-indeterminate-progress-bar',
+            // Indeterminate state. Base UI sizes the indicator from the
+            // value, so with no value it sets no size at all: the indicator
+            // fills the track here, and the animation scales and moves that
+            // box. Without one there is nothing for the animation to draw.
+            'data-indeterminate:inset-0 data-indeterminate:size-full',
+            // The segment grows out of the edge a determinate bar fills from
+            // and leaves by the other: the start edge of a horizontal bar,
+            // which is the right in a right-to-left language, and the top of
+            // a vertical one.
+            orientation === 'horizontal' && [
+              'motion-safe:data-indeterminate:animate-indeterminate-progress-bar',
+              'data-indeterminate:origin-left rtl:data-indeterminate:origin-right',
+              'rtl:data-indeterminate:[--indeterminate-progress-travel:-100%]',
+            ],
+            orientation === 'vertical' && [
+              'motion-safe:data-indeterminate:animate-indeterminate-progress-bar-vertical',
+              'data-indeterminate:origin-top',
+            ],
+            // With reduced motion nothing moves, and a still bar filling its
+            // track would read as finished. Faded, it reads as under way.
+            'motion-reduce:data-indeterminate:opacity-50',
             'data-indeterminate:bg-linear-to-r',
             'data-indeterminate:from-[color-mix(in_oklch,currentColor_15%,transparent)]',
             'data-indeterminate:via-[color-mix(in_oklch,currentColor_30%,transparent)]',

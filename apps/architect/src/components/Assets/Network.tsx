@@ -20,7 +20,8 @@ const messages = defineMessages({
   showingOfRows: {
     id: 'architect.assets.network.showingOfRows',
     defaultMessage: 'Showing {ROW_LIMIT} of {value2} rows',
-    description: 'Visible text in components / Assets / Network.',
+    description:
+      'Note above the table in the network data resource preview, shown when the file has more rows (nodes) than the table displays. ROW_LIMIT is the number of rows shown; value2 is the total number of rows in the file.',
   },
 });
 

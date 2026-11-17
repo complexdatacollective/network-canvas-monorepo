@@ -2,6 +2,7 @@ import { map } from 'es-toolkit/compat';
 
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { removeAfterConsiderationMessages } from '@codaco/protocol-builder/editors/one-to-many-dyad-census/removeAfterConsiderationMessages';
 
 import { SummaryValue } from '../helpers';
 import MiniTable from '../MiniTable';
@@ -11,34 +12,39 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.behaviours.behaviours',
     defaultMessage: 'Behaviours',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Behaviours.',
+      "Section heading in the printable protocol summary, above the table of a sociogram or similar stage's behaviour settings.",
   },
 });
 const extraMessages = defineMessages({
   repositioningenabled: {
     id: 'architect.summary.behaviours.repositioningenabled',
     defaultMessage: 'Repositioning enabled',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Row label in the behaviours table of a stage in the printable protocol summary; its value says whether participants may drag nodes to new positions.',
   },
   automaticlayoutenabled: {
     id: 'architect.summary.behaviours.automaticlayoutenabled',
     defaultMessage: 'Automatic layout enabled',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Row label in the behaviours table of a stage in the printable protocol summary; its value says whether nodes are positioned automatically by a layout algorithm.',
   },
   minimumnodesonstage: {
     id: 'architect.summary.behaviours.minimumnodesonstage',
     defaultMessage: 'Minimum nodes on stage',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Row label in the behaviours table of a stage in the printable protocol summary; its value is the fewest nodes a participant must have before they can move on.',
   },
   maximumnodesonstage: {
     id: 'architect.summary.behaviours.maximumnodesonstage',
     defaultMessage: 'Maximum nodes on stage',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Row label in the behaviours table of a stage in the printable protocol summary; its value is the most nodes a participant may have on the stage.',
   },
   freedrawenabled: {
     id: 'architect.summary.behaviours.freedrawenabled',
     defaultMessage: 'Freedraw enabled',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Row label in the behaviours table of a stage in the printable protocol summary; its value says whether participants may draw freehand on the canvas.',
   },
 });
 
@@ -73,8 +79,19 @@ const behaviorLabel = (
         label: intl.formatMessage(extraMessages.freedrawenabled),
         value: behaviourValue,
       };
+    case 'removeAfterConsideration':
+      return {
+        label: intl.formatMessage(removeAfterConsiderationMessages.fieldLabel),
+        value: intl.formatMessage(
+          behaviourValue
+            ? removeAfterConsiderationMessages.removeLabel
+            : removeAfterConsiderationMessages.keepLabel,
+        ),
+      };
+    // A behaviour this summary has no words for is shown as the schema names
+    // it: a key, not interface text.
     default:
-      return { label: behaviourKey, value: behaviourValue };
+      return { label: <code>{behaviourKey}</code>, value: behaviourValue };
   }
 };
 

@@ -260,6 +260,16 @@ function renderEditor(options: EditorOptions = {}) {
       act(() => {
         storeApi?.getState().setFieldValue(name, value);
       }),
+    /** The protocol's languages changed somewhere other than this editor. */
+    changeLocalization: (localization: {
+      defaultLocale: string;
+      locales: string[];
+    }) =>
+      act(() => {
+        host?.store.applyAsCollaborator(sectionId({ kind: 'settings' }), {
+          localization,
+        });
+      }),
     /** A codebook change made somewhere other than this editor. */
     renameNodeType: (typeId: string, definition: SectionDoc) =>
       act(() => {
@@ -556,6 +566,190 @@ describe('a name written in more than one language', () => {
     });
 
     await waitFor(() => expect(input).toHaveValue('Information'));
+  });
+});
+
+const inDefaultLanguage = (
+  defaultLocale: string,
+  locales: string[] = [defaultLocale],
+) =>
+  protocolSections({
+    [sectionId({ kind: 'settings' })]: {
+      localization: { defaultLocale, locales },
+    },
+  });
+
+describe('a name in the protocol’s default language', () => {
+  it('is proposed in that language, and written as that language alone', async () => {
+    const { input, setValue, liveDraft } = renderEditor({
+      sections: inDefaultLanguage('es', ['es', 'en']),
+    });
+
+    await waitFor(() =>
+      expect(input).toHaveValue('Generador de nombres (con formularios)'),
+    );
+    expect(input.closest('[lang]')).toHaveAttribute('lang', 'es');
+
+    setValue('subject', { entity: 'node', type: 'person' });
+    await waitFor(() =>
+      expect(input).toHaveValue(
+        'Generador de nombres (con formularios): Person',
+      ),
+    );
+    expect(liveDraft()?.label).toEqual({
+      es: 'Generador de nombres (con formularios): Person',
+    });
+  });
+
+  // The standing proposal is what makes typing replace it: it must stand in
+  // the language it was written in.
+  it('stands as a proposal until the researcher changes it', async () => {
+    const { input, standing } = renderEditor({
+      sections: inDefaultLanguage('de'),
+    });
+    await waitFor(() =>
+      expect(input).toHaveValue('Namensgenerator (mit Formularen)'),
+    );
+    expect(standing()?.isStanding()).toBe(true);
+
+    fireEvent.change(input, { target: { value: 'Meine Etappe' } });
+    expect(standing()?.isStanding()).toBe(false);
+  });
+
+  describe('when the default language changes while the stage is open', () => {
+    it('proposes the name again in the new language, and drops the old proposal', async () => {
+      const { input, changeLocalization, liveDraft } = renderEditor({
+        sections: inDefaultLanguage('en', ['en', 'es']),
+      });
+      await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+      changeLocalization({
+        defaultLocale: 'es',
+        locales: ['en', 'es'],
+      });
+
+      await waitFor(() =>
+        expect(input).toHaveValue('Generador de nombres (con formularios)'),
+      );
+      // The English text was the editor's own proposal, not the researcher's.
+      expect(liveDraft()?.label).toEqual({
+        es: 'Generador de nombres (con formularios)',
+      });
+    });
+
+    it('clears the old proposal when the new default has no wording', async () => {
+      const { input, changeLocalization, liveDraft } = renderEditor({
+        sections: inDefaultLanguage('en', ['en', 'sw']),
+      });
+      await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+      changeLocalization({
+        defaultLocale: 'sw',
+        locales: ['en', 'sw'],
+      });
+      await settle();
+
+      expect(input).toHaveValue('');
+      expect(liveDraft()?.label).toBeUndefined();
+    });
+
+    it('keeps text the researcher wrote in the new default language', async () => {
+      const { input, changeLocalization, liveDraft, setValue } = renderEditor({
+        sections: inDefaultLanguage('en', ['en', 'es']),
+      });
+      await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+      setValue('label', {
+        en: 'Form Name Generator',
+        es: 'Mis amigos',
+      });
+
+      changeLocalization({
+        defaultLocale: 'es',
+        locales: ['en', 'es'],
+      });
+      await settle();
+
+      expect(input).toHaveValue('Mis amigos');
+      expect(liveDraft()?.label).toEqual({
+        en: 'Form Name Generator',
+        es: 'Mis amigos',
+      });
+    });
+
+    it('keeps a name the researcher typed', async () => {
+      const { input, changeLocalization, liveDraft } = renderEditor({
+        sections: inDefaultLanguage('en', ['en', 'es']),
+      });
+      await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+      fireEvent.change(input, { target: { value: 'Friends' } });
+
+      changeLocalization({
+        defaultLocale: 'es',
+        locales: ['en', 'es'],
+      });
+      await settle();
+
+      expect(liveDraft()?.label).toEqual({ en: 'Friends' });
+    });
+  });
+
+  describe('when Network Canvas has no wording in it', () => {
+    const swahili = () => inDefaultLanguage('sw', ['sw', 'en']);
+
+    it('proposes nothing and writes nothing', async () => {
+      const { input, liveDraft, standing } = renderEditor({
+        sections: swahili(),
+      });
+      await settle();
+
+      expect(input).toHaveValue('');
+      expect(liveDraft()?.label).toBeUndefined();
+      expect(standing()?.isStanding()).toBe(false);
+      // Not the English the protocol also has: only the default language counts.
+      expect(screen.queryByDisplayValue(/Name Generator/)).toBeNull();
+    });
+
+    it('leaves the name empty when it is clicked into and left', async () => {
+      const user = userEvent.setup();
+      const { input, liveDraft } = renderEditor({ sections: swahili() });
+      await settle();
+
+      await user.click(input);
+      await user.tab();
+      await settle();
+
+      expect(input).toHaveValue('');
+      expect(liveDraft()?.label).toBeUndefined();
+    });
+
+    it('leaves a name the researcher typed alone as the stage is configured', async () => {
+      const { input, setValue } = renderEditor({ sections: swahili() });
+      await settle();
+      fireEvent.change(input, { target: { value: 'Marafiki' } });
+
+      setValue('subject', { entity: 'node', type: 'person' });
+      await settle();
+
+      expect(input).toHaveValue('Marafiki');
+    });
+
+    it('offers no proposal to a host, and accepting it changes nothing', async () => {
+      const { name, liveDraft } = renderEditor({
+        existing: true,
+        headless: true,
+        type: 'Sociogram',
+        sections: swahili(),
+      });
+      await settle();
+      expect(name()?.proposal).toBeUndefined();
+
+      act(() => {
+        name()?.acceptProposal();
+      });
+      await settle();
+
+      expect(liveDraft()?.label).toBeUndefined();
+    });
   });
 });
 

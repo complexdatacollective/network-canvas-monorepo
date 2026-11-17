@@ -243,17 +243,11 @@ describe('PageBackground', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders a viewport-fixed network weave behind page content', () => {
+  it('renders a hidden network weave behind page content', () => {
     const { container } = render(<PageBackground />);
     const layer = container.firstElementChild as HTMLElement | null;
 
     expect(layer).toHaveAttribute('aria-hidden', 'true');
-    expect(layer).toHaveClass(
-      'pointer-events-none',
-      'fixed',
-      'inset-0',
-      'overflow-hidden',
-    );
     expect(motionDivProps).toHaveBeenCalledWith(
       expect.objectContaining({
         style: expect.objectContaining({ zIndex: -1 }),

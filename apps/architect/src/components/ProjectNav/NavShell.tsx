@@ -1,3 +1,4 @@
+import { useDirection } from '@base-ui/react/direction-provider';
 import { NavigationMenu } from '@base-ui/react/navigation-menu';
 import { Menu, X } from 'lucide-react';
 import { LayoutGroup, motion, type Variants } from 'motion/react';
@@ -5,8 +6,6 @@ import type React from 'react';
 import { useCallback, useId, useState } from 'react';
 import { useLocation } from 'wouter';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
@@ -19,29 +18,6 @@ import { cx } from '~/utils/cva';
 import { NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 
 import { NAV_ITEM_CLASS_NAME } from './NavLink';
-const messages = defineMessages({
-  navigation: {
-    id: 'architect.projectNav.navShell.navigation',
-    defaultMessage: 'Main navigation',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
-  },
-  openMenu: {
-    id: 'architect.projectNav.navShell.openMenu',
-    defaultMessage: 'Open menu',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
-  },
-  mobileNavigation: {
-    id: 'architect.projectNav.navShell.mobileNavigation',
-    defaultMessage: 'Mobile navigation',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
-  },
-  closeMenu: {
-    id: 'architect.projectNav.navShell.closeMenu',
-    defaultMessage: 'Close menu',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
-  },
-});
-
 // `publish-colors`: dynamic-color controls on the bar derive their hover
 // from the bar's published background.
 const NAV_SURFACE =
@@ -93,7 +69,6 @@ type NavShellProps = {
 };
 
 const NavShell = ({ leading, items, end }: NavShellProps) => {
-  const intl = useAppIntl();
   const shouldReduceMotion = usePrefersReducedMotion();
   const isFirstMount = useRunOnce('nav-bar-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
@@ -111,6 +86,10 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
   );
   const inlineLayoutId = useId();
   const drawerLayoutId = useId();
+  // The menu is drawn against the end edge of the screen and slides in from
+  // beyond it: from the right, or from the left in a right-to-left language.
+  // Motion animates a physical distance, so its sign comes from the direction.
+  const beyondEndEdge = useDirection() === 'rtl' ? '-100%' : '100%';
 
   // The bar's height, published for everything that has to stay clear of it:
   // anything scrolled into view lands beneath it, and the stage editor's
@@ -131,7 +110,7 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
       <motion.div
         className={cx(
           NAV_SURFACE,
-          'phone-landscape:pr-10 phone-landscape:pl-6 @container mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 pr-6 pl-6',
+          'phone-landscape:pe-10 phone-landscape:ps-6 @container mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 ps-6 pe-6',
         )}
         variants={containerVariants}
         initial={animate ? 'hidden' : false}
@@ -154,29 +133,31 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
           variant="text"
           color="dynamic"
           onClick={() => setMenuOpen(true)}
-          aria-label={intl.formatMessage(messages.openMenu)}
+          aria-label="Open menu"
+          lang="en"
           aria-expanded={menuOpen}
           icon={<Menu strokeWidth={2.5} />}
           className="tablet-portrait:hidden -me-2 [&>.lucide]:size-6"
         />
         <Modal open={menuOpen} onOpenChange={setMenuOpen}>
           <ModalPopup
-            className="bg-surface-1 text-surface-1-contrast fixed top-0 right-0 z-3000 flex h-full w-80 max-w-[85vw] flex-col rounded shadow-xl"
-            initial={{ x: '100%', opacity: 0.99, pointerEvents: 'none' }}
+            className="bg-surface-1 text-surface-1-contrast fixed inset-e-0 top-0 z-3000 flex h-full w-80 max-w-[85vw] flex-col rounded shadow-xl"
+            initial={{ x: beyondEndEdge, opacity: 0.99, pointerEvents: 'none' }}
             animate={{ x: 0, opacity: 1, pointerEvents: 'auto' }}
-            exit={{ x: '100%', opacity: 0.99, pointerEvents: 'none' }}
+            exit={{ x: beyondEndEdge, opacity: 0.99, pointerEvents: 'none' }}
             transition={{ type: 'tween', duration: 0.3 }}
           >
             <NavigationMenu.Root
               orientation="vertical"
-              aria-label={intl.formatMessage(messages.mobileNavigation)}
+              aria-label={'Mobile navigation'}
               className="flex h-full flex-col"
             >
               <div className="flex items-center justify-end p-4">
                 <IconButton
                   variant="text"
                   onClick={closeMenu}
-                  aria-label={intl.formatMessage(messages.closeMenu)}
+                  aria-label="Close menu"
+                  lang="en"
                   icon={<X strokeWidth={2.5} />}
                   className="[&>.lucide]:size-6"
                 />
@@ -194,7 +175,7 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
                   }}
                   className="flex flex-1 flex-col"
                 >
-                  <NavigationMenu.List className="[&_a]:focusable [&_a]:hover:bg-surface-1-contrast/10 [&_a[aria-current=page]]:bg-sea-green/20 [&_a[aria-current=page]]:text-sea-green flex flex-col items-start gap-1 p-4 [&_a]:flex [&_a]:min-h-11 [&_a]:w-full [&_a]:items-center [&_a]:gap-3 [&_a]:rounded-lg [&_a]:px-4 [&_a]:py-3 [&_a]:text-lg [&_a]:font-semibold [&_a]:no-underline [&_a]:transition-colors [&_a>[aria-hidden]]:hidden">
+                  <NavigationMenu.List className="[&_a]:focusable [&_a]:hover:bg-surface-1-contrast/10 [&_a[aria-current=page]]:bg-sea-green/20 [&_a[aria-current=page]]:text-sea-green flex flex-col items-start gap-1 p-4 [&_a]:flex [&_a]:min-h-11 [&_a]:w-full [&_a]:items-center [&_a]:gap-3 [&_a]:rounded-lg [&_a]:px-4 [&_a]:py-3 [&_a]:text-lg [&_a]:font-semibold [&_a]:no-underline [&_a]:transition-colors [&_a_[data-drawer-label]]:not-sr-only [&_a>[aria-hidden]]:hidden">
                     {items?.map((item) => (
                       <NavigationMenu.Item key={item.key} className="w-full">
                         {item}
@@ -217,7 +198,7 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
         </Modal>
         <LayoutGroup id={inlineLayoutId}>
           <NavigationMenu.Root
-            aria-label={intl.formatMessage(messages.navigation)}
+            aria-label={'Main navigation'}
             className="tablet-portrait:block hidden shrink-0"
           >
             <NavigationMenu.List className="tablet-landscape:gap-10 flex items-center gap-7">

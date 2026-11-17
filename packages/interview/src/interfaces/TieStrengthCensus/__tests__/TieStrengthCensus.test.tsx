@@ -31,6 +31,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import TieStrengthCensus from '../TieStrengthCensus';
 
@@ -161,15 +162,20 @@ function renderInterface(
     return (
       <TestProtocolLocalization localization={localization} locale={locale}>
         <Provider store={store}>
-          <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
-            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-              <StageMetadataContext.Provider value={registerBeforeNext}>
-                <StageDynamicValues stage={stageUnderTest}>
-                  {children}
-                </StageDynamicValues>
-              </StageMetadataContext.Provider>
-            </CurrentStepProvider>
-          </MotionConfig>
+          <TestInterviewAssets>
+            <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
+              <CurrentStepProvider
+                currentStep={0}
+                onStepChange={() => undefined}
+              >
+                <StageMetadataContext.Provider value={registerBeforeNext}>
+                  <StageDynamicValues stage={stageUnderTest}>
+                    {children}
+                  </StageDynamicValues>
+                </StageMetadataContext.Provider>
+              </CurrentStepProvider>
+            </MotionConfig>
+          </TestInterviewAssets>
         </Provider>
       </TestProtocolLocalization>
     );

@@ -5,11 +5,11 @@ import {
   type InterfaceText,
   type LocaleTag,
   type LocalizationDeclaration,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 
 import { InterfaceTextOverlay } from '../../localization/InterfaceTextOverlay';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalizationProvider';
+import { withInterfaceText } from '../../wording/suppliedWording';
 
 const ENGLISH_ONLY: LocalizationDeclaration = {
   defaultLocale: 'en',

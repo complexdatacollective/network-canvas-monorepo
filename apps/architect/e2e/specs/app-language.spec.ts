@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -14,7 +15,7 @@ test.use({ locale: 'es-MX' });
 /** The header's language pill, whatever language it is currently named in. */
 function languageSwitcher(page: Page) {
   return page.getByRole('combobox', {
-    name: /^(Idioma de la interfaz|Interface language):/,
+    name: /^Interface language:/,
   });
 }
 
@@ -37,6 +38,7 @@ const OPTION_NAMES: Record<string, RegExp> = {
   'pt-BR': /^Português \(Brasil\)/,
   'it': /^Italiano/,
   'fr': /^Français/,
+  'ar': /^العربية/,
 };
 
 async function selectLanguage(page: Page, locale: string) {
@@ -56,7 +58,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(switcher).toHaveText(/^Español$/);
   await expect(switcher.locator('[lang]')).toHaveAttribute('lang', 'es');
   await expect(switcher).toHaveAccessibleName(
-    'Idioma de la interfaz: Automático (Español)',
+    'Interface language: Automático (Español)',
   );
   await switcher.click();
   const popover = languagePopover(page);
@@ -73,6 +75,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
     /^Português \(Brasil\)$/,
     /^Italiano$/,
     /^Français$/,
+    /^العربية$/,
   ]);
   await expect(options.first()).toHaveAttribute('aria-selected', 'true');
   await expect(
@@ -103,8 +106,30 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await expect(languageSwitcher(page)).toHaveText(/^Español$/);
   await expect(languageSwitcher(page)).toHaveAccessibleName(
-    'Idioma de la interfaz: Automático (Español)',
+    'Interface language: Automático (Español)',
   );
+});
+
+test('lays Architect out right to left in Arabic, with a protocol name written in Latin script on the same side as the rest', async ({
+  architectPage: page,
+  seed,
+}) => {
+  await seed(emptyProtocol(), { name: 'Research_Name_1' });
+  await page.goto('/');
+  await selectLanguage(page, 'ar');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(
+    page.getByRole('button', { name: 'إنشاء بروتوكول جديد' }),
+  ).toBeVisible();
+  // The name is the researcher's own text. It keeps its own reading direction
+  // and still starts where the Arabic around it starts.
+  const name = page.getByRole('heading', { name: 'Research_Name_1' });
+  await expect(name).toHaveCSS('direction', 'ltr');
+  await expect(name).toHaveCSS('text-align', 'right');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
 
 test('authors an Information stage in Spanish and previews it in the protocol’s language without changing research data', async ({
@@ -169,7 +194,7 @@ test('authors an Information stage in Spanish and previews it in the protocol’
   ).toBeVisible();
   await selectLanguage(page, 'es');
   await expect(
-    page.getByRole('list', { name: 'Etapas del protocolo' }),
+    page.getByRole('list', { name: 'Protocol stages' }),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(beforeSwitch);
   await page
@@ -240,7 +265,7 @@ test('uploads and inspects a resource in Spanish with an unchanged authored file
   await seed(emptyProtocol(), { name: 'Resource_Study_Á1' });
   await page.goto('/protocol/assets');
   await page
-    .getByRole('button', { name: 'Subir archivo' })
+    .getByRole('button', { name: 'Upload file' })
     .locator('input[type="file"]')
     .setInputFiles({
       name: 'Research_Map_Á1.svg',
@@ -249,7 +274,7 @@ test('uploads and inspects a resource in Spanish with an unchanged authored file
         '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#6ecae8"/></svg>',
       ),
     });
-  const library = page.getByRole('listbox', { name: 'Biblioteca de recursos' });
+  const library = page.getByRole('listbox', { name: 'Resource library' });
   await expect(
     library.getByRole('heading', { name: 'Research_Map_Á1.svg', exact: true }),
   ).toBeVisible();
@@ -278,7 +303,7 @@ test('updates an open protocol-info table when another tab changes the device la
   await seed(emptyProtocol(), { name: 'Metadata_Study_Á1' });
   await page.goto('/');
   await page
-    .getByRole('button', { name: 'Acciones de Metadata_Study_Á1' })
+    .getByRole('button', { name: 'Actions for Metadata_Study_Á1' })
     .click();
   await page.getByRole('menuitem', { name: 'Ver más información' }).click();
   const info = page.getByRole('dialog', { name: 'Metadata_Study_Á1' });
@@ -313,52 +338,54 @@ test('formats printed attribute order and updates linked-list grammar live while
 }) => {
   // Underscore/hyphen/dot distinguish locale collation from codepoint order.
   const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
-  const protocol = CurrentProtocolSchema.parse({
-    ...emptyProtocol(),
-    codebook: {
-      ego: {
-        variables: Object.fromEntries(
-          names.map((name, index) => [
-            `attribute-${index}`,
-            { name, type: 'text', component: 'Text' },
-          ]),
-        ),
-      },
-    },
-    stages: [
-      {
-        id: 'sort',
-        type: 'EgoForm',
-        label: { en: 'Authored_sort' },
-        introductionPanel: {
-          title: { en: 'Authored introduction' },
-          text: { en: 'Authored content' },
-        },
-        form: {
-          fields: names.map((_, index) => ({
-            variable: `attribute-${index}`,
-            prompt: { en: `Authored_prompt_${index}` },
-          })),
+  const protocol = CurrentProtocolSchema.parse(
+    withInterfaceText({
+      ...emptyProtocol(),
+      codebook: {
+        ego: {
+          variables: Object.fromEntries(
+            names.map((name, index) => [
+              `attribute-${index}`,
+              { name, type: 'text', component: 'Text' },
+            ]),
+          ),
         },
       },
-      {
-        id: 'conjunction',
-        type: 'EgoForm',
-        label: { en: 'Authored_conjunction' },
-        introductionPanel: {
-          title: { en: 'Authored introduction' },
-          text: { en: 'Authored content' },
+      stages: [
+        {
+          id: 'sort',
+          type: 'EgoForm',
+          label: { en: 'Authored_sort' },
+          introductionPanel: {
+            title: { en: 'Authored introduction' },
+            text: { en: 'Authored content' },
+          },
+          form: {
+            fields: names.map((_, index) => ({
+              variable: `attribute-${index}`,
+              prompt: { en: `Authored_prompt_${index}` },
+            })),
+          },
         },
-        form: {
-          fields: [0, 3].map((index) => ({
-            variable: `attribute-${index}`,
-            prompt: { en: `Authored_prompt_${index}` },
-          })),
+        {
+          id: 'conjunction',
+          type: 'EgoForm',
+          label: { en: 'Authored_conjunction' },
+          introductionPanel: {
+            title: { en: 'Authored introduction' },
+            text: { en: 'Authored content' },
+          },
+          form: {
+            fields: [0, 3].map((index) => ({
+              variable: `attribute-${index}`,
+              prompt: { en: `Authored_prompt_${index}` },
+            })),
+          },
         },
-      },
-      ...emptyProtocol().stages,
-    ],
-  });
+        ...emptyProtocol().stages,
+      ],
+    }),
+  );
   await seed(protocol);
   await page.goto('/protocol/summary');
   const before = await readProtocolJson(page);
@@ -440,12 +467,16 @@ test('renders British spelling in the actual type dialog and in the stage editor
   await page
     .getByRole('button', { name: 'Create node type', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', { name: 'Create Node Type' });
+  const dialog = page.getByRole('dialog', { name: 'Create new node type' });
   const name = dialog.getByRole('textbox', { name: 'Node type name' });
   await expect(name).toHaveAccessibleDescription(/"Organisation"/);
   await name.fill('Organization_authored');
   await expect(name).toHaveValue('Organization_authored');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Discard changes', exact: true })
+    .click();
+  await expect(dialog).toBeHidden();
   // Two stage editors, because the copy in them is the protocol-builder
   // package's and its British overrides are a catalog of its own: a stage
   // editor reading American English is the failure this catches.

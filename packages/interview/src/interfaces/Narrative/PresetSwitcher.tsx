@@ -5,7 +5,6 @@ import { createSelector } from '@reduxjs/toolkit';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type RefObject, useCallback, useMemo, useState } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   Accordion,
   AccordionHeader,
@@ -37,7 +36,6 @@ import { useContentFormat } from '../../localization/useContentFormat';
 import { getNetworkNodes, getSubjectType } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
 import { compareAsText } from '../../utils/compareCodeUnits';
-import { interfaceMessages } from '../messages';
 
 type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
 type Preset = NarrativeStage['presets'][number];
@@ -126,7 +124,6 @@ export default function PresetSwitcher({
   onToggleHighlighting,
   dragConstraints,
 }: PresetSwitcherProps) {
-  const intl = useAppIntl();
   const resolve = useResolveLocalizedString();
   const { collator } = useContentFormat();
   const currentPreset = presets[activePreset];
@@ -225,20 +222,19 @@ export default function PresetSwitcher({
 
   return (
     <SegmentedToolbar
-      aria-label={intl.formatMessage(interfaceMessages.presets)}
+      aria-label="Presets"
       size="lg"
       draggable
       dragConstraints={dragConstraints}
-      dragHandleLabel={intl.formatMessage(interfaceMessages.dragToReposition)}
-      className="absolute right-10 bottom-10 z-10"
+      dragHandleLabel="Drag to reposition"
+      className="absolute inset-e-10 bottom-10 z-10"
     >
-      <ToolbarGroup
-        aria-label={intl.formatMessage(interfaceMessages.presetNavigation)}
-      >
+      <ToolbarGroup aria-label="Preset navigation">
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.previousPreset)}
+          aria-label="Previous preset"
+          lang="en"
           tooltip={false}
-          icon={<ChevronLeft />}
+          icon={<ChevronLeft className="rtl:rotate-180" />}
           disabled={activePreset === 0}
           onClick={() => onChangePreset(activePreset - 1)}
         />
@@ -359,9 +355,10 @@ export default function PresetSwitcher({
           </Accordion>
         </ToolbarPopover>
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.nextPreset)}
+          aria-label="Next preset"
+          lang="en"
           tooltip={false}
-          icon={<ChevronRight />}
+          icon={<ChevronRight className="rtl:rotate-180" />}
           disabled={activePreset + 1 === presets.length}
           onClick={() => onChangePreset(activePreset + 1)}
         />

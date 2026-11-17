@@ -209,7 +209,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
               >
                 <time
                   dateTime={update.date}
-                  className="tablet-portrait:col-start-1 tablet-portrait:row-start-1 tablet-portrait:pt-0.5 tablet-portrait:pb-0 tablet-portrait:text-right col-start-2 row-start-1 flex flex-col pb-3"
+                  className="tablet-portrait:col-start-1 tablet-portrait:row-start-1 tablet-portrait:pt-0.5 tablet-portrait:pb-0 tablet-portrait:text-end col-start-2 row-start-1 flex flex-col pb-3"
                 >
                   <Heading level="h4" margin="none" render={<span />}>
                     {format.dateTime(
@@ -254,7 +254,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                 </div>
                 <div
                   className={cx(
-                    'tablet-portrait:col-start-3 tablet-portrait:row-start-1 tablet-portrait:row-span-2 tablet-portrait:pl-6 col-start-2 row-start-2',
+                    'tablet-portrait:col-start-3 tablet-portrait:row-start-1 tablet-portrait:row-span-2 tablet-portrait:ps-6 col-start-2 row-start-2',
                     mini ? 'pb-8' : 'pb-12',
                   )}
                 >
@@ -339,7 +339,10 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                         >
                           <Link href={update.link}>
                             {t('readMore')}
-                            <ArrowRight aria-hidden />
+                            <ArrowRight
+                              aria-hidden
+                              className="rtl:-scale-x-100"
+                            />
                           </Link>
                         </Button>
                       ) : null}

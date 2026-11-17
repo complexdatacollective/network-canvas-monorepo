@@ -20,14 +20,16 @@ const additionalMessages = defineMessages({
     id: 'architect.additional.pages.assetsPage.importExternalDataResourcesToUse',
     defaultMessage:
       'Import external data resources to use in your protocol — images, video, audio, or network data. See our <ExternalLink> documentation </ExternalLink> for more information.',
-    description: 'Visible text in components / pages / AssetsPage.',
+    description:
+      'Introductory text under the heading of the Resource Library page. The <ExternalLink> tag wraps the words that link to the documentation about resources (uploaded files).',
   },
 });
 const messages = defineMessages({
   resourceLibrary: {
     id: 'architect.pages.assetsPage.resourceLibrary',
     defaultMessage: 'Resource Library',
-    description: 'The title text in components / pages / AssetsPage.',
+    description:
+      'Heading of the Resource Library page, where the researcher manages uploaded resource files (images, video, audio, network data) used by the protocol.',
   },
 });
 

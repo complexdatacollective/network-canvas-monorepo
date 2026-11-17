@@ -1,0 +1,43 @@
+---
+title: Preguntas
+navOrder: 3
+translatedFrom: 00e485ad558729fd429eeb50e6b4babc3a064a08
+---
+
+<Definition>
+  Las preguntas son textos dirigidos a quienes participan, en forma de pregunta
+  o instrucción, que explican qué datos deben aportar o cómo completar la tarea de una etapa
+  concreta.
+</Definition>
+
+## Detalles {#details}
+
+La mayoría de las etapas usan el concepto de preguntas, que definen lo que se pregunta a la persona participante durante la entrevista. Puedes planteárselas de la forma que tenga sentido para tu estudio.
+
+Una etapa puede contener varias preguntas o una sola, según las necesidades de la entrevista. Quizá te convenga agrupar las preguntas por temas y tener una etapa para cada tema. Por ejemplo, una etapa «Generador de nombres (familia)» podría contener preguntas sobre álteres (cada persona a la que se nombra durante la entrevista) que forman parte de la familia, y una etapa «Generador de nombres (colegas)», preguntas sobre álteres del ámbito profesional.
+
+![Varias preguntas en una etapa «Generador de nombres» de Architect.](/assets/img/key-concepts/prompts/multiple-prompts.png)
+
+## Crear preguntas {#creating-prompts}
+
+Al crear preguntas, debes especificar el texto de las instrucciones. Las preguntas pueden incluir formato, como texto en negrita o en cursiva, para crear énfasis y ritmo. Para dar este formato, usa la sintaxis de markdown.
+
+![Edición de una pregunta en Architect](/assets/img/key-concepts/prompts/edit-prompt.png)
+
+Las preguntas también pueden incluir [texto dinámico (piped text)](/es/design-protocols/piped-text), como el nombre de la persona participante, la etiqueta del nodo sobre el que trata la pregunta o la fecha de hoy. Haz clic en el botón de la jeringa de la barra de herramientas de la pregunta o escribe `{`.
+
+También puedes configurar las preguntas para que asignen automáticamente los valores **verdadero** o **falso** a [variables adicionales](/es/design-protocols/key-concepts/additional-variables), con el fin de registrar en qué punto de la entrevista se incluyó una entidad o de añadirle metadatos.
+
+## Las preguntas en Interviewer {#prompts-in-interviewer}
+
+La mayoría de las etapas usan **puntos de progreso** para indicar el avance por las preguntas, y la barra de progreso avanza poco a poco a medida que la entrevista pasa por cada pregunta.
+
+![Los puntos de progreso que aparecen sobre la pregunta en Interviewer indican el avance en la etapa](/assets/img/key-concepts/prompts/nc-prompts.png)
+
+## Conceptos relacionados {#related-concepts}
+
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): descubre qué interfaces admiten varias preguntas
+- [Variables adicionales](/es/design-protocols/key-concepts/additional-variables): asigna variables automáticamente según las preguntas
+- [Formularios](/es/design-protocols/key-concepts/forms): usa preguntas como enunciados de los campos de formulario
+- [Filtrado de la red](/es/design-protocols/key-concepts/network-filtering): filtra las redes que se muestran en las distintas preguntas
+- [Texto dinámico](/es/design-protocols/piped-text): muestra respuestas y la fecha de hoy en una pregunta

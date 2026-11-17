@@ -34,9 +34,7 @@ export default function ParticipantLanguagesSection() {
       {localization !== undefined && (
         <>
           <ul
-            aria-label={intl.formatMessage(
-              languageChooserMessages.languagesListLabel,
-            )}
+            aria-label="Languages participants can choose"
             className="flex flex-col gap-2"
           >
             {sortByLanguageName(

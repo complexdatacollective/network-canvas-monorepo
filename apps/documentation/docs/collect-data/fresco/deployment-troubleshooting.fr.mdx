@@ -1,0 +1,98 @@
+---
+title: Résolution des problèmes de déploiement
+date: 22nd July 2026
+navOrder: 8
+translatedFrom: fb1a31a408b34b459da162a29b7d0bb4502f6d68
+---
+
+<Paragraph variant="lead">
+  Vous pouvez rencontrer des erreurs pendant le déploiement. Vous trouverez
+  ci-dessous quelques erreurs courantes, avec des solutions ou des moyens de les
+  contourner.
+</Paragraph>
+
+<details>
+
+<summary>
+
+<h2 className="text-lg">
+  Erreur « Invalid environment variables » lors du déploiement sur Netlify {#--invalid-environment-variables-error-during-netlify-deployment}
+</h2>
+
+Une erreur comme « Invalid environment variables » (variables d’environnement non valides) peut apparaître dans votre déploiement.
+
+</summary>
+
+Cette erreur signifie que vous avez fourni une variable d’environnement incorrecte. Veillez à saisir correctement la valeur de la variable d’environnement. Lorsque vous copiez des variables depuis Neon, veillez à retirer tout **« # »** placé devant la variable.
+
+![Erreur de variable d’environnement non valide dans la console](/assets/img/fresco-images/deploy-error2.png)
+
+</details>
+
+<details>
+
+<summary>
+
+<h2 className="text-lg">Message « Installation expirée » pendant le processus de configuration {#installation-expired-message-during-the-setup-process}</h2>
+
+Il peut arriver que l’application vous redirige vers une page qui vous informe que votre instance a expiré.
+
+</summary>
+
+Lors de la configuration initiale de Fresco, vous disposez de 2 heures pour terminer le processus. Si vous dépassez ce délai, l’application vous redirige vers une page qui vous informe que votre instance a expiré.
+
+Pour rétablir la situation, suivez les étapes de [Réinitialiser votre base de données](#reset-your-database) ci-dessous, puis refaites le processus de configuration.
+
+</details>
+
+<details>
+
+<summary>
+
+<h2 className="text-lg">Problème d’URL protégée {#protected-url-issue}</h2>
+
+Il peut arriver que votre URL Fresco soit protégée et demande une connexion via Netlify.
+
+</summary>
+
+Cette erreur signifie que vous utilisez l’URL propre à un déploiement donné, dont l’accès nécessite une connexion via Netlify. Pour résoudre ce problème, utilisez l’URL de domaine fournie par Netlify. Pour trouver la bonne URL :
+
+1. Accédez au tableau de bord de votre projet. Son adresse a la forme `https://app.netlify.com/projects/<project-name>`.
+
+2. Cliquez sur l’URL affichée en vert sous le nom de votre projet.
+
+   ![URL](/assets/img/fresco-images/netlify-5.png)
+
+</details>
+
+## Réinitialiser votre base de données {#reset-your-database}
+
+La réinitialisation de votre base de données efface tout ce qui est stocké dans la base de données de votre instance Fresco — l’ensemble des protocoles, des personnes participantes, des paramètres, des comptes et des entretiens non exportés — et ramène l’application à l’assistant de configuration du premier lancement. C’est une procédure de récupération de dernier recours : utilisez-la si votre instance a expiré pendant la configuration initiale, ou si plus personne ne peut accéder à aucun compte et qu’il ne reste aucune autre [option de récupération](/fr/collect-data/fresco/accounts#recovering-access).
+
+Notez que les fichiers de votre service de stockage configuré — ressources des protocoles et fichiers de liste (des listes prédéfinies, importées comme fichiers de données, dans lesquelles la personne participante choisit) dans UploadThing, S3 ou un MinIO auto-hébergé — ne sont **pas** supprimés par une réinitialisation de la base de données. Si vous mettez fin à une étude, supprimez-les séparément chez le fournisseur de stockage.
+
+Avant de commencer, exportez toutes les données d’entretien que vous pouvez encore exporter. Les étapes dépendent de la manière dont vous avez déployé Fresco.
+
+### Déploiements Netlify avec Neon {#netlify-deployments-using-neon}
+
+Si vous avez suivi le [guide de déploiement](/fr/collect-data/fresco/guide), votre base de données est hébergée par Neon :
+
+1. Accédez à votre [tableau de bord Neon](https://console.neon.tech/) et sélectionnez votre projet.
+
+   ![Sélectionner la base de données](/assets/img/fresco-images/reset-db-1.png)
+
+2. Sélectionnez l’onglet **Settings**, faites défiler jusqu’en bas, puis cliquez sur **Delete project**.
+
+   ![Supprimer la connexion du projet](/assets/img/fresco-images/reset-db-2.png)
+
+3. Après confirmation, suivez le guide de déploiement pour [créer une nouvelle base de données](/fr/collect-data/fresco/guide#create-a-database) et remplacez les variables d’environnement de votre projet Netlify.
+
+### Déploiements Vercel (ancienne méthode) {#vercel-deployments-legacy}
+
+Si vous avez effectué le déploiement avec l’ancien [guide Vercel](/fr/collect-data/fresco/guide-vercel), votre base de données est elle aussi hébergée par Neon : suivez les étapes Neon ci-dessus, remplacez ensuite les variables d’environnement de la base de données dans les paramètres de votre projet **Vercel** (et non Netlify), puis redéployez.
+
+### Déploiements Docker {#docker-deployments}
+
+Si vous avez suivi le guide [Déploiement avancé](/fr/collect-data/fresco/advanced) et que vous utilisez le service `postgres` intégré de l’un des fichiers Docker Compose officiels, arrêtez l’ensemble des conteneurs, supprimez le volume qui stocke les données PostgreSQL, puis redémarrez l’ensemble des conteneurs. Fresco créera une base de données vide et affichera l’assistant de configuration lors de votre prochaine visite sur votre instance. Le guide « Déploiement avancé » décrit les fichiers Compose et la configuration de leur environnement.
+
+Si votre déploiement Docker utilise plutôt une base de données PostgreSQL externe (comme Neon), supprimez puis recréez la base de données chez ce fournisseur, et mettez à jour les chaînes de connexion de votre fichier `.env` si elles ont changé.

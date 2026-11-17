@@ -1,11 +1,9 @@
 'use client';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
-import { messages } from '../messages';
 import { NotationKey, type NotationWords } from './NotationKey';
 
 /** The key's words, from the stage's settings. */
@@ -34,8 +32,6 @@ export default function ConditionPanel({
   glyphColour,
   showAtRiskStatuses,
 }: ConditionPanelProps) {
-  const intl = useAppIntl();
-
   return (
     <Surface
       as="aside"
@@ -43,7 +39,7 @@ export default function ConditionPanel({
       spacing="none"
       shadow="md"
       className="flex h-full min-h-0 flex-col rounded-none"
-      aria-label={intl.formatMessage(messages.conditionKey)}
+      aria-label="Condition key"
     >
       {/* Header — panel title, fixed above the scrolling key. */}
       <div className="flex shrink-0 flex-col gap-1 border-b border-(--outline) p-4">

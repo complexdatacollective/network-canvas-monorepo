@@ -1,3 +1,5 @@
+import { MigrationContentRefusedError } from '../migration/errors.ts';
+import { formatRefusedContent } from '../migration/refusedContent.ts';
 import { NetcanvasInflationLimitError } from './extractProtocol.ts';
 import { MalformedNetcanvasError } from './malformedNetcanvasError.ts';
 import { getProtocolFileErrorKind } from './protocolFileErrorKind.ts';
@@ -46,6 +48,13 @@ export const describeProtocolFileError = (error: unknown): string | null => {
       return 'This protocol was made with a version of Network Canvas it cannot be upgraded from. Open it in the version that made it and save it there first.';
     case 'upgradeStepFailed':
       return 'This protocol could not be upgraded to the current version. Nothing has been changed on this device.';
+    case 'upgradeRefusedContent': {
+      const sentence =
+        'This protocol cannot be upgraded to the current version, because it contains something the current version does not accept. In the version of Architect the protocol was made with, correct each problem listed, then open the protocol again. Nothing has been changed on this device.';
+      return error instanceof MigrationContentRefusedError
+        ? `${sentence}\n${formatRefusedContent(error.problems)}`
+        : sentence;
+    }
     case 'missingVersion':
       return 'This file does not say which version of Network Canvas made it, so it cannot be opened.';
     case 'invalidBeforeUpgrade':

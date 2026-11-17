@@ -61,6 +61,36 @@ const dynamicValuesClaims = [
 ].map((iface) => `${iface}:dynamicValues`);
 
 /**
+ * `conditions` (what a stage's text tests to choose its wording) is shared as
+ * `dynamicValues` is, and by the same path: the Shell gives every stage its
+ * conditions with its values (`StageDynamicValues`), and the one text
+ * resolver asks `conditionHolds` whatever the stage's type. The EgoForm suite
+ * proves a rule about the participant following a live answer, and the
+ * DyadCensus suite a rule about one node of the pair on screen and about how
+ * many edges it has; every other interface reuses that path unchanged.
+ */
+const conditionsClaims = [
+  'AlterEdgeForm',
+  'AlterForm',
+  'Anonymisation',
+  'CategoricalBin',
+  'FamilyPedigree',
+  'FinishSession',
+  'Geospatial',
+  'Information',
+  'NameGenerator',
+  'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
+  'Narrative',
+  'NarrativePedigree',
+  'NetworkComposer',
+  'OneToManyDyadCensus',
+  'OrdinalBin',
+  'Sociogram',
+  'TieStrengthCensus',
+].map((iface) => `${iface}:conditions`);
+
+/**
  * Family Pedigree options proved by a Storybook interaction test or a unit
  * test, not by an e2e scenario. Each was once claimed by a scenario that
  * repeated that test step for step (the stories run the real Shell and read the
@@ -89,6 +119,7 @@ const familyPedigreeStoryClaims = [
 ].map((key) => `FamilyPedigree:${key}`);
 
 export const sharedSuiteClaims: readonly string[] = [
+  ...conditionsClaims,
   ...dynamicValuesClaims,
   ...familyPedigreeStoryClaims,
   'AlterEdgeForm:skipLogic',

@@ -36,6 +36,7 @@ import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol'
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import { useTrackWrite } from '../../../store/WritesInFlightContext';
 import { interfaceMessages } from '../../messages';
+import AddCornerShade from './AddCornerShade';
 import QuickAddField from './QuickAddField';
 
 const containerVariants: Variants = {
@@ -199,9 +200,9 @@ const QuickNodeForm = ({
 
   return (
     <>
-      <div className="pointer-events-none absolute right-0 bottom-0 z-10 h-48 w-xl bg-[radial-gradient(ellipse_at_bottom_right,oklch(from_var(--background)_calc(l-0.1)_c_h),transparent_70%)]" />
+      <AddCornerShade />
       <motion.div
-        className="absolute right-12 bottom-4 z-20"
+        className="absolute inset-e-12 bottom-4 z-20"
         variants={containerVariants}
         initial="initial"
         animate="animate"

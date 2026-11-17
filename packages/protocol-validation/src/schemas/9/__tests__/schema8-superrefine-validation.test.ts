@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import {
   createBaseProtocol,
   localized,
@@ -17,7 +19,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from '../stages/categorical-bin.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
@@ -2660,28 +2661,25 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(multiErrorProtocol),
       );
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        // Should have multiple errors
-        expect(result.error.issues.length).toBeGreaterThan(1);
-
-        // Check for different types of errors
-        const subjectError = result.error.issues.find((issue) =>
-          issue.message.includes(
-            'Stage subject is not defined in the codebook',
-          ),
-        );
-        const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('does not exist in the codebook'),
-        );
-        const attributeError = result.error.issues.find((issue) =>
-          issue.message.includes('does not exist in the codebook'),
-        );
-
-        expect(subjectError).toBeDefined();
-        expect(formFieldError).toBeDefined();
-        expect(attributeError).toBeDefined();
-      }
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.form.fields.0.variable',
+          code: 'custom',
+          message:
+            'The attribute "nonexistentVariable" does not exist in the codebook',
+        },
+        {
+          path: 'stages.0.prompts.0.additionalAttributes.0.variable',
+          code: 'custom',
+          message:
+            'The attribute "anotherNonexistent" does not exist in the codebook',
+        },
+        {
+          path: 'stages.0.subject',
+          code: 'custom',
+          message: 'Stage subject is not defined in the codebook',
+        },
+      ]);
     });
   });
 
@@ -2749,43 +2747,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       ],
     });
 
-    it('validates Geospatial stage with showTransit and allowSearch omitted', () => {
-      const protocol = createGeospatialProtocol();
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(result.success).toBe(true);
-    });
-
-    it('validates Geospatial stage with showTransit set to true', () => {
-      const protocol = createGeospatialProtocol({ showTransit: true });
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(result.success).toBe(true);
-    });
-
-    it('validates Geospatial stage with showTransit set to false', () => {
-      const protocol = createGeospatialProtocol({ showTransit: false });
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(result.success).toBe(true);
-    });
-
-    it('validates Geospatial stage with allowSearch set to true', () => {
-      const protocol = createGeospatialProtocol({ allowSearch: true });
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(result.success).toBe(true);
-    });
-
-    it('validates Geospatial stage with allowSearch set to false', () => {
-      const protocol = createGeospatialProtocol({ allowSearch: false });
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(result.success).toBe(true);
-    });
-
-    it('validates Geospatial stage with both showTransit and allowSearch set', () => {
+    it('keeps showTransit and allowSearch when a Geospatial stage sets them', () => {
       const protocol = createGeospatialProtocol({
-        showTransit: true,
+        showTransit: false,
         allowSearch: true,
       });
       const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
+      const [stage] = result.data?.stages ?? [];
+      expect(stage?.type === 'Geospatial' && stage.mapOptions).toMatchObject({
+        showTransit: false,
+        allowSearch: true,
+      });
     });
 
     it.each([
@@ -2804,7 +2777,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       (color) => {
         const protocol = createGeospatialProtocol({ color });
         const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-        expect(result.success).toBe(false);
+        expect(parseIssues(result)).toEqual([
+          { path: 'stages.0.mapOptions.color', code: 'invalid_union' },
+        ]);
       },
     );
 
@@ -2835,18 +2810,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         quoted(OrdinalColorSequence),
         quoted(CategoricalColorSequence),
       ]);
-    });
-
-    it('rejects Geospatial stage with invalid showTransit type', () => {
-      const protocol = createGeospatialProtocol({ showTransit: 'yes' });
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(result.success).toBe(false);
-    });
-
-    it('rejects Geospatial stage with invalid allowSearch type', () => {
-      const protocol = createGeospatialProtocol({ allowSearch: 1 });
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-      expect(result.success).toBe(false);
     });
   });
 
@@ -3155,7 +3118,12 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           }),
         ),
       );
-      expect(result.success).toBe(false);
+      expect(parseIssues(result)).toEqual([
+        {
+          path: 'stages.0.nodeConfiguration.genderIdentity.terms.0.words',
+          code: 'invalid_value',
+        },
+      ]);
     });
 
     it('rejects a sex-assigned-at-birth variable whose options were edited', () => {

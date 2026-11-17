@@ -35,26 +35,26 @@ describe('assembleProtocolSections', () => {
   });
 
   // Studio commits a stage without the settings that hold the interface
-  // text, so the assembled protocol brings that text up to date.
+  // text, so the assembled protocol brings that text up to date: it holds the
+  // researcher's own wording for the entries the stages it has now show, and
+  // none of Network Canvas's, which the interview shows by itself.
   it('holds the interface text for the stages it has now', () => {
     const sections = sectionizeProtocol(emptyProtocol('Study'));
-    const groups = () =>
-      Object.keys(
-        (
-          assembleProtocolSections(sections) as {
-            interfaceText?: Record<string, unknown>;
-          }
-        ).interfaceText ?? {},
-      );
-    // The groups every interview shows.
-    const ALWAYS = [
-      'navigation',
-      'interviewer',
-      'buttons',
-      'messages',
-      'search',
-    ];
-    expect(groups()).toEqual(ALWAYS);
+    sections.settings = {
+      ...sections.settings,
+      interfaceText: {
+        forms: { discardChangesTitle: { en: 'Throw this away?' } },
+        buttons: { cancel: { en: 'Cancel' } },
+      },
+    };
+    const held = () =>
+      (
+        assembleProtocolSections(sections) as {
+          interfaceText?: Record<string, unknown>;
+        }
+      ).interfaceText;
+    // No stage shows the forms group, and Cancel reads as Network Canvas's.
+    expect(held()).toBeUndefined();
 
     sections['stage:form'] = {
       id: 'form',
@@ -63,11 +63,14 @@ describe('assembleProtocolSections', () => {
       form: { fields: [] },
     };
     sections.stageOrder = { stages: ['form', 'finish'] };
-    expect(groups()).toEqual([...ALWAYS, 'forms', 'egoForm']);
+    // An Ego Form can ask whether to discard changes.
+    expect(held()).toEqual({
+      forms: { discardChangesTitle: { en: 'Throw this away?' } },
+    });
 
     sections.stageOrder = { stages: ['finish'] };
     delete sections['stage:form'];
-    expect(groups()).toEqual(ALWAYS);
+    expect(held()).toBeUndefined();
   });
 
   it('rejects a missing settings section', () => {

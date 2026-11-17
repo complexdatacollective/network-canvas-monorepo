@@ -11,7 +11,7 @@ import {
 import { drawPedigree } from '../pedigreeAdapter';
 import type { PedigreeLink, PedigreeSymbolShape } from '../types';
 import { inOrder } from '../utils';
-import { PedigreeEdgeSvg } from './EdgeRenderer';
+import { type HiddenBox, PedigreeEdgeSvg } from './EdgeRenderer';
 
 type PedigreeLayoutProps = {
   /** Everyone to place, in a stable order. */
@@ -83,7 +83,10 @@ export default function PedigreeLayout({
 
   if (nodeWidth === 0 || nodeHeight === 0) {
     return (
-      <div className="flex size-full items-center justify-center">
+      <div
+        className="flex size-full items-center justify-center"
+        data-testid="pedigree-layout-spinner"
+      >
         <Spinner />
       </div>
     );
@@ -140,8 +143,28 @@ export default function PedigreeLayout({
     return posA.y - posB.y || posA.x - posB.x;
   });
 
+  // A custom drawing may be see-through, so the lines running under it to
+  // its person's centre are hidden across the box it fills.
+  const hiddenBoxes = [...positions].flatMap(([id, pos]): HiddenBox[] => {
+    const shape = nodeShapes.get(id);
+    if (typeof shape !== 'object') return [];
+    const width = shape.width * metrics.containerWidth;
+    const height = shape.height * metrics.containerHeight;
+    return [
+      {
+        x: pos.x + (metrics.containerWidth - width) / 2,
+        y: pos.y + (metrics.containerHeight - height) / 2,
+        width,
+        height,
+      },
+    ];
+  });
+
   return (
     <div
+      // A family is drawn the same way round in every language, so the
+      // right-to-left mirror check leaves the drawing out.
+      data-direction-exempt
       className="relative"
       style={{ width: totalWidth, height: totalHeight }}
     >
@@ -154,6 +177,7 @@ export default function PedigreeLayout({
         offsetY={diamondInset + routedConnectorInset}
         highlightedNodeIds={highlightedNodeIds}
         highlightedEdgeKeys={highlightedEdgeKeys}
+        hiddenBoxes={hiddenBoxes}
       />
       {readingOrder.map((id) => {
         const pos = positions.get(id);

@@ -7,6 +7,11 @@ import { useMemo } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../../PresentationalText';
 import { cx } from '../../../utils/cva';
 
 const messages = defineMessages({
@@ -31,7 +36,11 @@ const messages = defineMessages({
  */
 export type RichTextInsertMenuItem = Readonly<{
   id: string;
-  label: string;
+  /**
+   * The interface's words for it, or `{ text, dir: 'auto' }` for a name
+   * someone wrote (an attribute's), which reads in its own direction.
+   */
+  label: PresentationalText;
   /** The heading the item is listed under; items without one come first. */
   group?: string;
   /** A second line under the label, such as what kind of thing it is. */
@@ -42,6 +51,15 @@ export type RichTextInsertMenuItem = Readonly<{
    */
   disabled?: boolean;
   content: JSONContent | readonly JSONContent[];
+  /**
+   * For something that has to be set up before it can be inserted (the
+   * rules of an "If"): chosen, the menu closes and calls this in place of
+   * inserting `content`. Calling `insert` then inserts what it is given
+   * where the caret was; never calling it inserts nothing.
+   */
+  request?: (
+    insert: (content: JSONContent | readonly JSONContent[]) => void,
+  ) => void;
 }>;
 
 /**
@@ -77,9 +95,12 @@ const groupsOf = (items: readonly RichTextInsertMenuItem[]): Group[] => {
 export function InsertMenuList({
   menu,
   onPick,
+  limit,
 }: {
   menu: RichTextInsertMenu;
   onPick: (item: RichTextInsertMenuItem) => void;
+  /** The most items listed at once, for a menu too long to draw whole. */
+  limit?: number;
 }) {
   const intl = useAppIntl();
   const groups = useMemo(() => groupsOf(menu.items), [menu.items]);
@@ -91,8 +112,11 @@ export function InsertMenuList({
       inline
       open
       autoHighlight="always"
+      {...(limit !== undefined && { limit })}
       itemToStringValue={(item: RichTextInsertMenuItem) =>
-        [item.label, item.description, item.group].filter(Boolean).join(' ')
+        [presentationalTextValue(item.label), item.description, item.group]
+          .filter(Boolean)
+          .join(' ')
       }
     >
       <div className="flex w-72 max-w-full flex-col gap-2">
@@ -139,8 +163,16 @@ export function InsertMenuList({
                       'data-disabled:cursor-not-allowed',
                     )}
                   >
-                    <span className="font-semibold in-data-disabled:opacity-60">
-                      {item.label}
+                    <span
+                      {...presentationalTextProps(item.label)}
+                      className={cx(
+                        'font-semibold in-data-disabled:opacity-60',
+                        // A name in its own direction stays on the
+                        // interface's side.
+                        typeof item.label !== 'string' && 'text-match-parent',
+                      )}
+                    >
+                      {presentationalTextValue(item.label)}
                     </span>
                     {item.description !== undefined && (
                       <span className="text-xs opacity-80">

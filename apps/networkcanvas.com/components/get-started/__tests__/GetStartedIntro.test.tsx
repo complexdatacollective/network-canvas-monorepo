@@ -99,7 +99,7 @@ describe('GetStartedIntro', () => {
 
   afterEach(cleanup);
 
-  it('renders all focusable starting paths', () => {
+  it('renders every starting path, with the documentation link first', () => {
     renderWithIntl(<GetStartedIntro />);
 
     const documentationLink = screen.getByRole('link', {
@@ -107,7 +107,6 @@ describe('GetStartedIntro', () => {
     });
 
     expect(screen.getAllByRole('link')[0]).toBe(documentationLink);
-    expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
     expect(
       screen.getByText(
         'Start by clicking the card that best describes the stage you are at with your research.',
@@ -118,35 +117,16 @@ describe('GetStartedIntro', () => {
         .getByRole('heading', { level: 1 })
         .closest('[data-scroll-style="active"]'),
     ).toBeInTheDocument();
-    expect(documentationLink).toHaveClass('relative', 'pb-24');
-    expect(screen.getByText('Learn more about the project')).toHaveClass(
-      'mt-8',
-      'text-xl',
-      'tablet-portrait:text-2xl',
-    );
-    expect(
-      screen.getByText('Design or create an interview protocol'),
-    ).toHaveClass('text-xl', 'tablet-portrait:text-2xl');
-    expect(screen.getByText('Collect data using Network Canvas')).toHaveClass(
-      'text-xl',
-      'tablet-portrait:text-2xl',
-    );
-    expect(documentationLink.querySelector('svg')?.parentElement).toHaveClass(
-      'absolute',
-      'right-8',
-      'bottom-8',
-    );
-
     expect(
       screen.getByRole('link', {
         name: 'Design or create an interview protocol',
       }),
-    ).toHaveClass('focusable');
+    ).toHaveAttribute('href', '#design');
     expect(
       screen.getByRole('link', {
         name: 'Collect data using Network Canvas',
       }),
-    ).toHaveClass('focusable');
+    ).toHaveAttribute('href', '#collect');
     expect(documentationLink).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/',
@@ -213,12 +193,12 @@ describe('GetStartedIntro', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Elija por dónde empezar',
+        name: 'Elige por dónde empezar',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Para empezar, haga clic en la tarjeta que mejor describa en qué etapa se encuentra su investigación y su familiaridad con Network Canvas.',
+        'Para empezar, haz clic en la tarjeta que mejor describa en qué etapa se encuentra tu investigación y tu familiaridad con Network Canvas.',
       ),
     ).toBeInTheDocument();
     expect(

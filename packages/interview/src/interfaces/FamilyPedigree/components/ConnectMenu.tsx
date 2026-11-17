@@ -3,7 +3,6 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   DropdownMenu,
@@ -19,7 +18,6 @@ import {
 } from '@codaco/fresco-ui/RenderMarkdown';
 
 import type { DynamicText } from '../../../dynamicValues/resolveDynamicText';
-import { messages } from '../messages';
 import {
   availableParentChoices,
   canConnectPartners,
@@ -116,7 +114,6 @@ function ItemText({
  */
 function connectionWords(
   { wording, text, piped }: PedigreeWords,
-  intl: IntlShape,
   family: Family,
   displayName: (personId: string) => string,
   parentKindLabels: OwnedOptionLabels['parentKind'],
@@ -167,10 +164,7 @@ function connectionWords(
             connection.secondId,
             connection.current,
           ).text
-        : intl.formatMessage(messages.connectedParentAnnouncement, {
-            relationship: parentLabel(connection).text,
-            kind: getMarkdownLabelText(parentChoiceLabel(connection)),
-          }),
+        : `${parentLabel(connection).text} (${getMarkdownLabelText(parentChoiceLabel(connection))})`,
   };
 }
 
@@ -183,18 +177,13 @@ function connectionWords(
 export function describeConnection(
   connection: Connection,
   words: PedigreeWords,
-  intl: IntlShape,
   family: Family,
   displayName: (personId: string) => string,
   parentKindLabels: OwnedOptionLabels['parentKind'],
 ) {
-  return connectionWords(
-    words,
-    intl,
-    family,
-    displayName,
-    parentKindLabels,
-  ).describe(connection);
+  return connectionWords(words, family, displayName, parentKindLabels).describe(
+    connection,
+  );
 }
 
 /**
@@ -223,7 +212,6 @@ export default function ConnectMenu({
   const reasonIdPrefix = useId();
   const connection = connectionWords(
     words,
-    intl,
     family,
     displayName,
     parentKindLabels,
@@ -516,7 +504,7 @@ export default function ConnectMenu({
     >
       <DropdownMenuContent
         anchor={anchor}
-        side="right"
+        side="inline-end"
         align="center"
         finalFocus={() => anchor}
         data-testid="pedigree-connect-menu"

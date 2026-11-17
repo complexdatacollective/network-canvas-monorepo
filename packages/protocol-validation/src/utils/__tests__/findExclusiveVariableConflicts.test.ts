@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../__tests__/finishStage.ts';
+import { parseIssues } from '../../__tests__/schemaIssues.ts';
+import { familyPedigreeWordingIn } from '../../__tests__/suppliedWording.ts';
 import { pedigreeNameField } from '../../schemas/9/__tests__/family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
@@ -11,7 +13,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../schemas/9/family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../../schemas/9/schema.ts';
-import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
 import {
   findExclusiveVariableConflicts,
   findStageManagedOptionBindings,
@@ -63,7 +64,7 @@ const protocolWith = (stages: Stage[]) => ({
             type: 'text',
             component: 'Text',
           },
-          isEgo: { name: 'is_ego', type: 'boolean' },
+          isEgo: { name: 'is_ego', type: 'boolean', component: 'Toggle' },
           genderIdentity: {
             name: 'genderIdentity',
             type: 'categorical',
@@ -169,9 +170,16 @@ describe('findExclusiveVariableConflicts', () => {
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
       ['stages', 1, 'prompts', 0, 'highlight', 'variable'],
     ]);
-    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
-      false,
-    );
+    expect(
+      parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
+    ).toEqual([
+      {
+        path: 'stages.1.prompts.0.highlight.variable',
+        code: 'custom',
+        message:
+          'Attribute "is_ego" is set by the Family Pedigree interface, which marks the participant, so nothing else in this protocol may set it.',
+      },
+    ]);
   });
 
   it('reports a form field bound to the participant marker', () => {
@@ -195,9 +203,16 @@ describe('findExclusiveVariableConflicts', () => {
       'familyPedigree.nodeConfiguration.egoAttribute',
     );
     expect(conflicts[0]?.variableName).toBe('is_ego');
-    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
-      false,
-    );
+    expect(
+      parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
+    ).toEqual([
+      {
+        path: 'stages.0.form.fields.0.variable',
+        code: 'custom',
+        message:
+          'Attribute "is_ego" is set by the Family Pedigree interface, which marks the participant, so nothing else in this protocol may set it.',
+      },
+    ]);
   });
 
   it('accepts two FamilyPedigree stages that share one node type and its structural slots', () => {

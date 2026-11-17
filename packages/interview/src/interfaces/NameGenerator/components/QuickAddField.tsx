@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { AppErrorMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { AppErrorMessage } from '@codaco/app-i18n/react';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
@@ -32,7 +32,9 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
+import { addButtonName } from '../../../components/addButtonName';
 import { useCelebrate } from '../../../hooks/useCelebrate';
+import { useCustomShapeSvgs } from '../../../hooks/useCustomShapeSvgs';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import {
@@ -41,7 +43,6 @@ import {
   getPromptAdditionalAttributes,
   resolveNodeShape,
 } from '../../../selectors/session';
-import { interfaceMessages } from '../../messages';
 
 function convertToNodeColor(color: NodeColorSequence): string {
   switch (color) {
@@ -102,7 +103,6 @@ export default function QuickAddField({
   hint,
   ...validationProps
 }: QuickAddFieldProps) {
-  const intl = useAppIntl();
   const [checked, setChecked] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -233,12 +233,13 @@ export default function QuickAddField({
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
+  const shapeSvgs = useCustomShapeSvgs();
 
   // When open, the toggle previews the node being created, so it takes the
   // shape the new node will have (resolved against the prompt's additional
   // attributes, which are the only attributes set at creation time).
   const nodeShape = nodeTypeDefinition
-    ? resolveNodeShape(nodeTypeDefinition.shape, newNodeAttributes)
+    ? resolveNodeShape(nodeTypeDefinition, newNodeAttributes, shapeSvgs)
     : 'circle';
 
   // Close form when disabled
@@ -314,7 +315,8 @@ export default function QuickAddField({
               <TooltipContent
                 side="bottom"
                 align="center"
-                className="bg-destructive text-destructive-contrast [&_svg_path]:fill-destructive max-w-md text-sm"
+                className="bg-destructive text-destructive-contrast max-w-md text-sm"
+                arrowClassName="[&_path]:fill-destructive"
                 sideOffset={10}
               >
                 {meta.errors?.[0] && (
@@ -343,11 +345,10 @@ export default function QuickAddField({
           <button
             type="button"
             ref={buttonRef}
-            aria-label={
-              checked
-                ? intl.formatMessage(interfaceMessages.quickAddInput)
-                : undefined
-            }
+            aria-label={checked ? 'Quick add input' : addButtonName(icon)}
+            // Open, the button shows the name being typed, which is not
+            // English; closed, it holds only the icon.
+            lang={checked ? undefined : 'en'}
             className="focusable relative aspect-square size-28 rounded-full"
             data-testid="quick-add-toggle"
           >
@@ -418,9 +419,12 @@ export default function QuickAddField({
                     exit={{ y: '100%' }}
                     className="flex h-full items-center justify-center"
                   >
-                    {/* The icon's title is the button's only name. */}
                     {isInterviewerIconName(icon) && (
-                      <Icon name={icon} className={actionIconClass} />
+                      <Icon
+                        name={icon}
+                        className={actionIconClass}
+                        aria-hidden
+                      />
                     )}
                   </motion.div>
                 )}

@@ -56,7 +56,7 @@ describe('SubmitButton', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
-  it('shows its spinner while submitting, in place of an icon of its own', async () => {
+  it("replaces the caller's icon with one of its own while submitting", async () => {
     let finishSubmit: () => void = () => undefined;
     const submitted = new Promise<void>((resolve) => {
       finishSubmit = resolve;
@@ -78,20 +78,21 @@ describe('SubmitButton', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Save' });
+    expect(button.querySelectorAll('svg')).toHaveLength(1);
     expect(screen.getByTestId('own-icon')).toBeInTheDocument();
-    expect(button.querySelector('.animate-spin')).toBeNull();
 
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(button.querySelector('.animate-spin')).not.toBeNull();
+      expect(screen.queryByTestId('own-icon')).toBeNull();
     });
-    expect(screen.queryByTestId('own-icon')).toBeNull();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(button.querySelectorAll('svg')).toHaveLength(1);
 
     finishSubmit();
 
     expect(await screen.findByTestId('own-icon')).toBeInTheDocument();
-    expect(button.querySelector('.animate-spin')).toBeNull();
+    expect(button.querySelectorAll('svg')).toHaveLength(1);
   });
 
   it('stays disabled while submitting, whatever a caller passes as disabled', async () => {

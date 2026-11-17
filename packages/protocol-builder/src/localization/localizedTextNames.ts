@@ -40,6 +40,18 @@ import {
 } from './interfaceTextNames.ts';
 
 const messages = defineMessages({
+  dynamicLabelSection: {
+    id: 'protocolBuilder.localizedTextNames.dynamicLabelSection',
+    defaultMessage: 'Dynamic label',
+    description:
+      'Names the Dynamic label section of the node type editor where a text is listed without its translation, such as in the translation table. The section holds the label a node type gives every one of its nodes.',
+  },
+  dynamicLabelText: {
+    id: 'protocolBuilder.localizedTextNames.dynamicLabelText',
+    defaultMessage: 'Label',
+    description:
+      'Names the Label field of the Dynamic label section of the node type editor where a text is listed without its translation, such as in the translation table.',
+  },
   promptPosition: {
     id: 'protocolBuilder.localizedTextNames.promptPosition',
     defaultMessage: 'Prompt {position, number}',
@@ -1032,7 +1044,16 @@ const VARIABLE_RULES: readonly Rule[] = [
 ];
 
 const ENTITY_RULES: Readonly<Record<'node' | 'edge', readonly Rule[]>> = {
-  node: VARIABLE_RULES,
+  node: [
+    ...VARIABLE_RULES,
+    // A node type's own label, as the node type editor shows it: its
+    // section, then the one text field in it.
+    rule(
+      'dynamicLabel.text',
+      [1, words(messages.dynamicLabelSection)],
+      [2, words(messages.dynamicLabelText)],
+    ),
+  ],
   edge: VARIABLE_RULES,
 };
 
@@ -1054,9 +1075,11 @@ const INTERFACE_TEXT_RULES: readonly Rule[] = [
 const locate = (protocol: CurrentProtocol, path: Path): Located | undefined => {
   const [root, scope, ...inScope] = path;
   if (root === 'interfaceText') {
-    if (!protocol.interfaceText) return undefined;
+    // Named by its group and entry alone: a protocol holds interface text
+    // only where its author changed Network Canvas's wording, and a text it
+    // holds nothing for is still one it shows.
     return {
-      place: protocol.interfaceText,
+      place: protocol.interfaceText ?? {},
       rules: INTERFACE_TEXT_RULES,
       rest: path.slice(1),
     };

@@ -107,5 +107,3 @@ exports[`codebook selectors > getVariableOptionsForSubject() > extracts variable
   },
 ]
 `;
-
-exports[`codebook selectors > makeGetVariable() > returns a variable by UUID 1`] = `null`;

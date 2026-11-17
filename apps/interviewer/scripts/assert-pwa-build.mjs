@@ -200,9 +200,10 @@ if (stagePreviewAssets.length === 0) {
   fail('no 4:3 stage-preview assets found');
 }
 
-// Fonts are left to the runtime cache. The hashed header mark (Home's and
-// onboarding's) is precached: the installing page is not controlled by the
-// worker, so the runtime cache never sees it before the first offline launch.
+// The bundled font faces and the hashed header mark (Home's and onboarding's)
+// are precached: the installing page is not controlled by the worker, so a
+// runtime cache never sees them before the first offline launch, and a face
+// is not even requested until text needs it.
 const fontAssets = assetFiles
   .filter((f) => f.endsWith('.woff2'))
   .map((f) => `assets/${f}`);
@@ -217,10 +218,10 @@ if (headerMarks.length === 0) {
 const manifestUrls = new Set(
   [...sw.matchAll(/\{url:"([^"]+)",revision:/g)].map((m) => m[1]),
 );
-const precachedFonts = fontAssets.filter((url) => manifestUrls.has(url));
-if (precachedFonts.length > 0) {
+const missingFonts = fontAssets.filter((url) => !manifestUrls.has(url));
+if (missingFonts.length > 0) {
   fail(
-    `the build precaches runtime-cached fonts: ${precachedFonts.join(', ')}`,
+    `font face(s) excluded from precache, so text that needs them falls back to a system font offline: ${missingFonts.join(', ')}`,
   );
 }
 const missingMarks = headerMarks
@@ -605,5 +606,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) and ${fontAssets.length} font face(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );

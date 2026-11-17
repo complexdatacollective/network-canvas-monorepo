@@ -19,6 +19,7 @@ import {
 
 import type { CanvasStoreApi } from '../../../canvas/useCanvasStore';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import protocol from '../../../store/modules/protocol';
@@ -174,19 +175,21 @@ function renderInterface({
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <StageMetadataContext.Provider
-              value={vi.fn() as unknown as RegisterBeforeNext}
-            >
-              <TestProtocolLocalization>{children}</TestProtocolLocalization>
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
-        </ContractProvider>
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider
+                value={vi.fn() as unknown as RegisterBeforeNext}
+              >
+                <TestProtocolLocalization>{children}</TestProtocolLocalization>
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </ContractProvider>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 
+import { richTextToolbarFor } from '../localization/textShape.ts';
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
@@ -32,6 +33,9 @@ type RichTextFieldProps = CreateFormFieldProps<
      * separator — "Never met" saved as " Never met".
      *
      * The editor opens one line tall and grows as the text wraps.
+     *
+     * For a localized field, take it from the field's declaration
+     * (`textFieldPropsFor`) rather than writing it here.
      */
     'singleLine'?: boolean;
     /** Toolbar features to withhold, e.g. `['bold', 'lists']`. */
@@ -55,15 +59,7 @@ const RichTextField = ({
   disallowedTypes = [],
   ...props
 }: RichTextFieldProps) => {
-  const toolbarOptions = {
-    bold: !disallowedTypes.includes('bold'),
-    italic: !disallowedTypes.includes('italic'),
-    links: !singleLine,
-    headings: !singleLine && !disallowedTypes.includes('headings'),
-    lists: !singleLine && !disallowedTypes.includes('lists'),
-    thematicBreak: !singleLine && !disallowedTypes.includes('thematic_break'),
-    history: !disallowedTypes.includes('history'),
-  };
+  const toolbarOptions = richTextToolbarFor(singleLine, disallowedTypes);
 
   const markdown = typeof value === 'string' ? value : null;
   const normalizedContent = useMemo(

@@ -1,4 +1,4 @@
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { isPseudoLocale } from '@codaco/app-i18n/locales';
 import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 import { webStorageLocalePreference } from '@codaco/shared-consts';
 
@@ -27,7 +27,7 @@ export function browserLanguages(): readonly string[] {
 export function readPreference(): string | null {
   try {
     const stored = localePreferenceStore.read();
-    if (stored === null || stored === PSEUDO_LOCALE) return null;
+    if (stored === null || isPseudoLocale(stored)) return null;
     const result = resolveAppLocale({
       stored,
       requested: [],

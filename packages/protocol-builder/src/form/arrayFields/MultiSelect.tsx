@@ -34,18 +34,6 @@ const messages = defineMessages({
     description:
       'Shown above a list of rows in a stage editor when the researcher tries to save with a row that has an empty cell in it. Each row here is a set of dropdowns filled in together — a sort rule, a display property.',
   },
-  removeItem: {
-    id: 'protocolBuilder.multiSelect.removeItem',
-    defaultMessage: 'Remove item',
-    description:
-      'Accessible name of the button that deletes one row of a list.',
-  },
-  reorderItem: {
-    id: 'protocolBuilder.multiSelect.reorderItem',
-    defaultMessage: 'Reorder item {position} of {count, number}',
-    description:
-      'Accessible name of the handle that drags one row of a list into a different position. position is the row’s own place in the list, counting from one; count is how many rows the list holds.',
-  },
   emptyState: {
     id: 'protocolBuilder.multiSelect.emptyState',
     defaultMessage: 'No items available.',
@@ -67,7 +55,7 @@ export const MULTI_SELECT_RULE_CLASSES =
   'flex items-center py-5 bg-(--rule-bg) publish-colors text-white rounded z-1 transition-colors duration-300 ease-in-out';
 const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center gap-2 px-5';
 const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
-const MULTI_SELECT_OPTION_CLASSES = 'flex flex-1 items-start ml-5 first:ml-0';
+const MULTI_SELECT_OPTION_CLASSES = 'flex flex-1 items-start ms-5 first:ms-0';
 
 // The input and the select are swapped in one `UnconnectedField` call, and a
 // union of the two cannot satisfy both prop shapes (the select requires
@@ -244,7 +232,6 @@ function MultiSelectRow({
   readOnly,
   deleteTriggerRef,
 }: ArrayFieldItemProps<ItemValue>) {
-  const intl = useAppIntl();
   const { arrayName, properties, options, allValues } = useMultiSelectContext();
   const { hasEdited, markEdited } = useEditedCells();
   const interactionDisabled = disabled || readOnly;
@@ -278,13 +265,7 @@ function MultiSelectRow({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={intl.formatMessage(messages.reorderItem, {
-              // The row's own place in the list, which the researcher reads as
-              // this row's number rather than as a quantity — so it is passed
-              // as they would say it, ungrouped.
-              position: String(index + 1),
-              count: itemCount,
-            })}
+            label={`Reorder item ${index + 1} of ${itemCount}`}
             className="text-white"
           />
         </div>
@@ -376,7 +357,8 @@ function MultiSelectRow({
         <IconButton
           ref={deleteTriggerRef}
           icon={<Trash2 />}
-          aria-label={intl.formatMessage(messages.removeItem)}
+          aria-label="Remove item"
+          lang="en"
           color="destructive"
           disabled={interactionDisabled}
           className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"

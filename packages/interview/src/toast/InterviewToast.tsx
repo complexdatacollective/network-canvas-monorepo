@@ -23,7 +23,6 @@ import {
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { interviewToastManager } from './interviewToastManager';
 
 type InterviewToastContextValue = {
@@ -42,6 +41,7 @@ export function useInterviewToastContext() {
 }
 
 const arrowVariants = cva({
+  // oxlint-disable-next-line tailwindcss/enforce-logical -- Base UI reports the physical side the toast ended up on, and the point is one corner of a square turned 45°
   base: 'size-2.5 rotate-45 rounded-br-sm data-[side=bottom]:top-[-5px] data-[side=left]:right-[-5px] data-[side=right]:left-[-5px] data-[side=top]:bottom-[-5px]',
   variants: {
     variant: {
@@ -163,14 +163,13 @@ function InterviewToastItem({
 }
 
 export function InterviewToastViewport() {
-  const intl = useAppIntl();
   const { toasts } = Toast.useToastManager();
   const portalContainer = usePortalContainer();
 
   return (
     <Toast.Portal container={portalContainer ?? undefined}>
       <Toast.Viewport
-        aria-label={intl.formatMessage(messages.notifications)}
+        aria-label={'Interview notifications'}
         className="pointer-events-none fixed inset-0 z-50"
       >
         {toasts.map((toast) => (

@@ -111,7 +111,7 @@ describe('the shared stage sections, read in Spanish', () => {
     expect(screen.getByRole('textbox', { name: 'Título' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Presenta la tarea antes de que los participantes completen sus formularios.',
+        'Presenta la tarea antes de que quienes participan completen sus formularios.',
       ),
     ).toBeInTheDocument();
   });
@@ -149,7 +149,7 @@ describe('the shared stage sections, read in Spanish', () => {
     // a word, so this is where an English noun in a Spanish sentence would
     // show up.
     expect(
-      await screen.findByRole('button', { name: 'Editar pregunta' }),
+      await screen.findByRole('button', { name: 'Edit pregunta' }),
     ).toBeInTheDocument();
   });
 });
@@ -222,7 +222,7 @@ describe('the content-block dialog, read in Spanish', () => {
     // inside it.
     expect(dialog).toHaveAccessibleName('Crear elemento');
     expect(dialog).toHaveAccessibleDescription(
-      'Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.',
+      'Elige el tipo de contenido, proporciona lo que verán quienes participan y ajusta su presentación cuando sea posible.',
     );
     expect(within(dialog).getByText('Tipo de contenido')).toBeInTheDocument();
     expect(
@@ -274,7 +274,7 @@ describe('the content-block dialog, read in Spanish', () => {
     await chooseKind('Imagen');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de imagen para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de imagen para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     await commit();
@@ -287,7 +287,7 @@ describe('the content-block dialog, read in Spanish', () => {
     await chooseKind('Audio');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de audio para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de audio para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     await commit();
@@ -300,7 +300,7 @@ describe('the content-block dialog, read in Spanish', () => {
     await chooseKind('Vídeo');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de vídeo para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de vídeo para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     await commit();
@@ -313,7 +313,7 @@ describe('the content-block dialog, read in Spanish', () => {
     await chooseKind('Texto');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de texto para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de texto para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     // The prose control carries its placeholder as `aria-placeholder`, which
@@ -336,7 +336,7 @@ describe('the content-block dialog, read in Spanish', () => {
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Editar elemento' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit elemento' }))[1]!,
     );
     const dialog = await screen.findByRole('dialog');
 
@@ -382,7 +382,7 @@ describe('what a Spanish screen reader is told when a block changes type', () =>
 
     await waitFor(() =>
       expect(status()).toBe(
-        'Tipo de contenido definido como Texto. Se ha añadido debajo un campo de contenido para él.',
+        'Content type set to Texto. A content field for it has been added below.',
       ),
     );
   });
@@ -391,30 +391,30 @@ describe('what a Spanish screen reader is told when a block changes type', () =>
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Editar elemento' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit elemento' }))[1]!,
     );
     await screen.findByRole('radio', { name: 'Imagen' });
 
     await harness.user.click(screen.getByRole('radio', { name: 'Texto' }));
     await waitFor(() =>
       expect(status()).toBe(
-        'El tipo de contenido ha cambiado a Texto. El contenido que introdujiste para el tipo anterior se conserva, y vuelve si cambias otra vez a él.',
+        'Content type changed to Texto. The content you entered for the previous type is kept, and returns if you change back to it.',
       ),
     );
 
     await harness.user.click(screen.getByRole('radio', { name: 'Imagen' }));
     await waitFor(() =>
       expect(status()).toBe(
-        'El tipo de contenido ha cambiado a Imagen. Se ha restaurado el contenido que introdujiste antes para Imagen.',
+        'Content type changed to Imagen. The content you entered for Imagen earlier has been restored.',
       ),
     );
 
     await harness.user.click(screen.getByRole('radio', { name: 'Texto' }));
-    await waitFor(() => expect(status()).toContain('cambiado a Texto'));
+    await waitFor(() => expect(status()).toContain('changed to Texto'));
     await harness.user.click(screen.getByRole('radio', { name: 'Audio' }));
     await waitFor(() =>
       expect(status()).toBe(
-        'El tipo de contenido ha cambiado a Audio. Todavía no has introducido nada para Audio.',
+        'Content type changed to Audio. Nothing has been entered for Audio yet.',
       ),
     );
   });
@@ -469,7 +469,7 @@ describe('a block a page cannot show, read in Spanish', () => {
     const harness = renderStageEditor(brokenPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Editar elemento' }))[0]!,
+      (await screen.findAllByRole('button', { name: 'Edit elemento' }))[0]!,
     );
     const dialog = await screen.findByRole('dialog');
 
@@ -487,7 +487,7 @@ describe('a block a page cannot show, read in Spanish', () => {
     const harness = renderStageEditor(brokenPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Editar elemento' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit elemento' }))[1]!,
     );
     const dialog = await screen.findByRole('dialog');
 
@@ -513,7 +513,7 @@ describe('the page-content list, read in Spanish', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Editar elemento' }),
+      await screen.findByRole('button', { name: 'Edit elemento' }),
     );
     const dialog = await screen.findByRole('dialog');
 
@@ -544,7 +544,7 @@ describe('the page-content list, read in Spanish', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        'Añade al menos un bloque. Una página sin contenido no muestra nada al participante.',
+        'Añade al menos un bloque. Una página sin contenido no muestra nada a la persona participante.',
       ),
     ).toBeInTheDocument();
   });
@@ -612,7 +612,7 @@ describe('the prompts section, read in Spanish', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        'Crea al menos una pregunta. Una etapa sin preguntas no le pregunta nada al participante.',
+        'Crea al menos una pregunta. Una etapa sin preguntas no le pregunta nada a la persona participante.',
       ),
     ).toBeInTheDocument();
   });
@@ -695,7 +695,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
     const harness = renderStageEditor(sociogramWithADanglingRule());
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Editar pregunta' }),
+      await screen.findByRole('button', { name: 'Edit pregunta' }),
     );
     await screen.findByRole('dialog');
 
@@ -716,7 +716,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
     const harness = renderStageEditor(sociogramWithADanglingRule());
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Editar pregunta' }),
+      await screen.findByRole('button', { name: 'Edit pregunta' }),
     );
     await screen.findByRole('dialog');
     await harness.user.click(screen.getByRole('button', { name: 'Guardar' }));

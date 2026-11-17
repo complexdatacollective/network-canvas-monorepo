@@ -7,6 +7,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages } from '../../i18n/runtimeMessages';
+import {
+  useDynamicNodeLabel,
+  useDynamicNodeLabeller,
+} from '../../nodeLabels/useDynamicNodeLabel';
 import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import {
   decryptInScope,
@@ -23,8 +27,26 @@ import { useReportUnreadable } from './useReportUnreadable';
  * outcomes with `outcomeOf`. Everything that shows or matches a node by its
  * label reads it here, so they never disagree. `source` saves reading the
  * node's label source again when the caller already has it.
+ *
+ * A node whose type has a label of its own shows that (see
+ * `useDynamicNodeLabeller`), which may in turn show the label the interview
+ * would otherwise have chosen.
  */
 export function useNodeLabeller(outcomeOf: OutcomeOf) {
+  const defaultLabel = useDefaultNodeLabeller(outcomeOf);
+  const dynamicLabel = useDynamicNodeLabeller();
+  return useCallback(
+    (node: NcNode, source?: Parameters<typeof defaultLabel>[1]) =>
+      dynamicLabel(node, defaultLabel(node, source)),
+    [defaultLabel, dynamicLabel],
+  );
+}
+
+/**
+ * The label the interview chooses for a node by its own rules: its name, or
+ * another of its answers, or else "Unnamed".
+ */
+function useDefaultNodeLabeller(outcomeOf: OutcomeOf) {
   const intl = useAppIntl();
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const unnamed = intl.formatMessage(runtimeMessages.unnamed);
@@ -94,8 +116,13 @@ export function useNodeLabel(node: NcNode | undefined) {
     (value) => (scope ? readCachedOutcome(scope, value) : undefined),
     [scope],
   );
-  const labelNode = useNodeLabeller(outcomeOf);
+  const labelNode = useDefaultNodeLabeller(outcomeOf);
 
-  if (!node || !source) return undefined;
-  return labelNode(node, source);
+  // Read for this node alone, rather than through `useNodeLabeller`: the
+  // node then redraws when its own label changes, not whenever the network
+  // does.
+  return useDynamicNodeLabel(
+    node,
+    node && source ? labelNode(node, source) : undefined,
+  );
 }

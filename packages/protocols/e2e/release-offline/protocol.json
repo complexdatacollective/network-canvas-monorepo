@@ -217,12 +217,6 @@
       "cancel": {
         "en-US": "Cancel"
       },
-      "done": {
-        "en-US": "Done"
-      },
-      "delete": {
-        "en-US": "Delete"
-      },
       "yes": {
         "en-US": "Yes"
       },
@@ -262,19 +256,6 @@
       },
       "searchNoMatch": {
         "en-US": "Nothing matched your search term."
-      }
-    },
-    "forms": {
-      "discardChangesTitle": {
-        "en-US": "Discard changes?"
-      },
-      "discardChangesDescription": {
-        "en-US": "Do you want to discard your changes?"
-      }
-    },
-    "roster": {
-      "dropToRemove": {
-        "en-US": "Drop here to remove"
       }
     }
   }

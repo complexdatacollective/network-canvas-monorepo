@@ -105,7 +105,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // Before the current stage emits a progress event with a total, the bar is
-// indeterminate and only the spinner + stage message signal activity.
+// indeterminate: a segment travels along it in place of an amount.
 export const BuildingIndeterminate: Story = {
   args: {
     flow: {

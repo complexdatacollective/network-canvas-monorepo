@@ -455,55 +455,28 @@ describe('choosing between designs', () => {
     expect(outcome.status).toBe('succeeded');
     expect(outcome.log.tags).toContain('firstAttemptShipped');
   });
+});
 
-  it.each([
-    ['keeps', false, 'reviewed'],
-    ['discards', true, 'reviewDiscarded'],
-  ])(
-    '%s a review depending on whether it adds work',
-    async (_, heavier, tag) => {
-      // the heavier review asks the drinking question about everyone
-      const unfiltered = {
-        ...friendshipDesign,
-        stages: stagesOf(friendshipDesign).map((x) =>
-          x.id === 'drinking_together'
-            ? { ...x, filter: { match: 'all', conditions: [] } }
-            : x,
-        ),
-      } as typeof friendshipDesign;
-      const { adapters } = scriptedAdapter({
-        screening: [reply(STUDY_SCREENING)],
-        study_design: [
-          reply(friendshipDesign),
-          reply(heavier ? unfiltered : friendshipDesign),
-        ],
-        wording: [reply(friendshipWording)],
-      });
-      const outcome = await runPipeline(input, {
-        adapters,
-        buildOptions,
-        review: true,
-      });
-      expect(outcome.status).toBe('succeeded');
-      expect(outcome.log.tags).toContain(tag);
-    },
-  );
-
-  it('discards a review that adds screens without adding answers', async () => {
-    const stages = [...stagesOf(friendshipDesign)];
-    stages.splice(1, 0, {
-      kind: 'information',
-      id: 'extra_note',
-      purpose: 'p',
-      interviewerNote: '',
-      skipLogic: stages[0]!.skipLogic,
-      role: 'transition',
-      content: 'Next, a few more questions.',
-    } as (typeof stages)[number]);
-    const longer = { ...friendshipDesign, stages } as typeof friendshipDesign;
-    const { adapters } = scriptedAdapter({
+describe('the design review', () => {
+  const stagesOf = (d: typeof friendshipDesign) => d.stages;
+  const welcome = stagesOf(friendshipDesign).find((x) => x.id === 'welcome')!;
+  const emptyCritique = {
+    issues: [],
+    verdict: 'The design answers the research questions.',
+    stages: [],
+    removeStageIds: [],
+    attributes: [],
+    removeAttributes: [],
+    relationships: [],
+    endings: [],
+    consentText: '',
+    rationaleNote: '',
+  };
+  const reviewWith = async (critique: unknown) => {
+    const { adapters, requests } = scriptedAdapter({
       screening: [reply(STUDY_SCREENING)],
-      study_design: [reply(friendshipDesign), reply(longer)],
+      study_design: [reply(friendshipDesign)],
+      critique: [reply(critique)],
       wording: [reply(friendshipWording)],
     });
     const outcome = await runPipeline(input, {
@@ -511,7 +484,91 @@ describe('choosing between designs', () => {
       buildOptions,
       review: true,
     });
+    return { outcome, requests };
+  };
+  const notesOf = (protocol: Record<string, unknown> | undefined) =>
+    JSON.stringify(
+      (protocol?.stages as { id: string }[] | undefined)?.find((st) =>
+        st.id.startsWith('researcher_notes'),
+      ),
+    );
+
+  it('applies edits that build cleanly and lists the findings', async () => {
+    const { outcome, requests } = await reviewWith({
+      ...emptyCritique,
+      issues: [
+        {
+          stageId: 'welcome',
+          severity: 'major',
+          problem: 'The welcome screen names the eligibility criterion.',
+          change: 'The welcome describes the topic only.',
+        },
+        {
+          stageId: 'study',
+          severity: 'minor',
+          problem:
+            'The consent text does not say what happens to partial answers.',
+          change: '',
+        },
+      ],
+      stages: [
+        {
+          action: 'replace',
+          afterStageId: '',
+          stage: {
+            ...welcome,
+            content: 'This study is about your first semester.',
+          },
+        },
+      ],
+    });
     expect(outcome.status).toBe('succeeded');
-    expect(outcome.log.tags).toContain('reviewDiscarded');
+    expect(outcome.log.tags).toContain('reviewed');
+    expect(outcome.log.review?.applied).toEqual(['stage "welcome"']);
+    expect(
+      requests.find((r) => r.schemaName === 'critique')?.messages[0]?.content,
+    ).toContain('<design>');
+    const notes = notesOf(outcome.result?.protocol);
+    expect(notes).toContain('Design review');
+    expect(notes).toContain('names the eligibility criterion');
+    expect(notes).toContain('For you to decide');
+  });
+
+  it('keeps the edits that build and skips one that breaks the design', async () => {
+    const { outcome } = await reviewWith({
+      ...emptyCritique,
+      stages: [
+        {
+          action: 'replace',
+          afterStageId: '',
+          stage: {
+            ...welcome,
+            content: 'This study is about your first semester.',
+          },
+        },
+        {
+          action: 'add',
+          afterStageId: 'about_you',
+          stage: {
+            kind: 'egoForm',
+            id: 'broken',
+            purpose: 'p',
+            interviewerNote: '',
+            skipLogic: welcome.skipLogic,
+            attributeIds: ['no_such_attribute'],
+          },
+        },
+      ],
+    });
+    expect(outcome.status).toBe('succeeded');
+    expect(outcome.log.review?.applied).toEqual(['stage "welcome"']);
+    expect(outcome.log.review?.skipped).toEqual(['new stage "broken"']);
+    expect(notesOf(outcome.result?.protocol)).toContain('could not apply');
+  });
+
+  it('ships the design unchanged when the review fails', async () => {
+    const { outcome } = await reviewWith(null);
+    expect(outcome.status).toBe('succeeded');
+    expect(outcome.log.tags).toContain('reviewFailed');
   });
 });

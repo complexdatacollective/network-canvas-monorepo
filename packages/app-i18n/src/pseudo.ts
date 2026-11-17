@@ -2,8 +2,8 @@ import { parse, TYPE } from '@formatjs/icu-messageformat-parser';
 import type { MessageFormatElement } from '@formatjs/icu-messageformat-parser';
 import type { IntlShape } from 'react-intl';
 
-import { PSEUDO_LOCALE } from './locales.ts';
-import type { CatalogMessages } from './locales.ts';
+import { PSEUDO_RTL_LOCALE } from './locales.ts';
+import type { AppLocale, CatalogMessages } from './locales.ts';
 import { createAppIntl } from './messages.ts';
 import type { AppIntlErrorHandler, MessageDescriptor } from './messages.ts';
 
@@ -170,8 +170,67 @@ const pseudoMessage = (
   return [literal('['), ...padded(accented), literal(']')];
 };
 
+// U+202E RIGHT-TO-LEFT OVERRIDE and U+202C POP DIRECTIONAL FORMATTING: between
+// them every character is laid out right to left, whatever its own direction.
+const RIGHT_TO_LEFT_OVERRIDE = '\u202E';
+const POP_DIRECTIONAL_FORMATTING = '\u202C';
+
 /**
- * The development pseudo-locale formatter (en-XA).
+ * Makes the literal text of a parsed message run right to left and leaves
+ * everything else alone. The message's own words then behave as a
+ * right-to-left script does, and a placeholder's runtime value, which is
+ * outside the override, keeps its own direction: the mixed-direction sentence
+ * a real right-to-left language produces around a name or a number. Whitespace
+ * alone is not wrapped, so the space between two placeholders stays a plain
+ * space.
+ */
+const overrideElements = (
+  elements: readonly MessageFormatElement[],
+): MessageFormatElement[] =>
+  elements.map((element) => {
+    switch (element.type) {
+      case TYPE.literal:
+        return element.value.trim() === ''
+          ? element
+          : literal(
+              `${RIGHT_TO_LEFT_OVERRIDE}${element.value}${POP_DIRECTIONAL_FORMATTING}`,
+            );
+      case TYPE.select:
+      case TYPE.plural:
+        return {
+          ...element,
+          options: Object.fromEntries(
+            Object.entries(element.options).map(([key, option]) => [
+              key,
+              { ...option, value: overrideElements(option.value) },
+            ]),
+          ),
+        };
+      case TYPE.tag:
+        return { ...element, children: overrideElements(element.children) };
+      case TYPE.argument:
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+      case TYPE.pound:
+      default:
+        return element;
+    }
+  });
+
+/**
+ * Right to left and otherwise untouched: no accents, brackets or padding,
+ * because this pseudo-locale is about direction and `en-XA` already covers
+ * expansion.
+ */
+const pseudoRtlMessage = (
+  source: string | MessageFormatElement[],
+): MessageFormatElement[] =>
+  overrideElements(typeof source === 'string' ? parse(source) : source);
+
+/**
+ * The formatter for a development pseudo-locale: `en-XA`, or `ar-XB` when
+ * `locale` is that.
  *
  * The catalog is resolved here rather than handed to react-intl, because
  * react-intl prefers `messages[id]` over any descriptor it is given: a
@@ -181,15 +240,22 @@ const pseudoMessage = (
  * formatter.
  */
 export function createPseudoIntl(options: {
+  /** One of the pseudo-locale tags (see `isPseudoLocale`). */
+  locale: string;
   messages?: CatalogMessages;
   onError?: AppIntlErrorHandler;
   timeZone?: string;
+  /** See `createAppIntl`. */
+  direction?: AppLocale['direction'];
 }): IntlShape {
   const intl = createAppIntl({
-    locale: PSEUDO_LOCALE,
+    locale: options.locale,
     onError: options.onError,
     timeZone: options.timeZone,
+    direction: options.direction,
   });
+  const transform =
+    options.locale === PSEUDO_RTL_LOCALE ? pseudoRtlMessage : pseudoMessage;
   const cache = new Map<string, MessageFormatElement[]>();
 
   // react-intl 11+ overloads formatMessage per argument contract, which no
@@ -211,7 +277,7 @@ export function createPseudoIntl(options: {
     let pseudo = id === undefined ? undefined : cache.get(id);
     if (pseudo === undefined) {
       try {
-        pseudo = pseudoMessage(source);
+        pseudo = transform(source);
       } catch {
         // Unparseable ICU is react-intl's error to report, with the id and the
         // message in hand; swallowing it here would turn a broken message into
@@ -224,5 +290,5 @@ export function createPseudoIntl(options: {
     return intl.formatMessage(pseudoDescriptor, values, opts);
   }) as FormatMessage;
 
-  return { ...intl, formatMessage };
+  return { ...intl, formatMessage, $t: formatMessage };
 }

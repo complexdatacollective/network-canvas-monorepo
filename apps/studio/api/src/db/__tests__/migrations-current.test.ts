@@ -34,10 +34,6 @@ const newestFile = (name: string) =>
 const sidecarsNow = () => [...SIDECARS, ...renderJobStatements()];
 
 describe('the newest migration', () => {
-  it('exists', () => {
-    expect(newestVersion).toBeDefined();
-  });
-
   it('records this build’s fingerprint', () => {
     expect(
       decodeManifest(newestFile('manifest.json')).fingerprint,

@@ -103,24 +103,18 @@ const readByTheParticipant = (label: unknown): string =>
   getMarkdownLabelText(sourceOf(label));
 
 /**
- * Bold and italic, and nothing a single line cannot hold.
+ * That this surface mounts the shared option-label box: one line, so no
+ * heading control beside it.
  *
  * Asked of the toolbar beside ONE label box rather than of the page, because
  * a surface may show several at once and a page-wide query would answer with
- * somebody else's.
+ * somebody else's. The full toolbar is asserted once, on the shared field, by
+ * `OptionLabelField.stories.tsx`'s BoldAndItalicOnly play.
  */
-function expectBoldAndItalicOnly(field: HTMLElement): void {
+function expectTheOptionLabelBox(field: HTMLElement): void {
   const cell = within(field);
   expect(cell.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
-  expect(cell.getByRole('button', { name: 'Italic' })).toBeInTheDocument();
   expect(cell.queryByRole('button', { name: 'Heading 1' })).toBeNull();
-  expect(cell.queryByRole('button', { name: 'Heading 2' })).toBeNull();
-  expect(cell.queryByRole('button', { name: 'Bullet list' })).toBeNull();
-  expect(cell.queryByRole('button', { name: 'Numbered list' })).toBeNull();
-  expect(cell.queryByRole('button', { name: 'Thematic break' })).toBeNull();
-  expect(cell.queryByRole('button', { name: 'Add link' })).toBeNull();
-  // The promise about the value itself, which is what the withheld controls
-  // follow from: a screen reader is told Enter does nothing here.
   expect(cell.getByRole('textbox')).toHaveAttribute('aria-multiline', 'false');
 }
 
@@ -212,12 +206,12 @@ const attributeLabelBox = (position: number) =>
   screen.getByRole('textbox', { name: `Option ${position} label` });
 
 describe('the codebook’s own attribute editor', () => {
-  it('offers bold and italic on an option label, and nothing else', () => {
+  it('mounts the one-line option label box for an option label', () => {
     renderAttributeEditor([
       { label: storedLabel('Distant'), value: 'distant' },
     ]);
 
-    expectBoldAndItalicOnly(attributeLabelField(1));
+    expectTheOptionLabelBox(attributeLabelField(1));
   });
 
   it('leaves punctuation the researcher typed as punctuation', async () => {
@@ -373,7 +367,7 @@ function renderInlineList(options: readonly unknown[]) {
 const rowLabelBox = () => screen.getByRole('textbox', { name: 'Label' });
 
 describe('the inline list a row mounts', () => {
-  it('offers bold and italic on an option label, and nothing else', async () => {
+  it('mounts the one-line option label box for an option label', async () => {
     const { user } = renderInlineList([
       { label: storedLabel('Close'), value: 'close' },
     ]);
@@ -383,7 +377,7 @@ describe('the inline list a row mounts', () => {
     );
     await screen.findByRole('textbox', { name: 'Label' });
 
-    expectBoldAndItalicOnly(fieldNamed('options[0].label'));
+    expectTheOptionLabelBox(fieldNamed('options[0].label'));
   });
 
   it('leaves punctuation the researcher typed as punctuation', async () => {
@@ -520,7 +514,7 @@ const answerBox = (records: 'true' | 'false') =>
   screen.getByRole('textbox', { name: `Label for “${records}”` });
 
 describe('the two answers of a yes-or-no attribute', () => {
-  it('offers bold and italic on an answer’s words, and nothing else', async () => {
+  it('mounts the one-line option label box for an answer’s words', async () => {
     renderBooleanAnswers([
       { label: storedLabel('Related'), value: true },
       { label: storedLabel('Not related'), value: false },
@@ -528,7 +522,7 @@ describe('the two answers of a yes-or-no attribute', () => {
 
     await screen.findByRole('textbox', { name: 'Label for “true”' });
 
-    expectBoldAndItalicOnly(fieldNamed(TRUE_ANSWER));
+    expectTheOptionLabelBox(fieldNamed(TRUE_ANSWER));
   });
 
   it('leaves punctuation the researcher typed as punctuation', async () => {

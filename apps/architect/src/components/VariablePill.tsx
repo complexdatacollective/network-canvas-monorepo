@@ -4,11 +4,8 @@ import { motion } from 'motion/react';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import {
-  type MessageDescriptor,
-  defineMessages,
-} from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -40,58 +37,31 @@ import {
 } from '~/utils/exportColumnConflicts';
 import { createValidations } from '~/utils/validations';
 const messages = defineMessages({
-  editing: {
-    id: 'architect.variablePill.editing',
-    defaultMessage: 'Editing attribute {name}',
-    description: 'Live announcement when the attribute name editor opens.',
-  },
-  cancelled: {
-    id: 'architect.variablePill.cancelled',
-    defaultMessage: 'Attribute name edit cancelled',
-    description: 'Live announcement after cancelling an attribute rename.',
-  },
-  renamed: {
-    id: 'architect.variablePill.renamed',
-    defaultMessage: 'Attribute renamed to {name}',
-    description:
-      'Live announcement after an attribute rename. Name is authored data.',
-  },
-  attribute: {
-    id: 'architect.variablePill.attribute',
-    defaultMessage: '{type} attribute',
-    description: 'The alt text in components / VariablePill.',
-  },
   editAttributeName: {
     id: 'architect.variablePill.editAttributeName',
     defaultMessage: 'Edit attribute name: {label}',
-    description: 'The aria-label text in components / VariablePill.',
-  },
-  editAttributeName62aa3: {
-    id: 'architect.variablePill.editAttributeName62aa3',
-    defaultMessage: 'Edit attribute name',
-    description: 'The aria-label text in components / VariablePill.',
-  },
-  attributeName: {
-    id: 'architect.variablePill.attributeName',
-    defaultMessage: 'Attribute name',
-    description: 'The aria-label text in components / VariablePill.',
+    description:
+      'Accessible name and tooltip of the pill button that opens the attribute rename editor. label is the current attribute name.',
   },
   enterAnAttributeName: {
     id: 'architect.variablePill.enterAnAttributeName',
     defaultMessage: 'Enter an attribute name...',
-    description: 'The placeholder text in components / VariablePill.',
+    description:
+      'Placeholder shown in the empty text field of the attribute rename dialog.',
   },
   saveChanges: {
     id: 'architect.variablePill.saveChanges',
     defaultMessage: 'Save Changes',
-    description: 'Visible text in components / VariablePill.',
+    description:
+      'Button in the attribute rename dialog that saves the new attribute name. Disabled until the name is valid and changed.',
   },
 });
 const finalMessages = defineMessages({
   required: {
     id: 'architect.final.components.VariablePill.required',
     defaultMessage: 'You must enter an attribute name',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Validation error in the attribute rename dialog when the name field is empty.',
   },
 });
 
@@ -205,7 +175,7 @@ const getVariablePillClassName = ({
     animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
     !interactive && 'cursor-default',
     interactive &&
-      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
+      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-start transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
     className,
   );
 
@@ -233,16 +203,16 @@ function VariablePillContents({
           : 'grid-cols-[3rem_minmax(0,auto)]',
       )}
     >
-      <span className="flex items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
+      <span className="flex items-center justify-center border-e border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
         <img
           // oxlint-disable-next-line tailwindcss/no-unknown-classes -- icon selector hook for the parent
           className="icon opacity-80"
           src={icon}
-          alt={intl.formatMessage(messages.attribute, {
-            type: getVariableTypeLabel(type, intl).toLocaleLowerCase(
-              intl.locale,
-            ),
-          })}
+          // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+          alt={`${getVariableTypeLabel(type, intl).toLocaleLowerCase(
+            intl.locale,
+          )} attribute`}
+          lang="en"
         />
       </span>
       <span className="flex min-w-0 items-center justify-between">
@@ -277,10 +247,7 @@ export const VariablePill = ({
   const [closing, setClosing] = useState(false);
   const [editorAnchor, setEditorAnchor] =
     useState<VariablePillEditorAnchor | null>(null);
-  const [announcement, setAnnouncement] = useState<{
-    message: MessageDescriptor;
-    values?: { name: string };
-  } | null>(null);
+  const [announcement, setAnnouncement] = useState<string | null>(null);
 
   const [newName, setNewName] = useState(label);
   // What the rename would save: the draft as typed may carry padding or a
@@ -337,7 +304,7 @@ export const VariablePill = ({
       width: triggerBounds.width,
     });
     setNewName(label);
-    setAnnouncement({ message: messages.editing, values: { name: label } });
+    setAnnouncement(`Editing attribute ${label}`);
     restoreFocusRef.current = true;
     setEditing(true);
   };
@@ -346,7 +313,7 @@ export const VariablePill = ({
     announcement: nextAnnouncement,
     beforeClose,
   }: {
-    announcement: { message: MessageDescriptor; values?: { name: string } };
+    announcement: string;
     beforeClose?: () => void;
   }) => {
     if (closingRef.current) {
@@ -363,7 +330,7 @@ export const VariablePill = ({
 
   const handleCancel = () => {
     closeEditor({
-      announcement: { message: messages.cancelled },
+      announcement: 'Attribute name edit cancelled',
     });
   };
 
@@ -373,7 +340,7 @@ export const VariablePill = ({
     }
 
     closeEditor({
-      announcement: { message: messages.renamed, values: { name: savedName } },
+      announcement: `Attribute renamed to ${savedName}`,
       beforeClose: () => onLabelChange(savedName),
     });
   };
@@ -450,7 +417,10 @@ export const VariablePill = ({
         style={style}
       >
         <VariablePillContents type={type}>
-          <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+          <span
+            dir="auto"
+            className="text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
+          >
             {label}
           </span>
         </VariablePillContents>
@@ -479,7 +449,10 @@ export const VariablePill = ({
               onClick={handleStartEditing}
             >
               <VariablePillContents type={type}>
-                <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+                <span
+                  dir="auto"
+                  className="text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
+                >
                   {label}
                 </span>
               </VariablePillContents>
@@ -503,7 +476,7 @@ export const VariablePill = ({
         {editorFrame && (
           <ModalPopup
             key="variable-pill-editor"
-            aria-label={intl.formatMessage(messages.editAttributeName62aa3)}
+            aria-label="Edit attribute name"
             className="fixed z-40 flex flex-col items-center gap-6 p-6 outline-none"
             style={editorFrame.style}
             initial={{ opacity: 0.9999 }}
@@ -536,10 +509,10 @@ export const VariablePill = ({
               <VariablePillContents fill type={type}>
                 <InputField
                   autoFocus
-                  aria-label={intl.formatMessage(messages.attributeName)}
+                  aria-label="Attribute name"
                   aria-invalid={validation ? true : undefined}
                   aria-describedby={validation ? validationId : undefined}
-                  className="h-full w-full rounded-l-none! outline-none!"
+                  className="h-full w-full rounded-s-none! outline-none!"
                   placeholder={intl.formatMessage(
                     messages.enterAnAttributeName,
                   )}
@@ -594,8 +567,8 @@ export const VariablePill = ({
         )}
       </Modal>
 
-      <span className="sr-only" aria-live="polite">
-        {announcement && <AppMessage {...announcement} />}
+      <span className="sr-only" aria-live="polite" lang="en">
+        {announcement}
       </span>
     </>
   );

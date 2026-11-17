@@ -27,60 +27,20 @@ import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { cx } from '~/utils/cva';
 
 import { timelineRowGrid } from './rowLayout';
-const chromeMessages = defineMessages({
-  editStage: {
-    id: 'architect.chrome.timeline.timelineStageRow.editStage',
-    defaultMessage:
-      'Edit stage {position, number}: {stageName}, {interfaceName}',
-    description:
-      'Researcher-facing explanatory text in components / Timeline / TimelineStageRow.',
-  },
-  editStage76e56: {
-    id: 'architect.chrome.timeline.timelineStageRow.editStage76e56',
-    defaultMessage: 'Edit stage {position, number}: {stageName}',
-    description:
-      'Researcher-facing explanatory text in components / Timeline / TimelineStageRow.',
-  },
-  viewStage: {
-    id: 'architect.chrome.timeline.timelineStageRow.viewStage',
-    defaultMessage:
-      'View stage {position, number}: {stageName}, {interfaceName}',
-    description:
-      'Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it.',
-  },
-  viewStageWithoutInterface: {
-    id: 'architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface',
-    defaultMessage: 'View stage {position, number}: {stageName}',
-    description:
-      'Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it. Used when the stage type has no known name.',
-  },
-});
 const messages = defineMessages({
   hasFilter: {
     id: 'architect.timeline.timelineStageRow.hasFilter',
     defaultMessage: 'Has filter',
-    description: 'The alt text in components / Timeline / TimelineStageRow.',
+    description:
+      'Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has a filter set.',
   },
   hasSkipLogic: {
     id: 'architect.timeline.timelineStageRow.hasSkipLogic',
     defaultMessage: 'Has skip logic',
-    description: 'The alt text in components / Timeline / TimelineStageRow.',
-  },
-  deleteStage: {
-    id: 'architect.timeline.timelineStageRow.deleteStage',
-    defaultMessage: 'Delete stage {position, number}: {stageName}',
     description:
-      'The aria-label text in components / Timeline / TimelineStageRow.',
+      'Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has skip logic set.',
   },
 });
-const finalMessages = defineMessages({
-  untitledStage: {
-    id: 'architect.final.components.Timeline.TimelineStageRow.untitledStage',
-    defaultMessage: 'Untitled stage',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-});
-
 // Reveal Delete on row hover or when keyboard focus reaches the button itself.
 // Using the row's `focus-within` state would also react to pointer focus on the
 // preview button, leaving Delete stuck visible after a preview-origin drag.
@@ -178,8 +138,7 @@ const TimelineStageRow = ({
     if (readOnly) dragControls.stop();
   }, [readOnly, dragControls]);
 
-  const stageName =
-    stage.label || intl.formatMessage(finalMessages.untitledStage);
+  const stageName = stage.label || 'Untitled stage';
   const position = index + 1;
   // The row's thumbnail is what tells a sighted researcher which interface a
   // stage uses; naming the open control after it too keeps a screen-reader
@@ -187,22 +146,10 @@ const TimelineStageRow = ({
   // not know — an imported protocol can carry one — in which case the label
   // says what it can rather than inventing a name.
   const interfaceName = interfaceDisplayName(stage.type, intl);
-  const withInterface = readOnly
-    ? chromeMessages.viewStage
-    : chromeMessages.editStage;
-  const withoutInterface = readOnly
-    ? chromeMessages.viewStageWithoutInterface
-    : chromeMessages.editStage76e56;
+  const openVerb = readOnly ? 'View' : 'Edit';
   const openControlLabel = interfaceName
-    ? intl.formatMessage(withInterface, {
-        position: position,
-        stageName: stageName,
-        interfaceName: interfaceName,
-      })
-    : intl.formatMessage(withoutInterface, {
-        position: position,
-        stageName: stageName,
-      });
+    ? `${openVerb} stage ${position}: ${stageName}, ${interfaceName}`
+    : `${openVerb} stage ${position}: ${stageName}`;
 
   // The whole arrow-key reorder mechanism — bounds check, refusal channel, and
   // the refocus a keyboard move otherwise loses — belongs to fresco-ui's
@@ -329,10 +276,13 @@ const TimelineStageRow = ({
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1 basis-40">
+          {/* The researcher's own name for the stage: read in its own
+              direction, on the interface's side. */}
           <Heading
             level="h4"
             margin="none"
-            className="my-2 wrap-break-word transition-all group-hover:font-bold"
+            dir="auto"
+            className="text-match-parent my-2 wrap-break-word transition-all group-hover:font-bold"
           >
             {/* Preserve the height of an empty authored heading. */}
             {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
@@ -368,10 +318,8 @@ const TimelineStageRow = ({
               render={
                 <IconButton
                   icon={<Trash2 />}
-                  aria-label={intl.formatMessage(messages.deleteStage, {
-                    position: position,
-                    stageName: stageName,
-                  })}
+                  aria-label={`Delete stage ${position}: ${stageName}`}
+                  lang="en"
                   aria-disabled={deleteBlockedReason !== undefined || undefined}
                   aria-describedby={
                     deleteBlockedReason === undefined
@@ -394,7 +342,7 @@ const TimelineStageRow = ({
               }
             />
             {deleteBlockedReason !== undefined && (
-              <TooltipContent side="left" className="max-w-64">
+              <TooltipContent side="inline-start" className="max-w-64">
                 {deleteBlockedReason}
               </TooltipContent>
             )}

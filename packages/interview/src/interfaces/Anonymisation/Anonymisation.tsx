@@ -232,11 +232,9 @@ function AnonymisationInner(props: AnonymisationProps) {
                       )}
                       <SubmitButton
                         key="submit"
-                        aria-label={intl.formatMessage(
-                          interfaceMessages.submit,
-                        )}
+                        aria-label="Submit"
                         type="submit"
-                        icon={<ArrowRight />}
+                        icon={<ArrowRight className="rtl:rotate-180" />}
                         iconPosition="right"
                       >
                         <AppMessage message={commonMessages.continue} />

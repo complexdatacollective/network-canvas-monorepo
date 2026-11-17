@@ -5,7 +5,8 @@ const messages = defineMessages({
   protocolNameTooLong: {
     id: 'architect.config.protocolNameTooLong',
     defaultMessage: 'Protocol names are limited to {max, number} characters.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Validation error shown under the protocol name field, in the new protocol dialog and when renaming a protocol, when the name is longer than the limit. max is the maximum number of characters.',
   },
 });
 
@@ -19,12 +20,6 @@ export const COLOR_PALETTES = {
   'edge-color-seq': 8,
   'cat-color-seq': 10,
 };
-
-export const COLOR_PALETTE_BY_ENTITY = {
-  ordinal: 'ord-color-seq',
-  node: 'node-color-seq',
-  edge: 'edge-color-seq',
-} as const;
 
 /**
  * The protocol schema version this build of Architect authors and edits.
@@ -45,9 +40,9 @@ export const APP_SCHEMA_VERSION: typeof CURRENT_SCHEMA_VERSION =
   CURRENT_SCHEMA_VERSION;
 
 // Product limit on a protocol name, counted in graphemes (see
-// `~/utils/countGraphemes`) rather than UTF-16 code units. Stage labels are
-// capped at 50 (`StageHeading`); a protocol name legitimately carries more
-// context (study + wave + version), and 100 fits
+// `~/utils/countGraphemes`) rather than UTF-16 code units. Stage names have
+// their own limit, declared by the schema (`STAGE_LABEL_MAX_LENGTH`). A
+// protocol name carries study, wave and version, and 100 fits
 // "Study Name — Wave 2 — v3.1 (2026)" comfortably while keeping the name from
 // consuming the editor viewport.
 //

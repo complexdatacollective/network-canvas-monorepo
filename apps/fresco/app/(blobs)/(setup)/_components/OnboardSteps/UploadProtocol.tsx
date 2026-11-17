@@ -16,21 +16,21 @@ const messages = defineMessages({
     id: 'fresco.OnboardSteps.UploadProtocol.importProtocols',
     defaultMessage: 'Import Protocols',
     description:
-      'Researcher-facing OnboardSteps / UploadProtocol: Import Protocols',
+      'Heading of the setup wizard step where the researcher can upload interview protocol files. Import is an action here (adding files to the installation).',
   },
   ifYouHaveAlreadyCreatedANetwork: {
     id: 'fresco.OnboardSteps.UploadProtocol.ifYouHaveAlreadyCreatedANetwork',
     defaultMessage:
       'If you have already created a Network Canvas protocol ( <tag1>.netcanvas</tag1>) you can import it now.',
     description:
-      'Researcher-facing OnboardSteps / UploadProtocol: If you have already created a Network Canvas protocol ( .netcanvas) you can import it now.',
+      'Paragraph in the protocol upload step of the setup wizard. tag1 wraps the file extension .netcanvas, shown in code style; keep the extension untranslated.',
   },
   ifYouDonAposTHaveA: {
     id: 'fresco.OnboardSteps.UploadProtocol.ifYouDonAposTHaveA',
     defaultMessage:
       "If you don't have a protocol yet, you can upload one later from the dashboard.",
     description:
-      "Researcher-facing OnboardSteps / UploadProtocol: If you don't have a protocol yet, you can upload one later from the dashboard.",
+      'Second paragraph in the protocol upload step of the setup wizard, reassuring a researcher without a protocol that they can upload one later from the dashboard.',
   },
 });
 

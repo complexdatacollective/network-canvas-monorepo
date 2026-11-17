@@ -10,12 +10,13 @@ import {
   type ReactNode,
 } from 'react';
 
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { isPseudoLocale } from '@codaco/app-i18n/locales';
 import {
   AppI18nProvider,
   useAppIntl,
   useLocaleCatalog,
 } from '@codaco/app-i18n/react';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 
 import { architectCatalogSource } from '../locales/catalogs';
 import { installArchitectIntl } from './imperative';
@@ -58,7 +59,7 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     )
       return;
     setSaveState(
-      locale === PSEUDO_LOCALE
+      isPseudoLocale(locale)
         ? 'idle'
         : writeLocalePreference(locale)
           ? 'saved'
@@ -92,8 +93,8 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     resolveDeviceLocale(preference),
   );
   const locale =
-    import.meta.env.DEV && preference === PSEUDO_LOCALE
-      ? PSEUDO_LOCALE
+    import.meta.env.DEV && preference !== null && isPseudoLocale(preference)
+      ? preference
       : deviceLocale;
   const value = useMemo(
     () => ({ preference, automaticLocale, saveState, setLocale }),
@@ -114,7 +115,7 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
         onLocaleChange={setLocale}
       >
         <ImperativeFormatter />
-        {children}
+        <LocaleDirectionProvider>{children}</LocaleDirectionProvider>
       </AppI18nProvider>
     </PreferenceContext.Provider>
   );

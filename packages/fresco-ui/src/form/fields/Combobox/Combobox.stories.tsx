@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, screen, userEvent, waitFor } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { Button } from '../../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../Popover';
@@ -8,6 +8,7 @@ import { presentationalTextValue } from '../../../PresentationalText';
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
+import { expectInvalidControlToKeepFocusRing } from '../focusRingTestHelpers';
 import ComboboxField from './Combobox';
 import type { ComboboxOption } from './shared';
 
@@ -76,6 +77,23 @@ const meta: Meta<typeof ComboboxField> = {
       table: {
         type: { summary: 'string' },
         defaultValue: { summary: 'No items found.' },
+      },
+    },
+    'optionFromSearch': {
+      control: false,
+      description:
+        'An option that depends on the text typed into the search box, such as a value that can be entered but is too many to list. Return undefined when the text offers nothing.',
+      table: {
+        type: { summary: '(search: string) => ComboboxOption | undefined' },
+      },
+    },
+    'single': {
+      control: 'boolean',
+      description:
+        'Choose one option instead of several. Choosing an option replaces the choice and closes the list; the value is a list holding at most one value.',
+      table: {
+        type: { summary: 'boolean' },
+        defaultValue: { summary: 'false' },
       },
     },
     'showSearch': {
@@ -815,6 +833,128 @@ export const LocalizedOptions: Story = {
   },
 };
 
+const topicOptions: ComboboxOption[] = [
+  { value: 'diet', label: 'Diet' },
+  { value: 'exercise', label: 'Exercise' },
+  { value: 'sleep', label: 'Sleep' },
+];
+
+/**
+ * `optionFromSearch` offers an option made from what was typed, after the
+ * options that match it: here any word can be added as a topic. It is not
+ * offered when the word is already a listed topic, and once chosen it stays
+ * chosen after the search is cleared.
+ */
+export const OptionFromSearch: Story = {
+  render: function OptionFromSearchStory() {
+    const [value, setValue] = useState<(string | number)[]>([]);
+
+    return (
+      <div className="w-80">
+        <ComboboxField
+          name="topics"
+          aria-label="Topics"
+          options={topicOptions}
+          searchPlaceholder="Search or type a new topic"
+          optionFromSearch={(search) =>
+            topicOptions.some((option) => option.value === search.toLowerCase())
+              ? undefined
+              : { value: search.toLowerCase(), label: `Add “${search}”` }
+          }
+          showSelectAll={false}
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    await userEvent.click(
+      await screen.findByRole('combobox', { name: 'Topics' }),
+    );
+    const search = await screen.findByPlaceholderText(
+      'Search or type a new topic',
+    );
+
+    await userEvent.type(search, 'sle');
+    const matching = await screen.findAllByRole('option');
+    await expect(matching.map((option) => option.textContent)).toEqual([
+      'Sleep',
+      'Add “sle”',
+    ]);
+
+    await userEvent.clear(search);
+    await userEvent.type(search, 'sleep');
+    await expect(
+      (await screen.findAllByRole('option')).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(['Sleep']);
+
+    await userEvent.clear(search);
+    await userEvent.type(search, 'reading');
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Add “reading”' }),
+    );
+    await userEvent.clear(search);
+    await userEvent.keyboard('{Escape}');
+
+    await expect(
+      screen.getByRole('combobox', { name: 'Topics' }),
+    ).toHaveTextContent('1 item selected');
+  },
+};
+
+/**
+ * With `single`, the field chooses one option: choosing another replaces the
+ * choice and closes the list. `optionFromSearch` works the same way.
+ */
+export const SingleChoice: Story = {
+  render: function SingleChoiceStory() {
+    const [value, setValue] = useState<(string | number)[]>([]);
+
+    return (
+      <div className="w-80">
+        <ComboboxField
+          name="single-topic"
+          aria-label="Main topic"
+          single
+          options={topicOptions}
+          optionFromSearch={(search) => ({
+            value: search.toLowerCase(),
+            label: `Add “${search}”`,
+          })}
+          renderValue={(selected) =>
+            selected.map((option) => presentationalTextValue(option.label))
+          }
+          searchPlaceholder="Search or type a new topic"
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    const trigger = await screen.findByRole('combobox', {
+      name: 'Main topic',
+    });
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole('option', { name: 'Diet' }));
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    await expect(trigger).toHaveTextContent('Diet');
+
+    await userEvent.click(trigger);
+    await userEvent.type(
+      await screen.findByPlaceholderText('Search or type a new topic'),
+      'reading',
+    );
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Add “reading”' }),
+    );
+    await waitFor(() => expect(trigger).toHaveTextContent('Add “reading”'));
+  },
+};
+
 const languageOptions: ComboboxOption[] = [
   { value: 'bs', label: 'Bosnian' },
   { value: 'pt-BR', label: 'Brazilian Portuguese' },
@@ -877,5 +1017,47 @@ export const LongSelection: Story = {
         triggerBox.right,
       );
     });
+  },
+};
+
+/**
+ * An invalid combobox keeps its focus ring: its red border says the value is
+ * wrong, not which field the keyboard is in.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  // This play reads a style that exists only while a control matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs; the invalid state itself is in
+  // the states story's snapshot.
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="flex w-80 flex-col gap-6">
+      <ComboboxField
+        aria-label="Valid"
+        name="valid"
+        options={sampleOptions}
+        value={['option1']}
+      />
+      <ComboboxField
+        aria-label="Invalid"
+        aria-invalid
+        name="invalid"
+        options={sampleOptions}
+        value={['option1']}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Valid' }),
+        ringOn: 'control',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Invalid' }),
+        ringOn: 'control',
+      },
+    );
   },
 };

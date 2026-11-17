@@ -1,0 +1,108 @@
+---
+title: Compositor de redes
+navOrder: 8
+translatedFrom: cb7bedac6d7f999dc617be857ac33de8be584fba
+---
+
+<InterfaceSummary type="NetworkComposer">
+
+<InterfaceMeta type="Constructor de redes de formato libre" creates="Nodos de un único tipo, vínculos de varios tipos y datos de atributos de nodos y vínculos" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+La interfaz «Compositor de redes» es de formato libre, ocupa una sola pantalla y sirve para construir toda una red personal en un mismo lugar. Mientras que la mayoría de las interfaces de Network Canvas plantean las tareas de una en una (primero se obtienen los álteres, es decir, cada persona a la que se nombra durante la entrevista; después se describen en etapas de tipo intérprete de nombres y por último se trazan los vínculos), la interfaz «Compositor de redes» reúne estas tareas en un único lienzo, de modo que puedes crear álteres, registrar sus atributos, trazar relaciones de varios tipos y recolocarlo todo a medida que la imagen va tomando forma.
+
+Lo mejor es entenderla como un «bloc de notas» para redes. Como es densa y rápida (con una paleta de herramientas, un inspector, atajos de teclado y la posibilidad de deshacer y rehacer), está pensada para que la maneje quien investiga o la persona entrevistadora, ya sea junto a una persona participante o en solitario para esbozar, poner a prueba o modelar una red, y no para dársela a una persona participante sin acompañamiento.
+
+![La interfaz «Compositor de redes», con su paleta de herramientas flotante junto a una red dibujada sobre un fondo de círculos concéntricos](/assets/img/interface-documentation/network-composer/network-composer-example.png)
+
+## Cómo funciona {#how-it-works}
+
+La interfaz presenta un único lienzo con una paleta de herramientas flotante. Cada herramienta permanece activa hasta que cambias a otra, así que puedes repetir una acción sin tener que volver a seleccionarla:
+
+- **Seleccionar / Mover** selecciona álteres y vínculos, y recoloca los álteres al arrastrarlos. Al seleccionar uno se abre el inspector, donde puedes rellenar sus atributos; al hacer clic en una parte vacía del lienzo se borra la selección.
+- **Añadir un elemento** abre un campo de nombre junto a la paleta. Escribe un nombre y pulsa Intro para añadir el álter (se coloca en el siguiente hueco libre de una cuadrícula o lo sitúa la disposición automática, si está activada), y el campo permanece abierto para que puedas añadir varios seguidos.
+- **Dibujar una conexión** traza relaciones. Un único botón abre un menú con los tipos de vínculo de la etapa; elige uno (el botón adopta el color de ese tipo mientras está activo) y, a continuación, toca un álter y después otro para conectarlos. Si vuelves a tocar el mismo par, se elimina ese vínculo, y si tocas por segunda vez el primer álter, se cancela un vínculo a medio trazar. Los vínculos se dibujan con el color de su tipo, y la herramienta solo se muestra cuando la etapa define al menos un tipo de vínculo.
+- **Disposición automática** es un interruptor que activa o desactiva en cualquier momento de la entrevista una disposición de la red dirigida por fuerzas. Su estado inicial es un valor predeterminado que estableces en Architect (a diferencia de la interfaz «Sociograma», el modo no queda fijado al diseñar el protocolo) y, tanto si se activa como si se desactiva, esa elección se recuerda para la etapa.
+- **Grupos** sombrea los álteres que comparten un valor de un único atributo categórico (elegido en Architect) con envolventes convexas de color situadas detrás de ellos, lo que permite ver fácilmente agrupaciones como «hogar» o «grupo de amistades». Las envolventes siempre se ven en cuanto se configura el atributo, y la disposición automática acerca suavemente entre sí a los miembros de un mismo grupo. La herramienta enumera los grupos junto a sus colores; elige uno (el botón adopta el color de ese grupo mientras está activo) y, a continuación, toca un álter para añadirlo al grupo o quitarlo de él.
+- **Deshacer / Rehacer** deshacen y rehacen cualquier cambio (añadir o quitar álteres y vínculos, editar atributos, cambiar la pertenencia a grupos y recolocar álteres), y también están disponibles con los atajos de teclado habituales.
+
+Para asignar grupos rápidamente, puedes seleccionar varios álteres a la vez (haciendo clic en ellos con la tecla Mayús pulsada o dibujando un lazo a mano alzada a su alrededor) y añadir toda la selección a un grupo en un solo paso, con los botones con código de colores que aparecen debajo del lienzo. La misma selección múltiple también se puede eliminar de una vez.
+
+## Configuración {#configuring}
+
+Todo aquello sobre lo que actúan las herramientas se configura en Architect al crear la etapa:
+
+### El atributo de nombre {#the-name-variable}
+
+El campo de nombre de **Añadir un elemento** rellena un atributo de texto que eliges tú, con el mismo mecanismo de adición rápida que el de la interfaz [«Generador de nombres (adición rápida)»](/es/design-protocols/interface-documentation/name-generator-using-quick-add).
+
+### El atributo de disposición {#the-layout-variable}
+
+La posición de cada álter en el lienzo se guarda como coordenadas normalizadas en un atributo de disposición, exactamente igual que las guarda la interfaz [«Sociograma»](/es/design-protocols/interface-documentation/sociogram).
+
+### Formularios de atributos {#attribute-forms}
+
+El inspector muestra un formulario de atributos opcional para los álteres y otro para cada tipo de vínculo. Cada campo combina un atributo del libro de códigos con el control de entrada que se usa para recogerlo, además de una etiqueta y un texto de ayuda opcional que acompañan al campo. Todos los campos necesitan una etiqueta. Cuando eliges el atributo, Architect rellena la etiqueta con el nombre del atributo, así que cámbiala por las palabras que deben leer quienes participan. La etiqueta se puede traducir. A diferencia de otras interfaces basadas en formularios, el control de entrada se elige **en la etapa** y no en el atributo del libro de códigos, de modo que un mismo atributo se puede recoger con controles distintos en etapas distintas. Una etapa cuyo formulario no tiene campos simplemente indica que no hay atributos que editar.
+
+### Tipos de vínculo {#edge-types}
+
+Cada tipo de relación que puede crear la herramienta **Dibujar una conexión** se añade a la etapa con una etiqueta, y cada tipo puede tener, de forma opcional, su propio formulario de atributos. Quienes participan eligen el tipo por su etiqueta en el menú de **Dibujar una conexión**, y la etiqueta es el título de su formulario. Inicialmente es el nombre del tipo de vínculo, y puedes traducirla como cualquier otro texto (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol#labels-for-network-composer-edge-types)). La herramienta solo aparece cuando la etapa define al menos un tipo de vínculo, y cada tipo de vínculo se puede añadir una sola vez.
+
+### Grupos {#groups}
+
+Un atributo categórico opcional se dibuja como las envolventes convexas de **Grupos**. La herramienta añade un álter a un grupo o lo quita de él (es decir, le asigna o le quita un valor de ese atributo), y la disposición automática acerca suavemente entre sí a los miembros de un mismo grupo.
+
+### Fondo {#background}
+
+El fondo del lienzo es de círculos concéntricos o una imagen personalizada, igual que en las interfaces [«Sociograma»](/es/design-protocols/interface-documentation/sociogram) y [«Narrativa»](/es/design-protocols/interface-documentation/narrative). Consulta [Fondos SVG adaptables](/es/design-protocols/responsive-svg-backgrounds) para crear imágenes que se adapten bien a distintos dispositivos.
+
+### Disposición automática {#automatic-layout}
+
+El ajuste que eliges al diseñar el protocolo solo determina el estado **inicial**: a diferencia de la interfaz «Sociograma», la disposición dirigida por fuerzas se puede activar y desactivar durante la entrevista, y la elección que se haga en ese momento se recuerda para la etapa.
+
+### Personalizar la redacción predeterminada {#customize-built-in-wording}
+
+La sección **Personalizar la redacción predeterminada** del editor de la etapa contiene las palabras que lee la persona entrevistadora en el lienzo. Todas las etapas «Compositor de redes» muestran las mismas palabras, así que son comunes a todas las etapas de este tipo: un cambio en una de ellas se aplica a todas las etapas «Compositor de redes» del protocolo, y se guarda en cuanto sales del campo. Cada una empieza con la redacción de Network Canvas, en todos los idiomas para los que Network Canvas la tiene, y puedes cambiarla y traducirla como cualquier otro texto. Tu protocolo solo conserva la redacción que cambias (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+- **Texto de ayuda del cuadro de nombre** es la indicación que se muestra en el campo de nombre de **Añadir un elemento**.
+- **Aviso de edición sobrescrita** se muestra en el cuadro de diálogo que pregunta si se descartan los cambios, cuando un deshacer o un rehacer ha cambiado una respuesta mientras la persona entrevistadora la estaba editando, de modo que su edición no se ha guardado. El protocolo solo lo contiene mientras una etapa «Compositor de redes» tiene un formulario para los nodos, o para un tipo de vínculo que traza.
+- **Botón de la herramienta de grupos** es el nombre de la herramienta que asigna nodos a grupos, y se muestra en su información emergente. El protocolo solo lo contiene mientras una etapa «Compositor de redes» agrupa los álteres según un atributo.
+- **Información emergente de añadir nodo**, **Información emergente de la disposición automática** e **Información emergente de dibujar vínculo** nombran las herramientas del lienzo. El protocolo solo contiene la información emergente de **Dibujar una conexión** mientras una etapa «Compositor de redes» tiene al menos un tipo de vínculo. Las herramientas son iconos, así que la información emergente es la forma en que la persona entrevistadora descubre qué hace cada una. Las herramientas de selección, deshacer y rehacer no tienen información emergente, porque sus iconos resultan familiares.
+- **Etiqueta «Conexión»** es el nombre que da el inspector a un vínculo de un tipo que la etapa no traza, como uno creado en otra etapa. El protocolo solo la contiene mientras el libro de códigos tiene un tipo de vínculo que una etapa «Compositor de redes» no traza.
+
+### Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Usa la interfaz «Compositor de redes» cuando quieras construir y editar una red completa desde una sola pantalla; por ejemplo, cuando una persona entrevistadora recorre la red de una persona participante mientras conversan, o cuando alguien del equipo de investigación esboza una red durante el estudio piloto.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Una imagen en pantalla en la que los nodos se agrupan puede influir en lo que cuentan las personas, y suele desviar la atención de los álteres sin conexiones. Pregunta de forma explícita por los álteres que no tienen vínculos, para que no se pasen por alto los miembros aislados de la red.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Personaliza el fondo (con círculos concéntricos o una imagen) para orientar la colocación, por ejemplo, usando anillos para sugerir cercanía. La posición se guarda como coordenadas sin procesar, así que trata cualquier significado espacial como una pista para la conversación y no como una medida.
+
+</GoodPractice>
+
+### Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+Evita dar la interfaz «Compositor de redes» a una persona participante sin acompañamiento. Es una herramienta avanzada y densa, pensada para que la maneje quien investiga o la persona entrevistadora, no una tarea guiada paso a paso para quienes participan.
+
+</BadPractice>
+
+<BadPractice>
+
+Evita tratar la posición de los álteres en el lienzo como si fuera un dato medido. La posición en pantalla es imprecisa y cada persona la interpreta de forma distinta. Si la pertenencia a un anillo o a una zona es importante para tu análisis, recógela como un atributo explícito en lugar de deducirla de las coordenadas.
+
+</BadPractice>

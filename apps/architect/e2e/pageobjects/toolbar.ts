@@ -1,8 +1,9 @@
 import { expect, type Page } from '@playwright/test';
 
 // Accessible names follow the composed toolbar controls: text buttons such as
-// Return, Download, Print, and Finished Editing derive their names from their
+// Return, Export, Print, and Finished Editing derive their names from their
 // visible content; icon-only Undo/Redo buttons provide explicit aria-labels.
+// Download and Send to Interviewer are items of the Export menu.
 // `print` only renders on `/protocol/summary` (ProjectLayout.tsx passes it as
 // an additional action gated on that route); `finished-editing` only
 // renders in the stage editor once there are unsaved changes.
@@ -22,7 +23,7 @@ export class Toolbar {
 
   private labelFor(id: string): string {
     const map: Record<string, string> = {
-      'download': 'Download',
+      'export': 'Export',
       'undo': 'Undo',
       'redo': 'Redo',
       'return-to-start': 'Return to Start Screen',
@@ -34,7 +35,8 @@ export class Toolbar {
   }
 
   async download() {
-    await this.button('download').click();
+    await this.button('export').click();
+    await this.page.getByRole('menuitem', { name: 'Download' }).click();
   }
 
   async undo() {
@@ -58,9 +60,9 @@ export class Toolbar {
   }
 
   // Asserts a toolbar button's current accessible name — for ids whose label
-  // changes with async state (e.g. `download`: Download/Downloading.../
-  // Downloaded), where `button(id)`'s static `labelFor` mapping only matches
-  // the at-rest label.
+  // changes with async state (e.g. `export`, which reads Downloading... then
+  // Downloaded during a download), where `button(id)`'s static `labelFor`
+  // mapping only matches the at-rest label.
   async expectLabel(id: string, text: string) {
     await expect(
       this.page

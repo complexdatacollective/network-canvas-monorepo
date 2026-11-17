@@ -10,17 +10,20 @@ const messages = defineMessages({
   unlockWithAuthenticator: {
     id: 'interviewer.biometricUnlockForm.unlockWithAuthenticator',
     defaultMessage: 'Unlock with authenticator',
-    description: 'User-facing message in Interviewer Biometric Unlock Form.',
+    description:
+      'Default label of the biometric unlock button, used when the caller does not supply one. "Authenticator" is the device\'s biometric or passkey method.',
   },
   unlockFailed: {
     id: 'interviewer.biometricUnlockForm.unlockFailed',
     defaultMessage: 'Unlock failed',
-    description: 'User-facing message in Interviewer Biometric Unlock Form.',
+    description:
+      'Fallback error shown under the biometric unlock button when biometric authentication fails with no more specific reason.',
   },
   waitingForAuthenticator: {
     id: 'interviewer.biometricUnlockForm.waitingForAuthenticator',
     defaultMessage: 'Waiting for authenticator…',
-    description: 'User-facing message in Interviewer Biometric Unlock Form.',
+    description:
+      "Label of the biometric unlock button while the device's fingerprint, face or passkey prompt is open and awaiting the researcher.",
   },
 });
 

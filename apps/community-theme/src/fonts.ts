@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 const FONT_SOURCES = [
   '@codaco/tailwind-config/fonts/nunito.css',
   '@codaco/tailwind-config/fonts/inclusive-sans.css',
+  '@codaco/tailwind-config/fonts/readex-pro.css',
 ];
 
 const FONTSOURCE_URL =
@@ -25,7 +26,7 @@ export type ThemeFont = {
 };
 
 /**
- * Every face of the two shared fonts, as theme assets, and the `@font-face`
+ * Every face of the shared fonts, as theme assets, and the `@font-face`
  * rules that load them (`scss/fonts.scss`). Discourse serves a theme asset
  * from its own upload store, and the rule reaches it through the asset's SCSS
  * variable.

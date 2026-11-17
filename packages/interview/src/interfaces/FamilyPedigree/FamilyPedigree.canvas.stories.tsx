@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
+import { exitOffsetOf } from '../../storybook-support/drawerExit';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import { buildInterview, type Family } from './FamilyPedigree.stories';
 
@@ -415,6 +416,80 @@ export const AddButtonsKeepTheirSizeWhenZoomedOut: Story = {
         `${button.textContent} tall enough`,
       ).toBeGreaterThanOrEqual(24);
     }
+  },
+};
+
+/**
+ * A family is drawn the same way round in every language, so the buttons
+ * that add a relative are too: siblings to the left of the person, partners
+ * to the right. The arrow keys move between them as they are drawn, in a
+ * right-to-left interview as in any other.
+ */
+export const AddButtonArrowKeysInARightToLeftInterview: Story = {
+  globals: { appDirection: 'rtl' },
+  render: () => <CanvasStory family={fourGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvasElement.ownerDocument.documentElement.dir).toBe('rtl');
+    await canvas.findByRole('button', { name: /^You/ });
+    await userEvent.hover(personSymbol(canvasElement, 'ego'));
+    const sibling = await canvas.findByTestId('pedigree-menu-sibling');
+    const partner = canvas.getByTestId('pedigree-menu-partner');
+
+    // Where they are drawn, which the keys are held to below.
+    await expect(boxOf(sibling).right).toBeLessThan(boxOf(partner).left);
+
+    sibling.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    await expect(partner).toHaveFocus();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect(sibling).toHaveFocus();
+  },
+};
+
+/**
+ * The panel a relative is added in sits against the end edge of the screen,
+ * which is the left in a right-to-left interview. It casts its shadow over
+ * the family beside it, and leaves the way it came.
+ */
+export const PersonPanelInARightToLeftInterview: Story = {
+  globals: { appDirection: 'rtl' },
+  render: () => <CanvasStory family={fourGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(canvasElement.ownerDocument.documentElement.dir).toBe('rtl');
+    await canvas.findByRole('button', { name: /^You/ });
+    await userEvent.hover(personSymbol(canvasElement, 'ego'));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+
+    const panel = await body.findByTestId('pedigree-person-panel');
+    await waitFor(() =>
+      expect(Math.abs(panel.getBoundingClientRect().left)).toBeLessThan(1),
+    );
+    await expect(panel.getBoundingClientRect().right).toBeLessThan(
+      canvasElement.ownerDocument.documentElement.clientWidth / 2 + 1,
+    );
+    // Its two shadows, by their horizontal offsets: to the right, over the
+    // family.
+    await expect(getComputedStyle(panel).boxShadow).toMatch(
+      /\) 2px 0px 6px 0px, [^,]*\) 16px 0px 48px 0px$/,
+    );
+    await expect(exitOffsetOf(panel)).toBeLessThan(0);
+    await expect(panel).toHaveAttribute('data-swipe-direction', 'left');
+
+    // The person the relative is added to, and their close family, are
+    // brought into what the panel leaves uncovered, which is to its right.
+    await settled(canvasElement);
+    const stage = canvasBox(canvasElement);
+    const shown = ['ego', 'mum', 'dad'].map((id) =>
+      boxOf(personSymbol(canvasElement, id)),
+    );
+    const left = Math.min(...shown.map((box) => box.left));
+    const right = Math.max(...shown.map((box) => box.right));
+    const edge = panel.getBoundingClientRect().right;
+    await expect(left).toBeGreaterThan(edge);
+    await expect(right).toBeLessThan(stage.right);
   },
 };
 

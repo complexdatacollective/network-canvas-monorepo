@@ -253,12 +253,6 @@
       "cancel": {
         "en-US": "Cancel"
       },
-      "done": {
-        "en-US": "Done"
-      },
-      "delete": {
-        "en-US": "Delete"
-      },
       "yes": {
         "en-US": "Yes"
       },
@@ -276,14 +270,8 @@
       "stageError": {
         "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
-      },
       "error": {
         "en-US": "An error occurred."
-      },
-      "loading": {
-        "en-US": "Loading…"
       },
       "unnamed": {
         "en-US": "Unnamed"
@@ -313,11 +301,6 @@
     "quickAdd": {
       "quickAddHint": {
         "en-US": "Press Enter when you are finished."
-      }
-    },
-    "egoForm": {
-      "scrollForQuestions": {
-        "en-US": "Scroll to see more questions"
       }
     }
   }

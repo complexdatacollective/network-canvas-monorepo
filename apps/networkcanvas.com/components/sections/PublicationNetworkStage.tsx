@@ -25,6 +25,11 @@ import { cn } from '~/lib/cn';
 import type { Publication } from '~/lib/siteContent';
 
 import {
+  columnMask,
+  safeArea,
+  type StageView,
+} from './publicationNetworkFraming';
+import {
   AUTHOR_RADIUS,
   type AuthorNode,
   type AuthorshipGraph,
@@ -42,13 +47,9 @@ export type StageKind = 'intro' | 'card' | 'finale';
 type Emphasis = 'active' | 'partner' | 'intro' | 'finale' | 'dim';
 type Size = { width: number; height: number };
 type Rect = Size & { x: number; y: number };
-type View = Size & { columnLeft: number; columnRight: number };
 
 // Never frame a publication so tightly that its neighbours drop out of view.
 const MIN_FRAME = 250;
-// How far under the heading the whole network may reach before the first
-// card, as a fraction of the column's width.
-const INTRO_TUCK = 0.85;
 // On-screen size, in CSS pixels, of the author names drawn in the SVG.
 const LABEL_PX = 13;
 const cameraSpring = { stiffness: 70, damping: 19, mass: 1 };
@@ -158,23 +159,6 @@ function cameraFor(box: Box, view: Size, safe: Rect): Box {
   };
 }
 
-// Where the camera may frame things: beside the text column. Before the first
-// card the whole network may reach in under the heading, where it recedes, so
-// it can use the width; at the end it sits wholly beside the link to the full
-// list.
-function safeArea(view: View, kind: StageKind): Rect {
-  const x =
-    kind === 'intro'
-      ? view.columnLeft + (view.columnRight - view.columnLeft) * INTRO_TUCK
-      : view.columnRight + 56;
-  return {
-    x,
-    y: 72,
-    width: Math.max(160, view.width - x - 48),
-    height: view.height - 144,
-  };
-}
-
 type Shown = { index: number; pinned: boolean };
 
 export function PublicationNetworkStage({
@@ -202,13 +186,13 @@ export function PublicationNetworkStage({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const overlayRef = useRef<HTMLAnchorElement>(null);
-  const [view, setView] = useState<View | null>(null);
+  const [view, setView] = useState<StageView | null>(null);
   const focus = active && motionEnabled ? graph.focus[active.index] : null;
   const target = useMemo(
     () => (focus ? withContext(focus) : graph.overview),
     [focus, graph.overview],
   );
-  const safe = view ? safeArea(view, focus ? 'card' : kind) : null;
+  const safe = view ? safeArea(view, !focus && kind === 'intro') : null;
   const frame = view && safe ? cameraFor(target, view, safe) : graph.overview;
 
   useEffect(() => {
@@ -379,7 +363,7 @@ export function PublicationNetworkStage({
   // read; top and bottom fade where the stage meets the page.
   const mask = view
     ? {
-        maskImage: `linear-gradient(to right, rgb(0 0 0 / 0.3) ${Math.max(0, view.columnRight - 24)}px, black ${view.columnRight + 72}px), linear-gradient(to bottom, transparent, black 9%, black 91%, transparent)`,
+        maskImage: `${columnMask(view)}, linear-gradient(to bottom, transparent, black 9%, black 91%, transparent)`,
         maskComposite: 'intersect',
       }
     : undefined;
@@ -446,7 +430,8 @@ export function PublicationNetworkStage({
           tabIndex={-1}
           data-related-publication
           className={cn(
-            'bg-surface text-text elevation-medium absolute top-0 left-0 z-10 block w-max max-w-72 rounded px-3 py-2 text-sm leading-snug font-semibold',
+            // oxlint-disable-next-line tailwindcss/enforce-logical -- `placeOverlay` moves it with a transform measured from the left edge
+            'bg-surface text-text elevation-medium absolute top-0 left-0 z-10 block w-max max-w-72 rounded px-4 py-3 text-sm leading-snug font-semibold',
             shown?.pinned ? 'pointer-events-auto' : 'pointer-events-none',
           )}
         >
@@ -800,7 +785,7 @@ function Legend({
   author: string;
 }) {
   return (
-    <ul className="text-text/70 tablet-landscape:flex pointer-events-none absolute right-12 bottom-9 hidden gap-x-5 text-xs">
+    <ul className="text-text/70 tablet-landscape:flex pointer-events-none absolute inset-e-12 bottom-9 hidden gap-x-5 text-xs">
       <li className="flex items-center gap-2">
         <svg aria-hidden viewBox="0 0 12 14" className="fill-node-1 h-3.5 w-3">
           <PageGlyph />

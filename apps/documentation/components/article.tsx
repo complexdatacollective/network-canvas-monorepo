@@ -50,7 +50,7 @@ export default function Article({
               <>
                 <ChevronRight
                   aria-hidden
-                  className="size-4 shrink-0 -translate-y-px stroke-4"
+                  className="size-4 shrink-0 -translate-y-px stroke-4 rtl:-scale-x-100"
                 />
                 <span>{subsection}</span>
               </>

@@ -45,65 +45,75 @@ const additionalMessages = defineMessages({
     id: 'architect.resource.genericImportFailure',
     defaultMessage: 'Check that it is a supported file type, and try again.',
     description:
-      'Generic resource-import guidance for unexpected exception messages.',
+      'Advice shown in the import error dialog when a file fails to import for an unexpected reason: the file may not be a supported type.',
   },
   pleaseSeeOurDocumentationPageOn: {
     id: 'architect.additional.form.autoFileDrop.pleaseSeeOurDocumentationPageOn',
     defaultMessage:
       'Please see our <ExternalLink> documentation page </ExternalLink> on using external data by clicking the button below.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+    description:
+      'Paragraph in the error dialog shown when an imported data file is invalid. ExternalLink wraps the words that link to the documentation page about using external data (CSV or JSON resources).',
   },
   ifYouBelieveYouAreSeeing: {
     id: 'architect.additional.form.autoFileDrop.ifYouBelieveYouAreSeeing',
     defaultMessage:
       'If you believe you are seeing this message in error, please help us to troubleshoot this issue by creating a topic on our <ExternalLink> community website </ExternalLink> with further details.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+    description:
+      'Paragraph in the error dialog shown when an imported data file is invalid. ExternalLink wraps the words that link to the Network Canvas community forum, where the researcher can report a problem.',
   },
   viewDocumentation: {
     id: 'architect.additional.form.autoFileDrop.viewDocumentation',
     defaultMessage: 'View documentation',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+    description:
+      'Button-styled link in the error dialog for an invalid imported data file; opens the documentation page about supported resource types.',
   },
   theFileYouAttemptedToImport: {
     id: 'architect.additional.form.autoFileDrop.theFileYouAttemptedToImport',
     defaultMessage:
       'The file you attempted to import contained invalid attribute names.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+    description:
+      'First paragraph of the error dialog when an imported data file has column headings that are not valid variable names. A more specific message follows it.',
   },
   theFileYouAttemptedToImport6eebe: {
     id: 'architect.additional.form.autoFileDrop.theFileYouAttemptedToImport6eebe',
     defaultMessage:
       'The file you attempted to import contained data with a different number of columns to the header row.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+    description:
+      'First paragraph of the error dialog when an imported CSV data file has rows with a different number of columns than the heading row. A more specific message follows it.',
   },
   theFileYouAttemptedToImport4c195: {
     id: 'architect.additional.form.autoFileDrop.theFileYouAttemptedToImport4c195',
     defaultMessage:
       'The file you attempted to import is not in a format supported by Interviewer.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+    description:
+      'First paragraph of the error dialog when an imported file cannot be read as a supported resource. Interviewer is the Network Canvas interview app. A more specific message follows it.',
   },
 });
 const messages = defineMessages({
   oK: {
     id: 'architect.form.autoFileDrop.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / Form / AutoFileDrop.',
+    description:
+      'Button that dismisses the error dialog shown when a file import fails.',
   },
   errorIsNotFormattedCorrectly: {
     id: 'architect.form.autoFileDrop.errorIsNotFormattedCorrectly',
     defaultMessage: 'Error: {value1} is not formatted correctly',
-    description: 'The title text in components / Form / AutoFileDrop.',
+    description:
+      'Title of the error dialog shown when an imported data file is invalid. value1 is the file name.',
   },
   thatFileCouldNotBeAdded: {
     id: 'architect.form.autoFileDrop.thatFileCouldNotBeAdded',
     defaultMessage: 'That file could not be added',
-    description: 'The title text in components / Form / AutoFileDrop.',
+    description:
+      'Title of the error dialog shown when importing a file as a resource fails for a reason other than invalid data formatting.',
   },
   couldNotBeAddedTo: {
     id: 'architect.form.autoFileDrop.couldNotBeAddedTo',
     defaultMessage:
       '<strong>{value1}</strong> could not be added to your resource library.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+    description:
+      "First paragraph of the error dialog shown when importing a file fails. strong makes the file name bold. value1 is the file name; the resource library is the researcher's uploaded files.",
   },
 });
 

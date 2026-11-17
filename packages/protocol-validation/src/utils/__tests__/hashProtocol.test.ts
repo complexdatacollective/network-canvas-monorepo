@@ -1,4 +1,3 @@
-import { hash } from 'ohash';
 import { describe, expect, it } from 'vitest';
 
 import { hashProtocol } from '../hashProtocol.ts';
@@ -19,13 +18,16 @@ const localizedProtocol = () => ({
 });
 
 describe('hashProtocol', () => {
-  it('produces a stable string for the same codebook+stages', () => {
+  it('produces the stored hash for a fixed codebook and stages', () => {
     const protocol = {
       schemaVersion: 8 as const,
       codebook: { node: { person: { variables: {} } } },
       stages: [{ id: 's1', type: 'Information' }],
     };
-    expect(hashProtocol(protocol)).toBe(hashProtocol(protocol));
+    // Changing this literal means the hashes Fresco stored for imported protocols no longer match.
+    expect(hashProtocol(protocol)).toBe(
+      'x8bb7QfA5dPoa-2npRSbDEHILsCLMe7Kh7nnw2Kc0so',
+    );
   });
 
   it('ignores fields outside codebook and stages before schema 9', () => {
@@ -99,9 +101,8 @@ describe('hashProtocol', () => {
   });
 
   it('keeps the hash of a protocol that holds no shared wording', () => {
-    // The hash a schema-9 protocol had before shared wording was hashed.
-    const { localization, codebook, stages } = localizedProtocol();
-    const before = hash({ localization, codebook, stages });
+    // The hash this schema-9 protocol had before shared wording was hashed.
+    const before = 'Kxfn4Yf20fFA4-fCDh7hWwPROIThcJEqFxJd1xX30Y8';
 
     expect(hashProtocol(localizedProtocol())).toBe(before);
     expect(
@@ -115,6 +116,22 @@ describe('hashProtocol', () => {
       localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
     };
     expect(hashProtocol(changed)).not.toBe(hashProtocol(localizedProtocol()));
+  });
+
+  // The fallback language is part of the language declaration, which is
+  // hashed whole, so a protocol that names none hashes as it always did (see
+  // 'keeps the hash of a protocol that holds no shared wording').
+  it('changes when the fallback language is named or changes', () => {
+    const swahili = (fallbackLocale?: string) => ({
+      ...localizedProtocol(),
+      localization: {
+        defaultLocale: 'sw',
+        locales: ['sw'],
+        ...(fallbackLocale === undefined ? {} : { fallbackLocale }),
+      },
+    });
+    const hashes = [swahili(), swahili('en'), swahili('es')].map(hashProtocol);
+    expect(new Set(hashes).size).toBe(3);
   });
 
   it('does not change when the order of languages changes', () => {

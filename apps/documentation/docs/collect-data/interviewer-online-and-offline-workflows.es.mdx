@@ -1,0 +1,205 @@
+---
+navOrder: 2
+title: Flujos de trabajo de Interviewer con y sin conexión
+wip: false
+toc: true
+translatedFrom: 5b5282cf78ad9899312cdae6a70956f479e25eff
+---
+
+<SummaryCard duration="20 minutos">
+<SummarySection>
+
+En este tutorial se explican con más detalle los flujos de trabajo de Interviewer con y sin conexión que se presentan en [Flujos de trabajo de protocolos y datos](/es/collect-data/protocol-and-data-workflows): cómo llevar tu protocolo a cada dispositivo de entrevista y cómo recuperar los datos que recopilan esos dispositivos.
+
+</SummarySection>
+<PrerequisitesSection>
+
+Para seguir este tutorial, necesitas:
+
+- Conocer [Interviewer o Interviewer Classic](/es/collect-data/interviewer) y cómo se realizan las entrevistas.
+- Haber creado u obtenido el archivo de protocolo `.netcanvas` que quieres distribuir (consulta [crear un protocolo](/es/design-protocols/tutorials/building-a-protocol)).
+- Tener acceso a los dispositivos que usarás para realizar las entrevistas.
+- Para el flujo de trabajo con conexión, tener una cuenta en un servicio en la nube para compartir archivos (la unidad compartida de tu institución o un proveedor externo) que pueda usar todo tu equipo.
+- Para el flujo de trabajo sin conexión, tener una memoria USB u otro almacenamiento externo que puedan leer tanto tu ordenador como tus dispositivos de entrevista.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+## Introducción {#introduction}
+
+Todo lo que almacena Interviewer (protocolos, entrevistas y configuración) se queda en el dispositivo en el que funciona. Eso implica planificar dos cosas:
+
+- **La distribución del protocolo**: llevar el archivo de protocolo a cada dispositivo de entrevista antes de que empiece la recopilación de datos.
+- **La exportación de los datos**: sacar de cada dispositivo los datos que contiene y llevarlos a una ubicación que tú controlas.
+
+Cómo resuelvas ambas cosas depende de si tus dispositivos de entrevista pueden conectarse a internet. En este tutorial se describen las dos opciones:
+
+- **[El flujo de trabajo con conexión](#the-online-workflow)**: usa un servicio en la nube para compartir archivos como punto central en ambos sentidos.
+- **[El flujo de trabajo sin conexión](#the-offline-workflow)**: lleva los archivos en ambos sentidos en una memoria USB u otro almacenamiento externo.
+
+<TipBox>
+
+Esta página trata sobre **Interviewer e Interviewer Classic**. Si realizas tu estudio con [Fresco](/es/collect-data/fresco/about), no se aplica ninguno de los dos flujos de trabajo: los protocolos se suben una sola vez a tu panel de administración y todos los datos se exportan desde él de forma centralizada. Consulta [Flujos de trabajo de protocolos y datos](/es/collect-data/protocol-and-data-workflows) para ver la comparación de conjunto.
+
+</TipBox>
+
+La estructura de cada flujo de trabajo es la misma sea cual sea la versión de Interviewer que uses, pero los pasos de importación y exportación dentro de la aplicación son distintos. Elige tu versión a continuación: los pasos específicos de cada versión que aparecen a lo largo de este tutorial se adaptarán a ella.
+
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
+</AppSwitch>
+
+## El flujo de trabajo con conexión {#the-online-workflow}
+
+Si tus dispositivos de entrevista pueden conectarse a internet (al menos al principio y al final de cada jornada de trabajo de campo), usa un **servicio en la nube para compartir archivos** como punto central en ambos sentidos. Así tienes un único lugar donde actualizar el protocolo y un único lugar al que llegan los datos de todas las personas entrevistadoras.
+
+<ImageFullWidth src="/assets/img/offline-data/online.png" alt="Diagrama del flujo de trabajo con conexión"></ImageFullWidth>
+
+### Distribuir protocolos con un servicio en la nube para compartir archivos {#deploying-protocols-with-a-cloud-file-sharing-service}
+
+Este es el método preferido para distribuir protocolos. Tiene la gran ventaja de ofrecer una ubicación única para el archivo de protocolo, que se puede actualizar cuando sea necesario y a la que pueden acceder varias personas a la vez.
+
+1. Coloca tu archivo `.netcanvas` en un servicio de almacenamiento en la nube (p. ej., Box, Dropbox o Google Drive). Por lo general, basta con arrastrar y soltar el archivo en una carpeta dedicada del ordenador que usas para crear el protocolo. Otra opción es subir los archivos a través de la interfaz web que ofrecen muchos proveedores.
+2. Instala la aplicación del servicio en la nube en cada dispositivo de entrevista, o abre el servicio en el navegador web del dispositivo, e inicia sesión.
+3. Importa el archivo de protocolo en el dispositivo de entrevista. Normalmente, esto se hace yendo, en el explorador de archivos, a una ubicación especial que corresponde al proveedor de almacenamiento en la nube (p. ej., «Dropbox» o «Google Drive»). Si tu proveedor no aparece en el explorador de archivos, intenta copiar el archivo de protocolo en el almacenamiento del dispositivo desde la aplicación del proveedor.
+
+<AppOnly axis="interviewer" app="current">
+
+Usa la tarjeta **Importar un protocolo** de la pantalla de inicio para abrir el explorador de archivos, o arrastra el archivo `.netcanvas` hasta ella. El protocolo se valida al importarlo. Los protocolos del esquema 8 se ejecutan como esquema 8, y los protocolos del esquema 7 de las aplicaciones Classic se migran automáticamente al esquema 8.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Usa el botón **Import from File** (Importar desde archivo) de la pantalla de inicio.
+
+Interviewer Classic también puede importar un protocolo directamente desde una dirección web, lo que funciona bien cuando es poco probable que el protocolo cambie a menudo o cuando quieres documentar por escrito el proceso de configuración. Genera un enlace para compartir en tu servicio en la nube (o aloja el archivo `.netcanvas` en cualquier servicio de alojamiento de archivos, p. ej., GitHub Pages o SharePoint), comprueba que el enlace es de acceso público abriéndolo en un navegador web y, después, usa el botón **Import from URL** (Importar desde URL) de la pantalla de inicio y pégalo. Recomendamos este método a los equipos que distribuyen archivos de protocolo a varios dispositivos.
+
+</AppOnly>
+
+### Exportar datos a un servicio en la nube para compartir archivos {#exporting-data-to-a-cloud-file-sharing-service}
+
+El mismo servicio puede reunir los datos de tus entrevistas si cada persona entrevistadora sube a él directamente sus exportaciones.
+
+1. Crea una carpeta dedicada en tu servicio de almacenamiento en la nube para guardar los datos de las entrevistas. Elige una ubicación organizada y de fácil acceso. Si trabajas en un equipo grande, plantéate crear una carpeta individual para cada persona entrevistadora, y configurar los permisos como «solo escritura» (o algo similar) para que cada una solo pueda añadir archivos a su propia carpeta.
+2. Instala la aplicación del servicio en la nube en cada dispositivo de entrevista y asegúrate de que la persona entrevistadora haya iniciado sesión y tenga acceso a la carpeta que creaste en el paso 1.
+3. Exporta las sesiones de entrevista desde el dispositivo y guarda el archivo `.zip` resultante en esa carpeta.
+
+<AppOnly axis="interviewer" app="current">
+
+Selecciona las sesiones que quieras en la vista **Datos** y haz clic en **Exportar seleccionadas (_n_)**. Interviewer genera el archivo comprimido y, después, muestra un botón para guardarlo (**Guardar…**, **Compartir…** o **Descargar**, según lo que admita el navegador): haz clic en él para guardar el archivo. Los formatos de archivo y las opciones se configuran de antemano en **Configuración → Exportación de datos**, así que no hay que elegir nada en el momento de exportar. El destino del `.zip` depende del dispositivo y del navegador:
+
+- En un navegador de ordenador, normalmente se te pide que elijas una ubicación: ve a la carpeta sincronizada del servicio en la nube en el dispositivo.
+- En una tableta, se abre el menú para compartir del sistema: elige la aplicación del servicio en la nube y, después, la carpeta que creaste en el paso 1.
+- En los demás casos, el archivo se guarda en la carpeta de descargas del navegador, y tienes que subirlo tú al servicio en la nube.
+
+Las sesiones solo se marcan como exportadas cuando el archivo se ha guardado realmente, así que, si cancelas el guardado, puedes volver a seleccionarlas para intentarlo de nuevo.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Ve a la tarjeta **Manage or Export Sessions** (Gestionar o exportar sesiones) de la pantalla de inicio de Interviewer Classic, selecciona los archivos que quieras exportar y elige los tipos de archivo y las opciones de exportación. A continuación, se te pedirá que elijas una ubicación para guardar la exportación.
+
+- Si usas una tableta, se te pedirá que elijas una aplicación para gestionar la exportación. Elige la aplicación del servicio en la nube. Se abrirá la aplicación y se te pedirá que elijas una ubicación para guardar la exportación.
+- Si usas un PC o un Mac, se te pedirá que elijas una ubicación del sistema de archivos del dispositivo para guardar la exportación. Ve a la carpeta del servicio en la nube que creaste en el paso 1.
+
+</AppOnly>
+
+### Otros métodos de transferencia {#other-transfer-methods}
+
+Los archivos zip que genera Interviewer se pueden transmitir por muchos otros medios aparte de los descritos más arriba. Sin embargo, por lo general estos medios no se recomiendan como flujo de trabajo principal, ya que pueden ser menos seguros y más propensos a errores que un servicio en la nube para compartir archivos, y puede que no cumplan los requisitos que el comité de ética (IRB) establece para tu investigación.
+
+Si asumes los posibles riesgos, debería ser posible usar el mismo método descrito más arriba para «compartir» los datos exportados con diversas aplicaciones y servicios, como el correo electrónico, Slack, SharePoint, etc.
+
+## El flujo de trabajo sin conexión {#the-offline-workflow}
+
+Si tus dispositivos de entrevista no tienen conexión a internet, usa una memoria USB u otro almacenamiento externo para llevar los archivos en ambos sentidos.
+
+<AppOnly axis="interviewer" app="current">
+
+<TipBox danger={true}>
+
+Interviewer funciona en un navegador web, así que cada dispositivo necesita conectarse **una vez, antes de quedarse sin conexión**: abre Interviewer en el dispositivo (o instálalo como aplicación web progresiva) mientras todavía tenga conexión. Esa primera carga es la que guarda la aplicación en el dispositivo; cuando el estado que aparece en la parte inferior de la pantalla de inicio indica **Listo para uso sin conexión**, la importación de protocolos, las entrevistas y la exportación funcionan sin ninguna conexión. Este estado abarca todos los protocolos, incluidos los del esquema 8, que se ejecutan con el motor de entrevistas del esquema 8 que integra Interviewer. Todos los idiomas de la aplicación se guardan junto con ella, así que también puedes cambiar de idioma sin conexión. Un dispositivo que nunca ha cargado Interviewer no puede abrirlo sobre el terreno.
+
+</TipBox>
+
+</AppOnly>
+
+<TipBox>
+
+El flujo de trabajo sin conexión da por hecho que todas las interfaces de tu protocolo funcionan sin conexión. Algunas interfaces del esquema 8 en **Interviewer** (en particular, la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial), que carga los mapas a través de internet) necesitan conexión _durante la entrevista_, así que un protocolo que las use no se puede ejecutar totalmente sin conexión. Los protocolos que necesitan conexión muestran el indicador **Requiere internet** en su tarjeta de protocolo. Los protocolos del esquema 7 en **Interviewer Classic** no se ven afectados.
+
+</TipBox>
+
+<ImageFullWidth src="/assets/img/offline-data/offline.png" alt="Diagrama del flujo de trabajo sin conexión"></ImageFullWidth>
+
+### Distribuir protocolos mediante USB {#deploying-protocols-via-usb}
+
+Sin conexión, la única forma de distribuir los protocolos es transferir físicamente el archivo de protocolo desde tu ordenador a cada dispositivo de entrevista.
+
+1. Averigua la ruta de tu archivo de protocolo (dónde está guardado en tu ordenador). Suele tener el formato `C:\Folder\Subfolder\file.netcanvas` en Windows o `/Users/Username/Folder/Subfolder/file.netcanvas` en Mac.
+2. Abre el explorador de archivos de tu ordenador y ve a la ubicación del archivo de protocolo.
+3. Conecta tu memoria USB u otro dispositivo de almacenamiento externo a tu ordenador.
+4. Copia el archivo de protocolo en el dispositivo de almacenamiento externo.
+5. Expulsa el dispositivo de almacenamiento externo de tu ordenador.
+6. Conecta el dispositivo de almacenamiento externo al dispositivo de entrevista.
+7. Importa el protocolo desde el dispositivo de almacenamiento externo.
+
+<AppOnly axis="interviewer" app="current">
+
+Abre Interviewer y usa la tarjeta **Importar un protocolo** de la pantalla de inicio; después, ve al dispositivo de almacenamiento externo y selecciona el archivo de protocolo. También puedes arrastrar el archivo desde el dispositivo de almacenamiento hasta la tarjeta.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Abre Interviewer Classic y usa el botón **Import from File** (Importar desde archivo) de la pantalla de inicio; después, ve a la carpeta del dispositivo de almacenamiento externo y selecciona el archivo de protocolo.
+
+</AppOnly>
+
+<TipBox>
+
+Consulta la documentación de tu sistema operativo o del fabricante del dispositivo
+(o, simplemente, haz una prueba con antelación) para asegurarte de que el dispositivo de almacenamiento que
+usas para transferir el archivo de protocolo lo pueden leer tanto el dispositivo de entrevista _como_ el
+ordenador que usaste para crear el protocolo.
+
+</TipBox>
+
+### Exportar datos mediante USB {#exporting-data-via-usb}
+
+Al igual que en el caso anterior, la única forma de exportar datos sin conexión es usar un almacenamiento externo para llevar los archivos de datos desde el dispositivo de entrevista de vuelta a un ordenador.
+
+1. Crea una carpeta dedicada en tu dispositivo de almacenamiento externo para guardar los datos de las entrevistas. Elige una ubicación organizada y de fácil acceso. Si trabajas en un equipo grande, plantéate crear una carpeta individual para cada persona entrevistadora.
+2. Cuando hayas realizado las entrevistas, exporta las sesiones a esa carpeta.
+
+<AppOnly axis="interviewer" app="current">
+
+Selecciona las sesiones que quieras en la vista **Datos**, haz clic en **Exportar seleccionadas (_n_)** y, cuando el archivo esté listo, haz clic en **Guardar…**, **Compartir…** o **Descargar**.
+
+- En un navegador de ordenador, normalmente se te pide que elijas una ubicación: ve a la carpeta que creaste en el dispositivo de almacenamiento externo.
+- En una tableta, se abre el menú para compartir del sistema: elige una aplicación de gestión de archivos y, después, ve al dispositivo de almacenamiento externo.
+- En los demás casos, el archivo se guarda en la carpeta de descargas del navegador, y tienes que copiarlo tú al dispositivo de almacenamiento externo.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Ve a la tarjeta **Manage or Export Sessions** (Gestionar o exportar sesiones) de la pantalla de inicio de Interviewer Classic y selecciona los archivos que quieras exportar. Se te pedirá que elijas una ubicación para guardar la exportación.
+
+- Si usas un PC o un Mac, se te pedirá que elijas una ubicación del sistema de archivos del dispositivo para guardar la exportación. Ve a la carpeta que creaste en el paso 1 en el dispositivo de almacenamiento externo.
+- Si usas una tableta, se te pedirá que elijas una aplicación para gestionar la exportación. En las tabletas, la exportación usa la función «compartir» integrada tanto en Android como en iOS. Esto significa que las opciones para guardar los datos exportados dependen de las aplicaciones que tengas instaladas en el dispositivo. Por tanto, necesitas instalar una aplicación de gestión de archivos de terceros, como «[CX File Explorer](https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer)». Una vez instalada, elige la aplicación de gestión de archivos en el menú para compartir. Se abrirá la aplicación y se te pedirá que elijas una ubicación para guardar la exportación. Ve a la carpeta que creaste en el paso 1 en el dispositivo de almacenamiento externo.
+
+</AppOnly>
+
+## Después de la transferencia {#after-the-transfer}
+
+Uses el flujo de trabajo que uses, una vez que tus datos estén fuera del dispositivo:
+
+- **Organiza tus exportaciones y haz copias de seguridad.** Una sola copia en una carpeta en la nube (o en una memoria USB) no es una copia de seguridad. Consulta las [prácticas recomendadas para organizar los datos y hacer copias de seguridad](/es/collect-data/protocol-and-data-workflows#data-organization-and-backup-best-practices).
+- **Exporta con regularidad y borra las entrevistas de los dispositivos cuando los datos estén guardados de forma segura.** Hasta que exportes los datos de las entrevistas, la única copia está en el dispositivo. Consulta [Almacenamiento y seguridad de los datos](/es/collect-data/interviewer/data-storage) para saber qué puede destruirlos.
+- **Ensaya todo el ciclo antes de recopilar datos reales.** [Realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study) explica cómo probar primero de principio a fin un protocolo y su proceso de exportación.
+
+Para ver una descripción completa de lo que contienen los archivos exportados y de lo que hace cada opción de exportación, consulta la [guía de exportación de datos](/es/analyze-data/data-export).

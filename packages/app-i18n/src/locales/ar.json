@@ -1,0 +1,14 @@
+{
+  "common.back": "رجوع",
+  "common.cancel": "إلغاء",
+  "common.close": "إغلاق",
+  "common.confirm": "تأكيد",
+  "common.continue": "متابعة",
+  "common.delete": "حذف",
+  "common.done": "تم",
+  "common.genericError": "حدث خطأ ما.",
+  "common.loading": "جارٍ التحميل…",
+  "common.retry": "إعادة المحاولة",
+  "common.save": "حفظ",
+  "common.search": "بحث"
+}

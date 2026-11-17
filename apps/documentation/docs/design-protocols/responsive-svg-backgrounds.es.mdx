@@ -1,0 +1,484 @@
+---
+title: Fondos SVG adaptables
+navOrder: 7
+translatedFrom: 724f3ec2f911112df45dc686155aaf554af10cf5
+---
+
+<Definition>
+  Un SVG es una imagen formada por figuras, líneas y texto, en lugar de por una
+  cuadrícula fija de píxeles. Un SVG adaptable reorganiza esos elementos para
+  ajustarse al lienzo disponible, tanto en orientación vertical como horizontal.
+</Definition>
+
+## ¿Por qué usar un fondo adaptable? {#why-use-a-responsive-background}
+
+El fondo de un lienzo puede formar parte del instrumento de medida. Puede
+dividir un sociograma en contextos sociales, mostrar dos dimensiones
+independientes o delimitar regiones que dan un significado concreto a la
+posición en el espacio.
+
+Las imágenes PNG y JPEG normales tienen una forma fija. Network Canvas muestra
+la imagen entera sin recortarla, así que una imagen diseñada para una pantalla
+horizontal dejará espacio vacío cuando se muestre en una pantalla vertical.
+
+Un SVG adaptable se comporta de otra manera. Sus líneas y etiquetas se colocan
+en relación con el lienzo disponible, lo que permite que el diseño se extienda en
+ambas direcciones. El texto sigue siendo legible, en lugar de estirarse junto
+con el resto de la imagen.
+
+## Usar Background Creator {#use-the-background-creator}
+
+[**Background Creator**](https://bg-creator.networkcanvas.com) es una
+herramienta que funciona en el navegador y sirve para crear fondos SVG
+adaptables dibujándolos, en lugar de editar a mano el código fuente del SVG. Es
+la forma recomendada de crear un fondo para las interfaces «Narrativa»,
+«Compositor de redes» y «Sociograma», y cumple automáticamente todas las reglas
+que se describen en este artículo.
+
+![Background Creator mientras se edita la plantilla integrada Quadrants: cuatro zonas de cuadrante sombreadas, divididas por dos ejes con etiquetas (de Low a High en X y de Low a High en Y), con la barra de herramientas de dibujo y exportación en la parte inferior.](/assets/img/background-creator/editor.png)
+
+En Background Creator puedes:
+
+- **Dibujar directamente en el lienzo.** Añade rectángulos, elipses, líneas,
+  polígonos y texto editable, colocados mediante porcentajes, de modo que el
+  resultado es adaptable de por sí.
+- **Previsualizar el resultado en tiempo real.** Una vista previa a pantalla completa
+  muestra el fondo exactamente como lo verá cada participante, y puedes cambiar
+  entre relaciones de aspecto para confirmar que las líneas, los rellenos y las
+  etiquetas siguen teniendo sentido en vertical y en horizontal.
+- **Definir zonas.** Marca como zona cualquier rectángulo, elipse o polígono
+  que dibujes y ponle una etiqueta en sus propiedades. La propia figura es la
+  zona: un relleno visible (como los rellenos de los cuadrantes de la plantilla
+  integrada Quadrants) puede servir también de zona, o puedes dejar la figura
+  transparente para que la zona sea invisible para quienes participan. Las
+  etiquetas de las zonas pasan a ser los valores de la variable exportada.
+- **Guardar tu trabajo y volver a abrirlo.** Descarga el SVG terminado para
+  añadirlo en Architect, o vuelve a abrir un SVG que hayas guardado antes para
+  seguir editándolo.
+- **Exportar un script de Python o R listo para ejecutar.** El script lee las
+  columnas `_x` e `_y` de tu exportación CSV (consulta más abajo [Clasificar
+  los nodos a partir de sus
+  coordenadas](#classify-nodes-from-their-coordinates)) y añade una variable
+  categórica con el nombre de la zona en la que se encuentra la posición de
+  cada nodo, para que no tengas que escribir tu propio código de
+  clasificación.
+
+Al seleccionar una figura se muestran sus propiedades, donde puedes establecer
+su relleno, su opacidad y su trazo, y marcarla como zona. Cada zona muestra una
+etiqueta con forma de píldora para que veas de un vistazo qué regiones se
+exportarán.
+
+![Un cuadrante seleccionado en Background Creator, con su panel de propiedades abierto, que muestra los controles del color de relleno, la opacidad del relleno y el trazo.](/assets/img/background-creator/zone-properties.png)
+
+Dos plantillas integradas cubren los diseños más habituales: **Quadrants**, dos
+ejes cruzados que dividen el lienzo en cuatro regiones con etiquetas, como [la
+plantilla descargable que encontrarás más abajo](#start-with-the-template), y
+**Concentric circles**, anillos concéntricos para medidas en las que la
+cercanía relativa al centro tiene un significado categórico (interior,
+intermedio, exterior). Las dos plantillas ya incluyen sus zonas
+correspondientes, listas para exportar.
+
+Si prefieres trabajar en un editor gráfico, o solo necesitas cambiar el texto
+de la plantilla de cuadrantes integrada, los apartados [Adobe
+Illustrator](#adobe-illustrator) e [Inkscape](#inkscape), más abajo, describen
+esas alternativas manuales.
+
+## ¿Es adecuado un SVG adaptable para tu medida? {#is-a-responsive-svg-appropriate-for-your-measure}
+
+Los fondos adaptables son más adecuados cuando las posiciones horizontal y
+vertical representan dimensiones distintas, o cuando las regiones deben
+extenderse siempre hasta los bordes del lienzo.
+
+| Diseño de la investigación                                                                 | Enfoque recomendado                                                                     |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| Dos ejes independientes, cuadrantes, categorías o contextos sociales                       | Usa un SVG adaptable                                                                    |
+| Las posiciones horizontal y vertical relativas se analizarán por separado                  | Usa un SVG adaptable                                                                    |
+| La distancia euclídea, el ángulo o la forma de un círculo tienen un significado sustantivo | Usa una imagen contenida en el lienzo o mantén los dispositivos en una sola orientación |
+| Una fotografía, un mapa, un diagrama anatómico u otra imagen que no se debe deformar       | Usa una imagen contenida en el lienzo                                                   |
+
+Esta distinción es importante para el análisis. Un fondo adaptable conserva
+cada posición como una proporción del espacio horizontal y vertical, pero no
+conserva los ángulos ni las distancias cuando la pantalla cambia de forma. Por
+ejemplo, unos círculos concéntricos se convertirían en elipses en orientación
+vertical, por lo que deberían seguir siendo una imagen contenida en el lienzo.
+
+<TipBox>
+
+En orientación vertical u horizontal, la plantilla integrada **Concentric
+circles** de Background Creator estira sus anillos hasta convertirlos en
+elipses. Como cada anillo es en sí mismo la zona, la pertenencia a la zona se
+estira exactamente igual, de modo que a cada nodo se le sigue asignando el
+anillo que la persona participante vio realmente. Mantén pulsada la tecla
+Mayús mientras dibujas un anillo para que sea perfectamente redondo en la
+relación de aspecto que estés previsualizando en ese momento; así puedes elegir
+para qué forma de pantalla lo optimizas. Si, en cambio, tu medida depende de una
+distancia euclídea precisa o de un círculo sin deformar, usa una imagen
+contenida en el lienzo, siguiendo las indicaciones anteriores.
+
+</TipBox>
+
+## Empezar con la plantilla {#start-with-the-template}
+
+Si no usas Background Creator, tampoco tienes que crear un SVG a mano desde
+cero. La alternativa manual es descargar esta plantilla y sustituir sus cuatro
+etiquetas por términos de tu propio estudio.
+
+<ResponsiveSvgPreview src="/assets/responsive-svg-background.svg" alt="Un mapa transparente de contextos sociales con áreas para la familia, las amistades, el trabajo o los estudios y la comunidad"></ResponsiveSvgPreview>
+
+<DownloadLink href="/assets/responsive-svg-background.svg">
+  Descargar la plantilla adaptable de contextos sociales
+</DownloadLink>
+
+La plantilla usa como ejemplo un generador de nombres contextual. [Bidart y
+Charbonneau describen un generador de nombres
+contextual](https://espace.inrs.ca/id/eprint/9280/) (en inglés) para obtener
+una visión amplia de la red de una persona a partir de los contextos sociales
+de la vida cotidiana.
+
+Las cuatro áreas de ejemplo (Family, Friends, Work or study y Community, es
+decir, familia, amistades, trabajo o estudios y comunidad) son solo
+ilustrativas. Los contextos no son necesariamente exhaustivos ni mutuamente
+excluyentes. Una misma persona puede ser a la vez amiga y compañera de trabajo,
+así que tu pregunta debe explicar a quienes participan cómo resolver esos
+solapamientos.
+
+## Adaptar la plantilla a tu estudio {#adapt-the-template-for-your-study}
+
+### 1. Planifica la tarea espacial {#1-plan-the-spatial-task}
+
+Antes de editar la imagen, anota qué significará colocar un nodo en cada
+región. Usa etiquetas cortas y emplea los mismos términos en las instrucciones
+de la etapa. Ten en cuenta:
+
+- si las regiones se solapan conceptualmente;
+- si quienes participan pueden usar un área de «otros» o de «no lo sé»;
+- si la posición dentro de una región tiene un significado adicional;
+- cómo deben interpretarse los nodos colocados cerca de un límite; y
+- si las posiciones resultantes se analizarán como categorías, como
+  coordenadas o de ambas formas.
+
+### 2. Descarga y copia la plantilla {#2-download-and-copy-the-template}
+
+Descarga la plantilla anterior y conserva el original sin cambios. Haz una
+copia con un nombre descriptivo, como `support-contexts.svg`.
+
+La extensión `.svg` es importante. Indica a Architect y al sistema operativo
+que el archivo es una imagen SVG.
+
+### 3. Cambia las etiquetas {#3-change-the-labels}
+
+Un SVG es una imagen, pero sus etiquetas se guardan como palabras normales
+dentro del archivo. Puedes cambiarlas con un editor de texto sin formato:
+
+- **Windows:** Bloc de notas
+- **macOS:** TextEdit, después de elegir **Formato → Convertir a texto normal**
+- **Linux:** un editor de texto sin formato, como Gedit o Kate
+
+Abre el SVG copiado. Te resultará extraño, porque estás viendo las
+instrucciones que se usan para dibujar la imagen. Solo tienes que usar
+**Buscar y reemplazar** para cambiar estos términos visibles:
+
+| Buscar      | Reemplazar por                         |
+| ----------- | -------------------------------------- |
+| `Family`    | Tu primer contexto                     |
+| `Friends`   | Tu segundo contexto                    |
+| `Work or`   | La primera línea de tu tercer contexto |
+| `study`     | La segunda línea de tu tercer contexto |
+| `Community` | Tu cuarto contexto                     |
+
+No cambies signos de puntuación ni símbolos como `<`, `>`, `"`, `/`, `=` o
+`%`. Guarda el archivo como texto sin formato con la codificación UTF-8 y
+asegúrate de que su nombre sigue terminando en `.svg` y no en `.svg.txt`.
+
+<TipBox danger>
+
+No edites el SVG en Microsoft Word, Apple Pages, Google Docs ni en ningún otro
+procesador de textos. Estas aplicaciones añaden un formato de documento que
+impedirá que el archivo funcione como imagen.
+
+</TipBox>
+
+### 4. Añade el fondo en Architect {#4-add-the-background-in-architect}
+
+1. Abre la etapa «Narrativa», «Compositor de redes» o «Sociograma» que vaya a
+   usar el fondo.
+2. En la sección **Fondo**, elige **Imagen**.
+3. Busca el archivo `.svg` que has editado, o selecciónalo en la biblioteca de
+   recursos si ya lo has añadido.
+4. Escribe unas instrucciones de la etapa que expliquen el significado de las
+   regiones o de los ejes. El fondo debe reforzar esas instrucciones, no
+   sustituirlas.
+5. Abre el [modo de vista previa](/es/design-protocols/preview-mode) y revisa
+   la etapa en orientación vertical y horizontal.
+
+## Clasificar los nodos a partir de sus coordenadas {#classify-nodes-from-their-coordinates}
+
+Si has creado tu fondo en [Background
+Creator](#use-the-background-creator) y has definido zonas en él, no tienes
+que escribir a mano la lógica de clasificación que se describe a
+continuación: exporta un script de Python o R y asignará la zona de cada nodo
+por ti a partir de las columnas `_x` e `_y` de la variable de disposición. El
+resto de este apartado explica el sistema de coordenadas subyacente y muestra
+cómo escribir tú esa clasificación para un fondo creado sin zonas.
+
+Cuando una persona participante coloca un nodo, Network Canvas almacena el
+centro de ese nodo como dos coordenadas normalizadas en la variable de
+disposición de la pregunta:
+
+- `x = 0` es el borde izquierdo y `x = 1` es el borde derecho.
+- `y = 0` es el borde superior e `y = 1` es el borde inferior.
+
+Conviene fijarse en que los valores del eje Y aumentan hacia abajo, ya que es
+justo lo contrario de lo que ocurre en un gráfico cartesiano convencional.
+
+Al exportar los datos, deja desactivada la opción **Usar coordenadas de la
+pantalla**. Los valores normalizados son independientes del dispositivo y se
+corresponden directamente con las posiciones en porcentaje que usa un SVG
+adaptable. Consulta [Exportación de
+datos](/es/analyze-data/data-export#use-screen-layout-coordinates) para saber
+más sobre esta opción.
+
+En una exportación CSV, una variable de disposición llamada `box_layout` genera
+las columnas `box_layout_x` y `box_layout_y`. Los nodos que no se han colocado
+tienen valores ausentes. Las exportaciones GraphML contienen los valores
+equivalentes `_X` e `_Y`.
+
+### Aplicar las reglas de los cuadrantes de la plantilla {#apply-the-templates-quadrant-rules}
+
+La plantilla divide el lienzo al 50 % en ambas direcciones. Esto equivale a
+cortar las coordenadas normalizadas en `0.5`.
+
+| Cuadrante          | Etiqueta de la plantilla | Regla de coordenadas  |
+| ------------------ | ------------------------ | --------------------- |
+| Superior izquierdo | Family                   | `x < 0.5` e `y < 0.5` |
+| Superior derecho   | Friends                  | `x > 0.5` e `y < 0.5` |
+| Inferior izquierdo | Work or study            | `x < 0.5` e `y > 0.5` |
+| Inferior derecho   | Community                | `x > 0.5` e `y > 0.5` |
+
+Por ejemplo, un nodo en `(0.25, 0.33)` está en el cuadrante superior izquierdo.
+Un nodo en `(0.75, 0.67)` está en el cuadrante inferior derecho.
+
+### Decidir cómo tratar los límites {#decide-how-to-treat-boundaries}
+
+Un nodo puede quedar centrado exactamente sobre un eje, o tan cerca de él que
+su área visual se solape con dos regiones. Define cómo tratar este caso antes
+del análisis, en lugar de dejar que se asigne sin una decisión explícita.
+
+Una opción es definir una tolerancia en los límites. Una tolerancia de `0.02`
+clasifica como **Boundary** (límite) cualquier nodo que esté a menos de dos
+puntos porcentuales de cualquiera de los dos ejes:
+
+Elige R o Python a continuación para ver cómo crear una columna `context` a
+partir de las coordenadas exportadas. Por defecto se muestra el ejemplo en R.
+
+<CoordinateClassificationExample />
+
+Elige la tolerancia en función del tamaño de los nodos, el tamaño de la
+pantalla, las instrucciones que se dan a quienes participan y el significado
+sustantivo del límite. Otras alternativas son asignar siempre los valores
+situados sobre un eje al mismo lado o revisar a mano los casos límite.
+
+### Usar otros límites {#use-other-boundaries}
+
+En un SVG adaptable personalizado, divide entre 100 el porcentaje que aparece
+en el código fuente de la imagen para obtener el punto de corte normalizado.
+Por ejemplo, un límite vertical al 60 % corresponde a `x = 0.60`.
+
+Esta conversión directa funciona porque las regiones adaptables ocupan el mismo
+lienzo que se usa para las coordenadas de los nodos. No se puede aplicar sin
+ajustes cuando una imagen normal se muestra contenida dentro del lienzo con
+franjas vacías a su alrededor.
+
+Si varias preguntas deben generar medidas espaciales independientes, asigna a
+cada pregunta una variable de disposición distinta. Si reutilizas una variable
+de disposición, las posiciones posteriores sustituyen a las coordenadas
+anteriores.
+
+## Cambiar algo más que las etiquetas {#changing-more-than-the-labels}
+
+La plantilla está pensada para que los cambios sencillos de texto sean seguros.
+Cambiar el número de regiones, añadir áreas de color, mover los límites o crear
+un diseño nuevo requiere más cuidado.
+
+[Background Creator](#use-the-background-creator) está pensado precisamente
+para esto: dibuja regiones nuevas, ajusta los colores y define zonas sin tocar
+el código fuente del SVG, y después descarga el resultado. La alternativa
+manual que se describe a continuación (trabajar en un editor gráfico) sigue
+siendo útil cuando quieres un control más preciso sobre el diseño gráfico, por
+ejemplo para usar figuras personalizadas, degradados o un estilo corporativo ya
+existente, o cuando colaboras con una persona diseñadora que no usa Background
+Creator.
+
+Puedes esbozar el diseño que quieres en una aplicación de dibujo que conozcas y
+entregar el boceto, las etiquetas y la [lista de comprobación para el traspaso
+técnico](#technical-handoff-checklist) que encontrarás más abajo a una persona
+diseñadora o a alguien que colabore contigo en la parte técnica. La plantilla
+descargable le ofrece un ejemplo funcional que seguir.
+
+Si usas tú un editor gráfico, conserva dos archivos:
+
+1. un **original editable**, que sigues modificando en el editor gráfico; y
+2. una **exportación adaptable**, que añades en Architect.
+
+No vuelvas a abrir y guardar la exportación adaptable en el editor gráfico.
+Muchos editores restablecen una forma de página fija al guardar, lo que puede
+eliminar el comportamiento adaptable.
+
+## Adobe Illustrator {#adobe-illustrator}
+
+Esta es la alternativa manual a Background Creator, con un editor gráfico.
+Adobe Illustrator es útil para diseñar la composición visual, elegir los
+colores y colocar las etiquetas. El [tutorial de Adobe sobre la exportación de
+SVG adaptables](https://www.adobe.com/learn/illustrator/web/export-css?ntd=1)
+(en inglés) describe la opción de exportación correspondiente.
+
+1. Crea el diseño gráfico en una mesa de trabajo con las dimensiones que te
+   resulten cómodas.
+2. Dibuja las líneas y las regiones hasta los bordes de la mesa de trabajo que
+   correspondan.
+3. Mantén las etiquetas como texto editable. No elijas **Crear contornos** para
+   las etiquetas.
+4. No dibujes un rectángulo de fondo del tamaño de la página si el tema de la
+   interfaz debe seguir viéndose.
+5. Elige **Archivo → Exportar → Exportar como**, selecciona **SVG**, activa
+   **Usar mesas de trabajo** y elige la opción **Adaptable** (_Responsive_).
+6. Conserva el archivo de Illustrator como original editable.
+7. Asegúrate de que el SVG exportado se prepare siguiendo la [lista de
+   comprobación para el traspaso técnico](#technical-handoff-checklist) antes
+   de importarlo en Architect.
+
+La opción **Adaptable** (_Responsive_) de Illustrator es un buen punto de partida, pero por sí
+sola no consigue el comportamiento especial de borde a borde que se necesita
+aquí. El archivo exportado sigue necesitando posiciones basadas en porcentajes
+y no debe tener una proporción de página fija.
+
+## Inkscape {#inkscape}
+
+Esta es otra alternativa manual a Background Creator, con un editor gráfico.
+Inkscape es una aplicación gratuita para diseñar imágenes SVG. Su [guía de
+Propiedades del
+documento](https://inkscape-manuals.readthedocs.io/en/latest/managing-workspace.html#document-properties-dialog)
+(en inglés) explica cómo gestionar la página y su fondo.
+
+1. Crea una página del tamaño que te resulte cómodo con **Archivo →
+   Propiedades del documento**.
+2. Deja la página transparente, salvo que un fondo opaco forme parte del diseño
+   de la investigación.
+3. Dibuja las líneas y las regiones hasta los bordes de la página que
+   correspondan.
+4. Mantén las etiquetas como texto. No uses **Objeto a trayecto** con ellas.
+5. Guarda el original editable como **SVG de Inkscape**.
+6. Elige **Archivo → Guardar una copia** y guarda un **SVG plano**, como se
+   describe en la [guía de
+   guardado](https://inkscape-manuals.readthedocs.io/en/latest/saving.html) de
+   Inkscape (en inglés).
+7. Asegúrate de que el SVG plano se prepare siguiendo la [lista de
+   comprobación para el traspaso técnico](#technical-handoff-checklist) antes
+   de importarlo en Architect.
+
+Para pequeños cambios de texto, editar la plantilla descargable es más seguro
+que abrirla y volver a guardarla en Inkscape.
+
+## Lista de comprobación para el traspaso técnico {#technical-handoff-checklist}
+
+Este apartado está dirigido a personas de diseño, desarrollo o investigación
+que se manejen con soltura revisando el código fuente de un SVG. No es
+necesario si solo sustituyes las etiquetas de la plantilla proporcionada, y los
+SVG descargados de [Background Creator](#use-the-background-creator) ya cumplen
+todos los puntos siguientes. Si además quieres la exportación en Python o R
+basada en zonas, crea el fondo en Background Creator en lugar de en un editor
+gráfico: las zonas se guardan en un bloque de metadatos que Illustrator e
+Inkscape no pueden generar.
+
+Un fondo adaptable de Network Canvas debe:
+
+- establecer la anchura y la altura del SVG exterior en `100%`;
+- omitir el `viewBox` exterior, para que la imagen no tenga una proporción fija;
+- colocar los límites y las etiquetas mediante porcentajes;
+- mantener las etiquetas como texto, en lugar de convertirlas en figuras;
+- usar `vector-effect: non-scaling-stroke` en las líneas que deban mantener un
+  grosor constante;
+- omitir una figura de fondo del tamaño de la página cuando se necesite
+  transparencia;
+- usar fuentes del sistema que estén disponibles sin conexión; y
+- evitar fuentes, imágenes, hojas de estilo y scripts externos.
+
+<details>
+
+<summary>
+
+#### Ver el código fuente completo de la plantilla {#view-the-complete-template-source}
+
+</summary>
+
+```xml
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100%"
+  height="100%"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Responsive social-context map</title>
+  <desc id="description">
+    Four labelled quadrants organise people by family, friends, work or study,
+    and community contexts.
+  </desc>
+  <style>
+    .axis {
+      stroke: white;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .label {
+      fill: white;
+      font-family: system-ui, sans-serif;
+      font-size: clamp(16px, 3vmin, 32px);
+      font-weight: 600;
+      text-anchor: middle;
+    }
+  </style>
+
+  <line class="axis" x1="0" y1="50%" x2="100%" y2="50%" />
+  <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
+
+  <text class="label" x="25%" y="25%">
+    <tspan x="25%">Family</tspan>
+  </text>
+  <text class="label" x="75%" y="25%">
+    <tspan x="75%">Friends</tspan>
+  </text>
+  <text class="label" x="25%" y="75%">
+    <tspan x="25%" dy="-0.2em">Work or</tspan>
+    <tspan x="25%" dy="1.2em">study</tspan>
+  </text>
+  <text class="label" x="75%" y="75%">
+    <tspan x="75%">Community</tspan>
+  </text>
+</svg>
+```
+
+</details>
+
+## Solución de problemas {#troubleshooting}
+
+| Problema                                                     | Causa probable y siguiente paso                                                                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| El archivo se rechaza o aparece como texto                   | Comprueba que el nombre del archivo termina en `.svg`, no en `.svg.txt`, y que se guardó como texto sin formato           |
+| Aparecen franjas vacías en orientación vertical u horizontal | Probablemente el SVG tiene una proporción de página fija; compáralo con la lista de comprobación para el traspaso técnico |
+| Las etiquetas se estiran o cambian de forma                  | Puede que las etiquetas se hayan convertido en contornos o trayectos; vuelve al original editable y mantenlas como texto  |
+| Las líneas se vuelven muy gruesas o muy finas                | Pide que se añada `vector-effect: non-scaling-stroke` a esas líneas                                                       |
+| El fondo de la interfaz no se ve a través del SVG            | Probablemente el SVG contiene un rectángulo de fondo del tamaño de la página; elimínalo de la exportación adaptable       |
+| Los nodos o los controles de la interfaz tapan las etiquetas | Acorta o cambia de sitio las etiquetas y vuelve a probarlas en los dispositivos de campo                                  |
+
+## Conceptos relacionados {#related-concepts}
+
+- [Recursos](/es/design-protocols/key-concepts/resources): añade el SVG a un
+  protocolo y gestiónalo en la biblioteca de recursos
+- [Modo de vista previa](/es/design-protocols/preview-mode): prueba el fondo
+  antes de la recopilación de datos
+- [Exportación de datos](/es/analyze-data/data-export): exporta las coordenadas
+  de disposición normalizadas para el análisis
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): compara las
+  interfaces que pueden usar un fondo adaptable

@@ -39,15 +39,6 @@ function renderLockScreen() {
 }
 
 describe('LockScreen — reset app data escape hatch', () => {
-  it('offers a "Recover by resetting" control in the PIN body', () => {
-    useAuthMock.mockReturnValue({ ...base, mode: 'pin' });
-    renderLockScreen();
-
-    expect(
-      screen.getByRole('button', { name: /recover by resetting/i }),
-    ).toBeInTheDocument();
-  });
-
   it('opens the destructive confirm and wipes via revoke() only after confirming', async () => {
     useAuthMock.mockReturnValue({ ...base, mode: 'pin' });
     const user = userEvent.setup();

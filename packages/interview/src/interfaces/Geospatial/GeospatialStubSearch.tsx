@@ -11,8 +11,6 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import { interfaceMessages } from '../messages';
-
 const STUB_SUGGESTIONS = [
   { id: 'stub-1', name: 'Stub Suggestion 1', place: 'Test City, Test State' },
   { id: 'stub-2', name: 'Stub Suggestion 2', place: 'Test City, Test State' },
@@ -82,11 +80,8 @@ export default function GeospatialStubSearch({ className }: Props) {
             ref={buttonRef}
             icon={<Search />}
             color={isOpen ? 'secondary' : 'dynamic'}
-            aria-label={
-              isOpen
-                ? intl.formatMessage(interfaceMessages.closeSearch)
-                : intl.formatMessage(interfaceMessages.searchLocation)
-            }
+            aria-label={isOpen ? 'Close search' : 'Search location'}
+            lang="en"
             aria-expanded={isOpen}
             data-testid="geospatial-search-toggle"
             size="lg"
@@ -128,9 +123,8 @@ export default function GeospatialStubSearch({ className }: Props) {
                     variant="text"
                     size="sm"
                     onClick={handleClear}
-                    aria-label={intl.formatMessage(
-                      interfaceMessages.clearSearch,
-                    )}
+                    aria-label="Clear search"
+                    lang="en"
                     data-testid="geospatial-search-clear"
                     tabIndex={-1}
                   />
@@ -145,15 +139,13 @@ export default function GeospatialStubSearch({ className }: Props) {
               spacing="none"
               shadow="none"
               floating
-              className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
+              className="absolute inset-s-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
             >
               <div
                 id={listboxId}
                 // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA combobox popup, as in GeospatialSearch; <select> and <datalist> cannot hold the two-line suggestion layout.
                 role="listbox"
-                aria-label={intl.formatMessage(
-                  interfaceMessages.searchSuggestions,
-                )}
+                aria-label="Search suggestions"
                 className="flex flex-col p-1"
               >
                 {STUB_SUGGESTIONS.map((s) => (

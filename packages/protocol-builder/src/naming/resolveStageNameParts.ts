@@ -1,13 +1,21 @@
 import type {
+  FinishKinds,
   FinishMode,
   FinishOutcome,
   Item,
+  MediaKinds,
   Panel,
+  PanelSource,
+  StageNameWording,
   StageSubject,
   StageType,
 } from '@codaco/protocol-validation';
 
 import type { Qualifier } from './generateStageLabel.ts';
+import {
+  formatStageNameMessage,
+  type StageNameLanguage,
+} from './stageNameLanguage.ts';
 
 type EntityNameResolver = (
   entity: 'node' | 'edge',
@@ -33,22 +41,6 @@ type QualifierStageFields = {
   outcome?: FinishOutcome;
 };
 
-/**
- * The English fragments below are English on purpose, and stay English.
- *
- * Every one of them is a part of the SEEDED stage label `generateStageLabel`
- * assembles and `useStageName` writes into the protocol's stored
- * `stage.label` — not copy anybody reads on its own. That is the case
- * `INTERFACE_NAMES` in `interfaces/interfaceNames.ts` is the precedent for:
- * names are localized where they are DISPLAYED, and left English where they
- * seed a stored value. The reasoning, and what breaks if the proposal is
- * localized, is written out over `STAGE_TYPE_NAMES` in `generateStageLabel.ts`.
- *
- * It also means `joinList` below stays a hand-rolled join rather than becoming
- * `intl.formatList`: it is building part of a stored string, so the separators
- * have to be the same ones every host writes, in every language.
- */
-
 export function resolveStageSubjectName(
   subject: StageSubject | undefined,
   resolveEntityName: EntityNameResolver,
@@ -59,88 +51,84 @@ export function resolveStageSubjectName(
   return resolveEntityName(subject.entity, subject.type) || null;
 }
 
-function joinList(values: string[]): string {
-  if (values.length === 1) {
-    return values[0]!;
-  }
-  if (values.length === 2) {
-    return `${values[0]} & ${values[1]}`;
-  }
-  return `${values.slice(0, -1).join(', ')} & ${values[values.length - 1]}`;
+/**
+ * Each qualifier is one of the language's wording messages (`panels`,
+ * `media`, `finish`) told which case applies, so a language words it and
+ * orders its parts as it needs to. The cases are declared with the wording
+ * (`PanelSource`, `MediaKinds`, `FinishKinds`).
+ */
+function qualifierText(
+  language: StageNameLanguage,
+  message: keyof Pick<StageNameWording, 'panels' | 'media' | 'finish'>,
+  argument: 'source' | 'media' | 'finish',
+  value: PanelSource | MediaKinds | FinishKinds,
+): string {
+  return formatStageNameMessage(language, language.wording[message], {
+    [argument]: value,
+  });
 }
-
-export function buildListQualifier(
-  rawValues: string[],
-  options: { singularNoun?: string; pluralNoun?: string; summaryNoun: string },
-): Qualifier | null {
-  const values = [
-    ...new Set(rawValues.filter((value) => value && value.trim())),
-  ];
-  if (values.length === 0) {
-    return null;
-  }
-  const summary = `with ${options.summaryNoun}`;
-  if (values.length > 3) {
-    return { full: summary, summary };
-  }
-  const noun =
-    options.singularNoun && options.pluralNoun
-      ? ` ${values.length === 1 ? options.singularNoun : options.pluralNoun}`
-      : '';
-  return { full: `with ${joinList(values)}${noun}`, summary };
-}
-
-const MEDIA_LABELS: Record<string, string> = {
-  image: 'Image',
-  video: 'Video',
-  audio: 'Audio',
-};
-
-// Canonical order so the same set of media always yields the same name,
-// regardless of the order the Information items happen to be in.
-const MEDIA_LABEL_ORDER = ['Image', 'Video', 'Audio'];
 
 function resolvePanelQualifier(
   panels: PanelQualifierInput[] | undefined,
+  language: StageNameLanguage,
 ): Qualifier | null {
   if (!panels || panels.length === 0) {
     return null;
   }
   const hasExisting = panels.some((panel) => panel.dataSource === 'existing');
   const hasRoster = panels.some((panel) => panel.dataSource !== 'existing');
-  let text = 'with Network Panels';
+  let source: PanelSource = 'network';
   if (hasExisting && hasRoster) {
-    text = 'with Panels';
+    source = 'both';
   } else if (hasRoster) {
-    text = 'with Roster Panels';
+    source = 'roster';
   }
+  const text = qualifierText(language, 'panels', 'source', source);
   return { full: text, summary: text };
 }
+
+// Canonical order so the same set of media always yields the same name,
+// regardless of the order the Information items happen to be in.
+const MEDIA_ORDER = ['image', 'video', 'audio'] as const;
+
+const MEDIA_KINDS: Record<string, MediaKinds> = {
+  'image': 'image',
+  'video': 'video',
+  'audio': 'audio',
+  'image,video': 'imageVideo',
+  'image,audio': 'imageAudio',
+  'video,audio': 'videoAudio',
+  'image,video,audio': 'imageVideoAudio',
+};
 
 function resolveInformationQualifier(
   items: Item[] | undefined,
   resolveAssetType: (assetId: string) => string | null,
+  language: StageNameLanguage,
 ): Qualifier | null {
   if (!items) {
     return null;
   }
-  const presentLabels = new Set(
+  const present = new Set(
     items
       .filter((item) => item.type === 'asset')
-      .map((item) => resolveAssetType(item.content))
-      .map((type) => (type ? (MEDIA_LABELS[type] ?? null) : null))
-      .filter((label): label is string => Boolean(label)),
+      .map((item) => resolveAssetType(item.content)),
   );
-  const mediaLabels = MEDIA_LABEL_ORDER.filter((label) =>
-    presentLabels.has(label),
-  );
-  return buildListQualifier(mediaLabels, { summaryNoun: 'Media' });
+  const kinds =
+    MEDIA_KINDS[MEDIA_ORDER.filter((kind) => present.has(kind)).join(',')];
+  if (kinds === undefined) {
+    return null;
+  }
+  return {
+    full: qualifierText(language, 'media', 'media', kinds),
+    summary: qualifierText(language, 'media', 'media', 'summary'),
+  };
 }
 
-const FINISH_OUTCOME_LABELS: Record<FinishOutcome, string> = {
-  completed: 'Completed',
-  ineligible: 'Ineligible',
-  terminated: 'Ended Early',
+const FINISH_AUTOMATIC: Record<FinishOutcome, FinishKinds> = {
+  completed: 'completedAutomatic',
+  ineligible: 'ineligibleAutomatic',
+  terminated: 'terminatedAutomatic',
 };
 
 /**
@@ -152,34 +140,47 @@ const FINISH_OUTCOME_LABELS: Record<FinishOutcome, string> = {
 function resolveFinishQualifier(
   outcome: FinishOutcome | undefined,
   mode: FinishMode | undefined,
+  language: StageNameLanguage,
 ): Qualifier | null {
-  const outcomeLabel = outcome ? FINISH_OUTCOME_LABELS[outcome] : undefined;
-  const parts = [
-    outcomeLabel,
-    mode === 'automatic' ? 'Automatic' : undefined,
-  ].filter((part): part is string => Boolean(part));
-  if (parts.length === 0) {
+  const automatic = mode === 'automatic';
+  if (outcome === undefined && !automatic) {
     return null;
   }
-  const full = `(${parts.join(', ')})`;
-  return { full, summary: outcomeLabel ? `(${outcomeLabel})` : full };
+  const outcomeKind: FinishKinds | undefined = outcome;
+  const fullKind: FinishKinds =
+    outcome === undefined
+      ? 'automatic'
+      : automatic
+        ? FINISH_AUTOMATIC[outcome]
+        : outcome;
+  return {
+    full: qualifierText(language, 'finish', 'finish', fullKind),
+    summary: qualifierText(
+      language,
+      'finish',
+      'finish',
+      outcomeKind ?? fullKind,
+    ),
+  };
 }
 
 export function resolveStageQualifier(
   stage: QualifierStageFields,
   resolvers: QualifierResolvers,
+  language: StageNameLanguage,
 ): Qualifier | null {
   switch (stage.type) {
     case 'NameGenerator':
     case 'NameGeneratorQuickAdd':
-      return resolvePanelQualifier(stage.panels);
+      return resolvePanelQualifier(stage.panels, language);
     case 'Information':
       return resolveInformationQualifier(
         stage.items,
         resolvers.resolveAssetType,
+        language,
       );
     case 'FinishSession':
-      return resolveFinishQualifier(stage.outcome, stage.mode);
+      return resolveFinishQualifier(stage.outcome, stage.mode, language);
     case 'AlterEdgeForm':
     case 'AlterForm':
     case 'Anonymisation':

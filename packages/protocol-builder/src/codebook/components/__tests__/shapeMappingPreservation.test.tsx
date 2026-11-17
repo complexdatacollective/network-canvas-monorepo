@@ -6,6 +6,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
+import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { documentWithEntityProperties } from '../../editing.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
@@ -56,19 +57,21 @@ type SubmitEntity = (document: SectionDoc) => Promise<CodebookWriteOutcome>;
 
 const renderEditor = (onSubmit: SubmitEntity) =>
   render(
-    <ProtocolLocalizationProvider
-      localization={{ defaultLocale: 'en', locales: ['en'] }}
-    >
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="preservation"
-        subject={SUBJECT}
-        initialDraft={PERSON}
-        authoritativeDocument={PERSON}
-        existingEntityNames={[]}
-        onSubmit={onSubmit}
-      />
-    </ProtocolLocalizationProvider>,
+    <CodebookEditorHost>
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en'] }}
+      >
+        <CodebookEntityEditor
+          mode="update"
+          sessionKey="preservation"
+          subject={SUBJECT}
+          initialDraft={PERSON}
+          authoritativeDocument={PERSON}
+          existingEntityNames={[]}
+          onSubmit={onSubmit}
+        />
+      </ProtocolLocalizationProvider>
+    </CodebookEditorHost>,
   );
 
 describe('a stored shape mapping', () => {

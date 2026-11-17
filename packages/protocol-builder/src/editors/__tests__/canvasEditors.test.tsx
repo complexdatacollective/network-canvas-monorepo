@@ -58,6 +58,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     ownedKeys: [
       'background',
       'behaviours',
+      'conditions',
       'dynamicValues',
       'label',
       'prompts',
@@ -82,6 +83,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'attributesHeading',
       'background',
       'behaviours',
+      'conditions',
       'dynamicValues',
       'groupsHeading',
       'label',
@@ -107,6 +109,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     ownedKeys: [
       'background',
       'behaviours',
+      'conditions',
       'convexHullVariable',
       'dynamicValues',
       'edges',
@@ -138,6 +141,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: [
+      'conditions',
       'dynamicValues',
       'label',
       'mapOptions',
@@ -163,6 +167,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     ],
     ownedKeys: [
       'conditionText',
+      'conditions',
       'diseases',
       'dynamicValues',
       'label',
@@ -185,7 +190,13 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['dynamicValues', 'explanationText', 'label', 'validation'],
+    ownedKeys: [
+      'conditions',
+      'dynamicValues',
+      'explanationText',
+      'label',
+      'validation',
+    ],
   },
 ];
 

@@ -9,7 +9,8 @@ const messages = defineMessages({
   signOut: {
     id: 'fresco.UserMenu.signOut',
     defaultMessage: 'Sign out',
-    description: 'Researcher-facing UserMenu: Sign out',
+    description:
+      'Button in the dashboard header that signs the researcher out of Fresco. A verb, not a status.',
   },
 });
 

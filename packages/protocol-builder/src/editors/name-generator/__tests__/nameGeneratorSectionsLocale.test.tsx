@@ -94,7 +94,7 @@ describe('the name-generator sections, read in Spanish', () => {
     ).toBeInTheDocument();
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Editar pregunta' }),
+      await screen.findByRole('button', { name: 'Edit pregunta' }),
     );
     const dialog = within(await screen.findByRole('dialog'));
     expect(
@@ -163,7 +163,7 @@ describe('the name-generator sections, read in Spanish', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Editar panel' }),
+      await screen.findByRole('button', { name: 'Edit panel' }),
     );
     const dialog = within(await screen.findByRole('dialog'));
     await harness.user.click(dialog.getByRole('button', { name: 'Guardar' }));

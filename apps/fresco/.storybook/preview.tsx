@@ -1,5 +1,6 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import addonA11y from '@storybook/addon-a11y';
 import addonDocs from '@storybook/addon-docs';
 import addonVitest from '@storybook/addon-vitest';
@@ -8,6 +9,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { StrictMode } from 'react';
 
 import Providers from '../components/Providers';
+import { globalTypes, initialGlobals, mirrorAddon, withAppI18n } from './i18n';
 
 import '../styles/globals.css';
 
@@ -17,7 +19,12 @@ import '../styles/globals.css';
 // See: https://github.com/chromaui/addon-visual-tests/pull/404
 
 export default definePreview({
-  addons: [addonDocs(), addonA11y(), addonVitest()],
+  // Every story is checked right to left after its play function (see
+  // `mirrorAddon` in @codaco/storybook-config, first in `addons` so it runs
+  // after the accessibility audit); a story that is not a layout in the
+  // reading direction opts out with the `!mirror` tag and says why.
+  tags: ['mirror'],
+  addons: [mirrorAddon, addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     options: {
       storySort: {
@@ -61,6 +68,23 @@ export default definePreview({
   },
 
   decorators: [
+    // Three decorators, innermost first. The language and direction sit
+    // between the other two: inside the root element, so that element is
+    // still the first thing in the canvas, as it was before the toolbar and
+    // as a play function that sizes the canvas's first child relies on; and
+    // around the providers, so a dialog or toast they render is in the
+    // toolbar's language and direction too.
+    // `Providers` also reads the app language's direction, which is a second
+    // reason the language has to be around it.
+    (Story) => (
+      <Providers
+        nuqsAdapter={NuqsTestingAdapter}
+        disableAnimationsForAutomation
+      >
+        <Story />
+      </Providers>
+    ),
+    withAppI18n,
     (Story) => (
       // nextjs-vite doesn't seem to pick up the strict mode setting from next config
       <StrictMode>
@@ -68,14 +92,11 @@ export default definePreview({
          * required by base-ui: https://base-ui.com/react/overview/quick-start#portals
          */}
         <div className="root h-full">
-          <Providers
-            nuqsAdapter={NuqsTestingAdapter}
-            disableAnimationsForAutomation
-          >
-            <Story />
-          </Providers>
+          <Story />
         </div>
       </StrictMode>
     ),
   ],
+  globalTypes,
+  initialGlobals,
 });

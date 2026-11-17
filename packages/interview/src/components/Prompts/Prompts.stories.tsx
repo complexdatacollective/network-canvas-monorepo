@@ -153,12 +153,11 @@ export const MultiplePrompts: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for animation to complete
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Verify the prompt text is visible
-    const promptText = canvas.getByText('Who are the people in your network?');
-    await expect(promptText).toBeVisible();
+    await waitFor(async () => {
+      await expect(
+        canvas.getByText('Who are the people in your network?'),
+      ).toBeVisible();
+    });
 
     // Verify pips are rendered with correct count
     const pipsContainer = canvasElement.querySelector('[aria-hidden="true"]');
@@ -189,11 +188,8 @@ export const WithMarkdown: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for animation to complete
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
     // Verify markdown is rendered - bold text should be in a strong tag
-    const boldText = canvas.getByText('important');
+    const boldText = await canvas.findByText('important');
     await expect(boldText.tagName.toLowerCase()).toBe('strong');
   },
 };
@@ -212,15 +208,11 @@ export const LongPromptText: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    // Wait for animation to complete
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Verify title attribute is set for tooltip
-    const promptWithTitle = canvasElement.querySelector('[title]');
-    await expect(promptWithTitle).toBeInTheDocument();
-    await expect(promptWithTitle?.getAttribute('title')).toContain(
-      'Please think carefully',
-    );
+    await waitFor(async () => {
+      await expect(
+        canvasElement.querySelector('[title]')?.getAttribute('title'),
+      ).toContain('Please think carefully');
+    });
   },
 };
 
@@ -306,14 +298,9 @@ export const InteractiveNavigation: Story = {
       await expect(indexDisplay).toHaveTextContent('2 / 4');
     });
 
-    // Verify pip changed - find the pips container and check active state
-    const pipsContainer = canvasElement.querySelector('[aria-hidden="true"]');
-    const pips = pipsContainer?.children;
-    if (pips && pips.length > 1) {
-      // Second pip should be active
-      const secondPip = pips[1];
-      await expect(secondPip).toHaveAttribute('data-active', 'true');
-    }
+    const pips = canvasElement.querySelectorAll('[aria-hidden="true"] > *');
+    await expect(pips).toHaveLength(4);
+    await expect(pips[1]).toHaveAttribute('data-active', 'true');
 
     // Click next again to get to prompt 3
     await userEvent.click(nextButton);
@@ -381,12 +368,8 @@ export const AccessibilityDemo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for render
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
     // Verify status role for announcing state
-    const statusContainer = canvas.getByRole('status');
-    await expect(statusContainer).toBeInTheDocument();
+    const statusContainer = await canvas.findByRole('status');
 
     // Verify aria-live is set to polite (non-interruptive announcements)
     await expect(statusContainer).toHaveAttribute('aria-live', 'polite');
@@ -435,12 +418,8 @@ export const EmptyPrompts: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for render
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
     // Verify the container is rendered but empty
-    const statusContainer = canvas.getByRole('status');
-    await expect(statusContainer).toBeInTheDocument();
+    await canvas.findByRole('status');
 
     // No pips should be rendered
     const pipsContainer = canvasElement.querySelector('[aria-hidden="true"]');

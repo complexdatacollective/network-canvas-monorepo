@@ -57,7 +57,7 @@ beforeEach(() => {
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
 });
 
-it('localizes option positions while leaving the authored option value and action identity intact', () => {
+it('names option actions in English, with plain digits, in every language, and leaves the authored option value and action identity intact', () => {
   const onEdit = vi.fn();
   const onDelete = vi.fn();
   const item = { label: { en: 'Research_label' }, value: 12345 };
@@ -96,8 +96,9 @@ it('localizes option positions while leaving the authored option value and actio
           value={{
             arrayName: 'options',
             allValues: {},
-            labelValues: {},
             labelLocale: 'en',
+            duplicatedLabels: new Set(),
+            duplicatedLabelMessage: '',
             showArrayError: false,
           }}
         >
@@ -107,10 +108,10 @@ it('localizes option positions while leaving the authored option value and actio
     </Provider>,
   );
   expect
-    .soft(screen.queryByRole('button', { name: 'Edit option 12,345' }))
+    .soft(screen.queryByRole('button', { name: 'Edit option 12345' }))
     .toBeInTheDocument();
   expect
-    .soft(screen.queryByRole('button', { name: 'Remove option 12,345' }))
+    .soft(screen.queryByRole('button', { name: 'Remove option 12345' }))
     .toBeInTheDocument();
   act(() => {
     localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
@@ -118,10 +119,10 @@ it('localizes option positions while leaving the authored option value and actio
       new StorageEvent('storage', { key: ARCHITECT_LOCALE_KEY }),
     );
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Editar opción 12.345' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit option 12345' }));
   expect(onEdit).toHaveBeenCalledTimes(1);
   expect(
-    screen.getByRole('button', { name: 'Eliminar opción 12.345' }),
+    screen.getByRole('button', { name: 'Remove option 12345' }),
   ).toBeInTheDocument();
   expect(screen.getByText('12345')).toBeInTheDocument();
   expect(item).toEqual({ label: { en: 'Research_label' }, value: 12345 });

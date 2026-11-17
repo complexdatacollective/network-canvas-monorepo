@@ -17,6 +17,7 @@ export const SITE_LOCALES = {
   pt_BR: 'pt-BR',
   it: 'it',
   fr: 'fr',
+  ar: 'ar',
 };
 
 const DEFAULT_SITE_LOCALE = 'en-US';

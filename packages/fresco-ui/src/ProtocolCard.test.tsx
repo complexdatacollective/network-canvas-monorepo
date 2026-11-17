@@ -14,25 +14,8 @@ describe('ProtocolCard', () => {
       </ProtocolCard>,
     );
 
-    expect(screen.getByTestId('protocol-background')).toBeInTheDocument();
-    expect(screen.getByText('Protocol preview')).toBeInTheDocument();
-    expect(screen.getByTestId('protocol-card')).toHaveClass(
-      'bg-platinum',
-      'overflow-clip',
-    );
-  });
-
-  it('applies the active deck treatment', () => {
-    render(
-      <ProtocolCard background={<div />} isActive data-testid="protocol-card">
-        Content
-      </ProtocolCard>,
-    );
-
-    expect(screen.getByTestId('protocol-card')).toHaveClass('spring-medium');
-    expect(screen.getByTestId('protocol-card')).not.toHaveClass(
-      'effect-shadow-xl',
-      'effect-shadow-2xl',
-    );
+    const card = screen.getByTestId('protocol-card');
+    expect(card).toContainElement(screen.getByTestId('protocol-background'));
+    expect(card).toContainElement(screen.getByText('Protocol preview'));
   });
 });

@@ -86,12 +86,17 @@ function SheetExample() {
         <ModalPopup
           key="sheet-popup"
           className={cx(
-            'fixed top-0 right-0 h-full w-96',
+            'fixed inset-e-0 top-0 h-full w-96',
+            // The sheet sits on the end edge, which is the left in a
+            // right-to-left language, and has to arrive from that side. A
+            // transform has no logical form, so the closed offset is a
+            // custom property the `rtl:` variant flips (as `NavDrawer` does).
+            '[--sheet-closed-offset:100%] rtl:[--sheet-closed-offset:-100%]',
             'bg-surface-1 text-surface-1-contrast shadow-xl',
           )}
-          initial={{ x: '100%', opacity: 0.99 }}
+          initial={{ x: 'var(--sheet-closed-offset)', opacity: 0.99 }}
           animate={{ x: 0, opacity: 1 }}
-          exit={{ x: '100%', opacity: 0.99 }}
+          exit={{ x: 'var(--sheet-closed-offset)', opacity: 0.99 }}
           transition={{ type: 'tween', duration: 0.3 }}
         >
           <div className="flex h-full flex-col p-6">
@@ -404,7 +409,7 @@ function MorphCard({ item, onOpen }: { item: MorphItem; onOpen: () => void }) {
       ref={ref}
       layoutId={item.id}
       onClick={onOpen}
-      className="bg-surface-1 text-surface-1-contrast cursor-pointer rounded p-4 text-left"
+      className="bg-surface-1 text-surface-1-contrast cursor-pointer rounded p-4 text-start"
       style={{
         borderRadius,
         boxShadow: '0 5px 15px rgba(0,0,0,0.1)',

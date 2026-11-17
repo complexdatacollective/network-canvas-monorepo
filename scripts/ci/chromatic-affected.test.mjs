@@ -409,9 +409,10 @@ test('adds dependency-aware library seeds in the normal Changesets lane', () => 
   );
 });
 
-test('does not seed documentation, website, and studio release lanes', () => {
+test('does not seed documentation, website, protocol review, and studio release lanes', () => {
   for (const releaseRef of [
     'changeset-release/documentation',
+    'changeset-release/protocol-review',
     'changeset-release/studio',
     'changeset-release/website',
   ]) {
@@ -435,10 +436,23 @@ function hasCommit(revision) {
   }
 }
 
+// CI checks out with full history (fetch-depth 0), so these commits are there;
+// a CI run without them must fail rather than pass by skipping. A shallow local
+// clone skips.
+const IN_CI = process.env.CI === 'true' || process.env.CI === '1';
+const needsCommit = (revision) => ({ skip: !IN_CI && !hasCommit(revision) });
+function requireCommit(revision) {
+  assert.ok(
+    hasCommit(revision),
+    `${revision} is not in this clone; fetch full history so this can run`,
+  );
+}
+
 test(
   'CLI accepts all workflow arguments and writes one JSON result to stdout',
-  { skip: !hasCommit('618cd495ad') },
+  needsCommit('618cd495ad'),
   () => {
+    requireCommit('618cd495ad');
     const stdout = execFileSync(
       process.execPath,
       [
@@ -483,18 +497,15 @@ for (const { revision, expected, description } of [
       'Fresco dependency resolution changes invalidate downstream Storybooks',
   },
 ]) {
-  test(
-    `historical regression: ${description}`,
-    { skip: !hasCommit(revision) },
-    () => {
-      expectAffected(
-        classifyFromGit({
-          base: `${revision}^`,
-          head: revision,
-          main: revision,
-        }),
-        expected,
-      );
-    },
-  );
+  test(`historical regression: ${description}`, needsCommit(revision), () => {
+    requireCommit(revision);
+    expectAffected(
+      classifyFromGit({
+        base: `${revision}^`,
+        head: revision,
+        main: revision,
+      }),
+      expected,
+    );
+  });
 }

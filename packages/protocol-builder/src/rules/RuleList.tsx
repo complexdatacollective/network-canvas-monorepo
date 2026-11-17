@@ -12,6 +12,8 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import type { Codebook } from '@codaco/protocol-validation';
 
+import { shapeAssetIds } from '../codebook/customShapes.ts';
+import NodeShapeSvgs from '../codebook/NodeShapeSvgs.tsx';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
@@ -20,18 +22,6 @@ import RuleEditorDialog, { type RuleTypeOption } from './RuleEditorDialog.tsx';
 import RulePreview from './RulePreview.tsx';
 
 const messages = defineMessages({
-  editAction: {
-    id: 'protocolBuilder.ruleList.editAction',
-    defaultMessage: 'Edit rule:',
-    description:
-      'Read out before the rule itself to name the control that opens one row of a rule list for editing, so a screen reader says "Edit rule: Person where Age is greater than 30". Not shown on screen.',
-  },
-  deleteAction: {
-    id: 'protocolBuilder.ruleList.deleteAction',
-    defaultMessage: 'Delete rule:',
-    description:
-      'Read out before the rule itself to name the control that removes one row of a rule list, so a screen reader says "Delete rule: Person where Age is greater than 30". Not shown on screen.',
-  },
   emptyState: {
     id: 'protocolBuilder.ruleList.emptyState',
     defaultMessage: 'No rules have been created yet.',
@@ -69,6 +59,7 @@ type RuleListBinding = Readonly<{
   allowedTargets: readonly RuleTargetType[];
   allowEncryptedAttributes: boolean;
   duplicateIds: ReadonlySet<string>;
+  shapeSvgs: Readonly<Record<string, string>>;
 }>;
 
 const RuleListBindingContext = createContext<RuleListBinding | null>(null);
@@ -95,8 +86,13 @@ function RuleListItem({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<RuleDraft>) {
-  const { codebook, allowedTargets, allowEncryptedAttributes, duplicateIds } =
-    useRuleListBinding();
+  const {
+    codebook,
+    allowedTargets,
+    allowEncryptedAttributes,
+    duplicateIds,
+    shapeSvgs,
+  } = useRuleListBinding();
   const rule = asRule(item);
   const intl = useAppIntl();
   const { localization, locale } = useEditingLanguage();
@@ -111,6 +107,7 @@ function RuleListItem({
         codebook,
         targets: allowedTargets,
         duplicateIds,
+        shapeSvgs,
         allowEncryptedAttributes,
         intl,
         localization,
@@ -125,6 +122,7 @@ function RuleListItem({
       locale,
       localization,
       rule,
+      shapeSvgs,
     ],
   );
 
@@ -150,11 +148,11 @@ function RuleListItem({
         action words remain hidden because `aria-labelledby` can compose them
         with the visible preview without duplicating content visually.
       */}
-      <span id={editActionId} hidden>
-        {intl.formatMessage(messages.editAction)}
+      <span id={editActionId} hidden lang="en">
+        Edit rule:
       </span>
-      <span id={deleteActionId} hidden>
-        {intl.formatMessage(messages.deleteAction)}
+      <span id={deleteActionId} hidden lang="en">
+        Delete rule:
       </span>
       <div className="@container w-full">
         <div className="flex w-full min-w-0 flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-center">
@@ -401,7 +399,19 @@ function useDuplicateRuleIds(rules: readonly RuleDraft[]): ReadonlySet<string> {
  * keyboard equivalent, focus return, deletion, animation and the standard add
  * affordance; this adapter supplies only the rule-specific preview and editor.
  */
-export default function RuleList({
+export default function RuleList(props: RuleListProps) {
+  return (
+    <NodeShapeSvgs
+      assets={Object.values(props.codebook.node ?? {}).flatMap((definition) =>
+        shapeAssetIds(definition.customShapes),
+      )}
+    >
+      {(shapeSvgs) => <RuleListBody {...props} shapeSvgs={shapeSvgs} />}
+    </NodeShapeSvgs>
+  );
+}
+
+function RuleListBody({
   rules,
   codebook,
   ruleTypes,
@@ -412,7 +422,8 @@ export default function RuleList({
   hasError = false,
   disabled = false,
   readOnly = false,
-}: RuleListProps) {
+  shapeSvgs,
+}: RuleListProps & Readonly<{ shapeSvgs: RuleListBinding['shapeSvgs'] }>) {
   const intl = useAppIntl();
   const duplicateIds = useDuplicateRuleIds(rules);
 
@@ -425,8 +436,15 @@ export default function RuleList({
       allowedTargets,
       allowEncryptedAttributes,
       duplicateIds,
+      shapeSvgs,
     }),
-    [allowEncryptedAttributes, allowedTargets, codebook, duplicateIds],
+    [
+      allowEncryptedAttributes,
+      allowedTargets,
+      codebook,
+      duplicateIds,
+      shapeSvgs,
+    ],
   );
 
   const getId = useMemo(() => ruleRowId(duplicateIds), [duplicateIds]);

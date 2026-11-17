@@ -245,6 +245,10 @@ export default function ComposerCanvas({
   return (
     <div
       ref={canvasRef}
+      // Nodes sit where the participant put them, by stored coordinates, in
+      // either reading direction: the right-to-left mirror check leaves the
+      // canvas out.
+      data-direction-exempt
       className="relative size-full overflow-hidden"
       role="application"
       onPointerDown={handleContainerPointerDown}
@@ -255,7 +259,10 @@ export default function ComposerCanvas({
           full-canvas layer becomes the pointerdown target and the background-tap
           handler (which requires e.target === the canvas) never fires — breaking
           add-node, tap-to-deselect, and lasso selection. */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        data-testid="composer-background"
+      >
         {background}
       </div>
       {hulls}

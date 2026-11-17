@@ -38,7 +38,7 @@ const iconMap = {
   share: <Share />,
   mail: <Mail />,
   info: <Info />,
-  chevronRight: <ChevronRight />,
+  chevronRight: <ChevronRight className="rtl:-scale-x-100" />,
 };
 
 type IconButtonStoryArgs = ComponentProps<typeof IconButton> & {

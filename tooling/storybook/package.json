@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
-    "@codaco/app-i18n": "workspace:^"
+    "@codaco/app-i18n": "workspace:^",
+    "@codaco/e2e-helpers": "workspace:^"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",

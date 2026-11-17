@@ -1,8 +1,10 @@
 import type {
   ColorReference,
   ComponentType,
+  ConditionRole,
   DynamicValues,
   EdgeColorReference,
+  EdgeCountComparison,
   FilterOperator,
   FinishMode,
   FinishOutcome,
@@ -29,6 +31,14 @@ export type TextInput = string | LocalizedString;
 export type LocalizationInput = {
   defaultLocale: LocaleTag;
   locales: readonly LocaleTag[];
+  /**
+   * The protocol's fallback language, which a protocol names when Network
+   * Canvas has no wording in its default language (`needsFallbackLanguage`
+   * in `@codaco/protocol-validation`). The built protocol names it as given:
+   * a fixture in such a language without one is a protocol still being
+   * written.
+   */
+  fallbackLocale?: LocaleTag;
 };
 
 /**
@@ -53,6 +63,30 @@ export type FilterInput = {
   join?: 'AND' | 'OR';
   rules: FilterRuleInput[];
 };
+
+/**
+ * A stage's conditions as a test writes them: the schema's `Conditions` with
+ * attribute references unbranded, as `FilterInput` is.
+ */
+export type ConditionsInput = Record<
+  string,
+  {
+    about?: ConditionRole;
+    join?: 'AND' | 'OR';
+    rules: (
+      | FilterRuleInput
+      | {
+          type: 'edge';
+          id: string;
+          options: {
+            type?: string;
+            count: EdgeCountComparison;
+            value?: number;
+          };
+        }
+    )[];
+  }
+>;
 
 type SkipLogicDestinationInput =
   | { type: 'stage'; stageId: string }
@@ -106,6 +140,8 @@ export type NodeTypeEntry = {
   color: NodeColorReference;
   icon: string;
   shape: { default: string; dynamic?: ShapeMapping };
+  /** The type's custom shapes, by shape id: each names an SVG asset. */
+  customShapes?: Record<string, { name: string; asset: string }>;
   variables: Map<string, VariableEntry>;
 };
 
@@ -294,6 +330,8 @@ export type StageEntry = {
   filter?: FilterInput;
   /** Values the stage's text can show; written as given. */
   dynamicValues?: DynamicValues;
+  /** What the stage's text tests to choose its wording, by condition id. */
+  conditions?: ConditionsInput;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   form?: FormEntry;
   prompts: PromptEntry[];

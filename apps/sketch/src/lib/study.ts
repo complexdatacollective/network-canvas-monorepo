@@ -16,25 +16,39 @@ export const MAX_SYNOPSIS_LENGTH = 3000;
 const QUESTIONS_HEADING = 'Research questions';
 const POPULATION_HEADING = 'Research population';
 const SYNOPSIS_HEADING = 'Study synopsis';
+const ADMINISTRATION_HEADING = 'Mode of administration';
+
+export type Administration = 'self_administered' | 'face_to_face';
+
+// How each choice reads to the design model. The design's administration
+// field takes the matching value.
+const ADMINISTRATION_TEXT: Record<Administration, string> = {
+  self_administered:
+    'Self-administered: participants complete the interview on their own, on a computer or tablet.',
+  face_to_face:
+    'Face-to-face: an interviewer sits with each participant and administers the interview.',
+};
 
 export type StudyInput = {
   questions: string[];
   population: string;
   synopsis: string;
+  administration: Administration | null;
 };
 
 export const filledQuestions = (questions: string[]) =>
   questions.map((q) => q.trim().replace(/\s+/g, ' ')).filter(Boolean);
 
 /**
- * At least one question and a population long enough to design from, and
- * nothing too long.
+ * At least one question, a population long enough to design from and a mode
+ * of administration, and nothing too long.
  */
 export const studyIsComplete = (study: StudyInput) => {
-  const { questions, population, synopsis } = study;
+  const { questions, population, synopsis, administration } = study;
   const filled = filledQuestions(questions);
   const populationLength = population.trim().length;
   return (
+    administration !== null &&
     filled.length > 0 &&
     populationLength >= MIN_POPULATION_LENGTH &&
     populationLength <= MAX_POPULATION_LENGTH &&
@@ -50,6 +64,7 @@ export const composeStudyText = ({
   questions,
   population,
   synopsis,
+  administration,
 }: StudyInput) => {
   const filled = filledQuestions(questions);
   const parts = [
@@ -57,6 +72,10 @@ export const composeStudyText = ({
   ];
   if (population.trim())
     parts.push(`${POPULATION_HEADING}\n${population.trim()}`);
+  if (administration)
+    parts.push(
+      `${ADMINISTRATION_HEADING}\n${ADMINISTRATION_TEXT[administration]}`,
+    );
   if (synopsis.trim()) parts.push(`${SYNOPSIS_HEADING}\n${synopsis.trim()}`);
   return parts.join('\n\n');
 };

@@ -1,5 +1,7 @@
 'use client';
 
+import { useId } from 'react';
+
 import {
   defineMessages,
   type MessageDescriptor,
@@ -11,9 +13,15 @@ import InputField from '../../form/fields/InputField';
 import { type DateFilterConfig, type DateFilterValue } from './types';
 
 type DateFilterProps = {
-  value: DateFilterValue | undefined;
-  onChange: (value: DateFilterValue | undefined) => void;
-  config: DateFilterConfig;
+  'value': DateFilterValue | undefined;
+  'onChange': (value: DateFilterValue | undefined) => void;
+  'config': DateFilterConfig;
+  /**
+   * The id of the visible label naming what is filtered, such as a field
+   * heading. It names the group and the first date; the word between the two
+   * dates names the second.
+   */
+  'aria-labelledby'?: string;
 };
 
 const messages = defineMessages({
@@ -82,9 +90,11 @@ function isPresetActive(
 export default function DateFilter({
   value,
   onChange,
-  config: _config,
+  'config': _config,
+  'aria-labelledby': ariaLabelledBy,
 }: DateFilterProps) {
   const intl = useAppIntl();
+  const separatorId = useId();
 
   const handlePresetClick = (days: number) => {
     if (isPresetActive(value, days)) {
@@ -113,7 +123,11 @@ export default function DateFilter({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      role="group"
+      aria-labelledby={ariaLabelledBy}
+      className="flex flex-col gap-4"
+    >
       <div className="flex flex-wrap gap-2">
         {relativePresets.map((preset) => (
           <Button
@@ -132,17 +146,19 @@ export default function DateFilter({
         <InputField
           type="date"
           name="filter-date-from"
+          aria-labelledby={ariaLabelledBy}
           size="sm"
           value={value?.from ?? ''}
           onChange={(val) => handleFromChange(val ?? '')}
           className="min-w-0 flex-1"
         />
-        <span className="text-text/60 text-xs">
+        <span id={separatorId} className="text-text/60 text-xs">
           {intl.formatMessage(messages.rangeSeparator)}
         </span>
         <InputField
           type="date"
           name="filter-date-to"
+          aria-labelledby={separatorId}
           size="sm"
           value={value?.to ?? ''}
           onChange={(val) => handleToChange(val ?? '')}

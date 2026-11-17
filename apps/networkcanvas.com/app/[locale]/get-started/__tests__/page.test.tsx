@@ -20,7 +20,7 @@ const metadataMessages = vi.hoisted(() => ({
   'es': {
     title: 'Comenzar',
     description:
-      'Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
+      'Elige la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
   },
 }));
 
@@ -93,7 +93,7 @@ afterEach(() => {
 });
 
 describe('localized Get Started page', () => {
-  it('renders Spanish research stages and preserves the approved card layout', async () => {
+  it('renders Spanish research stages with their app cards in order', async () => {
     const fetcher = vi
       .spyOn(globalThis, 'fetch')
       .mockRejectedValue(new Error('Network access is unavailable in tests.'));
@@ -132,9 +132,6 @@ describe('localized Get Started page', () => {
         .getAllByRole('heading', { level: 3 })
         .map(({ textContent }) => textContent),
     ).toEqual(appNames);
-    expect(cards[0]?.parentElement).toHaveClass('tablet-landscape:col-span-6');
-    expect(cards[1]?.parentElement).toHaveClass('tablet-landscape:col-span-6');
-    expect(cards[2]?.parentElement).toHaveClass('tablet-landscape:col-span-12');
     for (const card of cards) {
       expect(card?.parentElement).toHaveAttribute('data-scroll-linked', 'true');
       expect(card?.parentElement).toHaveAttribute(
@@ -142,7 +139,6 @@ describe('localized Get Started page', () => {
         'zoom',
       );
     }
-    expect(cards[1]).toHaveClass('bg-slate-blue/10', 'backdrop-blur-md');
     expect(
       document.querySelectorAll('[data-get-started-weave-target]'),
     ).toHaveLength(2);
@@ -152,7 +148,6 @@ describe('localized Get Started page', () => {
     expect(
       document.querySelectorAll('[data-testid="page-background"]'),
     ).toHaveLength(1);
-    expect(document.querySelectorAll('.relative.z-10')).toHaveLength(0);
     expect(fetcher).not.toHaveBeenCalled();
   });
 
@@ -164,7 +159,7 @@ describe('localized Get Started page', () => {
     expect(metadata).toMatchObject({
       title: 'Comenzar',
       description:
-        'Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
+        'Elige la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
       alternates: {
         canonical: 'https://networkcanvas.com/es/get-started',
         languages: {

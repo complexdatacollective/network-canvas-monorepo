@@ -184,13 +184,9 @@ test(
       Object.keys(protocol.codebook.node ?? {}).length +
       Object.keys(protocol.codebook.edge ?? {}).length;
     // cover + contents + one per stage + one per codebook entity + resources
-    // + the interview's shared text, when the protocol holds any
-    const expectedSections =
-      2 +
-      protocol.stages.length +
-      entityCount +
-      1 +
-      (protocol.interfaceText ? 1 : 0);
+    // + the interview's shared text, which the summary lists as the
+    // interview shows it, so every protocol has it
+    const expectedSections = 2 + protocol.stages.length + entityCount + 1 + 1;
     await expect(sections).toHaveCount(expectedSections);
 
     // Each section names its own baseline: an `id` where the document has one
@@ -588,19 +584,19 @@ for (const attributeType of ['Categorical', 'Ordinal']) {
       .first()
       .click();
     const dialog = architectPage.getByRole('dialog', {
-      name: 'Create New Attribute',
+      name: 'Create attribute',
     });
     await dialog
       .getByRole('textbox', { name: 'Attribute name' })
       .fill('closeness');
     const type = dialog.getByRole('combobox', { name: 'Attribute type' });
-    await type.click();
-    await architectPage
-      .getByRole('option', { name: attributeType, exact: true })
-      .click();
+    // A native select: choosing a value from script does not focus it the way
+    // a researcher's click does, so focus it first.
+    await type.focus();
+    await type.selectOption(attributeType);
 
     await expect(
-      dialog.getByRole('heading', { name: 'Allowed values' }),
+      dialog.getByRole('group', { name: 'Choice values' }),
     ).toBeInViewport();
     await expect(
       dialog.getByRole('button', { name: 'Create new option' }),

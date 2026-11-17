@@ -1,8 +1,7 @@
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import DefaultLanguageTextAlert from './DefaultLanguageTextAlert';
+import LabelCollisionsAlert from './LabelCollisionsAlert';
 import LanguageChooserAlert from './Localization/LanguageChooserAlert';
 import LocalizationAlert from './Localization/LocalizationAlert';
 import ProtocolInfoCard from './ProtocolInfoCard';
@@ -10,16 +9,8 @@ import { routeFocusTargetProps } from './RouteFocus';
 import TestingMapboxTokenAlert from './TestingMapboxTokenAlert';
 import Timeline from './Timeline';
 import VariableRoleConflictsAlert from './VariableRoleConflictsAlert';
-const messages = defineMessages({
-  stages: {
-    id: 'architect.protocol.stages',
-    defaultMessage: 'Stages',
-    description: 'Visible text in components / Protocol.',
-  },
-});
 
 const Protocol = () => {
-  const intl = useAppIntl();
   return (
     <div className="mt-10 flex flex-col items-center">
       {/*
@@ -29,8 +20,14 @@ const Protocol = () => {
        * breadcrumb had nothing to land on but the top of the document. Named
        * after this route's own nav item.
        */}
-      <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
-        {intl.formatMessage(messages.stages)}
+      <Heading
+        level="h1"
+        className="sr-only"
+        lang="en"
+        {...routeFocusTargetProps}
+      >
+        {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+        {'Stages'}
       </Heading>
       {/*
        * The notes stack in one block-level column, so their margins collapse
@@ -41,6 +38,7 @@ const Protocol = () => {
        */}
       <div className="mb-15 w-full max-w-3xl empty:hidden">
         <DefaultLanguageTextAlert />
+        <LabelCollisionsAlert />
         <TestingMapboxTokenAlert />
         <VariableRoleConflictsAlert />
         <LocalizationAlert />

@@ -29,6 +29,13 @@ vi.mock('../../localization/useDynamicValueSite.ts', async (importActual) => {
     bindings: {},
     setBindings: () => undefined,
     namesInUse: () => new Set(),
+    conditions: {
+      values: {},
+      set: () => undefined,
+      codebook: undefined,
+      subject: undefined,
+      allowEgoRules: true,
+    },
   };
   return { ...actual, useDynamicValueSite: () => site };
 });

@@ -17,42 +17,42 @@ const messages = defineMessages({
     defaultMessage:
       'The storage provider is configured via the STORAGE_PROVIDER environment variable and cannot be changed here.',
     description:
-      'Researcher-facing actions / storageProvider: The storage provider is configured via the STORAGE_PROVIDER environment variable and cannot be changed here.',
+      'Error shown in the setup wizard storage step when the researcher picks a storage provider (S3 or UploadThing) but the installation fixes it through an environment variable. Keep STORAGE_PROVIDER as written.',
   },
   copyCannotChangeStorageProviderAfterProtocolsHave: {
     id: 'fresco.actions.storageProvider.copyCannotChangeStorageProviderAfterProtocolsHave',
     defaultMessage:
       'Cannot change storage provider after protocols have been uploaded.',
     description:
-      'Researcher-facing actions / storageProvider: Cannot change storage provider after protocols have been uploaded.',
+      'Error shown when the researcher tries to switch storage provider (S3 or UploadThing) after interview protocols have already been uploaded, because those files live in the current storage.',
   },
   copyS3StorageIsConfiguredViaEnvironmentVariables: {
     id: 'fresco.actions.storageProvider.copyS3StorageIsConfiguredViaEnvironmentVariables',
     defaultMessage:
       'S3 storage is configured via environment variables and cannot be changed here.',
     description:
-      'Researcher-facing actions / storageProvider: S3 storage is configured via environment variables and cannot be changed here.',
+      'Error shown in the S3 storage form when the researcher saves S3 settings but the installation already supplies them through environment variables.',
   },
   copyTheStorageProviderIsPinnedToUploadThing: {
     id: 'fresco.actions.storageProvider.copyTheStorageProviderIsPinnedToUploadThing',
     defaultMessage:
       'The storage provider is pinned to UploadThing via the STORAGE_PROVIDER environment variable.',
     description:
-      'Researcher-facing actions / storageProvider: The storage provider is pinned to UploadThing via the STORAGE_PROVIDER environment variable.',
+      'Error shown in the S3 storage form when the researcher saves S3 settings but an environment variable fixes the storage provider to UploadThing. Keep STORAGE_PROVIDER as written.',
   },
   copyCannotChangeStorageConfigurationAfterProtocolsHave: {
     id: 'fresco.actions.storageProvider.copyCannotChangeStorageConfigurationAfterProtocolsHave',
     defaultMessage:
       'Cannot change storage configuration after protocols have been uploaded.',
     description:
-      'Researcher-facing actions / storageProvider: Cannot change storage configuration after protocols have been uploaded.',
+      'Error shown in the S3 storage form when the researcher saves new S3 settings after interview protocols have already been uploaded to the current storage.',
   },
   copyCouldNotConnectToS3Bucket: {
     id: 'fresco.actions.storageProvider.copyCouldNotConnectToS3Bucket',
     defaultMessage:
       'Could not connect to the S3 bucket. Check the endpoint, bucket name, and credentials.',
     description:
-      'Researcher-facing actions / storageProvider: Could not connect to S3 bucket: value',
+      'Error shown in the S3 storage form when saving settings and the connection test against the S3-compatible bucket fails. The endpoint is the storage service address; credentials are the access key ID and secret.',
   },
 });
 

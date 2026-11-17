@@ -138,6 +138,37 @@ describe.skipIf(!db)('the queue under real contention', () => {
       );
 
       it.effect(
+        'lets a holder count a waiter that connected after its first look',
+        () =>
+          Effect.gen(function* () {
+            const { schema } = yield* QueueHarness;
+            const lock = 'SELECT pg_advisory_xact_lock(hashtext($1))';
+
+            yield* holding(db!.url, (holder) =>
+              Effect.gen(function* () {
+                yield* holder.query(lock, [schema]);
+                assert.strictEqual(yield* holder.blockedByMe, 0);
+
+                const waiter = yield* Effect.forkChild(
+                  holding(db!.url, (late) => late.query(lock, [schema])),
+                );
+                const seen = yield* awaitTrue(
+                  Effect.map(holder.blockedByMe, (count) => count > 0),
+                  CLAIM_BUDGET,
+                );
+                assert.isTrue(
+                  Option.isSome(seen),
+                  'the holder never counted the waiter on its lock',
+                );
+
+                yield* holder.finish('ROLLBACK');
+                yield* Fiber.join(waiter);
+              }),
+            );
+          }),
+      );
+
+      it.effect(
         'reads the singleton index’s unique violation as “another worker won”',
         () =>
           Effect.gen(function* () {

@@ -24,12 +24,14 @@ export type StageName = Readonly<{
   /**
    * What this stage would be called if nobody had named it, recomputed as the
    * stage is configured. Offered for every stage, named or not; whether it is
-   * ever written unasked is `useAutoStageName`.
+   * ever written unasked is `useAutoStageName`. Undefined when the protocol's
+   * default language is one Network Canvas supplies no wording for: there is
+   * nothing to propose, and the researcher names the stage.
    */
-  proposal: string;
+  proposal: string | undefined;
   /**
    * Write the proposal as the name's default-language translation, and count
-   * it as this editor's doing.
+   * it as this editor's doing. Does nothing where there is no proposal.
    */
   acceptProposal: () => void;
 }>;
@@ -65,7 +67,7 @@ export function useStageName(): StageName {
   );
 
   const acceptProposal = useCallback(() => {
-    write(proposal, 'proposed');
+    if (proposal !== undefined) write(proposal, 'proposed');
   }, [proposal, write]);
 
   return {

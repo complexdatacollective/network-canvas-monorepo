@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -28,7 +27,6 @@ import {
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import PassphraseNotice from '../Anonymisation/PassphraseNotice';
-import { interfaceMessages } from '../messages';
 import AddNodeInput from './AddNodeInput';
 import GroupPicker, {
   type ActiveGroup,
@@ -136,7 +134,6 @@ export default function ToolPalette({
   automaticLayout,
   onToggleAutomaticLayout,
 }: ToolPaletteProps) {
-  const intl = useAppIntl();
   const activeTool = useComposerStore(composerStore, (s) => s.activeTool);
   // A change still being made can be undone too: the undo waits for it.
   const canUndo = useUndoStore(
@@ -184,16 +181,15 @@ export default function ToolPalette({
 
   return (
     <SegmentedToolbar
-      aria-label={intl.formatMessage(interfaceMessages.composerTools)}
+      aria-label="Network composer tools"
       orientation="vertical"
       size="lg"
-      className="absolute top-1/2 left-4 z-10 -translate-y-1/2"
+      className="absolute inset-s-4 top-1/2 z-10 -translate-y-1/2"
     >
-      <ToolbarGroup
-        aria-label={intl.formatMessage(interfaceMessages.editingTools)}
-      >
+      <ToolbarGroup aria-label="Editing tools">
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.select)}
+          aria-label="Select"
+          lang="en"
           tooltip={false}
           icon={<SelectIcon />}
           pressed={activeTool.kind === 'select'}
@@ -291,9 +287,7 @@ export default function ToolPalette({
 
       <ToolbarSeparator />
 
-      <ToolbarGroup
-        aria-label={intl.formatMessage(interfaceMessages.layoutTools)}
-      >
+      <ToolbarGroup aria-label="Layout tools">
         <ToolbarIconButton
           aria-label={words.automaticLayout}
           icon={<AutoLayoutIcon />}
@@ -304,18 +298,18 @@ export default function ToolPalette({
 
       <ToolbarSeparator />
 
-      <ToolbarGroup
-        aria-label={intl.formatMessage(interfaceMessages.historyTools)}
-      >
+      <ToolbarGroup aria-label="History tools" lang="en">
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.undo)}
+          aria-label="Undo"
+          lang="en"
           tooltip={false}
           icon={<UndoIcon />}
           disabled={!canUndo}
           onClick={() => void undoStore.getState().undo()}
         />
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.redo)}
+          aria-label="Redo"
+          lang="en"
           tooltip={false}
           icon={<RedoIcon />}
           disabled={!canRedo}

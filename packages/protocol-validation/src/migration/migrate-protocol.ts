@@ -16,19 +16,33 @@ import {
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
 import { findPrototypeCodebookKeys } from '../validation/prototypeCodebookKeys.ts';
-import { formatProtocolValidationIssues } from '../validation/validate-protocol.ts';
 import {
+  formatProtocolValidationIssues,
+  releaseIssues,
+  toProtocolValidationIssues,
+} from '../validation/validate-protocol.ts';
+import {
+  MigrationContentRefusedError,
   MigrationResultInvalidError,
   SchemaVersionDetectionError,
   ValidationError,
   VersionMismatchError,
 } from './errors.ts';
-import { type ProtocolDocument, protocolMigrations } from './index.ts';
+import { MigrationChain, type ProtocolDocument } from './index.ts';
+import { findRefusedContent } from './refusedContent.ts';
 import {
   createSessionMigrator,
   type RecordedSessionStep,
   type SessionMigrator,
 } from './session.ts';
+
+// The chain is created in the same module that registers into it. If it lived
+// in `./index.ts`, a re-evaluation of this module alone — which is what a dev
+// server's hot reload does when a schema migration file changes, since
+// `./index.ts` is a dependency rather than an importer — would register every
+// step a second time into the surviving chain and throw "Migration from version
+// 1 already registered", failing every route that loads protocol-validation.
+export const protocolMigrations = new MigrationChain();
 
 protocolMigrations.register(migrationV1toV2);
 protocolMigrations.register(migrationV2toV3);
@@ -134,18 +148,50 @@ function migrateAndValidate(
   const postValidationResult = VersionedProtocolSchema.safeParse(migrated);
   if (!postValidationResult.success) {
     // Not a `ValidationError`: the input passed its own version's checks above,
-    // so this says a migration of ours returned something invalid. Hosts use
-    // the distinction to decide what belongs in exception tracking.
-    throw new MigrationResultInvalidError(
-      `Migration resulted in invalid protocol: ${postValidationResult.error.message}`,
-      targetVersion,
+    // so this says a migration of ours returned something invalid — unless
+    // every issue is content the protocol left empty and the migration may not
+    // invent, which is the researcher's to correct. Hosts use the distinction
+    // to decide what belongs in exception tracking.
+    const issues = toProtocolValidationIssues(
+      postValidationResult.error.issues,
     );
+    const message = `Migration resulted in invalid protocol: ${postValidationResult.error.message}`;
+    // The places it knows are schema 9's, whose migration is the one that
+    // refuses to invent content.
+    const refused =
+      targetVersion === 9 ? findRefusedContent(migrated, issues) : undefined;
+    if (refused !== undefined) {
+      throw new MigrationContentRefusedError(
+        message,
+        targetVersion,
+        issues,
+        refused,
+      );
+    }
+    throw new MigrationResultInvalidError(message, targetVersion, issues);
   }
   if (postValidationResult.data.schemaVersion !== targetVersion) {
     throw new MigrationResultInvalidError(
       `Migration to version ${targetVersion} resulted in a version ${postValidationResult.data.schemaVersion} protocol`,
       targetVersion,
     );
+  }
+  // A migrated protocol is one handed over, not one being written, so it is
+  // held to what a protocol may hold only while it is written
+  // (`releaseIssues`): two options that read the same, which earlier schemas
+  // allowed, refuse it here, although a draft at the target version may hold
+  // them. A document already at the target version is not migrated, and is
+  // left to the caller, which knows whether it is a draft: Architect restores
+  // its own drafts through here.
+  if (detectedVersion < targetVersion) {
+    const handedOverIssues = releaseIssues(postValidationResult.data);
+    if (handedOverIssues.length > 0) {
+      throw new MigrationResultInvalidError(
+        `Migration resulted in invalid protocol: ${JSON.stringify(handedOverIssues, null, 2)}`,
+        targetVersion,
+        handedOverIssues,
+      );
+    }
   }
 
   return { protocol: postValidationResult.data, sessionSteps };

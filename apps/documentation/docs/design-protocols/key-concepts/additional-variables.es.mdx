@@ -1,0 +1,31 @@
+---
+title: Variables adicionales
+navOrder: 9
+wip: false
+translatedFrom: 7f352354d35502e3c9491dea0c4837cd9a8c6879
+---
+
+<Definition>
+  Las variables adicionales te permiten asignar automáticamente una variable
+  cuando se añade un nodo a la entrevista.
+</Definition>
+
+## Detalles {#details}
+
+Las variables adicionales son [variables](/es/design-protocols/key-concepts/variables) opcionales que puedes definir en una [pregunta](/es/design-protocols/key-concepts/prompts) dentro del editor de etapas [«Generador de nombres»](/es/design-protocols/interface-documentation/name-generator-using-forms). Estas variables se asignan automáticamente a cualquier entidad que se cree en la pregunta indicada (o que se nomine en ella, en el caso de los datos de una lista, es decir, una lista predefinida que se importa como archivo de datos). Esta función te permite registrar en qué punto de la entrevista se añadió un nodo o aportar metadatos adicionales que puedes usar más adelante en la entrevista para la [lógica de salto](/es/design-protocols/key-concepts/skip-logic) o el [filtrado de la red](/es/design-protocols/key-concepts/network-filtering).
+
+Las variables adicionales son siempre booleanas, y puedes establecer su valor predeterminado en **verdadero** o **falso**.
+
+Para crear una o varias variables adicionales, abre una etapa «Generador de nombres» en Architect y haz clic en una pregunta para abrir la ventana **Editar pregunta**. En la parte inferior de la ventana, en la sección **Atributos adicionales**, haz clic en **Añadir un nuevo atributo para asignar**. Cada fila asocia un atributo con el valor (verdadero o falso) que se le asigna.
+
+![Gestión de las variables adicionales de una pregunta de una etapa «Generador de nombres» en Architect](/assets/img/key-concepts/additional-variables/additional-variables.png)
+
+En una entrevista, el software gestiona automáticamente el valor de esta variable. Por ejemplo, al añadir un nodo en una pregunta que tiene una variable adicional con el valor verdadero, ese valor de la variable se añade al nodo. Si después se elimina el nodo o se quita de la pregunta, este valor se elimina.
+
+## Conceptos relacionados {#related-concepts}
+
+- [Preguntas](/es/design-protocols/key-concepts/prompts): configura las preguntas en las que se definen las variables adicionales
+- [Variables](/es/design-protocols/key-concepts/variables): conoce los tipos de variable y su configuración
+- [Lógica de salto](/es/design-protocols/key-concepts/skip-logic): usa variables adicionales en las reglas de lógica de salto
+- [Filtrado de la red](/es/design-protocols/key-concepts/network-filtering): filtra los nodos según sus variables adicionales
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): conoce las interfaces de generador de nombres que admiten variables adicionales

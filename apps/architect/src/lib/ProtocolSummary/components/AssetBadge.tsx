@@ -14,7 +14,7 @@ const chromeMessages = defineMessages({
     id: 'architect.chrome.protocolSummary.assetBadge.assetNotFound',
     defaultMessage: 'Asset {id} not found',
     description:
-      'Researcher-facing explanatory text in lib / ProtocolSummary / components / AssetBadge.',
+      "Shown in the printable protocol summary in place of a resource's details when a stage refers to an uploaded resource that is missing from the protocol. id is the missing resource's identifier.",
   },
 });
 
@@ -42,7 +42,9 @@ const AssetBadge = ({ id, link = false }: AssetBadgeProps) => {
   const name = !link ? (
     data.name
   ) : (
-    <DualLink to={`#asset-${id}`}>{data.name}</DualLink>
+    <DualLink to={`#asset-${id}`}>
+      <bdi>{data.name}</bdi>
+    </DualLink>
   );
 
   return (

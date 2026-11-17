@@ -26,6 +26,7 @@ import {
   Slice,
 } from '@tiptap/pm/model';
 import { Plugin, PluginKey, Selection } from '@tiptap/pm/state';
+import type { EditorView } from '@tiptap/pm/view';
 import {
   EditorContent,
   type JSONContent,
@@ -48,6 +49,8 @@ import {
   Minus,
   Plus,
   Redo,
+  Smile,
+  Split,
   Syringe,
   Trash2,
   Undo,
@@ -64,10 +67,16 @@ import {
 } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
+import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
+import Surface from '../../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
+import {
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import {
   controlVariants,
   inputControlVariants,
@@ -75,7 +84,12 @@ import {
   multilineContentVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { tokenPillClasses, tokenPillContentSpec } from '../../TokenPill';
+import {
+  type TokenPillLabel,
+  tokenPillClasses,
+  tokenPillContentSpec,
+  tokenPillLanguage,
+} from '../../TokenPill';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import { useEnclosingHeadingLevel } from '../../typography/EnclosingHeadingLevel';
 import { headingVariants } from '../../typography/Heading';
@@ -83,8 +97,18 @@ import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
 import { isRecord } from '../../utils/isRecord';
 import type { CreateFormFieldProps } from '../Field/types';
+import { textEntryDirection } from '../textEntryDirection';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
+import {
+  EMOJI_MENU_LIMIT,
+  type EmojiSuggestion,
+  emojiMenuItems,
+  loadEmoji,
+  suggestEmoji,
+  typedEmojiName,
+} from './richText/emojiMenu';
+import { setEmojiSuggestionsShowing } from './richText/emojiSuggestionState';
 import { documentInSchema, marksInSchema } from './richText/fitToSchema';
 import {
   InsertMenuList,
@@ -92,104 +116,26 @@ import {
   type RichTextInsertMenuItem,
 } from './richText/InsertMenu';
 import {
+  hasVersionRowBeside,
   NestedEditingContext,
+  type RichTextVersionsActionEvent,
   VERSIONS_NODE,
   VersionsNode,
   versionsIn,
 } from './richText/versionsNode';
 
 const messages = defineMessages({
-  bold: {
-    id: 'frescoUi.richTextEditor.bold',
-    defaultMessage: 'Bold',
-    description: 'Accessible name of the bold toggle in the editor toolbar.',
-  },
-  italic: {
-    id: 'frescoUi.richTextEditor.italic',
-    defaultMessage: 'Italic',
-    description: 'Accessible name of the italic toggle in the editor toolbar.',
-  },
-  linkButton: {
-    id: 'frescoUi.richTextEditor.linkButton',
-    defaultMessage: '{hasLink, select, true {Edit link} other {Add link}}',
+  emojiMenu: {
+    id: 'frescoUi.richTextEditor.emojiMenu',
+    defaultMessage: 'Insert emoji',
     description:
-      'Accessible name of the toolbar link button; says whether it will edit the existing link or add one.',
-  },
-  heading1: {
-    id: 'frescoUi.richTextEditor.heading1',
-    defaultMessage: 'Heading 1',
-    description:
-      'Accessible name of the level-1 heading toggle in the editor toolbar.',
-  },
-  heading2: {
-    id: 'frescoUi.richTextEditor.heading2',
-    defaultMessage: 'Heading 2',
-    description:
-      'Accessible name of the level-2 heading toggle in the editor toolbar.',
-  },
-  heading3: {
-    id: 'frescoUi.richTextEditor.heading3',
-    defaultMessage: 'Heading 3',
-    description:
-      'Accessible name of the level-3 heading toggle in the editor toolbar.',
-  },
-  heading4: {
-    id: 'frescoUi.richTextEditor.heading4',
-    defaultMessage: 'Heading 4',
-    description:
-      'Accessible name of the level-4 heading toggle in the editor toolbar.',
-  },
-  numberedList: {
-    id: 'frescoUi.richTextEditor.numberedList',
-    defaultMessage: 'Numbered list',
-    description:
-      'Accessible name of the ordered-list toggle in the editor toolbar.',
-  },
-  bulletList: {
-    id: 'frescoUi.richTextEditor.bulletList',
-    defaultMessage: 'Bullet list',
-    description:
-      'Accessible name of the bullet-list toggle in the editor toolbar.',
-  },
-  thematicBreak: {
-    id: 'frescoUi.richTextEditor.thematicBreak',
-    defaultMessage: 'Thematic break',
-    description:
-      'Accessible name of the toolbar button inserting a horizontal rule.',
-  },
-  undo: {
-    id: 'frescoUi.richTextEditor.undo',
-    defaultMessage: 'Undo',
-    description: 'Accessible name of the undo button in the editor toolbar.',
-  },
-  redo: {
-    id: 'frescoUi.richTextEditor.redo',
-    defaultMessage: 'Redo',
-    description: 'Accessible name of the redo button in the editor toolbar.',
+      'Accessible name and tooltip of the toolbar button in the rich text editor that opens a searchable menu of emoji to insert into the text. Also names the menu.',
   },
   emptyVersion: {
     id: 'frescoUi.richTextEditor.emptyVersion',
     defaultMessage: 'Shows nothing',
     description:
       'Muted hint shown inside an empty version of a piece of text, such as the version shown when a participant’s name is not known. An empty version is allowed: in that case nothing is shown in its place. The hint is not part of the text.',
-  },
-  insertToken: {
-    id: 'frescoUi.richTextEditor.insertToken',
-    defaultMessage: 'Insert “{token}”',
-    description:
-      'Accessible name of a toolbar button that inserts a placeholder, such as a person’s name, at the caret. {token} is the placeholder’s label, which the button also shows.',
-  },
-  insertRequiredToken: {
-    id: 'frescoUi.richTextEditor.insertRequiredToken',
-    defaultMessage: 'Insert “{token}” (required in this text)',
-    description:
-      'Accessible name of a toolbar button that inserts a placeholder, such as a person’s name, that the text must include but does not yet. {token} is the placeholder’s label, which the button also shows.',
-  },
-  tokens: {
-    id: 'frescoUi.richTextEditor.tokens',
-    defaultMessage: 'Insert a placeholder',
-    description:
-      'Accessible name of the toolbar group of buttons that each insert a placeholder, such as a person’s name, into the text.',
   },
   linkUrlLabel: {
     id: 'frescoUi.richTextEditor.linkUrlLabel',
@@ -202,22 +148,10 @@ const messages = defineMessages({
     description:
       'Example URL shown as the placeholder of the link popover input.',
   },
-  removeLink: {
-    id: 'frescoUi.richTextEditor.removeLink',
-    defaultMessage: 'Remove link',
-    description:
-      'Accessible name of the link popover button that removes the link.',
-  },
   removeLinkShort: {
     id: 'frescoUi.richTextEditor.removeLinkShort',
     defaultMessage: 'Remove',
     description: 'Visible label of the link popover button removing the link.',
-  },
-  applyLink: {
-    id: 'frescoUi.richTextEditor.applyLink',
-    defaultMessage: 'Apply link',
-    description:
-      'Accessible name of the link popover button that applies the link.',
   },
   applyLinkShort: {
     id: 'frescoUi.richTextEditor.applyLinkShort',
@@ -291,7 +225,11 @@ const SingleLineDocument = TiptapNode.create({
  */
 export type RichTextEditorToken = Readonly<{
   id: string;
-  label: string;
+  /**
+   * The interface's words for it, or `{ text, dir: 'auto' }` for a name
+   * someone wrote (an attribute's), which reads in its own direction.
+   */
+  label: TokenPillLabel;
   required?: boolean;
   /**
    * How the placeholder is written as text, such as `{name}`. Pasted text
@@ -344,10 +282,17 @@ const placedTokenIds = (doc: ProseMirrorNode): string => {
  * offer it. A pasted token a field does not offer arrives as its label, as
  * text: the field cannot hold it, and the words are what was meant.
  */
-const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
+type InterfaceLanguage = Readonly<{ lang: string; dir: 'ltr' | 'rtl' }>;
+
+const createTokenNode = (
+  tokens: readonly RichTextEditorToken[],
+  interfaceLanguage: InterfaceLanguage,
+) => {
   const labels = new Map(tokens.map(({ id, label }) => [id, label]));
-  const labelOf = (id: unknown) =>
-    typeof id === 'string' ? (labels.get(id) ?? id) : '';
+  // A token the field does not offer shows the name the text records for it,
+  // as it was written.
+  const labelOf = (id: unknown): TokenPillLabel =>
+    typeof id === 'string' ? (labels.get(id) ?? { text: id, dir: 'auto' }) : '';
 
   return TiptapNode.create({
     name: TOKEN_NODE,
@@ -387,13 +332,16 @@ const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
           // A pointer, not the text cursor: the pill is one object.
           class: tokenPillClasses('cursor-pointer'),
           contenteditable: 'false',
+          // The interface's words in the interface's language, whatever
+          // language the text around it is in; a name in its own direction.
+          ...tokenPillLanguage(labelOf(node.attrs.id), interfaceLanguage),
         }),
         ...tokenPillContentSpec(labelOf(node.attrs.id)),
       ];
     },
 
     renderText({ node }) {
-      return labelOf(node.attrs.id);
+      return presentationalTextValue(labelOf(node.attrs.id));
     },
 
     addProseMirrorPlugins() {
@@ -528,11 +476,11 @@ const addAtom = (run: OneLineRun, atom: JSONContent) => {
   run.collected.push(atom);
 };
 
-/** A run of newlines, however the platform that wrote them spells one. */
-const LINE_BREAKS = /(?:\r\n|[\n\r])+/;
-
 /**
- * Adds a text node, treating the newlines INSIDE it as breaks like any other.
+ * Adds a text node, treating the line breaks INSIDE it as breaks like any
+ * other: newlines however a platform spells them, and Unicode's line and
+ * paragraph separators, which the schema refuses in one-line text just the
+ * same (`linesOf`, the one definition of a line break).
  *
  * A line break can live inside the text itself, where no schema was ever going
  * to refuse it: markdown's own soft break parses to one text node with the
@@ -545,7 +493,7 @@ const addTextLines = (
   text: string,
   marks: JSONContent['marks'],
 ) => {
-  for (const [index, line] of text.split(LINE_BREAKS).entries()) {
+  for (const [index, line] of linesOf(text).entries()) {
     if (index > 0) {
       run.breakPending = true;
     }
@@ -678,9 +626,12 @@ const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
 export type { RichTextInsertMenu, RichTextInsertMenuItem };
 export type {
   RichTextVersion,
+  RichTextVersionsAction,
+  RichTextVersionsActionEvent,
   RichTextVersionsAttributes,
 } from './richText/versionsNode';
-export { VERSIONS_NODE };
+export { versionsPreview } from './richText/versionsNode';
+export { hasVersionRowBeside, VERSIONS_NODE };
 
 const swallowKeystroke = () => true;
 
@@ -766,11 +717,18 @@ type ExtensionOptions = {
   singleLine: boolean;
   placeholder?: string;
   tokens: readonly RichTextEditorToken[];
+  /**
+   * The interface's language: a placeholder's pill names it in the
+   * interface's words, inside text that may be in another language.
+   */
+  interfaceLanguage: InterfaceLanguage;
   versions: boolean;
   /** Typing this character opens the insert menu. */
   trigger?: string;
   /** Told when the trigger is typed, and where it now sits. */
   onTrigger: (editor: Editor, position: number) => void;
+  /** Drives the emoji suggested as a name is typed; absent, none are. */
+  emojiSuggestions?: EmojiSuggestionHooks;
   /**
    * For a version's own editor: the history its edits belong to, the field's.
    * The version keeps none of its own, and its undo and redo keys act on the
@@ -864,6 +822,95 @@ const createInsertTrigger = (
     },
   });
 
+/** The start of an emoji's name at the caret: where its colon sits. */
+type TypedEmoji = Readonly<{ from: number; typed: string }>;
+
+/**
+ * What the editor's emoji suggestions are driven through. The field owns
+ * the list and what is highlighted in it; an editor (the field's, or one of
+ * a version's) reports the name being typed at its caret, and offers each
+ * key to the list before acting on it itself.
+ */
+type EmojiSuggestionHooks = {
+  /** The name now at the caret of `editor`, or null where there is none. */
+  onTyped: (editor: Editor, found: TypedEmoji | null) => void;
+  /** Whether the list took the key, which the editor then leaves alone. */
+  onKey: (event: KeyboardEvent) => boolean;
+};
+
+/** The start of an emoji's name at the caret of `view`, while it has the keyboard. */
+const typedAt = (view: EditorView): TypedEmoji | null => {
+  const { selection } = view.state;
+  if (!selection.empty || !view.hasFocus()) return null;
+  const { $from } = selection;
+  const typed = typedEmojiName(
+    $from.parent.textBetween(0, $from.parentOffset, undefined, ' '),
+  );
+  return typed === undefined ? null : { from: $from.pos - typed.length, typed };
+};
+
+/**
+ * Follows the start of an emoji's name as it is typed (`:sm`, `:smi`, …) and
+ * reports it, so the field can suggest emoji beside the caret while the
+ * keyboard stays in the text. Suggestions open on an edit, never on the
+ * caret merely arriving after a colon, and stay away from a name they were
+ * dismissed at until it is left.
+ */
+const createEmojiSuggestions = (hooks: EmojiSuggestionHooks) =>
+  Extension.create({
+    name: 'emojiSuggestions',
+    addProseMirrorPlugins() {
+      const { editor } = this;
+      let open = false;
+      let dismissedAt: number | undefined;
+      const report = (found: TypedEmoji | null) => {
+        open = found !== null;
+        setEmojiSuggestionsShowing(editor.view, open);
+        hooks.onTyped(editor, found);
+      };
+      return [
+        new Plugin({
+          key: new PluginKey('emojiSuggestions'),
+          view: () => ({
+            update: (view, previous) => {
+              const found = typedAt(view);
+              if (found === null) {
+                dismissedAt = undefined;
+                if (open) report(null);
+                return;
+              }
+              if (found.from === dismissedAt) return;
+              if (open || !previous.doc.eq(view.state.doc)) report(found);
+            },
+            destroy: () => {
+              if (open) report(null);
+            },
+          }),
+          props: {
+            handleKeyDown: (view, event) => {
+              if (!open) return false;
+              if (event.key === 'Escape') {
+                // Escape is spent here: a dialog around the text must not
+                // also take it as a request to close.
+                event.stopPropagation();
+                dismissedAt = typedAt(view)?.from;
+                report(null);
+                return true;
+              }
+              return hooks.onKey(event);
+            },
+            handleDOMEvents: {
+              blur: () => {
+                if (open) report(null);
+                return false;
+              },
+            },
+          },
+        }),
+      ];
+    },
+  });
+
 // Factory function to create custom extensions with typography classes
 function createCustomExtensions({
   headingLevels,
@@ -875,9 +922,11 @@ function createCustomExtensions({
   singleLine,
   placeholder,
   tokens,
+  interfaceLanguage,
   versions,
   trigger,
   onTrigger,
+  emojiSuggestions,
   history,
   placeholderWhenReadOnly = false,
 }: ExtensionOptions): AnyExtension[] {
@@ -978,7 +1027,7 @@ function createCustomExtensions({
   }
 
   if (tokens.length > 0) {
-    extensions.push(createTokenNode(tokens));
+    extensions.push(createTokenNode(tokens, interfaceLanguage));
   }
 
   if (versions) {
@@ -987,6 +1036,10 @@ function createCustomExtensions({
 
   if (trigger !== undefined && trigger !== '') {
     extensions.push(createInsertTrigger(trigger, onTrigger));
+  }
+
+  if (emojiSuggestions !== undefined) {
+    extensions.push(createEmojiSuggestions(emojiSuggestions));
   }
 
   if (headingLevels.length > 0) {
@@ -1017,8 +1070,12 @@ function createCustomExtensions({
   return extensions;
 }
 
+// The text is a contenteditable element rather than an input, which the
+// shared ring (`interactiveStateVariants`) looks for, so the field's own text
+// is named here. Only its own: the editors of its versions draw a ring of
+// their own, and the toolbar's buttons have theirs.
 const editorContainerOwnVariants = cva({
-  base: 'flex h-auto w-full min-w-0 flex-col',
+  base: 'has-[>div>.tiptap:focus-visible]:focus-styles flex h-auto w-full min-w-0 flex-col outline-(--focus-color,currentColor)',
 });
 
 const editorContainerVariants = cva({
@@ -1084,13 +1141,16 @@ const selectInsertedVersions = (
 
 const editorContentVariants = cva({
   base: cx(
-    'order-2 flex-1',
+    // Named for the rows of versions inside it, which stack when it is narrow.
+    // Not the field itself: a container is a containing block for fixed
+    // elements, and the field holds the insert menu's caret anchor.
+    '@container/rich-text order-2 flex-1',
     'outline-none',
     '[&_.tiptap]:outline-none',
     // Placeholder styles
     '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
-    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-start',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
@@ -1146,6 +1206,14 @@ type EditorSelectionRange = {
   to: number;
 };
 
+/**
+ * The editor's blocks, each laid out by its own first letter. The utility
+ * goes on every block, not on the editor: `unicode-bidi` is not inherited,
+ * so a paragraph inside an element that has it still takes the interface's
+ * direction.
+ */
+const OWN_DIRECTION_BLOCKS = '[&_:is(p,h1,h2,h3,h4,h5,h6)]:text-own-direction';
+
 type RichTextEditorFieldProps = CreateFormFieldProps<
   JSONContent,
   'div',
@@ -1180,8 +1248,35 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * the insert menu.
      */
     'versions'?: boolean;
+    /**
+     * Shows the versions permanently open, one labelled row each, when the
+     * whole text is one set of versions and nothing else: a message that is
+     * a plural or a choice and no more. A pill that opens would hide every
+     * word of such a field at rest. Versions inside a sentence, or inside
+     * another version, still fold to a pill. Needs `versions`.
+     */
+    'openWholeMessageVersions'?: boolean;
     /** A searchable menu of things to insert at the caret. */
     'insertMenu'?: RichTextInsertMenu;
+    /**
+     * A second menu, of logic to insert at the caret (versions chosen by a
+     * test), behind a toolbar button of its own beside the first. It has no
+     * trigger character.
+     */
+    'logicMenu'?: RichTextInsertMenu;
+    /**
+     * Whether the editor offers emoji: suggested beside the caret as a colon
+     * and the start of an emoji's name are typed (`:sm`), and from a menu in
+     * the toolbar. An emoji is inserted as the character itself. On unless
+     * turned off.
+     */
+    'emojiMenu'?: boolean;
+    /**
+     * Carries out what a set of versions asks of its consumer: editing or
+     * removing one of its versions, or one of its own actions (see
+     * `RichTextVersionsActionEvent`).
+     */
+    'onVersionsAction'?: (event: RichTextVersionsActionEvent) => void;
     'id': string;
     'name': string;
     'aria-describedby'?: string;
@@ -1237,7 +1332,11 @@ export default function RichTextEditorField({
   singleLine = false,
   tokens: tokensProp,
   versions = false,
+  openWholeMessageVersions = false,
   insertMenu,
+  logicMenu,
+  emojiMenu: offersEmoji = true,
+  onVersionsAction,
   className,
   onFocus,
   onBlur,
@@ -1251,9 +1350,110 @@ export default function RichTextEditorField({
   const [triggered, setTriggered] = useState<{
     editor: Editor;
     position: number;
+    /** What was typed to open the menu, which a pick replaces. */
+    typed: string;
     anchor: { left: number; top: number; height: number };
   } | null>(null);
-  const [isInsertMenuOpen, setIsInsertMenuOpen] = useState(false);
+  // Which of the menus is open: the one of values, of logic, or of emoji.
+  const [openMenu, setOpenMenu] = useState<'values' | 'logic' | 'emoji' | null>(
+    null,
+  );
+  // The emoji, once they have been asked for: the list is loaded then.
+  const [emojiList, setEmojiList] = useState<readonly EmojiSuggestion[] | null>(
+    null,
+  );
+  const askForEmoji = useCallback(() => {
+    void loadEmoji().then(setEmojiList);
+  }, []);
+  // The start of an emoji's name being typed, in which editor and where,
+  // and which of the emoji suggested for it is highlighted.
+  const [typedEmoji, setTypedEmoji] = useState<{
+    editor: Editor;
+    from: number;
+    typed: string;
+    anchor: { left: number; top: number; height: number };
+    index: number;
+  } | null>(null);
+  const suggestions = useMemo(
+    () =>
+      typedEmoji === null || emojiList === null
+        ? []
+        : suggestEmoji(emojiList, typedEmoji.typed.slice(1)),
+    [typedEmoji, emojiList],
+  );
+  const emojiMenuList = useMemo(
+    () => (emojiList === null ? [] : emojiMenuItems(emojiList)),
+    [emojiList],
+  );
+  const pickEmoji = (suggestion: EmojiSuggestion) => {
+    if (typedEmoji === null || typedEmoji.editor.isDestroyed) return;
+    const { editor: into, from, typed } = typedEmoji;
+    // A command changes the text whether or not the editor is editable, so
+    // a field that went read-only or disabled under the list takes nothing.
+    if (!into.isEditable) {
+      setTypedEmoji(null);
+      return;
+    }
+    into
+      .chain()
+      .focus()
+      .insertContentAt(
+        { from, to: from + typed.length },
+        { type: 'text', text: suggestion.emoji },
+      )
+      .run();
+    setTypedEmoji(null);
+  };
+  // The editors hold these hooks for as long as they live, so the hooks
+  // reach what they act on through what was last drawn.
+  const emojiKeys = useRef<(event: KeyboardEvent) => boolean>(() => false);
+  useLayoutEffect(() => {
+    emojiKeys.current = (event) => {
+      if (typedEmoji === null || suggestions.length === 0) return false;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        setTypedEmoji({
+          ...typedEmoji,
+          index:
+            (typedEmoji.index + step + suggestions.length) % suggestions.length,
+        });
+        return true;
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        const picked = suggestions[typedEmoji.index] ?? suggestions[0];
+        if (picked !== undefined) pickEmoji(picked);
+        return true;
+      }
+      return false;
+    };
+  });
+  const [emojiHooks] = useState<EmojiSuggestionHooks>(() => ({
+    onTyped: (typedIn, found) => {
+      if (found === null) {
+        setTypedEmoji(null);
+        return;
+      }
+      askForEmoji();
+      const coords = typedIn.view.coordsAtPos(found.from);
+      setTypedEmoji((current) => ({
+        editor: typedIn,
+        from: found.from,
+        typed: found.typed,
+        anchor: {
+          left: coords.left,
+          top: coords.top,
+          height: coords.bottom - coords.top,
+        },
+        // What is typed next narrows the list, so its first is the best.
+        index: current?.typed === found.typed ? current.index : 0,
+      }));
+    },
+    onKey: (event) => emojiKeys.current(event),
+  }));
+  const setIsInsertMenuOpen = useCallback(
+    (open: boolean) => setOpenMenu(open ? 'values' : null),
+    [setOpenMenu],
+  );
   // The editor closing the insert menu hands the caret back to: the one an
   // item from it was just put into, so the next key, Undo included, acts on
   // the text the item went into rather than on the button that opened the
@@ -1263,12 +1463,14 @@ export default function RichTextEditorField({
   // that lands in the same render as a pick's close, and so never shows the
   // menu as closed.
   const [caretReturnsTo, setCaretReturnsTo] = useState<Editor | null>(null);
+  const triggerCharacter = insertMenu?.trigger ?? '';
   const onTrigger = useCallback(
     (typedIn: Editor, position: number) => {
       const coords = typedIn.view.coordsAtPos(position);
       setTriggered({
         editor: typedIn,
         position,
+        typed: triggerCharacter,
         anchor: {
           left: coords.left,
           top: coords.top,
@@ -1278,8 +1480,9 @@ export default function RichTextEditorField({
       setCaretReturnsTo(typedIn);
       setIsInsertMenuOpen(true);
     },
-    [setTriggered, setIsInsertMenuOpen, setCaretReturnsTo],
+    [setTriggered, setIsInsertMenuOpen, setCaretReturnsTo, triggerCharacter],
   );
+  const emojiSuggestions = offersEmoji ? emojiHooks : undefined;
   // The version being written, when the caret is in one: the toolbar acts on
   // it rather than on the line around it.
   const [versionEditor, setVersionEditor] = useState<Editor | null>(null);
@@ -1343,6 +1546,7 @@ export default function RichTextEditorField({
   const ariaLabel = props['aria-label'];
   const ariaLabelledBy = props['aria-labelledby'];
   const ariaRequired = props['aria-required'];
+  const knownDirection = props.dir;
 
   // Read by the editor's handlers when they run.
   useLayoutEffect(() => {
@@ -1401,8 +1605,19 @@ export default function RichTextEditorField({
       attributes['data-placeholder'] = placeholder;
     }
 
+    // A caller that knows the text's language gives its direction. Otherwise
+    // each paragraph and heading reads in the direction of its own first
+    // letter, as a text box's lines do (`textEntryDirection`).
+    const direction = textEntryDirection({ dir: knownDirection });
+    if (direction.dir !== undefined) {
+      attributes.dir = direction.dir;
+    } else if (direction.className !== undefined) {
+      attributes.class = OWN_DIRECTION_BLOCKS;
+    }
+
     return attributes;
   }, [
+    knownDirection,
     ariaDescribedBy,
     ariaInvalid,
     ariaLabel,
@@ -1438,6 +1653,11 @@ export default function RichTextEditorField({
   const enclosingHeadingLevel = useEnclosingHeadingLevel();
   const enclosingHeadingDepth =
     enclosingHeadingLevel === null ? 0 : Number(enclosingHeadingLevel.slice(1));
+  const interfaceDirection = useAppDirection();
+  const interfaceLanguage = useMemo(
+    () => ({ lang: intl.locale, dir: interfaceDirection }),
+    [intl.locale, interfaceDirection],
+  );
   const editorExtensions = useMemo(
     () =>
       createCustomExtensions({
@@ -1450,11 +1670,14 @@ export default function RichTextEditorField({
         singleLine,
         placeholder,
         tokens,
+        interfaceLanguage,
         versions,
         trigger: insertMenu?.trigger,
         onTrigger,
+        emojiSuggestions,
       }),
     [
+      interfaceLanguage,
       headingLevels,
       enclosingHeadingDepth,
       options.lists.bullet,
@@ -1467,6 +1690,7 @@ export default function RichTextEditorField({
       versions,
       insertMenu?.trigger,
       onTrigger,
+      emojiSuggestions,
     ],
   );
   // The field's own editor, once there is one, keeps the history of every
@@ -1493,31 +1717,62 @@ export default function RichTextEditorField({
             placeholder: emptyVersionText,
             placeholderWhenReadOnly: true,
             tokens,
+            interfaceLanguage,
             versions,
             trigger: insertMenu?.trigger,
             onTrigger,
+            emojiSuggestions,
             history: sharedHistory,
           })
         : [],
     [
+      interfaceLanguage,
       options.links,
       tokens,
       versions,
       insertMenu?.trigger,
       onTrigger,
+      emojiSuggestions,
       sharedHistory,
       emptyVersionText,
     ],
   );
   const caretAnchorRef = useRef<HTMLSpanElement>(null);
+  // What each placeholder is called, for the preview a folded set of
+  // versions shows of what it holds.
+  const tokenLabel = useMemo(() => {
+    const labels = new Map(
+      (tokens ?? []).map((token) => [
+        token.id,
+        presentationalTextValue(token.label),
+      ]),
+    );
+    return (tokenId: string) => labels.get(tokenId);
+  }, [tokens]);
+  const onVersionsActionRef = useRef(onVersionsAction);
+  useLayoutEffect(() => {
+    onVersionsActionRef.current = onVersionsAction;
+  });
   const nestedEditing = useMemo(
     () => ({
       extensions: versionExtensions,
       editable: !disabled && !readOnly,
       onFocusEditor: setVersionEditor,
       active: isActive,
+      openWholeMessage: openWholeMessageVersions,
+      tokenLabel,
+      onVersionsAction: (event: RichTextVersionsActionEvent) =>
+        onVersionsActionRef.current?.(event),
     }),
-    [versionExtensions, disabled, readOnly, setVersionEditor, isActive],
+    [
+      versionExtensions,
+      disabled,
+      readOnly,
+      setVersionEditor,
+      isActive,
+      openWholeMessageVersions,
+      tokenLabel,
+    ],
   );
   // The schema these extensions make, worked out before there is an editor to
   // ask. A value has to be flattened against the marks the field will actually
@@ -1746,6 +2001,11 @@ export default function RichTextEditorField({
     setLinkValidationMessage('');
   }
 
+  const latestEditor = useRef(editor);
+  useLayoutEffect(() => {
+    latestEditor.current = editor;
+  });
+
   if (!editor) {
     return null;
   }
@@ -1858,42 +2118,166 @@ export default function RichTextEditorField({
   const toolbarTokens = (tokensProp ?? []).filter(
     ({ inToolbar }) => inToolbar !== false,
   );
-  const showTokens = toolbarTokens.length > 0 || insertMenu !== undefined;
+  const showTokens =
+    toolbarTokens.length > 0 ||
+    insertMenu !== undefined ||
+    logicMenu !== undefined;
+  // The emoji menu's button stands beside those, in no group of its own: a
+  // group of one would only say its name twice.
+  const showInsert = showTokens || offersEmoji;
+  const emojiMenuContents: RichTextInsertMenu = {
+    label: intl.formatMessage(messages.emojiMenu),
+    items: emojiMenuList,
+  };
+  const highlighted =
+    typedEmoji === null ? undefined : suggestions[typedEmoji.index];
 
   const insertItem = (item: RichTextInsertMenuItem) => {
     if (item.disabled === true) return;
-    const content = isContentList(item.content)
-      ? [...item.content]
-      : item.content;
-    if (triggered !== null && !triggered.editor.isDestroyed) {
-      const { editor: into, position } = triggered;
-      // The trigger the menu was opened by is replaced, if it is still there.
-      const typed =
-        into.state.doc.textBetween(
-          position,
-          Math.min(position + 1, into.state.doc.content.size),
-        ) === insertMenu?.trigger;
-      const sizeBefore = into.state.doc.content.size;
-      into
-        .chain()
-        .focus()
-        .insertContentAt(
-          typed ? { from: position, to: position + 1 } : position,
-          content,
-        )
-        .run();
-      selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
+    // Where the caret is now, for content that arrives later: by then the
+    // editor may have been replaced by one holding the same document.
+    const opened = triggered;
+    const picked = actOn;
+    const pickedRange = {
+      from: picked.state.selection.from,
+      to: picked.state.selection.to,
+    };
+    const pickedInField = picked === editor;
+    const insert = (given: JSONContent | readonly JSONContent[]) => {
+      const content = isContentList(given) ? [...given] : given;
+      if (opened !== null && !opened.editor.isDestroyed) {
+        const { editor: into, position } = opened;
+        // What the menu was opened by typing is replaced, if it is still
+        // there.
+        const typed =
+          opened.typed.length > 0 &&
+          into.state.doc.textBetween(
+            position,
+            Math.min(
+              position + opened.typed.length,
+              into.state.doc.content.size,
+            ),
+          ) === opened.typed;
+        const length = opened.typed.length;
+        const sizeBefore = into.state.doc.content.size;
+        into
+          .chain()
+          .focus()
+          .insertContentAt(
+            typed ? { from: position, to: position + length } : position,
+            content,
+          )
+          .run();
+        selectInsertedVersions(into, position, sizeBefore, typed ? length : 0);
+        setCaretReturnsTo(into);
+        return;
+      }
+      // The field's editor as it is now: the one picked in may have been
+      // replaced since, without yet knowing it.
+      const into =
+        pickedInField || picked.isDestroyed ? latestEditor.current : picked;
+      if (into === null || into.isDestroyed) return;
+      // The same place in the editor that took the picked one's place, when
+      // that was the field's own; otherwise wherever its caret is.
+      const size = into.state.doc.content.size;
+      const range =
+        into === picked || pickedInField
+          ? {
+              from: Math.min(pickedRange.from, size),
+              to: Math.min(pickedRange.to, size),
+            }
+          : { from: into.state.selection.from, to: into.state.selection.to };
+      into.chain().focus().insertContentAt(range, content).run();
+      selectInsertedVersions(into, range.from, size, range.to - range.from);
       setCaretReturnsTo(into);
-    } else {
-      const { from, to } = actOn.state.selection;
-      const sizeBefore = actOn.state.doc.content.size;
-      actOn.chain().focus().insertContent(content).run();
-      selectInsertedVersions(actOn, from, sizeBefore, to - from);
-      setCaretReturnsTo(actOn);
-    }
+    };
     setTriggered(null);
-    setIsInsertMenuOpen(false);
+    setOpenMenu(null);
+    if (item.request === undefined) insert(item.content);
+    else item.request(insert);
   };
+  // One of the two menus, behind its toolbar button: the values to insert
+  // (also opened by typing the trigger), or the logic.
+  const renderMenu = (
+    menu: RichTextInsertMenu,
+    kind: 'values' | 'logic' | 'emoji',
+    Icon: typeof Syringe,
+  ) => (
+    <Popover
+      open={openMenu === kind && !isDisabled}
+      onOpenChange={(open) => {
+        if (open && kind === 'emoji') askForEmoji();
+        setOpenMenu(open ? kind : null);
+        if (open) setCaretReturnsTo(null);
+        if (!open) setTriggered(null);
+      }}
+    >
+      <Tooltip>
+        <PopoverTrigger asChild nativeButton disabled={isDisabled}>
+          <TooltipTrigger
+            render={
+              <ToolbarButton
+                className={toolbarButtonStyles}
+                disabled={isDisabled}
+                aria-label={menu.label}
+                onMouseDown={() => setTriggered(null)}
+              >
+                <Icon aria-hidden />
+              </ToolbarButton>
+            }
+          />
+        </PopoverTrigger>
+        <TooltipContent>{menu.label}</TooltipContent>
+      </Tooltip>
+      <PopoverContent
+        align="start"
+        side="bottom"
+        aria-label={menu.label}
+        // A list of options, padded as menus and comboboxes are.
+        spacing="xs"
+        anchor={triggered === null ? undefined : caretAnchorRef}
+        // Closed by a pick, the menu hands the caret to the text
+        // the item went into; opened by typing, back to the
+        // text it was typed in.
+        finalFocus={() => {
+          // Focus already back in this text stays where it is:
+          // a click into the line that closed the menu, or into
+          // a version of the value just inserted, put the caret
+          // there, and moving it would send what is typed next
+          // somewhere else.
+          const root = editor?.isDestroyed ? null : editor;
+          const active = root?.view.dom.ownerDocument.activeElement;
+          if (
+            root != null &&
+            active instanceof Node &&
+            root.view.dom.contains(active)
+          ) {
+            return false;
+          }
+          const into = caretReturnsTo;
+          if (into === null || into.isDestroyed) return true;
+          // Through the editor, rather than by naming its
+          // element for Base UI to focus: focused that way, the
+          // browser puts the caret at the start of the text, and
+          // ProseMirror moves it back only if it notices within
+          // 200 ms and the text was not clicked just before, so
+          // what was typed next could go in at the start. The
+          // editor puts its own caret back as it takes focus. A
+          // microtask later, as Base UI would have moved focus.
+          queueMicrotask(() => {
+            if (!into.isDestroyed) into.view.focus();
+          });
+          return false;
+        }}
+      >
+        <InsertMenuList
+          menu={menu}
+          onPick={insertItem}
+          {...(kind === 'emoji' && { limit: EMOJI_MENU_LIMIT })}
+        />
+      </PopoverContent>
+    </Popover>
+  );
   const showHistory = options.history;
   // Undone or redone in the field's history, with the caret handed back to
   // the editor it was in: a version's, while that version is still there.
@@ -1912,7 +2296,7 @@ export default function RichTextEditorField({
     showHeadings,
     showLists,
     showThematicBreak,
-    showTokens,
+    showInsert,
     showHistory,
   ].filter(Boolean);
   const hasToolbar = visibleGroups.length > 0;
@@ -1978,6 +2362,69 @@ export default function RichTextEditorField({
           }}
         />
       )}
+      {typedEmoji !== null && suggestions.length > 0 && !isDisabled && (
+        // Beside the caret, under the name being typed, while the keyboard
+        // stays in the text: the arrow keys move through the list, Enter or
+        // Tab takes the one highlighted, and Escape puts it away.
+        <Surface
+          floating
+          noContainer
+          spacing="xs"
+          shadow="md"
+          role="listbox"
+          // Read only by a screen reader, and the emoji's names are
+          // English too.
+          lang="en"
+          aria-label="Emoji suggestions"
+          data-emoji-suggestions=""
+          className="fixed z-3000 flex w-max max-w-72 flex-col"
+          style={{
+            left: typedEmoji.anchor.left,
+            top: typedEmoji.anchor.top + typedEmoji.anchor.height + 4,
+          }}
+        >
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={suggestion.emoji}
+              role="option"
+              aria-selected={index === typedEmoji.index}
+              tabIndex={-1}
+              data-highlighted={index === typedEmoji.index || undefined}
+              className={cx(
+                'flex cursor-default items-center gap-2 rounded-sm px-2 py-1 text-sm select-none',
+                'data-highlighted:bg-primary data-highlighted:text-primary-contrast',
+              )}
+              // Before the editor would lose the caret to the click.
+              onMouseDown={(event) => {
+                event.preventDefault();
+                pickEmoji(suggestion);
+              }}
+              onMouseEnter={() => setTypedEmoji({ ...typedEmoji, index })}
+            >
+              <span aria-hidden>{suggestion.emoji}</span>
+              <span dir="ltr" className="text-match-parent">
+                :{suggestion.names[0]}:
+              </span>
+            </div>
+          ))}
+        </Surface>
+      )}
+      {offersEmoji && (
+        // The keyboard is in the text, not in the list, so the emoji
+        // highlighted is said here. It is a live region with no role: it is
+        // in every editor, and an empty `status` there would read as a notice
+        // to anything that looks for one.
+        <span
+          aria-live="polite"
+          aria-atomic="true"
+          lang="en"
+          className="sr-only"
+        >
+          {highlighted === undefined
+            ? ''
+            : `${highlighted.emoji} ${highlighted.names[0] ?? ''}`}
+        </span>
+      )}
       {hasToolbar && (
         <FieldUnavailableContext.Provider value={isDisabled}>
           <Toolbar.Root className={toolbarStyles}>
@@ -2010,7 +2457,8 @@ export default function RichTextEditorField({
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="bold"
-                    aria-label={intl.formatMessage(messages.bold)}
+                    lang="en"
+                    aria-label="Bold"
                   >
                     <Bold />
                   </ToolbarToggleButton>
@@ -2020,7 +2468,8 @@ export default function RichTextEditorField({
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="italic"
-                    aria-label={intl.formatMessage(messages.italic)}
+                    lang="en"
+                    aria-label="Italic"
                   >
                     <Italic />
                   </ToolbarToggleButton>
@@ -2048,9 +2497,8 @@ export default function RichTextEditorField({
                   <ToolbarButton
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
-                    aria-label={intl.formatMessage(messages.linkButton, {
-                      hasLink: String(editorState.isLink),
-                    })}
+                    lang="en"
+                    aria-label={editorState.isLink ? 'Edit link' : 'Add link'}
                     // No `aria-pressed`: PopoverTrigger makes this a
                     // disclosure, and a disclosure must not also claim to be
                     // a toggle. Whether a link is present is already carried
@@ -2070,9 +2518,7 @@ export default function RichTextEditorField({
                   side="bottom"
                   className="w-80"
                   // Named as its toolbar button is: "Add link" or "Edit link".
-                  aria-label={intl.formatMessage(messages.linkButton, {
-                    hasLink: String(editorState.isLink),
-                  })}
+                  aria-label={editorState.isLink ? 'Edit link' : 'Add link'}
                 >
                   <form
                     className="flex flex-col gap-3"
@@ -2127,7 +2573,7 @@ export default function RichTextEditorField({
                         variant="text"
                         color="destructive"
                         icon={<Trash2 />}
-                        aria-label={intl.formatMessage(messages.removeLink)}
+                        aria-label="Remove link"
                         disabled={!isEditingExistingLink}
                         onClick={removeLink}
                       >
@@ -2138,7 +2584,7 @@ export default function RichTextEditorField({
                         size="sm"
                         color="primary"
                         icon={<Check />}
-                        aria-label={intl.formatMessage(messages.applyLink)}
+                        aria-label="Apply link"
                         onClick={(event) => {
                           event.preventDefault();
                           applyLink();
@@ -2208,7 +2654,8 @@ export default function RichTextEditorField({
                     className={toolbarButtonStyles}
                     disabled={isDisabled || !blocksEditable}
                     value="h1"
-                    aria-label={intl.formatMessage(messages.heading1)}
+                    lang="en"
+                    aria-label="Heading 1"
                   >
                     <Heading1 />
                   </ToolbarToggleButton>
@@ -2218,7 +2665,8 @@ export default function RichTextEditorField({
                     className={toolbarButtonStyles}
                     disabled={isDisabled || !blocksEditable}
                     value="h2"
-                    aria-label={intl.formatMessage(messages.heading2)}
+                    lang="en"
+                    aria-label="Heading 2"
                   >
                     <Heading2 />
                   </ToolbarToggleButton>
@@ -2228,7 +2676,8 @@ export default function RichTextEditorField({
                     className={toolbarButtonStyles}
                     disabled={isDisabled || !blocksEditable}
                     value="h3"
-                    aria-label={intl.formatMessage(messages.heading3)}
+                    lang="en"
+                    aria-label="Heading 3"
                   >
                     <Heading3 />
                   </ToolbarToggleButton>
@@ -2238,7 +2687,8 @@ export default function RichTextEditorField({
                     className={toolbarButtonStyles}
                     disabled={isDisabled || !blocksEditable}
                     value="h4"
-                    aria-label={intl.formatMessage(messages.heading4)}
+                    lang="en"
+                    aria-label="Heading 4"
                   >
                     <Heading4 />
                   </ToolbarToggleButton>
@@ -2282,7 +2732,8 @@ export default function RichTextEditorField({
                     className={toolbarButtonStyles}
                     disabled={isDisabled || !blocksEditable}
                     value="ordered"
-                    aria-label={intl.formatMessage(messages.numberedList)}
+                    lang="en"
+                    aria-label="Numbered list"
                   >
                     <ListOrdered />
                   </ToolbarToggleButton>
@@ -2292,7 +2743,8 @@ export default function RichTextEditorField({
                     className={toolbarButtonStyles}
                     disabled={isDisabled || !blocksEditable}
                     value="bullet"
-                    aria-label={intl.formatMessage(messages.bulletList)}
+                    lang="en"
+                    aria-label="Bullet list"
                   >
                     <List />
                   </ToolbarToggleButton>
@@ -2310,7 +2762,8 @@ export default function RichTextEditorField({
                 <ToolbarButton
                   className={toolbarButtonStyles}
                   disabled={isDisabled || !blocksEditable}
-                  aria-label={intl.formatMessage(messages.thematicBreak)}
+                  lang="en"
+                  aria-label="Thematic break"
                   onClick={() =>
                     actOn.chain().focus().setHorizontalRule().run()
                   }
@@ -2324,89 +2777,19 @@ export default function RichTextEditorField({
               showHeadings ||
               showLists ||
               showThematicBreak) &&
-              showTokens && (
+              showInsert && (
                 <Toolbar.Separator className={toolbarSeparatorStyles} />
               )}
 
             {showTokens && (
               <Toolbar.Group
                 className={toolbarGroupStyles}
-                aria-label={intl.formatMessage(messages.tokens)}
+                aria-label="Insert a placeholder"
               >
-                {insertMenu !== undefined && (
-                  <Popover
-                    open={isInsertMenuOpen && !isDisabled}
-                    onOpenChange={(open) => {
-                      setIsInsertMenuOpen(open);
-                      if (open) setCaretReturnsTo(null);
-                      if (!open) setTriggered(null);
-                    }}
-                  >
-                    <Tooltip>
-                      <PopoverTrigger
-                        asChild
-                        nativeButton
-                        disabled={isDisabled}
-                      >
-                        <TooltipTrigger
-                          render={
-                            <ToolbarButton
-                              className={toolbarButtonStyles}
-                              disabled={isDisabled}
-                              aria-label={insertMenu.label}
-                              onMouseDown={() => setTriggered(null)}
-                            >
-                              <Syringe aria-hidden />
-                            </ToolbarButton>
-                          }
-                        />
-                      </PopoverTrigger>
-                      <TooltipContent>{insertMenu.label}</TooltipContent>
-                    </Tooltip>
-                    <PopoverContent
-                      align="start"
-                      side="bottom"
-                      aria-label={insertMenu.label}
-                      anchor={triggered === null ? undefined : caretAnchorRef}
-                      // Closed by a pick, the menu hands the caret to the text
-                      // the item went into; opened by typing, back to the
-                      // text it was typed in.
-                      finalFocus={() => {
-                        // Focus already back in this text stays where it is:
-                        // a click into the line that closed the menu, or into
-                        // a version of the value just inserted, put the caret
-                        // there, and moving it would send what is typed next
-                        // somewhere else.
-                        const root = editor?.isDestroyed ? null : editor;
-                        const active =
-                          root?.view.dom.ownerDocument.activeElement;
-                        if (
-                          root != null &&
-                          active instanceof Node &&
-                          root.view.dom.contains(active)
-                        ) {
-                          return false;
-                        }
-                        const into = caretReturnsTo;
-                        if (into === null || into.isDestroyed) return true;
-                        // Through the editor, rather than by naming its
-                        // element for Base UI to focus: focused that way, the
-                        // browser puts the caret at the start of the text, and
-                        // ProseMirror moves it back only if it notices within
-                        // 200 ms and the text was not clicked just before, so
-                        // what was typed next could go in at the start. The
-                        // editor puts its own caret back as it takes focus. A
-                        // microtask later, as Base UI would have moved focus.
-                        queueMicrotask(() => {
-                          if (!into.isDestroyed) into.view.focus();
-                        });
-                        return false;
-                      }}
-                    >
-                      <InsertMenuList menu={insertMenu} onPick={insertItem} />
-                    </PopoverContent>
-                  </Popover>
-                )}
+                {insertMenu !== undefined &&
+                  renderMenu(insertMenu, 'values', Syringe)}
+                {logicMenu !== undefined &&
+                  renderMenu(logicMenu, 'logic', Split)}
                 {toolbarTokens.map((token) => {
                   const missing =
                     requiredTokens.has(token.id) && !placedTokens.has(token.id);
@@ -2416,12 +2799,11 @@ export default function RichTextEditorField({
                       className={toolbarTokenButtonStyles}
                       disabled={isDisabled}
                       data-missing={missing || undefined}
-                      aria-label={intl.formatMessage(
+                      aria-label={
                         missing
-                          ? messages.insertRequiredToken
-                          : messages.insertToken,
-                        { token: token.label },
-                      )}
+                          ? `Insert “${presentationalTextValue(token.label)}” (required in this text)`
+                          : `Insert “${presentationalTextValue(token.label)}”`
+                      }
                       onClick={() =>
                         actOn
                           .chain()
@@ -2434,7 +2816,9 @@ export default function RichTextEditorField({
                       }
                     >
                       <Plus aria-hidden />
-                      {token.label}
+                      <span {...presentationalTextProps(token.label)}>
+                        {presentationalTextValue(token.label)}
+                      </span>
                       {missing && (
                         <span
                           aria-hidden
@@ -2447,11 +2831,13 @@ export default function RichTextEditorField({
               </Toolbar.Group>
             )}
 
+            {offersEmoji && renderMenu(emojiMenuContents, 'emoji', Smile)}
+
             {(showTextFormatting ||
               showHeadings ||
               showLists ||
               showThematicBreak ||
-              showTokens) &&
+              showInsert) &&
               showHistory && (
                 <Toolbar.Separator className={toolbarSeparatorStyles} />
               )}
@@ -2461,7 +2847,8 @@ export default function RichTextEditorField({
                 <ToolbarButton
                   className={toolbarButtonStyles}
                   disabled={isDisabled || !historyState?.canUndo}
-                  aria-label={intl.formatMessage(messages.undo)}
+                  lang="en"
+                  aria-label="Undo"
                   onClick={() => actInHistory('undo')}
                 >
                   <Undo />
@@ -2469,7 +2856,8 @@ export default function RichTextEditorField({
                 <ToolbarButton
                   className={toolbarButtonStyles}
                   disabled={isDisabled || !historyState?.canRedo}
-                  aria-label={intl.formatMessage(messages.redo)}
+                  lang="en"
+                  aria-label="Redo"
                   onClick={() => actInHistory('redo')}
                 >
                   <Redo />

@@ -6,13 +6,21 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import type { FinishStageTextProblem } from '@codaco/protocol-validation';
 import { useAppSelector } from '~/ducks/hooks';
-import { getDefaultLanguageTextProblem } from '~/selectors/issues';
 import {
-  type DefaultLanguageTextProblem,
-  isBuiltInWordingSummary,
-} from '~/utils/defaultLanguageText';
+  getDefaultLanguageTextProblem,
+  getFallbackLanguageMissing,
+} from '~/selectors/issues';
+import { isBuiltInWordingSummary } from '~/utils/defaultLanguageText';
+import {
+  type DownloadRefusal,
+  isFallbackLanguageMissing,
+  isLabelCollisionsSummary,
+} from '~/utils/downloadRefusal';
 
-import { translationTableHref } from './Localization/translationTableLinks';
+import {
+  LANGUAGES_PATH,
+  translationTableHref,
+} from './Localization/translationTableLinks';
 import { useLanguageName } from './Localization/useLanguageName';
 
 const messages = defineMessages({
@@ -20,7 +28,27 @@ const messages = defineMessages({
     id: 'architect.finishStageText.cannotBeDownloadedYet',
     defaultMessage: 'This protocol can’t be downloaded yet',
     description:
-      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, or while Network Canvas’s built-in wording has no text in that language.',
+      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, while the protocol needs a fallback language and none has been chosen, or while two labels participants choose between are the same.',
+  },
+  missingFallbackLanguage: {
+    id: 'architect.fallbackLanguage.missing',
+    defaultMessage:
+      'Network Canvas has no built-in wording in {language}, so this protocol needs a fallback language. When an update adds text to the interview, participants see that text in the fallback language. Choose one on the Languages page. The protocol can’t be downloaded until then.',
+    description:
+      'Shown while the protocol’s default language is one Network Canvas has no built-in wording in (for example Swahili or Mexican Spanish) and the researcher has not yet chosen the protocol’s fallback language. An update to Network Canvas can add text to the interview, such as a new message, that a protocol written earlier has no translation of; participants then see that text in the fallback language, which must be one of the languages Network Canvas has built-in wording in. “The Languages page” is the Architect page that lists the protocol’s languages, where the fallback language is chosen. language is the name of the default language, for example “Swahili”.',
+  },
+  chooseFallbackLanguage: {
+    id: 'architect.fallbackLanguage.choose',
+    defaultMessage: 'Choose a fallback language',
+    description:
+      'Link in the notice about a protocol that needs a fallback language and has none. It opens the Languages page, where the fallback language is chosen.',
+  },
+  labelCollisions: {
+    id: 'architect.labelCollisions.downloadRefused',
+    defaultMessage:
+      'Some answer options or diseases have the same label in one of the protocol’s languages, so participants could not tell them apart. The Stages page lists them. The protocol can’t be downloaded until each pair has different labels.',
+    description:
+      'Shown in the dialog that refuses to download (or send) a protocol while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have the same label in one of the protocol’s languages, as a participant would see it: written the same, differing only in capital letters or spaces at either end, or because one has no translation in that language and shows another language’s text instead. Researcher-facing. “The Stages page” is the Architect page listing the protocol’s stages, where a notice names each pair.',
   },
   missingBuiltInWording: {
     id: 'architect.builtInWording.missingInDefaultLanguage',
@@ -71,19 +99,31 @@ const describeProblem = ({ missing }: FinishStageTextProblem) => {
 };
 
 /** The title for a refused download, matching the notice's own. */
-export const DefaultLanguageTextRefusalTitle = () => {
+export const DownloadRefusalTitle = () => {
   const intl = useAppIntl();
   return <>{intl.formatMessage(messages.cannotBeDownloadedYet)}</>;
 };
 
-/** What is missing, in which language, and that it blocks downloading. */
-export const DefaultLanguageTextRefusal = ({
+/** What stops the download, and that it does. */
+export const DownloadRefusalMessage = ({
   problem,
 }: {
-  problem: DefaultLanguageTextProblem;
+  problem: DownloadRefusal;
 }) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
+  if (isLabelCollisionsSummary(problem)) {
+    return <>{intl.formatMessage(messages.labelCollisions)}</>;
+  }
+  if (isFallbackLanguageMissing(problem)) {
+    return (
+      <>
+        {intl.formatMessage(messages.missingFallbackLanguage, {
+          language: languageName(problem.locale),
+        })}
+      </>
+    );
+  }
   return (
     <>
       {intl.formatMessage(
@@ -101,13 +141,17 @@ export const DefaultLanguageTextRefusal = ({
  * the protocol's default language: a stage that ends the interview with no
  * text for a screen it shows, or Network Canvas's built-in wording, in a new
  * protocol in a language Network Canvas has no wording in, or text a
- * researcher cleared. The protocol can still be edited and saved; only
- * downloading it is refused. Not dismissable, because the download stays
- * refused until the text is written. Renders nothing otherwise.
+ * researcher cleared. Once that text is written, it is shown while such a
+ * protocol has no fallback language. The protocol can still be edited and
+ * saved; only downloading it is refused. Not dismissable, because the
+ * download stays refused until the text is written and the language chosen.
+ * Renders nothing otherwise.
  */
 const DefaultLanguageTextAlert = () => {
   const intl = useAppIntl();
-  const problem = useAppSelector(getDefaultLanguageTextProblem);
+  const textProblem = useAppSelector(getDefaultLanguageTextProblem);
+  const fallbackProblem = useAppSelector(getFallbackLanguageMissing);
+  const problem = textProblem ?? fallbackProblem;
 
   if (problem === null) return null;
 
@@ -118,9 +162,13 @@ const DefaultLanguageTextAlert = () => {
       </AlertTitle>
       <AlertDescription className="space-y-4 text-sm">
         <span className="block">
-          <DefaultLanguageTextRefusal problem={problem} />
+          <DownloadRefusalMessage problem={problem} />
         </span>
-        {isBuiltInWordingSummary(problem) ? (
+        {isFallbackLanguageMissing(problem) ? (
+          <NativeLink render={<Link href={LANGUAGES_PATH} />}>
+            {intl.formatMessage(messages.chooseFallbackLanguage)}
+          </NativeLink>
+        ) : isBuiltInWordingSummary(problem) ? (
           <NativeLink
             render={
               <Link

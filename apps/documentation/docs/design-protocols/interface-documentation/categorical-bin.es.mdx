@@ -1,0 +1,63 @@
+---
+title: Clasificación por categorías
+navOrder: 13
+translatedFrom: 2ce51611041fb1a0d4d406775ac67b16c213420e
+---
+
+<InterfaceSummary type="CategoricalBin">
+
+<InterfaceMeta type="Intérprete de nombres" creates="Atributos categóricos" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+La interfaz «Clasificación por categorías» es una interfaz de tipo intérprete de nombres que recoge datos nominales sobre los álteres (cada persona a la que se nombra durante la entrevista) de la red de una persona participante. En una etapa «Clasificación por categorías», quienes participan arrastran y sueltan los álteres, uno a uno, en círculos de colores, cada uno de los cuales representa una categoría de la variable categórica. Una vez colocados, quienes participan pueden tocar cualquier categoría y mover los álteres de esa categoría a cualquier otra.
+
+## Configurar la etapa «Clasificación por categorías» {#configuring-categorical-bin}
+
+Una etapa «Clasificación por categorías» puede incluir varias [preguntas](/es/design-protocols/key-concepts/prompts), cada una de las cuales corresponde a una única variable categórica.
+
+<AppOnly app="current">
+
+En Architect, las categorías son las opciones de respuesta del atributo categórico de la pregunta, y se editan directamente debajo del atributo que has elegido, en el cuadro de diálogo de la pregunta. Se guardan al guardar la pregunta. Las etiquetas de las opciones admiten texto en **negrita** y _cursiva_, que quienes participan ven resaltado.
+
+</AppOnly>
+
+Además, se puede indicar un atributo para _otro_, que recoge las respuestas personalizadas que no encajan en las categorías preconfiguradas.
+
+![Configuración del atributo para «Otro» de una pregunta de una etapa «Clasificación por categorías»](/assets/img/interface-documentation/categorical-bin/architect-other.png)
+
+<AppOnly app="current">
+
+### Personalizar la redacción predeterminada {#customize-built-in-wording}
+
+Cuando **Exigir que se coloquen todos los nodos** está activado en la sección **Colocación de nodos** de la etapa, quienes participan no pueden continuar hasta que todos los nodos estén en un contenedor (cada una de las zonas a las que se arrastran los nodos para clasificarlos). El aviso que ven si lo intentan está en **Nodos sin colocar**, en la sección **Personalizar la redacción predeterminada** del editor de etapas. Network Canvas aporta una redacción inicial, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). El aviso puede mostrar el nombre del tipo de nodo de la etapa, que se inserta como una píldora con el botón de texto dinámico (piped text) del campo.
+
+Cuando en la etapa los nodos se colocan tocándolos en lugar de arrastrarlos, cada contenedor que abre la persona participante tiene un botón «Colocar aquí». Su etiqueta es la misma en todas las etapas «Clasificación por categorías». Está en **Textos comunes a todas las etapas de este tipo**, en la misma sección, y un cambio en ella se aplica a todas esas etapas. El protocolo solo la contiene mientras en alguna etapa «Clasificación por categorías» los nodos se colocan tocándolos.
+
+</AppOnly>
+
+### Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Usa esta interfaz para recoger datos nominales sobre los álteres. Aunque en otras interfaces se puede añadir un Grupo de botones conmutables como [control de entrada](/es/design-protocols/key-concepts/input-controls), la función de arrastrar y soltar de la interfaz «Clasificación por categorías» ofrece una forma táctil de recoger estos datos que resulta atractiva para quienes participan.
+
+</GoodPractice>
+
+### Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+Evita usar más de ocho categorías en esta interfaz. Con más categorías, las etiquetas de las categorías se vuelven difíciles de leer y los demás elementos visuales de la interfaz se ven comprometidos.
+
+Las etiquetas de las categorías pueden ser bastante más largas que una o dos palabras: una frase corta no es ningún problema. Cada etiqueta se reduce, paso a paso, hasta caber en el espacio de su contenedor, en lugar de cortarse a mitad de palabra, y un lector de pantalla siempre lee la etiqueta completa. Sin embargo, esa reducción tiene un límite: una etiqueta tan larga que desborda su contenedor incluso con el tamaño mínimo se recorta, algo que es más probable con muchos contenedores o en una pantalla pequeña. Comprueba tu etiqueta más larga en la [vista previa](/es/design-protocols/preview-mode) con el tamaño que usarán quienes participan. Las etiquetas cortas se mantienen más grandes y se leen mejor de un vistazo.
+
+</BadPractice>
+
+<BadPractice>
+
+Evita usar la interfaz «Clasificación por categorías» para recoger variables dicotómicas. Las variables dicotómicas se recogen mejor con el [control de entrada](/es/design-protocols/key-concepts/input-controls) Interruptor (en una etapa [«Generador de nombres»](/es/design-protocols/interface-documentation/name-generator-using-forms) o [«Formulario por álter»](/es/design-protocols/interface-documentation/per-alter-form)) o con la función para alternar atributos de la etapa [«Sociograma»](/es/design-protocols/interface-documentation/sociogram).
+
+</BadPractice>

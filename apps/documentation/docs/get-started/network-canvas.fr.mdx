@@ -1,0 +1,103 @@
+---
+title: Network Canvas
+navOrder: 0
+toc: true
+translatedFrom: 231ee503a8768c9383b59c5eaabae98a3037179c
+---
+
+Network Canvas est une suite d’outils libres et gratuits pour les enquêtes de
+réseaux, conçue autour des besoins des équipes de recherche comme de ceux
+des personnes participantes. Nous proposons un flux de travail complet, de
+bout en bout, pour la recherche sur les réseaux, avec des applications pour la
+conception des protocoles d’enquête et pour la conduite des entretiens. Grâce
+à ces outils, les équipes de recherche peuvent facilement concevoir, recueillir
+et exporter des données de réseau.
+
+## Le flux de travail de la recherche {#the-research-workflow}
+
+Toute étude Network Canvas a la même structure : vous concevez un protocole
+qui décrit votre entretien, vous recueillez des données en exécutant ce
+protocole avec des personnes participantes, et vous analysez les données
+recueillies. La documentation est organisée autour de ces trois phases :
+
+- **[Concevoir des protocoles](/fr/design-protocols)** : décidez ce que votre
+  entretien demandera, et comment, puis traduisez ces décisions en un fichier
+  de protocole. Architect est l’outil qui permet de créer, de prévisualiser et
+  d’affiner les protocoles.
+- **[Collecter des données](/fr/collect-data)** : exécutez votre protocole
+  sous forme d’entretiens avec des personnes participantes. Interviewer permet de mener les entretiens
+  sur un appareil que vous contrôlez, tandis que Fresco déploie
+  votre protocole sur le web pour que les personnes participantes passent l’entretien à distance.
+- **[Analyser les données](/fr/analyze-data)** : exportez les données de
+  réseau recueillies dans des formats standard comme CSV et GraphML, prêtes
+  pour R, Python ou tout autre logiciel d’analyse de réseaux.
+
+Si vous êtes encore en train de réfléchir à votre étude, commencez par
+[Planifier une étude](/fr/get-started/planning-a-study/workflows), qui passe en
+revue les décisions à prendre avant de commencer.
+
+## Les applications {#the-applications}
+
+Chaque phase du flux de travail s’appuie sur une ou plusieurs applications :
+
+|                     | Où elle s’exécute         | Accès                                                              | Phase du flux de travail |
+| ------------------- | ------------------------- | ------------------------------------------------------------------ | ------------------------ |
+| Architect           | Navigateur, PWA           | [Ouvrir dans le navigateur](https://architect.networkcanvas.com)   | Créer le protocole       |
+| Architect Classic   | Windows, macOS, Linux     | [Télécharger](/fr/design-protocols/installing-architect-classic)   | Créer le protocole       |
+| Interviewer         | Navigateur, PWA           | [Ouvrir dans le navigateur](https://interviewer.networkcanvas.com) | Mener les entretiens     |
+| Interviewer Classic | Ordinateur et tablette    | [Télécharger](/fr/collect-data/interviewer/installing-interviewer) | Mener les entretiens     |
+| Fresco              | Navigateur (auto-hébergé) | [Déployer une instance](/fr/collect-data/fresco/guide)             | Mener les entretiens     |
+
+_**PWA** (application web progressive) : Architect et Interviewer fonctionnent
+dans n’importe quel navigateur web récent, sans rien installer, et peuvent, si
+vous le souhaitez, être installés sur un appareil que vous contrôlez pour un
+accès rapide et une utilisation hors ligne._
+
+<TipBox>
+
+Toutes les applications ne peuvent pas ouvrir tous les protocoles. La version du
+schéma d’un protocole, qui dépend de l’outil avec lequel il a été créé,
+détermine quelles applications peuvent l’ouvrir : tenez donc compte de la
+compatibilité lorsque vous choisissez vos outils. Les versions actuelles
+d’Architect, de Fresco et d’Interviewer ouvrent les protocoles créés pour des
+versions antérieures du schéma, mais les applications Classic ne peuvent pas
+ouvrir les protocoles créés pour des versions ultérieures. Voir
+[Informations sur le schéma de protocole](/fr/get-started/protocol-schema-information)
+pour une explication complète des versions du schéma, de la compatibilité des
+applications et de la migration automatique.
+
+</TipBox>
+
+Nous vous encourageons à utiliser la fonction de recherche en haut de chaque
+page pour trouver des articles sur un sujet donné. Nos pages comportent de
+nombreux liens entre elles, et l’information est nécessairement répartie sur
+plusieurs pages.
+
+## Dans cette section {#in-this-section}
+
+Cette section **Premiers pas** réunit la documentation de référence qui
+s’applique à l’ensemble des outils. Vous trouverez ces rubriques dans la barre
+latérale à gauche :
+
+- **Planifier une étude** : comment réfléchir à votre étude avant de
+  commencer, avec une [présentation visuelle des flux de travail](/fr/get-started/planning-a-study/workflows),
+  des conseils pour [mener une étude pilote](/fr/get-started/planning-a-study/piloting-your-study)
+  et des recommandations sur le règlement général sur la protection des
+  données (RGPD) et les comités d’éthique (IRB).
+- **[Migrer depuis les applications Classic](/fr/get-started/migrating-from-classic)** :
+  comment transférer une étude existante d’Architect Classic et d’Interviewer
+  Classic vers les applications actuelles, qui fonctionnent dans le navigateur.
+- **[Informations sur le schéma de protocole](/fr/get-started/protocol-schema-information)** :
+  comment fonctionnent les versions du schéma de protocole, quelles
+  applications prennent en charge quelles versions et comment se déroule la
+  migration.
+- **[Glossaire](/fr/get-started/glossary)** : des définitions en langage
+  simple des termes employés dans cette documentation, chacune renvoyant à une
+  présentation plus complète.
+- **Informations sur le projet** : l’origine du projet, décrite dans la
+  [présentation du projet](/fr/get-started/project-information/project-overview),
+  ainsi que des informations pour citer le logiciel et collaborer avec nous.
+
+La documentation de référence pour la _conception_ des protocoles (**Concepts
+clés** et **Documentation des interfaces**) se trouve dans la section
+[Concevoir des protocoles](/fr/design-protocols).

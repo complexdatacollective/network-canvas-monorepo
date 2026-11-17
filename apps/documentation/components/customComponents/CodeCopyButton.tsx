@@ -1,11 +1,13 @@
 'use client';
 
 import { ClipboardCheck, ClipboardCopy } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 
 const CodeCopyButton = ({ code }: { code: string }) => {
+  const t = useTranslations('CodeCopyButton');
   const [isCopied, setIsCopied] = useState(false);
 
   const copyToClipboard = async (text: string) => {
@@ -17,7 +19,7 @@ const CodeCopyButton = ({ code }: { code: string }) => {
   };
 
   return (
-    <div className="absolute top-2 right-2 flex items-center gap-2">
+    <div className="absolute inset-e-2 top-2 flex items-center gap-2">
       {/* Always-present live region so the "Copied!" result is announced; it
           also renders the visible confirmation bubble when copied. */}
       <output
@@ -28,10 +30,10 @@ const CodeCopyButton = ({ code }: { code: string }) => {
             : 'sr-only'
         }
       >
-        {isCopied ? 'Copied!' : ''}
+        {isCopied ? t('copied') : ''}
       </output>
       <IconButton
-        aria-label="Copy code"
+        aria-label={t('copy')}
         color="primary"
         icon={
           isCopied ? (

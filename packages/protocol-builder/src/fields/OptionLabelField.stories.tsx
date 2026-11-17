@@ -99,7 +99,13 @@ export const BoldAndItalicOnly: Story = {
       canvas.queryByRole('button', { name: 'Heading 1' }),
     ).toBeNull();
     await expect(
+      canvas.queryByRole('button', { name: 'Heading 2' }),
+    ).toBeNull();
+    await expect(
       canvas.queryByRole('button', { name: 'Bullet list' }),
+    ).toBeNull();
+    await expect(
+      canvas.queryByRole('button', { name: 'Numbered list' }),
     ).toBeNull();
     await expect(
       canvas.queryByRole('button', { name: 'Thematic break' }),

@@ -130,7 +130,11 @@ export default function OutlineStageRow({
         onKeyDown={reorder.onKeyDown}
         onClick={onSelect}
       >
-        <span className="block truncate">{name}</span>
+        {/* The screen name the researcher typed takes its own direction, on
+            the interface side, and is cut at its end. */}
+        <span dir="auto" className="text-match-parent block truncate">
+          {name}
+        </span>
         <span className="block truncate text-xs opacity-70">{typeLabel}</span>
       </button>
       <div className="flex shrink-0 flex-col">

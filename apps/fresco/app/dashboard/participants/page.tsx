@@ -15,13 +15,14 @@ const messages = defineMessages({
   participants: {
     id: 'fresco.participants.page.participants',
     defaultMessage: 'Participants',
-    description: 'Researcher-facing participants / page: Participants',
+    description:
+      'Heading of the Participants page of the dashboard, which lists the study participants a researcher has added or imported.',
   },
   viewAndManageYourParticipants: {
     id: 'fresco.participants.page.viewAndManageYourParticipants',
     defaultMessage: 'View and manage your participants.',
     description:
-      'Researcher-facing participants / page: View and manage your participants.',
+      'Subheading under the heading of the Participants page; it describes the page, where the researcher views and manages study participants.',
   },
 });
 

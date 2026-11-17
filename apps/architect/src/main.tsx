@@ -2,7 +2,9 @@ import { Toast } from '@base-ui/react/toast';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import './analytics';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 
@@ -98,6 +100,8 @@ const warmCaches = () => {
   }
 };
 
+const queryClient = new QueryClient();
+
 async function startApp(): Promise<void> {
   await applyFreshLoadServiceWorkerUpdate({
     reload: false,
@@ -144,31 +148,33 @@ async function startApp(): Promise<void> {
           disableAnimations={import.meta.env.VITE_DISABLE_ANIMATIONS === 'true'}
         >
           <Provider store={store}>
-            {/* PortalContainerProvider outermost so fresco-ui overlays portal into
+            <QueryClientProvider client={queryClient}>
+              {/* PortalContainerProvider outermost so fresco-ui overlays portal into
               its viewport layer; the `root` (isolation: isolate) wrapper keeps the
               app's own stacking contexts from competing with that layer. */}
-            <PortalContainerProvider>
-              {/* Transient, non-blocking notices. Inside PortalContainerProvider
+              <PortalContainerProvider>
+                {/* Transient, non-blocking notices. Inside PortalContainerProvider
                   so the viewport lands in the same overlay layer as dialogs, and
                   outside DialogProvider so a toast is never unmounted with the
                   dialog that happened to be open. */}
-              <Toast.Provider>
-                <DialogProvider>
-                  <ArchitectLanguageNaming>
-                    <div className="root h-full">
-                      <AppView />
-                    </div>
-                  </ArchitectLanguageNaming>
-                </DialogProvider>
-                <LocaleLoadFailureToast
-                  onReload={() => window.location.reload()}
-                  onFailure={(error, locale) =>
-                    reportError(error, { operation: 'locale-load', locale })
-                  }
-                />
-                <Toaster />
-              </Toast.Provider>
-            </PortalContainerProvider>
+                <Toast.Provider>
+                  <DialogProvider>
+                    <ArchitectLanguageNaming>
+                      <div className="root h-full">
+                        <AppView />
+                      </div>
+                    </ArchitectLanguageNaming>
+                  </DialogProvider>
+                  <LocaleLoadFailureToast
+                    onReload={() => window.location.reload()}
+                    onFailure={(error, locale) =>
+                      reportError(error, { operation: 'locale-load', locale })
+                    }
+                  />
+                  <Toaster />
+                </Toast.Provider>
+              </PortalContainerProvider>
+            </QueryClientProvider>
           </Provider>
         </AnimationProvider>
       </ArchitectI18nRoot>

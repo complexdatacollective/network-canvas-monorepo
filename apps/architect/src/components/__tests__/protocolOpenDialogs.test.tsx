@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { protocolFileErrorMessages } from '@codaco/protocol-validation/messages';
 import type { ProtocolOpenResult } from '~/ducks/modules/userActions/userActions';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 
@@ -36,14 +37,17 @@ const result: ProtocolOpenResult = {
 const approve = vi.fn(async () => {});
 const keep = vi.fn(async () => {});
 
-const openWith = async (offerKeep: boolean) => {
+const openWith = async (
+  offerKeep: boolean,
+  shown: ProtocolOpenResult = result,
+) => {
   function Launcher() {
     const { openDialog } = useDialog();
     return (
       <button
         onClick={() => {
           void showProtocolOpenResultDialog({
-            result,
+            result: shown,
             openDialog,
             onApproveMigration: approve,
             onKeepLegacy: offerKeep ? keep : undefined,
@@ -94,7 +98,7 @@ describe('the migration-required dialog', () => {
       'Please note: upgrading may change the interview experience for participants',
     );
     expect(dialog).toHaveTextContent(
-      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
+      'Upgrading creates a separate copy of your protocol and opens it. Your original protocol will not be changed.',
     );
     const upgrade = within(dialog).getByRole('button', {
       name: 'Upgrade to schema 9',
@@ -161,5 +165,52 @@ describe('the migration-required dialog', () => {
     );
     expect(approve).not.toHaveBeenCalled();
     expect(keep).not.toHaveBeenCalled();
+  });
+});
+
+describe('the validation-error dialog', () => {
+  const problem = 'Stage “Friends”, prompt 1: Text cannot be blank.';
+
+  it('names each problem an upgrade refused, already shown, and how to correct it', async () => {
+    const dialog = await openWith(false, {
+      status: 'validation-error',
+      message: problem,
+      localizedTitle: {
+        message: {
+          id: 'architect.protocolActions.failed',
+          defaultMessage: 'Failed to Open Protocol',
+        },
+      },
+      localizedMessage: {
+        message: protocolFileErrorMessages.upgradeRefusedContent,
+      },
+      showDetails: true,
+    });
+
+    expect(
+      within(dialog).getByRole('heading', { name: 'Failed to Open Protocol' }),
+    ).toBeVisible();
+    expect(dialog).toHaveTextContent(
+      'In the version of Architect the protocol was made with, correct each problem listed, then open the protocol again.',
+    );
+    expect(dialog).not.toHaveTextContent('due to validation errors');
+    expect(within(dialog).getByText(problem)).toBeVisible();
+  });
+
+  it('keeps the issues of an ordinary validation failure behind the disclosure', async () => {
+    const dialog = await openWith(false, {
+      status: 'validation-error',
+      message: problem,
+    });
+
+    expect(
+      within(dialog).getByRole('heading', {
+        name: 'Protocol Validation Failed',
+      }),
+    ).toBeVisible();
+    expect(dialog).toHaveTextContent(
+      'The protocol could not be opened due to validation errors:',
+    );
+    expect(within(dialog).queryByText(problem)).not.toBeVisible();
   });
 });

@@ -7,7 +7,6 @@ import {
   type SkipLogicDestination,
   type Stage,
   stageSchema,
-  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   NcNetworkSchema,
@@ -186,7 +185,6 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     id: 'stage-fp',
     label: en('Family'),
     type: 'FamilyPedigree',
-    wording: familyPedigreeWordingIn(),
     subject: { entity: 'node', type: 'node-type-1' },
     prompt: en('Tell us about your family'),
     nodeConfiguration: {
@@ -868,14 +866,15 @@ describe('generateNetwork', () => {
       const codebook = makeBinCodebook();
       const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
 
-      expect(() =>
+      const attributesOf = (inProgressStageIndex?: number) =>
         generateNetwork({
           codebook,
           stages,
           seed: 42,
-          inProgressStageIndex: 99,
-        }),
-      ).not.toThrow();
+          inProgressStageIndex,
+        }).network.nodes.map((node) => node[entityAttributesProperty]);
+
+      expect(attributesOf(99)).toEqual(attributesOf(undefined));
     });
 
     // markStageInProgress runs on the stage being edited, so in Architect

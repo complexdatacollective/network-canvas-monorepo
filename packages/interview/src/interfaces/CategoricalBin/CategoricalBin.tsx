@@ -43,12 +43,14 @@ import {
 } from '../../forms/writeSubmissionResult';
 import { useBinSelection } from '../../hooks/useBinSelection';
 import useCompletePlacement from '../../hooks/useCompletePlacement';
+import { useCustomShapeSvgs } from '../../hooks/useCustomShapeSvgs';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   type ResolvedProtocolText,
   useResolveLocalizedString,
   useResolveLocalizedStringIn,
 } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -273,7 +275,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   useCompletePlacement({
     unplacedCount: uncategorisedNodes.length,
     required: stage.behaviours?.requireCompletePlacement,
-    notice: stage.unplacedNodesNotice,
+    notice: useStageWording(stage).shown('unplacedNodesNotice'),
   });
 
   // Reset expanded bin when prompt changes. Compared during render so the new
@@ -302,6 +304,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
+  const shapeSvgs = useCustomShapeSvgs();
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const intl = useAppIntl();
   const { unlocked, requirePassphrase, lockedNotice } = usePassphrase();
@@ -424,6 +427,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           withDynamicValueEntities(dynamicValueSources, {
             attributes: { node: node[entityAttributesProperty] },
             labels: { node: nodeLabel },
+            ids: { node: node[entityPrimaryKeyProperty] },
           }),
       );
 
@@ -449,8 +453,9 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
             shape={
               nodeTypeDefinition
                 ? resolveNodeShape(
-                    nodeTypeDefinition.shape,
+                    nodeTypeDefinition,
                     node[entityAttributesProperty],
+                    shapeSvgs,
                   )
                 : undefined
             }

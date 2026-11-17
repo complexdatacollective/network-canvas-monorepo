@@ -87,6 +87,13 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     'Flag for follow-up',
   ],
   [
+    ['codebook', 'node', 'person', 'dynamicLabel'],
+    {
+      text: en('Person {nodeLabel}'),
+      dynamicValues: { nodeLabel: { path: 'node.$label' } },
+    },
+  ],
+  [
     ['codebook', 'node', 'person', 'variables', 'contactType', 'name'],
     'Contact type',
   ],
@@ -324,6 +331,56 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   [
     ['interfaceText', 'narrativePedigree', 'mayCarry'],
     en('May carry {condition}'),
+  ],
+  // A bin placed by tapping, and an encrypted answer, for the text only they
+  // show.
+  [
+    [...fixtureStage('CategoricalBin'), 'behaviours'],
+    { interactionMode: 'select' },
+  ],
+  [
+    ['codebook', 'node', 'person', 'variables', 'secretNote'],
+    { name: 'secretNote', type: 'text', component: 'Text', encrypted: true },
+  ],
+  [['interfaceText', 'categoricalBin'], { placeHere: en('Place here') }],
+  [
+    ['interfaceText', 'passphrase', 'protectedAnswersLocked'],
+    en(
+      'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
+    ),
+  ],
+  [
+    ['interfaceText', 'passphrase', 'protectedAnswersNotSaved'],
+    en(
+      'Your answers have not been saved. Enter your passphrase, then try again.',
+    ),
+  ],
+  [
+    ['interfaceText', 'passphrase', 'answerUnavailable'],
+    en('Answer unavailable'),
+  ],
+  [
+    ['interfaceText', 'passphrase', 'answerUnavailableKept'],
+    en(
+      'This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer.',
+    ),
+  ],
+  // What the additions above make the interview show: an Information item
+  // that shows a file, a Family Pedigree that checks completeness, and a
+  // Network Composer whose inspector shows a form.
+  [
+    ['interfaceText', 'messages', 'itemUnavailable'],
+    en('This item could not be displayed.'),
+  ],
+  [
+    ['interfaceText', 'familyPedigree', 'trackerAllDetails'],
+    en('Add required details for all family members'),
+  ],
+  [
+    ['interfaceText', 'networkComposer', 'overtakenEditNotice'],
+    en(
+      'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+    ),
   ],
 ];
 

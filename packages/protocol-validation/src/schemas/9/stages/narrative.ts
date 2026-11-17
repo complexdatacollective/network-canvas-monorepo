@@ -20,7 +20,10 @@ export const narrativeStage = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: localizedString(nonBlankText(), 'plain'),
+        label: localizedString(nonBlankText(), {
+          format: 'plain',
+          lines: 'single',
+        }),
         layoutVariable: entityAttributeReference({
           subject: 'stageSubject',
         }),
@@ -35,7 +38,10 @@ export const narrativeStage = baseStageSchema.extend({
               .array(
                 z.strictObject({
                   type: entityTypeReference({ entity: 'edge' }),
-                  label: localizedString(nonBlankText(), 'plain'),
+                  label: localizedString(nonBlankText(), {
+                    format: 'plain',
+                    lines: 'single',
+                  }),
                 }),
               )
               .optional(),
@@ -45,7 +51,10 @@ export const narrativeStage = baseStageSchema.extend({
           .array(
             z.strictObject({
               variable: entityAttributeReference({ subject: 'stageSubject' }),
-              label: localizedString(nonBlankText(), 'plain'),
+              label: localizedString(nonBlankText(), {
+                format: 'plain',
+                lines: 'single',
+              }),
             }),
           )
           .optional(),
@@ -71,7 +80,16 @@ export const narrativeStage = baseStageSchema.extend({
   // headings while a preset has the content they head. The drawing tools'
   // tooltips, which every Narrative shows alike, are interface text
   // (`interface-text-wording.ts`).
-  attributesHeading: localizedString(nonBlankText(), 'plain').optional(),
-  linksHeading: localizedString(nonBlankText(), 'plain').optional(),
-  groupsHeading: localizedString(nonBlankText(), 'plain').optional(),
+  attributesHeading: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional(),
+  linksHeading: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional(),
+  groupsHeading: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional(),
 });

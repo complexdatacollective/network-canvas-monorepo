@@ -16,6 +16,7 @@ import {
 } from '@codaco/app-i18n/catalog-guards';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 
+import ar from '../../locales/ar.json';
 import { architectCatalogLoaders } from '../../locales/catalogs';
 import fr from '../../locales/fr.json';
 import ptBR from '../../locales/pt-BR.json';
@@ -55,6 +56,7 @@ const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const italianSources = readTranslationSources(localesDir, 'it');
 const frSources = readTranslationSources(localesDir, 'fr');
+const arSources = readTranslationSources(localesDir, 'ar');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Architect catalog contract', () => {
@@ -73,7 +75,7 @@ describe('Architect catalog contract', () => {
       expect(entry.description?.trim()).toBeTruthy();
     }
   }, 120_000);
-  it('ships complete Spanish and reviewed sparse British English with identical ICU arguments and rich tags', () => {
+  it('ships every full locale complete, and the sparse British English overrides reviewed, with identical ICU arguments and rich tags', () => {
     expect(checkFullLocale(en, es, esSources)).toEqual([]);
     expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
     expect(checkFullLocale(en, zhHant, zhHantSources)).toEqual([]);
@@ -82,6 +84,7 @@ describe('Architect catalog contract', () => {
     expect(checkFullLocale(en, ptBR, ptBRSources)).toEqual([]);
     expect(checkFullLocale(en, italian, italianSources)).toEqual([]);
     expect(checkFullLocale(en, fr, frSources)).toEqual([]);
+    expect(checkFullLocale(en, ar, arSources)).toEqual([]);
     expect(checkOverrideLocale(en, enGb, enGbSources)).toEqual([]);
   });
   it('keeps the selectable production set inside the shared ecosystem', () => {
@@ -96,6 +99,7 @@ describe('Architect catalog contract', () => {
       'pt-BR',
       'it',
       'fr',
+      'ar',
     ]);
     const supported = new Set(ecosystemLocales.map((x) => x.locale));
     expect(

@@ -1,9 +1,16 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { find, findIndex } from 'es-toolkit/compat';
 
-import type { Asset } from '@codaco/protocol-validation';
+import { withSuppliedWording } from '@codaco/interview/supplied-wording';
+import { type Asset } from '@codaco/protocol-validation';
+import type { StudyContext } from '@codaco/shared-consts';
 import { canRedo, canUndo } from '~/ducks/middleware/timeline';
 import type { RootState } from '~/ducks/modules/root';
+import {
+  completeStudyContext,
+  parseProtocolReviewSettings,
+  type StudyDetailsDraft,
+} from '~/protocolReview/settings';
 import { deriveAssetDisplayNames } from '~/utils/assetNames';
 import { localizedText } from '~/utils/localizedText';
 
@@ -19,10 +26,49 @@ export const getProtocol = (state: RootState) => {
   return state.activeProtocol?.present ?? null;
 };
 
+/**
+ * The protocol with the wording a participant is shown written out (see
+ * `withSuppliedWording`): each text Network Canvas words holds the protocol's
+ * own translation where it has one and Network Canvas's where it does not.
+ * The protocol itself holds only what its author changed, so this is what a
+ * page that lists, translates or prints every text reads. Never dispatched
+ * back: a change is written through the protocol's own actions.
+ */
+export const getProtocolAsShown = createSelector([getProtocol], (protocol) =>
+  protocol ? withSuppliedWording(protocol) : protocol,
+);
+
 // Protocol metadata selectors
 export const getProtocolName = (state: RootState): string | undefined => {
   return getProtocol(state)?.name;
 };
+
+/** Whether the protocol has turned the automated protocol review on. */
+export const getIsProtocolReviewEnabled = (state: RootState): boolean =>
+  getProtocol(state)?.experiments?.protocolReview !== undefined;
+
+// What the protocol stores under `protocolReview` has no shape the schema
+// guarantees, so it is read through the app's own tolerant parser.
+const getProtocolReviewSettings = createSelector(
+  [(state: RootState) => getProtocol(state)?.experiments?.protocolReview],
+  (stored) => parseProtocolReviewSettings(stored),
+);
+
+/**
+ * The study details saved for the protocol review, when they are complete
+ * enough for the review service; otherwise undefined.
+ */
+export const getProtocolReviewStudyContext = createSelector(
+  [getProtocolReviewSettings],
+  ({ studyDetails }): StudyContext | undefined =>
+    completeStudyContext(studyDetails),
+);
+
+/** The saved study details as far as they fit, for prefilling the wizard. */
+export const getProtocolReviewStudyDetailsDraft = createSelector(
+  [getProtocolReviewSettings],
+  ({ studyDetails }): StudyDetailsDraft => studyDetails,
+);
 
 export const getLocalization = (state: RootState) =>
   getProtocol(state)?.localization;

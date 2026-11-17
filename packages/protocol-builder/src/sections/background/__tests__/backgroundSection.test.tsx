@@ -115,9 +115,11 @@ describe('what the participant sees behind the nodes', () => {
    * rebuilt field showed it as a plain thumbnail on the editor's own white
    * card. A researcher cannot tell from that how much of their image the
    * canvas keeps, or what it will look like against the interview's dark
-   * ground.
+   * ground. The 16:9 shape is measured in a browser by the
+   * `AsACanvasBackground` story in `fields/AssetPickerField.stories.tsx`;
+   * jsdom lays nothing out, so this reads the theme.
    */
-  it('frames the chosen image as the interview canvas', async () => {
+  it('frames the chosen image in the interview theme', async () => {
     renderStageEditor(openImage());
 
     const preview = await screen.findByAltText(CANVAS_IMAGE_NAME);
@@ -128,7 +130,6 @@ describe('what the participant sees behind the nodes', () => {
     // a frame that WAS the image would be the thumbnail again, at whatever
     // shape the file happens to be.
     expect(frame).not.toBe(preview);
-    expect(frame?.className).toContain('aspect-video');
   });
 
   it('opens a stage created from scratch on the ring count the interview draws', async () => {

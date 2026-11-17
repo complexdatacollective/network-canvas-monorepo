@@ -19,11 +19,6 @@
     "es": "Icono",
     "from": "74a07e626 architect.typeEditor.typeEditor.icon"
   },
-  "protocolBuilder.codebookEntity.iconSectionTitle": {
-    "en": "Interface icon",
-    "es": "Icono de la interfaz",
-    "from": "74a07e626 architect.typeEditor.typeEditor.interfaceIcon"
-  },
   "protocolBuilder.codebookEntity.identitySectionDescription": {
     "en": "Name this type for the codebook and exported data.",
     "es": "Asigna un nombre a este tipo para el libro de códigos y los datos exportados.",
@@ -74,11 +69,6 @@
     "es": "Por debajo del primer umbral",
     "from": "74a07e626 architect.typeEditor.shapeVariableMapping.belowFirstThreshold"
   },
-  "protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed": {
-    "en": "Below first threshold cannot be removed",
-    "es": "No se puede eliminar la opción por debajo del primer umbral",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved"
-  },
   "protocolBuilder.codebookEntity.shapeDefaultSwatch": {
     "en": "Default shape",
     "es": "Forma predeterminada",
@@ -88,11 +78,6 @@
     "en": "Shape for each value",
     "es": "Forma para cada valor",
     "from": "74a07e626 architect.typeEditor.shapeVariableMapping.shapeForEachValue"
-  },
-  "protocolBuilder.codebookEntity.shapeForValue": {
-    "en": "Shape for {value1}",
-    "es": "Forma para {value1}",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.shapeFor"
   },
   "protocolBuilder.codebookEntity.shapeHint": {
     "en": "Choose a default shape for this node type.",
@@ -139,11 +124,6 @@
     "es": "Todavía no hay umbrales: todos los valores usan la forma predeterminada.",
     "from": "74a07e626 architect.additional.typeEditor.shapeVariableMapping.noThresholdsYetEveryValue"
   },
-  "protocolBuilder.codebookEntity.shapeRemoveThreshold": {
-    "en": "Remove threshold {value1, number}",
-    "es": "Eliminar umbral {value1, number}",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.removeThreshold"
-  },
   "protocolBuilder.codebookEntity.shapeThresholdValue": {
     "en": "Threshold {value1, number} value",
     "es": "Valor del umbral {value1, number}",
@@ -158,10 +138,5 @@
     "en": "uses default shape",
     "es": "usa la forma predeterminada",
     "from": "74a07e626 architect.typeEditor.shapeVariableMapping.usesDefaultShape"
-  },
-  "protocolBuilder.codebookEntity.shapeValuesUnmapped": {
-    "en": "Some values are unmapped and will use the default shape.",
-    "es": "Algunos valores no tienen una forma asignada y usarán la predeterminada.",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill"
   }
 }

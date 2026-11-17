@@ -1,8 +1,7 @@
 import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
 import { useSyncExternalStore, type ReactNode } from 'react';
 
-import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -16,58 +15,21 @@ import type {
 import { useWalkthroughState } from './walkthrough/walkthroughStore';
 
 /**
- * What each state of a section is CALLED, keyed by the state itself so the
- * record stays exhaustive: a state added to `StageSectionStatus` with no words
- * for it is a section a screen-reader user is told nothing about, and this is
- * what turns that into a typecheck failure rather than a silence.
+ * What each state of a section is CALLED, read out after the section's own
+ * name and never shown on screen (the same state is drawn as a color and an
+ * icon). It is screen-reader text, so it stays English in every language. The
+ * record is keyed by the state itself so it stays exhaustive: a state added to
+ * `StageSectionStatus` with no words for it is a section a screen-reader user
+ * is told nothing about, and this is what turns that into a typecheck failure
+ * rather than a silence.
  */
-const STATUS_LABELS = defineMessages({
-  error: {
-    id: 'architect.stageEditor.sectionOutline.errorStatus',
-    defaultMessage: 'Has a problem',
-    description:
-      'Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a color and an icon.',
-  },
-  incomplete: {
-    id: 'architect.stageEditor.sectionOutline.incompleteStatus',
-    defaultMessage: 'Not finished',
-    description:
-      'Spoken state of one section of a stage editor: it still has required fields the researcher has not filled in. Read out after the section’s own name, and never shown on screen.',
-  },
-  complete: {
-    id: 'architect.stageEditor.sectionOutline.completeStatus',
-    defaultMessage: 'Finished',
-    description:
-      'Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen.',
-  },
-  switchedOff: {
-    id: 'architect.stageEditor.sectionOutline.switchedOffStatus',
-    defaultMessage: 'Switched off',
-    description:
-      'Spoken state of one section of a stage editor: the researcher has turned this optional part of the stage off, so it asks for nothing. Read out after the section’s own name, and never shown on screen.',
-  },
-  unavailable: {
-    id: 'architect.stageEditor.sectionOutline.unavailableStatus',
-    defaultMessage: 'Not available yet',
-    description:
-      'Spoken state of one section of a stage editor: it cannot be filled in until something else in the stage has been chosen. Read out after the section’s own name, and never shown on screen.',
-  },
-}) satisfies Record<StageSectionStatus, MessageDescriptor>;
-
-const messages = defineMessages({
-  landmark: {
-    id: 'architect.stageEditor.sectionOutline.landmarkLabel',
-    defaultMessage: 'Stage sections',
-    description:
-      'Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview.',
-  },
-  statusWithProblems: {
-    id: 'architect.stageEditor.sectionOutline.statusWithProblems',
-    defaultMessage: '{status}. {problems}',
-    description:
-      'Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state ("Has a problem"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them.',
-  },
-});
+const STATUS_LABELS = {
+  error: 'Has a problem',
+  incomplete: 'Not finished',
+  complete: 'Finished',
+  switchedOff: 'Switched off',
+  unavailable: 'Not available yet',
+} satisfies Record<StageSectionStatus, string>;
 
 /**
  * Status is carried by an icon AND by words, never by colour alone: the five
@@ -76,7 +38,7 @@ const messages = defineMessages({
  */
 const STATUS_PRESENTATION: Record<
   StageSectionStatus,
-  Readonly<{ label: MessageDescriptor; icon: typeof Check; className: string }>
+  Readonly<{ label: string; icon: typeof Check; className: string }>
 > = {
   error: {
     label: STATUS_LABELS.error,
@@ -123,7 +85,6 @@ export default function StageSectionOutline({
   sections,
   header,
 }: Readonly<{ sections: StageSectionsStore; header?: ReactNode }>) {
-  const intl = useAppIntl();
   const entries = useSyncExternalStore(
     sections.subscribe,
     sections.getSnapshot,
@@ -134,7 +95,7 @@ export default function StageSectionOutline({
 
   return (
     <nav
-      aria-label={intl.formatMessage(messages.landmark)}
+      aria-label="Stage sections"
       // `min-w-0`: a grid item's own minimum is its content, so without it the
       // strip of sections below the two-column breakpoint makes this column as
       // wide as the whole list — and the list's `overflow-x-auto` never has
@@ -164,7 +125,7 @@ export default function StageSectionOutline({
         noContainer
         spacing="xs"
         shadow="sm"
-        className="@max-[60rem]:contents @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto"
+        className="@max-[60rem]:contents @min-[60rem]:max-h-[calc(var(--architect-route-height,100dvh)-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto"
       >
         {header}
         <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
@@ -200,19 +161,15 @@ function StageSectionOutlineItem({
   // editor has no reader, so each one arrives as an encoded descriptor — or as
   // a plain sentence a host or the protocol schema wrote, which the same call
   // passes through untouched.
-  const statusLabel = intl.formatMessage(presentation.label);
-  const announced =
-    section.problems.length === 0
-      ? statusLabel
-      : intl.formatMessage(messages.statusWithProblems, {
-          status: statusLabel,
-          // Joined with a space rather than through `formatList`: these are
-          // whole sentences in sequence, not the members of a list, and "a, b
-          // and c" would read them as one thing that is three ways wrong.
-          problems: section.problems
-            .map((sentence) => formatMessageError(sentence, intl) ?? sentence)
-            .join(' '),
-        });
+  const statusLabel = presentation.label;
+  // Joined with a space rather than through `formatList`: these are whole
+  // sentences in sequence, not the members of a list, and "a, b and c" would
+  // read them as one thing that is three ways wrong.
+  const problems = section.problems
+    .map((sentence) => formatMessageError(sentence, intl) ?? sentence)
+    .join(' ');
+  const spokenStatus = problems ? `${statusLabel}.` : statusLabel;
+  const spokenProblems = problems ? ` ${problems}` : null;
 
   return (
     <button
@@ -225,7 +182,7 @@ function StageSectionOutlineItem({
       // giving it a horizontal scrollbar.
       aria-current={current ? 'step' : undefined}
       className={cx(
-        'focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-current/5',
+        'focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-start text-sm hover:bg-current/5',
         current && 'bg-warning/15 hover:bg-warning/20',
       )}
     >
@@ -240,7 +197,13 @@ function StageSectionOutlineItem({
         message beside it, so this list is the only place it is written down,
         and reading it must not depend on seeing the colour of an icon.
       */}
-      <span className="sr-only">{announced}</span>
+      <span className="sr-only">
+        {/* The status is English screen-reader text; the problems are
+            decoded sentences in the researcher's language, so they stay
+            outside the English span. */}
+        <span lang="en">{spokenStatus}</span>
+        {spokenProblems}
+      </span>
     </button>
   );
 }

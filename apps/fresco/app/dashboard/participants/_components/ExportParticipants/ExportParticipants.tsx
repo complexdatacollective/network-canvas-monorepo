@@ -15,25 +15,25 @@ const messages = defineMessages({
     id: 'fresco.participants.ExportParticipants.ExportParticipants.success',
     defaultMessage: 'Success',
     description:
-      'Researcher-facing participants / ExportParticipants / ExportParticipants: Success',
+      "Title of the success toast on the Participants page after the participant list has been downloaded as a CSV file with each participant's interview links.",
   },
   participantsExportedSuccessfully: {
     id: 'fresco.participants.ExportParticipants.ExportParticipants.participantsExportedSuccessfully',
     defaultMessage: 'Participants exported successfully',
     description:
-      'Researcher-facing participants / ExportParticipants / ExportParticipants: Participants exported successfully',
+      'Body of the success toast on the Participants page after the participant list (with personal interview links) was downloaded as a CSV file.',
   },
   error: {
     id: 'fresco.participants.ExportParticipants.ExportParticipants.error',
     defaultMessage: 'Error',
     description:
-      'Researcher-facing participants / ExportParticipants / ExportParticipants: Error',
+      'Title of the error toast on the Participants page when exporting the participant list as a CSV file failed.',
   },
   anErrorOccurredWhileExportingParticipants: {
     id: 'fresco.participants.ExportParticipants.ExportParticipants.anErrorOccurredWhileExportingParticipants',
     defaultMessage: 'An error occurred while exporting participants',
     description:
-      'Researcher-facing participants / ExportParticipants / ExportParticipants: An error occurred while exporting participants',
+      'Body of the error toast on the Participants page when exporting the participant list (identifiers, labels and interview links) as a CSV file failed.',
   },
 });
 

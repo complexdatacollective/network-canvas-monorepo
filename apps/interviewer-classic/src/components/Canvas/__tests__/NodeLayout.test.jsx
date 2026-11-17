@@ -40,12 +40,6 @@ const mockProps = {
 };
 
 describe('<NodeLayout />', () => {
-  it('renders ok', () => {
-    const component = shallow(<NodeLayout {...mockProps} />);
-
-    expect(component).toMatchSnapshot();
-  });
-
   describe('isLinking', () => {
     it('detects connecting state', () => {
       const subject = shallow(<NodeLayout {...mockProps} connectFrom={1} />);

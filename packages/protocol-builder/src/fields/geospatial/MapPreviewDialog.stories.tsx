@@ -192,6 +192,27 @@ export const TakingTheView: Story = {
 };
 
 /**
+ * The arrow on the button that takes the view points the way reading goes:
+ * to the left in a right-to-left language.
+ */
+export const TakingTheViewInARightToLeftLanguage: Story = {
+  ...TakingTheView,
+  globals: { appDirection: 'rtl' },
+  play: async () => {
+    await awaitPassiveEffects();
+    const dialog = await screen.findByRole('dialog');
+    const use = await within(dialog).findByRole('button', {
+      name: 'Use this view',
+    });
+    await expect(getComputedStyle(use).direction).toBe('rtl');
+    const arrow = use.querySelector('svg');
+    if (!arrow) throw new Error('The button has no icon');
+    // Drawn pointing right, and turned round.
+    await expect(getComputedStyle(arrow).rotate).toBe('180deg');
+  },
+};
+
+/**
  * No key chosen yet, so there is nothing to draw a map from. Said as a warning
  * rather than as a failure: nothing went wrong, the researcher simply has a
  * control above this one still to answer.

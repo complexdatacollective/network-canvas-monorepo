@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
@@ -17,14 +16,6 @@ import {
   type LenientSubmitHandler,
 } from './formLevelValidate';
 import { useNestedDraftDialog } from './useNestedDraftDialog';
-const messages = defineMessages({
-  resizeFormAndPreviewPanes: {
-    id: 'architect.dialogForm.dialogForm.resizeFormAndPreviewPanes',
-    defaultMessage: 'Resize form and preview panes',
-    description: 'The aria-label text in components / DialogForm / DialogForm.',
-  },
-});
-
 export type DialogFormProps = {
   /** Whether the dialog is open. */
   open: boolean;
@@ -110,9 +101,9 @@ const DialogFormBody = ({
 
   /**
    * Every dialog form is guarded by construction. The previous arrangement was
-   * opt-in per caller (`DirtyProbe` + a hand-written confirm in
-   * `NewVariableWindow` and `EntityTypeDialog`), and the array-row editor —
-   * the one in the bug report — simply never opted in.
+   * opt-in per caller (`DirtyProbe` + a hand-written confirm in each dialog
+   * that remembered to), and the array-row editor — the one in the bug
+   * report — simply never opted in.
    *
    * The registration and the confirm-before-dismissal both live in
    * `useNestedDraftDialog`, which the Geospatial API-key browser — a dialog
@@ -198,17 +189,17 @@ const DialogFormBody = ({
           min={30}
           max={70}
           stickyHandle
-          aria-label={intl.formatMessage(messages.resizeFormAndPreviewPanes)}
+          aria-label={'Resize form and preview panes'}
           className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
         >
           <FormWithoutProvider
             id={domFormId}
             onSubmit={handleSubmit}
-            className="min-w-0 @min-[60rem]:pr-4"
+            className="min-w-0 @min-[60rem]:pe-4"
           >
             {children}
           </FormWithoutProvider>
-          <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+          <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:ps-4">
             {aside}
           </aside>
         </ResizableFlexPanel>

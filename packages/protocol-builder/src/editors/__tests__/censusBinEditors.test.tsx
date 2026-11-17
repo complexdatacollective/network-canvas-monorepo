@@ -304,9 +304,9 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
-    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: ['conditions', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full dyad census' },
@@ -341,9 +341,9 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
-    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: ['conditions', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full tie-strength census' },
@@ -377,9 +377,16 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
-    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: [
+      'behaviours',
+      'conditions',
+      'dynamicValues',
+      'label',
+      'prompts',
+      'subject',
+    ],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full one-to-many dyad census' },
@@ -422,9 +429,16 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
-    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: [
+      'behaviours',
+      'conditions',
+      'dynamicValues',
+      'label',
+      'prompts',
+      'subject',
+    ],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full ordinal bin' },
@@ -458,16 +472,24 @@ const CASES: readonly EditorCase[] = [
       'Stage filter',
       'Prompt collection',
       'Placing nodes',
-      'Customize built-in wording',
+      // The fixture's bin is placed by dragging and lets nodes stay
+      // unplaced, so it shows no built-in wording.
       'Skip logic',
       'Interviewer guidance',
     ],
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
-    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: [
+      'behaviours',
+      'conditions',
+      'dynamicValues',
+      'label',
+      'prompts',
+      'subject',
+    ],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full categorical bin' },
@@ -530,10 +552,11 @@ const CASES: readonly EditorCase[] = [
       'Paneles laterales',
       'Límites de nominación',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: [
       'addNamePlaceholder',
+      'conditions',
       'dynamicValues',
       'label',
       'prompts',
@@ -584,12 +607,13 @@ const CASES: readonly EditorCase[] = [
       'Búsqueda en la lista',
       'Límites de nominación',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: [
       'allAddedNotice',
       'behaviours',
       'cardOptions',
+      'conditions',
       'dataSource',
       'dynamicValues',
       'label',
@@ -877,7 +901,7 @@ describe('the family’s editors, swept under es', () => {
     await screen.findByRole('textbox', { name: 'Nombre de la etapa' });
     await waitFor(() =>
       expect(harness.outline().map((entry) => entry.title)).toContain(
-        'Guía para quien realiza la entrevista',
+        'Guía para la persona entrevistadora',
       ),
     );
     expectNoLocaleLeaks(`${family} at rest`, researcherWords(harness));
@@ -901,7 +925,7 @@ describe('the family’s editors, swept under es', () => {
     await closeDialog(harness);
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Editar pregunta' }),
+      screen.getByRole('button', { name: 'Edit pregunta' }),
     );
     await screen.findByRole('dialog');
     expectNoLocaleLeaks(
@@ -916,7 +940,7 @@ describe('the family’s editors, swept under es', () => {
     await closeDialog(harness);
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Eliminar pregunta' }),
+      screen.getByRole('button', { name: 'Delete pregunta' }),
     );
     await screen.findByRole('dialog');
     expectNoLocaleLeaks(

@@ -28,6 +28,7 @@ import Node from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { resolveNodeShapeReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -42,6 +43,7 @@ import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
+import { useCustomShapeSvgs } from '../../hooks/useCustomShapeSvgs';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useStageSubjectName } from '../../hooks/useStageSubjectName';
@@ -52,6 +54,7 @@ import {
   useResolveLocalizedMessage,
   useResolveLocalizedString,
 } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import { getNodeVariables } from '../../selectors/interface';
 import {
   getSearchOptions,
@@ -81,8 +84,9 @@ import useItems, { type UseItemElement } from './useItems';
 const ErrorMessage = () => (
   <div className="flex flex-1 flex-col items-center justify-center gap-2">
     <Icon name="warning" aria-hidden />
-    <Heading level="h2" className="sr-only">
-      <AppMessage message={interfaceMessages.errorHeading} />
+    <Heading level="h2" className="sr-only" lang="en">
+      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+      {'Something went wrong'}
     </Heading>
     <Paragraph>
       <AppMessage message={interfaceMessages.externalDataError} />
@@ -112,8 +116,10 @@ const keyExtractor = (item: UseItemElement) => item.id;
 const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const intl = useAppIntl();
   const { stage } = props;
+  // The stage's own words, and Network Canvas's where the stage holds none.
+  const wording = useStageWording(stage);
   const { text: panelTitleText, parts: panelTitleParts } = useLocalizedString(
-    stage.panelTitle,
+    wording.text('panelTitle'),
   );
   const panelTitle =
     panelTitleParts === undefined ? (
@@ -123,11 +129,12 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     );
   const subject = useStageSubjectName();
   const resolveMessage = useResolveLocalizedMessage();
-  const allAddedNotice = resolveMessage(stage.allAddedNotice, {
+  const allAddedNotice = resolveMessage(wording.text('allAddedNotice'), {
     subject,
   }).text;
   // The protocol's interface text words the search (`search.searchLabel`).
   const searchLabel = intl.formatMessage(commonMessages.search);
+  const loadingStatus = 'Loading…';
 
   const { isLastPrompt } = usePrompts();
 
@@ -147,6 +154,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   const dropNodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
+  const shapeSvgs = useCustomShapeSvgs();
 
   const { status: itemsStatus, items, excludeItems } = useItems(props);
 
@@ -277,8 +285,8 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     stageNodeCount,
     minNodes,
     maxNodes,
-    minNodesNotice: stage.minNodesNotice,
-    maxNodesNotice: stage.maxNodesNotice,
+    minNodesNotice: wording.shown('minNodesNotice'),
+    maxNodesNotice: wording.shown('maxNodesNotice'),
     isLastPrompt,
   });
 
@@ -395,7 +403,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const sourceCollectionId = `source-nodes-${useId()}`;
 
   const { dragAndDropHooks } = useDragAndDrop<UseItemElement>({
-    announcedName: intl.formatMessage(interfaceMessages.availableRosterNodes),
+    announcedName: 'Available Roster Nodes',
     getItems: (keys) => [{ type: 'SOURCE_NODES', keys }],
     acceptTypes: ['ADDED_NODES'],
     onDrop: (e) => {
@@ -420,8 +428,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           shape={
             nodeTypeDefinition && item.data
               ? resolveNodeShape(
-                  nodeTypeDefinition.shape,
+                  nodeTypeDefinition,
                   item.data[entityAttributesProperty],
+                  shapeSvgs,
                 )
               : undefined
           }
@@ -461,7 +470,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         defaultBasis={50}
         minSizePx={SOURCE_PANEL_MIN_WIDTH}
         className="min-h-0 w-full flex-1 basis-full"
-        aria-label={intl.formatMessage(interfaceMessages.resizePanels)}
+        aria-label="Resize panel and node list areas"
       >
         <Panel title={panelTitle} panelNumber={0} noCollapse>
           {/*
@@ -494,9 +503,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                 disabledKeys={disabledKeys}
                 virtualized
                 emptyState={emptyState}
-                aria-label={intl.formatMessage(
-                  interfaceMessages.availableItems,
-                )}
+                aria-label="List of available items to add"
                 id={sourceCollectionId}
               >
                 {(CollectionElements) => (
@@ -504,7 +511,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     <div>
                       {searchOptions && (
                         <div className="flex flex-wrap gap-2 p-2">
-                          <CollectionFilterInput placeholder={searchLabel} />
+                          <CollectionFilterInput
+                            placeholder={searchLabel}
+                            loadingText={loadingStatus}
+                            indexingText={loadingStatus}
+                          />
                         </div>
                       )}
                       {sortableProperties && sortableProperties.length > 0 && (
@@ -534,10 +545,12 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                   <DropOverlay
                     dropTargetId={sourceDropTargetId}
                     nodeColor={dropNodeColor}
-                    nodeShape={nodeTypeDefinition?.shape.default}
-                    message={intl.formatMessage(runtimeMessages.dropToRemove, {
-                      subject,
-                    })}
+                    nodeShape={resolveNodeShapeReference(
+                      nodeTypeDefinition?.shape.default,
+                      nodeTypeDefinition?.customShapes,
+                      shapeSvgs,
+                    )}
+                    message="Drop here to remove"
                   />
                 )}
               </AnimatePresence>
@@ -551,7 +564,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           accepts={['SOURCE_NODES']}
           onDrop={handleAddNode}
           items={nodesForPrompt}
-          announcedName={intl.formatMessage(interfaceMessages.addedNodes)}
+          announcedName="Added Nodes"
         />
       </ResizableFlexPanel>
     </div>

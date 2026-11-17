@@ -58,7 +58,7 @@ The fourth is **connectivity**. If you plan to use **Interviewer** with internet
 
 ### Laptop
 
-✅ Familiar environment for researchers and and participants.  
+✅ Familiar environment for researchers and participants.  
 ✅ Simple to manage protocols and interview data.  
 ✅ Able to run other general purpose software if required.  
 ✅ Easy to purchase through IT procurement processes.  

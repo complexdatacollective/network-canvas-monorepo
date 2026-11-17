@@ -380,12 +380,12 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Languages" must match the name of the Architect page where languages are managed.',
   },
-  schema9BlankFieldQuestions: {
-    id: 'protocolValidation.migrationNotes.schema9.blankFieldQuestions',
+  schema9BlankRequiredContent: {
+    id: 'protocolValidation.migrationNotes.schema9.blankRequiredContent',
     defaultMessage:
-      'Form field questions can no longer be empty. A form field whose question was empty or contained only spaces now uses the name of its attribute as the question.',
+      "A protocol cannot be upgraded while a prompt or question, the value of an option of an ordinal or categorical attribute, or the name of a node type, edge type or attribute is empty or contains only spaces, because the upgrade cannot know what it should be. This includes form field questions, the label given to a field of a Network Composer form, a Family Pedigree's prompt and nomination prompts, and the question a Categorical Bin stage asks participants to describe an answer that is not listed. Correct each in the version of Architect that made the protocol, then upgrade it.",
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A form field is one question in a form; its attribute is the piece of information the question collects.',
+      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: such a protocol fails to upgrade until the researcher fixes it. A prompt is the instruction or question shown at the top of a stage. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. A node type is a kind of person or thing participants name; an edge type is a kind of relationship; an attribute is a piece of information recorded about them. A form field is one question in a form. Network Composer is the name of an interface (stage type); a field of its form may be given a label, which participants read in place of a question; a field given no label at all shows its attribute\'s name and does not block the upgrade. Family Pedigree and Categorical Bin are names of interfaces (stage types); a Family Pedigree\'s nomination prompts ask who in the family something applies to; a Categorical Bin can have a bin for answers that are not listed, which asks the participant to describe their answer. "Architect" is an app name.',
   },
   schema9EncryptedAttributes: {
     id: 'protocolValidation.migrationNotes.schema9.encryptedAttributes',
@@ -411,9 +411,9 @@ export const migrationNoteMessages = defineMessages({
   schema9OptionValueNames: {
     id: 'protocolValidation.migrationNotes.schema9.optionValueNames',
     defaultMessage:
-      'The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. An empty value is replaced by the option\'s label or, when there is none, by "Option" followed by the option\'s position. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.',
+      'The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.',
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: optionValueNames. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. "One standard form" means Unicode normalization (the same letter is always stored with the same characters). "As above" refers to the previous bullet, which says options sharing a value are merged into the first. Skip logic decides whether a stage is shown; a filter decides which people a stage lists; node shapes are the shapes nodes are drawn in according to an answer. Keep "Option" in English and in double quotes: it is the literal text written into protocol data.',
+      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: optionValueNames. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. "One standard form" means Unicode normalization (the same letter is always stored with the same characters). "As above" refers to the previous bullet, which says options sharing a value are merged into the first. Skip logic decides whether a stage is shown; a filter decides which people a stage lists; node shapes are the shapes nodes are drawn in according to an answer.',
   },
   schema9NonBlankText: {
     id: 'protocolValidation.migrationNotes.schema9.nonBlankText',
@@ -432,9 +432,9 @@ export const migrationNoteMessages = defineMessages({
   schema9OtherBinText: {
     id: 'protocolValidation.migrationNotes.schema9.otherBinText',
     defaultMessage:
-      'On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other\'s text, or "Other" for the label and "Please specify" for the question.',
+      'On a Categorical Bin stage, the label of the bin for answers not listed must now contain some text. Where it contained only spaces, it now reads "Other".',
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance: otherBinText. Categorical Bin is the name of an interface (stage type) where participants sort people into bins; one bin can collect answers that are not listed, and then asks the participant to describe their answer. "Other" and "Please specify" are literal English defaults written into protocol data: keep them in English.',
+      'One nested Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: otherBinText. Categorical Bin is the name of an interface (stage type) where participants sort people into bins; one bin can collect answers that are not listed. "Other" is a literal English default written into protocol data: keep it in English and in double quotes.',
   },
   schema9TieStrengthDeclineLabel: {
     id: 'protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel',
@@ -453,9 +453,30 @@ export const migrationNoteMessages = defineMessages({
   schema9ParticipantTextNotBlank: {
     id: 'protocolValidation.migrationNotes.schema9.participantTextNotBlank',
     defaultMessage:
-      'Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator\'s form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone; a Family Pedigree\'s prompt now uses the name of the stage, and each of its nomination prompts uses the name of its attribute. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.',
+      'Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator\'s form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.',
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance: participantTextNotBlank. Narrative, Name Generator, Family Pedigree and Information are names of interfaces (stage types). A Narrative preset is a saved view of the network that participants can switch between. A node is a person or thing participants name; its node type is the kind of node, such as person. A Family Pedigree is a stage where participants draw their family tree; its nomination prompts then ask who in the family something applies to, each setting an attribute. A hint is extra guidance under a question; a scale is a slider participants answer on. "Preset", "Preset 1", "Add" and "Add Person" are literal English defaults written into protocol data: keep them in English.',
+      'One nested Markdown bullet in schema 9 migration approval guidance: participantTextNotBlank. Narrative, Name Generator and Information are names of interfaces (stage types). A Narrative preset is a saved view of the network that participants can switch between. A node is a person or thing participants name; its node type is the kind of node, such as person. A hint is extra guidance under a question; a scale is a slider participants answer on. "Preset", "Preset 1", "Add" and "Add Person" are literal English defaults written into protocol data: keep them in English.',
+  },
+  schema9StageNames: {
+    id: 'protocolValidation.migrationNotes.schema9.stageNames',
+    defaultMessage:
+      'The name of a stage must now contain some text. Where it was empty or contained only spaces, it now reads "Stage" followed by the stage\'s position, such as "Stage 3".',
+    description:
+      'One nested Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol. A stage is one screen or step of an interview; its name is shown to participants in the list of stages. "Stage" and "Stage 3" are literal English defaults written into protocol data: keep them in English and in double quotes.',
+  },
+  schema9OptionLabels: {
+    id: 'protocolValidation.migrationNotes.schema9.optionLabels',
+    defaultMessage:
+      'The label of each option of a categorical, ordinal or Boolean attribute must now contain some text. Where it was empty or contained only spaces, it now shows the option\'s value; on a Boolean attribute it reads "Yes" for the true choice and "No" for the false one instead. Answers already recorded are not changed.',
+    description:
+      'One nested Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol. A categorical, ordinal or Boolean attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. A Boolean attribute is a yes-or-no question, and each of its two options is a choice. "Yes" and "No" are literal English defaults written into protocol data: keep them in English and in double quotes.',
+  },
+  schema9TitlesAndLabels: {
+    id: 'protocolValidation.migrationNotes.schema9.titlesAndLabels',
+    defaultMessage:
+      'Other titles and labels that participants see must now contain some text. Where one was empty or contained only spaces, the title of a side panel on a Name Generator stage now reads "Panel" followed by its position, such as "Panel 1"; the label of a property shown on the cards of a Name Generator Roster stage, or used to sort them, now uses the name of its attribute; and the label of a condition on a Narrative Pedigree stage now uses the name of the attribute that records it, followed by a number if another condition on the stage already has that label.',
+    description:
+      'One nested Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol. "Other" means titles and labels besides those in the bullets before it. Name Generator, Name Generator Roster and Narrative Pedigree are names of interfaces (stage types); translate them as the rest of the app does. A side panel is a list beside a Name Generator stage from which participants can add people. A Name Generator Roster shows people from a list as cards, each card showing some of the person\'s properties, and lets participants sort the cards by a property. A Narrative Pedigree shows a family tree and which relatives have a condition (an illness); each condition is recorded by an attribute. "Panel" and "Panel 1" are literal English defaults written into protocol data: keep them in English and in double quotes.',
   },
   schema9EncryptedAttributeRules: {
     id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
@@ -526,6 +547,13 @@ export const migrationNoteMessages = defineMessages({
       'A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".',
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Name Generator Roster" is the name Architect gives the interface; use the same name Architect uses for it. "Available to add" is the English text written into the protocol: keep it in English, in quotation marks.',
+  },
+  schema9SingleLineText: {
+    id: 'protocolValidation.migrationNotes.schema9.singleLineText',
+    defaultMessage:
+      'Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A stage is one step of an interview; a prompt is the question or instruction a stage shows above its activity; a form field is one question in a form, and its hint is extra guidance under the question; an answer is one of the fixed options a participant chooses from. A line break is where text continues on a new line.',
   },
   schema9PedigreeWording: {
     id: 'protocolValidation.migrationNotes.schema9.pedigreeWording',
@@ -633,7 +661,7 @@ const migrationNoteSets: Record<
       migrationNoteMessages.schema9FinishStage,
       migrationNoteMessages.schema9EncryptedAttributes,
       migrationNoteMessages.schema9AttributeNames,
-      migrationNoteMessages.schema9BlankFieldQuestions,
+      migrationNoteMessages.schema9BlankRequiredContent,
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
       migrationNoteMessages.schema9DuplicateOptionValues,
       migrationNoteMessages.schema9OptionValueNames,
@@ -644,6 +672,9 @@ const migrationNoteSets: Record<
           migrationNoteMessages.schema9TieStrengthDeclineLabel,
           migrationNoteMessages.schema9InformationTitle,
           migrationNoteMessages.schema9ParticipantTextNotBlank,
+          migrationNoteMessages.schema9StageNames,
+          migrationNoteMessages.schema9OptionLabels,
+          migrationNoteMessages.schema9TitlesAndLabels,
         ],
       },
       migrationNoteMessages.schema9EncryptedAttributeRules,
@@ -660,6 +691,7 @@ const migrationNoteSets: Record<
         ],
       },
       migrationNoteMessages.schema9RosterPanelTitle,
+      migrationNoteMessages.schema9SingleLineText,
     ],
   },
 };

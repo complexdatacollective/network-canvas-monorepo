@@ -540,10 +540,16 @@ export const AsyncConfirm: StoryObj<Meta<AsyncConfirmArgs>> = {
 
     const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
     await waitFor(() => expect(cancel).toBeDisabled());
+    // The primary keeps its label while it runs, and cannot be pressed again.
+    await expect(
+      within(dialog).getByRole('button', { name: 'Finish Interview' }),
+    ).toBeDisabled();
     await expect(
       within(dialog).queryByRole('button', { name: 'Close' }),
     ).not.toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
+    await expect(dialog).toBeInTheDocument();
+    await userEvent.click(document.body);
     await expect(dialog).toBeInTheDocument();
     await expect(args.onResult).not.toHaveBeenCalled();
 

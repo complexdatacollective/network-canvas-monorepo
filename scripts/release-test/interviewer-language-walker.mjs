@@ -205,10 +205,6 @@ function message(dir, locale, id) {
 }
 const appMessage = (locale, id) =>
   message('apps/interviewer/src/locales', locale, id);
-// The interview ships only its English source: what it shows comes from the
-// protocol, and the accessible names of its icon controls are English.
-const interviewMessage = (id) =>
-  message('packages/interview/src/locales', 'en', id);
 
 // The archive is BUILT from the reviewable fixture at run time — a committed
 // binary could silently drift from the JSON reviewers inspect.
@@ -239,7 +235,6 @@ try {
     appMessage(locale, 'interviewer.settingsDialog.language');
     appMessage(locale, 'interviewer.language.label');
   }
-  interviewMessage('interview.navigation.nextStep');
 } catch (err) {
   setupFailure(
     `setup failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -494,7 +489,8 @@ function readSession(sessionId) {
 
 // The Next arrow's accessible name, English in every interview: a browser's
 // French or German never reaches the interview.
-const nextStepName = () => interviewMessage('interview.navigation.nextStep');
+// Screen-reader-only text is English in every interview language.
+const nextStepName = () => 'Next Step';
 
 // A language's own name as the deployed browser gives it, which is what the
 // language chooser lists it as.

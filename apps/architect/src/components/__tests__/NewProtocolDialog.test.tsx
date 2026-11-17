@@ -48,11 +48,11 @@ describe('NewProtocolDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('lets an RTL name set its own base direction', () => {
+  it('leaves a typed name to take its own direction', () => {
     renderDialog();
-    // `Field` strips validation props but forwards everything else to the
-    // control, so this reaches the real <input>.
-    expect(nameInput()).toHaveAttribute('dir', 'auto');
+    // A fixed `dir` would override the field's own-direction layout, which
+    // fresco-ui's TextEntryDirection stories measure.
+    expect(nameInput()).not.toHaveAttribute('dir');
   });
 
   it('blocks creation of an over-limit name and explains why', async () => {

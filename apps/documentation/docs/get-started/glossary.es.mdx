@@ -1,0 +1,170 @@
+---
+title: Glosario
+navOrder: 4
+toc: true
+translatedFrom: 65c29cc3f9f5a8dcedf7206600ebe969efc7b0b9
+---
+
+Esta página ofrece definiciones breves y en lenguaje sencillo de los términos
+que encontrarás a lo largo de esta documentación. Te será útil si realizas
+entrevistas o analizas datos y te encuentras con un término del diseño de
+protocolos que no conoces. Cada entrada enlaza con la página que trata el
+concepto a fondo, así que puedes empezar aquí y profundizar cuando lo
+necesites.
+
+## Álter {#alter}
+
+Una persona (u otra entidad) que cada participante nombra como parte de su red
+durante una entrevista; en plural, «álteres». Los álteres se crean en las
+etapas de [generador de nombres](#name-generator), y cada álter se almacena
+como un [nodo](#node) de la red. En los datos exportados, cada álter queda
+vinculado al [ego](#ego) que lo nombró: consulta [Trabajar con los
+datos](/es/analyze-data/working-with-data).
+
+## Atributo {#attribute}
+
+El valor que toma una [variable](#variable) para una entidad concreta; por ejemplo, la edad registrada para un álter. En la versión en inglés de Architect, la definición que figura en el [libro de códigos](#codebook) se llama variable, y el valor almacenado en cada nodo, atributo. La versión en español de Architect llama «atributo» también a la definición, así que en sus pantallas «atributo» designa el campo que defines, y lo que se guarda en cada nodo es el valor de ese atributo. Consulta [Libro de códigos](/es/design-protocols/key-concepts/codebook).
+
+## Ego {#ego}
+
+La persona participante: aquella sobre la que trata una entrevista de Network
+Canvas y cuya red personal se recoge en la entrevista. Los datos sobre el ego pueden
+recopilarse con la interfaz
+[«Formulario del ego»](/es/design-protocols/interface-documentation/ego-form)
+y aparecen en los [datos exportados](/es/analyze-data/data-export) como una
+fila por ego.
+
+## Entidad {#entity}
+
+El término que engloba los elementos sobre los que una entrevista registra datos: el
+ego, los nodos y los vínculos. El [libro de códigos](#codebook) organiza las
+variables de tu protocolo por tipo de entidad. Consulta
+[Libro de códigos](/es/design-protocols/key-concepts/codebook#entity-types).
+
+## Esquema {#schema}
+
+El conjunto de reglas que define cómo es un archivo de protocolo válido. Los esquemas están numerados (ese número es la **versión del esquema** de un protocolo), y esa versión determina qué aplicaciones pueden abrir el protocolo. Las versiones actuales de Architect, Fresco e Interviewer abren
+protocolos creados para versiones anteriores del esquema sin actualizarlos.
+Architect ofrece actualizar un protocolo antiguo a la versión más reciente del
+esquema o seguir editándolo como esquema 8, y Fresco e Interviewer ejecutan los
+protocolos del esquema 8 tal como están y migran automáticamente los del
+esquema 7 al esquema 8. Consulta [Información sobre el esquema de
+protocolo](/es/get-started/protocol-schema-information).
+
+## Etapa {#stage}
+
+Cada una de las pantallas que ve la persona participante durante una entrevista. Una
+entrevista se compone de una o varias etapas, y cada etapa es una instancia de
+una [interfaz](#interface) configurada para recopilar datos concretos.
+Consulta [Interfaces](/es/design-protocols/key-concepts/interfaces).
+
+## Generador de nombres {#name-generator}
+
+Una interfaz que pide a cada participante que nombre a quienes forman parte de su red,
+con lo que se crean [álteres](#alter). Hay varias interfaces de tipo generador
+de nombres, entre ellas una variante de adición rápida, otra con formularios y otra a partir de una [lista](#roster). Consulta [Interfaces de tipo generador de
+nombres](/es/design-protocols/key-concepts/interfaces#name-generator-interfaces).
+
+## ID del caso {#case-id}
+
+Una etiqueta breve (letras y números, de hasta 30 caracteres) que se introduce
+al comienzo de cada entrevista para ayudarte a llevar el control de las sesiones de entrevista e identificarlas de una forma que tenga sentido para tu estudio. Los ID de casos aparecen en todas las pantallas de Interviewer que muestran sesiones de entrevista, y se incluyen en todos los datos exportados. Consulta [Usar
+Interviewer](/es/collect-data/interviewer/using-interviewer#entering-a-case-id).
+
+## Interfaz {#interface}
+
+Un instrumento de recopilación de datos diseñado para una tarea concreta, como
+nombrar álteres, trazar vínculos o completar un formulario. Las interfaces se
+configuran en Architect y se añaden al protocolo, donde se convierten en
+[etapas](#stage). Consulta
+[Interfaces](/es/design-protocols/key-concepts/interfaces) para ver la lista
+completa de interfaces disponibles.
+
+## Intérprete de nombres {#name-interpreter}
+
+Una interfaz que recopila información adicional sobre álteres o vínculos que ya
+existen en la entrevista; por ejemplo, clasificar los álteres en categorías o
+completar un formulario sobre cada uno. Consulta [Interfaces de tipo
+intérprete de
+nombres](/es/design-protocols/key-concepts/interfaces#name-interpreter-interfaces).
+
+## Libro de códigos {#codebook}
+
+El registro central de cada tipo de entidad (ego, nodo y vínculo) y de cada
+variable definida en tu protocolo. Architect crea el libro de códigos automáticamente mientras trabajas; el libro de códigos te ayuda a mantener la coherencia del
+protocolo y a planificar el análisis de los datos. Consulta [Libro de
+códigos](/es/design-protocols/key-concepts/codebook).
+
+## Lista {#roster}
+
+Una lista predefinida, preparada antes de la entrevista, en la que cada fila
+puede convertirse en un nodo de la red; por ejemplo, el alumnado de una clase
+o la plantilla de una oficina. Cada participante selecciona álteres de una
+lista con la interfaz [«Generador de nombres a partir de una
+lista»](/es/design-protocols/interface-documentation/name-generator-roster).
+Consulta [Trabajar con listas](/es/design-protocols/tutorials/working-with-rosters)
+para ver estrategias y formatos de archivo.
+
+## Nodo {#node}
+
+Una entidad individual de una red. Los nodos suelen representar a las personas
+que ha nombrado cada participante ([álteres](#alter)), pero puedes definir
+tipos de nodo que representen cualquier cosa que necesite tu estudio; por
+ejemplo, lugares. Consulta [Libro de
+códigos](/es/design-protocols/key-concepts/codebook) para ver cómo se definen
+los tipos de nodo.
+
+## Pregunta {#prompt}
+
+Una pregunta o instrucción dirigida a cada participante que explica qué datos
+debe proporcionar, o cómo completar la tarea, en una etapa determinada. Una
+etapa puede contener una sola pregunta o varias. Consulta
+[Preguntas](/es/design-protocols/key-concepts/prompts).
+
+## Protocolo {#protocol}
+
+La descripción completa de tu entrevista: las etapas, las preguntas y la
+lógica que contiene, junto con los recursos que utiliza. Los protocolos se
+crean en Architect y se trasladan entre aplicaciones como archivos
+`.netcanvas`. Consulta [El archivo de
+protocolo](/es/design-protocols/key-concepts/the-protocol-file).
+
+## Recurso {#resource}
+
+Un archivo o credencial externos que se usan dentro de tu protocolo, como
+imágenes, audio, vídeo, datos de una lista o una clave de API. Los recursos
+van incorporados en el propio protocolo. Consulta
+[Recursos](/es/design-protocols/key-concepts/resources).
+
+## Sociograma {#sociogram}
+
+El componente de representación visual de una entrevista de redes: cada
+participante coloca a sus álteres y traza vínculos entre ellos para mostrar
+las relaciones dentro de su red personal. Consulta
+[Sociograma](/es/design-protocols/interface-documentation/sociogram).
+
+## Texto dinámico {#piped-text}
+
+Texto cuyo valor cambia dinámicamente según los datos o el contexto de la
+entrevista (en inglés, _piped text_). Al diseñar la entrevista incluyes un
+marcador de posición, que se sustituye por el valor real cuando la persona
+participante ve el texto: una respuesta anterior, la etiqueta del
+[nodo](#node) sobre el que trata una pregunta o la fecha de hoy. El texto
+dinámico permite que una [pregunta](#prompt) de la etapa o una pregunta de un formulario nombre al álter al que se refiere. Consulta [Texto
+dinámico](/es/design-protocols/piped-text).
+
+## Variable {#variable}
+
+Un campo de datos que defines en tu protocolo para recopilar información sobre el ego, sus álteres o los vínculos; por ejemplo, la edad de cada álter. En las pantallas de Architect, las variables se llaman «atributos». Cada
+variable tiene un tipo (como texto, número, booleano o categórico) que
+determina cómo se recopila y cómo aparece en los datos exportados. Consulta
+[Variables](/es/design-protocols/key-concepts/variables).
+
+## Vínculo {#edge}
+
+Una conexión, o lazo, entre dos [nodos](#node); por ejemplo, una amistad que
+una persona participante traza entre dos álteres en un
+[sociograma](#sociogram). Un protocolo puede definir varios tipos de vínculo,
+y los vínculos pueden tener sus propias variables. Consulta [Libro de
+códigos](/es/design-protocols/key-concepts/codebook) para ver cómo se definen
+los tipos de vínculo.

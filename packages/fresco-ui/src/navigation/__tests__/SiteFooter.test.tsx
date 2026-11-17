@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { render, screen, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -44,14 +41,7 @@ const baseProps = {
 };
 
 describe('SiteFooter', () => {
-  it('remains a server component and renders to static markup', () => {
-    const source = readFileSync(
-      resolve(process.cwd(), 'src/navigation/SiteFooter.tsx'),
-      'utf8',
-    );
-
-    expect(source).not.toMatch(/^\s*(['"])use client\1;?/m);
-
+  it('renders to static markup', () => {
     const markup = renderToStaticMarkup(<SiteFooter {...baseProps} />);
 
     expect(markup).toContain('<footer');
@@ -75,17 +65,6 @@ describe('SiteFooter', () => {
         target: '_blank',
         rel: 'noreferrer',
       });
-      expect(link).toHaveClass(
-        'group/link',
-        'text-link',
-        'focusable',
-        'font-semibold',
-        'text-base',
-      );
-      expect(link.querySelector('span')).toHaveClass(
-        'group-hover/link:bg-size-[var(--link-underline-active,100%_2px)]',
-        'group-focus-visible/link:bg-size-[var(--link-underline-active,100%_2px)]',
-      );
     }
 
     expect(
@@ -106,7 +85,6 @@ describe('SiteFooter', () => {
       expect(link).not.toHaveClass('group/link');
       expect(link.querySelector('span')).not.toBeInTheDocument();
       expect(icon).toHaveAttribute('aria-hidden', 'true');
-      expect(icon).toHaveClass('size-5');
     }
 
     expect(

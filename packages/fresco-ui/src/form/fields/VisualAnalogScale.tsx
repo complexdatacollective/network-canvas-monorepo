@@ -4,17 +4,8 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
-
+import { type PresentationalText } from '../../PresentationalText';
 import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
-import {
-  controlLabelVariants,
   sliderControlVariants,
   sliderRootVariants,
   sliderThumbSurfaceVariants,
@@ -26,6 +17,7 @@ import { type FieldValueFormat, useFieldValueFormat } from '../ContentLocale';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
+import ScaleLabel from './scale/ScaleLabel';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import { useSliderActive } from './scale/useSliderActive';
 
@@ -70,36 +62,9 @@ function formatVasValue(
   });
 }
 
-const messages = defineMessages({
-  sliderLabel: {
-    id: 'frescoUi.visualAnalogScale.sliderLabel',
-    defaultMessage: 'Visual analog scale value',
-    description:
-      'Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control.',
-  },
-  /**
-   * What the scale announces before anything has been chosen.
-   *
-   * A native `input[type=range]` always carries an `aria-valuenow`, and the
-   * thumb has to rest somewhere, so an unanswered scale would otherwise
-   * announce its resting midpoint as though the participant had chosen it —
-   * leaving a required scale sounding answered while validation still blocks
-   * the participant. Assistive technology announces `aria-valuetext` in
-   * preference to `aria-valuenow`, so this is what actually reaches a screen
-   * reader, and it matches the muted resting thumb a sighted participant sees.
-   */
-  unansweredValue: {
-    id: 'frescoUi.visualAnalogScale.unansweredValue',
-    defaultMessage: 'No value chosen yet',
-    description:
-      'Announced in place of a number while the participant has not yet chosen a position on the scale.',
-  },
-});
-
 export default function VisualAnalogScaleField(
   props: VisualAnalogScaleFieldProps,
 ) {
-  const intl = useAppIntl();
   const format = useFieldValueFormat();
   const {
     className,
@@ -244,14 +209,16 @@ export default function VisualAnalogScaleField(
                 aria-label={
                   ariaLabelledBy
                     ? undefined
-                    : (ariaLabel ?? intl.formatMessage(messages.sliderLabel))
+                    : (ariaLabel ?? 'Visual analog scale value')
                 }
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={(_, currentValue) =>
                   hasValue
                     ? formatVasValue(format, currentValue, min, max)
-                    : intl.formatMessage(messages.unansweredValue)
+                    : // aria-valuetext wins over aria-valuenow, so an unanswered
+                      // scale announces this instead of its resting midpoint.
+                      'No value chosen yet'
                 }
               >
                 <motion.div
@@ -280,30 +247,10 @@ export default function VisualAnalogScaleField(
         {(minLabel ?? maxLabel) && (
           <div className="relative mt-2 flex justify-between px-3">
             {minLabel && (
-              <div
-                className={cx(
-                  controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-left',
-                )}
-                {...presentationalTextProps(minLabel)}
-              >
-                <RenderMarkdown>
-                  {presentationalTextValue(minLabel)}
-                </RenderMarkdown>
-              </div>
+              <ScaleLabel label={minLabel} className="max-w-24 text-start" />
             )}
             {maxLabel && (
-              <div
-                className={cx(
-                  controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-right',
-                )}
-                {...presentationalTextProps(maxLabel)}
-              >
-                <RenderMarkdown>
-                  {presentationalTextValue(maxLabel)}
-                </RenderMarkdown>
-              </div>
+              <ScaleLabel label={maxLabel} className="max-w-24 text-end" />
             )}
           </div>
         )}

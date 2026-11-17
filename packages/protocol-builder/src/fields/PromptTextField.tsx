@@ -4,13 +4,17 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import Section from '@codaco/fresco-ui/Section';
+import { promptSchema } from '@codaco/protocol-validation';
 
 import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
 import type { RowPreviewProps } from '../form/rowDialog.tsx';
 import { asLocalizedString } from '../localization/localizedText.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
+import { markdownTextShapeAt } from '../localization/textShape.ts';
 import { DynamicTextPreview } from './DynamicTextPreview.tsx';
 import { LocalizedRichTextField } from './LocalizedStringField.tsx';
+
+const PROMPT_TEXT_SHAPE = markdownTextShapeAt(promptSchema, ['text']);
 
 const WRITE_THE_QUESTION = createMessageError(
   censusMessages.promptTextRequired,
@@ -84,11 +88,11 @@ export function PromptTextField({
       <Field<typeof LocalizedRichTextField>
         name="text"
         component={LocalizedRichTextField}
+        shape={PROMPT_TEXT_SHAPE}
         dynamicValues="prompt"
         label={intl.formatMessage(censusMessages.promptTextLabel)}
         {...(hint === undefined ? {} : { hint })}
         placeholder={placeholder}
-        singleLine
         initialValue={asLocalizedString(item.text)}
         required={WRITE_THE_QUESTION}
       />

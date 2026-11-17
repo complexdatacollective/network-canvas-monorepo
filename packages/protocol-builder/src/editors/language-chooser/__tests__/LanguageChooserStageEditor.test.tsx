@@ -112,21 +112,16 @@ describe('the editor for the stage where a participant chooses a language', () =
     await harness.roundTrip();
   });
 
-  it('starts a new stage with the heading Network Canvas supplies, in each language it has', async () => {
+  it('saves a new stage in each language without the heading Network Canvas supplies', async () => {
     const harness = renderStageEditor({
       create: { type: 'LanguageChooser', position: 0 },
       editor: mountedAs(languageChooserStageEditor.LanguageChooser),
       localization: ENGLISH_AND_FRENCH,
     });
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
-
+    // The interview shows the heading for a stage that holds none.
     const saved = await harness.submit();
-    expect(saved?.stageDocument).toMatchObject({
-      title: {
-        [FIXTURE_LANGUAGE]: 'Choose a language',
-        fr: 'Choisissez une langue',
-      },
-    });
+    expect(saved?.stageDocument).not.toHaveProperty('title');
   });
 
   it('saves the heading the researcher writes', async () => {
@@ -153,7 +148,7 @@ describe('the editor for the stage where a participant chooses a language', () =
     });
   });
 
-  it('saves a new stage with nothing but the name it proposes and its heading', async () => {
+  it('saves a new stage with nothing but the name it proposes', async () => {
     const harness = renderStageEditor({
       create: { type: 'LanguageChooser', position: 0 },
       editor: mountedAs(languageChooserStageEditor.LanguageChooser),
@@ -167,23 +162,30 @@ describe('the editor for the stage where a participant chooses a language', () =
       id: expect.any(String),
       type: 'LanguageChooser',
       label: { [FIXTURE_LANGUAGE]: escapeMessageText(proposed) },
-      title: { [FIXTURE_LANGUAGE]: 'Choose a language' },
     });
   });
 
-  it('starts a new stage without a heading in a language Network Canvas has no wording in', async () => {
+  it('starts a new stage without a heading or a proposed name in a language Network Canvas has no wording in', async () => {
+    const user = userEvent.setup();
     const harness = renderStageEditor({
       create: { type: 'LanguageChooser', position: 0 },
       editor: mountedAs(languageChooserStageEditor.LanguageChooser),
       localization: { defaultLocale: 'en-GB', locales: ['en-GB'] },
     });
-    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+    // en-GB is not a language Network Canvas supplies wording in, so no name
+    // is proposed: the researcher names the stage.
+    await waitFor(() =>
+      expect(stageNameInput()).not.toHaveAttribute('readonly'),
+    );
+    expect(stageNameInput()).toHaveValue('');
+    await user.type(stageNameInput(), 'Language');
 
     const saved = await harness.submit();
     // Built-in wording may hold no text while the protocol is being written;
     // the researcher writes it before the protocol can be downloaded.
     expect(saved?.stageDocument).toEqual(
-      expect.objectContaining({ title: {} }),
+      expect.objectContaining({ label: { 'en-GB': 'Language' } }),
     );
+    expect(saved?.stageDocument).not.toHaveProperty('title');
   });
 });

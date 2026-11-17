@@ -55,7 +55,14 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['dynamicValues', 'form', 'label', 'prompts', 'subject'],
+    ownedKeys: [
+      'conditions',
+      'dynamicValues',
+      'form',
+      'label',
+      'prompts',
+      'subject',
+    ],
   },
   {
     interfaceName: 'FamilyPedigree',
@@ -78,6 +85,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     ],
     opensWording: true,
     ownedKeys: [
+      'conditions',
       'dynamicValues',
       'edgeConfiguration',
       'framing',

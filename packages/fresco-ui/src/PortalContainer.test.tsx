@@ -20,15 +20,6 @@ describe('PortalContainerProvider', () => {
     expect(result.current).toBeNull();
   });
 
-  it('renders children', () => {
-    render(
-      <PortalContainerProvider>
-        <span data-testid="child">hello</span>
-      </PortalContainerProvider>,
-    );
-    expect(screen.getByTestId('child')).toHaveTextContent('hello');
-  });
-
   it('does not loop when content below the provider suspends once the container exists', async () => {
     // Detaching a ref inside a hidden Suspense boundary calls it with null. If
     // that clears the container, the content stops suspending, is revealed and

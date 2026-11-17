@@ -59,7 +59,7 @@ export const CustomTrigger: Story = {
       {...args}
       trigger={
         <Button size="sm">
-          <HelpCircle className="mr-2 size-4" />
+          <HelpCircle className="me-2 size-4" />
           Help
         </Button>
       }

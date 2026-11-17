@@ -4,7 +4,8 @@
  * on to their centre, under the outline PersonNode paints (fresco-ui's Node
  * at size `sm`: a circle filling its box; a square whose corners are rounded
  * at 24px; a diamond, a square of the same corners scaled to 0.85 and turned
- * 45°), and shows no corner on it; a line ending on a line lands on its
+ * 45°; a custom drawing, the box it fills, where the lines under it are
+ * hidden), and shows no corner on it; a line ending on a line lands on its
  * centreline.
  */
 import { EDGE_WIDTH, SYMBOL_CORNER_RADIUS_PX } from '../layoutDimensions';
@@ -44,6 +45,14 @@ export function outsideOutline(
   const dx = Math.abs(p.x - centre.x);
   const dy = Math.abs(p.y - centre.y);
   if (shape === 'circle') return Math.hypot(dx, dy) - size / 2;
+  if (typeof shape === 'object') {
+    const ax = dx - (shape.width * size) / 2;
+    const ay = dy - (shape.height * size) / 2;
+    return (
+      Math.hypot(Math.max(ax, 0), Math.max(ay, 0)) +
+      Math.min(Math.max(ax, ay), 0)
+    );
+  }
   if (shape === 'square') {
     return roundedBox(dx, dy, size / 2, SYMBOL_CORNER_RADIUS_PX);
   }

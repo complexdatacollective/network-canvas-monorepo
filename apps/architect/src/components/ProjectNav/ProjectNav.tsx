@@ -3,6 +3,7 @@ import {
   BookOpenText,
   Eye,
   FileImage,
+  FlaskConical,
   Languages,
   type LucideIcon,
   Printer,
@@ -15,6 +16,11 @@ import { Link, useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 import {
@@ -32,7 +38,8 @@ const chromeMessages = defineMessages({
   untitledProtocol: {
     id: 'architect.chrome.projectNav.projectNav.untitledProtocol',
     defaultMessage: 'Untitled protocol',
-    description: 'The label text in components / ProjectNav / ProjectNav.',
+    description:
+      'Name shown in the top bar breadcrumb when the open protocol has no name yet.',
   },
 });
 const configMessages = defineMessages({
@@ -40,19 +47,19 @@ const configMessages = defineMessages({
     id: 'architect.projectNav.projectNav.config.stages',
     defaultMessage: 'Stages',
     description:
-      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+      'Label of the navigation tab for the page showing the timeline of stages of the protocol.',
   },
   resources: {
     id: 'architect.projectNav.projectNav.config.resources',
     defaultMessage: 'Resources',
     description:
-      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+      'Label of the navigation tab for the page that manages uploaded resources: images, video, audio, data files and map API keys.',
   },
   codebook: {
     id: 'architect.projectNav.projectNav.config.codebook',
     defaultMessage: 'Codebook',
     description:
-      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+      'Label of the navigation tab for the page listing the node types, edge types and variables of the protocol.',
   },
   languages: {
     id: 'architect.projectNav.projectNav.config.languages',
@@ -64,46 +71,25 @@ const configMessages = defineMessages({
     id: 'architect.projectNav.projectNav.config.summary',
     defaultMessage: 'Summary',
     description:
-      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+      'Label of the navigation tab for the page showing a printable summary of the protocol.',
+  },
+});
+const experimentsMessages = defineMessages({
+  experimentalFeatures: {
+    id: 'architect.projectNav.projectNav.experimentalFeatures',
+    defaultMessage: 'Experimental features',
+    description:
+      'Name of the icon-only link in the project navigation bar that opens the page where experimental features are turned on. Shown as its tooltip, and as text in the narrow-screen menu.',
   },
 });
 const messages = defineMessages({
-  warning: {
-    id: 'architect.presentation.warning',
-    defaultMessage: '({warning})',
-    description:
-      'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
-  },
   readOnly: {
     id: 'architect.projectNav.projectNav.readOnly',
     defaultMessage: 'Read only',
-    description: 'Visible text in components / ProjectNav / ProjectNav.',
-  },
-});
-const finalMessages = defineMessages({
-  roleWarning: {
-    id: 'architect.final.components.ProjectNav.ProjectNav.roleWarning',
-    defaultMessage: 'has attributes written both with and without validation',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-  assetsWarning: {
-    id: 'architect.final.components.ProjectNav.ProjectNav.assetsWarning',
-    defaultMessage: 'has unused resources',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-  attributesWarning: {
-    id: 'architect.final.components.ProjectNav.ProjectNav.attributesWarning',
-    defaultMessage: 'has unused attributes',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-  translationsWarning: {
-    id: 'architect.projectNav.projectNav.translationsWarning',
-    defaultMessage: 'has missing translations',
     description:
-      'Screen-reader warning on the Languages tab when some text is not translated into every language of the protocol.',
+      'Badge in the top bar next to the protocol name, shown when the protocol is open for viewing only and cannot be edited.',
   },
 });
-
 type Tab = {
   href: string;
   label: string;
@@ -130,6 +116,8 @@ const TABS: MessageConfig<Tab>[] = [
   { href: '/protocol/summary', label: configMessages.summary, Icon: Printer },
 ];
 
+const EXPERIMENTS_HREF = '/protocol/experiments';
+
 const ProjectNav = () => {
   const intl = useAppIntl();
   const [location] = useLocation();
@@ -144,16 +132,14 @@ const ProjectNav = () => {
   // warning indicator on that tab and provides its screen-reader label.
   const tabWarnings: Record<string, string | undefined> = {
     '/protocol': hasVariableRoleConflicts
-      ? intl.formatMessage(finalMessages.roleWarning)
+      ? 'has attributes written both with and without validation'
       : undefined,
-    '/protocol/assets': hasUnusedAssets
-      ? intl.formatMessage(finalMessages.assetsWarning)
-      : undefined,
+    '/protocol/assets': hasUnusedAssets ? 'has unused resources' : undefined,
     '/protocol/codebook': hasUnusedVariables
-      ? intl.formatMessage(finalMessages.attributesWarning)
+      ? 'has unused attributes'
       : undefined,
     '/protocol/localization': hasMissingTranslations
-      ? intl.formatMessage(finalMessages.translationsWarning)
+      ? 'has missing translations'
       : undefined,
   };
 
@@ -188,20 +174,54 @@ const ProjectNav = () => {
             {warning && (
               <AlertTriangle
                 aria-hidden
-                className="fill-warning absolute -top-1.5 -right-1.5 size-3 text-white drop-shadow-sm"
+                className="fill-warning absolute -inset-e-1.5 -top-1.5 size-3 text-white drop-shadow-sm"
               />
             )}
           </span>
           {label}
           {warning && (
-            <span className="sr-only">
-              {intl.formatMessage(messages.warning, { warning })}
+            <span className="sr-only" lang="en">
+              {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+              {`(${warning})`}
             </span>
           )}
         </span>
       </NavLink>
     );
   });
+
+  // An icon on the bar, so its name is carried by screen-reader text and a
+  // tooltip. The narrow-screen menu shows the same text as a label
+  // (`data-drawer-label`, see `NavShell`).
+  const experimentsLabel = intl.formatMessage(
+    experimentsMessages.experimentalFeatures,
+  );
+  const isExperimentsActive = location === EXPERIMENTS_HREF;
+  const experiments = (
+    <Tooltip key={EXPERIMENTS_HREF}>
+      <NavLink
+        href={EXPERIMENTS_HREF}
+        active={isExperimentsActive}
+        render={<TooltipTrigger render={<Link href={EXPERIMENTS_HREF} />} />}
+      >
+        {isExperimentsActive && (
+          <motion.span
+            layoutId="project-nav-active-outline"
+            aria-hidden
+            className="absolute -inset-2.5 rounded-full ring-2 ring-current/30"
+            transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+          />
+        )}
+        <span className="relative inline-flex items-center gap-2">
+          <FlaskConical className="size-4 shrink-0" aria-hidden />
+          <span className="sr-only" data-drawer-label>
+            {experimentsLabel}
+          </span>
+        </span>
+      </NavLink>
+      <TooltipContent>{experimentsLabel}</TooltipContent>
+    </Tooltip>
+  );
 
   // Every page stays reachable read-only, so the tabs stay too; what changes is
   // that nothing on them can be edited, which the bar states beside the
@@ -219,7 +239,7 @@ const ProjectNav = () => {
     </div>
   );
 
-  return <NavShell leading={leading} items={tabs} />;
+  return <NavShell leading={leading} items={[...tabs, experiments]} />;
 };
 
 export default ProjectNav;

@@ -1102,7 +1102,7 @@ describe('PreviewHost', () => {
           id: 'architect.previewHost.previewHost.startThePreviewAgain',
           defaultMessage: 'Start the preview again',
           description:
-            'Visible text in components / PreviewHost / PreviewHost.',
+            'Button shown when the previewed interview is finished; restarts the preview from the beginning. Shown in the language of the interview, not the language of Architect.',
         });
         expect(spanish).not.toBe('Start the preview again');
         expect(

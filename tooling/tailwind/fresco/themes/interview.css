@@ -68,8 +68,14 @@
 
 @layer theme {
   [data-theme-interview] {
-    --heading-font: 'Nunito Variable', sans-serif;
-    --body-font: 'Nunito Variable', sans-serif;
+    /*
+     * The Latin face of each stack, named on its own so that text marked as
+     * Arabic can add Readex Pro after it (see ../arabic-text.css).
+     */
+    --heading-face: 'Nunito Variable';
+    --body-face: 'Nunito Variable';
+    --heading-font: var(--heading-face), sans-serif;
+    --body-font: var(--body-face), sans-serif;
 
     /*
      * Redeclared (not inherited from :root) so the calc resolves against

@@ -38,18 +38,6 @@ const messages = defineMessages({
     description:
       'Accessible name and tooltip of the attribute pill when pressing it opens the editor for the attribute’s name. label is the researcher’s own name for it and is not translated.',
   },
-  renameDialogName: {
-    id: 'protocolBuilder.variablePicker.renameDialogName',
-    defaultMessage: 'Edit attribute name',
-    description:
-      'Accessible name of the small editor that opens over the attribute pill for renaming the attribute.',
-  },
-  renameFieldLabel: {
-    id: 'protocolBuilder.variablePicker.renameFieldLabel',
-    defaultMessage: 'Attribute name',
-    description:
-      'Accessible name of the box the attribute’s new name is typed into.',
-  },
   renamePlaceholder: {
     id: 'protocolBuilder.variablePicker.renamePlaceholder',
     defaultMessage: 'Enter an attribute name...',
@@ -283,7 +271,7 @@ const pillClassName = ({
     'variable-pill font-monospace inline-flex h-12 w-max max-w-full min-w-0 flex-nowrap rounded-full p-0.5 text-base',
     'effect-shadow-sm bg-(--variable-pill-accent)',
     interactive
-      ? 'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5'
+      ? 'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-start transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5'
       : 'cursor-default',
     className,
   );
@@ -313,7 +301,7 @@ function PillContents({
           : 'grid-cols-[3rem_minmax(0,auto)]',
       )}
     >
-      <span className="flex items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
+      <span className="flex items-center justify-center border-e border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
         <img className="icon opacity-80" src={iconUrl} alt="" />
       </span>
       <span className="flex min-w-0 items-center justify-between">
@@ -323,8 +311,10 @@ function PillContents({
   );
 }
 
+// A name someone wrote reads in its own direction (`dir="auto"`), on the
+// interface's side of the pill (`text-match-parent`).
 const NAME_CLASSES =
-  'm-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap';
+  'text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap';
 
 export default function AttributePill({
   name,
@@ -545,7 +535,9 @@ export default function AttributePill({
         style={style}
       >
         <PillContents iconUrl={iconUrl}>
-          <span className={NAME_CLASSES}>{name}</span>
+          <span dir="auto" className={NAME_CLASSES}>
+            {name}
+          </span>
         </PillContents>
       </data>
     );
@@ -584,6 +576,7 @@ export default function AttributePill({
                 <data
                   value={name}
                   data-attribute-type={type}
+                  dir="auto"
                   className={NAME_CLASSES}
                 >
                   {name}
@@ -612,7 +605,7 @@ export default function AttributePill({
         {editorFrame !== null && (
           <ModalPopup
             key="attribute-pill-editor"
-            aria-label={intl.formatMessage(messages.renameDialogName)}
+            aria-label="Edit attribute name"
             className="fixed z-40 flex flex-col items-center gap-6 p-6 outline-none"
             style={editorFrame.style}
             initial={{ opacity: 0.9999 }}
@@ -640,10 +633,10 @@ export default function AttributePill({
               <PillContents iconUrl={iconUrl} fill>
                 <InputField
                   autoFocus
-                  aria-label={intl.formatMessage(messages.renameFieldLabel)}
+                  aria-label="Attribute name"
                   aria-invalid={isValid ? undefined : true}
                   aria-describedby={isValid ? undefined : validationId}
-                  className="h-full w-full rounded-l-none! outline-none!"
+                  className="h-full w-full rounded-s-none! outline-none!"
                   placeholder={intl.formatMessage(messages.renamePlaceholder)}
                   value={draftName}
                   onChange={(value: string | undefined) =>

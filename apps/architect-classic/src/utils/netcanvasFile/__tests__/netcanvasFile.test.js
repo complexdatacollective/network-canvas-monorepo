@@ -166,8 +166,6 @@ describe('netcanvasFile/netcanvasFile', () => {
     );
   });
 
-  it.todo('schemaVersionStates');
-
   describe('createNetcanvas(destinationPath)', () => {
     it('creates an assetPath and workingPath', async () => {
       await createNetcanvas('/dev/null/new/user/netcanvas/path');

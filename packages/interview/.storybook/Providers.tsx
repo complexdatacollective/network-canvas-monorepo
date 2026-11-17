@@ -1,6 +1,5 @@
 'use client';
 
-import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import type { ReactNode } from 'react';
 
@@ -14,6 +13,7 @@ import { Toaster } from '@codaco/fresco-ui/Toast';
 import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
 
 import { CurrentStepProvider } from '../src/contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../src/contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../src/contract/context';
 import { TestProtocolLocalization } from '../src/interfaces/__tests__/TestProtocolLocalization';
 
@@ -34,6 +34,9 @@ const noopFinish = () => Promise.resolve();
  *   CurrentStepProvider". Uncontrolled mode (no props) defaults to step 0,
  *   which is fine for stories that don't navigate. Stories that DO mount
  *   `<Shell>` get its own inner CurrentStepProvider that shadows this one.
+ * - InterviewQueryClientProvider: assets (images, custom node shapes,
+ *   roster data) are read through the interview's query cache, which Shell
+ *   provides. Full-Shell stories get Shell's own, which shadows this one.
  * - ContractProvider: components like QuickNodeForm read flags via
  *   `useContractFlags()`; without a provider they crash. Defaults supply
  *   no-op handlers and `isDevelopment: true`. Shell wraps its own
@@ -54,6 +57,11 @@ const noopFinish = () => Promise.resolve();
  * - AnimationProvider: follows the toolbar's Motion control, so a story can
  *   be seen with reduced motion without changing the system setting.
  *
+ * Base UI's `DirectionProvider` is deliberately absent: the toolbar's
+ * direction control owns it, in the `withAppI18n` decorator around this. A
+ * second provider here would be nearer the story and pin every Base UI
+ * component to one direction while the CSS around it mirrored.
+ *
  * Interview-specific toasts (validation errors, etc.) are rendered by
  * Shell's own internal Toast.Provider + InterviewToastViewport, so this
  * decorator only needs to provide the default toast surface.
@@ -71,26 +79,26 @@ export default function Providers({
       disableAnimationsForAutomation
       reducedMotion={reducedMotion}
     >
-      <DirectionProvider direction="ltr">
-        <Toast.Provider limit={7}>
-          <TooltipProvider>
-            <DndStoreProvider>
-              <DialogProvider>
-                <ContractProvider
-                  onFinish={noopFinish}
-                  onRequestAsset={noopAssetUrl}
-                  flags={{ isDevelopment: true }}
-                >
+      <Toast.Provider limit={7}>
+        <TooltipProvider>
+          <DndStoreProvider>
+            <DialogProvider>
+              <ContractProvider
+                onFinish={noopFinish}
+                onRequestAsset={noopAssetUrl}
+                flags={{ isDevelopment: true }}
+              >
+                <InterviewQueryClientProvider protocolKey="storybook">
                   <TestProtocolLocalization>
                     <CurrentStepProvider>{children}</CurrentStepProvider>
                   </TestProtocolLocalization>
-                </ContractProvider>
-              </DialogProvider>
-            </DndStoreProvider>
-          </TooltipProvider>
-          <Toaster />
-        </Toast.Provider>
-      </DirectionProvider>
+                </InterviewQueryClientProvider>
+              </ContractProvider>
+            </DialogProvider>
+          </DndStoreProvider>
+        </TooltipProvider>
+        <Toaster />
+      </Toast.Provider>
     </AnimationProvider>
   );
 }

@@ -14,19 +14,18 @@ const messages = defineMessages({
     id: 'architect.assetBrowser.useExternalDataDownload.downloadFailed',
     defaultMessage: 'Download failed',
     description:
-      'The title text in components / AssetBrowser / useExternalDataDownload.',
+      'Title of the error dialog shown when downloading a resource file from the resource library fails.',
   },
   couldNotBeDownloaded: {
     id: 'architect.assetBrowser.useExternalDataDownload.couldNotBeDownloaded',
     defaultMessage: '"{value1}" could not be downloaded.',
     description:
-      'The description text in components / AssetBrowser / useExternalDataDownload.',
+      'Body of the error dialog shown when a resource download fails. value1 is the name of the resource; it appears in quotation marks.',
   },
   oK: {
     id: 'architect.assetBrowser.useExternalDataDownload.oK',
     defaultMessage: 'OK',
-    description:
-      'The label text in components / AssetBrowser / useExternalDataDownload.',
+    description: 'Button that dismisses the download-failed error dialog.',
   },
 });
 

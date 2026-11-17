@@ -4,25 +4,23 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { useJsonPreview } from '~/hooks/useJsonPreview';
 const messages = defineMessages({
-  closePreview: {
-    id: 'architect.jsonPreviewOverlay.closePreview',
-    defaultMessage: 'Close preview',
-    description: 'The aria-label text in components / JsonPreviewOverlay.',
-  },
   altShiftJToClose: {
     id: 'architect.jsonPreviewOverlay.altShiftJToClose',
     defaultMessage: 'Alt+Shift+J to close',
-    description: 'Visible text in components / JsonPreviewOverlay.',
+    description:
+      'Hint in the header of the developer JSON preview overlay naming the keyboard shortcut that closes it.',
   },
   copied: {
     id: 'architect.jsonPreviewOverlay.copied',
     defaultMessage: 'Copied!',
-    description: 'Visible text in components / JsonPreviewOverlay.',
+    description:
+      'Text of the copy button in the developer JSON preview overlay for two seconds after the JSON was copied to the clipboard, confirming it worked.',
   },
   copy: {
     id: 'architect.jsonPreviewOverlay.copy',
     defaultMessage: 'Copy',
-    description: 'Visible text in components / JsonPreviewOverlay.',
+    description:
+      'Button in the developer JSON preview overlay that copies the displayed JSON to the clipboard.',
   },
 });
 
@@ -47,7 +45,8 @@ export function JsonPreviewOverlay() {
         type="button"
         className="absolute inset-0 cursor-default"
         onClick={close}
-        aria-label={intl.formatMessage(messages.closePreview)}
+        aria-label="Close preview"
+        lang="en"
       />
       <div className="relative flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-white/10 px-7 py-5">

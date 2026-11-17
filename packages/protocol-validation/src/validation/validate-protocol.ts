@@ -1,6 +1,10 @@
+import type { z } from 'zod';
+
 import { ensureError } from '@codaco/shared-consts';
 
+import { labelCollisionIssues } from '../localization/labelCollisions.ts';
 import { findBuiltInWordingProblems } from '../schemas/9/built-in-wording.ts';
+import { findMissingFallbackLanguage } from '../schemas/9/fallback-language.ts';
 import { findFinishStageTextProblems } from '../schemas/9/finish-stage-text.ts';
 import {
   type VersionedProtocol,
@@ -15,7 +19,30 @@ export type ProtocolValidationIssue = {
   path: (string | number)[];
   /** Human-readable description of the failure. */
   message: string;
+  /**
+   * What a host may need to explain the failure in its own words, where the
+   * rule broken supplies it: `labelCollisionIssues`'s labels, or the name a
+   * stage name's length rule refuses (`STAGE_LABEL_TOO_LONG`).
+   */
+  params?: Readonly<Record<string, unknown>>;
 };
+
+/** Zod's issues as validation issues, each with the `params` it carries. */
+export const toProtocolValidationIssues = (
+  issues: readonly z.core.$ZodIssue[],
+): ProtocolValidationIssue[] =>
+  issues.map((issue) => ({
+    code: issue.code,
+    // Zod paths are PropertyKey[]; symbols cannot appear in protocol JSON but
+    // are stringified so the domain path stays (string | number)[].
+    path: issue.path.map((segment) =>
+      typeof segment === 'symbol' ? String(segment) : segment,
+    ),
+    message: issue.message,
+    ...(issue.code === 'custom' && issue.params !== undefined
+      ? { params: issue.params }
+      : {}),
+  }));
 
 /** Single-string rendering of validation issues for dialogs, CLI output, and logs. */
 export const formatProtocolValidationIssues = (
@@ -91,14 +118,60 @@ const builtInWordingIssues = (
         message: `Network Canvas has no built-in wording in the protocol's default language (${problem.locale}), so this text must be written in it, or a language Network Canvas has wording in made the default.`,
       }));
 
+/**
+ * The issue code for a protocol that needs a fallback language and names
+ * none.
+ */
+export const FALLBACK_LANGUAGE_MISSING = 'fallback_language_missing';
+
+/**
+ * The fallback language a protocol needs and does not name, as a validation
+ * issue: something only a protocol being written may lack (see
+ * `findMissingFallbackLanguage`).
+ */
+const fallbackLanguageIssues = (
+  protocol: VersionedProtocol,
+): ProtocolValidationIssue[] => {
+  if (protocol.schemaVersion !== 9) return [];
+  const locale = findMissingFallbackLanguage(protocol.localization);
+  return locale === undefined
+    ? []
+    : [
+        {
+          code: FALLBACK_LANGUAGE_MISSING,
+          path: ['localization', 'fallbackLocale'],
+          message: `Network Canvas has no wording of its own in the protocol's default language (${locale}), so the protocol must name a fallback language, or a language Network Canvas has wording in made the default.`,
+        },
+      ];
+};
+
+/**
+ * What a protocol being written may hold but a protocol handed over may not:
+ * text in its default language that Network Canvas has no wording in it for
+ * (the finish stage's closing and finished text, and its other built-in
+ * wording), no fallback language where its default language needs one, and
+ * two labels a participant chooses between that read the same
+ * (`labelCollisionIssues`), which a change of the protocol's languages can
+ * leave through fallback.
+ */
+export const releaseIssues = (
+  protocol: VersionedProtocol,
+): ProtocolValidationIssue[] =>
+  protocol.schemaVersion !== 9
+    ? []
+    : [
+        ...finishStageTextIssues(protocol),
+        ...builtInWordingIssues(protocol),
+        ...fallbackLanguageIssues(protocol),
+        ...labelCollisionIssues(protocol),
+      ];
+
 export type ValidateProtocolOptions = {
   /**
    * The protocol is still being written, in an editor: allow what a protocol
-   * may lack until it leaves the editor, which is text in its default
-   * language that Network Canvas has no wording in it for: the finish stage's
-   * closing and finished text, and its other built-in wording. Everything that reads a protocol
-   * someone has handed over — an import, a publish, a download — leaves this
-   * off.
+   * may hold until it leaves the editor (`releaseIssues`). Everything that
+   * reads a protocol someone has handed over — an import, a publish, a
+   * download — leaves this off.
    */
   draft?: boolean;
 };
@@ -124,33 +197,20 @@ const validateProtocol = async (
     const prototypeKeyIssues = findPrototypeCodebookKeys(protocol);
     const result = await VersionedProtocolSchema.safeParseAsync(protocol);
 
-    const releaseIssues =
-      result.success && !draft
-        ? [
-            ...finishStageTextIssues(result.data),
-            ...builtInWordingIssues(result.data),
-          ]
-        : [];
+    const handedOverIssues =
+      result.success && !draft ? releaseIssues(result.data) : [];
 
     if (
       result.success &&
       prototypeKeyIssues.length === 0 &&
-      releaseIssues.length === 0
+      handedOverIssues.length === 0
     ) {
       return { success: true, data: result.data };
     }
 
     const schemaIssues = result.success
-      ? releaseIssues
-      : result.error.issues.map((issue) => ({
-          code: issue.code,
-          // Zod paths are PropertyKey[]; symbols cannot appear in protocol JSON but
-          // are stringified so the domain path stays (string | number)[].
-          path: issue.path.map((segment) =>
-            typeof segment === 'symbol' ? String(segment) : segment,
-          ),
-          message: issue.message,
-        }));
+      ? handedOverIssues
+      : toProtocolValidationIssues(result.error.issues);
 
     return {
       success: false,

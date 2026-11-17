@@ -306,28 +306,28 @@ You can only delete unused variables:
 
 ### CSV export structure
 
-Variables appear as columns in CSV files:
+Each CSV file starts with identifier columns that link the files together, followed by one or more columns for each variable. Most variables get one column. A categorical variable gets one column per option, named `variable_option` and holding `true` or `false`, so the `gender` variable below becomes three columns.
 
-**Ego file:** Ego variables as columns
+**Ego file:** one row per interview, with the session details and then the ego variables
 
 ```csv
-ego_id,networkCanvasEgoUUID,age,gender
-1,abc123,34,Male
+networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,networkCanvasProtocolName,sessionStart,sessionFinish,sessionExported,APP_VERSION,COMMIT_HASH,networkCanvasFinishOutcome,age,gender_female,gender_male,gender_non_binary
+abc123,case_001,sess456,My Study,2025-01-15T10:30:00.000Z,2025-01-15T11:15:00.000Z,2025-01-16T09:00:00.000Z,9.0.0,1a2b3c4,completed,34,false,true,false
 ```
 
-**Alter files:** Alter variables as columns
+**Alter files:** one row per alter, with its alter variables
 
 ```csv
-ego_id,alter_id,networkCanvasUUID,name,age,close_friend
-1,1,xyz789,John,32,true
-1,2,uvw456,Sarah,29,false
+nodeID,networkCanvasEgoUUID,networkCanvasUUID,name,age,close_friend
+1,abc123,xyz789,John,32,true
+2,abc123,uvw456,Sarah,29,false
 ```
 
-**Edge files:** Edge variables as columns
+**Edge files:** one row per edge, with its edge variables. `from` and `to` hold the `nodeID` of the two alters it connects.
 
 ```csv
-ego_id,edge_id,from,to,relationship_strength,frequency
-1,1,1,2,strong,weekly
+edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
+1,1,2,abc123,edg001,xyz789,uvw456,strong,weekly
 ```
 
 For a full reference mapping every variable type to its exported CSV columns and GraphML attributes—along with advice on analyzing each type—see the [Export Data Dictionary](/en/analyze-data/data-dictionary).

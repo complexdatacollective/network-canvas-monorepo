@@ -1,0 +1,513 @@
+---
+title: API de Fresco
+navOrder: 4
+toc: true
+translatedFrom: 417ee50d8a8e5abd7e303d0aa5be3538ab267952
+---
+
+<Definition>
+
+La API de Fresco proporciona acceso programático de solo lectura a los datos de las entrevistas
+y de los protocolos de tu instancia, para que puedas crear flujos automatizados de exportación y
+análisis sin usar el panel de administración.
+
+</Definition>
+
+## Resumen {#overview}
+
+La **API de datos de entrevistas** te permite obtener datos de entrevistas y de protocolos
+directamente de tu instancia de Fresco. Conviene tener en cuenta algunas cosas:
+
+- **Es de solo lectura.** Puedes enumerar y obtener datos, pero no modificarlos. Para descargas
+  puntuales de archivos con formato, la [exportación de datos](/es/analyze-data/data-export) del
+  panel suele ser más sencilla.
+- **Cada instancia tiene su propia URL base.** Sustituye el marcador de posición
+  `https://your-fresco-instance.com` de los ejemplos siguientes por la dirección de tu instancia.
+- **Las respuestas son JSON** y se devuelven con `200 OK`. Las marcas de tiempo están en formato
+  ISO 8601 (UTC), y todos los endpoints se encuentran bajo la ruta con versión `/api/v1/`.
+
+## Activar la API {#enabling-the-api}
+
+<KeyConcept title="Activa la API antes de usarla">
+
+La API de datos de entrevistas está desactivada de forma predeterminada. Hasta que la actives,
+todas las solicitudes devuelven `403 Forbidden`.
+
+</KeyConcept>
+
+En el panel, ve a **Configuración → Tokens de API** y activa el interruptor **API de datos de
+entrevistas**. Los tokens se crean y gestionan desde esa misma tarjeta.
+
+<ImageFullWidth src="/assets/img/fresco-images/api-tokens-settings.png" alt="La tarjeta Tokens de API en la configuración del panel de Fresco, con el interruptor de la API de datos de entrevistas y una tabla de tokens con su fecha de creación, la fecha del último uso y su estado."></ImageFullWidth>
+
+## Autenticación {#authentication}
+
+Cada solicitud debe incluir un token de API como token de portador (bearer) en el encabezado
+`Authorization`:
+
+```
+Authorization: Bearer <your-token>
+```
+
+Crea un token en **Configuración → Tokens de API → Administrar tokens**.
+
+<TipBox danger>
+
+Un token se muestra **una sola vez**, al crearlo, así que cópialo de inmediato. Trata los tokens
+como contraseñas: no los incluyas en el control de versiones (como GitHub) ni en scripts o
+cuadernos compartidos. Si un token queda expuesto,
+elimínalo desde **Administrar tokens** y crea uno nuevo.
+
+</TipBox>
+
+## Endpoints {#endpoints}
+
+Todos los endpoints usan `GET` y requieren que la API esté activada y que se use un token de portador
+válido.
+
+### Enumerar entrevistas {#list-interviews}
+
+```
+GET /api/v1/interview
+```
+
+Devuelve una lista paginada de entrevistas, empezando por las actualizadas más recientemente.
+
+**Parámetros de consulta** (todos opcionales; se pasan en la cadena de consulta de la URL):
+
+| Parámetro       | Tipo   | Valor predeterminado | Descripción                                        |
+| --------------- | ------ | -------------------- | -------------------------------------------------- |
+| `page`          | entero | `1`                  | Número de la página que se devuelve.               |
+| `perPage`       | entero | `10`                 | Elementos por página (máximo `100`).               |
+| `protocolId`    | cadena | ninguno              | Solo las entrevistas de este protocolo.            |
+| `participantId` | cadena | ninguno              | Solo las entrevistas de esta persona participante. |
+| `status`        | cadena | ninguno              | `completed` o `in-progress`.                       |
+
+**Ejemplo de solicitud**
+
+```bash
+curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
+  "https://your-fresco-instance.com/api/v1/interview?status=completed&perPage=50"
+```
+
+**Ejemplo de respuesta**
+
+```json
+{
+  "data": [
+    {
+      "id": "clx0a1b2c3d4e5f6g7h8",
+      "startTime": "2026-06-10T10:30:00.000Z",
+      "finishTime": "2026-06-10T11:12:00.000Z",
+      "lastUpdated": "2026-06-10T11:12:00.000Z",
+      "currentStep": 5,
+      "finishStageId": "finish",
+      "finishOutcome": "completed",
+      "protocolId": "protocol123",
+      "participantId": "participant456",
+      "participant": {
+        "id": "participant456",
+        "identifier": "P-0042",
+        "label": "Participant 42"
+      },
+      "protocol": { "id": "protocol123", "name": "Social Support Study" }
+    }
+  ],
+  "meta": { "page": 1, "perPage": 50, "pageCount": 3, "total": 124 }
+}
+```
+
+**Campos de la respuesta**
+
+Cada objeto de `data` es un resumen de una entrevista:
+
+| Campo           | Descripción                                                                                                                                                                                              |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | Identificador único de la entrevista.                                                                                                                                                                    |
+| `startTime`     | Cuándo empezó la entrevista.                                                                                                                                                                             |
+| `finishTime`    | Cuándo se completó, o `null` mientras está en curso.                                                                                                                                                     |
+| `lastUpdated`   | Cuándo cambiaron por última vez los datos de la entrevista.                                                                                                                                              |
+| `currentStep`   | La etapa a la que ha llegado la persona participante.                                                                                                                                                    |
+| `finishStageId` | El ID de la etapa «Pantalla de finalización» del protocolo en la que terminó la entrevista, o `null` en las entrevistas que no se han finalizado o que se finalizaron antes de que Fresco lo registrara. |
+| `finishOutcome` | Cómo terminó la entrevista: `completed`, `ineligible` o `terminated`. `null` en las entrevistas que no se han finalizado o que se finalizaron antes de que Fresco registrara el resultado.               |
+| `protocolId`    | ID del protocolo utilizado.                                                                                                                                                                              |
+| `participantId` | ID de la persona participante.                                                                                                                                                                           |
+| `participant`   | Resumen de la persona participante: `id`, `identifier`, `label`.                                                                                                                                         |
+| `protocol`      | Resumen del protocolo: `id`, `name`.                                                                                                                                                                     |
+
+El objeto `meta` describe la página actual:
+
+| Campo       | Descripción                                         |
+| ----------- | --------------------------------------------------- |
+| `page`      | El número de la página actual.                      |
+| `perPage`   | Elementos por página.                               |
+| `pageCount` | Número total de páginas.                            |
+| `total`     | Total de entrevistas que coinciden con la consulta. |
+
+### Obtener una entrevista {#get-a-single-interview}
+
+```
+GET /api/v1/interview/{interviewId}
+```
+
+Devuelve el registro completo de una entrevista, incluida la **red** recopilada y el
+**protocolo** con su **libro de códigos**. Devuelve `404` si el ID no existe.
+
+**Ejemplo de solicitud**
+
+```bash
+curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
+  "https://your-fresco-instance.com/api/v1/interview/clx0a1b2c3d4e5f6g7h8"
+```
+
+**Ejemplo de respuesta**
+
+```json
+{
+  "data": {
+    "id": "clx0a1b2c3d4e5f6g7h8",
+    "startTime": "2026-06-10T10:30:00.000Z",
+    "finishTime": "2026-06-10T11:12:00.000Z",
+    "exportTime": null,
+    "lastUpdated": "2026-06-10T11:12:00.000Z",
+    "currentStep": 5,
+    "finishStageId": "finish",
+    "finishOutcome": "completed",
+    "isSynthetic": false,
+    "network": {
+      "nodes": [
+        {
+          "_uid": "a1c2...",
+          "type": "person",
+          "attributes": { "b8f6...": "Alex", "c9a7...": 34 }
+        }
+      ],
+      "edges": [
+        {
+          "_uid": "e9f8...",
+          "type": "friendship",
+          "from": "a1c2...",
+          "to": "b3d4...",
+          "attributes": {}
+        }
+      ],
+      "ego": { "_uid": "0000...", "attributes": { "d1e2...": true } }
+    },
+    "stageMetadata": null,
+    "protocolId": "protocol123",
+    "participantId": "participant456",
+    "participant": {
+      "id": "participant456",
+      "identifier": "P-0042",
+      "label": "Participant 42"
+    },
+    "protocol": {
+      "id": "protocol123",
+      "name": "Social Support Study",
+      "schemaVersion": 8,
+      "description": "A study of personal support networks.",
+      "codebook": { "node": {}, "edge": {}, "ego": {} }
+    }
+  }
+}
+```
+
+**Campos de la respuesta**
+
+El objeto `data` contiene el registro completo de la entrevista:
+
+| Campo           | Descripción                                                                                                                                                                                              |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | Identificador único de la entrevista.                                                                                                                                                                    |
+| `startTime`     | Cuándo empezó la entrevista.                                                                                                                                                                             |
+| `finishTime`    | Cuándo se completó, o `null` mientras está en curso.                                                                                                                                                     |
+| `exportTime`    | Cuándo se exportó la entrevista desde el panel por última vez, o `null` si nunca se ha exportado.                                                                                                        |
+| `lastUpdated`   | Cuándo cambiaron por última vez los datos de la entrevista.                                                                                                                                              |
+| `currentStep`   | La etapa a la que ha llegado la persona participante.                                                                                                                                                    |
+| `finishStageId` | El ID de la etapa «Pantalla de finalización» del protocolo en la que terminó la entrevista, o `null` en las entrevistas que no se han finalizado o que se finalizaron antes de que Fresco lo registrara. |
+| `finishOutcome` | Cómo terminó la entrevista: `completed`, `ineligible` o `terminated`. `null` en los mismos casos que `finishStageId`.                                                                                    |
+| `isSynthetic`   | `true` para datos de prueba generados, `false` para una entrevista real.                                                                                                                                 |
+| `network`       | Los datos de red recopilados (nodos, vínculos, ego).                                                                                                                                                     |
+| `stageMetadata` | Metadatos internos de algunas etapas, como las respuestas negativas de las etapas «Censo de díadas» y «Censo de fuerza de vínculos». Normalmente es `null`.                                              |
+| `protocolId`    | ID del protocolo utilizado.                                                                                                                                                                              |
+| `participantId` | ID de la persona participante.                                                                                                                                                                           |
+| `participant`   | Resumen de la persona participante: `id`, `identifier`, `label`.                                                                                                                                         |
+| `protocol`      | Detalle del protocolo: `id`, `name`, `schemaVersion`, `description`, `codebook`.                                                                                                                         |
+
+### Enumerar protocolos {#list-protocols}
+
+```
+GET /api/v1/protocols-meta
+```
+
+Devuelve los metadatos de todos los protocolos, empezando por los importados más recientemente,
+como una matriz simple. Usa un `id` de esta respuesta como filtro `protocolId` en el endpoint de
+entrevistas.
+
+**Ejemplo de solicitud**
+
+```bash
+curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
+  "https://your-fresco-instance.com/api/v1/protocols-meta"
+```
+
+**Ejemplo de respuesta**
+
+```json
+[
+  {
+    "id": "protocol123",
+    "name": "Social Support Study",
+    "importedAt": "2026-06-01T08:00:00.000Z",
+    "lastModified": "2026-06-09T15:30:00.000Z"
+  }
+]
+```
+
+**Campos de la respuesta**
+
+Cada objeto de la matriz describe un protocolo:
+
+| Campo          | Descripción                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------ |
+| `id`           | Identificador único del protocolo. Úsalo como filtro `protocolId` en el endpoint de entrevistas. |
+| `name`         | El nombre del protocolo.                                                                         |
+| `importedAt`   | Cuándo se importó el protocolo en la instancia.                                                  |
+| `lastModified` | Cuándo se modificó por última vez el archivo de protocolo.                                       |
+
+## Paginación {#pagination}
+
+El endpoint de entrevistas devuelve un objeto `meta` con `page`, `perPage`, `pageCount` y
+`total`. Como `perPage` tiene un máximo de `100`, los conjuntos de datos grandes ocupan varias
+páginas: solicita la página `1`, lee `meta.pageCount` y, después, obtén cada una de las páginas
+restantes.
+
+```bash
+curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
+  "https://your-fresco-instance.com/api/v1/interview?page=2&perPage=100"
+```
+
+## Ejemplos de código {#code-examples}
+
+En el repositorio de Fresco se mantienen scripts completos y listos para ejecutar que se
+autentican, enumeran las entrevistas, recorren todas las páginas de resultados y obtienen la red
+de una entrevista concreta:
+
+- [`example-api-query.R`](https://github.com/complexdatacollective/Fresco/blob/next/docs/example-api-query.R) (R, con `httr2`)
+- [`example-api-query.py`](https://github.com/complexdatacollective/Fresco/blob/next/docs/example-api-query.py) (Python, con `requests`)
+
+Antes de ejecutarlos, define `FRESCO_API_URL` y `FRESCO_API_TOKEN` como variables de entorno (o
+edita los valores al principio de cada script).
+
+### R {#r}
+
+```r
+# Example: Query the Fresco Interview Data API using R.
+#
+# Prerequisites:
+#     install.packages(c("httr2", "jsonlite"))
+#
+# Usage:
+#     1. Enable the Interview Data API in Fresco (Dashboard -> Settings).
+#     2. Create an API token and copy it.
+#     3. Set FRESCO_API_URL and FRESCO_API_TOKEN below (or as environment variables).
+#     4. Run: Rscript example-api-query.R
+
+library(httr2)
+library(jsonlite)
+
+FRESCO_API_URL <- Sys.getenv("FRESCO_API_URL", "https://your-fresco-instance.com")
+FRESCO_API_TOKEN <- Sys.getenv("FRESCO_API_TOKEN", "your-api-token-here")
+
+base_url <- paste0(FRESCO_API_URL, "/api/v1")
+
+#' Fetch a paginated list of interviews.
+#'
+#' @param page Page number (default 1).
+#' @param per_page Results per page (default 10, max 100).
+#' @param protocol_id Optional protocol ID filter.
+#' @param status Optional status filter: "completed" or "in-progress".
+#' @return Parsed JSON response with `data` and `meta`.
+list_interviews <- function(page = 1, per_page = 10, protocol_id = NULL, status = NULL) {
+  req <- request(paste0(base_url, "/interview")) |>
+    req_headers(Authorization = paste("Bearer", FRESCO_API_TOKEN)) |>
+    req_url_query(page = page, perPage = per_page)
+
+  if (!is.null(protocol_id)) req <- req |> req_url_query(protocolId = protocol_id)
+  if (!is.null(status)) req <- req |> req_url_query(status = status)
+
+  resp <- req |> req_perform()
+  resp_body_json(resp)
+}
+
+#' Fetch a single interview with full network data.
+#'
+#' @param interview_id The interview ID.
+#' @return Parsed JSON response with `data`.
+get_interview <- function(interview_id) {
+  req <- request(paste0(base_url, "/interview/", interview_id)) |>
+    req_headers(Authorization = paste("Bearer", FRESCO_API_TOKEN))
+
+  resp <- req |> req_perform()
+  resp_body_json(resp)
+}
+
+#' Fetch all interviews across all pages.
+#'
+#' @param ... Additional arguments passed to list_interviews (e.g. status, protocol_id).
+#' @return A data frame of all interviews.
+get_all_interviews <- function(...) {
+  all_data <- list()
+  page <- 1
+
+  repeat {
+    result <- list_interviews(page = page, per_page = 100, ...)
+    all_data <- c(all_data, result$data)
+
+    if (page >= result$meta$pageCount) break
+    page <- page + 1
+  }
+
+  # Convert list of interviews to a data frame
+  do.call(rbind, lapply(all_data, function(interview) {
+    data.frame(
+      id = interview$id,
+      participant_identifier = interview$participant$identifier,
+      protocol_name = interview$protocol$name,
+      start_time = interview$startTime,
+      finish_time = ifelse(is.null(interview$finishTime), NA, interview$finishTime),
+      finish_outcome = ifelse(is.null(interview$finishOutcome), NA, interview$finishOutcome),
+      current_step = interview$currentStep,
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+# --- Main ---
+
+# List completed interviews (first page)
+result <- list_interviews(status = "completed")
+cat(sprintf("Total interviews: %d\n", result$meta$total))
+
+for (interview in result$data) {
+  cat(sprintf(
+    "  %s  participant=%s  protocol=%s  finished=%s  outcome=%s\n",
+    interview$id,
+    interview$participant$identifier,
+    interview$protocol$name,
+    ifelse(is.null(interview$finishTime), "NA", interview$finishTime),
+    ifelse(is.null(interview$finishOutcome), "NA", interview$finishOutcome)
+  ))
+}
+
+# Fetch full network data for the first interview
+if (length(result$data) > 0) {
+  first_id <- result$data[[1]]$id
+  detail <- get_interview(first_id)
+  network <- detail$data$network
+
+  cat(sprintf("\nInterview %s network:\n", first_id))
+  cat(sprintf("  Nodes: %d\n", length(network$nodes)))
+  cat(sprintf("  Edges: %d\n", length(network$edges)))
+}
+```
+
+### Python {#python}
+
+```python
+"""
+Example: Query the Fresco Interview Data API using Python.
+
+Prerequisites:
+    pip install requests
+
+Usage:
+    1. Enable the Interview Data API in Fresco (Dashboard → Settings).
+    2. Create an API token and copy it.
+    3. Set FRESCO_API_URL and FRESCO_API_TOKEN below (or as environment variables).
+    4. Run: python example-api-query.py
+"""
+
+import os
+import requests
+
+FRESCO_API_URL = os.environ.get("FRESCO_API_URL", "https://your-fresco-instance.com")
+FRESCO_API_TOKEN = os.environ.get("FRESCO_API_TOKEN", "your-api-token-here")
+
+BASE = f"{FRESCO_API_URL}/api/v1"
+HEADERS = {"Authorization": f"Bearer {FRESCO_API_TOKEN}"}
+
+
+def list_interviews(page=1, per_page=10, protocol_id=None, status=None):
+    """Fetch a paginated list of interviews."""
+    params = {"page": page, "perPage": per_page}
+    if protocol_id:
+        params["protocolId"] = protocol_id
+    if status:
+        params["status"] = status  # "completed" or "in-progress"
+
+    resp = requests.get(f"{BASE}/interview", headers=HEADERS, params=params)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_interview(interview_id):
+    """Fetch a single interview with full network data."""
+    resp = requests.get(f"{BASE}/interview/{interview_id}", headers=HEADERS)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_all_interviews(**kwargs):
+    """Iterate through all pages and return every interview."""
+    all_interviews = []
+    page = 1
+    while True:
+        result = list_interviews(page=page, per_page=100, **kwargs)
+        all_interviews.extend(result["data"])
+        meta = result["meta"]
+        if page >= meta["pageCount"]:
+            break
+        page += 1
+    return all_interviews
+
+
+if __name__ == "__main__":
+    # List completed interviews (first page)
+    result = list_interviews(status="completed")
+    print(f"Total interviews: {result['meta']['total']}")
+    for interview in result["data"]:
+        print(
+            f"  {interview['id']}  "
+            f"participant={interview['participant']['identifier']}  "
+            f"protocol={interview['protocol']['name']}  "
+            f"finished={interview['finishTime']}  "
+            f"outcome={interview.get('finishOutcome')}"
+        )
+
+    # Fetch full network data for the first interview
+    if result["data"]:
+        first_id = result["data"][0]["id"]
+        detail = get_interview(first_id)
+        network = detail["data"]["network"]
+        print(f"\nInterview {first_id} network:")
+        print(f"  Nodes: {len(network.get('nodes', []))}")
+        print(f"  Edges: {len(network.get('edges', []))}")
+```
+
+## Errores {#errors}
+
+Los errores usan un código de estado HTTP estándar con un cuerpo JSON `{ "error": ... }`.
+
+| Estado                      | Significado                                                          |
+| --------------------------- | -------------------------------------------------------------------- |
+| `401 Unauthorized`          | Falta el token, no es válido o está desactivado.                     |
+| `403 Forbidden`             | La API de datos de entrevistas está desactivada en la configuración. |
+| `404 Not Found`             | ID de entrevista desconocido o versión de la API no admitida.        |
+| `500 Internal Server Error` | Error inesperado del servidor.                                       |
+
+## Versiones de la API {#versioning}
+
+La versión está fijada en la ruta de la URL; la versión actual (y la única) es `v1`. Los cambios
+incompatibles futuros se introducirán bajo una nueva ruta de versión, para que las integraciones
+existentes sigan funcionando.

@@ -9,8 +9,12 @@ import {
 } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
-import type { StageType } from '@codaco/protocol-validation';
+import type {
+  InterfaceTextUpdate,
+  StageType,
+} from '@codaco/protocol-validation';
 import { contentHash } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -22,13 +26,15 @@ import {
   createStageIdentity,
   stageDocument,
   stageDraftFromDocument,
+  stageFieldsForEditing,
   type StageCreation,
   type StageFormDraft,
   type StageIdentity,
 } from './stageDocument.ts';
-import { attempt } from './state/attempt.ts';
+import { attempt, type Refusal } from './state/attempt.ts';
 import { useProtocolBuilderContext } from './state/context.ts';
 import {
+  nonEmpty,
   useSectionMutation,
   type SectionAccess,
   type SubmitResult,
@@ -53,7 +59,15 @@ export type StageSaveOutcome =
   | Readonly<{ status: 'saved'; sectionId: ProtocolSectionId }>
   /** The stage is somebody else's now; this draft is gone and cannot be retried. */
   | Readonly<{ status: 'lost'; message: string }>
-  | Readonly<{ status: 'refused'; message: string }>;
+  /** The host answered, and wrote nothing; the draft stays to be saved again. */
+  | Readonly<{ status: 'refused'; message: string }>
+  /**
+   * No answer came, so the stage may or may not have been saved. Saving the
+   * same draft again is how to find out: the host answers that request with
+   * what the first one wrote, if it wrote anything (see `attempt`'s
+   * `answered`).
+   */
+  | Readonly<{ status: 'unanswered'; message: string }>;
 
 export type StageEdit = Readonly<{
   formId: string;
@@ -74,7 +88,14 @@ export type StageEdit = Readonly<{
   access: SectionAccess;
   /** Who is editing this stage, when it is somebody else. */
   holder: Presence | undefined;
-  save(fields: StageFormDraft): Promise<StageSaveOutcome>;
+  /**
+   * Saves the stage, with the shared words it brings into use (see
+   * `pendingSharedWording`) written in the same change.
+   */
+  save(
+    fields: StageFormDraft,
+    interfaceText?: readonly InterfaceTextUpdate[],
+  ): Promise<StageSaveOutcome>;
 }>;
 
 const StageEditContext = createContext<StageEdit | null>(null);
@@ -163,12 +184,30 @@ function EditingStage({
     [section.document],
   );
   const identity = opened?.identity;
+  // The form opens on these once and keeps them. It holds Network Canvas's
+  // wording for the settings the stage does not word itself, which is written
+  // in the protocol's languages, so it waits for the settings that declare
+  // them, as a new stage does.
+  const committedFields = useMemo(
+    () =>
+      opened === undefined || localization === undefined
+        ? undefined
+        : Object.freeze(
+            stageFieldsForEditing(
+              opened.identity.type,
+              opened.fields,
+              localization,
+            ),
+          ),
+    [localization, opened],
+  );
 
   const save = useCallback(
-    async (fields: StageFormDraft): Promise<StageSaveOutcome> => {
-      // The stage is saved with the wording it should hold in the protocol's
-      // languages (see `stageDocument`), so the save waits for them.
-      if (identity === undefined || localization === undefined) {
+    async (
+      fields: StageFormDraft,
+      interfaceText?: readonly InterfaceTextUpdate[],
+    ): Promise<StageSaveOutcome> => {
+      if (identity === undefined) {
         return { status: 'refused', message: NOT_READY_MESSAGE };
       }
       // Carried by the submit rather than committed before it: the section and
@@ -177,8 +216,9 @@ function EditingStage({
       // stage nobody saved.
       const promotion = staged.promotion();
       const result = await submit(
-        stageDocument(identity, fields, localization),
+        stageDocument(identity, fields),
         promotion,
+        interfaceText,
       );
       if (result.status === 'written') {
         staged.promoted();
@@ -187,7 +227,7 @@ function EditingStage({
       }
       return refusalFromHost(result);
     },
-    [identity, localization, onSaved, sectionId, staged, submit],
+    [identity, onSaved, sectionId, staged, submit],
   );
 
   const edit = useMemo<StageEdit>(
@@ -195,12 +235,12 @@ function EditingStage({
       formId,
       identity,
       creation: undefined,
-      committedFields: opened?.fields,
+      committedFields,
       access,
       holder,
       save,
     }),
-    [access, formId, holder, identity, opened, save],
+    [access, committedFields, formId, holder, identity, save],
   );
 
   return <StageEditContext value={edit}>{children}</StageEditContext>;
@@ -254,17 +294,17 @@ function CreatingStage({
   const creation = useMemo(() => ({ position }), [position]);
 
   const save = useCallback(
-    async (fields: StageFormDraft): Promise<StageSaveOutcome> => {
+    async (
+      fields: StageFormDraft,
+      interfaceText?: readonly InterfaceTextUpdate[],
+    ): Promise<StageSaveOutcome> => {
       // Carried by the create for the reason a submit cannot cover: a stage
       // being added can hold a file the researcher imported while composing
       // it, and there is no earlier revision of that stage to have promoted it
       // with. The section, its place in the stage order and the manifest
       // entries are one revision.
-      if (localization === undefined) {
-        return { status: 'refused', message: NOT_READY_MESSAGE };
-      }
       const promotion = staged.promotion();
-      const document = stageDocument(identity, fields, localization);
+      const document = stageDocument(identity, fields);
       // One id for this attempt to add the stage, so a transport that
       // re-sends the request after a lost answer — or a researcher pressing
       // Save again because they were told the add failed — is told which
@@ -272,7 +312,18 @@ function CreatingStage({
       // the stage the client would never learn about. Asked for by the
       // document, so an add the host REFUSED, which the researcher fixes and
       // asks for again, is a different intent and gets an id of its own.
-      const requestId = addKey.forAsk(contentHash(document));
+      //
+      // The shared words the stage brings in are part of the ask, as they
+      // are written in the same revision.
+      const words =
+        interfaceText === undefined || interfaceText.length === 0
+          ? undefined
+          : nonEmpty(interfaceText);
+      const requestId = addKey.forAsk(
+        words === undefined
+          ? contentHash(document)
+          : contentHash({ document, interfaceText: words }),
+      );
       const created = await attempt(adapter, 'Create', {
         protocolId,
         requestId,
@@ -280,47 +331,20 @@ function CreatingStage({
         document: Redacted.make(document),
         position,
         ...(promotion === undefined ? {} : { promote: promotion }),
+        ...(words === undefined ? {} : { interfaceText: words }),
       });
-      if (created.isSuccess || created.refusal !== undefined) {
-        addKey.settled(requestId);
-      }
+      if (created.answered) addKey.settled(requestId);
       if (!created.isSuccess) {
-        const { refusal } = created;
-        // Every one of these left the protocol exactly as it was, so the draft
-        // stays: the stage was not added, and adding it again once the reason
-        // has passed is what the researcher will do next.
-        if (refusal?._tag === 'PromotionFailed') {
-          return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
-        }
-        if (refusal?._tag === 'SectionsLocked') {
-          return {
-            status: 'refused',
-            message: blockedMessage(blockedHolders(refusal.blocked)),
-          };
-        }
-        return {
-          status: 'refused',
-          message:
-            refusal?._tag === 'InvalidShape'
-              ? INVALID_SHAPE_MESSAGE
-              : ADD_FAILED_MESSAGE,
-        };
+        return created.answered
+          ? refusedAdd(created.refusal)
+          : { status: 'unanswered', message: ADD_FAILED_MESSAGE };
       }
       const { data } = created;
       staged.promoted();
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };
     },
-    [
-      addKey,
-      adapter,
-      identity,
-      localization,
-      onSaved,
-      position,
-      protocolId,
-      staged,
-    ],
+    [addKey, adapter, identity, onSaved, position, protocolId, staged],
   );
 
   const edit = useMemo<StageEdit>(
@@ -348,21 +372,58 @@ function CreatingStage({
  * draft: the editor may not write, or what it wrote is not a stage. A refused
  * promotion and a section somebody else is holding are not — the submit wrote
  * nothing at all, and saving again once they are finished is a thing that can
- * work — so the draft stays where the researcher left it.
+ * work — so the draft stays where the researcher left it. A submit nobody
+ * answered leaves it too, to be saved again as it was.
  */
-function refusalFromHost(result: SubmitResult): StageSaveOutcome {
-  if (result.status === 'promotionFailed') {
-    return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+function refusalFromHost(
+  result: Exclude<SubmitResult, Readonly<{ status: 'written' }>>,
+): StageSaveOutcome {
+  switch (result.status) {
+    case 'promotionFailed':
+      return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+    case 'sectionsLocked':
+      return {
+        status: 'refused',
+        message: blockedMessage(blockedHolders(result.blocked)),
+      };
+    case 'notLockHolder':
+      return { status: 'lost', message: LOCK_LOST_MESSAGE };
+    case 'invalidShape':
+      return { status: 'lost', message: INVALID_SHAPE_MESSAGE };
+    case 'unanswered':
+      return { status: 'unanswered', message: SAVE_UNANSWERED_MESSAGE };
   }
-  if (result.status === 'sectionsLocked') {
-    return {
-      status: 'refused',
-      message: blockedMessage(blockedHolders(result.blocked)),
-    };
+  // Every result is placed above: a new one does not type-check here.
+  return result satisfies never;
+}
+
+/**
+ * What an add the host answered with a refusal does to the draft: nothing.
+ * Every one of these left the protocol exactly as it was, so the draft stays,
+ * and adding it again once the reason has passed is what the researcher will
+ * do next. `undefined` is a caller the host's session check turned away.
+ */
+function refusedAdd(refusal: Refusal<'Create'> | undefined): StageSaveOutcome {
+  if (refusal === undefined) {
+    return { status: 'refused', message: ADD_FAILED_MESSAGE };
   }
-  return result.status === 'notLockHolder'
-    ? { status: 'lost', message: LOCK_LOST_MESSAGE }
-    : { status: 'lost', message: INVALID_SHAPE_MESSAGE };
+  switch (refusal._tag) {
+    case 'PromotionFailed':
+      return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+    case 'SectionsLocked':
+      return {
+        status: 'refused',
+        message: blockedMessage(blockedHolders(refusal.blocked)),
+      };
+    case 'InvalidShape':
+      return { status: 'refused', message: INVALID_SHAPE_MESSAGE };
+    case 'ProtocolNotFound':
+    case 'SectionNotFound':
+    case 'SectionExists':
+      return { status: 'refused', message: ADD_FAILED_MESSAGE };
+  }
+  // Every refusal is placed above: a new one does not type-check here.
+  return refusal satisfies never;
 }
 
 /**
@@ -455,3 +516,6 @@ const LOCK_LOST_MESSAGE = createMessageError(messages.lockLost);
 const INVALID_SHAPE_MESSAGE = createMessageError(messages.invalidShape);
 const ADD_FAILED_MESSAGE = createMessageError(messages.addFailed);
 const PROMOTION_FAILED_MESSAGE = createMessageError(messages.promotionFailed);
+// What the form says of a submit that threw, which is what this was before an
+// unanswered save was told apart from a refused one.
+const SAVE_UNANSWERED_MESSAGE = createMessageError(formMessages.submitFailed);

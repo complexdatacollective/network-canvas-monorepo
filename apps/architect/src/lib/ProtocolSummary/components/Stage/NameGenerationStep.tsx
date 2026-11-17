@@ -6,7 +6,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
-import { getVariableMeta } from '../helpers';
+import { ControlName, getVariableMeta } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
 import { SummaryMarkdown } from '../SummaryText';
@@ -16,13 +16,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions',
     defaultMessage: 'Name Generation Step Instructions',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep.',
+      'Sub-heading in the printable protocol summary of a family tree census stage, above the instructions shown to participants for its name generation step.',
   },
   formFields: {
     id: 'architect.protocolSummary.stage.nameGenerationStep.formFields',
     defaultMessage: 'Form Fields',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep.',
+      'Sub-heading in the printable protocol summary of a family tree census stage, above the table of form fields in its name generation step.',
   },
 });
 
@@ -51,7 +51,7 @@ const NameGenerationStep = ({
       const meta = getVariableMeta(index, variable);
       return [
         <Variable key={`var-${variable}`} id={variable} />,
-        <span key={`comp-${variable}`}>{meta.component ?? ''}</span>,
+        <ControlName key={`comp-${variable}`} component={meta.component} />,
         <SummaryMarkdown key={`prompt-${variable}`} value={prompt} />,
       ];
     }) ?? [];

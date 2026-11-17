@@ -20,6 +20,7 @@ import type { StageProps } from '../../types';
 import AlterEdgeForm from '../AlterEdgeForm/AlterEdgeForm';
 import AlterForm from '../AlterForm/AlterForm';
 import EgoForm from '../EgoForm/EgoForm';
+import { TestInterviewAssets } from './TestInterviewAssets';
 import { TestProtocolLocalization } from './TestProtocolLocalization';
 
 // jsdom lays nothing out, so every scroll container already sits "at the
@@ -182,11 +183,13 @@ function renderForm(kind: Kind, answers: Record<string, string>) {
   const tree = () => (
     <TestProtocolLocalization>
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DialogProvider>
-            <Harness />
-          </DialogProvider>
-        </CurrentStepProvider>
+        <TestInterviewAssets>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <Harness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </TestInterviewAssets>
       </Provider>
     </TestProtocolLocalization>
   );

@@ -208,6 +208,7 @@ function TabIndicator({
   return (
     <BaseTabs.Indicator
       className={cx(
+        // oxlint-disable-next-line tailwindcss/enforce-logical -- Base UI measures `--active-tab-left` from the list's left edge in either writing direction
         'bg-surface-2 pointer-events-none absolute top-0 left-0 z-0',
         TAB_RADIUS,
         layout === 'side' && [

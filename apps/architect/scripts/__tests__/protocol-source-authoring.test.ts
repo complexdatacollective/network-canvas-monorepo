@@ -1,15 +1,21 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import {
+  type CurrentProtocol,
+  validateProtocol,
+} from '@codaco/protocol-validation';
+import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation/schema-version';
 
 import {
   createTempRepoRoot,
   isAuthorizedSourceSaveRequest,
   saveProtocolSource,
   type SourceSaveRequest,
+  type SourceSaveResponse,
 } from '../protocol-source-authoring';
 
 const sourceRef = { kind: 'template' as const, id: 'test-template' };
@@ -53,31 +59,49 @@ const manifest = {
 
 const makeProtocol = (
   assetManifest: CurrentProtocol['assetManifest'] = {},
-): CurrentProtocol => ({
-  name: 'Test Template',
-  schemaVersion: 9,
-  localization: { defaultLocale: 'en', locales: ['en'] },
-  stages: [
-    {
-      id: 'finish',
-      type: 'FinishSession',
-      label: { en: 'Finish' },
-      mode: 'confirmation',
-      content: { en: '# All done\n\nThank you.' },
-      finishedContent: { en: 'This interview is finished.' },
-      finishLabel: { en: 'Finish' },
-      finishConfirmation: { en: 'Finish this interview?' },
-      finishFailed: { en: 'The interview could not be finished.' },
-      outcome: 'completed',
+): CurrentProtocol =>
+  withInterfaceText({
+    name: 'Test Template',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    stages: [
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        label: { en: 'Finish' },
+        mode: 'confirmation',
+        content: { en: '# All done\n\nThank you.' },
+        finishedContent: { en: 'This interview is finished.' },
+        finishLabel: { en: 'Finish' },
+        finishConfirmation: { en: 'Finish this interview?' },
+        finishFailed: { en: 'The interview could not be finished.' },
+        outcome: 'completed',
+      },
+    ],
+    codebook: {
+      node: {},
+      edge: {},
+      ego: {},
     },
-  ],
-  codebook: {
-    node: {},
-    edge: {},
-    ego: {},
-  },
-  assetManifest,
-});
+    assetManifest,
+  });
+
+const refused = (result: SourceSaveResponse) => {
+  if (result.ok) throw new Error('expected the save to be refused');
+  return result;
+};
+
+// Resolves to the asset directory's parent for both the temporary and the
+// final file, so a save that ignored it would leave a file there to find.
+const ESCAPING_SOURCE = 'a/../../image.png';
+
+const listEntries = async (root: string): Promise<string[]> =>
+  (await readdir(root, { recursive: true, withFileTypes: true }))
+    .map(
+      (entry) =>
+        `${join(entry.parentPath, entry.name)}${entry.isDirectory() ? '/' : ''}`,
+    )
+    .toSorted();
 
 const makeRequest = (
   protocol: CurrentProtocol,
@@ -202,9 +226,9 @@ describe('protocol source authoring', () => {
 
     const result = await saveProtocolSource(repoRoot, makeRequest(protocol));
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.issues).toContain('Asset image has no uploaded data.');
+    expect(refused(result).issues).toContain(
+      'Asset image has no uploaded data.',
+    );
   });
 
   it('rejects path-like asset sources', async () => {
@@ -213,7 +237,7 @@ describe('protocol source authoring', () => {
         id: 'image',
         name: 'Image',
         type: 'image',
-        source: '../image.png',
+        source: ESCAPING_SOURCE,
       },
     });
 
@@ -223,13 +247,132 @@ describe('protocol source authoring', () => {
         {
           id: 'image',
           name: 'Image',
-          source: '../image.png',
+          source: ESCAPING_SOURCE,
           dataBase64: btoa('new image'),
         },
       ]),
     );
 
-    expect(result.ok).toBe(false);
+    expect(refused(result).issues).toContain(
+      'assetManifest.image.source: Asset source must be a filename without path separators or ".."',
+    );
+    await expect(readFile(join(assetDir, '../image.png'))).rejects.toThrow();
+  });
+
+  it('refuses a valid schema 8 document without touching the file system', async () => {
+    await writeFile(join(assetDir, 'stale.png'), 'old');
+    const schema8Protocol = {
+      schemaVersion: 8,
+      stages: [],
+      codebook: { node: {}, edge: {}, ego: {} },
+      assetManifest: {
+        image: {
+          id: 'image',
+          name: 'Image',
+          type: 'image',
+          source: 'image.png',
+        },
+      },
+    };
+    // The refusal must come from the version, not from a schema 8 rule.
+    await expect(validateProtocol(schema8Protocol)).resolves.toMatchObject({
+      success: true,
+    });
+    const filesBefore = await listEntries(protocolsRoot);
+
+    const result = await saveProtocolSource(repoRoot, {
+      sourceRef,
+      protocol: schema8Protocol,
+      assets: [
+        {
+          id: 'image',
+          name: 'Image',
+          source: 'image.png',
+          dataBase64: btoa('new image'),
+        },
+      ],
+    });
+
+    expect(refused(result).error).toBe(
+      `Protocol sources must use schema version ${CURRENT_SCHEMA_VERSION}; received 8.`,
+    );
+    await expect(listEntries(protocolsRoot)).resolves.toEqual(filesBefore);
+    await expect(readFile(join(assetDir, 'stale.png'), 'utf8')).resolves.toBe(
+      'old',
+    );
+  });
+
+  it.each([
+    [
+      'a newer schema version',
+      { schemaVersion: CURRENT_SCHEMA_VERSION + 1 },
+      `${CURRENT_SCHEMA_VERSION + 1}`,
+    ],
+    [
+      'a schema version that is not a number',
+      { schemaVersion: `${CURRENT_SCHEMA_VERSION}` },
+      `"${CURRENT_SCHEMA_VERSION}"`,
+    ],
+    ['a null schema version', { schemaVersion: null }, 'null'],
+    [
+      'an oversized schema version',
+      { schemaVersion: 'x'.repeat(1000) },
+      `"${'x'.repeat(19)}...`,
+    ],
+    ['no schema version', { schemaVersion: undefined }, 'none'],
+  ])('refuses a document with %s', async (_label, override, received) => {
+    const filesBefore = await listEntries(protocolsRoot);
+
+    // The sample source's directories do not exist yet, so creating them
+    // before the refusal would show up in the listing.
+    const result = await saveProtocolSource(repoRoot, {
+      sourceRef: sampleSourceRef,
+      protocol: { ...makeProtocol(), ...override },
+      assets: [],
+    });
+
+    expect(refused(result).error).toBe(
+      `Protocol sources must use schema version ${CURRENT_SCHEMA_VERSION}; received ${received}.`,
+    );
+    await expect(listEntries(protocolsRoot)).resolves.toEqual(filesBefore);
+  });
+
+  describe('when a path-like asset source passes validation', () => {
+    beforeEach(() => {
+      vi.doMock('@codaco/protocol-validation', async (importOriginal) => ({
+        ...(await importOriginal<Record<string, unknown>>()),
+        validateProtocol: () => Promise.resolve({ success: true }),
+      }));
+    });
+
+    afterEach(() => {
+      vi.doUnmock('@codaco/protocol-validation');
+    });
+
+    it.each(['../image.png', 'a/image.png', 'a\\image.png'])(
+      "refuses %s with the save's own filename check",
+      async (source) => {
+        const filesBefore = await listEntries(protocolsRoot);
+
+        const result = await saveProtocolSource(
+          repoRoot,
+          makeRequest(
+            makeProtocol({
+              image: { id: 'image', name: 'Image', type: 'image', source },
+            }),
+            [{ id: 'image', name: 'Image', source, dataBase64: btoa('x') }],
+            sampleSourceRef,
+          ),
+        );
+
+        expect(refused(result)).toEqual({
+          ok: false,
+          error: 'Protocol assets could not be saved.',
+          issues: ['Asset image has an unsafe source filename.'],
+        });
+        await expect(listEntries(protocolsRoot)).resolves.toEqual(filesBefore);
+      },
+    );
   });
 
   it('rejects duplicate asset source filenames', async () => {
@@ -266,9 +409,7 @@ describe('protocol source authoring', () => {
       ]),
     );
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.issues).toContain(
+    expect(refused(result).issues).toContain(
       'Asset source shared.png is used more than once.',
     );
   });

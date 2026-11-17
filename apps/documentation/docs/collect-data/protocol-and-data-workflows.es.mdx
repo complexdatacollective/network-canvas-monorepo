@@ -1,0 +1,129 @@
+---
+navOrder: 1
+title: Flujos de trabajo de protocolos y datos
+wip: false
+toc: true
+translatedFrom: 5d853f875d9a857318e50ec85075e853e2f6436e
+---
+
+<SummaryCard duration="15 minutos">
+<SummarySection>
+
+En este tutorial se describe un flujo de trabajo de protocolos y datos para usar las herramientas de Network Canvas.
+
+</SummarySection>
+<PrerequisitesSection>
+
+Para seguir este tutorial, necesitas:
+
+- Conocer Network Canvas y su proceso de recopilación de datos.
+- Tener acceso a los dispositivos que usarás para realizar las entrevistas.
+- Para los flujos de trabajo de Interviewer Classic, poder instalar software o configurar tus dispositivos, o contar con el apoyo de alguien que pueda hacerlo (p. ej., el departamento de informática de tu institución). Interviewer para navegador y Fresco solo necesitan un navegador web compatible.
+- Crear u obtener el archivo de protocolo que quieres distribuir (consulta [crear un protocolo](/es/design-protocols/tutorials/building-a-protocol)).
+
+</PrerequisitesSection>
+</SummaryCard>
+
+## Introducción {#introduction}
+
+Esta guía te presenta tres posibles flujos de trabajo para realizar una investigación con las herramientas de Network Canvas: cómo llega tu protocolo a cada dispositivo de entrevista y cómo vuelven a ti los datos recopilados.
+
+- **[El flujo de trabajo de Interviewer](#the-interviewer-workflow)**: realiza sesiones presenciales guiadas por una persona entrevistadora en [Interviewer](/es/collect-data/interviewer), que funciona de forma local en el navegador web del equipo de investigación sin necesidad de instalar nada. Los protocolos se importan y los datos se exportan desde la propia aplicación.
+- **[El flujo de trabajo de Fresco](#the-fresco-workflow)**: crea los protocolos en [Architect](/es/design-protocols/getting-started), súbelos a un panel de administración de [Fresco](/es/collect-data/fresco/about) y deja que cada participante complete la entrevista a distancia en su navegador; todos los datos se almacenan de forma centralizada y se exportan desde el panel.
+- **[Los flujos de trabajo de Interviewer Classic](#the-interviewer-classic-workflow)**: para los estudios que usan **Interviewer Classic**, la aplicación descargable para ordenador y tableta. En ellos hay que copiar el archivo de protocolo en cada dispositivo y recoger una exportación aparte de cada uno, ya sea mediante un servicio en la nube para compartir archivos o con una memoria USB.
+
+Cada flujo de trabajo parte de un protocolo que ya has diseñado: usa [Architect](/es/design-protocols/getting-started) para Interviewer y Fresco, y [Architect Classic](/es/design-protocols/choosing-architect) para Interviewer Classic, que solo ejecuta protocolos del esquema 7.
+
+Con Interviewer e Interviewer Classic, eres tú quien lleva los archivos a cada dispositivo de entrevista y quien saca de él los archivos exportados. [Flujos de trabajo de Interviewer con y sin conexión](/es/collect-data/interviewer-online-and-offline-workflows) explica cómo hacerlo, con o sin conexión a internet.
+
+## El flujo de trabajo de Interviewer {#the-interviewer-workflow}
+
+[Interviewer](/es/collect-data/interviewer) funciona en tu navegador web, o se puede instalar como aplicación web progresiva en un dispositivo que tú controlas. Todo lo que almacena (protocolos, entrevistas y configuración) se queda en el dispositivo, sin ningún componente de servidor, de modo que todo el ciclo del protocolo y los datos tiene lugar dentro de la aplicación:
+
+1. **Importa tu protocolo** desde un archivo `.netcanvas` que esté en el dispositivo. Los protocolos se validan al importarlos. Los protocolos del esquema 8 se ejecutan como esquema 8, y los protocolos del esquema 7 de las aplicaciones Classic se migran automáticamente al esquema 8.
+2. **Realiza tus entrevistas.** Las sesiones las guía una persona entrevistadora y se guardan en el dispositivo (cifradas en reposo si configuras un bloqueo de la aplicación), y se pueden reanudar más tarde si se interrumpen.
+3. **Exporta tus datos** desde la propia aplicación, seleccionando las sesiones en la vista **Datos**. Interviewer las empaqueta en un único archivo `.zip` con archivos CSV, GraphML o ambos, según los formatos y las opciones que configuras una sola vez en **Configuración → Exportación de datos**.
+
+[Usar Interviewer](/es/collect-data/interviewer/using-interviewer) explica en detalle cada uno de estos pasos. Como los datos recopilados permanecen en cada dispositivo hasta que los exportes, expórtalos con regularidad y, a la hora de decidir dónde deben acabar los archivos exportados, sigue las [prácticas recomendadas para organizar los datos y hacer copias de seguridad](#data-organization-and-backup-best-practices) que se describen más abajo.
+
+<TipBox>
+
+Puedes ensayar todo este ciclo antes de recopilar datos reales: Interviewer puede generar sesiones de entrevista sintéticas (desde **Configuración → Datos sintéticos**) que se exportan exactamente igual que las reales. Consulta [Realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study).
+
+</TipBox>
+
+## El flujo de trabajo de Fresco {#the-fresco-workflow}
+
+Si quieres realizar las entrevistas a distancia en un navegador web sin instalar software en cada dispositivo, puedes usar las herramientas web: crea tu protocolo en [Architect](/es/design-protocols/getting-started) y realiza tu estudio con [Fresco](/es/collect-data/fresco/about).
+
+Este flujo de trabajo elimina por completo la logística de cada dispositivo. No hay que importar ningún protocolo en cada dispositivo de entrevista ni recoger una exportación aparte de cada uno: los protocolos se publican una sola vez, subiéndolos a tu panel de administración de Fresco, y todos los datos recopilados se exportan de forma centralizada desde ese mismo panel.
+
+<TipBox>
+
+El flujo de trabajo de Fresco requiere una instancia de Fresco implementada. Fresco es de alojamiento propio, así que tú (o el departamento de informática de tu institución) tendrás que implementarlo antes de poder realizar un estudio. Consulta la [guía de implementación](/es/collect-data/fresco/guide) para empezar, o explora el [entorno de pruebas](/es/collect-data/fresco/sandbox) para probar Fresco sin tener que implementarlo.
+
+</TipBox>
+
+### Publicar el protocolo en Fresco {#deploying-the-protocol-to-fresco}
+
+En lugar de importar el archivo de protocolo en cada dispositivo de entrevista, lo subes una sola vez a tu panel de administración de Fresco. Fresco valida el protocolo, sube los recursos que contenga y lo pone a disposición de quienes participan.
+
+1. Abre tu instancia de Fresco implementada e inicia sesión en el panel.
+2. Ve a la página **Protocolos** del panel.
+3. Haz clic en el botón **Subir protocolo**.
+4. Selecciona el archivo `.netcanvas` que exportaste desde Architect.
+5. Haz clic en **Subir**.
+
+Cuando el protocolo aparezca en la página de protocolos, podrás añadir participantes y compartir una URL de participación con cada participante. Para ver todos los pasos (entre ellos, añadir participantes, elegir una estrategia de reclutamiento y generar las URL de participación), consulta la guía [Usar Fresco](/es/collect-data/fresco/using-fresco).
+
+### Realizar las entrevistas {#conducting-interviews}
+
+Cada participante completa la entrevista **en un navegador web** visitando una URL de participación: no hay ninguna aplicación que instalar ni ningún protocolo que distribuir en cada dispositivo. Quienes participan pueden usar cualquier ordenador o tableta con un [navegador compatible](/es/collect-data/fresco/faq#which-browsers-are-supported); las tabletas deben usarse en horizontal. Los teléfonos móviles y los dispositivos de pantalla pequeña no son compatibles.
+
+### Exportar datos desde Fresco {#exporting-data-from-fresco}
+
+Los datos de las entrevistas se almacenan de forma centralizada en la base de datos de Fresco (PostgreSQL), así que no tienes que gestionar ningún paso de exportación en cada dispositivo. Cuando quienes participan hayan completado las entrevistas, exportas todos los datos recopilados directamente desde el panel de administración de Fresco.
+
+1. Ve a la página **Entrevistas** del panel.
+2. Marca las casillas de las entrevistas que quieras exportar y haz clic en **Exportar selección**, o haz clic en **Exportar datos de entrevistas** para exportar todas las entrevistas (o todas las que aún no se han exportado).
+3. Confirma los tipos de archivo y las opciones de exportación que quieres usar (las mismas opciones de CSV y GraphML que se describen en la [guía de exportación de datos](/es/analyze-data/data-export)).
+4. Haz clic en **Iniciar exportación**.
+
+Como los datos se recopilan y exportan de forma centralizada, la logística de transferencia en cada dispositivo que se describe en [Flujos de trabajo de Interviewer con y sin conexión](/es/collect-data/interviewer-online-and-offline-workflows) no se aplica. Para ver todos los detalles sobre cómo exportar los datos y hacer el seguimiento de tu estudio, consulta la guía [Usar Fresco](/es/collect-data/fresco/using-fresco#exporting-data).
+
+#### Obtener los datos mediante programación con la API de Fresco {#pulling-data-programmatically-with-the-fresco-api}
+
+Si prefieres automatizar la recopilación de datos en lugar de descargar archivos a mano desde el panel, Fresco también ofrece una [API de datos de entrevistas](/es/analyze-data/fresco-api) de solo lectura. Te permite enumerar y obtener los datos de las entrevistas y los protocolos directamente desde tu implementación a través de HTTP (devuelve JSON, incluida la red completa de cada entrevista), de modo que puedes crear procesos de exportación y análisis reproducibles (por ejemplo, en R o Python) que recojan las entrevistas nuevas de forma periódica.
+
+La API está desactivada por defecto; para activarla y crear un token de acceso, ve a **Configuración → Tokens de API** en el panel. Para descargas puntuales de archivos CSV o GraphML con formato, la exportación desde el panel que se ha descrito más arriba suele ser más sencilla. Consulta la [referencia de la API de Fresco](/es/analyze-data/fresco-api) para ver los puntos de conexión disponibles, la autenticación y ejemplos completos en R y Python.
+
+<TipBox>
+
+Fresco tiene algunas [limitaciones conocidas](/es/collect-data/fresco/about#known-limitations) en comparación con Interviewer. Revísalas antes de elegir el flujo de trabajo de Fresco, sobre todo si piensas comparar datos recopilados con Fresco con datos recopilados con Interviewer.
+
+</TipBox>
+
+## El flujo de trabajo de Interviewer Classic {#the-interviewer-classic-workflow}
+
+Si tu estudio usa **[Interviewer Classic](/es/collect-data/interviewer/installing-interviewer)** (la aplicación descargable para ordenador y tableta), el flujo de trabajo tiene la misma estructura que el de Interviewer descrito más arriba: el protocolo se importa en cada dispositivo, las entrevistas se guardan en ese dispositivo y cada dispositivo genera su propia exportación.
+
+1. **Instala Interviewer Classic** en todos los dispositivos de entrevista y [configura los dispositivos](/es/collect-data/interviewer/configuring-devices) antes de que empiece la recopilación de datos.
+2. **Importa tu protocolo** en cada dispositivo desde un archivo `.netcanvas`. Interviewer Classic ejecuta protocolos del esquema 7 y funciona totalmente sin conexión.
+3. **Realiza tus entrevistas**, guiadas por una persona entrevistadora.
+4. **Exporta tus datos** desde la tarjeta **Manage or Export Sessions** (Gestionar o exportar sesiones) de la pantalla de inicio, eligiendo cada vez los tipos de archivo y las opciones de exportación, y guarda el `.zip` resultante en una ubicación que controles.
+
+[Flujos de trabajo de Interviewer con y sin conexión](/es/collect-data/interviewer-online-and-offline-workflows) explica en detalle los pasos 2 y 4, tanto para dispositivos con conexión (mediante un servicio en la nube para compartir archivos) como para dispositivos sin conexión a internet (mediante almacenamiento externo).
+
+## Prácticas recomendadas para organizar los datos y hacer copias de seguridad {#data-organization-and-backup-best-practices}
+
+Elijas el flujo de trabajo que elijas, es importante que pienses cómo vas a organizar tus datos y hacer copias de seguridad. Estas son algunas prácticas recomendadas que conviene tener en cuenta:
+
+1. Dentro de la carpeta en la que reúnes tus exportaciones (en local, en la nube o en un almacenamiento externo), crea subcarpetas para clasificar y organizar tus datos de Network Canvas por proyecto, por fecha o por cualquier otro criterio pertinente.
+2. Haz copias de seguridad de los datos con regularidad, copiando o sincronizando la carpeta local con un dispositivo de almacenamiento externo o con otro servicio de almacenamiento en la nube. Tener los datos en el proveedor de la nube no es una copia de seguridad, porque siguen estando en un único lugar.
+3. Plantéate usar un sistema de control de versiones o conservar copias de seguridad de distintos momentos para garantizar la integridad de los datos y reducir al mínimo el riesgo de perderlos.
+4. Usa las funciones de control de acceso de tu servicio de almacenamiento en la nube para que solo las personas autorizadas tengan acceso a los datos, y solo con el nivel de acceso que necesitan para su función.
+5. Da instrucciones claras a las personas entrevistadoras de tu equipo sobre cómo y cuándo deben exportar los datos. Plantéate crear una lista de comprobación u otra documentación que sirva de ayuda para recordar los pasos. Debe incluir información como cuántas sesiones (y cuáles) deben exportarse juntas y qué opciones de exportación deben seleccionarse. Recuerda que el resultado del proceso de exportación es un único archivo zip, así que, una vez terminada la exportación, no podrás ver esta información hasta que extraigas los datos.
+
+## Tipos de archivo y opciones de exportación {#file-types-and-export-options}
+
+Uses el flujo de trabajo que uses, la exportación ofrece los mismos dos formatos de archivo (CSV y GraphML) junto con un pequeño conjunto de opciones de exportación, y te recomendamos exportar los datos en ambos formatos mientras decides cuál se adapta mejor a tus herramientas de análisis. Para ver una descripción completa de lo que contienen los archivos exportados y de lo que hace cada opción de exportación, consulta la [guía de exportación de datos](/es/analyze-data/data-export).

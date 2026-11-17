@@ -5,7 +5,7 @@ import {
   type StageType,
 } from '@codaco/protocol-validation';
 
-import { withMissingSuppliedStageText } from '../stageDocument.ts';
+import { stageFieldsForEditing } from '../stageDocument.ts';
 
 /**
  * What a NEW stage of each interface type starts life holding.
@@ -89,16 +89,16 @@ export const getInterfaceTemplate = (
 ): Record<string, FieldValue> => ({ ...INTERFACE_TEMPLATES[interfaceType] });
 
 /**
- * The fields a new stage opens with: the interface's template, plus the
- * wording Network Canvas supplies for its settings, such as a roster's panel
- * title, in each of the protocol's languages that has it (see
- * `missingSuppliedStageText`). Unlike a template value the supplied wording depends
- * on the protocol, and it is prose about the stage rather than about its
- * subject, so a change of subject keeps it.
+ * The fields a new stage opens with: the interface's template, held as a
+ * stage form holds a stage (see `stageFieldsForEditing`), so each setting
+ * Network Canvas words, such as a roster's panel title, starts with its
+ * wording in each of the protocol's languages that has it. None of that
+ * wording is saved with the stage unless the researcher changes it.
  *
  * A new finish stage also opens with the closing and finished text Network
  * Canvas supplies, in each of the protocol's languages that has it, so the
  * researcher edits a working ending rather than writing one from nothing.
+ * That text is the stage's own, and is saved with it.
  */
 export const newStageFields = (
   interfaceType: StageType,
@@ -110,5 +110,5 @@ export const newStageFields = (
       defaultFinishSessionFields(localization);
     Object.assign(template, { content, finishedContent });
   }
-  return withMissingSuppliedStageText(template, interfaceType, localization);
+  return stageFieldsForEditing(interfaceType, template, localization);
 };

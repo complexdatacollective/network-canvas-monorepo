@@ -1,6 +1,7 @@
 'use client';
 
 import type { Action } from '@reduxjs/toolkit';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { LocateFixed, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import {
@@ -37,6 +38,7 @@ import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -140,7 +142,7 @@ export default function GeospatialInterface({
   const useStub = isE2E && isMapboxStubBrowser();
   const mapUnavailable = intl.formatMessage(interfaceMessages.mapUnavailable);
   const { text: outsideAreasLabel } = useLocalizedString(
-    stage.outsideAreasLabel,
+    useStageWording(stage).text('outsideAreasLabel'),
   );
 
   const [navState, setNavState] = useState<{
@@ -300,34 +302,31 @@ export default function GeospatialInterface({
   // resolved from the GeoJSON for click-to-select. Real mode ignores all
   // of this.
   const [stubZoom, setStubZoom] = useState<number>(mapOptions.initialZoom);
-  const [stubReady, setStubReady] = useState(false);
-  const [stubFeatureId, setStubFeatureId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!useStub) return undefined;
-    if (!dataSourceUrl) return undefined;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const response = await fetch(dataSourceUrl);
-        const json: unknown = await response.json();
-        if (cancelled) return;
-        const value = readFirstFeatureProperty(
-          json,
-          mapOptions.targetFeatureProperty,
-        );
-        setStubFeatureId(typeof value === 'string' ? value : 'stub-feature');
-        setStubReady(true);
-      } catch {
-        if (cancelled) return;
-        setStubFeatureId('stub-feature');
-        setStubReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [useStub, dataSourceUrl, mapOptions.targetFeatureProperty]);
+  const { data: stubFeature } = useQuery({
+    queryKey: [
+      'geospatial-stub-feature',
+      dataSourceUrl,
+      mapOptions.targetFeatureProperty,
+    ],
+    queryFn:
+      useStub && dataSourceUrl
+        ? async ({ signal }) => {
+            try {
+              const response = await fetch(dataSourceUrl, { signal });
+              const json: unknown = await response.json();
+              const value = readFirstFeatureProperty(
+                json,
+                mapOptions.targetFeatureProperty,
+              );
+              return typeof value === 'string' ? value : 'stub-feature';
+            } catch {
+              return 'stub-feature';
+            }
+          }
+        : skipToken,
+  });
+  const stubReady = stubFeature !== undefined;
+  const stubFeatureId = stubFeature ?? null;
 
   // Stub toolbar handlers — synchronous state updates so the fixture's
   // expect.poll() on data-zoom-level resolves on the next render tick.
@@ -463,6 +462,7 @@ export default function GeospatialInterface({
     {
       attributes: { node: placing?.[entityAttributesProperty] },
       labels: { node: placingLabel },
+      ids: { node: placing?.[entityPrimaryKeyProperty] },
     },
   );
 
@@ -482,7 +482,8 @@ export default function GeospatialInterface({
         {useStub && (
           <button
             type="button"
-            aria-label={intl.formatMessage(interfaceMessages.stubMap)}
+            aria-label="Stubbed map (click to select test feature)"
+            lang="en"
             onClick={handleStubMapClick}
             disabled={!stubReady}
             data-testid="geospatial-stub-click-area"
@@ -519,7 +520,8 @@ export default function GeospatialInterface({
                   setLocationValue(null);
                 }}
                 color="primary"
-                aria-label={intl.formatMessage(interfaceMessages.deselect)}
+                aria-label="Deselect"
+                lang="en"
                 icon={<X />}
                 data-testid="deselect-outside-area-button"
               />
@@ -530,7 +532,7 @@ export default function GeospatialInterface({
         {mapOptions.allowSearch && (
           <Suspense fallback={null}>
             {useStub ? (
-              <GeospatialStubSearch className="absolute top-4 left-4 z-20" />
+              <GeospatialStubSearch className="absolute inset-s-4 top-4 z-20" />
             ) : (
               <GeospatialSearch
                 accessToken={accessToken}
@@ -544,7 +546,7 @@ export default function GeospatialInterface({
                     node_id: node[entityPrimaryKeyProperty],
                   });
                 }}
-                className="absolute top-4 left-4 z-20"
+                className="absolute inset-s-4 top-4 z-20"
               />
             )}
           </Suspense>
@@ -555,7 +557,7 @@ export default function GeospatialInterface({
           noContainer
           spacing="none"
           shadow="none"
-          className="bg-surface/80 absolute right-4 bottom-4 z-5 flex flex-col gap-2 rounded-xl p-2 shadow-2xl backdrop-blur-md"
+          className="bg-surface/80 absolute inset-e-4 bottom-4 z-5 flex flex-col gap-2 rounded-xl p-2 shadow-2xl backdrop-blur-md"
           data-testid="map-toolbar"
           variants={{
             initial: {
@@ -572,7 +574,8 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomIn}
             icon={<ZoomIn />}
-            aria-label={intl.formatMessage(interfaceMessages.zoomIn)}
+            aria-label="Zoom in"
+            lang="en"
             color="dynamic"
             data-testid="map-zoom-in"
           />
@@ -580,7 +583,8 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomOut}
             icon={<ZoomOut />}
-            aria-label={intl.formatMessage(interfaceMessages.zoomOut)}
+            aria-label="Zoom out"
+            lang="en"
             color="dynamic"
             data-testid="map-zoom-out"
           />
@@ -588,7 +592,8 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onRecenter}
             icon={<LocateFixed />}
-            aria-label={intl.formatMessage(interfaceMessages.recenterMap)}
+            aria-label="Recenter Map"
+            lang="en"
             color="dynamic"
             data-testid="map-recenter"
           />

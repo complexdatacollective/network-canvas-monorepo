@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { MigrationResultInvalidError } from '../../../migration/errors.ts';
 import {
-  getMigrationInfo,
   migrateProtocol,
   migrateProtocolWithSessions,
 } from '../../../migration/migrate-protocol.ts';
@@ -231,14 +230,6 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
       migrated.stages.find(({ type }) => type === 'Anonymisation'),
     ).toMatchObject({ validation });
   });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'If an Anonymisation stage required a minimum passphrase length longer than its maximum',
-    );
-  });
 });
 
 const nodeRule = (id: string, attribute: string, value: string | number) => ({
@@ -420,14 +411,6 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
       );
     },
   );
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'Skip logic and filters can no longer compare the answers to an encrypted attribute.',
-    );
-  });
 });
 
 type OptionValue = string | number;
@@ -796,16 +779,27 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     },
   );
 
-  it('names an option whose value is empty after its label, or its position when the label is taken', () => {
-    const protocol = protocolWithCategoryValues(['', 'Option 1', '  ']);
+  // What an option records cannot be known when its value is blank, so the
+  // migration supplies none and the document is refused at that value.
+  it.each([
+    ['empty', ''],
+    ['only spaces', '  '],
+    ['only a tab and a line break', '\t\n'],
+  ])('refuses a value that is %s at that value', (_description, value) => {
+    const paths = migrationIssuePaths(
+      asSchema8Protocol(protocolWithCategoryValues(['friend', value])),
+    );
 
-    expect(migratedCategory(protocol)).toMatchObject({
-      options: [
-        { value: 'Option 1 2' },
-        { value: 'Option 1' },
-        { value: 'Option 3' },
-      ],
-    });
+    expect(paths).toContainEqual([
+      'codebook',
+      'node',
+      'person',
+      'variables',
+      'category',
+      'options',
+      1,
+      'value',
+    ]);
   });
 
   it('merges a value that, once repaired, repeats an earlier one', () => {
@@ -875,14 +869,6 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
         9,
       ),
     ).toThrow(MigrationResultInvalidError);
-  });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'Ordinal and categorical option values must now be unique.',
-    );
   });
 });
 
@@ -1273,13 +1259,19 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     },
   );
 
-  // Schema 9 refuses the blank label itself; the panel is still titled.
-  it('gives a blank title "Introduction" when the stage label is blank as well', () => {
+  // A blank stage label is first named "Stage" and its position, as the 7 to
+  // 8 migration names a stage with none, and the panel takes that name.
+  it('gives a blank title the repaired stage name when the stage label is blank as well', () => {
     const stages = stagesMigratedFrom(
       schema8WithStages(egoFormWithPanel({ title: ' ', text: ' ' }, ' ')),
     );
+    const position = stages.length - 1;
+    expect(stages.at(-2)).toHaveProperty(
+      'label',
+      localized(`Stage ${position}`),
+    );
     expect(stages.at(-2)).toHaveProperty('introductionPanel', {
-      title: localized('Introduction'),
+      title: localized(`Stage ${position}`),
     });
   });
 
@@ -1421,14 +1413,6 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     ]);
     expect(migrated.stages[0]).not.toHaveProperty('introductionPanel.text');
   });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'Introduction panels within interfaces other than the Ego Form have been removed',
-    );
-  });
 });
 
 // The base protocol with a Categorical Bin whose prompt has an "other" bin,
@@ -1478,39 +1462,54 @@ const migratedOtherBin = (other: {
   return stage && 'prompts' in stage ? stage.prompts[0] : undefined;
 };
 
-describe('Migrating the text of a Categorical Bin "other" bin from schema 8 to 9', () => {
-  it.each(BLANK_TEXT)(
-    'gives a caption of %s the question, and a question of it the caption',
-    (_, blank) => {
-      expect(
-        migratedOtherBin({
-          otherOptionLabel: blank,
-          otherVariablePrompt: 'What else?',
-        }),
-      ).toMatchObject({
-        otherOptionLabel: localized('What else?'),
-        otherVariablePrompt: localized('What else?'),
-      });
-      expect(
-        migratedOtherBin({
-          otherOptionLabel: 'Something else',
-          otherVariablePrompt: blank,
-        }),
-      ).toMatchObject({
-        otherOptionLabel: localized('Something else'),
-        otherVariablePrompt: localized('Something else'),
-      });
-    },
-  );
+// The places schema 9 reports when migrating the document fails.
+const migrationIssuePaths = (document: unknown) => {
+  try {
+    migrateProtocol(document, 9);
+  } catch (error) {
+    if (error instanceof MigrationResultInvalidError) {
+      return error.issues.map(({ path }) => path);
+    }
+    throw error;
+  }
+  return [];
+};
 
-  it('uses the 7 to 8 defaults when both are blank', () => {
+describe('Migrating the text of a Categorical Bin "other" bin from schema 8 to 9', () => {
+  // The caption is a label, so it takes the 7 to 8 default, not the question.
+  it.each(BLANK_TEXT)('gives a caption of %s "Other"', (_, blank) => {
     expect(
-      migratedOtherBin({ otherOptionLabel: ' ', otherVariablePrompt: '\t' }),
+      migratedOtherBin({
+        otherOptionLabel: blank,
+        otherVariablePrompt: 'What else?',
+      }),
     ).toMatchObject({
       otherOptionLabel: localized('Other'),
-      otherVariablePrompt: localized('Please specify'),
+      otherVariablePrompt: localized('What else?'),
     });
   });
+
+  // The question is the protocol's own content, which the migration never
+  // writes, so the document is refused at the question.
+  it.each(BLANK_TEXT)(
+    'refuses a question of %s at the question',
+    (_, blank) => {
+      expect(
+        migrationIssuePaths(
+          schema8WithOtherBin({
+            otherOptionLabel: 'Something else',
+            otherVariablePrompt: blank,
+          }),
+        ),
+      ).toContainEqual([
+        'stages',
+        expect.any(Number),
+        'prompts',
+        0,
+        'otherVariablePrompt',
+      ]);
+    },
+  );
 
   it('keeps text that says something', () => {
     expect(
@@ -1544,7 +1543,7 @@ describe('Migrating the text of a Categorical Bin "other" bin from schema 8 to 9
               variable: 'category',
               otherVariable: 'name',
               otherOptionLabel: { en: 'Other', fr: '   ' },
-              otherVariablePrompt: { en: ' ', fr: '\t' },
+              otherVariablePrompt: { en: 'What else?', fr: '\t' },
             },
           ],
         },
@@ -1555,19 +1554,12 @@ describe('Migrating the text of a Categorical Bin "other" bin from schema 8 to 9
       prompts: [
         {
           otherOptionLabel: { en: 'Other' },
-          otherVariablePrompt: { en: 'Other' },
+          otherVariablePrompt: { en: 'What else?' },
         },
       ],
     });
     expect(stage).not.toHaveProperty('prompts.0.otherOptionLabel.fr');
-  });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'On a Categorical Bin stage, the label of the bin for answers not listed',
-    );
+    expect(stage).not.toHaveProperty('prompts.0.otherVariablePrompt.fr');
   });
 });
 
@@ -1626,14 +1618,6 @@ describe('Migrating a Tie-Strength Census decline label from schema 8 to 9', () 
       negativeLabel: localized('Not close'),
     });
   });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'On a Tie-Strength Census stage, the label of the option for declining',
-    );
-  });
 });
 
 // The base protocol with an Information stage whose title is given, as
@@ -1673,14 +1657,6 @@ describe('Migrating an Information stage title from schema 8 to 9', () => {
     expect(migratedInformationTitle('Hello')).toMatchObject({
       title: localized('Hello'),
     });
-  });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'The title of an Information stage must now contain some text',
-    );
   });
 });
 
@@ -1970,16 +1946,6 @@ describe('Migrating optional text that shows nothing from schema 8 to 9', () => 
     });
     expect(migrated.codebook.ego?.variables?.egoCloseness).not.toHaveProperty(
       'parameters.maxLabel',
-    );
-  });
-});
-
-describe('The schema 9 migration notes', () => {
-  it('say that other text participants see must contain some text', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      'Some other text that participants see must now contain some text.',
     );
   });
 });

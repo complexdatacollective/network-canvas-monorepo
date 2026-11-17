@@ -29,92 +29,101 @@ const messages = defineMessages({
     defaultMessage:
       '{count, plural, one {# passkey registered.} other {# passkeys registered.}}',
     description:
-      'Researcher-facing settings.PasskeySettings: count, plural, one # passkey registered. other # passkeys registered.',
+      'Hint under the Passkeys label in Settings, shown when the researcher has at least one passkey. count is the number of passkeys registered on the account.',
   },
 
   never: {
     id: 'fresco.settings.passkeys.never',
     defaultMessage: 'Never',
-    description: 'Researcher-facing settings.passkeys: Never',
+    description:
+      'Shown in place of a date in the Last used line of a passkey in Settings when the passkey has never been used to sign in. Follows the words Last used.',
   },
 
   copyFailedToStartRegistration: {
     id: 'fresco.settings.PasskeySettings.copyFailedToStartRegistration',
     defaultMessage: 'Failed to start registration',
     description:
-      'Researcher-facing settings / PasskeySettings: Failed to start registration',
+      'Error shown under the Passkeys row in Settings when the server could not begin registering a new passkey and gave no specific reason.',
   },
   copyPasskeyRegistrationFailed: {
     id: 'fresco.settings.PasskeySettings.copyPasskeyRegistrationFailed',
     defaultMessage: 'Passkey registration failed',
     description:
-      'Researcher-facing settings / PasskeySettings: Passkey registration failed',
+      'Fallback error shown under the Passkeys row in Settings when registering a new passkey failed for a reason that has no more specific message.',
   },
   copyRegisterAPasskeyForTheHighestLevel: {
     id: 'fresco.settings.PasskeySettings.copyRegisterAPasskeyForTheHighestLevel',
     defaultMessage:
       'Register a passkey for the highest level of security. You will sign in without a password using biometrics or a security key.',
     description:
-      'Researcher-facing settings / PasskeySettings: Register a passkey for the highest level of security. You will sign in without a password using biometrics or a security key.',
+      'Hint under the Passkeys label in Settings, shown while the researcher has no passkeys, encouraging them to register one. A security key is a physical device.',
   },
   copyRegistering: {
     id: 'fresco.settings.PasskeySettings.copyRegistering',
     defaultMessage: 'Registering...',
-    description: 'Researcher-facing settings / PasskeySettings: Registering...',
+    description:
+      'Label of the Add passkey button in Settings while the new passkey is being registered. A progress state, not a command.',
   },
   copyAddPasskey: {
     id: 'fresco.settings.PasskeySettings.copyAddPasskey',
     defaultMessage: 'Add passkey',
-    description: 'Researcher-facing settings / PasskeySettings: Add passkey',
+    description:
+      "Button in Settings that starts registering a new passkey on the researcher's account, prompting the device or browser to create one.",
   },
   copySynced: {
     id: 'fresco.settings.PasskeySettings.copySynced',
     defaultMessage: 'Synced',
-    description: 'Researcher-facing settings / PasskeySettings: Synced',
+    description:
+      "Status badge beside a passkey in Settings meaning the passkey is backed up and synced across the researcher's devices by their password manager or platform.",
   },
   copyDeviceBound: {
     id: 'fresco.settings.PasskeySettings.copyDeviceBound',
     defaultMessage: 'Device-bound',
-    description: 'Researcher-facing settings / PasskeySettings: Device-bound',
+    description:
+      'Status badge beside a passkey in Settings meaning the passkey exists only on one device, such as a security key, and is not synced.',
   },
   copySetAPasswordBeforeRemovingYourOnly: {
     id: 'fresco.settings.PasskeySettings.copySetAPasswordBeforeRemovingYourOnly',
     defaultMessage: 'Set a password before removing your only passkey',
     description:
-      'Researcher-facing settings / PasskeySettings: Set a password before removing your only passkey',
+      "Tooltip on the disabled Remove button of a passkey in Settings, shown when it is the account's only passkey and the account has no password.",
   },
   removePasskey: {
     id: 'fresco.settings.PasskeySettings.removePasskey',
     defaultMessage: 'Remove Passkey',
-    description: 'Researcher-facing settings / PasskeySettings: Remove Passkey',
+    description:
+      'Title of the dialog in Settings that asks the researcher to confirm removing a passkey from their account.',
   },
   removeYouWonTBeAbleTo: {
     id: 'fresco.settings.PasskeySettings.removeYouWonTBeAbleTo',
     defaultMessage:
       '{nameMode, select, named {Remove "{name}"?} other {Remove this unnamed passkey?}} You won\'t be able to sign in with it anymore.',
     description:
-      'Researcher-facing settings / PasskeySettings: Remove "value"? You won\'t be able to sign in with it anymore.',
+      'Body of the confirm dialog for removing a passkey in Settings. nameMode is named when the passkey has a name, then name is that name, otherwise unnamed.',
   },
   remove: {
     id: 'fresco.settings.PasskeySettings.remove',
     defaultMessage: 'Remove',
-    description: 'Researcher-facing settings / PasskeySettings: Remove',
+    description:
+      'Button that removes a passkey from the account; used on each passkey row in Settings and as the confirm button of the removal dialog. The passkey can no longer be used to sign in.',
   },
   passkeys: {
     id: 'fresco.settings.PasskeySettings.passkeys',
     defaultMessage: 'Passkeys',
-    description: 'Researcher-facing settings / PasskeySettings: Passkeys',
+    description:
+      'Label of the Settings row where the researcher manages the passkeys, passwordless sign-in credentials, registered on their account.',
   },
   added: {
     id: 'fresco.settings.PasskeySettings.added',
     defaultMessage: 'Added {value1}',
-    description: 'Researcher-facing settings / PasskeySettings: Added value',
+    description:
+      "Small line under a passkey's name in Settings saying when the passkey was registered. value1 is a short date, such as Nov 12, 2026.",
   },
   lastUsed: {
     id: 'fresco.settings.PasskeySettings.lastUsed',
     defaultMessage: 'Last used {value1}',
     description:
-      'Researcher-facing settings / PasskeySettings: Last used value',
+      "Small line under a passkey's name in Settings saying when it was last used to sign in. value1 is a short date, or the word Never.",
   },
 });
 

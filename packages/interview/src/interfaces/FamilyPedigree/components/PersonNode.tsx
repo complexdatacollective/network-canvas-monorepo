@@ -10,15 +10,13 @@ import {
   useId,
 } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import Node, {
   type NodeColorSequence,
-  type NodeShape,
+  type NodeShapeProp,
 } from '@codaco/fresco-ui/Node';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { withoutSoftHyphens } from '../generatedLabels';
-import { messages } from '../messages';
 import type { Person } from '../model';
 import { EDGE_WIDTH } from '../pedigree-layout/layoutDimensions';
 import type { ReproductiveRole } from '../reproductiveRoles';
@@ -34,7 +32,7 @@ type PersonNodeProps = {
   color: NodeColorSequence;
   /** From the person type's shape in the codebook, which may follow one of
    * their attributes. */
-  shape: NodeShape;
+  shape: NodeShapeProp;
   /** Their details are open in the side panel; or, answering a nomination
    * prompt, it applies to them. */
   selected: boolean;
@@ -73,6 +71,13 @@ type PersonNodeProps = {
  * One family member: their pedigree symbol labelled with their name, and a
  * warning when required details are missing.
  */
+// Read out with the person's symbol; in lower case, to sit inside a sentence.
+const REPRODUCTIVE_ROLE_NAMES: Record<ReproductiveRole, string> = {
+  donor: 'egg or sperm donor',
+  traditionalSurrogate: 'egg donor who carried the pregnancy',
+  gestationalCarrier: 'surrogate',
+};
+
 export default function PersonNode({
   person,
   label,
@@ -96,7 +101,6 @@ export default function PersonNode({
   onNodeElement,
   children,
 }: PersonNodeProps) {
-  const intl = useAppIntl();
   const rolesId = useId();
   const adoptedId = useId();
   const missingId = useId();
@@ -121,6 +125,9 @@ export default function PersonNode({
 
   return (
     <div
+      // Part of the family drawing, which is the same way round in every
+      // language: the right-to-left mirror check leaves it out.
+      data-direction-exempt
       className="relative flex size-full items-center justify-center"
       data-testid="pedigree-person"
       data-person-id={person.id}
@@ -136,6 +143,7 @@ export default function PersonNode({
             aria-hidden
             className={cx(
               'border-text pointer-events-none absolute -inset-y-2 w-3 border-solid',
+              // oxlint-disable-next-line tailwindcss/enforce-logical -- a pair of brackets, one on each side of the symbol
               side === 'left' ? '-left-4' : '-right-4',
             )}
             style={{
@@ -152,10 +160,7 @@ export default function PersonNode({
         shape={shape}
         color={color}
         label={label}
-        ariaLabel={intl.formatMessage(messages.personAccessibleName, {
-          isYou: person.isEgo ? 'true' : 'false',
-          name: withoutSoftHyphens(accessibleName),
-        })}
+        ariaLabel={person.isEgo ? 'You' : withoutSoftHyphens(accessibleName)}
         aria-describedby={describedBy || undefined}
         aria-disabled={unavailable || undefined}
         // Drawn as Node draws a disabled symbol, but still focusable.
@@ -168,24 +173,21 @@ export default function PersonNode({
         onKeyDown={onKeyDown}
       />
       {adopted && (
-        <span id={adoptedId} hidden>
-          {intl.formatMessage(messages.personAdoptedDescription)}
+        <span id={adoptedId} hidden lang="en">
+          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+          {'Adopted.'}
         </span>
       )}
       {hasMissingDetails && (
-        <span id={missingId} hidden>
-          {intl.formatMessage(messages.personMissingDetailsDescription)}
+        <span id={missingId} hidden lang="en">
+          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+          {'Some details are missing.'}
         </span>
       )}
       {hasRoles && (
-        <span id={rolesId} hidden>
-          {intl.formatList(
-            reproductiveRoles.map((role) =>
-              intl.formatMessage(messages.reproductiveRoleDescription, {
-                role,
-              }),
-            ),
-            { type: 'conjunction' },
+        <span id={rolesId} hidden lang="en">
+          {new Intl.ListFormat('en', { type: 'conjunction' }).format(
+            reproductiveRoles.map((role) => REPRODUCTIVE_ROLE_NAMES[role]),
           )}
         </span>
       )}
@@ -195,6 +197,7 @@ export default function PersonNode({
         <span
           aria-hidden
           data-missing-details-badge
+          // oxlint-disable-next-line tailwindcss/enforce-logical -- a family tree is drawn the same way in every language, and so is what marks its symbols
           className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
         >
           <TriangleAlert className="size-5" aria-hidden />

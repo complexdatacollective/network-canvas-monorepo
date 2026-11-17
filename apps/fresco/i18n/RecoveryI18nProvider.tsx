@@ -54,8 +54,11 @@ export default function RecoveryI18nProvider({
   // too, so the catalog hook never has a first render to suspend.
   const locale = useDeferredValue(requested, 'en');
   const catalog = useLocaleCatalog(frescoCatalogSource, locale);
+  const direction =
+    frescoLocales.find((entry) => entry.locale === catalog.locale)?.direction ??
+    'ltr';
   return (
-    <html lang={catalog.locale} dir="ltr">
+    <html lang={catalog.locale} dir={direction}>
       <body>
         <AppI18nProvider
           locale={catalog.locale}

@@ -14,7 +14,8 @@ released package or app:
   `@codaco/protocol-validation`) — any behaviour/API/type change consumers see.
 - A released app or product: `@codaco/architect`,
   `@codaco/background-creator`, `fresco`, `@codaco/interviewer`,
-  `@codaco/documentation`, `networkcanvas.com`, or a Studio package
+  `@codaco/documentation`, `networkcanvas.com`,
+  `@codaco/protocol-review-worker`, or a Studio package
   (`@codaco/studio-web`, `@codaco/studio-api`, `@codaco/studio-contract`,
   `@codaco/studio-sync`).
 
@@ -114,7 +115,8 @@ Architect, Background Creator, Fresco, and Interviewer use the normal Changesets
 lane alongside libraries. A single changeset may target any combination of
 those normal-lane packages.
 
-Documentation, Website, and Studio keep independent gated release PRs. CI
+Documentation, Website, the protocol review Worker, and Studio keep
+independent gated release PRs. CI
 (`pnpm check:changesets`) rejects any gated product mixed with the normal lane
 or with another gated lane because `changeset version` hard-errors on ignored
 and non-ignored packages in one file. If one feature affects multiple lanes,
@@ -130,6 +132,7 @@ them.
 | Libraries, Architect, Background Creator, Fresco, Interviewer | Real semver impact | "Version Packages" PR → npm and/or app release                     |
 | Documentation                                                 | Real semver impact | "Release Documentation" PR → Netlify + tag                         |
 | Website                                                       | Real semver impact | "Release Website" PR → Netlify + tag                               |
+| Protocol review Worker                                        | Real semver impact | "Release Protocol Review Worker" PR → Cloudflare + tag             |
 | Studio                                                        | Real semver impact | "Release Studio" PR → GHCR images + `studio@` tag + GitHub release |
 
 ## How to author
@@ -137,7 +140,7 @@ them.
 1. Run `pnpm changeset`.
 2. Select the package(s). Normal-lane libraries and apps may share a changeset;
    Studio packages may share a Studio changeset. Do not combine Documentation,
-   Website, or Studio with another lane.
+   Website, the protocol review Worker, or Studio with another lane.
 3. Choose the bump type. It drives the released semver for libraries and apps.
 4. Write the summary as **reader-facing release notes** — it becomes the
    changelog / GitHub release text. For app-facing entries use the
@@ -149,5 +152,5 @@ them.
 - Gated-product changesets live in `.changeset/` like everyone else; the normal
   release intentionally leaves them alone until that product's release PR
   consumes them.
-- Full model: `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`
-  and each app's `RELEASING.md`.
+- Each app's `RELEASING.md` describes its release process, and the root
+  `CLAUDE.md` describes the release lanes.

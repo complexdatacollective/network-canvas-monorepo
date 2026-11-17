@@ -1,16 +1,6 @@
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import architectIcon from '~/images/architect-icon.png';
 import { cx } from '~/utils/cva';
-const messages = defineMessages({
-  returnToStartScreen: {
-    id: 'architect.brand.returnToStartScreen',
-    defaultMessage: 'Return to start screen',
-    description: 'The aria-label text in components / Brand.',
-  },
-});
-
 type BrandProps = {
   onClick?: () => void;
   className?: string;
@@ -18,13 +8,12 @@ type BrandProps = {
 };
 
 const PILL_CHROME =
-  'py-2 pl-2 tablet-portrait:pl-3 pr-4 tablet-portrait:pr-8 rounded-full bg-surface-1 text-surface-1-contrast shadow-sm';
+  'py-2 ps-2 tablet-portrait:ps-3 pe-4 tablet-portrait:pe-8 rounded-full bg-surface-1 text-surface-1-contrast shadow-sm';
 const ROW = 'flex items-center gap-3 tablet-portrait:gap-4 shrink-0';
 const INTERACTIVE =
   'cursor-pointer border-none hover:opacity-90 transition-opacity';
 
 const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
-  const intl = useAppIntl();
   const isPill = variant === 'pill';
   const isIcon = variant === 'icon';
 
@@ -41,7 +30,8 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
         <button
           type="button"
           onClick={onClick}
-          aria-label={intl.formatMessage(messages.returnToStartScreen)}
+          aria-label="Return to start screen"
+          lang="en"
           className={cx(
             'flex shrink-0 bg-transparent p-0',
             INTERACTIVE,
@@ -80,7 +70,8 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
       <button
         type="button"
         onClick={onClick}
-        aria-label={intl.formatMessage(messages.returnToStartScreen)}
+        aria-label="Return to start screen"
+        lang="en"
         className={cx(
           baseClasses,
           INTERACTIVE,

@@ -12,7 +12,8 @@ const messages = defineMessages({
   ego: {
     id: 'architect.protocolSummary.entity.ego',
     defaultMessage: 'Ego',
-    description: 'Visible text in lib / ProtocolSummary / components / Entity.',
+    description:
+      'Heading of the section of the printable protocol summary for the ego, the codebook entry for the interviewee, above the table of its variables.',
   },
 });
 

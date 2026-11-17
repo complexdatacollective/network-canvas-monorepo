@@ -13,42 +13,40 @@ import { baseStageSchema } from './base.ts';
 import {
   nameGeneratorBehavioursSchema,
   nameGeneratorWording,
-  requireNameGeneratorWording,
 } from './name-generator.ts';
 
-export const nameGeneratorQuickAddStage = baseStageSchema
-  .extend({
-    type: z.literal('NameGeneratorQuickAdd'),
-    quickAdd: entityAttributeReference({
-      subject: 'stageSubject',
-      usage: 'validatedAttribute',
+export const nameGeneratorQuickAddStage = baseStageSchema.extend({
+  type: z.literal('NameGeneratorQuickAdd'),
+  quickAdd: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'validatedAttribute',
+  }),
+  subject: NodeStageSubjectSchema,
+  panels: panelsSchema,
+  prompts: z
+    .array(nameGeneratorPromptSchema)
+    .min(1)
+    .superRefine((prompts, ctx) => {
+      // Check for duplicate prompt IDs
+      const duplicatePromptId = findDuplicateId(prompts);
+      if (duplicatePromptId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+          path: [],
+        });
+      }
     }),
-    subject: NodeStageSubjectSchema,
-    panels: panelsSchema,
-    prompts: z
-      .array(nameGeneratorPromptSchema)
-      .min(1)
-      .superRefine((prompts, ctx) => {
-        // Check for duplicate prompt IDs
-        const duplicatePromptId = findDuplicateId(prompts);
-        if (duplicatePromptId) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-            path: [],
-          });
-        }
-      }),
-    behaviours: nameGeneratorBehavioursSchema,
-    // What the quick-add field shows before anything is typed in it, which
-    // Network Canvas supplies (`stage-wording/name-generator-quick-add.ts`).
-    // Every quick-add stage has the field, so it is always required. Worded by
-    // each stage, since what is typed depends on the attribute it fills. The
-    // line under the field, which every quick-add stage shows alike, is
-    // interface text (`interface-text-wording.ts`).
-    addNamePlaceholder: localizedMessage(nonBlankText(), {
-      arguments: SUBJECT_ARGUMENTS,
-    }),
-    ...nameGeneratorWording,
-  })
-  .superRefine(requireNameGeneratorWording);
+  behaviours: nameGeneratorBehavioursSchema,
+  // What the quick-add field shows before anything is typed in it, which
+  // Network Canvas supplies (`stage-wording/name-generator-quick-add.ts`).
+  // Every quick-add stage has the field; a stage that omits this shows
+  // Network Canvas's wording. Worded by each stage, since what is typed
+  // depends on the attribute it fills. The line under the field, which
+  // every quick-add stage shows alike, is interface text
+  // (`interface-text-wording.ts`).
+  addNamePlaceholder: localizedMessage(nonBlankText(), {
+    arguments: SUBJECT_ARGUMENTS,
+  }).optional(),
+  ...nameGeneratorWording,
+});

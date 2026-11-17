@@ -349,6 +349,7 @@ function buildHandlers(
         Redacted.value(input.document),
         principal,
         entries,
+        input.interfaceText,
       );
       if (outcome.status === 'notLockHolder') {
         return yield* new NotLockHolder({
@@ -361,7 +362,7 @@ function buildHandlers(
       }
       if (outcome.status === 'invalidShape') {
         return yield* new InvalidShape({
-          sectionId: input.sectionId,
+          sectionId: outcome.sectionId ?? input.sectionId,
           issues: outcome.issues,
         });
       }
@@ -423,6 +424,7 @@ function buildHandlers(
         Redacted.value(input.document),
         input.position,
         entries,
+        input.interfaceText,
       );
       if (outcome.status === 'exists') {
         return yield* new SectionExists({ sectionId: outcome.sectionId });

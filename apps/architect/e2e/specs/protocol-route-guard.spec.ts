@@ -24,9 +24,12 @@ const PROTOCOL_ROUTES = [
 async function settle(page: Page) {
   await page
     .locator('#boot-loader')
-    .waitFor({ state: 'hidden', timeout: 15_000 })
-    .catch(() => {});
+    .waitFor({ state: 'hidden', timeout: 15_000 });
 }
+
+// The start screen itself, so a blank or crashed page cannot pass for it.
+const startScreen = (page: Page) =>
+  page.getByRole('button', { name: 'Create a new protocol' });
 
 // Keys of the app's IndexedDB `protocols` store, without going through
 // `readProtocolJson` (which requires a row to exist). A phantom protocol must
@@ -64,6 +67,7 @@ for (const route of PROTOCOL_ROUTES) {
     await settle(architectPage);
 
     await expect(architectPage).toHaveURL(/\/$/);
+    await expect(startScreen(architectPage)).toBeVisible();
     await expect(architectPage.getByText('Untitled protocol')).toHaveCount(0);
     // Nothing was created to back the route, either.
     expect(await readProtocolIds(architectPage)).toEqual([]);
@@ -84,6 +88,7 @@ test('navigating in-app to a protocol route with no protocol open returns to the
   });
 
   await expect(architectPage).toHaveURL(/\/$/);
+  await expect(startScreen(architectPage)).toBeVisible();
   await expect(architectPage.getByText('Untitled protocol')).toHaveCount(0);
   expect(await readProtocolIds(architectPage)).toEqual([]);
 });
@@ -106,9 +111,11 @@ const VIEW_CONTROLS: readonly ViewControl[] = [
   { role: 'button', name: /^return to stages$/i },
   { role: 'button', name: /^open menu$/i },
   { role: 'combobox', name: /^interface language:/i },
+  // Its Download and Send to Interviewer items read the saved copy; neither
+  // writes anything here.
+  { role: 'button', name: /^export$/i },
+  // The Codebook's network resources each offer a Download button.
   { role: 'button', name: /^download$/i },
-  // Sends the saved copy, as Download does; it writes nothing here.
-  { role: 'button', name: /^send to interviewer$/i },
   { role: 'button', name: /^print$/i },
   // The browser's own storage warning, offering to install the app.
   {

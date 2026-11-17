@@ -57,15 +57,12 @@ export default function BehavioursPanel({
 
   return (
     <SegmentedToolbar
-      aria-label={intl.formatMessage(interfaceMessages.layoutAndDrawing)}
+      aria-label="Layout and drawing tools"
       size="lg"
-      className="absolute bottom-10 left-10 z-10"
+      className="absolute inset-s-10 bottom-10 z-10"
     >
       {showLayoutToggle ? (
-        <ToolbarGroup
-          key="layout"
-          aria-label={intl.formatMessage(interfaceMessages.layoutControls)}
-        >
+        <ToolbarGroup key="layout" aria-label="Layout controls">
           <ToolbarIconButton
             aria-label={intl.formatMessage(
               simulationEnabled
@@ -83,10 +80,7 @@ export default function BehavioursPanel({
       ) : null}
 
       {drawingWords !== undefined ? (
-        <ToolbarGroup
-          key="drawing"
-          aria-label={intl.formatMessage(interfaceMessages.drawingControls)}
-        >
+        <ToolbarGroup key="drawing" aria-label="Drawing controls">
           <ToolbarIconButton
             aria-label={drawingWords.toggleDrawing}
             icon={<Pencil />}

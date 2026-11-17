@@ -25,62 +25,70 @@ const messages = defineMessages({
   developer: {
     id: 'fresco.settings.navigation.developer',
     defaultMessage: 'Developer Tools',
-    description: 'Researcher-facing settings.navigation: Developer Tools',
+    description:
+      'Name of the Developer Tools section in the Settings side navigation, shown in a warning style. It holds risky tools such as deleting data and testing recruitment.',
   },
 
   synthetic: {
     id: 'fresco.settings.navigation.synthetic',
     defaultMessage: 'Synthetic Interview Data',
     description:
-      'Researcher-facing settings.navigation: Synthetic Interview Data',
+      'Name of the section in the Settings side navigation where a researcher generates fake test interviews (synthetic data) for a protocol.',
   },
 
   api: {
     id: 'fresco.settings.navigation.api',
     defaultMessage: 'API Tokens',
-    description: 'Researcher-facing settings.navigation: API Tokens',
+    description:
+      'Name of the section in the Settings side navigation where a researcher creates and deletes API tokens, which authorise programs that read interview data from Fresco.',
   },
 
   privacy: {
     id: 'fresco.settings.navigation.privacy',
     defaultMessage: 'Privacy',
-    description: 'Researcher-facing settings.navigation: Privacy',
+    description:
+      'Name of the Privacy section in the Settings side navigation, which holds privacy options such as analytics.',
   },
 
   interviews: {
     id: 'fresco.settings.navigation.interviews',
     defaultMessage: 'Interview Settings',
-    description: 'Researcher-facing settings.navigation: Interview Settings',
+    description:
+      'Name of the section in the Settings side navigation for options that change how interviews run, such as limiting interviews and anonymous recruitment.',
   },
 
   storage: {
     id: 'fresco.settings.navigation.storage',
     defaultMessage: 'Storage',
-    description: 'Researcher-facing settings.navigation: Storage',
+    description:
+      'Name of the section in the Settings side navigation where the researcher sees where uploaded files such as protocol assets are stored.',
   },
 
   users: {
     id: 'fresco.settings.navigation.users',
     defaultMessage: 'User Management',
-    description: 'Researcher-facing settings.navigation: User Management',
+    description:
+      'Name of the section in the Settings side navigation where researcher accounts are added, removed and given sign-in methods. User means researcher, not participant.',
   },
 
   appDetails: {
     id: 'fresco.settings.navigation.appDetails',
     defaultMessage: 'App Details',
-    description: 'Researcher-facing settings.navigation: App Details',
+    description:
+      'Name of the section in the Settings side navigation that shows the installed version and installation ID of Fresco.',
   },
 
   settings: {
     id: 'fresco.settings.page.settings',
     defaultMessage: 'Settings',
-    description: 'Researcher-facing settings / page: Settings',
+    description:
+      'Heading of the Settings page of the dashboard, where the researcher configures the Fresco installation.',
   },
   hereYouCanConfigureYourInstallationOf: {
     id: 'fresco.settings.page.hereYouCanConfigureYourInstallationOf',
     defaultMessage: 'Here you can configure your installation of Fresco.',
     description:
-      'Researcher-facing settings / page: Here you can configure your installation of Fresco.',
+      'Subheading under the heading of the Settings page, describing the page. Fresco is the product name; installation is this researcher-hosted copy of it.',
   },
 });
 

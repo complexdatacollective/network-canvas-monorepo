@@ -16,13 +16,14 @@ const messages = defineMessages({
   interviews: {
     id: 'fresco.interviews.page.interviews',
     defaultMessage: 'Interviews',
-    description: 'Researcher-facing interviews / page: Interviews',
+    description:
+      'Heading of the Interviews page of the dashboard, which lists the interviews recorded on this installation.',
   },
   viewAndManageYourInterviewData: {
     id: 'fresco.interviews.page.viewAndManageYourInterviewData',
     defaultMessage: 'View and manage your interview data.',
     description:
-      'Researcher-facing interviews / page: View and manage your interview data.',
+      'Subheading under the heading of the Interviews page of the dashboard, describing what the page is for.',
   },
 });
 

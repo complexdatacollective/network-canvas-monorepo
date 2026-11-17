@@ -14,7 +14,10 @@ import {
 } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { resolveNodeShape } from '../../../../selectors/session';
+import {
+  symbolOutlinesOf,
+  symbolShapesOf,
+} from '../../../pedigree-common/symbolShapes';
 import { config, link, person } from '../../__tests__/fixtures';
 import { readFamily } from '../../model';
 import { pedigreeLinksOf } from '../../pedigreeLinks';
@@ -41,11 +44,12 @@ import {
 const SYMBOL_SIZES = [96, 87];
 
 /** The shapes the codebook gives (circles and squares by sex), or everyone
- * drawn as a square. */
-const SHAPE_SETS = [
+ * drawn as a square, or as a custom drawing wider than it is tall. */
+const SHAPE_SETS: [string, PedigreeSymbolShape | undefined][] = [
   ['mixed shapes', undefined],
   ['all squares', 'square'],
-] as const;
+  ['all custom drawings', { width: 1, height: 0.6 }],
+];
 
 /** The shape mapping the e2e matrix's codebook gives a person. */
 const SHAPE: NodeDefinition['shape'] = {
@@ -70,13 +74,9 @@ function drawAsInterface(
   const family = readFamily(nodes, edges, config);
   const links = pedigreeLinksOf(family);
   const nodeIds = family.people.map((p) => p.id);
-  const nodeShapes = new Map(
-    family.people.map((p) => [
-      p.id,
-      everyone ??
-        (resolveNodeShape(SHAPE, p.attributes) as PedigreeSymbolShape),
-    ]),
-  );
+  const nodeShapes = everyone
+    ? new Map(family.people.map((p) => [p.id, everyone]))
+    : symbolOutlinesOf(symbolShapesOf(family.people, { shape: SHAPE }, {}));
   const { positions, connectorData } = drawPedigree({
     nodeIds,
     links,

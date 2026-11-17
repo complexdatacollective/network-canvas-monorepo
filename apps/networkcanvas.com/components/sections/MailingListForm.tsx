@@ -29,6 +29,9 @@ export function MailingListForm() {
         onChange={(value) => setEmail(value ?? '')}
         placeholder={t('placeholder')}
         aria-label={t('emailLabel')}
+        // In a row the field takes the spare width and gives way first, so
+        // the submit button keeps its whole label.
+        className="phone-landscape:shrink phone-landscape:grow"
       />
       <div aria-hidden="true" className="sr-only">
         <input
@@ -38,7 +41,7 @@ export function MailingListForm() {
           defaultValue=""
         />
       </div>
-      <Button type="submit" color="primary">
+      <Button type="submit" color="primary" className="shrink-0">
         {t('submit')}
       </Button>
     </form>

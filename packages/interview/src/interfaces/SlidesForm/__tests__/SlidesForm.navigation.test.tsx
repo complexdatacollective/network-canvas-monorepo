@@ -490,9 +490,7 @@ describe('SlidesForm navigation ownership', () => {
       await goToStage?.(1);
     });
 
-    expect(
-      screen.queryByRole('button', { name: 'Discard changes' }),
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull();
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
   });
 
@@ -674,7 +672,7 @@ describe('SlidesForm navigation ownership', () => {
     });
 
     const discardChanges = await screen.findByRole('button', {
-      name: 'Discard changes',
+      name: 'Yes',
     });
     await act(async () => {
       fireEvent.click(discardChanges);
@@ -811,6 +809,14 @@ describe('SlidesForm moving on from a complete form', () => {
   const closenessForm: TitlelessForm = {
     fields: [{ variable: 'closeness' as never, prompt: { en: 'How close?' } }],
   };
+
+  // A person's answers can be given, and Next moves on, once they arrive.
+  const waitForAnswersToArrive = () =>
+    waitFor(() =>
+      expect(
+        screen.getByRole('radio', { name: 'Very close' }).closest('[inert]'),
+      ).toBeNull(),
+    );
 
   function renderClosenessSlides(
     nodes: NcNode[],
@@ -974,6 +980,8 @@ describe('SlidesForm moving on from a complete form', () => {
     fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
     await act(async () => {
       await next();
+      // Long enough for the save to finish, so a second move on would have
+      // been made.
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
 
@@ -992,6 +1000,7 @@ describe('SlidesForm moving on from a complete form', () => {
     ]);
 
     fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
+    // Longer than the pause before the form moves on by itself.
     await new Promise((resolve) => setTimeout(resolve, 600));
 
     expect(screen.getByTestId('slide-header')).toHaveTextContent('person-1');
@@ -1026,8 +1035,8 @@ describe('SlidesForm moving on from a complete form', () => {
     );
     expect(updateItem).not.toHaveBeenCalled();
 
+    await waitForAnswersToArrive();
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 450));
       await next();
     });
     await waitFor(() =>
@@ -1059,22 +1068,24 @@ describe('SlidesForm moving on from a complete form', () => {
       'start',
     );
 
+    await waitForAnswersToArrive();
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 450));
       await next();
     });
     // Partway to the second person.
     act(() => reduceMotion(true));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    });
 
-    expect(screen.getAllByTestId('slide-header').at(-1)).toHaveTextContent(
-      'person-2',
+    await waitFor(
+      () => {
+        expect(screen.getAllByTestId('slide-header').at(-1)).toHaveTextContent(
+          'person-2',
+        );
+        expect(
+          screen.getByRole('radio', { name: 'Very close' }).closest('[inert]'),
+        ).toBeNull();
+      },
+      { timeout: 2000 },
     );
-    expect(
-      screen.getByRole('radio', { name: 'Very close' }).closest('[inert]'),
-    ).toBeNull();
     await act(async () => {
       await next();
     });

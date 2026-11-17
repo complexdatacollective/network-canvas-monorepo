@@ -12,8 +12,7 @@ import {
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
@@ -48,9 +47,7 @@ const preventBlur = (e: React.MouseEvent) => e.preventDefault();
  * `search.searchNoMatch`, or `geospatial.searchFailed`), or the one message
  * built with a place.
  */
-type SearchStatus =
-  | { text: string }
-  | { message: MessageDescriptor; values?: { place: string } };
+type SearchStatus = { text: string; english?: true };
 
 export default function GeospatialSearch({
   accessToken,
@@ -250,17 +247,17 @@ export default function GeospatialSearch({
         if (selectionGenerationRef.current !== generation) return;
         setStatusMessage(
           outcome === 'moved'
-            ? {
-                message: interfaceMessages.mapMoved,
-                values: { place: suggestion.name },
-              }
-            : { text: failedText },
+            ? { text: `Map moved to ${suggestion.name}.`, english: true }
+            : {
+                text: 'Search could not be completed. Try again in a moment.',
+                english: true,
+              },
         );
       };
       void announce();
       closeSearch();
     },
-    [handleSelect, closeSearch, failedText],
+    [handleSelect, closeSearch],
   );
 
   // KeyDown handler factory for suggestions
@@ -386,10 +383,10 @@ export default function GeospatialSearch({
         data-testid="geospatial-search-status"
       >
         {statusMessage &&
-          ('text' in statusMessage ? (
-            statusMessage.text
+          (statusMessage.english ? (
+            <span lang="en">{statusMessage.text}</span>
           ) : (
-            <AppMessage {...statusMessage} />
+            statusMessage.text
           ))}
       </div>
 
@@ -401,11 +398,8 @@ export default function GeospatialSearch({
             ref={buttonRef}
             icon={<Search />}
             color={isOpen ? 'secondary' : 'dynamic'}
-            aria-label={
-              isOpen
-                ? intl.formatMessage(interfaceMessages.closeSearch)
-                : intl.formatMessage(interfaceMessages.searchLocation)
-            }
+            aria-label={isOpen ? 'Close search' : 'Search location'}
+            lang="en"
             aria-expanded={isOpen}
             data-testid="geospatial-search-toggle"
             className="relative"
@@ -450,9 +444,8 @@ export default function GeospatialSearch({
                       variant="text"
                       size="sm"
                       onClick={handleClear}
-                      aria-label={intl.formatMessage(
-                        interfaceMessages.clearSearch,
-                      )}
+                      aria-label="Clear search"
+                      lang="en"
                       data-testid="geospatial-search-clear"
                       tabIndex={-1}
                     />
@@ -469,7 +462,7 @@ export default function GeospatialSearch({
                   spacing="none"
                   shadow="none"
                   floating
-                  className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
+                  className="absolute inset-s-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
                   initial={{ opacity: 0, y: '-0.5rem' }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: '-0.5rem' }}
@@ -485,9 +478,7 @@ export default function GeospatialSearch({
                       textValueExtractor={textValueExtractor}
                       selectionMode="none"
                       animate={false}
-                      aria-label={intl.formatMessage(
-                        interfaceMessages.searchSuggestions,
-                      )}
+                      aria-label="Search suggestions"
                       className="flex flex-col p-1"
                       renderItem={renderItem}
                     >
@@ -505,9 +496,7 @@ export default function GeospatialSearch({
                       id={listboxId}
                       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA combobox popup (empty or loading state); <select> and <datalist> cannot be styled or announce loading.
                       role="listbox"
-                      aria-label={intl.formatMessage(
-                        interfaceMessages.searchSuggestions,
-                      )}
+                      aria-label="Search suggestions"
                       aria-busy={isLoading || undefined}
                       data-testid="geospatial-search-empty"
                       className={cx(
@@ -521,8 +510,9 @@ export default function GeospatialSearch({
                             className="mx-auto size-4 animate-spin"
                             aria-hidden="true"
                           />
-                          <span className="sr-only">
-                            <AppMessage message={commonMessages.loading} />
+                          <span className="sr-only" lang="en">
+                            {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+                            {'Loading…'}
                           </span>
                         </>
                       ) : (

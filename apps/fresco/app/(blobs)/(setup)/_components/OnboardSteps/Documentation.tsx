@@ -15,57 +15,59 @@ const messages = defineMessages({
     id: 'fresco.OnboardSteps.Documentation.documentation',
     defaultMessage: 'Documentation',
     description:
-      'Researcher-facing OnboardSteps / Documentation: Documentation',
+      'Heading of the last step of the setup wizard, which points the researcher to the online documentation before they enter the dashboard.',
   },
   thisIsTheEndOfTheOnboarding: {
     id: 'fresco.OnboardSteps.Documentation.thisIsTheEndOfTheOnboarding',
     defaultMessage:
       'This is the end of the onboarding process. You are now ready to use Fresco! For further help and information, consider using the resources below.',
     description:
-      'Researcher-facing OnboardSteps / Documentation: This is the end of the onboarding process. You are now ready to use Fresco! For further help and information, consider u',
+      'Paragraph under the heading of the last setup wizard step. Says setup is finished and points to the two documentation links shown below it.',
   },
   aboutFrescoVisitOurDocumentationSiteTo: {
     id: 'fresco.OnboardSteps.Documentation.aboutFrescoVisitOurDocumentationSiteTo',
     defaultMessage:
       'About Fresco — visit our documentation site to learn more (opens in a new tab)',
     description:
-      'Researcher-facing OnboardSteps / Documentation: About Fresco — visit our documentation site to learn more (opens in a new tab)',
+      'Accessible name of the "About Fresco" documentation link card in the last setup step; read only by screen readers. Says the link opens the documentation site in a new browser tab.',
   },
   aboutFresco: {
     id: 'fresco.OnboardSteps.Documentation.aboutFresco',
     defaultMessage: 'About Fresco',
-    description: 'Researcher-facing OnboardSteps / Documentation: About Fresco',
+    description:
+      'Small heading of a link card in the last setup step; the card links to the documentation page that introduces Fresco.',
   },
   visitOurDocumentationSiteToLearnMore: {
     id: 'fresco.OnboardSteps.Documentation.visitOurDocumentationSiteToLearnMore',
     defaultMessage: 'Visit our documentation site to learn more about Fresco.',
     description:
-      'Researcher-facing OnboardSteps / Documentation: Visit our documentation site to learn more about Fresco.',
+      'Description text in the "About Fresco" link card of the last setup step, inviting the researcher to open the documentation site.',
   },
   usingFrescoVisitOurDocumentationSiteFor: {
     id: 'fresco.OnboardSteps.Documentation.usingFrescoVisitOurDocumentationSiteFor',
     defaultMessage:
       'Using Fresco — visit our documentation site for a usage guide (opens in a new tab)',
     description:
-      'Researcher-facing OnboardSteps / Documentation: Using Fresco — visit our documentation site for a usage guide (opens in a new tab)',
+      'Accessible name of the "Using Fresco" documentation link card in the last setup step; read only by screen readers. Says the link opens a usage guide in a new browser tab.',
   },
   usingFresco: {
     id: 'fresco.OnboardSteps.Documentation.usingFresco',
     defaultMessage: 'Using Fresco',
-    description: 'Researcher-facing OnboardSteps / Documentation: Using Fresco',
+    description:
+      'Small heading of a link card in the last setup step; the card links to the documentation guide on how to use Fresco.',
   },
   readOurGuideOnTheBasicWorkflow: {
     id: 'fresco.OnboardSteps.Documentation.readOurGuideOnTheBasicWorkflow',
     defaultMessage:
       'Read our guide on the basic workflow for using Fresco to conduct your study.',
     description:
-      'Researcher-facing OnboardSteps / Documentation: Read our guide on the basic workflow for using Fresco to conduct your study.',
+      'Description text in the "Using Fresco" link card of the last setup step, inviting the researcher to read the guide to the basic workflow of running a study.',
   },
   goToTheDashboard: {
     id: 'fresco.OnboardSteps.Documentation.goToTheDashboard',
     defaultMessage: 'Go to the dashboard!',
     description:
-      'Researcher-facing OnboardSteps / Documentation: Go to the dashboard!',
+      'Button on the last setup step that finishes setup and opens the researcher dashboard.',
   },
 });
 

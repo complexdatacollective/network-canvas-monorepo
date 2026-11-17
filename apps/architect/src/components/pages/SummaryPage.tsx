@@ -13,19 +13,21 @@ import InterfaceText from '~/lib/ProtocolSummary/components/InterfaceText';
 import Stages from '~/lib/ProtocolSummary/components/Stages';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
 import { getCodebookIndex } from '~/lib/ProtocolSummary/helpers';
-import { getProtocol, getProtocolName } from '~/selectors/protocol';
+import { getProtocolAsShown, getProtocolName } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 const messages = defineMessages({
   protocolSummary: {
     id: 'architect.pages.summaryPage.protocolSummary',
     defaultMessage: 'Protocol Summary',
-    description: 'The title text in components / pages / SummaryPage.',
+    description:
+      'Heading of the Protocol Summary page, a printable overview of the whole protocol.',
   },
   belowIsAComprehensiveSummaryOf: {
     id: 'architect.pages.summaryPage.belowIsAComprehensiveSummaryOf',
     defaultMessage:
       'Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.',
-    description: 'The description text in components / pages / SummaryPage.',
+    description:
+      'Introductory text under the heading of the Protocol Summary page. Describes what the summary contains: stages, codebook and resources (assets).',
   },
 });
 
@@ -41,8 +43,9 @@ const SummaryPage = () => {
       document.documentElement.classList.remove('summary-view');
     };
   }, []);
-  // Get the active protocol and metadata from Redux store
-  const protocol = useSelector(getProtocol);
+  // The protocol with the wording a participant is shown written out, so the
+  // summary prints Network Canvas's wording where the protocol holds none.
+  const protocol = useSelector(getProtocolAsShown);
   const protocolName = useSelector(getProtocolName);
   const index = getCodebookIndex(protocol);
   // Unreachable: ProtocolRouteGuard renders no /protocol route without a
@@ -69,7 +72,7 @@ const SummaryPage = () => {
             )}
           />
         </div>
-        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">
+        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8] rtl:[&_.variable-pill]:origin-right">
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}

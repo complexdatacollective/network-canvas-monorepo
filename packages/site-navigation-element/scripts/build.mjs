@@ -71,29 +71,32 @@ writeFileSync(
 const fontSources = [
   require.resolve('@codaco/tailwind-config/fonts/nunito.css'),
   require.resolve('@codaco/tailwind-config/fonts/inclusive-sans.css'),
+  require.resolve('@codaco/tailwind-config/fonts/readex-pro.css'),
 ];
-const fontFiles = new Set();
+// File name to the fontsource package that ships it.
+const fontFiles = new Map();
 const fontFaces = [];
 for (const source of fontSources) {
   parse(readFileSync(source, 'utf8')).walkAtRules('font-face', (face) => {
     let style = 'normal';
     let file = null;
+    let fontPackage = null;
     face.walkDecls('font-style', (decl) => {
       style = decl.value;
     });
     face.walkDecls('src', (decl) => {
       const match = decl.value.match(
-        /url\('@fontsource-variable\/[^/]+\/files\/([^']+)'\)/,
+        /url\('(@fontsource-variable\/[^/]+)\/files\/([^']+)'\)/,
       );
       if (!match) return;
-      file = match[1];
+      [, fontPackage, file] = match;
       decl.value = decl.value.replace(
         /url\('[^']+'\)/,
-        `url('__NC_FONT_BASE__/${match[1]}')`,
+        `url('__NC_FONT_BASE__/${file}')`,
       );
     });
     if (style !== 'normal' || !file) return;
-    fontFiles.add(file);
+    fontFiles.set(file, fontPackage);
     fontFaces.push(face.toString());
   });
 }
@@ -101,11 +104,11 @@ writeFileSync(join(generated, 'document-fonts.css'), fontFaces.join('\n\n'));
 
 function copyFonts(targetDir) {
   mkdirSync(targetDir, { recursive: true });
-  for (const file of fontFiles) {
-    const pkg = file.startsWith('nunito')
-      ? '@fontsource-variable/nunito'
-      : '@fontsource-variable/inclusive-sans';
-    cpSync(require.resolve(`${pkg}/files/${file}`), join(targetDir, file));
+  for (const [file, fontPackage] of fontFiles) {
+    cpSync(
+      require.resolve(`${fontPackage}/files/${file}`),
+      join(targetDir, file),
+    );
   }
 }
 

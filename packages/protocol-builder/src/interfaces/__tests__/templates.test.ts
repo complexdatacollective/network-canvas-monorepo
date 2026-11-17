@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  familyPedigreeWordingIn,
-  stageSchema,
-} from '@codaco/protocol-validation';
+import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
+import { stageSchema } from '@codaco/protocol-validation';
 
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { getInterfaceTemplate, newStageFields } from '../templates.ts';

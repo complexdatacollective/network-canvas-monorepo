@@ -90,9 +90,9 @@ export default function StageTitle({
         {/*
           Decorative timeline rail behind the thumbnail: `h-56` is the `h-28`
           image plus 3.5rem of bleed each end, `-top-13` centres it on the
-          image, and `border-l-10` matches the badge timeline accent.
+          image, and `border-s-10` matches the badge timeline accent.
         */}
-        <div className="before:border-neon-coral relative before:absolute before:-top-13 before:left-[50%] before:h-56 before:border-l-10 before:mask-[linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]">
+        <div className="before:border-neon-coral relative before:absolute before:inset-s-[50%] before:-top-13 before:h-56 before:border-s-10 before:mask-[linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]">
           {/* Decorative: the badge below names the interface. */}
           <StageTypeImage
             type={stageType}

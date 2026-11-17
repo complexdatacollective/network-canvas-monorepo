@@ -191,8 +191,14 @@ const scalarVariableSchema = baseVariableSchema.extend({
   component: z.enum(scalarComponents).optional(),
   parameters: z
     .strictObject({
-      minLabel: localizedString(nonBlankText(), 'markdown').optional(),
-      maxLabel: localizedString(nonBlankText(), 'markdown').optional(),
+      minLabel: localizedString(nonBlankText(), {
+        format: 'markdown',
+        lines: 'single',
+      }).optional(),
+      maxLabel: localizedString(nonBlankText(), {
+        format: 'markdown',
+        lines: 'single',
+      }).optional(),
     })
     .optional(),
   validation: z.strictObject(validations).pick(scalarValidations).optional(),
@@ -362,7 +368,10 @@ const textVariableSchema = baseVariableSchema.extend({
 // actually known.
 const booleanOptionsSchema = z.array(
   z.strictObject({
-    label: localizedString(nonBlankText(), 'markdown'),
+    label: localizedString(nonBlankText(), {
+      format: 'markdown',
+      lines: 'single',
+    }),
     value: z.boolean(),
     negative: z.boolean().optional(),
   }),
@@ -424,7 +433,10 @@ export const optionValueKey = (value: string | number): string => String(value);
 const categoricalOptionsSchema = z
   .array(
     z.strictObject({
-      label: localizedString(nonBlankText(), 'markdown'),
+      label: localizedString(nonBlankText(), {
+        format: 'markdown',
+        lines: 'single',
+      }),
       value: categoricalOptionValueSchema,
     }),
   )

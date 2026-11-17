@@ -1,14 +1,28 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import type { Decorator, Preview } from '@storybook/react-vite';
-import { type ReactNode, useEffect, useLayoutEffect } from 'react';
+import {
+  createContext,
+  Fragment,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from 'react';
 
 import {
   type AppLocale,
   type CatalogMessages,
-  PSEUDO_LOCALE,
-  pseudoAppLocale,
+  pseudoAppLocales,
 } from '@codaco/app-i18n/locales';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AppDirectionOverride, AppI18nProvider } from '@codaco/app-i18n/react';
+import {
+  compareMirrored,
+  type LayoutSnapshot,
+  layoutShowing,
+  layoutsMatch,
+  snapshotLayout,
+} from '@codaco/e2e-helpers/direction-audit';
 
 /**
  * Storybook's language and writing-direction controls, shared by every
@@ -25,13 +39,13 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
  *
  * - **Language** proves a component reads its copy from a catalog. Switching
  *   it should visibly change every string a component owns; anything that
- *   stays in English is hardcoded. The pseudo-locale makes that verdict
- *   available before any translation exists.
+ *   stays in English is hardcoded. The accented pseudo-locale makes that
+ *   verdict available before any translation exists.
  * - **Direction** proves a component lays out with logical properties. It is
- *   a separate axis on purpose: no right-to-left locale ships yet, so binding
- *   direction to language would leave RTL untestable until one does. Left on
- *   "Automatic" it follows the selected locale's declared direction, which is
- *   what a real host does.
+ *   a separate axis on purpose: it mirrors a story in any language, real
+ *   words included, where the right-to-left pseudo-locale brings its own
+ *   right-to-left text with it. Left on "Automatic" it follows the selected
+ *   locale's declared direction, which is what a real host does.
  */
 
 const LOCALE_KEY = 'appLocale';
@@ -47,6 +61,20 @@ const directionModes = {
 } as const;
 
 export type DirectionMode = keyof typeof directionModes;
+
+const DirectionModeContext = createContext<DirectionMode>('auto');
+
+/**
+ * What the Direction control is set to, for a story that takes its direction
+ * from something of its own and has to tell "Automatic" from a choice. An
+ * interview is one: it reads from its protocol's language whatever surrounds
+ * it, so its stories pass an explicit LTR or RTL on and leave Automatic to
+ * the language. The direction a story is drawn in, whichever way it was
+ * arrived at, is `useAppDirection()`.
+ */
+export function useStorybookDirectionMode(): DirectionMode {
+  return useContext(DirectionModeContext);
+}
 
 export type StorybookI18nOptions = Readonly<{
   /**
@@ -64,8 +92,9 @@ export type StorybookI18nOptions = Readonly<{
   /** Which locale a Storybook with no stored preference opens in. */
   defaultLocale?: string;
   /**
-   * Whether to offer the pseudo-locale. On by default: it is the only way to
-   * see untranslated strings and clipped layouts before translations exist.
+   * Whether to offer the pseudo-locales. On by default: they are the only way
+   * to see untranslated strings, clipped layouts and right-to-left text
+   * before translations exist.
    */
   includePseudoLocale?: boolean;
 }>;
@@ -81,7 +110,98 @@ export type StorybookI18n = Readonly<{
   globalTypes: NonNullable<Preview['globalTypes']>;
   initialGlobals: Readonly<{ appLocale: string; appDirection: DirectionMode }>;
   withAppI18n: Decorator;
+  /**
+   * A preview addon: a story tagged `mirror` is drawn in each direction once
+   * its play function has run, and fails unless every box sits as far from
+   * the right edge as it sat from the left, and every arrow that points along
+   * the line turns round. See `mirrorCheck` below.
+   *
+   * It goes first in the preview's `addons`. Storybook runs `afterEach`
+   * hooks in the reverse of the order they are composed (addons in order,
+   * then the preview's own), so the first addon's runs last: after the
+   * accessibility audit has read the page the play function left, which the
+   * mirror check's fresh renders would otherwise have replaced.
+   */
+  mirrorAddon: Preview;
 }>;
+
+/** The tag a story or a whole stories file opts into the mirror check with. */
+export const MIRROR_TAG = 'mirror';
+
+const nextFrame = () =>
+  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+/**
+ * Resolves once no element has been added or removed for a moment: a story
+ * drawn afresh may load its data first ("Loading…" and then the table), and
+ * the two renders have to be compared in the same state. Attribute and style
+ * changes do not count, since an animation writes those every frame. The time
+ * limit bounds a story that never stops; it is not a pause.
+ */
+function domAtRest(quietMs = 50, limitMs = 3000): Promise<void> {
+  return new Promise((resolve) => {
+    let quiet: ReturnType<typeof setTimeout>;
+    const finish = () => {
+      clearTimeout(quiet);
+      clearTimeout(limit);
+      observer.disconnect();
+      resolve();
+    };
+    const observer = new MutationObserver(() => {
+      clearTimeout(quiet);
+      quiet = setTimeout(finish, quietMs);
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    quiet = setTimeout(finish, quietMs);
+    const limit = setTimeout(finish, limitMs);
+  });
+}
+
+/**
+ * The layout once it has stopped moving: snapshots a frame apart until two in
+ * a row agree. Components that measure themselves (a bin sized to its
+ * neighbours, a popup placed against its trigger) can take several frames
+ * after the DOM settles, and longer on a loaded machine. Gives up after
+ * `limit` tries and returns the last snapshot, which the comparison then
+ * reports if it is still moving.
+ */
+async function stableLayout(limit = 30): Promise<LayoutSnapshot> {
+  let previous = snapshotLayout();
+  for (let attempt = 0; attempt < limit; attempt += 1) {
+    await nextFrame();
+    const current = snapshotLayout();
+    if (layoutsMatch(previous, current)) return current;
+    previous = current;
+  }
+  return previous;
+}
+
+/**
+ * Waits for a change of direction to reach the page: React's commit, the
+ * popups Base UI positions (which recompute on a resize, not on a change of
+ * direction), and any finite animation or transition the change started.
+ * The time limit bounds one that never ends; it is not a pause.
+ */
+async function settleLayout() {
+  await domAtRest();
+  await nextFrame();
+  window.dispatchEvent(new Event('resize'));
+  await nextFrame();
+  const finite = document
+    .getAnimations()
+    .filter(
+      (animation) => animation.effect?.getComputedTiming().endTime !== Infinity,
+    );
+  await Promise.race([
+    Promise.allSettled(finite.map((animation) => animation.finished)),
+    new Promise((resolve) => setTimeout(resolve, 2000)),
+  ]);
+  await nextFrame();
+}
 
 /**
  * Whether the controls' remembered selections apply.
@@ -144,14 +264,17 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     throw new Error('storybookI18n: the locale registry is empty');
   }
 
-  // The pseudo-locale is appended rather than expected in the registry: a
-  // production registry must never contain it, so every caller would
+  // The pseudo-locales are appended rather than expected in the registry: a
+  // production registry must never contain them, so every caller would
   // otherwise have to build a Storybook-only copy of its own list.
-  const offered: readonly AppLocale[] =
-    includePseudoLocale &&
-    !locales.some((entry) => entry.locale === PSEUDO_LOCALE)
-      ? [...locales, pseudoAppLocale]
-      : locales;
+  const offered: readonly AppLocale[] = includePseudoLocale
+    ? [
+        ...locales,
+        ...pseudoAppLocales.filter(
+          (pseudo) => !locales.some((entry) => entry.locale === pseudo.locale),
+        ),
+      ]
+    : locales;
 
   const isOffered = (value: string): value is string =>
     offered.some((entry) => entry.locale === value);
@@ -162,6 +285,13 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     readStored(LOCALE_STORAGE_KEY, isOffered) ?? defaultLocale;
   const initialDirection =
     readStored(DIRECTION_STORAGE_KEY, isDirectionMode) ?? 'auto';
+
+  // Set by the mounted frame: draws the story afresh (remounted) in the given
+  // direction, or in the one its globals choose when given null. Only the
+  // mirror check calls it.
+  let forceDirection:
+    | ((direction: AppLocale['direction'] | null) => void)
+    | null = null;
 
   // The decorator's state and effects live in a component of their own:
   // Storybook calls a decorator as a plain function, which is no place for
@@ -177,6 +307,24 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     direction: AppLocale['direction'];
     children: ReactNode;
   }) {
+    const [{ forced, generation }, setForced] = useState<{
+      forced: AppLocale['direction'] | null;
+      generation: number;
+    }>({ forced: null, generation: 0 });
+    useLayoutEffect(() => {
+      const force = (next: AppLocale['direction'] | null) =>
+        setForced((previous) => ({
+          forced: next,
+          generation: previous.generation + 1,
+        }));
+      forceDirection = force;
+      return () => {
+        if (forceDirection === force) forceDirection = null;
+      };
+    }, []);
+    const shownMode: DirectionMode = forced ?? mode;
+    const shownDirection = forced ?? direction;
+
     useEffect(() => {
       writeStored(LOCALE_STORAGE_KEY, locale);
     }, [locale]);
@@ -206,38 +354,50 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     useLayoutEffect(() => {
       const root = document.documentElement;
       root.lang = locale;
-      root.dir = direction;
-    }, [locale, direction]);
+      root.dir = shownDirection;
+    }, [locale, shownDirection]);
 
     return (
-      <AppI18nProvider
-        locale={locale}
-        locales={offered}
-        messages={catalogs[locale]}
-        // The effect above owns `<html lang>`/`<html dir>` instead, because
-        // the toolbar's direction is an override the provider cannot see: it
-        // would write the locale's own direction and undo an explicit RTL
-        // selection on every render.
-        manageDocument={false}
-      >
-        {/*
-          Base UI reads direction from context, not from the DOM, and uses it
-          for popover placement and for which arrow key moves where. Without
-          this provider a story's CSS mirrors while its dropdowns, tabs and
-          menus keep behaving as LTR — so the switcher would show a layout
-          that looks right and hide the interaction bugs it exists to find.
-        */}
-        <DirectionProvider direction={direction}>
-          {/*
-            `contents` so the wrapper contributes no box of its own: a story
-            laid out by its parent (a grid cell, a flex child) must not gain
-            an anonymous block between it and that parent.
+      // An explicit LTR or RTL is an override for every language provider in
+      // the story, not only the one below. A story that mounts a host's own
+      // provider stack (`ArchitectI18nProvider`, say) puts that host's
+      // registry and its `LocaleDirectionProvider` nearer the components than
+      // anything here, and without the override they would write the
+      // language's own direction to the document and hand it to Base UI: the
+      // CSS and the controls would disagree. On Automatic there is nothing to
+      // override, and each language keeps its own direction.
+      <DirectionModeContext.Provider value={shownMode}>
+        <AppDirectionOverride
+          direction={shownMode === 'auto' ? null : shownMode}
+        >
+          <AppI18nProvider
+            locale={locale}
+            locales={offered}
+            messages={catalogs[locale]}
+            // The effect above owns `<html lang>`/`<html dir>`: it is what the
+            // comment there explains, and two writers would be one too many.
+            manageDocument={false}
+          >
+            {/*
+            Base UI reads direction from context, not from the DOM, and uses it
+            for popover placement and for which arrow key moves where. Without
+            this provider a story's CSS mirrors while its dropdowns, tabs and
+            menus keep behaving as LTR — so the switcher would show a layout
+            that looks right and hide the interaction bugs it exists to find.
           */}
-          <div dir={direction} className="contents">
-            {children}
-          </div>
-        </DirectionProvider>
-      </AppI18nProvider>
+            <DirectionProvider direction={shownDirection}>
+              {/*
+              `contents` so the wrapper contributes no box of its own: a story
+              laid out by its parent (a grid cell, a flex child) must not gain
+              an anonymous block between it and that parent.
+            */}
+              <div dir={shownDirection} className="contents">
+                <Fragment key={generation}>{children}</Fragment>
+              </div>
+            </DirectionProvider>
+          </AppI18nProvider>
+        </AppDirectionOverride>
+      </DirectionModeContext.Provider>
     );
   }
 
@@ -263,8 +423,80 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     );
   };
 
+  /**
+   * The layout mirrors: the right-to-left check every story tagged `mirror`
+   * runs after its play function. The story is drawn afresh in each
+   * direction and the two renders are compared element by element; the text
+   * is the same in both, so every distance can be compared exactly.
+   *
+   * Afresh rather than flipped in place, because components that measure
+   * themselves (Base UI's tab indicator and popup positions) measure again
+   * when their size changes, not when the direction does: a story flipped in
+   * place shows the old measurement, which a real change of language (whose
+   * text changes every size) never would. The cost is that what the play
+   * function opened is closed again, so the check sees the story as first
+   * drawn; a story that should be checked open renders open (`defaultOpen`).
+   * The accessibility audit has already run on what the play function left.
+   *
+   * Motion is not what makes two renders differ here: around `afterEach`
+   * Storybook's test runner sets `transition: none` and pauses every CSS
+   * animation at its end (`pauseAnimations`), and `settleLayout` waits out
+   * any other finite animation. Content is: a render caught still loading,
+   * or a story that moves on by itself (a timer). When the two renders'
+   * text differs, the first direction is drawn again and measured once it
+   * shows what the second showed (`layoutShowing`).
+   *
+   * It runs only in an automated browser (the Storybook test suites), so a
+   * person clicking through stories never sees the story flip.
+   */
+  const mirrorCheck = async ({
+    tags,
+  }: Readonly<{ tags: readonly string[] }>) => {
+    if (!tags.includes(MIRROR_TAG) || !window.navigator.webdriver) return;
+    const setDirection = forceDirection;
+    if (!setDirection) {
+      throw new Error(
+        `A story tagged “${MIRROR_TAG}” rendered without the language decorator, so it cannot be mirrored`,
+      );
+    }
+    const drawn =
+      document.documentElement.dir === 'rtl' ? 'rtl' : ('ltr' as const);
+    setDirection(drawn);
+    await settleLayout();
+    let first = await stableLayout();
+    setDirection(drawn === 'rtl' ? 'ltr' : 'rtl');
+    await settleLayout();
+    const second = await stableLayout();
+    if (first.text !== second.text) {
+      // The two renders were caught showing different content: the first
+      // before it had finished loading, or a story that moves on by itself.
+      // Draw the first direction again and measure it showing what the
+      // second showed. Each call draws the story afresh.
+      setDirection(drawn);
+      first = await layoutShowing({
+        direction: drawn,
+        text: second.text,
+        snapshot: () => snapshotLayout(),
+        nextFrame,
+        now: () => performance.now(),
+      });
+    }
+    // Back to the story's own direction, settled, so the story is left as
+    // it was drawn rather than unmounting mid-render.
+    setDirection(null);
+    await settleLayout();
+
+    const issues = compareMirrored(first, second);
+    if (issues.length > 0) {
+      throw new Error(
+        `The story does not mirror (${issues.length} problem${issues.length === 1 ? '' : 's'}):\n${issues.slice(0, 25).join('\n')}`,
+      );
+    }
+  };
+
   return {
     withAppI18n,
+    mirrorAddon: { afterEach: mirrorCheck },
     initialGlobals: {
       [LOCALE_KEY]: initialLocale,
       [DIRECTION_KEY]: initialDirection,

@@ -8,6 +8,7 @@ import SiteNavigation, {
   type SiteNavigationLocale,
 } from '@codaco/fresco-ui/navigation/SiteNavigation';
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
+import { siteNavigationMessages } from '@codaco/fresco-ui/navigation/SiteNavigation.messages';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 
 import { ensureDocumentStyles } from './documentStyles';
@@ -26,18 +27,14 @@ const ACTIVE_ITEMS: readonly SiteNavigationItemId[] = [
   'software',
   'getStarted',
 ];
-const LOCALES: readonly SiteNavigationLocale[] = [
-  'en-US',
-  'en-GB',
-  'es',
-  'zh-Hans',
-  'zh-Hant',
-  'de',
-  'nl',
-  'pt-BR',
-  'it',
-  'fr',
-];
+// Every language the header has words for. Its messages cover exactly the
+// languages the Network Canvas websites offer (they satisfy
+// `Record<SiteLocale, …>`), so a language added to the websites reaches the
+// element without a second list to update.
+const LOCALES = Object.keys(siteNavigationMessages).filter(
+  (value): value is SiteNavigationLocale =>
+    Object.hasOwn(siteNavigationMessages, value),
+);
 const THEMES = ['light', 'dark', 'auto'] as const;
 type Theme = (typeof THEMES)[number];
 const LAYOUTS: readonly SiteNavigationLayout[] = ['header', 'embedded', 'menu'];

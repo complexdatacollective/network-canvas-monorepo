@@ -18,7 +18,9 @@ const claudeSkillsDir = path.join(repoRoot, '.claude', 'skills');
 const agentsSkillsDir = path.join(repoRoot, '.agents', 'skills');
 
 test('every .claude/skills entry symlinks its .agents/skills counterpart', () => {
-  for (const entry of readdirSync(claudeSkillsDir)) {
+  const entries = readdirSync(claudeSkillsDir);
+  assert.ok(entries.length > 0, '.claude/skills lists no skills');
+  for (const entry of entries) {
     const entryPath = path.join(claudeSkillsDir, entry);
     assert.ok(
       lstatSync(entryPath).isSymbolicLink(),
@@ -39,7 +41,9 @@ test('every .claude/skills entry symlinks its .agents/skills counterpart', () =>
 
 test('every .agents skill is exposed to Claude Code', () => {
   const claudeEntries = new Set(readdirSync(claudeSkillsDir));
-  for (const entry of readdirSync(agentsSkillsDir)) {
+  const entries = readdirSync(agentsSkillsDir);
+  assert.ok(entries.length > 0, '.agents/skills lists no skills');
+  for (const entry of entries) {
     assert.ok(
       claudeEntries.has(entry),
       `.agents/skills/${entry} has no .claude/skills symlink — add one so Claude Code can discover it`,

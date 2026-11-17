@@ -1,9 +1,6 @@
 /* eslint-env jest */
 
-import {
-  // actionCreators,
-  actionLocks,
-} from '../userActions';
+import { actionLocks } from '../userActions';
 
 describe('userActions', () => {
   it('exports actionLocks', () => {
@@ -14,12 +11,5 @@ describe('userActions', () => {
         saving: expect.any(Function),
       }),
     );
-  });
-
-  describe('actions', () => {
-    it.todo('openNetcanvas');
-    it.todo('createNetcanvas');
-    it.todo('saveAsNetcanvas');
-    it.todo('saveNetcanvas');
   });
 });

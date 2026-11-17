@@ -3,6 +3,7 @@ import { isEqual } from 'es-toolkit';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   ComponentTypes,
+  findDuplicateOptionLabels,
   type LocalizedString,
   VariableTypes,
 } from '@codaco/protocol-validation';
@@ -10,7 +11,7 @@ import {
 import { isOptionLabelEmpty } from '../form/arrayFields/optionCompleteness.ts';
 import {
   asLocalizedString,
-  translationText,
+  type ProtocolLocalization,
 } from '../localization/localizedText.ts';
 
 const messages = defineMessages({
@@ -215,15 +216,20 @@ const namesNoAnswer = (answers: BooleanAnswers): boolean =>
   answers.every(isUnnamed);
 
 /**
- * Whether the two answers say the same thing in some language both are
- * written in, after trimming and case-sensitively — see
+ * Whether the two answers read the same in some language a participant can
+ * see: `@codaco/protocol-validation`'s `findDuplicateOptionLabels`, the rule
+ * the protocol schema holds every attribute's options to — see
  * `validateBooleanAnswers`.
  */
-const repeatsWords = (first: BooleanAnswer, second: BooleanAnswer): boolean =>
-  Object.keys(first.label ?? {}).some((locale) => {
-    const text = translationText(first.label, locale).trim();
-    return text !== '' && translationText(second.label, locale).trim() === text;
-  });
+const repeatsWords = (
+  first: BooleanAnswer,
+  second: BooleanAnswer,
+  localization: ProtocolLocalization | undefined,
+): boolean =>
+  findDuplicateOptionLabels(
+    [{ label: first.label }, { label: second.label }],
+    localization,
+  ).length > 0;
 
 /**
  * Whether these two answers are, entry for entry, the pair already stored.
@@ -350,23 +356,16 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
  * read and one they cannot. Reported against the answer that is blank rather
  * than against the pair, so the researcher is told which of the two to write.
  *
- * Both named the same words is the same failure by the other route, and the
- * schema accepts it for the same reason — each translation of
- * `booleanOptionsSchema.label` is a bare `z.string()`, and nothing downstream
- * compares the two. The two are compared one language at a time, in the
- * languages both are written in: a language one of them has no words in is a
- * gap to translate, not a repetition. It is reported
+ * Both named the same words is the same failure by the other route. The rule
+ * is the protocol schema's for every attribute's options,
+ * `findDuplicateOptionLabels`, which Architect's translation table asks too:
+ * the two are compared in each of the protocol's languages as a participant
+ * reads them there, falling back where one has no translation, after trimming
+ * and regardless of case. It is reported
  * against the SECOND answer, which is the one repeating what the first already
  * says, and only when the first has no complaint of its own: a blank beside a
  * named one is not a repetition, and telling the researcher both at once about
  * the same pair would be telling them to do two contradictory things.
- *
- * Judged after trimming and CASE-SENSITIVELY, unlike the uniqueness rule on a
- * categorical attribute's options. The harm here is the participant's, not the
- * export's: the two labels are rendered exactly as they were typed, so "Yes"
- * and "yes" are two buttons that can be told apart, while "Yes" and "Yes " are
- * one button written twice. A categorical option's label is compared
- * case-insensitively because its VALUE becomes a key.
  *
  * Naming neither is not a refusal: it is the answer that offers Yes and No,
  * and it is the state an attribute already storing a blank pair opens in —
@@ -384,6 +383,7 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
  */
 export const validateBooleanAnswers = (
   options: unknown,
+  localization?: ProtocolLocalization,
 ): BooleanAnswerIssues => {
   if (!holdsEditableBooleanAnswers(options)) return {};
   const written = readBooleanAnswers(options);
@@ -395,7 +395,7 @@ export const validateBooleanAnswers = (
     }
   });
   const [first, second] = written;
-  if (issues[1] === undefined && repeatsWords(first, second)) {
+  if (issues[1] === undefined && repeatsWords(first, second, localization)) {
     issues[1] = [createMessageError(messages.repeatedAnswer)];
   }
   return issues;

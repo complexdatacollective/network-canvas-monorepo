@@ -30,6 +30,7 @@ import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
@@ -168,28 +169,30 @@ async function renderCategoricalBin({
   render(
     <InterviewI18nProvider>
       <Provider store={store}>
-        <TestProtocolLocalization>
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <DialogProvider>
-              <DndStoreProvider>
-                <CaptureDndStore
-                  onStore={(captured) => {
-                    dndStore = captured;
-                  }}
-                />
-                <StageDynamicValues stage={binStage}>
-                  <CategoricalBin
-                    stage={binStage}
-                    getNavigationHelpers={() => ({
-                      moveForward: () => {},
-                      moveBackward: () => {},
-                    })}
+        <TestInterviewAssets>
+          <TestProtocolLocalization>
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <DialogProvider>
+                <DndStoreProvider>
+                  <CaptureDndStore
+                    onStore={(captured) => {
+                      dndStore = captured;
+                    }}
                   />
-                </StageDynamicValues>
-              </DndStoreProvider>
-            </DialogProvider>
-          </CurrentStepProvider>
-        </TestProtocolLocalization>
+                  <StageDynamicValues stage={binStage}>
+                    <CategoricalBin
+                      stage={binStage}
+                      getNavigationHelpers={() => ({
+                        moveForward: () => {},
+                        moveBackward: () => {},
+                      })}
+                    />
+                  </StageDynamicValues>
+                </DndStoreProvider>
+              </DialogProvider>
+            </CurrentStepProvider>
+          </TestProtocolLocalization>
+        </TestInterviewAssets>
       </Provider>
     </InterviewI18nProvider>,
   );

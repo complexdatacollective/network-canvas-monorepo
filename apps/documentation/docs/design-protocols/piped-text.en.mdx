@@ -198,13 +198,11 @@ In a protocol upgraded from schema 8, braces that were already present in the te
 
 ## Translating text that shows values
 
-When a protocol is offered in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)), each language has its own versions of the text. A translation must show every value wherever the default language's text shows it, in each version. If the English **If known** version shows the **nickname** pill, for instance, the **If known** version of each translation must show it too.
+When a protocol is offered in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)), each language has its own versions of the text. Showing a value is optional in every language, so a translation can show more, fewer or different values than the default language's text, or none at all. Nothing in the protocol compares one language's text with another's. If the English **If known** version shows the **nickname** pill, for instance, the **If known** version of a translation may leave it out.
 
-There is one exception. A version for a number form that only one number takes may omit the number, because its wording already identifies the number. Because a number answer can be negative, in practice this applies only to a form reserved for zero, which some languages have. English "1 child" does not qualify, because English uses the same form for -1.
+Each translation is checked on its own, by the same rules as the default language's text: every value it shows must be one the stage uses and can show where the text appears, a value that can be missing needs a version for when it is missing, and the text can't be blank in every version.
 
 In the translation table, a cell shows values, and each set of versions, as pills. When editing a cell, selecting a pill opens its versions, as in the stage editor, and the syringe button offers the values that the stage already uses. A value that the stage does not yet use must first be added in the stage editor.
-
-When a translation omits a value, the cell says so, for example "Include “nickname” wherever the original text shows it.", and the table cannot be saved until the omission is corrected. If a text chooses between so many versions that its translation cannot be checked, the cell asks for fewer values that change the wording.
 
 The values themselves are not translated. Dates and numbers follow the participant's language, and answers are shown with their options' labels in that language.
 
@@ -215,8 +213,6 @@ Protocol validation checks every text that contains piped values. Each of the fo
 - **A value can't be shown here.** The text shows a value that is not available where the text appears (see [Where piped text can be used](#where-piped-text-can-be-used)). This can happen when the attribute no longer exists or has been made encrypted.
 - **A value can be missing, so the text needs a version for when it is missing.** The text shows an attribute outside an **If known** version. Every attribute can be missing, so the text needs an **If not known** version for it (see [When information is missing](#when-information-is-missing)).
 - **A version stands for an answer the attribute doesn't have.** This occurs when one of an attribute's options is removed or changed after text has been given a version for each of its answers. Remove every set of versions for that attribute from the stage's text, then insert them again so that they match the attribute's options.
-- **A translation must show a value where the default language's text does.** See [Translating text that shows values](#translating-text-that-shows-values).
-- **Too many versions to check a translation.** Use fewer values that change the wording in that text.
 - **A yes-or-no attribute needs labels for both of its answers.** The text shows the answer itself, but the attribute has no labels for yes and no. Add both labels to the attribute, or use **Different wording for each answer**.
 - **Text can't be blank in every version.** At least one version must show some text or a value.
 

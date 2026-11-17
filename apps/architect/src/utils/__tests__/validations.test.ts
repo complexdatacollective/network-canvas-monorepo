@@ -23,7 +23,6 @@ const {
   required,
   requiredAcceptsNull,
   requiredAcceptsZero,
-  uniqueArrayAttribute,
   uniqueArrayName,
   uniqueByList,
   validRegExp,
@@ -300,60 +299,6 @@ describe('Validations', () => {
     it('coerces a non-array object to its values without throwing', () => {
       expect(subject({ a: 1, b: 2 })).toBe(undefined);
       expect(subject({ a: 1, b: 2, c: 3 })).toBe(errorMessage);
-    });
-  });
-
-  describe('uniqueArrayAttribute()', () => {
-    const subject = uniqueArrayAttribute(undefined, undefined);
-
-    it('compares values case-insensitively within the named array', () => {
-      const values = {
-        options: [{ value: 'Alpha' }, { value: 'alpha' }],
-      };
-
-      expect(subject('alpha', values, undefined, 'options[1].value')).toBe(
-        'This value is already in use. Enter a different value.',
-      );
-    });
-
-    // Issue #1383: a precomposed and a decomposed spelling of the same text
-    // are the same answer to a participant, so they are the same value here.
-    it('compares values under Unicode canonical equivalence', () => {
-      const precomposed = 'Café';
-      const decomposed = 'Cafe\u0301';
-      const values = {
-        options: [{ value: precomposed }, { value: decomposed }],
-      };
-
-      expect(precomposed).not.toBe(decomposed);
-      expect(subject(decomposed, values, undefined, 'options[1].value')).toBe(
-        'This value is already in use. Enter a different value.',
-      );
-    });
-
-    it('passes for a unique or empty value', () => {
-      const values = {
-        options: [{ value: 'Alpha' }, { value: 'Beta' }],
-      };
-
-      expect(
-        subject('Beta', values, undefined, 'options[1].value'),
-      ).toBeUndefined();
-      expect(
-        subject('', values, undefined, 'options[1].value'),
-      ).toBeUndefined();
-    });
-
-    it('uses a custom message', () => {
-      const customSubject = uniqueArrayAttribute(undefined, 'Already used');
-      expect(
-        customSubject(
-          'same',
-          { options: [{ value: 'same' }, { value: 'same' }] },
-          undefined,
-          'options[1].value',
-        ),
-      ).toBe('Already used');
     });
   });
 

@@ -12,17 +12,20 @@ const messages = defineMessages({
   validation1: {
     id: 'fresco.validation.users.validation1',
     defaultMessage: 'At least one user ID is required',
-    description: 'Form validation for users: At least one user ID is required',
+    description:
+      'Error returned when the researcher confirms deleting user accounts in Settings but no account was selected. User means a researcher account; ID is its internal identifier.',
   },
   validation2: {
     id: 'fresco.validation.users.validation2',
     defaultMessage: 'Current password is required',
-    description: 'Form validation for users: Current password is required',
+    description:
+      'Validation error under the current-password field of the change-password dialog in Settings when it is left empty.',
   },
   validation3: {
     id: 'fresco.validation.users.validation3',
     defaultMessage: 'Passwords do not match',
-    description: 'Form validation for users: Passwords do not match',
+    description:
+      'Validation error under the confirm-password field of the change-password dialog in Settings, when the two new passwords differ.',
   },
 });
 

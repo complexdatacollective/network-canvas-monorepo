@@ -60,6 +60,7 @@ const baseSections: Record<string, SectionDoc> = {
   [sectionId({ kind: 'settings' })]: {
     name: 'Operand entry',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
   },
   [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-1'] },
   [STAGE_SECTION]: {

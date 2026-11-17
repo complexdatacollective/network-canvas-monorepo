@@ -5,7 +5,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-const SETTINGS_SECTION = sectionId({ kind: 'settings' });
+export const SETTINGS_SECTION = sectionId({ kind: 'settings' });
 export const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
 export const ASSETS_SECTION = sectionId({ kind: 'assets' });
 

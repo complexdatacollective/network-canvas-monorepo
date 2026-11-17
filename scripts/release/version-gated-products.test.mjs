@@ -23,6 +23,19 @@ function workspace() {
   mkdirSync(join(cwd, '.changeset'));
   mkdirSync(join(cwd, 'apps/documentation'), { recursive: true });
   mkdirSync(join(cwd, 'apps/networkcanvas.com'), { recursive: true });
+  mkdirSync(join(cwd, 'workers/protocol-review'), { recursive: true });
+  writeFileSync(
+    join(cwd, 'workers/protocol-review/package.json'),
+    JSON.stringify(
+      {
+        name: '@codaco/protocol-review-worker',
+        version: '0.0.0',
+        private: true,
+      },
+      null,
+      2,
+    ),
+  );
   writeFileSync(
     join(cwd, 'apps/documentation/package.json'),
     JSON.stringify(
@@ -271,4 +284,46 @@ test('no pending product changesets → empty plan, no writes', () => {
   const { plans, consumed } = planProductReleases(cwd);
   assert.deepEqual(plans, []);
   assert.deepEqual(consumed, []);
+});
+
+test('the protocol review Worker releases alone, and its release PR says it deploys', () => {
+  const lane = ['@codaco/protocol-review-worker'];
+  assert.deepEqual(validateTargetPackages(lane), lane);
+  assert.equal(
+    validateTargetPackages([...lane, '@codaco/documentation']),
+    null,
+  );
+
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/worker.md'),
+    `---\n"@codaco/protocol-review-worker": minor\n---\n\nFirst release of the review service.`,
+  );
+  writeFileSync(
+    join(cwd, '.changeset/docs.md'),
+    `---\n"@codaco/documentation": patch\n---\n\nFix a guide`,
+  );
+  const { plans, consumed } = planProductReleases(cwd, lane);
+  assert.deepEqual(consumed, ['worker']);
+  applyProductReleases(cwd, plans, consumed);
+
+  // The first release moves the version off the 0.0.0 the Worker was written
+  // at, which is what the diff-driven deploy job waits for.
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(cwd, 'workers/protocol-review/package.json'), 'utf8'),
+    ).version,
+    '0.1.0',
+  );
+  assert.match(
+    readFileSync(join(cwd, 'workers/protocol-review/CHANGELOG.md'), 'utf8'),
+    /^# @codaco\/protocol-review-worker\n\n## 0\.1\.0\n[\s\S]*First release of the review service\./,
+  );
+  assert.equal(existsSync(join(cwd, '.changeset/worker.md')), false);
+  assert.equal(existsSync(join(cwd, '.changeset/docs.md')), true);
+
+  assert.match(
+    renderPrBody(plans),
+    /^Merging this PR deploys `@codaco\/protocol-review-worker` to Cloudflare \*\*production\*\* at `protocol-review\.networkcanvas\.com`\./,
+  );
 });

@@ -10,7 +10,7 @@ import type { ArchitectValidation } from '../toZodValidation';
 /**
  * Wraps an array editor's value under its own field name, so cross-row
  * validators can resolve the `arrayName[i].attribute` path a row field's name
- * carries (`uniqueArrayAttribute` reads `get(allValues, 'options')`). Handles
+ * carries (`uniqueArrayName` reads `get(allValues, 'options')`). Handles
  * dotted array names (`sortOptions.sortOrder`) the way `get` reads them.
  */
 export const arrayScopedValues = (
@@ -40,6 +40,11 @@ export type RowFieldProps = {
    */
   allValues?: Record<string, unknown>;
   /**
+   * What the cell says that a rule of the whole list decides, worked out by
+   * the list (`Options`' duplicate labels), after `validation`'s own.
+   */
+  issues?: readonly string[];
+  /**
    * Reveal errors without waiting for an edit (Options' "Finish editing
    * option" refusing to collapse an incomplete row).
    */
@@ -64,7 +69,9 @@ export type RowFieldProps = {
  * resurrect itself). Any rule that must also BLOCK a save has to exist as an
  * array-level rule on the owning field as well — `Options.tsx`'s
  * `optionsValidation` is the worked example, pairing this row's
- * `uniqueArrayAttribute` with an equivalent whole-array check.
+ * `uniqueArrayName` with an equivalent whole-array check, and handing the
+ * label cells the very positions its `uniqueOptionLabels` refuses
+ * (`issues`).
  */
 const RowField = ({
   component,
@@ -74,20 +81,21 @@ const RowField = ({
   onChange,
   validation,
   allValues,
+  issues = [],
   forceShowErrors = false,
   ...fieldProps
 }: RowFieldProps) => {
   const intl = useAppIntl();
   const [edited, setEdited] = useState(false);
 
-  const errors = getValidations(validation ?? {}, intl).reduce<string[]>(
-    (memo, rule) => {
+  const errors = [
+    ...getValidations(validation ?? {}, intl).reduce<string[]>((memo, rule) => {
       const message = rule(value, allValues, undefined, name);
       if (message) memo.push(message);
       return memo;
-    },
-    [],
-  );
+    }, []),
+    ...issues,
+  ];
 
   const showErrors = (edited || forceShowErrors) && errors.length > 0;
 

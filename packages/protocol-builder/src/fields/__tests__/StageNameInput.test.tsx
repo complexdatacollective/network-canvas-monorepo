@@ -73,28 +73,18 @@ describe('StageNameInput', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
   });
 
-  it('puts a pasted name on one line without shortening it', () => {
+  it("puts a name pasted with Unicode's line separators on one line", () => {
     const onChange = vi.fn();
 
-    render(
-      <StageNameInput
-        name="label"
-        value=""
-        onChange={onChange}
-        characterLimit={50}
-      />,
-    );
+    render(<StageNameInput name="label" value="" onChange={onChange} />);
 
-    const pasted = 'Close ties\n   and weak ties';
     fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: pasted },
+      target: {
+        value: `Close ties${String.fromCodePoint(0x2028)}and weak${String.fromCodePoint(0x2029)}ties`,
+      },
     });
 
-    expect(onChange).toHaveBeenCalledWith('Close ties    and weak ties');
-    // Length-preserving on purpose. `maxLength` is the browser's and lands on
-    // the raw value first, so a normalisation that shortened the string would
-    // leave the cap discarding characters the finished name had room for.
-    expect(onChange.mock.calls[0]?.[0]).toHaveLength(pasted.length);
+    expect(onChange).toHaveBeenCalledWith('Close ties and weak ties');
   });
 
   it('submits the form on Enter rather than typing a line break into the name', () => {
@@ -172,5 +162,27 @@ describe('StageNameInput', () => {
     // Enter does nothing at all.
     expect(enter.defaultPrevented).toBe(true);
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('takes the editing language’s direction, box and sizer alike', () => {
+    const { container } = render(
+      <StageNameInput lang="ar" dir="rtl" value="Network Canvas مقابلة" />,
+    );
+    const input = screen.getByRole('textbox');
+    const sizer = container.querySelector('[aria-hidden="true"]');
+    for (const element of [input, sizer]) {
+      expect(element).toHaveAttribute('dir', 'rtl');
+      expect(element).not.toHaveClass('text-own-direction');
+    }
+  });
+
+  it('reads a name by its own first letter when no language is known', () => {
+    const { container } = render(<StageNameInput value="Network Canvas" />);
+    const input = screen.getByRole('textbox');
+    const sizer = container.querySelector('[aria-hidden="true"]');
+    for (const element of [input, sizer]) {
+      expect(element).not.toHaveAttribute('dir');
+      expect(element).toHaveClass('text-own-direction');
+    }
   });
 });

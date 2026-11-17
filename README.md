@@ -52,6 +52,7 @@ The pnpm workspace is organized into four main categories.
 | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | [`development-protocol-worker`](./workers/development-protocol) | Cloudflare Worker that resolves and serves the latest released `Development.netcanvas` artifact |
 | [`posthog-proxy-worker`](./workers/posthog-proxy)               | Cloudflare Worker that proxies PostHog API and static-asset requests with CORS support          |
+| [`@codaco/protocol-review-worker`](./workers/protocol-review)   | Cloudflare Worker behind Architect's experimental automated protocol review                     |
 
 ### Tooling
 
@@ -154,6 +155,9 @@ pnpm --filter posthog-proxy-worker dev
 pnpm --filter development-protocol-worker deploy
 pnpm --filter posthog-proxy-worker deploy
 ```
+
+The protocol review Worker is not deployed by hand: it has its own release
+lane, described in [its README](./workers/protocol-review/README.md#releasing).
 
 ## Development Tools
 

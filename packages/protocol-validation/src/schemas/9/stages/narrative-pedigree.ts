@@ -1,11 +1,14 @@
 import { z } from 'zod';
 
-import { normalizeForComparison } from '@codaco/shared-consts';
-
+import {
+  type DuplicateLabel,
+  findDuplicateLocalizedLabels,
+} from '../../../localization/duplicateLabels.ts';
 import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
-import type { MessageArguments } from '../../../localization/messageArguments.ts';
-import { messageText } from '../../../localization/messageSyntax.ts';
-import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../../localization/messageArguments.ts';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
@@ -18,87 +21,35 @@ import {
 import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
 import { stageReference } from '../stage-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
-import {
-  SNAPSHOT_CONDITION,
-  SNAPSHOT_INHERITANCE,
-} from '../stage-wording/narrative-pedigree.ts';
-import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 
 /**
- * The key under which two disease labels are the same label.
- *
- * `normalizeForComparison`, never `toLocaleLowerCase()`: this is a
- * PERSISTED-SCHEMA invariant, so the answer has to be the same on every device
- * the protocol is opened on. Locale folding makes it depend on the host — `I`
- * lowercases to `ı` under Turkish and Azeri, so `Ilk` and `ilk` collide on one
- * laptop and not on another — and a raw comparison also misses canonically
- * equivalent spellings of the same label, which render identically to the
- * participant.
- */
-export const diseaseLabelKey = (label: string): string =>
-  normalizeForComparison(label.trim());
-
-type DuplicateDiseaseLabel = Readonly<{
-  index: number;
-  locale: string;
-  text: string;
-}>;
-
-/**
  * Disease rows whose label, as a participant who selected `locale` would see
- * it, repeats an earlier row's, for every declared locale.
- *
- * Each label is resolved with the runtime's own fallback before comparing, so
- * a collision that only appears through fallback (one row translated, another
- * falling back to the same default text) is caught in the locale it affects.
- * Labels are resolved as for a participant whose browser lists no other
- * protocol language, so a collision reached only through such a language is
- * not caught. A label with no declared translation cannot be resolved and is
- * skipped; the protocol refinement already rejects it.
+ * it, repeats an earlier row's, for every declared locale: the rule every set
+ * of labels a participant tells apart is held to
+ * (`findDuplicateLocalizedLabels`), fallback included.
  */
 export const findDuplicateDiseaseLabels = (
   diseases: readonly { label: LocalizedString }[],
   localization: LocalizationDeclaration,
-): DuplicateDiseaseLabel[] => {
-  const duplicates: DuplicateDiseaseLabel[] = [];
-  for (const locale of localization.locales) {
-    const seen = new Set<string>();
-    diseases.forEach(({ label }, index) => {
-      if (
-        !localization.locales.some((declared) => Object.hasOwn(label, declared))
-      ) {
-        return;
-      }
-      const text = messageText(
-        resolveLocalizedString(label, localization, [locale]).text,
-      );
-      const key = diseaseLabelKey(text);
-      if (seen.has(key)) duplicates.push({ index, locale, text });
-      else seen.add(key);
-    });
-  }
-  return duplicates;
-};
+): DuplicateLabel[] =>
+  findDuplicateLocalizedLabels(
+    diseases.map(({ label }) => label),
+    localization,
+  );
 
 // The snapshot's heading is built from the stage's title and the condition's
 // name, and from the focused person's name too for the inheritance heading.
-// Every translation must show them where the supplied wording does.
-export const SNAPSHOT_CONDITION_ARGUMENTS: MessageArguments =
-  requireSuppliedPlacements(
-    { title: { kind: 'text' }, condition: { kind: 'text' } },
-    SNAPSHOT_CONDITION,
-  );
+// A heading must show each of them.
+export const SNAPSHOT_CONDITION_ARGUMENTS: MessageArguments = {
+  title: { kind: 'text', required: EVERY_VERSION },
+  condition: { kind: 'text', required: EVERY_VERSION },
+};
 
-export const SNAPSHOT_INHERITANCE_ARGUMENTS: MessageArguments =
-  requireSuppliedPlacements(
-    {
-      title: { kind: 'text' },
-      condition: { kind: 'text' },
-      name: { kind: 'text' },
-    },
-    SNAPSHOT_INHERITANCE,
-  );
+export const SNAPSHOT_INHERITANCE_ARGUMENTS: MessageArguments = {
+  ...SNAPSHOT_CONDITION_ARGUMENTS,
+  name: { kind: 'text', required: EVERY_VERSION },
+};
 
 // A narrative pedigree describes the people of the FamilyPedigree it points
 // at, so its subject is that stage's alter node type. `sourceStageId` is
@@ -115,7 +66,10 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: localizedString(nonBlankText(), 'plain'),
+        label: localizedString(nonBlankText(), {
+          format: 'plain',
+          lines: 'single',
+        }),
         color: NodeColorReferenceSchema,
         // Boolean attribute on the source pedigree's people: true marks
         // someone as affected. Usually one of the Family Pedigree's nomination
@@ -170,19 +124,28 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
       });
     }),
   // The interview's own words on this stage, which Network Canvas supplies
-  // (`stage-wording/narrative-pedigree.ts`). The key's heading and rows and
-  // the clear focus tooltip, which every Narrative Pedigree shows alike, are
-  // interface text (`interface-text-wording.ts`).
-  saveSnapshot: localizedString(nonBlankText(), 'plain'),
-  conditionText: z.strictObject({
-    selectCondition: localizedString(nonBlankText(), 'plain'),
-    snapshotCondition: localizedMessage(nonBlankText(), {
-      arguments: SNAPSHOT_CONDITION_ARGUMENTS,
-    }),
-    snapshotInheritance: localizedMessage(nonBlankText(), {
-      arguments: SNAPSHOT_INHERITANCE_ARGUMENTS,
-    }),
-  }),
+  // (`stage-wording/narrative-pedigree.ts`); a stage that omits one shows
+  // Network Canvas's wording. The key's heading and rows and the clear focus
+  // tooltip, which every Narrative Pedigree shows alike, are interface text
+  // (`interface-text-wording.ts`).
+  saveSnapshot: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional(),
+  conditionText: z
+    .strictObject({
+      selectCondition: localizedString(nonBlankText(), {
+        format: 'plain',
+        lines: 'single',
+      }).optional(),
+      snapshotCondition: localizedMessage(nonBlankText(), {
+        arguments: SNAPSHOT_CONDITION_ARGUMENTS,
+      }).optional(),
+      snapshotInheritance: localizedMessage(nonBlankText(), {
+        arguments: SNAPSHOT_INHERITANCE_ARGUMENTS,
+      }).optional(),
+    })
+    .optional(),
 });
 
 export const narrativePedigreeStage = withStageSubjectResolution(

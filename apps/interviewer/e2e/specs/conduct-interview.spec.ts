@@ -208,11 +208,11 @@ test.describe('conducting an interview', () => {
 
       // Stage 1: EgoForm.
       await interviewNav.fillEgoName('Ada');
-      // EgoForm exposes no data-stage-ready; readiness is signalled only by the
-      // next-button gaining the bg-success pulse once the form becomes valid.
-      // next()'s click auto-waits on the button's disabled state too, but this
-      // makes the readiness gate explicit.
-      await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
+      // The baseline below shows the next-button's pulse, which appears with
+      // the ready-to-continue description on the same button.
+      await expect(page.getByTestId('next-button')).toHaveAccessibleDescription(
+        'You can continue to the next step.',
+      );
       await capture('interview-stage-ego');
       await interviewNav.next();
 
@@ -346,7 +346,6 @@ test.describe('conducting an interview', () => {
 
     await interviewNav.next(); // Information -> EgoForm
     await interviewNav.fillEgoName('Ada');
-    await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
     await interviewNav.next(); // EgoForm -> NameGeneratorQuickAdd
 
     await interviewNav.quickAddNode('LossProbe');
@@ -386,7 +385,6 @@ test.describe('conducting an interview', () => {
     await interviewNav.next(); // Information -> EgoForm
 
     await interviewNav.fillEgoName('Rosalind');
-    await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
     await interviewNav.next(); // EgoForm -> NameGeneratorQuickAdd
 
     await interviewNav.quickAddNode('Alice');

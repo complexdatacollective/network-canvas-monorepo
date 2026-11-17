@@ -180,7 +180,7 @@ describe('the row dialogs under es', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     await harness.user.click(
-      await screen.findByRole('button', { name: /^Editar pregunta$/ }),
+      await screen.findByRole('button', { name: /^Edit pregunta$/ }),
     );
     await screen.findByRole('dialog');
     expectNoLocaleLeaks('the edit-a-prompt dialog', researcherWords(harness), {
@@ -191,7 +191,7 @@ describe('the row dialogs under es', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     await harness.user.click(
-      await screen.findByRole('button', { name: /^Eliminar pregunta$/ }),
+      await screen.findByRole('button', { name: /^Delete pregunta$/ }),
     );
     await screen.findByRole('dialog');
     expectNoLocaleLeaks(
@@ -247,7 +247,7 @@ describe('the row dialogs under es', () => {
     await harness.user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    await harness.user.click(firstButton('Editar campo'));
+    await harness.user.click(firstButton('Edit campo'));
     await screen.findByRole('dialog');
     expectNoLocaleLeaks(
       'the edit-a-form-field dialog',
@@ -257,7 +257,7 @@ describe('the row dialogs under es', () => {
     await harness.user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    await harness.user.click(firstButton('Eliminar campo'));
+    await harness.user.click(firstButton('Delete campo'));
     await screen.findByRole('dialog');
     expectNoLocaleLeaks(
       'the remove-a-form-field confirmation',
@@ -295,7 +295,7 @@ describe('the row dialogs under es', () => {
     expectNoLocaleLeaks('the attribute window', researcherWords(harness));
 
     const search = within(picker).getByRole('searchbox', {
-      name: 'Busca o crea un atributo',
+      name: 'Find or create an attribute',
     });
     await harness.user.type(search, 'apodo');
     expectNoLocaleLeaks(
@@ -405,17 +405,20 @@ describe('the sweep itself', () => {
   /**
    * The half a whole-message comparison cannot see. A message carrying an ICU
    * argument is never rendered as its pattern, so nothing matched
-   * `Content type changed to {kind}. Nothing has been entered for {kind}
-   * yet.` — and an announcement rebuilt by hand around that pattern was
-   * reported by nothing at all. What survives formatting is the text between
+   * `The export already has a built-in column called “{reservedColumn}”, so
+   * an attribute cannot be named “{column}”. Choose a different name.` — and a
+   * sentence rebuilt by hand around that pattern was reported by nothing at
+   * all. What survives formatting is the text between
    * the arguments, so that is what is compared.
    */
   it('names a run of English from inside a message that takes an argument', () => {
     document.body.innerHTML =
-      '<p>Kind changed to Image. Nothing has been entered for Image yet.</p>';
+      '<p>The export already has a built-in column called “id”, so an attribute cannot be named “ID”. Choose a different name.</p>';
 
     expect(localeLeaks()).toEqual([
-      'protocolBuilder.contentBlock.kindChangedEmpty rendered in English: . Nothing has been entered for',
+      'protocolBuilder.exportColumn.reservedName rendered in English: The export already has a built-in column called “',
+      'protocolBuilder.exportColumn.reservedName rendered in English: ”, so an attribute cannot be named “',
+      'protocolBuilder.exportColumn.writtenName rendered in English: ”. Choose a different name.',
     ]);
   });
 

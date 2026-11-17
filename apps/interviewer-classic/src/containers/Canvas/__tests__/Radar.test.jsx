@@ -11,11 +11,6 @@ const mockProps = {
 };
 
 describe('<Radar />', () => {
-  it('renders ok', () => {
-    const component = shallow(<Radar {...mockProps} />);
-    expect(component).toMatchSnapshot();
-  });
-
   describe('circle background', () => {
     it('is lenient with input type', () => {
       const component = shallow(<Radar {...{ ...mockProps, n: '10' }} />);

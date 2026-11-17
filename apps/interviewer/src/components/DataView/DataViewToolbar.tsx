@@ -1,7 +1,7 @@
 import type { Table } from '@tanstack/react-table';
 import { Download, Filter as FilterIcon, Search, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -10,10 +10,12 @@ import { DataTableFacetedFilter } from '@codaco/fresco-ui/DataTable/DataTableFac
 import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import BooleanFilter from '@codaco/fresco-ui/DataTable/filters/BooleanFilter';
 import DateFilter from '@codaco/fresco-ui/DataTable/filters/DateFilter';
+import { type ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
   Popover,
   PopoverContent,
+  PopoverTitle,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
 import SegmentedSwitcher, {
@@ -38,7 +40,8 @@ const messages = defineMessages({
   inProgress: {
     id: 'interviewer.dataViewToolbar.inProgress',
     defaultMessage: 'In progress',
-    description: 'User-facing message in Interviewer Data View Toolbar.',
+    description:
+      'Filter option for interviews that have been started but not finished; this is a state. Also used as the label of the matching status count.',
   },
   complete: {
     id: 'interviewer.dataViewToolbar.complete',
@@ -49,32 +52,38 @@ const messages = defineMessages({
   statusFilter: {
     id: 'interviewer.dataViewToolbar.statusFilter',
     defaultMessage: 'Status filter',
-    description: 'The aria-label label in Interviewer Data View Toolbar.',
+    description:
+      'Accessible name of the All / In progress / Complete switcher above the interview table, read only by screen readers.',
   },
   searchCaseIDOrProtocol: {
     id: 'interviewer.dataViewToolbar.searchCaseIDOrProtocol',
     defaultMessage: 'Search case ID or protocol...',
-    description: 'The placeholder label in Interviewer Data View Toolbar.',
+    description:
+      'Placeholder in the search box above the interview table; text typed there filters rows by case ID or protocol name.',
   },
   searchCaseIDOrProtocol2: {
     id: 'interviewer.dataViewToolbar.searchCaseIDOrProtocol2',
     defaultMessage: 'Search case ID or protocol',
-    description: 'The aria-label label in Interviewer Data View Toolbar.',
+    description:
+      'Accessible name of the interview table search box, read only by screen readers. Same wording as its placeholder.',
   },
   filters: {
     id: 'interviewer.dataViewToolbar.filters',
     defaultMessage: 'Filters',
-    description: 'Visible copy in Interviewer Data View Toolbar.',
+    description:
+      'Label of the button that opens the filter panel above the interview table, shown when no filters are active.',
   },
   caseID: {
     id: 'interviewer.dataViewToolbar.caseID',
     defaultMessage: 'Case ID',
-    description: 'Visible copy in Interviewer Data View Toolbar.',
+    description:
+      'Label of the filter field in the filter panel that matches interviews by case ID, the identifier the researcher gives each participant.',
   },
   matchByCaseID: {
     id: 'interviewer.dataViewToolbar.matchByCaseID',
     defaultMessage: 'Match by Case ID...',
-    description: 'The placeholder label in Interviewer Data View Toolbar.',
+    description:
+      'Placeholder in the case ID text field of the filter panel; the researcher types part of a case ID to filter interviews.',
   },
   protocol: {
     id: 'interviewer.dataViewToolbar.protocol',
@@ -94,52 +103,62 @@ const messages = defineMessages({
   exportStatus: {
     id: 'interviewer.dataViewToolbar.exportStatus',
     defaultMessage: 'Export status',
-    description: 'Visible copy in Interviewer Data View Toolbar.',
+    description:
+      'Label of the filter field in the filter panel that limits the table to exported or not-yet-exported interviews. Export is a noun here.',
   },
   clearAllFilters: {
     id: 'interviewer.dataViewToolbar.clearAllFilters',
     defaultMessage: 'Clear all filters',
-    description: 'Visible copy in Interviewer Data View Toolbar.',
+    description:
+      'Button in the filter panel that removes every active filter and shows all interviews again.',
   },
   deleting: {
     id: 'interviewer.dataViewToolbar.deleting',
     defaultMessage: 'Deleting…',
-    description: 'User-facing message in Interviewer Data View Toolbar.',
+    description:
+      'Label of the bulk delete button while the selected interviews are being deleted; shown in place of the Delete count label.',
   },
   exporting: {
     id: 'interviewer.dataViewToolbar.exporting',
     defaultMessage: 'Exporting…',
-    description: 'User-facing message in Interviewer Data View Toolbar.',
+    description:
+      'Label of the bulk export button while the selected interviews are being exported; shown in place of the Export count label.',
   },
   exported: {
     id: 'interviewer.dataViewToolbar.exported',
     defaultMessage: 'Exported',
-    description: 'User-facing message in Interviewer Data View Toolbar.',
+    description:
+      'Filter choice for interviews whose data has already been exported; a state, not an instruction.',
   },
   notExported: {
     id: 'interviewer.dataViewToolbar.notExported',
     defaultMessage: 'Not exported',
-    description: 'User-facing message in Interviewer Data View Toolbar.',
+    description:
+      'Filter choice for interviews whose data has not been exported yet; a state, not an instruction.',
   },
   filterCount: {
     id: 'interviewer.dataViewToolbar.filterCount',
     defaultMessage: '{count, plural, =0 {Filter} other {Filter · #}}',
-    description: 'Administration text in Interviewer DataViewToolbar.',
+    description:
+      'Label of the filter panel button. count is the number of active filters: when 0 the button just says Filter, otherwise the count follows it.',
   },
   deleteSelected: {
     id: 'interviewer.dataViewToolbar.deleteSelected',
     defaultMessage: 'Delete {count, number} selected',
-    description: 'Administration text in Interviewer DataViewToolbar.',
+    description:
+      'Button that deletes the interviews selected in the table. count is the number of selected interviews. Delete is a verb.',
   },
   exportSelected: {
     id: 'interviewer.dataViewToolbar.exportSelected',
     defaultMessage: 'Export {count, number} selected',
-    description: 'Administration text in Interviewer DataViewToolbar.',
+    description:
+      'Button that exports the interviews selected in the table to a file. count is the number of selected interviews. Export is a verb.',
   },
   statusCount: {
     id: 'interviewer.dataViewToolbar.statusCount',
     defaultMessage: '{label} · {count, number}',
-    description: 'Administration text in Interviewer DataViewToolbar.',
+    description:
+      "Label of one option in the All / In progress / Complete switcher. label is that option's name and count is how many interviews match it.",
   },
 });
 
@@ -205,7 +224,7 @@ export function DataViewToolbar({
   globalFilter: string;
   onGlobalFilterChange: (next: string) => void;
   statusCounts: SessionStatusCounts;
-  protocolOptions: { value: string; label: string }[];
+  protocolOptions: ComboboxOption[];
   selectedCount: number;
   exporting: boolean;
   deleting: boolean;
@@ -214,6 +233,13 @@ export function DataViewToolbar({
 }) {
   const intl = useAppIntl();
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+  // Each field in the filter panel is named by the heading above it.
+  const headingId = useId();
+  const caseIdHeadingId = `${headingId}-case-id`;
+  const protocolHeadingId = `${headingId}-protocol`;
+  const startedHeadingId = `${headingId}-started`;
+  const updatedHeadingId = `${headingId}-updated`;
+  const exportStatusHeadingId = `${headingId}-export-status`;
 
   const columnFilters = table.atoms.columnFilters.get();
   const isFilterActive = columnFilters.length > 0;
@@ -347,17 +373,24 @@ export function DataViewToolbar({
           />
           <PopoverContent align="end" className="w-md">
             <div className="flex w-full flex-col gap-4 p-1">
-              <div className="font-heading text-text/60 text-xs font-extrabold tracking-widest uppercase">
+              <PopoverTitle
+                render={<div />}
+                className="font-heading text-text/60 text-xs font-extrabold tracking-widest uppercase"
+              >
                 {intl.formatMessage(messages.filters)}
-              </div>
+              </PopoverTitle>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={caseIdHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.caseID)}
                 </div>
                 <InputField
                   type="text"
                   name="filter-case-id"
+                  aria-labelledby={caseIdHeadingId}
                   size="sm"
                   value={caseIdColumnFilter}
                   placeholder={intl.formatMessage(messages.matchByCaseID)}
@@ -368,18 +401,25 @@ export function DataViewToolbar({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={protocolHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.protocol)}
                 </div>
                 <DataTableFacetedFilter
                   column={table.getColumn('protocolName')}
                   title={intl.formatMessage(messages.protocol)}
                   options={protocolOptions}
+                  aria-labelledby={protocolHeadingId}
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={startedHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.started)}
                 </div>
                 <DateFilter
@@ -388,11 +428,15 @@ export function DataViewToolbar({
                     table.getColumn('startedAt')?.setFilterValue(next)
                   }
                   config={{ type: 'date' }}
+                  aria-labelledby={startedHeadingId}
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={updatedHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.updated)}
                 </div>
                 <DateFilter
@@ -401,11 +445,15 @@ export function DataViewToolbar({
                     table.getColumn('updatedAt')?.setFilterValue(next)
                   }
                   config={{ type: 'date' }}
+                  aria-labelledby={updatedHeadingId}
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">
+                <div
+                  id={exportStatusHeadingId}
+                  className="font-heading text-xs font-bold"
+                >
                   {intl.formatMessage(messages.exportStatus)}
                 </div>
                 <BooleanFilter
@@ -418,6 +466,7 @@ export function DataViewToolbar({
                     trueLabel: intl.formatMessage(messages.exported),
                     falseLabel: intl.formatMessage(messages.notExported),
                   }}
+                  aria-labelledby={exportStatusHeadingId}
                 />
               </div>
 

@@ -1384,11 +1384,6 @@
         "es": "Listo",
         "hu": "Kész"
       },
-      "delete": {
-        "en": "Delete",
-        "es": "Eliminar",
-        "hu": "Törlés"
-      },
       "yes": {
         "en": "Yes",
         "es": "Sí",
@@ -1426,20 +1421,10 @@
         "es": "# Se produjo un error\n\nSe produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea.\n\nAlgunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página.\n\nSi el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Quizá puedas continuar la entrevista pulsando el botón para ir al siguiente paso.",
         "hu": "Hiba történt az interjúszoftverben, ezért ez a feladat nem jeleníthető meg. Egyes feladatokhoz, például a térképekhez, internetkapcsolat szükséges, ezért ellenőrizze a kapcsolatot, majd próbálja meg frissíteni az oldalt. Ha a probléma továbbra is fennáll, kérjük, forduljon a kutatás szervezőjéhez, és küldje el neki a hibakeresési információkat, amelyeket az alábbi gombbal másolhat ki. Lehet, hogy a Tovább gombra kattintva folytathatja az interjút."
       },
-      "itemUnavailable": {
-        "en": "This item could not be displayed.",
-        "es": "No se pudo mostrar este elemento.",
-        "hu": "Ez az elem nem jeleníthető meg."
-      },
       "error": {
         "en": "An error occurred.",
         "es": "Se ha producido un error.",
         "hu": "Hiba történt."
-      },
-      "loading": {
-        "en": "Loading…",
-        "es": "Cargando…",
-        "hu": "Betöltés…"
       },
       "unnamed": {
         "en": "Unnamed",
@@ -1508,13 +1493,6 @@
         "hu": "Egyedinek kell lennie."
       }
     },
-    "categoricalBin": {
-      "placeHere": {
-        "en": "Place here",
-        "es": "Colocar aquí",
-        "hu": "Helyezze ide"
-      }
-    },
     "narrative": {
       "toggleDrawing": {
         "en": "Toggle drawing",
@@ -1542,13 +1520,6 @@
         "en": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
         "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
         "hu": "Ez akkor fordulhat elő, ha a böngésző vagy az eszköz nem támogatja a térkép által igényelt funkciókat (például a WebGL-t). Próbáljon meg másik böngészőt vagy eszközt, vagy forduljon a vizsgálat szervezőjéhez. Az interjút a következő nyílra kattintva is folytathatja."
-      }
-    },
-    "egoForm": {
-      "scrollForQuestions": {
-        "en": "Scroll to see more questions",
-        "es": "Desplázate para ver más preguntas",
-        "hu": "Görgessen a további kérdések megtekintéséhez"
       }
     }
   }

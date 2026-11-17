@@ -1,14 +1,8 @@
 {
-  "allAddedNotice": {
-    "en": "There is nothing left to add from this list."
-  },
   "dataSource": "roster_data",
   "id": "id-1",
   "label": {
     "en": "Select From Roster"
-  },
-  "panelTitle": {
-    "en": "Available to add"
   },
   "prompts": [
     {
@@ -22,8 +16,5 @@
     "entity": "node",
     "type": "id-3"
   },
-  "type": "NameGeneratorRoster",
-  "unnamedLabel": {
-    "en": "Unnamed {count}"
-  }
+  "type": "NameGeneratorRoster"
 }

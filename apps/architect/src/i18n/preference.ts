@@ -1,4 +1,4 @@
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { isPseudoLocale } from '@codaco/app-i18n/locales';
 import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 import { webStorageLocalePreference } from '@codaco/shared-consts';
 
@@ -15,7 +15,7 @@ const preferenceStore = webStorageLocalePreference(
 export function readLocalePreference(): string | null {
   try {
     const stored = preferenceStore.read();
-    if (stored === null || stored === PSEUDO_LOCALE) return null;
+    if (stored === null || isPseudoLocale(stored)) return null;
     const resolved = resolveAppLocale({
       stored,
       requested: [],
@@ -30,7 +30,7 @@ export function readLocalePreference(): string | null {
 
 /** Storage policy failures never prevent changing the language this visit. */
 export function writeLocalePreference(locale: string | null): boolean {
-  if (locale === PSEUDO_LOCALE) return true;
+  if (isPseudoLocale(locale)) return true;
   return preferenceStore.write(locale);
 }
 

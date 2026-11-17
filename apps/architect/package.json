@@ -31,6 +31,7 @@
     "@codaco/interview": "workspace:^",
     "@codaco/protocol-builder": "workspace:^",
     "@codaco/protocol-builder-core": "workspace:^",
+    "@codaco/protocol-review-worker": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/protocols": "workspace:^",
@@ -40,6 +41,7 @@
     "@codaco/tsconfig": "workspace:^",
     "@reduxjs/toolkit": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@types/redux-logger": "^3.0.13",
     "clsx": "catalog:",
@@ -68,6 +70,7 @@
   },
   "devDependencies": {
     "@codaco/e2e-helpers": "workspace:^",
+    "@codaco/storybook-config": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@playwright/test": "catalog:",
     "@storybook/addon-a11y": "catalog:",

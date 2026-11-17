@@ -18,6 +18,7 @@ import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { useAppDispatch } from '~/ducks/hooks';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
+import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import { resetRunOnce } from '~/hooks/useRunOnce';
 import {
   subscribeAutosaveFailures,
@@ -29,6 +30,7 @@ import {
   takeLaunchFiles,
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
+import { ROUTE_HEIGHT_VARIABLE } from '~/utils/routeHeight';
 import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
@@ -37,24 +39,27 @@ const messages = defineMessages({
   couldNotOpenFile: {
     id: 'architect.viewManager.views.app.couldNotOpenFile',
     defaultMessage: 'Could not open file',
-    description: 'The title text in components / ViewManager / views / App.',
+    description:
+      'Title of the error dialog shown when a file the operating system launched Architect with could not be read.',
   },
   launchedCouldNotBeRead: {
     id: 'architect.viewManager.views.app.launchedCouldNotBeRead',
     defaultMessage:
       '{failedCount, plural, one {The launched file could not be read. It may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. They may have been moved, deleted, or become unavailable since they were opened.}}',
     description:
-      'The description text in components / ViewManager / views / App.',
+      'Body of the error dialog shown when files the operating system launched Architect with could not be read. failedCount is the number of files that failed.',
   },
   oK: {
     id: 'architect.viewManager.views.app.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / ViewManager / views / App.',
+    description:
+      'Button that dismisses an error dialog (launched file unreadable, or autosave failed).',
   },
   autosaveFailed: {
     id: 'architect.viewManager.views.app.autosaveFailed',
     defaultMessage: 'Autosave failed',
-    description: 'The title text in components / ViewManager / views / App.',
+    description:
+      'Title of the error dialog shown when Architect could not save recent protocol changes to browser storage.',
   },
 });
 const finalMessages = defineMessages({
@@ -62,7 +67,8 @@ const finalMessages = defineMessages({
     id: 'architect.app.storageFailure',
     defaultMessage:
       'Your recent changes could not be saved to this device, which can happen if local storage is full or unavailable. To avoid losing work, download a copy of your protocol.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Body of the error dialog shown when autosave fails because browser storage on this device is full or unavailable. Advises the researcher to download a copy of the protocol file.',
   },
 });
 
@@ -176,6 +182,9 @@ const AppContents = () => {
   // Hold the cross-tab single-editor lock while this tab is in the protocol
   // editor, releasing it on the start screen.
   useProtocolTabLock();
+  const routeArea = usePublishedBlockHeight<HTMLDivElement>(
+    ROUTE_HEIGHT_VARIABLE,
+  );
 
   // Returning to the start screen ends the current protocol session, so the
   // next /protocol visit gets a fresh entrance animation.
@@ -214,7 +223,7 @@ const AppContents = () => {
         {/* Sits directly beneath the install banner (both are shrink-0 strips);
             self-hides unless the open protocol is also open in another tab. */}
         <ProtocolLockBanner />
-        <div className="min-h-0 flex-1">
+        <div ref={routeArea} className="min-h-0 flex-1">
           <Routes />
         </div>
       </div>

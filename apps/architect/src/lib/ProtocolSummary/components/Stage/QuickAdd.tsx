@@ -2,6 +2,7 @@ import { useContext } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { getVariableTypeLabel } from '~/config/variables';
 
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
@@ -12,7 +13,7 @@ const chromeMessages = defineMessages({
     id: 'architect.chrome.protocolSummary.stage.quickAdd.unknown',
     defaultMessage: 'Unknown',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / QuickAdd.',
+      "Value of the type row in the quick add table of the printable protocol summary when the variable's data type cannot be found.",
   },
 });
 const messages = defineMessages({
@@ -20,19 +21,19 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.quickAdd.quickAdd',
     defaultMessage: 'Quick Add',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / QuickAdd.',
+      "Section heading in the printable protocol summary, above the variable that a name generator's quick add field fills in with the typed name.",
   },
   attribute: {
     id: 'architect.protocolSummary.stage.quickAdd.attribute',
     defaultMessage: 'Attribute',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / QuickAdd.',
+      'Row label in the quick add table of the printable protocol summary; its value is the codebook variable the quick add field fills in.',
   },
   type: {
     id: 'architect.protocolSummary.stage.quickAdd.type',
     defaultMessage: 'Type',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / QuickAdd.',
+      'Row label in the quick add table of the printable protocol summary; its value is the data type of the variable (text, number and so on).',
   },
 });
 
@@ -62,7 +63,9 @@ const QuickAdd = ({ quickAdd = null }: QuickAddProps) => {
           [
             <span key="type-label">{intl.formatMessage(messages.type)}</span>,
             <span key="type-value">
-              {variableMeta?.type || intl.formatMessage(chromeMessages.unknown)}
+              {variableMeta?.type
+                ? getVariableTypeLabel(variableMeta.type, intl)
+                : intl.formatMessage(chromeMessages.unknown)}
             </span>,
           ],
         ]}

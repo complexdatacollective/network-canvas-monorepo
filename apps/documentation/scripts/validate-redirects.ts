@@ -1,17 +1,15 @@
 #!/usr/bin/env tsx
 /**
- * Validates redirect configurations in netlify.toml and vercel.json
+ * Validates the redirect rules in netlify.toml
  * Catches common issues before deployment:
- * - Invalid syntax differences between Netlify and Vercel
- * - Conflicting redirect rules
+ * - Express-style path parameters where Netlify needs splats
+ * - Duplicate redirect rules
  * - Catch-all rules that should be at the end
  */
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { z } from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,22 +20,6 @@ type NetlifyRedirect = {
   status: number;
   force?: boolean;
 };
-
-const VercelConfigSchema = z.object({
-  redirects: z
-    .array(
-      z.object({
-        source: z.string(),
-        destination: z.string(),
-        permanent: z.boolean(),
-      }),
-    )
-    .optional(),
-});
-
-type VercelRedirect = NonNullable<
-  z.infer<typeof VercelConfigSchema>['redirects']
->[number];
 
 type ValidationIssue = {
   severity: 'error' | 'warning';
@@ -179,108 +161,6 @@ function validateNetlifyRedirects(redirects: NetlifyRedirect[]): void {
   }
 }
 
-function validateVercelRedirects(redirects: VercelRedirect[]): void {
-  let foundCatchAll = false;
-  let catchAllIndex = -1;
-
-  for (let i = 0; i < redirects.length; i++) {
-    const redirect = redirects[i];
-    if (!redirect) continue;
-
-    // Detect catch-all rules (Vercel style)
-    if (
-      redirect.source.match(/\/:\w+\*$/) ||
-      redirect.source.match(/\/:\w+\([^)]+\)\*$/)
-    ) {
-      if (foundCatchAll) {
-        issues.push({
-          severity: 'warning',
-          file: 'vercel.json',
-          rule: `${redirect.source} => ${redirect.destination}`,
-          message: 'Multiple catch-all rules found. Order matters.',
-        });
-      }
-      foundCatchAll = true;
-      catchAllIndex = i;
-    }
-
-    // Check for rules after catch-all
-    if (foundCatchAll && catchAllIndex >= 0 && i > catchAllIndex) {
-      issues.push({
-        severity: 'warning',
-        file: 'vercel.json',
-        rule: `${redirect.source} => ${redirect.destination}`,
-        message:
-          'Rule may not match as expected: consider placing specific rules before catch-all rules',
-      });
-    }
-  }
-
-  // Check for duplicate source paths
-  const sourcePaths = redirects.map((r) => r.source);
-  const duplicates = sourcePaths.filter(
-    (path, index) => sourcePaths.indexOf(path) !== index,
-  );
-  if (duplicates.length > 0) {
-    for (const dup of new Set(duplicates)) {
-      issues.push({
-        severity: 'error',
-        file: 'vercel.json',
-        rule: dup,
-        message: `Duplicate redirect rule: ${dup} appears multiple times`,
-      });
-    }
-  }
-}
-
-function validateConsistency(
-  netlifyRedirects: NetlifyRedirect[],
-  vercelRedirects: VercelRedirect[],
-): void {
-  // Create maps of source -> destination for comparison
-  const netlifyMap = new Map(
-    netlifyRedirects
-      .filter((r) => !r.from.includes('*') && !r.from.includes(':'))
-      .map((r) => [r.from, r.to]),
-  );
-
-  const vercelMap = new Map(
-    vercelRedirects
-      .filter((r) => !r.source.includes('*') && !r.source.includes(':'))
-      .map((r) => [r.source, r.destination]),
-  );
-
-  // Check for rules in one but not the other
-  for (const [from, to] of netlifyMap) {
-    if (!vercelMap.has(from)) {
-      issues.push({
-        severity: 'warning',
-        file: 'netlify.toml',
-        rule: `${from} => ${to}`,
-        message: 'Rule exists in netlify.toml but not in vercel.json',
-      });
-    } else if (vercelMap.get(from) !== to) {
-      issues.push({
-        severity: 'error',
-        file: 'both',
-        rule: from,
-        message: `Inconsistent destinations: netlify.toml => ${to}, vercel.json => ${vercelMap.get(from)}`,
-      });
-    }
-  }
-
-  for (const [source] of vercelMap) {
-    if (!netlifyMap.has(source)) {
-      issues.push({
-        severity: 'warning',
-        file: 'vercel.json',
-        rule: `${source} => ${vercelMap.get(source)}`,
-        message: 'Rule exists in vercel.json but not in netlify.toml',
-      });
-    }
-  }
-}
-
 function main() {
   const docsDir = join(__dirname, '..');
 
@@ -288,22 +168,15 @@ function main() {
     // Read and parse netlify.toml
     const netlifyContent = readFileSync(join(docsDir, 'netlify.toml'), 'utf-8');
     const netlifyRedirects = parseNetlifyToml(netlifyContent);
-    console.log(`✓ Found ${netlifyRedirects.length} redirects in netlify.toml`);
+    console.log(
+      `✓ Found ${netlifyRedirects.length} redirects in netlify.toml\n`,
+    );
 
-    // Read and parse vercel.json
-    const vercelContent = readFileSync(join(docsDir, 'vercel.json'), 'utf-8');
-    const vercelConfig = VercelConfigSchema.parse(JSON.parse(vercelContent));
-    const vercelRedirects: VercelRedirect[] = vercelConfig.redirects ?? [];
-    console.log(`✓ Found ${vercelRedirects.length} redirects in vercel.json\n`);
-
-    // Run validations
     validateNetlifyRedirects(netlifyRedirects);
-    validateVercelRedirects(vercelRedirects);
-    validateConsistency(netlifyRedirects, vercelRedirects);
 
     // Report issues
     if (issues.length === 0) {
-      console.log('✅ All redirect configurations are valid!\n');
+      console.log('✅ netlify.toml redirects are valid!\n');
       process.exit(0);
     }
 
@@ -311,7 +184,7 @@ function main() {
     const warnings = issues.filter((i) => i.severity === 'warning');
 
     if (errors.length > 0) {
-      console.error('❌ Found errors in redirect configurations:\n');
+      console.error('❌ Found errors in netlify.toml redirects:\n');
       for (const error of errors) {
         console.error(`  [${error.file}] ${error.rule}`);
         console.error(`    ${error.message}\n`);
@@ -319,7 +192,7 @@ function main() {
     }
 
     if (warnings.length > 0) {
-      console.warn('⚠️  Found warnings in redirect configurations:\n');
+      console.warn('⚠️  Found warnings in netlify.toml redirects:\n');
       for (const warning of warnings) {
         console.warn(`  [${warning.file}] ${warning.rule}`);
         console.warn(`    ${warning.message}\n`);

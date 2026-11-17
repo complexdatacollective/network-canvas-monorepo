@@ -2,7 +2,12 @@ import { cleanup, screen, within } from '@testing-library/react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { principles } from '~/lib/content';
+import {
+  externalLinks,
+  institutions,
+  principles,
+  scientificAdvisors,
+} from '~/lib/content';
 import type { Publication, TeamMember } from '~/lib/siteContent';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
@@ -104,6 +109,20 @@ describe('localized home sections', () => {
     expect(
       screen.getByRole('heading', { name: 'Flexibilidad ontológica' }),
     ).toBeInTheDocument();
+
+    const team = screen.getByRole('list', { name: 'Equipo principal' });
+    expect(within(team).getByRole('listitem')).toHaveTextContent(
+      'Example ResearcherExample University',
+    );
+    const advisors = screen
+      .getByRole('heading', { name: 'Asesores científicos' })
+      .parentElement?.querySelector('ul');
+    if (!advisors) throw new Error('Expected the advisors list');
+    expect(
+      within(advisors)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(scientificAdvisors);
   });
 
   it('links each Spanish design principle title to its documentation', () => {
@@ -164,6 +183,21 @@ describe('localized home sections', () => {
     expect(
       screen.getByRole('button', { name: 'Unirse a la lista' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Mantente en contacto' }),
+    ).toBeInTheDocument();
+    for (const [name, href] of [
+      ['Visitar el sitio de documentación', externalLinks.documentation],
+      ['Visitar el sitio de la comunidad', externalLinks.community],
+      ['Explorar opciones de colaboración', externalLinks.collaboration],
+    ] as const) {
+      const link = screen.getByRole('link', { name });
+      expect(link).toHaveAttribute('href', href);
+      expect(link).toHaveAttribute('target', '_blank');
+    }
+    expect(
+      institutions.map(({ name }) => screen.getByRole('img', { name })),
+    ).toHaveLength(institutions.length);
 
     const publicationHeading = screen.getByRole('heading', {
       name: 'Publicaciones recientes que utilizan Network Canvas',
@@ -182,7 +216,7 @@ describe('localized home sections', () => {
     if (!publicationSection) throw new Error('Expected a publications section');
     expect(
       within(publicationSection).getByText('2', { selector: 'strong' }),
-    ).toBeVisible();
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('link', {
         name: 'Ver todas las 2 publicaciones, con 3 personas autoras',

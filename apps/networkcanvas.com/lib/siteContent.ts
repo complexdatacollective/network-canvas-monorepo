@@ -88,6 +88,7 @@ const publicationRowSchema = z
     'title_pt-BR': requiredText,
     'title_it': requiredText,
     'title_fr': requiredText,
+    'title_ar': requiredText,
     'source_en': requiredText,
     'source_es': requiredText,
     'source_zh-Hans': requiredText,
@@ -97,6 +98,7 @@ const publicationRowSchema = z
     'source_pt-BR': requiredText,
     'source_it': requiredText,
     'source_fr': requiredText,
+    'source_ar': requiredText,
     'authors': requiredText,
     'href': httpsUrl,
     'year': publicationYear,
@@ -115,6 +117,7 @@ const grantRowSchema = z
     'title_pt-BR': requiredText,
     'title_it': requiredText,
     'title_fr': requiredText,
+    'title_ar': requiredText,
     'pis_en': requiredText,
     'pis_es': requiredText,
     'pis_zh-Hans': requiredText,
@@ -124,6 +127,7 @@ const grantRowSchema = z
     'pis_pt-BR': requiredText,
     'pis_it': requiredText,
     'pis_fr': requiredText,
+    'pis_ar': requiredText,
     'description_en': requiredText,
     'description_es': requiredText,
     'description_zh-Hans': requiredText,
@@ -133,6 +137,7 @@ const grantRowSchema = z
     'description_pt-BR': requiredText,
     'description_it': requiredText,
     'description_fr': requiredText,
+    'description_ar': requiredText,
     'logo': publicImage,
     'logo_alt_en': requiredText,
     'logo_alt_es': requiredText,
@@ -143,6 +148,7 @@ const grantRowSchema = z
     'logo_alt_pt-BR': requiredText,
     'logo_alt_it': requiredText,
     'logo_alt_fr': requiredText,
+    'logo_alt_ar': requiredText,
     'href': httpsUrl,
   })
   .strict();
@@ -160,6 +166,7 @@ const teamMemberRowSchema = z
     'institution_pt-BR': requiredText,
     'institution_it': requiredText,
     'institution_fr': requiredText,
+    'institution_ar': requiredText,
     'photo': publicImage,
   })
   .strict();
@@ -267,6 +274,7 @@ function localized(
   brazilianPortuguese: string,
   italian: string,
   french: string,
+  arabic: string,
 ): string {
   if (locale === 'es') return spanish;
   if (locale === 'zh-Hans') return simplifiedChinese;
@@ -276,6 +284,7 @@ function localized(
   if (locale === 'pt-BR') return brazilianPortuguese;
   if (locale === 'it') return italian;
   if (locale === 'fr') return french;
+  if (locale === 'ar') return arabic;
   return english;
 }
 
@@ -303,6 +312,7 @@ export async function loadSiteContent(
         row['title_pt-BR'],
         row.title_it,
         row.title_fr,
+        row.title_ar,
       ),
       source: localized(
         locale,
@@ -315,6 +325,7 @@ export async function loadSiteContent(
         row['source_pt-BR'],
         row.source_it,
         row.source_fr,
+        row.source_ar,
       ),
       authors: row.authors,
       href: row.href,
@@ -333,6 +344,7 @@ export async function loadSiteContent(
         row['title_pt-BR'],
         row.title_it,
         row.title_fr,
+        row.title_ar,
       ),
       pis: localized(
         locale,
@@ -345,6 +357,7 @@ export async function loadSiteContent(
         row['pis_pt-BR'],
         row.pis_it,
         row.pis_fr,
+        row.pis_ar,
       ),
       description: localized(
         locale,
@@ -357,6 +370,7 @@ export async function loadSiteContent(
         row['description_pt-BR'],
         row.description_it,
         row.description_fr,
+        row.description_ar,
       ),
       logo: row.logo,
       logoAlt: localized(
@@ -370,6 +384,7 @@ export async function loadSiteContent(
         row['logo_alt_pt-BR'],
         row.logo_alt_it,
         row.logo_alt_fr,
+        row.logo_alt_ar,
       ),
       href: row.href,
     })),
@@ -387,6 +402,7 @@ export async function loadSiteContent(
         row['institution_pt-BR'],
         row.institution_it,
         row.institution_fr,
+        row.institution_ar,
       ),
       photo: row.photo,
     })),

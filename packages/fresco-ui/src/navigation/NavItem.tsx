@@ -6,6 +6,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { cva, cx } from '../utils/cva';
+import { inlineIconClass } from './inlineIcons';
 
 /**
  * The props handed to `renderLink`. Spread them onto the host's link component
@@ -216,7 +217,12 @@ const NavItem = (props: NavItemProps) => {
     className,
   } = props;
 
-  const icon = Icon ? <Icon aria-hidden className="size-5 shrink-0" /> : null;
+  const icon = Icon ? (
+    <Icon
+      aria-hidden
+      className={cx('size-5 shrink-0', inlineIconClass(Icon))}
+    />
+  ) : null;
 
   // Narrowed from `props` rather than from a destructured `disabled`, so
   // `unavailableReason` is a `string` here and not `string | undefined`.

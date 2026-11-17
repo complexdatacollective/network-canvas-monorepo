@@ -74,39 +74,7 @@ describe('Options validators', () => {
     expect(parseOptionValue('one')).toBe('one');
   });
 
-  it('validates unique values across string and number option values', () => {
-    const [validateUnique] = getValidations({
-      uniqueArrayAttribute: true,
-    });
-    expect(validateUnique).toBeDefined();
-
-    expect(
-      validateUnique?.(
-        1,
-        { options: [{ value: 1 }, { value: 1 }] },
-        undefined,
-        'options[0].value',
-      ),
-    ).toBe('This value is already in use. Enter a different value.');
-    expect(
-      validateUnique?.(
-        'One',
-        { options: [{ value: 'One' }, { value: 'one' }] },
-        undefined,
-        'options[0].value',
-      ),
-    ).toBe('This value is already in use. Enter a different value.');
-    expect(
-      validateUnique?.(
-        1,
-        { options: [{ value: 1 }, { value: '1' }] },
-        undefined,
-        'options[0].value',
-      ),
-    ).toBeUndefined();
-  });
-
-  // The rows already run `uniqueArrayAttribute`, but a row is not a
+  // The rows already run `uniqueArrayName`, but a row is not a
   // registered field — its error is display-only. Without an equivalent
   // whole-array rule the owning form stays valid and the duplicate saves.
   it('rejects duplicate option values at the array level', () => {
@@ -122,7 +90,7 @@ describe('Options validators', () => {
         { label: en('Two'), value: 'a' },
       ]),
     ).toMatch(/unique value/i);
-    // Matches `uniqueArrayAttribute`'s case-insensitive string comparison, so
+    // Matches `uniqueArrayName`'s case-insensitive comparison, so
     // the array and its rows never disagree about which entries clash.
     expect(
       uniqueOptionValues([
@@ -224,18 +192,6 @@ describe('Options validators', () => {
           { label: en('Two'), value: decomposed },
         ]),
       ).toMatch(/unique value/i);
-    });
-
-    it('are rejected by the row-level rule too, so rows and array agree', () => {
-      const [validateUnique] = getValidations({ uniqueArrayAttribute: true });
-      expect(
-        validateUnique?.(
-          decomposed,
-          { options: [{ label: precomposed }, { label: decomposed }] },
-          undefined,
-          'options[1].label',
-        ),
-      ).toBe('This value is already in use. Enter a different value.');
     });
 
     it('are stored in canonical composed form', () => {

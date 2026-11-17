@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import { default as Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -32,12 +31,12 @@ import type { CompletedAction } from '../../contract/types';
 import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import { getInterviewId } from '../../selectors/session';
 import { getStages } from '../../store/modules/protocol';
 import { useSyncFlush } from '../../store/SyncFlushContext';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { interfaceMessages } from '../messages';
 
 type FinishSessionText = Pick<
   FinishSessionStage,
@@ -116,6 +115,11 @@ type FinishState = 'idle' | 'finishing';
  * cannot be left backwards either (see `useInterviewNavigation`).
  */
 const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
+  // The stage's own words, and Network Canvas's where the stage holds none.
+  const wording = useStageWording(stage);
+  const finishLabel = wording.text('finishLabel');
+  const finishConfirmation = wording.text('finishConfirmation');
+  const finishFailed = wording.text('finishFailed');
   const interviewId = useSelector(getInterviewId);
   const { onFinish } = useContractHandlers();
   const finishConfirmationDescription = useFinishConfirmationDescription();
@@ -175,12 +179,12 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
   const reportFailure = useCallback(() => {
     setFailed(true);
     showToast({
-      description: <StageText value={stage.finishFailed} />,
+      description: <StageText value={finishFailed} />,
       variant: 'destructive',
       anchor: 'forward',
       timeout: 8000,
     });
-  }, [showToast, stage.finishFailed]);
+  }, [showToast, finishFailed]);
 
   // Finishing without asking: automatic mode, and the retry after it failed.
   const finishNow = useCallback(async () => {
@@ -202,9 +206,9 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
       outcome: 'abandoned',
     };
     const finished = await confirm({
-      title: <StageText value={stage.finishConfirmation} />,
+      title: <StageText value={finishConfirmation} />,
       description: finishConfirmationDescription,
-      confirmLabel: <StageText value={stage.finishLabel} />,
+      confirmLabel: <StageText value={finishLabel} />,
       onConfirm: async (signal: AbortSignal) => {
         // A failure closes the question and returns to the closing screen,
         // where the toast says what happened, rather than keeping the
@@ -252,7 +256,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
           disabled={state === 'finishing'}
           onClick={() => void finishNow()}
         >
-          <StageText value={stage.finishLabel} />
+          <StageText value={finishLabel} />
         </Button>
       </FinishSessionLayout>
     );
@@ -266,7 +270,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
         disabled={state === 'finishing'}
         onClick={() => void finishWithConfirmation()}
       >
-        <StageText value={stage.finishLabel} />
+        <StageText value={finishLabel} />
       </Button>
     </FinishSessionLayout>
   );
@@ -285,10 +289,9 @@ function FinishingAnnouncement() {
     return () => cancelAnimationFrame(frame);
   }, []);
   return (
-    <output aria-live="polite" className="sr-only">
-      {announced && (
-        <AppMessage message={interfaceMessages.finishingInterview} />
-      )}
+    <output aria-live="polite" className="sr-only" lang="en">
+      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+      {announced && 'Finishing the interview…'}
     </output>
   );
 }

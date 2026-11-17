@@ -1,5 +1,6 @@
 import { Redacted } from 'effect';
 
+import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import type {
   CodebookSubject,
   Presence,
@@ -7,6 +8,7 @@ import type {
   Revision,
   SectionReference,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import { type InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   validateSection,
@@ -66,7 +68,12 @@ export type SubmitOutcome =
   | Readonly<{ status: 'written'; revision: Revision }>
   | Readonly<{ status: 'notLockHolder'; holder?: Presence }>
   | Readonly<{ status: 'blocked'; blocked: SectionHolder[] }>
-  | Readonly<{ status: 'invalidShape'; issues: SectionIssue[] }>;
+  | Readonly<{
+      status: 'invalidShape';
+      /** The section refused, when it is not the one submitted. */
+      sectionId?: ProtocolSectionId;
+      issues: SectionIssue[];
+    }>;
 
 export type CreateOutcome =
   | Readonly<{
@@ -95,6 +102,7 @@ export type RefactorOutcome =
 type SectionWrite = readonly [ProtocolSectionId, SectionDoc | undefined];
 
 const ASSETS = sectionId({ kind: 'assets' });
+const SETTINGS = sectionId({ kind: 'settings' });
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
 export type CreatableSectionKind =
@@ -223,13 +231,15 @@ export class InMemoryProtocolStore {
    *
    * The entries are the submit's promotion: the bytes behind them are already
    * with the host, and this is where they and the section naming them become
-   * a single revision. A refusal writes neither.
+   * a single revision. A refusal writes neither. So are the shared words a
+   * stage brings in, which are written into the settings.
    */
   submit(
     id: ProtocolSectionId,
     document: SectionDoc,
     principal: HostPrincipal,
     assetEntries?: Readonly<Record<string, unknown>>,
+    interfaceText?: readonly InterfaceTextUpdate[],
   ): SubmitOutcome {
     this.read(id);
     const owner = this.#locks.get(id);
@@ -247,9 +257,22 @@ export class InMemoryProtocolStore {
       const blocked = this.#blockedBy([ASSETS], new Set([id]), principal);
       if (blocked.length > 0) return { status: 'blocked', blocked };
     }
+    let settings: SectionDoc | undefined;
+    if (interfaceText !== undefined) {
+      // Taken on the same terms as the manifest: an editor holding the
+      // settings would submit them whole next, without these words.
+      const blocked = this.#blockedBy([SETTINGS], new Set([id]), principal);
+      if (blocked.length > 0) return { status: 'blocked', blocked };
+      settings = this.#settingsWith(interfaceText);
+      const refused = shapeIssues(SETTINGS, settings);
+      if (refused.length > 0) {
+        return { status: 'invalidShape', sectionId: SETTINGS, issues: refused };
+      }
+    }
     const sequence = this.#advance();
     const revision = this.#write(id, document, sequence);
     if (assetEntries !== undefined) this.#mergeAssets(assetEntries, sequence);
+    if (settings !== undefined) this.#write(SETTINGS, settings, sequence);
     return { status: 'written', revision };
   }
 
@@ -259,13 +282,15 @@ export class InMemoryProtocolStore {
    *
    * The entries are the create's promotion, and the manifest is taken on the
    * same terms as the pointer section: a create holds no lock, so an editor
-   * holding the manifest blocks it, whoever they are.
+   * holding the manifest blocks it, whoever they are. The shared words a stage
+   * brings in are written into the settings on those terms too.
    */
   create(
     kind: CreatableSectionKind,
     document: SectionDoc,
     position: number | undefined,
     assetEntries?: Readonly<Record<string, unknown>>,
+    interfaceText?: readonly InterfaceTextUpdate[],
   ): CreateOutcome {
     // The stage order is the created stage's pointer section, and this write
     // registers it there. An editor holding the order has a whole-section
@@ -277,6 +302,7 @@ export class InMemoryProtocolStore {
     const touched = [
       ...(kind === 'stage' ? [STAGE_ORDER] : []),
       ...(assetEntries === undefined ? [] : [ASSETS]),
+      ...(interfaceText === undefined ? [] : [SETTINGS]),
     ];
     if (touched.length > 0) {
       const blocked = this.#blockedBy(touched, new Set<ProtocolSectionId>());
@@ -296,12 +322,23 @@ export class InMemoryProtocolStore {
     if (issues.length > 0) {
       return { status: 'invalidShape', sectionId: target, issues };
     }
+    const settings =
+      interfaceText === undefined
+        ? undefined
+        : this.#settingsWith(interfaceText);
+    if (settings !== undefined) {
+      const refused = shapeIssues(SETTINGS, settings);
+      if (refused.length > 0) {
+        return { status: 'invalidShape', sectionId: SETTINGS, issues: refused };
+      }
+    }
     const sequence = this.#advance();
     const revision = this.#write(target, created, sequence);
     if (kind === 'stage' && id !== undefined) {
       this.#registerStagePointer(id, position, sequence);
     }
     if (assetEntries !== undefined) this.#mergeAssets(assetEntries, sequence);
+    if (settings !== undefined) this.#write(SETTINGS, settings, sequence);
     return { status: 'created', sectionId: target, revision };
   }
 
@@ -605,6 +642,15 @@ export class InMemoryProtocolStore {
       document: stored,
     });
     return revision;
+  }
+
+  /** The settings as they stand, holding `updates` over their shared words. */
+  #settingsWith(updates: readonly InterfaceTextUpdate[]): SectionDoc {
+    const settings = this.read(SETTINGS).document;
+    return {
+      ...settings,
+      interfaceText: interfaceTextWithUpdates(settings.interfaceText, updates),
+    };
   }
 
   #mergeAssets(

@@ -98,4 +98,5 @@ export const commonCatalogLoaders: CatalogLoaders = {
   'pt-BR': () => import('./locales/pt-BR.json'),
   'it': () => import('./locales/it.json'),
   'fr': () => import('./locales/fr.json'),
+  'ar': () => import('./locales/ar.json'),
 };

@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { escapeMessageText } from '../../../localization/messageSyntax.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { VersionedProtocolSchema } from '../../index.ts';
 import {
   getLocalizedStringDescriptor,
   LocaleTagSchema,
+  localizedMessage,
   localizedString,
   ProtocolLocalizationSchema,
 } from '../localized-string.ts';
@@ -146,23 +148,35 @@ describe('ProtocolLocalizationSchema', () => {
 
   it('rejects keys it does not define', () => {
     expect(
-      ProtocolLocalizationSchema.safeParse({
-        defaultLocale: 'en',
-        locales: ['en'],
-        fallback: 'en',
-      }).success,
-    ).toBe(false);
+      parseIssues(
+        ProtocolLocalizationSchema.safeParse({
+          defaultLocale: 'en',
+          locales: ['en'],
+          fallback: 'en',
+        }),
+      ),
+    ).toEqual([{ path: '', code: 'unrecognized_keys', keys: ['fallback'] }]);
   });
 });
 
 describe('localizedString', () => {
-  const required = localizedString(z.string().min(1), 'plain');
-  const optionalContent = localizedString(z.string(), 'markdown');
+  const required = localizedString(z.string().min(1), {
+    format: 'plain',
+    lines: 'single',
+  });
+  const optionalContent = localizedString(z.string(), {
+    format: 'markdown',
+    lines: 'multiple',
+  });
 
-  it('tags the schema with its rendering format', () => {
-    expect(getLocalizedStringDescriptor(required)).toEqual({ format: 'plain' });
+  it('tags the schema with its declared shape', () => {
+    expect(getLocalizedStringDescriptor(required)).toEqual({
+      format: 'plain',
+      lines: 'single',
+    });
     expect(getLocalizedStringDescriptor(optionalContent)).toEqual({
       format: 'markdown',
+      lines: 'multiple',
     });
     expect(getLocalizedStringDescriptor(z.string())).toBeUndefined();
   });
@@ -174,7 +188,9 @@ describe('localizedString', () => {
   });
 
   it('rejects a plain string', () => {
-    expect(required.safeParse('Hello').success).toBe(false);
+    expect(parseIssues(required.safeParse('Hello'))).toEqual([
+      { path: '', code: 'invalid_type' },
+    ]);
   });
 
   // Whether text may have no translation depends on where it sits, which
@@ -255,6 +271,49 @@ describe('localizedString', () => {
   });
 });
 
+describe('line breaks', () => {
+  const oneLine = {
+    'plain text': localizedString(z.string(), {
+      format: 'plain',
+      lines: 'single',
+    }),
+    'markdown text': localizedString(z.string(), {
+      format: 'markdown',
+      lines: 'single',
+    }),
+    'a message': localizedMessage(z.string(), { arguments: {} }),
+  };
+  const severalLines = localizedString(z.string(), {
+    format: 'markdown',
+    lines: 'multiple',
+  });
+  const breaks = {
+    'a line feed': 'First\nsecond',
+    'a carriage return': 'First\rsecond',
+    'a line separator': 'First\u2028second',
+    'a paragraph separator': 'First\u2029second',
+    'a trailing line feed': 'First second\n',
+  };
+
+  for (const [field, schema] of Object.entries(oneLine)) {
+    it.each(Object.entries(breaks))(
+      `refuses %s in ${field} declared one line, in any language`,
+      (_name, text) => {
+        expect(issuesOf(schema, { en: 'First second', fr: text })).toEqual([
+          { message: 'Text cannot contain a line break.', path: ['fr'] },
+        ]);
+      },
+    );
+  }
+
+  it.each(Object.entries(breaks))(
+    'accepts %s in text declared several lines',
+    (_name, text) => {
+      expect(issuesOf(severalLines, { en: text, fr: text })).toEqual([]);
+    },
+  );
+});
+
 describe('Information stage title', () => {
   const stage = (title: unknown) => ({
     id: 'welcome',
@@ -268,9 +327,14 @@ describe('Information stage title', () => {
   // another language, and show a stage with no heading.
   it('rejects a translation that shows nothing', () => {
     expect(
-      informationStageSchema.safeParse(stage({ en: 'Information', fr: '   ' }))
-        .success,
-    ).toBe(false);
+      parseIssues(
+        informationStageSchema.safeParse(
+          stage({ en: 'Information', fr: '   ' }),
+        ),
+      ),
+    ).toEqual([
+      { path: 'title.fr', code: 'custom', message: 'Text cannot be blank.' },
+    ]);
   });
 
   it('accepts a title in every language', () => {
@@ -279,6 +343,26 @@ describe('Information stage title', () => {
         stage({ en: 'Information', fr: 'Informations' }),
       ).success,
     ).toBe(true);
+  });
+
+  it('refuses a title holding a line break, while its content may hold several lines', () => {
+    expect(
+      issuesOf(informationStageSchema, {
+        ...stage({ en: 'Information', fr: 'Informa-\ntions' }),
+        items: [
+          {
+            id: 'item',
+            type: 'text',
+            content: {
+              en: '## Welcome\n\nHello',
+              fr: '## Bienvenue\n\nBonjour',
+            },
+          },
+        ],
+      }),
+    ).toEqual([
+      { message: 'Text cannot contain a line break.', path: ['title', 'fr'] },
+    ]);
   });
 });
 
@@ -316,17 +400,31 @@ describe('schema version boundary', () => {
   it('accepts localized copy through the versioned schema', () => {
     expect(
       VersionedProtocolSchema.safeParse(
-        schema9Protocol(localized('Welcome'), localized('Hello')),
+        withFinishStage(
+          schema9Protocol(localized('Welcome'), localized('Hello')),
+        ),
       ).success,
     ).toBe(true);
   });
 
   it('rejects plain-string copy in schema 9', () => {
     expect(
-      ProtocolSchemaV9.safeParse(
-        withFinishStage(schema9Protocol('Welcome', 'Hello')),
-      ).success,
-    ).toBe(false);
+      parseIssues(
+        ProtocolSchemaV9.safeParse(
+          withFinishStage(schema9Protocol('Welcome', 'Hello')),
+        ),
+      ),
+    ).toEqual([
+      { path: 'stages.0.items.0.content', code: 'invalid_type' },
+      { path: 'stages.0.label', code: 'invalid_type' },
+      { path: 'stages.0.title', code: 'invalid_type' },
+      { path: 'stages.1.content', code: 'invalid_type' },
+      { path: 'stages.1.finishConfirmation', code: 'invalid_type' },
+      { path: 'stages.1.finishFailed', code: 'invalid_type' },
+      { path: 'stages.1.finishLabel', code: 'invalid_type' },
+      { path: 'stages.1.finishedContent', code: 'invalid_type' },
+      { path: 'stages.1.label', code: 'invalid_type' },
+    ]);
   });
 
   it('requires schema 9 to declare its languages', () => {

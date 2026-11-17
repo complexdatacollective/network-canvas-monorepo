@@ -1,6 +1,10 @@
 'use client';
 
-import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { DynamicValueEntity } from '../dynamicValues/DynamicValueScope';
 import { useValuesUntilExit } from '../dynamicValues/useValuesUntilExit';
@@ -24,6 +28,7 @@ export default function BinPrompts({
   const onScreen = useValuesUntilExit(prompt.id, {
     attributes: { node: focalNode?.[entityAttributesProperty] },
     labels: { node: focalNode ? focalLabel : undefined },
+    ids: { node: focalNode?.[entityPrimaryKeyProperty] },
   });
 
   return (

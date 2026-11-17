@@ -1,10 +1,17 @@
 {
-  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/direction.json"
+  ],
   "jsPlugins": ["oxlint-tailwindcss", "eslint-plugin-formatjs"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "tooling/tailwind/fresco/fresco.css",
-      "variablePatterns": ["[a-z](?:Class|ClassNames?|Classes)$"],
+      "variablePatterns": [
+        "[a-z](?:Class|ClassNames?|Classes)$",
+        "_CLASS(?:ES|_NAMES?)?$"
+      ],
       "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
@@ -26,7 +33,13 @@
       }
     ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "error"
+    "tailwindcss/enforce-canonical": "error",
+    // Right-to-left languages. The same rule, with the same exception, as
+    // `@codaco/fresco-ui`'s configuration, which says why.
+    "tailwindcss/enforce-logical": [
+      "error",
+      { "direction": "inline", "allowlist": ["(^|:)left-1/2$"] }
+    ]
   },
   "overrides": [
     {

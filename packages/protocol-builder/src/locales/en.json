@@ -71,10 +71,6 @@
     "defaultMessage": "These limits cover the whole stage",
     "description": "Warning heading shown when the stage asks several questions, because the cap is counted across all of them rather than per question. A stage is one step of an interview."
   },
-  "protocolBuilder.anonymisation.attributeGroupLabel": {
-    "defaultMessage": "Encrypted attributes for {typeName}",
-    "description": "Accessible name of one node type’s group of checkboxes in the encrypted-attributes section — read aloud rather than shown, because the type’s name is already a heading above it. typeName is the researcher’s own name for the node type, such as \"person\"."
-  },
   "protocolBuilder.anonymisation.attributeUsedByRule": {
     "defaultMessage": "{ruleCount, plural, one {\"{attributeName}\" cannot be encrypted while a rule in {stageNames} compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.} other {\"{attributeName}\" cannot be encrypted while # rules in {stageNames} compare its answers. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove those rules, or change them to check only whether the attribute is answered.}}",
     "description": "Shown in the encrypted-attributes section when a researcher ticks an attribute whose answers a rule already compares (for example, \"the name is Alice\") — in a stage’s skip logic, a stage’s filter, or the filter of a side panel listing people from the interview — and the tick is refused. A rule that only checks whether the attribute was answered keeps working once it is encrypted, so it does not count. ruleCount is how many comparing rules there are; attributeName is the researcher’s own name for the attribute; stageNames is the names of the stages holding those rules, each in quotation marks, already joined into one phrase in the reader’s language. A stage is one step of an interview."
@@ -90,14 +86,6 @@
   "protocolBuilder.anonymisation.clearTypeConfirmTitle": {
     "defaultMessage": "This will clear selected attributes",
     "description": "Title of the confirmation shown when a researcher switches encryption off for a whole node type, which un-encrypts every attribute of that type at once."
-  },
-  "protocolBuilder.anonymisation.clearedTypeAnnouncement": {
-    "defaultMessage": "No attribute of the {typeName} type is encrypted any more.",
-    "description": "Announced to a screen reader once every attribute of one node type has stopped being encrypted. Never shown on screen — the section closing is the visible confirmation. typeName is the researcher’s own name for the type."
-  },
-  "protocolBuilder.anonymisation.encryptedAnnouncement": {
-    "defaultMessage": "{attributeName} is now encrypted.",
-    "description": "Announced to a screen reader after a checkbox in the encrypted-attributes section is ticked and the codebook change has been applied. Never shown on screen — the checkbox itself is the visible confirmation. attributeName is the researcher’s own name for the attribute."
   },
   "protocolBuilder.anonymisation.encryptedAttributesDescription": {
     "defaultMessage": "Select the text attributes for each node type that should be encrypted.",
@@ -130,10 +118,6 @@
   "protocolBuilder.anonymisation.noTypesEmptyState": {
     "defaultMessage": "This protocol has no types yet, so there is nothing to encrypt. Add one in the codebook.",
     "description": "Shown in place of the encrypted-attributes list when the codebook — the protocol’s definition of what an interview records — holds no node types at all, so there are no attributes to offer."
-  },
-  "protocolBuilder.anonymisation.notEncryptedAnnouncement": {
-    "defaultMessage": "{attributeName} is no longer encrypted.",
-    "description": "Announced to a screen reader after a checkbox in the encrypted-attributes section is cleared and the codebook change has been applied. Never shown on screen. attributeName is the researcher’s own name for the attribute."
   },
   "protocolBuilder.anonymisation.passphraseRulesClearConfirm": {
     "defaultMessage": "Remove the rules",
@@ -191,14 +175,6 @@
     "defaultMessage": "Add",
     "description": "Button that commits the dialog a researcher has filled in for a NEW row of a list. The same dialog says Save when it is editing a row that already exists."
   },
-  "protocolBuilder.arrayField.deleteRow": {
-    "defaultMessage": "Delete {itemLabel}",
-    "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
-  },
-  "protocolBuilder.arrayField.editRow": {
-    "defaultMessage": "Edit {itemLabel}",
-    "description": "Accessible name of the button that opens one row of a list in its editing dialog. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
-  },
   "protocolBuilder.arrayField.invalidOptionValue": {
     "defaultMessage": "Cannot contain line breaks, tabs or other control characters",
     "description": "Shown under the value cell of an option in an editable list when the text holds a character that cannot be stored in a value, such as a line break or a tab. Terse because it sits inside a row of a table-like list. A value may otherwise be written in any language or script, with spaces and punctuation."
@@ -206,10 +182,6 @@
   "protocolBuilder.arrayField.itemNoun": {
     "defaultMessage": "item",
     "description": "Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row (\"Delete this item?\", \"This item was not saved.\"), so it is lower case and singular."
-  },
-  "protocolBuilder.arrayField.reorderRow": {
-    "defaultMessage": "Reorder {itemLabel} {position} of {count, number}",
-    "description": "Accessible name of the handle that drags one row of a list into a different position. itemLabel is the list’s own noun for one of its rows, already in the reader’s language; position is the row’s own place in the list, counting from one; count is how many rows the list holds."
   },
   "protocolBuilder.arrayField.rowEditorFailed": {
     "defaultMessage": "This editor could not be shown, so there is nothing to fill in here. Close it and try again. If it keeps happening, the problem is in this interface’s editor rather than in your protocol.",
@@ -230,10 +202,6 @@
   "protocolBuilder.assignAttributes.booleanTrue": {
     "defaultMessage": "True",
     "description": "One of the two values a prompt can stamp onto every node it creates, for an attribute that records a yes/no answer. A prompt is the question a participant reads."
-  },
-  "protocolBuilder.assignAttributes.deleteRow": {
-    "defaultMessage": "Delete attribute",
-    "description": "Accessible name of the button that removes one row from the list of attributes a prompt stamps onto the nodes it creates. It removes the row, not the attribute from the codebook."
   },
   "protocolBuilder.assignAttributes.emptyState": {
     "defaultMessage": "No additional attributes assigned.",
@@ -751,10 +719,6 @@
     "defaultMessage": "Month",
     "description": "Names the month half of a bounding date that is written as a year and a month. Also the empty state of that dropdown."
   },
-  "protocolBuilder.coarseDateBound.yearPart": {
-    "defaultMessage": "Year",
-    "description": "Names the year half of a bounding date that is written as a year and a month, for a screen reader that would otherwise hear the two halves as one field said twice."
-  },
   "protocolBuilder.codebookEditing.createVariableRefused": {
     "defaultMessage": "This attribute could not be created, so nothing was changed. Try again.",
     "description": "Refusal shown on the attribute control of a stage editor when inventing a new attribute (a codebook variable) failed for a reason with no explanation of its own."
@@ -827,10 +791,6 @@
     "defaultMessage": "Node appearance",
     "description": "Heading of the group of the node type editor holding how a node of this type is drawn. A node is a member of the interview network."
   },
-  "protocolBuilder.codebookEntity.attributeListLabel": {
-    "defaultMessage": "{name} attributes",
-    "description": "Accessible name of the list of one entity’s attributes (its codebook variables). name is the researcher’s own name for the node or edge type, or the word for the ego."
-  },
   "protocolBuilder.codebookEntity.attributesHeading": {
     "defaultMessage": "Attributes",
     "description": "Heading over one entity’s attributes — the codebook variables recorded for it — on its card."
@@ -861,27 +821,51 @@
   },
   "protocolBuilder.codebookEntity.colorSectionTitle": {
     "defaultMessage": "Type color",
-    "description": "Heading of the group of the entity editor holding the colour this type is drawn in."
+    "description": "Heading of the group of the edge type editor holding the colour this type is drawn in."
   },
   "protocolBuilder.codebookEntity.createAttribute": {
     "defaultMessage": "Create attribute",
     "description": "Visible label of the button that adds a new attribute (a codebook variable) to the entity this card is about."
   },
-  "protocolBuilder.codebookEntity.createAttributeLabel": {
-    "defaultMessage": "{entity, select, node {Create attribute for Node type: {name}} edge {Create attribute for Edge type: {name}} other {Create attribute for Ego attributes}}",
-    "description": "Accessible name of the button that adds an attribute (a codebook variable) to one entity. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. Names the card because the page shows one such button per card."
-  },
   "protocolBuilder.codebookEntity.createEdgeType": {
     "defaultMessage": "Create edge type",
     "description": "Button that adds a new edge type to the codebook. An edge is a relationship between two network members."
   },
-  "protocolBuilder.codebookEntity.createEntityGroupLabel": {
-    "defaultMessage": "Create codebook entity",
-    "description": "Accessible name of the group holding the buttons that add a node type, an edge type or the ego definition to the codebook."
-  },
   "protocolBuilder.codebookEntity.createNodeType": {
     "defaultMessage": "Create node type",
     "description": "Button that adds a new node type to the codebook. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.customShapesLabel": {
+    "defaultMessage": "Custom shapes",
+    "description": "Label of the part of the node type editor where the researcher adds their own shapes for the node type from SVG image files."
+  },
+  "protocolBuilder.codebookEntity.dynamicLabel": {
+    "defaultMessage": "Dynamic label",
+    "description": "Heading of an optional section of the node type editor, switched on with a toggle. When it is on, the researcher writes the label shown on every node of this type, which can show the node’s attributes and change with them, in place of the label the interview would otherwise choose."
+  },
+  "protocolBuilder.codebookEntity.dynamicLabelDescription": {
+    "defaultMessage": "Enable this advanced feature to define node labels yourself for this type, including the ability to define labels that change according to node attributes or network structure.",
+    "description": "Description under the Dynamic label heading in the node type editor, beside the on/off toggle that enables the section. “This type” is the node type being edited. Node attributes are the variables recorded about each node; network structure means how the node is connected to others, such as how many edges it has."
+  },
+  "protocolBuilder.codebookEntity.dynamicLabelField": {
+    "defaultMessage": "Label",
+    "description": "Label of the text field in the Dynamic label section of the node type editor, where the researcher writes the label shown on every node of this type."
+  },
+  "protocolBuilder.codebookEntity.dynamicLabelHint": {
+    "defaultMessage": "Define the label that nodes of this type should use. Use the syringe button to insert a dynamic attribute. Use the logic button to insert a group that conditionally renders different text. See our <docs>documentation article</docs> for more information.",
+    "description": "Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button, drawn as a syringe, that opens the menu of values that can be inserted; a dynamic attribute is one of the node’s attributes, shown in the label as whatever value each node holds. The logic button is the toolbar button beside it; the group it inserts is a set of alternative wordings, of which the one whose rules are met is shown. The docs tag wraps the link text for the documentation article about node labels."
+  },
+  "protocolBuilder.codebookEntity.dynamicLabelProblem": {
+    "defaultMessage": "The label cannot be used as it is written. Correct the problem shown beneath it.",
+    "description": "Validation error on the Dynamic label section of the node type editor when the label text is not valid, for example because it shows a value in a place where the value could be missing. The specific problem is already shown directly beneath the label field."
+  },
+  "protocolBuilder.codebookEntity.dynamicLabelRulesRequired": {
+    "defaultMessage": "Every “If” in the label needs at least one rule. Open it and choose “Edit rules”, or remove it.",
+    "description": "Validation error on the Dynamic label section of the node type editor when an “If” in the label text has no rules. “Edit rules” is the name of the button on each row of an “If”."
+  },
+  "protocolBuilder.codebookEntity.dynamicLabelTextRequired": {
+    "defaultMessage": "Write the label, or turn off Dynamic label.",
+    "description": "Validation error on the Dynamic label section of the node type editor when the section is switched on but no label text has been written. Dynamic label is the name of the section and of its on/off toggle."
   },
   "protocolBuilder.codebookEntity.edgeTypesHeading": {
     "defaultMessage": "Edge types",
@@ -890,14 +874,6 @@
   "protocolBuilder.codebookEntity.editAttribute": {
     "defaultMessage": "Edit",
     "description": "Visible label of the button beside one attribute in an entity’s list. Its full accessible name names the attribute and the entity as well."
-  },
-  "protocolBuilder.codebookEntity.editAttributeLabel": {
-    "defaultMessage": "{entity, select, node {Edit attribute {attributeName} for Node type: {name}} edge {Edit attribute {attributeName} for Edge type: {name}} other {Edit attribute {attributeName} for Ego attributes}}",
-    "description": "Accessible name of the button that opens one attribute (a codebook variable) for editing. attributeName is the researcher’s own name for the attribute; entity is node, edge or ego; name is their own name for that node or edge type."
-  },
-  "protocolBuilder.codebookEntity.editSubjectLabel": {
-    "defaultMessage": "{entity, select, node {Edit Node type: {name}} edge {Edit Edge type: {name}} other {Edit Ego attributes}}",
-    "description": "Accessible name of the button that opens one codebook card for editing. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. Names the card because the page shows one such button per card."
   },
   "protocolBuilder.codebookEntity.editType": {
     "defaultMessage": "Edit type",
@@ -927,10 +903,6 @@
     "defaultMessage": "Choose an icon.",
     "description": "Refusal shown under the icon field of the node type editor when the researcher has chosen no icon."
   },
-  "protocolBuilder.codebookEntity.iconSectionTitle": {
-    "defaultMessage": "Interface icon",
-    "description": "Heading of the group of the node type editor holding the icon interviews show on the buttons that create this type. An interface is one kind of interview step."
-  },
   "protocolBuilder.codebookEntity.iconUnsupported": {
     "defaultMessage": "Choose an icon supported by Network Canvas.",
     "description": "Refusal shown under the icon field when the icon this type already carries is not one the interview can draw. \"Network Canvas\" is the product name and stays as it is."
@@ -943,9 +915,9 @@
     "defaultMessage": "Type identity",
     "description": "Heading of the group of the entity editor holding the name this type is known by."
   },
-  "protocolBuilder.codebookEntity.issuesListLabel": {
-    "defaultMessage": "Codebook issues",
-    "description": "Accessible name of the list of parts of the stored codebook this page could not read."
+  "protocolBuilder.codebookEntity.imageUnavailable": {
+    "defaultMessage": "An image added to this node type is no longer available. Remove the shape that uses it, then add the shape again.",
+    "description": "Refusal shown under the custom shapes field of the node type editor when saving fails because an SVG image added for a custom shape can no longer be kept with the protocol, and the shape that uses it cannot be identified."
   },
   "protocolBuilder.codebookEntity.issuesTitle": {
     "defaultMessage": "Some codebook data could not be displayed",
@@ -1031,10 +1003,6 @@
     "defaultMessage": "Below first threshold",
     "description": "Name of the fixed first row of the threshold list, covering every value under the lowest threshold."
   },
-  "protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed": {
-    "defaultMessage": "Below first threshold cannot be removed",
-    "description": "Accessible name of the unavailable remove button on the fixed first threshold row, saying why nothing happens."
-  },
   "protocolBuilder.codebookEntity.shapeDefaultSwatch": {
     "defaultMessage": "Default shape",
     "description": "Label of the read-only control on the fixed first threshold row, showing the shape chosen as this type’s default."
@@ -1043,13 +1011,13 @@
     "defaultMessage": "Shape for each value",
     "description": "Heading over the rows that give one shape to each answer the chosen attribute can take."
   },
-  "protocolBuilder.codebookEntity.shapeForValue": {
-    "defaultMessage": "Shape for {value1}",
-    "description": "Label of the control choosing the shape one answer is drawn as. value1 is the answer’s own label, already in the reader’s language where the protocol author wrote one."
-  },
   "protocolBuilder.codebookEntity.shapeHint": {
     "defaultMessage": "Choose a default shape for this node type.",
     "description": "Guidance under the shape field. A node is a member of the interview network."
+  },
+  "protocolBuilder.codebookEntity.shapeImageUnavailable": {
+    "defaultMessage": "The image for the shape \"{name}\" is no longer available. Remove this shape and add it again.",
+    "description": "Refusal shown under the custom shapes field of the node type editor when saving fails because the SVG image one custom shape is drawn from can no longer be kept with the protocol. name is the name the researcher gave that shape."
   },
   "protocolBuilder.codebookEntity.shapeLabel": {
     "defaultMessage": "Shape",
@@ -1083,10 +1051,6 @@
     "defaultMessage": "No thresholds yet — every value uses the default shape.",
     "description": "Shown in place of the threshold list while no threshold has been set."
   },
-  "protocolBuilder.codebookEntity.shapeRemoveThreshold": {
-    "defaultMessage": "Remove threshold {value1, number}",
-    "description": "Accessible name of the button that deletes one threshold row. value1 is the threshold’s own position in the list, counting from one."
-  },
   "protocolBuilder.codebookEntity.shapeRequired": {
     "defaultMessage": "Choose a default shape.",
     "description": "Refusal shown under the shape field of the node type editor when the researcher has chosen none."
@@ -1102,10 +1066,6 @@
   "protocolBuilder.codebookEntity.shapeUsesDefault": {
     "defaultMessage": "uses default shape",
     "description": "Said on the fixed first threshold row, after the shape it shows. Lower case because it completes the row rather than beginning a sentence."
-  },
-  "protocolBuilder.codebookEntity.shapeValuesUnmapped": {
-    "defaultMessage": "Some values are unmapped and will use the default shape.",
-    "description": "Notice shown while at least one of the chosen attribute’s answers has been given no shape of its own."
   },
   "protocolBuilder.codebookEntity.subjectDescription": {
     "defaultMessage": "{entity, select, node {Node type: {name}} edge {Edge type: {name}} other {Ego attributes}}",
@@ -1227,10 +1187,6 @@
     "defaultMessage": "Control settings",
     "description": "Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale."
   },
-  "protocolBuilder.codebookVariable.removeOption": {
-    "defaultMessage": "Remove option {index}",
-    "description": "Accessible name of the button that deletes one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name."
-  },
   "protocolBuilder.codebookVariable.repeatedBooleanAnswer": {
     "defaultMessage": "Give this answer different words: two buttons saying the same thing cannot be told apart.",
     "description": "Refusal shown under the second of the two answers of a yes/no attribute when both have been given the same words, which leaves the participant two buttons they cannot tell apart."
@@ -1242,10 +1198,6 @@
   "protocolBuilder.codebookVariable.stageManagedOptions": {
     "defaultMessage": "{count, plural, one {These options are managed by the {stageLabels} stage, which decides the kinship words each one takes. Edit them there.} other {These options are managed by the stages {stageLabels}, which decide the kinship words each one takes. Edit them in any of those stages.}}",
     "description": "Shown in place of the editable list of allowed answers of an attribute (a codebook variable) whose answers belong to one or more interview steps, and as the refusal when a change to them is attempted anywhere else. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer."
-  },
-  "protocolBuilder.codebookVariable.submittingStatus": {
-    "defaultMessage": "Saving attribute.",
-    "description": "Announced to screen reader users while the attribute is being saved. Not shown on screen."
   },
   "protocolBuilder.codebookVariable.typeBoolean": {
     "defaultMessage": "Boolean",
@@ -1315,6 +1267,10 @@
     "defaultMessage": "This change is not something the codebook can hold, so nothing was saved. Check what you entered and try again.",
     "description": "Refusal shown in a codebook editor when the protocol refused the change because it is not shaped like the part of the codebook it was written to."
   },
+  "protocolBuilder.compoundFailure.promotionFailed": {
+    "defaultMessage": "The files you imported could not be saved with this change, so nothing was saved and your changes are still here. Try saving again.",
+    "description": "Refusal shown in a codebook editor when the host would not take the files imported while it was open, such as an SVG image added as a custom node shape, so neither they nor the change were saved. The researcher’s unsaved work is still on screen."
+  },
   "protocolBuilder.compoundFailure.protocolGone": {
     "defaultMessage": "This protocol is no longer open, so nothing was saved. Reload it and try again.",
     "description": "Refusal shown in a codebook editor when the application it is running in no longer holds the protocol the change was written to."
@@ -1342,6 +1298,46 @@
   "protocolBuilder.compoundFailure.unreachable": {
     "defaultMessage": "This change could not be sent, and nothing was saved. Check your connection and try again.",
     "description": "Refusal shown in a codebook editor when the change never reached the application it is running in."
+  },
+  "protocolBuilder.conditionDialog.aboutEdge": {
+    "defaultMessage": "The edge",
+    "description": "Choice of what the rules of an “If” are asked of: the one edge (relationship) the text is shown with."
+  },
+  "protocolBuilder.conditionDialog.aboutFirstNode": {
+    "defaultMessage": "The first node of the pair",
+    "description": "Choice of what the rules of an “If” are asked of, for text shown with a pair of nodes: the first of the two."
+  },
+  "protocolBuilder.conditionDialog.aboutFocalNode": {
+    "defaultMessage": "The node being asked about",
+    "description": "Choice of what the rules of an “If” are asked of, for text shown while the participant is asked about one node in particular."
+  },
+  "protocolBuilder.conditionDialog.aboutHint": {
+    "defaultMessage": "This text is shown alongside two nodes. Node rules and edge rules are checked against the node you choose here.",
+    "description": "Guidance under the control where a researcher chooses which node the rules of an “If” are asked of."
+  },
+  "protocolBuilder.conditionDialog.aboutLabel": {
+    "defaultMessage": "Check rules against",
+    "description": "Label of the control where a researcher chooses which of the nodes on screen the rules of an “If” are asked of, for text shown with more than one (a pair of nodes)."
+  },
+  "protocolBuilder.conditionDialog.aboutNode": {
+    "defaultMessage": "The node",
+    "description": "Choice of what the rules of an “If” are asked of: the one node (network member) the text is shown with."
+  },
+  "protocolBuilder.conditionDialog.aboutSecondNode": {
+    "defaultMessage": "The second node of the pair",
+    "description": "Choice of what the rules of an “If” are asked of, for text shown with a pair of nodes: the second of the two."
+  },
+  "protocolBuilder.conditionDialog.rulesHint": {
+    "defaultMessage": "The text shows this version when the rules are met.",
+    "description": "Guidance under the rule builder in the dialog where a researcher sets when an “If” in a piece of text applies."
+  },
+  "protocolBuilder.conditionDialog.rulesLabel": {
+    "defaultMessage": "Rules",
+    "description": "Label of the rule builder in the dialog where a researcher sets when an “If” in a piece of text applies."
+  },
+  "protocolBuilder.conditionDialog.submit": {
+    "defaultMessage": "Save rules",
+    "description": "Button that saves the rules of an “If” in a piece of text and closes the dialog."
   },
   "protocolBuilder.contentBlock.audioDescriptionHint": {
     "defaultMessage": "What this recording is, read aloud in place of the file’s name to a participant using a screen reader.",
@@ -1374,22 +1370,6 @@
   "protocolBuilder.contentBlock.kindAudio": {
     "defaultMessage": "Audio",
     "description": "Choice offered for what one piece of a page holds: an audio recording."
-  },
-  "protocolBuilder.contentBlock.kindChangedEmpty": {
-    "defaultMessage": "Content type changed to {kind}. Nothing has been entered for {kind} yet.",
-    "description": "Announcement made when a researcher changes what kind of thing one piece of a page holds and neither the old nor the new kind has anything in it. kind is the new choice, already in the reader’s language."
-  },
-  "protocolBuilder.contentBlock.kindChangedKept": {
-    "defaultMessage": "Content type changed to {kind}. The content you entered for the previous type is kept, and returns if you change back to it.",
-    "description": "Announcement made when a researcher changes what kind of thing one piece of a page holds, away from a kind they had filled in, which is kept rather than thrown away. kind is the new choice, already in the reader’s language."
-  },
-  "protocolBuilder.contentBlock.kindChangedRestored": {
-    "defaultMessage": "Content type changed to {kind}. The content you entered for {kind} earlier has been restored.",
-    "description": "Announcement made when a researcher changes what kind of thing one piece of a page holds, back to a kind they had already filled in, so their earlier answer comes back. kind is that choice, already in the reader’s language."
-  },
-  "protocolBuilder.contentBlock.kindChosen": {
-    "defaultMessage": "Content type set to {kind}. A content field for it has been added below.",
-    "description": "Announcement made when a researcher first says what kind of thing one piece of a page holds, which mounts a control for it. kind is that choice — Image, Video, Audio, Text — already in the reader’s language."
   },
   "protocolBuilder.contentBlock.kindHint": {
     "defaultMessage": "Choose the type of content this item will show.",
@@ -1479,9 +1459,81 @@
     "defaultMessage": "Choose the video this block plays.",
     "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
   },
-  "protocolBuilder.dialogForm.configurationPane": {
-    "defaultMessage": "Configuration",
-    "description": "Accessible name of the half of a two-pane editing dialog that holds the controls, as opposed to the live preview of what they are describing."
+  "protocolBuilder.customShapes.addShape": {
+    "defaultMessage": "Add a shape",
+    "description": "Button that opens the dialog for choosing or importing an SVG image to use as a custom node shape. A custom shape is an SVG image the researcher added to draw nodes of this type."
+  },
+  "protocolBuilder.customShapes.centredLabel": {
+    "defaultMessage": "This image has no label area, so the label will be placed in the center of the shape.",
+    "description": "Notice shown under a custom node shape whose SVG image does not say where the node’s label goes."
+  },
+  "protocolBuilder.customShapes.guidance": {
+    "defaultMessage": "Add your own shapes for this node type from SVG files. To choose where the label goes, draw a rectangle with the id {labelAreaId}; its fill sets the color of the label. To draw part of a shape in this node type’s color, use {nodeColorToken} as its fill or stroke.",
+    "description": "Guidance under the custom shapes heading in the node type editor. labelAreaId is the literal text label-area and nodeColorToken is the literal text var(--node-color), both shown as code and never translated. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.customShapes.ignoredContent": {
+    "defaultMessage": "Some content in this image cannot be used in a node shape and will not be drawn: {removed}.",
+    "description": "Notice shown under a custom node shape made from an SVG image already stored in the protocol. The image is kept as it is, but the listed content is skipped when a node is drawn. removed is a list of the kinds of content, such as \"scripts, embedded images and filters\"."
+  },
+  "protocolBuilder.customShapes.inUse": {
+    "defaultMessage": "{usage, select, default {Used as the default shape. To remove this shape, choose another default shape.} mapping {Used in the shape mapping. To remove this shape, choose other shapes there.} other {Used as the default shape and in the shape mapping. To remove this shape, choose other shapes in both places.}}",
+    "description": "Shown beside a custom node shape that cannot be removed because the node type uses it. usage says where: as the default shape, in the mapping from an attribute to shapes, or both."
+  },
+  "protocolBuilder.customShapes.missingDefaultShape": {
+    "defaultMessage": "The chosen shape is no longer available. Choose another default shape.",
+    "description": "Refusal shown under the default shape picker of the node type editor when the shape it names is a custom shape the node type no longer has."
+  },
+  "protocolBuilder.customShapes.missingMappedShape": {
+    "defaultMessage": "The shape mapping uses a shape that is no longer available. Choose another shape for each value that uses it.",
+    "description": "Refusal shown under the shape mapping of the node type editor when one of its rows names a custom shape the node type no longer has."
+  },
+  "protocolBuilder.customShapes.nameLabel": {
+    "defaultMessage": "Shape name",
+    "description": "Label of the name field of one custom node shape. A custom shape is an SVG image the researcher added to draw nodes of this type; the name identifies it in the shape pickers."
+  },
+  "protocolBuilder.customShapes.nameRequired": {
+    "defaultMessage": "Enter a name for this shape.",
+    "description": "Refusal shown under the name field of one custom node shape when the researcher has left it empty. A custom shape is an SVG image the researcher added to draw nodes of this type."
+  },
+  "protocolBuilder.customShapes.nameTaken": {
+    "defaultMessage": "Another shape of this node type is already named \"{name}\".",
+    "description": "Refusal shown under the name field of one custom node shape when another custom shape of the same node type has the same name, ignoring case. name is what the researcher typed."
+  },
+  "protocolBuilder.customShapes.namesIncomplete": {
+    "defaultMessage": "Give every custom shape a name that no other shape of this node type uses.",
+    "description": "Refusal shown for the list of custom node shapes when the researcher tries to save while one of them has no name or shares a name with another."
+  },
+  "protocolBuilder.customShapes.noViewBox": {
+    "defaultMessage": "\"{file}\" has no viewBox, so its size cannot be worked out. Add a viewBox to the svg element, or a numeric width and height, and choose it again.",
+    "description": "Shown when an SVG file chosen as a custom node shape does not say how large its drawing is. file is the name of the file. viewBox, width and height are SVG attribute names and svg is an element name: none of them is translated."
+  },
+  "protocolBuilder.customShapes.notSvg": {
+    "defaultMessage": "\"{file}\" is not an SVG image.",
+    "description": "Shown when a file the researcher chose as a custom node shape cannot be read as an SVG image. file is the name of the file. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.customShapes.nothingToDraw": {
+    "defaultMessage": "\"{file}\" has nothing that can be drawn once unsupported content is removed.",
+    "description": "Shown when an SVG file chosen as a custom node shape contains no drawing that a node shape can use. file is the name of the file."
+  },
+  "protocolBuilder.customShapes.previewLabel": {
+    "defaultMessage": "Label",
+    "description": "Sample text drawn inside the preview of a custom node shape, to show where and in what color a node’s label will appear. Keep it short."
+  },
+  "protocolBuilder.customShapes.removedContent": {
+    "defaultMessage": "Some content in this file cannot be used in a node shape and was left out: {removed}.",
+    "description": "Notice shown under a custom node shape that was added from an SVG file after unsupported content was removed from it. removed is a list of the kinds of content, such as \"scripts, embedded images and filters\"."
+  },
+  "protocolBuilder.customShapes.removedKind": {
+    "defaultMessage": "{kind, select, scripts {scripts} images {embedded images} styles {unsupported styles} filters {filters} animations {animations} links {links and references to other files} tokens {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}",
+    "description": "Name of one kind of content in an SVG image that a custom node shape cannot use. Used as one item of a list in the removedContent and ignoredContent notices, so write it as a phrase that fits there."
+  },
+  "protocolBuilder.customShapes.tooLarge": {
+    "defaultMessage": "\"{file}\" is too large. A shape can be at most {limit, number} characters long.",
+    "description": "Shown when an SVG file chosen as a custom node shape is longer than the limit. file is the name of the file; limit is the largest number of characters a shape may have."
+  },
+  "protocolBuilder.customShapes.unreadable": {
+    "defaultMessage": "\"{file}\" could not be read. Choose it again.",
+    "description": "Shown when the file or stored image the researcher chose as a custom node shape could not be read. file is the name of the file or image."
   },
   "protocolBuilder.dialogForm.discardConfirm": {
     "defaultMessage": "Discard changes",
@@ -1499,9 +1551,9 @@
     "defaultMessage": "Keep editing",
     "description": "Button that dismisses the discard confirmation and leaves the editing dialog open with its unsaved work intact."
   },
-  "protocolBuilder.dialogForm.resizeHandle": {
-    "defaultMessage": "Resize form and preview panes",
-    "description": "Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them."
+  "protocolBuilder.dynamicText.addElseIf": {
+    "defaultMessage": "Add else if",
+    "description": "Button under the rows of an “If” in a piece of text. It asks for rules, then adds a row shown when the rows above it did not apply and those rules are met."
   },
   "protocolBuilder.dynamicText.byAnswer": {
     "defaultMessage": "Different wording for each answer",
@@ -1515,6 +1567,14 @@
     "defaultMessage": "Different wording for the participant and everyone else",
     "description": "Second line of the “Participant or someone else” entry in the insert-a-value menu. Choosing it inserts a piece of text with two versions: one shown when the question is asked about the participant themselves (such as “Are you still living?”), one for everyone else in their family (such as “Is this person still living?”)."
   },
+  "protocolBuilder.dynamicText.defaultNodeLabel": {
+    "defaultMessage": "Default label",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu of a node type’s own label: the label the interview would choose for the node if the node type had no label of its own, taken from the node’s name or another of its answers. A node is one entity in the network, which may not be a person."
+  },
+  "protocolBuilder.dynamicText.defaultNodeLabelDescription": {
+    "defaultMessage": "The label the interview would give the node if this label were not set",
+    "description": "Short note under “Default label” in the insert-a-value menu of a node type’s own label, saying that the value is the label the interview chooses by its usual rules (the node’s name, or another of its answers)."
+  },
   "protocolBuilder.dynamicText.dyadSourceValue": {
     "defaultMessage": "First node: {attribute}",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the first of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
@@ -1523,9 +1583,29 @@
     "defaultMessage": "Second node: {attribute}",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the second of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
   },
+  "protocolBuilder.dynamicText.editIfTitle": {
+    "defaultMessage": "Edit rules",
+    "description": "Title of the dialog where a researcher changes the rules of an “If” in a piece of text a participant reads. Also names the button on each row of an “If” that opens it."
+  },
+  "protocolBuilder.dynamicText.elseIfNotRow": {
+    "defaultMessage": "Else if not: {rules}",
+    "description": "Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are NOT met. rules is those rules as a phrase."
+  },
+  "protocolBuilder.dynamicText.elseIfRow": {
+    "defaultMessage": "Else if: {rules}",
+    "description": "Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are met. rules is those rules as a phrase, such as “Age is more than 30”."
+  },
   "protocolBuilder.dynamicText.firstNodeLabel": {
     "defaultMessage": "First node: label",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the first node’s attributes such as “First node: nickname”: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
+  },
+  "protocolBuilder.dynamicText.ifNotRow": {
+    "defaultMessage": "If not: {rules}",
+    "description": "Label of the first row of an “If not” in a piece of text: the wording shown when its rules are NOT met. rules is those rules as a phrase, such as “Age is more than 30”."
+  },
+  "protocolBuilder.dynamicText.ifRow": {
+    "defaultMessage": "If: {rules}",
+    "description": "Label of the first row of an “If” in a piece of text: the wording shown when its rules are met. rules is those rules as a phrase, such as “Age is more than 30” or “Friend exists and Close is true”. Also what the “If” is called while folded to a pill."
   },
   "protocolBuilder.dynamicText.insertMenu": {
     "defaultMessage": "Inject piped text from interview metadata or a network attribute",
@@ -1539,13 +1619,45 @@
     "defaultMessage": "Participant or someone else",
     "description": "Name of a value in the insert-a-value menu of a question on the Family Pedigree stage, and of the piece of text it inserts: whether the family member the question is asked about is the participant themselves or someone else in their family. It only chooses between two versions of the text and is never shown itself."
   },
+  "protocolBuilder.dynamicText.logicIf": {
+    "defaultMessage": "If … else",
+    "description": "Entry in the insert-logic menu. Choosing it asks for rules, then inserts a piece of text with two versions: one shown when the rules are met, one shown otherwise. The ellipsis stands for the rules."
+  },
+  "protocolBuilder.dynamicText.logicIfDescription": {
+    "defaultMessage": "One wording when rules you set are met, another otherwise",
+    "description": "Second line of the “If … else” entry in the insert-logic menu, saying what it inserts."
+  },
+  "protocolBuilder.dynamicText.logicIfNot": {
+    "defaultMessage": "If not … else",
+    "description": "Entry in the insert-logic menu. Choosing it asks for rules, then inserts a piece of text with two versions: one shown when the rules are NOT met, one shown otherwise. The ellipsis stands for the rules."
+  },
+  "protocolBuilder.dynamicText.logicIfNotDescription": {
+    "defaultMessage": "One wording when rules you set are not met, another otherwise",
+    "description": "Second line of the “If not … else” entry in the insert-logic menu, saying what it inserts."
+  },
+  "protocolBuilder.dynamicText.logicMenu": {
+    "defaultMessage": "Insert logic",
+    "description": "Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu."
+  },
   "protocolBuilder.dynamicText.needsAnswerLabels": {
     "defaultMessage": "Add labels for its yes and no answers first",
     "description": "Second line of an entry in the insert-a-value menu that cannot be chosen yet. The entry is a yes-or-no attribute without its own words for its two answers, so the text has nothing in the protocol’s languages to show for it. The researcher can add those words where the attribute is set up."
   },
+  "protocolBuilder.dynamicText.newIfTitle": {
+    "defaultMessage": "When should this text be shown?",
+    "description": "Title of the dialog where a researcher sets the rules of a new “If” in a piece of text a participant reads."
+  },
   "protocolBuilder.dynamicText.no": {
     "defaultMessage": "No",
     "description": "Label of the version of a piece of text shown when a yes-or-no attribute is no."
+  },
+  "protocolBuilder.dynamicText.noRules": {
+    "defaultMessage": "(no rules yet)",
+    "description": "Stands in for the rules of an “If” in a piece of text when it has none that can be described, in a label such as “If (no rules yet)”."
+  },
+  "protocolBuilder.dynamicText.nodeAttributesGroup": {
+    "defaultMessage": "Node Attributes",
+    "description": "Heading in the insert-a-value menu of a node type’s own label, above the default label and the attributes of the node the label is shown on. A node is one entity in the network, which may not be a person."
   },
   "protocolBuilder.dynamicText.nodeLabel": {
     "defaultMessage": "Node label",
@@ -1554,6 +1666,10 @@
   "protocolBuilder.dynamicText.nodeLabelDescription": {
     "defaultMessage": "Text shown on the node",
     "description": "Short note under “Node label” in the insert-a-value menu, saying that the value is the same text the interview shows on the node itself. Other items in the menu show the kind of answer here, such as “Text” or “Number”."
+  },
+  "protocolBuilder.dynamicText.removeIfRow": {
+    "defaultMessage": "Remove this case",
+    "description": "Names the button that removes one row (its rules and its wording) from an “If” in a piece of text that has more than one."
   },
   "protocolBuilder.dynamicText.roleContext": {
     "defaultMessage": "Contextual Attributes",
@@ -1575,14 +1691,6 @@
     "defaultMessage": "Today’s date",
     "description": "A value a researcher can insert into text a participant reads: the date on the day the participant reads it."
   },
-  "protocolBuilder.dynamicText.translationMissesValue": {
-    "defaultMessage": "Include “{value}” wherever the original text shows it.",
-    "description": "Problem shown under a translation that leaves out a value, such as the participant’s name, that the text in the protocol’s main language shows. value is the value’s name."
-  },
-  "protocolBuilder.dynamicText.translationTooComplex": {
-    "defaultMessage": "This text has too many versions to check its translation. Use fewer values that change the wording.",
-    "description": "Problem shown under a translated text whose versions are too many to compare with the original."
-  },
   "protocolBuilder.dynamicText.unreadable": {
     "defaultMessage": "This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.",
     "description": "Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed."
@@ -1603,17 +1711,9 @@
     "defaultMessage": "Any other answer",
     "description": "Label of the version of a piece of text shown for an answer that has no version of its own."
   },
-  "protocolBuilder.dynamicText.versionsByAnswer": {
-    "defaultMessage": "Wording for each answer to {value}",
-    "description": "Accessible name of a piece of text with one version for each answer to an attribute. value is the attribute’s name."
-  },
-  "protocolBuilder.dynamicText.versionsByNumber": {
-    "defaultMessage": "Wording that fits the number {value}",
-    "description": "Accessible name of a piece of text with a version for each kind of number, so the words agree with the number. value is the name of the number."
-  },
-  "protocolBuilder.dynamicText.versionsByPresence": {
-    "defaultMessage": "Wording depending on whether {value} is known",
-    "description": "Accessible name of a piece of text with two versions: one shown when a value is known, one when it is not. value is the value’s name, such as “nickname”."
+  "protocolBuilder.dynamicText.versionOtherwise": {
+    "defaultMessage": "Otherwise",
+    "description": "Label of the last row of an “If” in a piece of text: the wording shown when none of the rows above applied."
   },
   "protocolBuilder.dynamicText.yes": {
     "defaultMessage": "Yes",
@@ -1629,19 +1729,15 @@
   },
   "protocolBuilder.entitySelect.edgeCreateLabel": {
     "defaultMessage": "Create new edge type",
-    "description": "Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens. An edge type is a kind of relationship between two network members, such as a friendship."
+    "description": "Button that opens an editor for inventing a kind of relationship. Also the title of the dialog it opens. An edge type is a kind of relationship between two network members, such as a friendship."
   },
   "protocolBuilder.entitySelect.edgeEditLabel": {
     "defaultMessage": "Edit this edge type",
-    "description": "Button that opens an editor for the kind of relationship a stage is already configured for, so its name or colour can be changed without leaving the stage. Also the title of the dialog it opens."
+    "description": "Button that opens an editor for an existing kind of relationship, so its name or colour can be changed. Also the title of the dialog it opens."
   },
   "protocolBuilder.entitySelect.edgeEmptyState": {
     "defaultMessage": "No edge types currently defined",
     "description": "Shown in place of the chips when a researcher is asked to choose an edge type and the protocol’s codebook defines none. An edge type is a kind of relationship between two network members, such as a friendship."
-  },
-  "protocolBuilder.entitySelect.edgeGroupLabel": {
-    "defaultMessage": "Edge type options",
-    "description": "Accessible name of the group of chips a researcher picks an edge type from. An edge type is a kind of relationship between two network members, such as a friendship."
   },
   "protocolBuilder.entitySelect.missingOptionLabel": {
     "defaultMessage": "{typeId} — this type is no longer in the codebook",
@@ -1661,19 +1757,15 @@
   },
   "protocolBuilder.entitySelect.nodeCreateLabel": {
     "defaultMessage": "Create new node type",
-    "description": "Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens. A node type is a kind of network member the study records, such as a person or a place."
+    "description": "Button that opens an editor for inventing a kind of network member. Also the title of the dialog it opens. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.entitySelect.nodeEditLabel": {
     "defaultMessage": "Edit this node type",
-    "description": "Button that opens an editor for the kind of network member a stage is already configured for, so its name, colour, shape or icon can be changed without leaving the stage. Also the title of the dialog it opens."
+    "description": "Button that opens an editor for an existing kind of network member, so its name, colour, shape or icon can be changed. Also the title of the dialog it opens."
   },
   "protocolBuilder.entitySelect.nodeEmptyState": {
     "defaultMessage": "No node types currently defined",
     "description": "Shown in place of the chips when a researcher is asked to choose a node type and the protocol’s codebook defines none. A node type is a kind of network member the study records, such as a person or a place."
-  },
-  "protocolBuilder.entitySelect.nodeGroupLabel": {
-    "defaultMessage": "Node type options",
-    "description": "Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.exportColumn.reservedLayout": {
     "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the export already has a built-in column called “{reservedColumn}”. Choose a different name.",
@@ -2187,14 +2279,6 @@
     "defaultMessage": "Initial map view",
     "description": "Label of the group of controls deciding where a geospatial stage’s map is centred and how far it is zoomed in when the stage opens."
   },
-  "protocolBuilder.geospatial.latitudeDecrease": {
-    "defaultMessage": "Decrease latitude",
-    "description": "Accessible name of the button that steps the latitude down by one."
-  },
-  "protocolBuilder.geospatial.latitudeIncrease": {
-    "defaultMessage": "Increase latitude",
-    "description": "Accessible name of the button that steps the latitude up by one."
-  },
   "protocolBuilder.geospatial.latitudeLabel": {
     "defaultMessage": "Latitude",
     "description": "Label of the control holding the north-south half of the map’s starting centre."
@@ -2227,14 +2311,6 @@
     "defaultMessage": "Location response",
     "description": "Heading of the group in a geospatial prompt’s dialog holding the attribute the participant’s chosen place is stored in. Also names the group to assistive technology."
   },
-  "protocolBuilder.geospatial.longitudeDecrease": {
-    "defaultMessage": "Decrease longitude",
-    "description": "Accessible name of the button that steps the longitude down by one."
-  },
-  "protocolBuilder.geospatial.longitudeIncrease": {
-    "defaultMessage": "Increase longitude",
-    "description": "Accessible name of the button that steps the longitude up by one. Named for its own coordinate: a screen reader announces a button by its name alone, and three numbers describe one starting view, so a shared \"Increase value\" would be six buttons nobody could tell apart."
-  },
   "protocolBuilder.geospatial.longitudeLabel": {
     "defaultMessage": "Longitude",
     "description": "Label of the control holding the east-west half of the map’s starting centre. Named rather than positioned, because longitude and latitude cannot be told apart by which box comes first."
@@ -2258,14 +2334,6 @@
   "protocolBuilder.geospatial.previewLoadFailure": {
     "defaultMessage": "The map could not be drawn. Check that the API key is still valid, then try again.",
     "description": "Shown in the starting-view dialog when Mapbox itself refused to draw the map — most often an API key that has been revoked or has run out of quota."
-  },
-  "protocolBuilder.geospatial.previewLoading": {
-    "defaultMessage": "Loading the map.",
-    "description": "Announced to screen readers only, while the host is asked for the API key the map is drawn with. Never shown on screen."
-  },
-  "protocolBuilder.geospatial.previewMapLabel": {
-    "defaultMessage": "Interactive map",
-    "description": "Accessible name of the region holding the pannable map inside the starting-view dialog, so it is reachable and identifiable without sight of it."
   },
   "protocolBuilder.geospatial.previewMissingKey": {
     "defaultMessage": "Choose a Mapbox API key before setting the starting view on a map.",
@@ -2342,10 +2410,6 @@
   "protocolBuilder.geospatial.propertyLayerReading": {
     "defaultMessage": "The map layer is still being read, so this property cannot be checked against it yet. Save again in a moment.",
     "description": "Refusal shown under the recorded-property control when a researcher saves while the chosen map layer is still being read. Nothing is wrong with what they chose: the check simply cannot be made until the layer arrives, and saying so is what stops a property the layer may not have from being saved unchecked."
-  },
-  "protocolBuilder.geospatial.propertyLoading": {
-    "defaultMessage": "Reading the map layer.",
-    "description": "Announced to screen readers only, while the chosen GeoJSON layer is being fetched and parsed to find out which properties it offers. Never shown on screen."
   },
   "protocolBuilder.geospatial.propertyMissingOptionLabel": {
     "defaultMessage": "{property} — this property is not in the chosen layer",
@@ -2450,14 +2514,6 @@
   "protocolBuilder.geospatial.viewTitle": {
     "defaultMessage": "Map starting position",
     "description": "Heading of the section holding where the map is centred and how far in it is zoomed when the stage opens — and the title of the dialog that sets those two things by panning a real map. The same thing named in both places, so it is translated once."
-  },
-  "protocolBuilder.geospatial.zoomDecrease": {
-    "defaultMessage": "Decrease zoom",
-    "description": "Accessible name of the button that steps the starting zoom down by one."
-  },
-  "protocolBuilder.geospatial.zoomIncrease": {
-    "defaultMessage": "Increase zoom",
-    "description": "Accessible name of the button that steps the starting zoom up by one. Named for the number it moves, for the same reason as the two coordinate steppers beside it."
   },
   "protocolBuilder.geospatial.zoomLabel": {
     "defaultMessage": "Starting zoom",
@@ -2619,10 +2675,6 @@
     "defaultMessage": "Participants choose from every language this protocol is written in. The languages belong to the whole protocol, so they can't be changed on this stage.",
     "description": "Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages of the whole protocol. A stage is one step of an interview."
   },
-  "protocolBuilder.languageChooser.languagesListLabel": {
-    "defaultMessage": "Languages participants can choose",
-    "description": "Accessible name of the list of languages a participant can choose between on this stage."
-  },
   "protocolBuilder.languageChooser.languagesTitle": {
     "defaultMessage": "Languages",
     "description": "Heading of the section listing the languages a participant can choose between on this stage."
@@ -2634,10 +2686,6 @@
   "protocolBuilder.localization.defaultLanguage": {
     "defaultMessage": "Default",
     "description": "Tag beside the protocol’s default language: the language participants start in when their browser lists none of the protocol’s languages, and the one untranslated text falls back to after the participant’s own languages."
-  },
-  "protocolBuilder.localization.editingLanguage": {
-    "defaultMessage": "Editing language",
-    "description": "Accessible name of the menu that chooses which of the protocol languages the researcher is writing text in, or previewing a form field in."
   },
   "protocolBuilder.localization.missingCount": {
     "defaultMessage": "{count, plural, one {# translation missing} other {# translations missing}}",
@@ -2977,11 +3025,11 @@
   },
   "protocolBuilder.localizedMessage.placementMissing": {
     "defaultMessage": "Include “{placeholder}” in this text.",
-    "description": "Refusal shown under a text when a translation leaves out a placeholder, such as a person’s name or a number, that the original text shows. placeholder is the placeholder’s name, such as “Name”."
+    "description": "Refusal shown under a text that leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”."
   },
   "protocolBuilder.localizedMessage.placementMissingIn": {
     "defaultMessage": "Include “{placeholder}” in this version: {version}.",
-    "description": "Refusal shown under a text written in several versions when one version of a translation leaves out a placeholder, such as a person’s name or a number, that the original shows there. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”."
+    "description": "Refusal shown under a text written in several versions when one version leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”."
   },
   "protocolBuilder.localizedMessage.pluralVersion": {
     "defaultMessage": "When “{placeholder}” is {numbers}",
@@ -3075,21 +3123,25 @@
     "defaultMessage": "Write something in every version of this text.",
     "description": "Refusal shown under a text with a piece written in several versions (one about the participant, one about someone else, and so on) when one of those versions is empty, in any of the protocol’s languages."
   },
-  "protocolBuilder.localizedMessage.versionsByCase": {
-    "defaultMessage": "Wording that changes with {value}",
-    "description": "Accessible name of a piece of text with one version for each case of something it changes with. value is that thing’s name, such as “Participant or someone else” or “Relation”."
-  },
   "protocolBuilder.localizedTextNames.diseasePosition": {
     "defaultMessage": "Disease {position, number}",
     "description": "Names one disease mapping of a narrative pedigree stage where its label is listed without a translation. position is the mapping’s place in the stage’s list of diseases, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.dynamicLabelSection": {
+    "defaultMessage": "Dynamic label",
+    "description": "Names the Dynamic label section of the node type editor where a text is listed without its translation, such as in the translation table. The section holds the label a node type gives every one of its nodes."
+  },
+  "protocolBuilder.localizedTextNames.dynamicLabelText": {
+    "defaultMessage": "Label",
+    "description": "Names the Label field of the Dynamic label section of the node type editor where a text is listed without its translation, such as in the translation table."
   },
   "protocolBuilder.localizedTextNames.fieldPosition": {
     "defaultMessage": "Field {position, number}",
     "description": "Names one field of a form where a text is listed without its translation, used when the field records no attribute the codebook names. position is the field’s place in the form, counting from one."
   },
   "protocolBuilder.localizedTextNames.interfaceTextGroup": {
-    "defaultMessage": "{group, select, navigation {Interview navigation} interviewer {Interviewer controls} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} familyTreeView {Family tree view} familyPedigree {Family Pedigree} narrativePedigree {Narrative Pedigree} categoricalBin {Categorical Bin} quickAdd {Name Generator (quick add)} roster {Name Generator for Roster Data} networkComposer {Network Composer} narrative {Narrative} geospatial {Geospatial} egoForm {Ego Form} other {{group}}}",
-    "description": "Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, those only an interviewer uses (leaving a review, showing a hidden screen), the labels of its buttons, its error messages, those of a search box, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules. The rest are named for the kind of stage whose every stage shows them: familyTreeView is the controls for viewing a family tree, shared by the Family Pedigree and Narrative Pedigree stages; the others are the stage types Family Pedigree, Categorical Bin, Name Generator (quick add), Name Generator for Roster Data, Network Composer and Ego Form, named as the stage type menu names them."
+    "defaultMessage": "{group, select, navigation {Interview navigation} interviewer {Interviewer controls} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} familyTreeView {Family tree view} familyPedigree {Family Pedigree} narrativePedigree {Narrative Pedigree} categoricalBin {Categorical Bin} quickAdd {Name Generator (quick add)} networkComposer {Network Composer} narrative {Narrative} geospatial {Geospatial} other {{group}}}",
+    "description": "Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, those only an interviewer uses (leaving a review, showing a hidden screen), the labels of its buttons, its error messages, those of a search box, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules. The rest are named for the kind of stage whose every stage shows them: familyTreeView is the controls for viewing a family tree, shared by the Family Pedigree and Narrative Pedigree stages; the others are the stage types Family Pedigree, Narrative Pedigree, Categorical Bin, Name Generator (quick add), Network Composer, Narrative and Geospatial, named as the stage type menu names them."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.addNamePlaceholder": {
     "defaultMessage": "Placeholder in the box where the interviewer types a new node’s name, shown until they start typing.",
@@ -3143,10 +3195,6 @@
     "defaultMessage": "Tooltip for the tool that draws an edge between two nodes. Only used when a canvas has edge types.",
     "description": "Hint under the setting holding the draw edge tooltip, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
-  "protocolBuilder.localizedTextNames.interfaceTextHint.dropToRemove": {
-    "defaultMessage": "Shown over the roster list while the participant drags an added node back to remove it.",
-    "description": "Hint under the setting holding the drop to remove message, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
-  },
   "protocolBuilder.localizedTextNames.interfaceTextHint.framingChoiceDescription": {
     "defaultMessage": "Explanation under the question about which words to use. Only used when participants choose the words.",
     "description": "Hint under the setting holding the explanation under the wording question, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
@@ -3160,12 +3208,12 @@
     "description": "Hint under the setting holding the relationship words explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.framingControlLabel": {
-    "defaultMessage": "Label of the control for changing the words used for family members. Only used when participants choose the words.",
-    "description": "Hint under the setting holding the wording control label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+    "defaultMessage": "Name of the toolbar button for changing the words used for family members, shown in its tooltip. Only used when participants choose the words.",
+    "description": "Hint under the setting holding the wording control button, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.groupsHeading": {
-    "defaultMessage": "Name of the groups tool, and heading of the groups in the key. Only used when a canvas groups nodes.",
-    "description": "Hint under the setting holding the groups heading, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
+    "defaultMessage": "Name of the tool that puts nodes in groups, shown in its tooltip. Only used when a canvas groups nodes.",
+    "description": "Hint under the setting holding the groups tool button, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.hasCondition": {
     "defaultMessage": "Key entry for family members who have the selected condition.",
@@ -3196,11 +3244,11 @@
     "description": "Hint under the setting holding the offline message, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.overtakenEditNotice": {
-    "defaultMessage": "Warning shown when an undo or redo changes an answer the interviewer is editing, so their edit is not saved.",
+    "defaultMessage": "Shown in the dialog that asks whether to discard changes, if an undo or redo changed the answer the interviewer was editing. Only used when the stage has a form for nodes or edges.",
     "description": "Hint under the setting holding the warning about an overtaken edit, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.placeHere": {
-    "defaultMessage": "Button on each bin that places the selected node in it, when the participant taps a node and then a bin.",
+    "defaultMessage": "Button that places the selected node in the bin the participant has opened. Only used when nodes are placed by tapping.",
     "description": "Hint under the setting holding the place here label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.pointerTool": {
@@ -3212,7 +3260,7 @@
     "description": "Hint under the setting holding the select tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.quickAddHint": {
-    "defaultMessage": "Shown beside the quick-add box, telling the participant how to finish adding a node.",
+    "defaultMessage": "Tooltip that appears above the quick-add box after a few seconds without typing, telling the participant how to finish adding a node. No longer shown once the participant has added a node.",
     "description": "Hint under the setting holding the quick-add hint, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.redoDescription": {
@@ -3222,10 +3270,6 @@
   "protocolBuilder.localizedTextNames.interfaceTextHint.resetAnnotations": {
     "defaultMessage": "Tooltip for the button that removes all drawings. Only used when a stage allows drawing.",
     "description": "Hint under the setting holding the reset annotations tooltip, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
-  },
-  "protocolBuilder.localizedTextNames.interfaceTextHint.scrollForQuestions": {
-    "defaultMessage": "Read by screen readers on the arrow that shows there are more questions below.",
-    "description": "Hint under the setting holding the more questions hint, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.searchFailed": {
     "defaultMessage": "Shown when a map search could not run. It does not mean the place does not exist.",
@@ -3248,7 +3292,7 @@
     "description": "Hint under the setting holding the toggle freezing annotations tooltip, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.trackerAllDetails": {
-    "defaultMessage": "Last item in the completeness checklist, asking for the required details of every family member.",
+    "defaultMessage": "Last item in the completeness checklist, asking for the required details of every family member. Only used when the stage checks completeness.",
     "description": "Hint under the setting holding the all details checklist item, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.undoDescription": {
@@ -3268,7 +3312,7 @@
     "description": "Hint under the setting holding the zoom out explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextName": {
-    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} copy {Copy button} copied {Copied message} loading {Loading message} unnamed {Unnamed label} exitFailed {Exit failed message} exitReview {Exit review button} exitReviewTitle {Exit review question} exitReviewDescription {Exit review explanation} hiddenScreen {Hidden screen label} outsidePath {Outside path label} showScreenTitle {Show screen question} hiddenScreenDescription {Hidden screen explanation} outsidePathDescription {Outside path explanation} showScreen {Show screen button} checkingPassphrase {Checking passphrase message} passwordPlaceholder {Passphrase field hint} zoomOut {Zoom out button} zoomOutDescription {Zoom out explanation} zoomIn {Zoom in button} zoomInDescription {Zoom in explanation} showWholeFamily {Whole family button} showWholeFamilyDescription {Whole family explanation} pointerToolDescription {Select tool explanation} connectToolDescription {Connect tool explanation} disconnectToolDescription {Disconnect tool explanation} framingControlDescription {Relationship words explanation} undo {Undo button} undoDescription {Undo explanation} redo {Redo button} redoDescription {Redo explanation} skip {Skip button} trackerAllDetails {All details checklist item} placeHere {Place here label} dropToRemove {Drop to remove message} connection {Connection label} scrollForQuestions {More questions hint} addNamePlaceholder {Name box placeholder} pointerTool {Pointer tool button} connectTool {Connect tool button} connectHint {Connect hint} disconnectTool {Disconnect tool button} disconnectHint {Disconnect hint} framingControlLabel {Wording control label} framingChoiceTitle {Wording question} framingChoiceDescription {Wording question explanation} quickAddHint {Quick-add hint} overtakenEditNotice {Warning about an overtaken edit} groupsHeading {Groups heading} addNodeTooltip {Add node tooltip} automaticLayoutTooltip {Automatic layout tooltip} drawEdgeTooltip {Draw edge tooltip} toggleDrawing {Toggle drawing tooltip} toggleFreezing {Toggle freezing annotations tooltip} resetAnnotations {Reset annotations tooltip} keyHeading {Key heading} hasCondition {Has condition key entry} willDevelop {Will develop key entry} carries {Carries key entry} mayDevelop {May develop key entry} mayCarry {May carry key entry} notKnown {Not known key entry} clearFocus {Clear focus tooltip} offlineNotice {Offline message} mapUnavailable {Map unavailable message} searchFailed {Search failed message} other {{key}}}",
+    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} copy {Copy button} copied {Copied message} loading {Loading message} unnamed {Unnamed label} exitFailed {Exit failed message} exitReview {Exit review button} exitReviewTitle {Exit review question} exitReviewDescription {Exit review explanation} hiddenScreen {Hidden screen label} outsidePath {Outside path label} showScreenTitle {Show screen question} hiddenScreenDescription {Hidden screen explanation} outsidePathDescription {Outside path explanation} showScreen {Show screen button} passwordPlaceholder {Passphrase field hint} zoomOut {Zoom out button} zoomOutDescription {Zoom out explanation} zoomIn {Zoom in button} zoomInDescription {Zoom in explanation} showWholeFamily {Whole family button} showWholeFamilyDescription {Whole family explanation} pointerToolDescription {Select tool explanation} connectToolDescription {Connect tool explanation} disconnectToolDescription {Disconnect tool explanation} framingControlDescription {Relationship words explanation} undo {Undo button} undoDescription {Undo explanation} redo {Redo button} redoDescription {Redo explanation} skip {Skip button} trackerAllDetails {All details checklist item} placeHere {Place here label} connection {Connection label} addNamePlaceholder {Name box placeholder} pointerTool {Pointer tool button} connectTool {Connect tool button} connectHint {Connect hint} disconnectTool {Disconnect tool button} disconnectHint {Disconnect hint} framingControlLabel {Wording control button} framingChoiceTitle {Wording question} framingChoiceDescription {Wording question explanation} quickAddHint {Quick-add hint} overtakenEditNotice {Warning about an overtaken edit} groupsHeading {Groups tool button} addNodeTooltip {Add node tooltip} automaticLayoutTooltip {Automatic layout tooltip} drawEdgeTooltip {Draw edge tooltip} toggleDrawing {Toggle drawing tooltip} toggleFreezing {Toggle freezing annotations tooltip} resetAnnotations {Reset annotations tooltip} keyHeading {Key heading} hasCondition {Has condition key entry} willDevelop {Will develop key entry} carries {Carries key entry} mayDevelop {May develop key entry} mayCarry {May carry key entry} notKnown {Not known key entry} clearFocus {Clear focus tooltip} offlineNotice {Offline message} mapUnavailable {Map unavailable message} searchFailed {Search failed message} other {{key}}}",
     "description": "Names one of the words the interview itself shows, where it is listed for translation: a button, a field label or a message, by what it is for. key says which."
   },
   "protocolBuilder.localizedTextNames.itemPosition": {
@@ -3294,14 +3338,6 @@
   "protocolBuilder.multiSelect.incompleteRows": {
     "defaultMessage": "Every row needs a value in each column.",
     "description": "Shown above a list of rows in a stage editor when the researcher tries to save with a row that has an empty cell in it. Each row here is a set of dropdowns filled in together — a sort rule, a display property."
-  },
-  "protocolBuilder.multiSelect.removeItem": {
-    "defaultMessage": "Remove item",
-    "description": "Accessible name of the button that deletes one row of a list."
-  },
-  "protocolBuilder.multiSelect.reorderItem": {
-    "defaultMessage": "Reorder item {position} of {count, number}",
-    "description": "Accessible name of the handle that drags one row of a list into a different position. position is the row’s own place in the list, counting from one; count is how many rows the list holds."
   },
   "protocolBuilder.nameGeneratorPrompts.assignmentsHint": {
     "defaultMessage": "Use assigned values in skip logic or stage filtering rules.",
@@ -3352,7 +3388,7 @@
     "description": "Label of the field holding the placeholder of the quick-add box, shown until the participant starts typing."
   },
   "protocolBuilder.nameGeneratorWording.allAddedHint": {
-    "defaultMessage": "Shown in the roster list once everything in it has been added.",
+    "defaultMessage": "Shown in the roster list once every entry in it has been added, or when the roster is empty.",
     "description": "Hint under the setting holding the everything added message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.nameGeneratorWording.allAddedLabel": {
@@ -3368,7 +3404,7 @@
     "description": "Label of the field holding the message shown once the participant has named the most people this stage allows."
   },
   "protocolBuilder.nameGeneratorWording.minNoticeHint": {
-    "defaultMessage": "Shown when the participant tries to continue before adding as many nodes as this stage asks for.",
+    "defaultMessage": "Shown when the participant tries to move on from the last prompt before adding the minimum number of nodes this stage sets.",
     "description": "Hint under the setting holding the minimum not reached message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.nameGeneratorWording.minNoticeLabel": {
@@ -3376,7 +3412,7 @@
     "description": "Label of the field holding the message shown when the participant tries to continue having named fewer people than the stage’s minimum."
   },
   "protocolBuilder.nameGeneratorWording.unnamedLabelHint": {
-    "defaultMessage": "Label for a roster entry that has no name. The number tells unnamed entries apart.",
+    "defaultMessage": "Label for a roster entry that has no name or other details to show. The number tells unnamed entries apart.",
     "description": "Hint under the setting holding the unnamed label, in the Customize built-in wording section of a Name Generator for Roster Data stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.nameGeneratorWording.unnamedLabelLabel": {
@@ -3613,10 +3649,10 @@
   },
   "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": {
     "defaultMessage": "Save snapshot button",
-    "description": "Label of the setting holding the text of the button, below the key, that saves an image of the pedigree."
+    "description": "Label of the setting holding the text of the button, in the pedigree’s toolbar, that saves an image of the pedigree."
   },
   "protocolBuilder.narrativePedigree.saveSnapshotHint": {
-    "defaultMessage": "Button below the key that saves an image of the pedigree.",
+    "defaultMessage": "Button in the pedigree’s toolbar that saves an image of the pedigree.",
     "description": "Hint under the setting holding the save snapshot button, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
   },
   "protocolBuilder.narrativePedigree.selectConditionHint": {
@@ -4519,6 +4555,10 @@
     "defaultMessage": "Stage filter",
     "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview."
   },
+  "protocolBuilder.nodeLabel.textPlaceholder": {
+    "defaultMessage": "Write the label, and insert values and logic from the toolbar…",
+    "description": "Placeholder inside the text field where a researcher writes the label shown on every node of a node type. The toolbar above the text has a button that inserts a value, such as one of the node’s attributes, and one that inserts logic, such as an “If”."
+  },
   "protocolBuilder.nodePanels.addLabel": {
     "defaultMessage": "Add new panel",
     "description": "Button that opens the dialog for adding one more side panel. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
@@ -4747,17 +4787,9 @@
     "defaultMessage": "Every option needs a unique value.",
     "description": "Shown under a list of options when two of them would be stored and exported as the same answer."
   },
-  "protocolBuilder.option.editOption": {
-    "defaultMessage": "Edit option {position}",
-    "description": "Accessible name of the button that opens one option for editing. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart."
-  },
   "protocolBuilder.option.emptyState": {
     "defaultMessage": "No options have been added yet.",
     "description": "Shown in place of the list of answers a categorical or ordinal attribute offers, while the researcher has added none."
-  },
-  "protocolBuilder.option.finishEditing": {
-    "defaultMessage": "Finish editing option",
-    "description": "Accessible name of the button that collapses an option back to a single line once the researcher has filled it in."
   },
   "protocolBuilder.option.incompleteOptions": {
     "defaultMessage": "Every option needs both a label and a value.",
@@ -4782,14 +4814,6 @@
   "protocolBuilder.option.optionNoun": {
     "defaultMessage": "option",
     "description": "Noun for one row of the list of options a categorical or ordinal attribute offers. Interpolated mid-sentence into things said ABOUT a row (\"This option was replaced…\"), so it is lower case and singular."
-  },
-  "protocolBuilder.option.removeOptionAt": {
-    "defaultMessage": "Remove option {position}",
-    "description": "Accessible name of the button that deletes one option. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart."
-  },
-  "protocolBuilder.option.reorderOption": {
-    "defaultMessage": "Reorder option {position} of {count, number}",
-    "description": "Accessible name of the handle that drags one option into a different position. position is the option’s own place in the list, counting from one; count is how many options the list holds."
   },
   "protocolBuilder.option.untitled": {
     "defaultMessage": "Untitled option",
@@ -5160,8 +5184,8 @@
     "description": "Guidance under the name attribute control. The side panel is where the participant describes each family member. The two labels in quotation marks are examples of what the interview generates for an unnamed person, and are translated like the rest of the sentence; Tom is a person’s name. “You” is how the interview labels the participant in their family tree."
   },
   "protocolBuilder.pedigree.nameHintTextHint": {
-    "defaultMessage": "Shown under the name box, for example to say that a nickname will do. Leave it empty to show nothing.",
-    "description": "Guidance under the name-question guidance box."
+    "defaultMessage": "Shown under the name box, for example to say that a nickname will do. It starts with wording Network Canvas supplies, which you can change.",
+    "description": "Guidance under the box where a researcher writes the short guidance participants see under the name box of a Family Pedigree stage. The guidance is always shown to participants: Network Canvas’s wording until the researcher changes it."
   },
   "protocolBuilder.pedigree.nameHintTextLabel": {
     "defaultMessage": "Name question guidance",
@@ -5860,7 +5884,7 @@
     "description": "Hint under the setting holding the biological parent question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.carriedSiblingsPregnancyLabel": {
-    "defaultMessage": "Question asking whether a parent carried the pregnancy of each new sibling.",
+    "defaultMessage": "Question shown while adding a parent to a family member, when the participant has also chosen some of the family member’s siblings as this parent’s children. It asks whether this parent was pregnant with those siblings, and only about the ones nobody is yet recorded as having carried.",
     "description": "Hint under the setting holding the siblings’ pregnancy question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.carrierLabel": {
@@ -6016,7 +6040,7 @@
     "description": "Hint under the setting holding the note about continuing anyway, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.relativeTerm": {
-    "defaultMessage": "Words for each kind of relative, such as Mother or Egg parent. Used in the labels of family members who have no name.",
+    "defaultMessage": "Words for each kind of relative, such as Mother or Egg parent. Used on the buttons that add a relative, in the labels of family members who have no name, and in the choice of words for family members.",
     "description": "Hint under the setting holding the relative terms, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.removeConfirmDescription": {
@@ -6136,27 +6160,27 @@
     "description": "Hint under the setting holding the unavailable-choice reason about an ancestor, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.unavailableBothSameSex": {
-    "defaultMessage": "Shown under the answers when both parents cannot be a new child’s genetic parents, because they have the same sex at birth.",
+    "defaultMessage": "Shown under the question when both parents cannot be a new child’s genetic parents, because they have the same sex at birth.",
     "description": "Hint under the setting holding the hint about both parents having the same sex at birth, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.unavailableCannotCarry": {
-    "defaultMessage": "Shown under the answers when some are unavailable because the family member’s sex at birth means they cannot have carried a pregnancy.",
+    "defaultMessage": "Shown under the question when some answers are unavailable because the family member’s sex at birth means they cannot have carried a pregnancy.",
     "description": "Hint under the setting holding the hint about not being able to have carried, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.unavailableCarried": {
-    "defaultMessage": "Shown under the answers when a sex at birth is unavailable because the family member is recorded as having carried a pregnancy.",
+    "defaultMessage": "Shown under the question when an answer for sex at birth is unavailable because the family member is recorded as having carried a pregnancy.",
     "description": "Hint under the setting holding the hint about having carried a child, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.unavailableCarrierRecorded": {
-    "defaultMessage": "Shown under the answers when some are unavailable because someone else is recorded as having carried the pregnancy.",
+    "defaultMessage": "Shown under the question, and under the unavailable choice in the connect menu, when some answers are unavailable because someone else is recorded as having carried the child.",
     "description": "Hint under the setting holding the hint about someone else having carried, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.unavailableGeneticParentsFull": {
-    "defaultMessage": "Shown under the answers when some are unavailable because the child already has two genetic parents recorded.",
+    "defaultMessage": "Shown under the question, and under the unavailable choice in the connect menu, when some answers are unavailable because the child already has two genetic parents recorded.",
     "description": "Hint under the setting holding the hint about two genetic parents, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.unavailableSameSexGeneticParent": {
-    "defaultMessage": "Shown under the answers when some are unavailable because the child’s other genetic parent has the same sex at birth.",
+    "defaultMessage": "Shown under the question, and under the unavailable choice in the connect menu, when some answers are unavailable because the child’s other genetic parent has the same sex at birth as this family member.",
     "description": "Hint under the setting holding the hint about the other genetic parent’s sex at birth, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.you": {
@@ -6326,6 +6350,10 @@
   "protocolBuilder.resourceBrowser.retryLibrary": {
     "defaultMessage": "Try loading the resource list again",
     "description": "Button beside a failure notice, which asks the host again for the list of resources. Named rather than generic because several parts of the dialog can be failing at once."
+  },
+  "protocolBuilder.resourceBrowser.shapeLibraryDescription": {
+    "defaultMessage": "SVG images already saved in this protocol, and any imported since this node type was opened.",
+    "description": "Description under the heading of the resource list when a researcher is choosing an SVG image to use as a node shape, while editing a node type in the codebook."
   },
   "protocolBuilder.resourceFailure.resourceDiscarded": {
     "defaultMessage": "That resource is no longer available: it was discarded while this list was open. Close and reopen the browser to see what there is.",
@@ -6531,6 +6559,26 @@
     "defaultMessage": "Select a data file",
     "description": "Button that opens the picker for a stage field that holds imported participant data, when the field holds none yet."
   },
+  "protocolBuilder.resourceKinds.nodeShapeBrowserDescription": {
+    "defaultMessage": "Import an SVG file, or choose an SVG image already stored in this protocol. Nodes of this type can then be drawn with it.",
+    "description": "Description under the title of the dialog where a researcher picks or imports the SVG image a custom node shape is drawn from. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeBrowserTitle": {
+    "defaultMessage": "Choose a node shape",
+    "description": "Title of the dialog where a researcher picks or imports the SVG image a custom node shape is drawn from."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeChangeAction": {
+    "defaultMessage": "Change the node shape",
+    "description": "Button that opens the picker for a field that already holds the SVG image a custom node shape is drawn from."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeImportTitle": {
+    "defaultMessage": "Import a shape from an SVG file",
+    "description": "Heading over the file-import area of the dialog for choosing a custom node shape. Only SVG files can be imported there. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.resourceKinds.nodeShapeSelectAction": {
+    "defaultMessage": "Select a node shape",
+    "description": "Button that opens the picker for a field that holds the SVG image a custom node shape is drawn from, when the field holds none yet."
+  },
   "protocolBuilder.resourceKinds.oversizeFile": {
     "defaultMessage": "That file is too large to import. Files can be up to {size}.",
     "description": "Refusal shown when a researcher chooses a file bigger than the editor will read. size is a rounded human-readable size such as \"8.0 MB\", already localized."
@@ -6575,17 +6623,9 @@
     "defaultMessage": "Discard this resource",
     "description": "Button that throws away a resource imported while this stage has been open, for the whole edit rather than only for this field."
   },
-  "protocolBuilder.resourcePicker.discardedAnnouncement": {
-    "defaultMessage": "The imported resource was discarded.",
-    "description": "Announced to assistive technology when a resource imported while this stage has been open is thrown away."
-  },
   "protocolBuilder.resourcePicker.importedFileOption": {
     "defaultMessage": "Use a network data file",
     "description": "Radio option choosing imported participant data (a roster) rather than the network the interview has built so far."
-  },
-  "protocolBuilder.resourcePicker.interviewNetworkAnnouncement": {
-    "defaultMessage": "This stage will use the network from the interview itself.",
-    "description": "Announced to assistive technology when the field is set to read the network the interview builds rather than an imported file. \"Stage\" is one step of an interview."
   },
   "protocolBuilder.resourcePicker.interviewNetworkOption": {
     "defaultMessage": "Use the network from the in-progress interview",
@@ -6599,10 +6639,6 @@
     "defaultMessage": "Remove this resource",
     "description": "Button that clears this stage field, leaving the resource itself in the protocol. Offered beside a failure or a refusal, where choosing a replacement is not the only thing a researcher can reasonably want to do."
   },
-  "protocolBuilder.resourcePicker.removedAnnouncement": {
-    "defaultMessage": "The resource was removed from this field.",
-    "description": "Announced to assistive technology when this stage field is cleared, leaving the resource itself in the protocol."
-  },
   "protocolBuilder.resourcePicker.retryAction": {
     "defaultMessage": "Try that again",
     "description": "Button beside a failure notice, which repeats the discard the researcher just asked for."
@@ -6610,10 +6646,6 @@
   "protocolBuilder.resourcePicker.retryInspection": {
     "defaultMessage": "Try loading this resource again",
     "description": "Button beside a failure notice, which asks the host again for the details of the resource this field holds. Named rather than generic because several parts of one field can be failing at once."
-  },
-  "protocolBuilder.resourcePicker.selectedAnnouncement": {
-    "defaultMessage": "{name} is now selected.",
-    "description": "Announced to assistive technology when a resource is chosen for this field. name is the resource’s name as the protocol records it."
   },
   "protocolBuilder.resourcePicker.stillInUse": {
     "defaultMessage": "This resource is still used elsewhere on this stage, so it was not discarded. Remove it from this field instead, or choose a different resource here.",
@@ -6626,10 +6658,6 @@
   "protocolBuilder.resourcePreview.retry": {
     "defaultMessage": "Try loading the preview again",
     "description": "Button beside a failure notice, which asks the host again for the URL that displays an imported image, video, or audio file. Named rather than generic because several parts of one field can be failing at once."
-  },
-  "protocolBuilder.resourceSecret.addedAnnouncement": {
-    "defaultMessage": "{name} was added.",
-    "description": "Announced to assistive technology once an API key has been added. name is the name the researcher gave it."
   },
   "protocolBuilder.resourceSecret.duplicateName": {
     "defaultMessage": "You already have a key called that. Choose a different name.",
@@ -6714,14 +6742,6 @@
   "protocolBuilder.resourceUpload.dropHint": {
     "defaultMessage": "Drag and drop a file here to import it.",
     "description": "Instruction inside the drop target of the file-import area. The keyboard-operable file input sits below it."
-  },
-  "protocolBuilder.resourceUpload.importedAnnouncement": {
-    "defaultMessage": "{name} was imported.",
-    "description": "Announced to assistive technology once a file has been imported. name is the filename the researcher chose."
-  },
-  "protocolBuilder.resourceUpload.importingAnnouncement": {
-    "defaultMessage": "Importing the file…",
-    "description": "Announced to assistive technology while a chosen file is being imported."
   },
   "protocolBuilder.resourceUpload.retry": {
     "defaultMessage": "Try importing the file again",
@@ -6871,6 +6891,10 @@
     "defaultMessage": "has selected options not equal to",
     "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
   },
+  "protocolBuilder.ruleDescription.anyEdgeType": {
+    "defaultMessage": "Edges of any type",
+    "description": "Choice in the list of edge types (kinds of relationship between network members) a rule can count, above the protocol’s own edge types: edges of every type are counted together."
+  },
   "protocolBuilder.ruleDescription.dateResolutionFull": {
     "defaultMessage": "a full date",
     "description": "Noun phrase naming the precision a date attribute records answers at: a day, a month and a year together. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
@@ -6882,6 +6906,70 @@
   "protocolBuilder.ruleDescription.dateResolutionYear": {
     "defaultMessage": "a year",
     "description": "Noun phrase naming the precision a date attribute records answers at: a year alone. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
+  },
+  "protocolBuilder.ruleDescription.edgeCountChoiceExactly": {
+    "defaultMessage": "Is exactly",
+    "description": "Choice in the list of ways to compare the number of edges (relationships) a node has with a number the researcher types: the number of edges is exactly that number."
+  },
+  "protocolBuilder.ruleDescription.edgeCountChoiceFewest": {
+    "defaultMessage": "Is the lowest among nodes of its type",
+    "description": "Choice in the list of ways to compare the number of edges a node has. It takes no number: the node has fewer edges than any other node of the same node type."
+  },
+  "protocolBuilder.ruleDescription.edgeCountChoiceGreaterThan": {
+    "defaultMessage": "Is more than",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is greater than that number."
+  },
+  "protocolBuilder.ruleDescription.edgeCountChoiceGreaterThanOrEqual": {
+    "defaultMessage": "Is at least",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is that number or more."
+  },
+  "protocolBuilder.ruleDescription.edgeCountChoiceLessThan": {
+    "defaultMessage": "Is less than",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is smaller than that number."
+  },
+  "protocolBuilder.ruleDescription.edgeCountChoiceLessThanOrEqual": {
+    "defaultMessage": "Is at most",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is that number or fewer."
+  },
+  "protocolBuilder.ruleDescription.edgeCountChoiceMost": {
+    "defaultMessage": "Is the highest among nodes of its type",
+    "description": "Choice in the list of ways to compare the number of edges a node has. It takes no number: the node has more edges than any other node of the same node type."
+  },
+  "protocolBuilder.ruleDescription.edgeCountChoiceNot": {
+    "defaultMessage": "Is not",
+    "description": "Choice in the list of ways to compare the number of edges a node has with a number the researcher types: the number of edges is anything but that number."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceExactly": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is exactly {count, number}} other {Number of “{edgeType}” edges is exactly {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, as the researcher wrote it, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceFewest": {
+    "defaultMessage": "{scope, select, any {Has the lowest number of edges of any type among nodes of its type} other {Has the lowest number of “{edgeType}” edges among nodes of its type}}",
+    "description": "Describes a rule that a node meets when no other node of the same node type has fewer edges (relationships) than it has; nodes that tie for the lowest all meet it, but no node meets it when every node of that type has the same number. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. “its type” is the node type of the node the rule is about."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceGreaterThan": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is more than {count, number}} other {Number of “{edgeType}” edges is more than {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceGreaterThanOrEqual": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is at least {count, number}} other {Number of “{edgeType}” edges is at least {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceLessThan": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is less than {count, number}} other {Number of “{edgeType}” edges is less than {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceLessThanOrEqual": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is at most {count, number}} other {Number of “{edgeType}” edges is at most {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. count is the number compared with."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceMost": {
+    "defaultMessage": "{scope, select, any {Has the highest number of edges of any type among nodes of its type} other {Has the highest number of “{edgeType}” edges among nodes of its type}}",
+    "description": "Describes a rule that a node meets when no other node of the same node type has more edges (relationships) than it has; nodes that tie for the highest all meet it, but no node meets it when every node of that type has the same number. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”. “its type” is the node type of the node the rule is about."
+  },
+  "protocolBuilder.ruleDescription.edgeCountSentenceNot": {
+    "defaultMessage": "{scope, select, any {Number of edges of any type is not {count, number}} other {Number of “{edgeType}” edges is not {count, number}}}",
+    "description": "Describes a rule about how many edges (relationships) join a node to other nodes: the number is anything but count. scope is “any” when edges of every type are counted together; otherwise edgeType is the name of the one edge type counted, such as “Friend”."
   },
   "protocolBuilder.ruleDescription.egoContains": {
     "defaultMessage": "that contains",
@@ -7103,6 +7191,22 @@
     "defaultMessage": "Edge attribute",
     "description": "Label of the control where a researcher chooses which attribute of an edge — a relationship between network members — a rule asks about."
   },
+  "protocolBuilder.ruleEditor.edgeCountHint": {
+    "defaultMessage": "“Is the highest” and “Is the lowest” compare the node’s number of edges with those of the other nodes of its type. Nodes that tie for the highest, or for the lowest, all match. No node matches when every node of that type has the same number of edges.",
+    "description": "Guidance under the control where a researcher chooses how a count of edges is compared."
+  },
+  "protocolBuilder.ruleEditor.edgeCountLabel": {
+    "defaultMessage": "Comparison",
+    "description": "Label of the control where a researcher chooses how the number of edges joining a node to others is compared: exactly, more than, the most, and so on."
+  },
+  "protocolBuilder.ruleEditor.edgeCountSection": {
+    "defaultMessage": "Number of edges",
+    "description": "Heading of the part of the rule editor where a researcher says how a count of edges (relationships) is compared."
+  },
+  "protocolBuilder.ruleEditor.edgeCountValueLabel": {
+    "defaultMessage": "Number of edges",
+    "description": "Label of the control where a researcher types the number a count of edges is compared with."
+  },
   "protocolBuilder.ruleEditor.edgeTypeHint": {
     "defaultMessage": "Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.",
     "description": "Guidance under the control where a researcher chooses which kind of edge a rule is about. One rule covers one type, so several types need several rules."
@@ -7247,6 +7351,14 @@
     "defaultMessage": "Attribute",
     "description": "One of two choices for what a rule is based on: one of the entity’s attributes — the variables a study records about it."
   },
+  "protocolBuilder.ruleEditor.ruleKindCount": {
+    "defaultMessage": "Number of edges",
+    "description": "One of the choices for what a rule about edges (relationships between network members) is based on: how many edges join the node to others."
+  },
+  "protocolBuilder.ruleEditor.ruleKindCountHint": {
+    "defaultMessage": "Based on how many edges join the node to other nodes, or on whether it has more or fewer of them than the other nodes of its type.",
+    "description": "Explains the \"Number of edges\" choice for a rule about edges — relationships between network members."
+  },
   "protocolBuilder.ruleEditor.ruleKindEdgeAttributeHint": {
     "defaultMessage": "Rule based on the value of this edge type's attributes.",
     "description": "Explains the \"Attribute\" choice for a rule about an edge — a relationship between two network members."
@@ -7335,25 +7447,13 @@
     "defaultMessage": "This attribute is answered on a scale from {min} to {max}. Choose a number in that range.",
     "description": "Refusal shown on the value control when the attribute records a reading on a fixed scale and the rule names a number off it. min and max are the ends of the scale."
   },
-  "protocolBuilder.ruleList.deleteAction": {
-    "defaultMessage": "Delete rule:",
-    "description": "Read out before the rule itself to name the control that removes one row of a rule list, so a screen reader says \"Delete rule: Person where Age is greater than 30\". Not shown on screen."
-  },
-  "protocolBuilder.ruleList.editAction": {
-    "defaultMessage": "Edit rule:",
-    "description": "Read out before the rule itself to name the control that opens one row of a rule list for editing, so a screen reader says \"Edit rule: Person where Age is greater than 30\". Not shown on screen."
-  },
   "protocolBuilder.ruleList.emptyState": {
     "defaultMessage": "No rules have been created yet.",
     "description": "Shown in place of the list when a researcher has added no rules to a rule set yet."
   },
-  "protocolBuilder.rulePreview.attribute": {
-    "defaultMessage": "{label} (attribute type: {type})",
-    "description": "Read out in place of the attribute chip in a rule preview, so assistive technology says what kind of attribute it is as well as its name. label is the researcher’s own name for the attribute; type is the schema’s own word for the kind of value it holds — text, number, boolean, ordinal, categorical, datetime, scalar, location or layout — and is not translated."
-  },
-  "protocolBuilder.rulePreview.attributeMissing": {
-    "defaultMessage": "{label} (attribute is no longer in the codebook)",
-    "description": "Read out in place of the attribute chip in a rule preview when the protocol’s codebook no longer describes that attribute, so its kind cannot be named. label is the researcher’s own name for the attribute."
+  "protocolBuilder.ruleSet.addConditionRule": {
+    "defaultMessage": "Add new rule",
+    "description": "Action that adds a rule to the rules of an “If” in a piece of text a participant reads. The text shows one wording when the rules are met and another when they are not."
   },
   "protocolBuilder.ruleSet.addFilterRule": {
     "defaultMessage": "Add new filter rule",
@@ -7362,6 +7462,22 @@
   "protocolBuilder.ruleSet.addSkipLogicRule": {
     "defaultMessage": "Add new skip logic rule",
     "description": "Action that adds a rule to the set deciding whether a stage is shown to a participant at all. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once."
+  },
+  "protocolBuilder.ruleSet.conditionTargetEdge": {
+    "defaultMessage": "Edges - whether the node has an edge, how many it has, or an attribute of one.",
+    "description": "Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will be about the edges (relationships) that join the node the text is shown with to other nodes."
+  },
+  "protocolBuilder.ruleSet.conditionTargetEgo": {
+    "defaultMessage": "Participant - compare one of the participant’s attributes.",
+    "description": "Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will compare an attribute recorded for the participant themselves."
+  },
+  "protocolBuilder.ruleSet.conditionTargetNode": {
+    "defaultMessage": "Node - compare one of the attributes of the node.",
+    "description": "Choice offered when a researcher starts a rule for an “If” in a piece of text: the rule will compare an attribute of the node (network member) the text is shown with."
+  },
+  "protocolBuilder.ruleSet.conditionTargetOwnEdge": {
+    "defaultMessage": "Edge - compare one of the attributes of the edge.",
+    "description": "Choice offered when a researcher starts a rule for an “If” in a piece of text shown with one edge (a relationship between two network members): the rule will compare an attribute of that edge."
   },
   "protocolBuilder.ruleSet.joinAll": {
     "defaultMessage": "All rules must match",
@@ -7583,9 +7699,17 @@
     "defaultMessage": "Select a roster data source before configuring search.",
     "description": "Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against."
   },
-  "protocolBuilder.shapePicker.selectShape": {
-    "defaultMessage": "Select shape {value1}",
-    "description": "Accessible name of one swatch of the node-shape picker, where {value1} is the shape’s own name — “Select shape Circle”. A node is a member of the interview network."
+  "protocolBuilder.shapeMapping.hint": {
+    "defaultMessage": "Choose the shape a node takes for each value of this attribute. A value with no shape chosen uses the default shape. [Learn about custom shapes]({url}).",
+    "description": "Hint under the \"Shape for each value\" field of a node type’s shape mapping, written in markdown: keep the square brackets, the parentheses and {url} as they are, and translate only the words. A node is a member of the interview network; an attribute is a piece of data recorded about it; a custom shape is an SVG image the researcher added to draw nodes of this type."
+  },
+  "protocolBuilder.shapeMapping.usesDefaultShape": {
+    "defaultMessage": "Uses the default shape",
+    "description": "Remark beside one value of an attribute in a node type’s shape mapping, shown while no shape has been chosen for that value. Nodes with that value are drawn in the node type’s default shape."
+  },
+  "protocolBuilder.shapePicker.unnamedShape": {
+    "defaultMessage": "Custom shape {position, number}",
+    "description": "Name used for a custom node shape the researcher has not named yet, in the node-shape picker. position counts the custom shapes from 1. A custom shape is an SVG image the researcher added to draw nodes of this type."
   },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",
@@ -7923,6 +8047,10 @@
     "defaultMessage": "Optionally edit the wording for interface elements used by this stage type. Default wording is provided for built-in languages.",
     "description": "Explains the stage editor section titled “Customize built-in wording”. Interface elements are the buttons, hints and messages the participant sees on the stage. Built-in languages are the languages Network Canvas itself supplies this wording in; for other languages the researcher writes it."
   },
+  "protocolBuilder.stageWording.savedWithStage": {
+    "defaultMessage": "Changes to this are saved when you save the stage.",
+    "description": "Shown under one of the words every stage of the same type shares, in a stage’s wording section, when the protocol does not use that word until the stage being edited is saved, for example the message shown when a map search finds nothing, which a map stage needs only once its search is turned on. Unlike the other shared words, which are saved as soon as the researcher leaves the field, a change to this one is saved together with the stage, and discarded if the stage is not saved. \"this\" is the word above the note."
+  },
   "protocolBuilder.stageWording.sharedHeading": {
     "defaultMessage": "Shared by every stage of this kind",
     "description": "Heading of the part of a stage’s “Customize built-in wording” section holding the words every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage, opened and closed by clicking it. The protocol holds them once, for all those stages."
@@ -7930,6 +8058,10 @@
   "protocolBuilder.stageWording.sharedNote": {
     "defaultMessage": "These words appear on every stage of this kind. Changes to them are saved straight away.",
     "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, so changing one changes it on all those stages, and the change is saved as soon as the researcher leaves the field rather than when they save the stage."
+  },
+  "protocolBuilder.stageWording.sharedNoteNoneHeld": {
+    "defaultMessage": "These words appear on every stage of this kind.",
+    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the drawing tools of every Narrative stage, shown when the protocol uses none of them yet because the stage being edited is the first to need them. The protocol holds them once, so changing one changes it on all those stages. Each of them says beside itself when a change to it is saved."
   },
   "protocolBuilder.stageWording.specificHeading": {
     "defaultMessage": "Specific to this stage",
@@ -8147,10 +8279,6 @@
     "defaultMessage": "These settings cannot be saved as they are written. Check the values below.",
     "description": "Refusal shown over the whole block of settings an input control takes, when the protocol refuses them for a reason the editor has no wording of its own for. The settings themselves are listed underneath it."
   },
-  "protocolBuilder.variablePicker.attributeTypeLabel": {
-    "defaultMessage": "Attribute type: {attributeType}",
-    "description": "Read out after the chosen attribute’s name, saying what kind of answer it records. attributeType is a protocol schema token such as \"number\", \"text\" or \"categorical\", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence."
-  },
   "protocolBuilder.variablePicker.changeAttribute": {
     "defaultMessage": "Change attribute",
     "description": "The same button once an attribute has been chosen, saying that pressing it replaces the choice rather than adding to it."
@@ -8170,10 +8298,6 @@
   "protocolBuilder.variablePicker.createdUnassigned": {
     "defaultMessage": "“{variableName}” was added to the codebook, but it has not been selected here.",
     "description": "Notice under the control, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated."
-  },
-  "protocolBuilder.variablePicker.dialogName": {
-    "defaultMessage": "Select an attribute",
-    "description": "Accessible name of the window a researcher searches the protocol’s codebook in, used only where the control that opened it carries no label of its own to be named after. An attribute is one thing an interview records about a network member."
   },
   "protocolBuilder.variablePicker.emptyState": {
     "defaultMessage": "No attributes are available to choose from.",
@@ -8215,17 +8339,9 @@
     "defaultMessage": "Attribute name edit cancelled",
     "description": "Said aloud when the researcher leaves the attribute-name editor without saving."
   },
-  "protocolBuilder.variablePicker.renameDialogName": {
-    "defaultMessage": "Edit attribute name",
-    "description": "Accessible name of the small editor that opens over the attribute pill for renaming the attribute."
-  },
   "protocolBuilder.variablePicker.renameEditing": {
     "defaultMessage": "Editing attribute {name}",
     "description": "Said aloud when the editor for an attribute’s name opens. name is the researcher’s own name for it and is not translated."
-  },
-  "protocolBuilder.variablePicker.renameFieldLabel": {
-    "defaultMessage": "Attribute name",
-    "description": "Accessible name of the box the attribute’s new name is typed into."
   },
   "protocolBuilder.variablePicker.renamePlaceholder": {
     "defaultMessage": "Enter an attribute name...",
@@ -8246,22 +8362,6 @@
   "protocolBuilder.variablePicker.renamed": {
     "defaultMessage": "Attribute renamed to {name}",
     "description": "Said aloud once an attribute has been renamed. name is the researcher’s own new name for it and is not translated."
-  },
-  "protocolBuilder.variablePicker.resultsLabel": {
-    "defaultMessage": "Attribute results",
-    "description": "Accessible name of the list of attributes under the attribute window’s search box."
-  },
-  "protocolBuilder.variablePicker.rowTypeDescription": {
-    "defaultMessage": "Attribute type: {attributeType}",
-    "description": "Read out after an attribute’s name in the list, saying what kind of answer it records. attributeType is a protocol schema token such as \"number\", \"text\" or \"categorical\", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence."
-  },
-  "protocolBuilder.variablePicker.searchLabel": {
-    "defaultMessage": "Find or create an attribute",
-    "description": "Accessible name of the search box at the top of the attribute window, where this control allows a new attribute to be created. Typing in it narrows the list below and offers to create an attribute under whatever was typed."
-  },
-  "protocolBuilder.variablePicker.searchOnlyLabel": {
-    "defaultMessage": "Find an attribute",
-    "description": "Accessible name of the search box at the top of the attribute window where this control only chooses from attributes that already exist. Typing in it narrows the list below."
   },
   "protocolBuilder.variablePicker.searchOnlyPlaceholder": {
     "defaultMessage": "Find an attribute…",
@@ -8291,10 +8391,6 @@
     "defaultMessage": "Compare to another attribute",
     "description": "Heading over the validation rules that judge this attribute’s answer against another attribute’s. \"Attribute\" is a codebook variable."
   },
-  "protocolBuilder.variableValidation.decreaseRuleValue": {
-    "defaultMessage": "Decrease {label}",
-    "description": "Accessible name of the button lowering one validation rule’s number by one. label is that rule’s own name — \"Minimum length\", \"Maximum value\" — which is translated beside it."
-  },
   "protocolBuilder.variableValidation.deletedTarget": {
     "defaultMessage": "Deleted attribute ({id})",
     "description": "Entry standing in for the attribute a comparison rule points at after it has been deleted from the codebook, so the researcher can see what the rule still refers to. id is that attribute’s stored record id."
@@ -8318,10 +8414,6 @@
   "protocolBuilder.variableValidation.incompleteValueRule": {
     "defaultMessage": "Enter a value for \"{label}\", or switch the rule off.",
     "description": "Refusal shown when a rule that needs a number has been switched on without one. label is that rule’s own name, already translated."
-  },
-  "protocolBuilder.variableValidation.increaseRuleValue": {
-    "defaultMessage": "Increase {label}",
-    "description": "Accessible name of the button raising one validation rule’s number by one. label is that rule’s own name — \"Minimum length\", \"Maximum value\" — which is translated beside it."
   },
   "protocolBuilder.variableValidation.limitsHeading": {
     "defaultMessage": "Limits",

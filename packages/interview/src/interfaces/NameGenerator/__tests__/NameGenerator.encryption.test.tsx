@@ -22,6 +22,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
@@ -125,23 +126,25 @@ async function renderNameGenerator({
 
   render(
     <Provider store={store}>
-      <TestProtocolLocalization>
-        <InterviewI18nProvider>
-          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-            <Navigation>
-              <DndStoreProvider>
-                <NameGenerator
-                  stage={stage}
-                  getNavigationHelpers={() => ({
-                    moveForward: vi.fn(),
-                    moveBackward: vi.fn(),
-                  })}
-                />
-              </DndStoreProvider>
-            </Navigation>
-          </CurrentStepProvider>
-        </InterviewI18nProvider>
-      </TestProtocolLocalization>
+      <TestInterviewAssets>
+        <TestProtocolLocalization>
+          <InterviewI18nProvider>
+            <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+              <Navigation>
+                <DndStoreProvider>
+                  <NameGenerator
+                    stage={stage}
+                    getNavigationHelpers={() => ({
+                      moveForward: vi.fn(),
+                      moveBackward: vi.fn(),
+                    })}
+                  />
+                </DndStoreProvider>
+              </Navigation>
+            </CurrentStepProvider>
+          </InterviewI18nProvider>
+        </TestProtocolLocalization>
+      </TestInterviewAssets>
     </Provider>,
   );
 

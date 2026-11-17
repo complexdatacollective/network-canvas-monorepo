@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
+import { expectInvalidControlToKeepFocusRing } from '../focusRingTestHelpers';
 import NativeSelectField from './Native';
 import type { SelectOption } from './shared';
 import StyledSelectField from './Styled';
@@ -565,6 +566,73 @@ export const LongOptionList: Story = {
   },
 };
 
+const unbrokenLabel = 'Unbrokendestinationlabel'.repeat(12);
+
+/**
+ * Styled selects holding an option label with no break opportunity that is
+ * longer than the viewport is wide, and an option far shorter than its
+ * trigger. The popup may grow past the trigger, but never past the viewport
+ * and never narrower than the trigger, and a long label wraps inside its item
+ * instead of running off the edge.
+ */
+export const LongUnbrokenOption: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <div style={{ width: '8rem' }}>
+        <StyledSelectField
+          aria-label="Destination"
+          name="destination"
+          options={[{ value: 'destination', label: unbrokenLabel }]}
+          value="destination"
+          onChange={() => undefined}
+        />
+      </div>
+      <div style={{ width: '16rem' }}>
+        <StyledSelectField
+          aria-label="Size"
+          name="size"
+          options={[{ value: 'small', label: 'S' }]}
+          value="small"
+          onChange={() => undefined}
+        />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await document.fonts.ready;
+
+    await userEvent.click(
+      canvas.getByRole('combobox', { name: 'Destination' }),
+    );
+    const option = await screen.findByRole('option', { name: unbrokenLabel });
+    const text = within(option).getByText(unbrokenLabel);
+    const optionBox = option.getBoundingClientRect();
+    const textBox = text.getBoundingClientRect();
+
+    await expect(optionBox.left).toBeGreaterThanOrEqual(0);
+    await expect(optionBox.right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(textBox.left).toBeGreaterThanOrEqual(optionBox.left);
+    await expect(textBox.right).toBeLessThanOrEqual(optionBox.right);
+    // More than one line of text, so the word wrapped rather than clipped.
+    await expect(textBox.height).toBeGreaterThan(
+      2 * parseFloat(getComputedStyle(text).fontSize),
+    );
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('option', { name: unbrokenLabel })).toBeNull(),
+    );
+
+    const sizeTrigger = canvas.getByRole('combobox', { name: 'Size' });
+    await userEvent.click(sizeTrigger);
+    const shortOption = await screen.findByRole('option', { name: 'S' });
+    await expect(
+      shortOption.getBoundingClientRect().width,
+    ).toBeGreaterThanOrEqual(sizeTrigger.getBoundingClientRect().width - 16);
+  },
+};
+
 export const NumericValues: Story = {
   render: () => {
     const [value, setValue] = useState<string | number>(3);
@@ -777,5 +845,71 @@ export const LocalizedOptions: Story = {
     ).toHaveAttribute('lang', 'es');
     await userEvent.click(friend);
     await expect(native).toHaveValue('friend');
+  },
+};
+
+/**
+ * An invalid select keeps its focus ring: its red border says the value is
+ * wrong, not which field the keyboard is in. The native select is ringed by
+ * the wrapper around it, the styled one by its own trigger.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  // This play reads a style that exists only while a control matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs; the invalid state itself is in
+  // the states story's snapshot.
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="flex w-80 flex-col gap-6">
+      <NativeSelectField
+        aria-label="Native valid"
+        name="native-valid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <NativeSelectField
+        aria-label="Native invalid"
+        aria-invalid
+        name="native-invalid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <StyledSelectField
+        aria-label="Styled valid"
+        name="styled-valid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <StyledSelectField
+        aria-label="Styled invalid"
+        aria-invalid
+        name="styled-invalid"
+        options={sampleOptions}
+        value="option1"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Native valid' }),
+        ringOn: 'wrapper',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Native invalid' }),
+        ringOn: 'wrapper',
+      },
+    );
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Styled valid' }),
+        ringOn: 'control',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Styled invalid' }),
+        ringOn: 'control',
+      },
+    );
   },
 };

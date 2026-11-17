@@ -649,3 +649,116 @@ export const AllStates: Story = {
     </div>
   ),
 };
+
+/**
+ * The element the scale places for a label, which is the parent of the
+ * label's own text. The field also renders each label in a hidden copy it
+ * measures, so the one on show is picked out by being placed along the track.
+ */
+async function placedLabel(canvas: ReturnType<typeof within>, text: string) {
+  // The scale settles on a label layout after measuring, a frame or two
+  // after it first renders.
+  return waitFor(() => {
+    const matches: HTMLElement[] = canvas.getAllByText(text);
+    const label = matches
+      .map((element) => element.parentElement)
+      .find((parent) => Boolean(parent?.style.insetInlineStart));
+    if (!label) throw new Error(`"${text}" is not placed along the track`);
+    return label;
+  });
+}
+
+const centre = (element: Element) => {
+  const rect = element.getBoundingClientRect();
+  return rect.left + rect.width / 2;
+};
+
+/**
+ * The scale runs from the right in a right-to-left language, and its labels
+ * have to run with it. At a width where the labels turn on their side, each is
+ * placed by its own position along the track rather than by the row's flow, so
+ * this is where a label could end up under the opposite end's value.
+ */
+export const RightToLeftRotatedLabels: Story = {
+  globals: { appDirection: 'rtl' },
+  args: {
+    options: agreementOptions,
+    value: 1,
+  },
+  render: (args) => (
+    <div style={{ width: 380 }}>
+      <ControlledLikert {...args} initialValue={args.value} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(document.documentElement.dir).toBe('rtl');
+
+    const firstLabel = agreementOptions[0]!.label;
+    const lastLabel = agreementOptions.at(-1)!.label;
+    const rotatedLabel = (text: string) => placedLabel(canvas, text);
+
+    // The story is about the turned labels; fail if the width stops
+    // producing them.
+    const first = await rotatedLabel(firstLabel);
+    const last = await rotatedLabel(lastLabel);
+    await expect(getComputedStyle(first).rotate).toBe('-45deg');
+
+    // The thumb is on the first value, at the right-hand end of the track, and
+    // the first label is centred under it.
+    const thumb = canvasElement.querySelector('[data-index="0"]');
+    await expect(thumb).not.toBeNull();
+    await expect(centre(first)).toBeGreaterThan(centre(last));
+    await expect(Math.abs(centre(first) - centre(thumb!))).toBeLessThan(2);
+  },
+};
+
+// One long word each, so that at the story's width a label is wider than its
+// column but still fits once turned on its side.
+const arabicAgreementOptions = [
+  { label: { text: 'الاستقلالية', lang: 'ar', dir: 'rtl' }, value: 1 },
+  { label: { text: 'المسؤولية', lang: 'ar', dir: 'rtl' }, value: 2 },
+  { label: { text: 'الديمقراطية', lang: 'ar', dir: 'rtl' }, value: 3 },
+  { label: { text: 'الاستمرارية', lang: 'ar', dir: 'rtl' }, value: 4 },
+  { label: { text: 'الموضوعية', lang: 'ar', dir: 'rtl' }, value: 5 },
+] as const;
+
+/**
+ * A label written in another direction than the scale: Arabic words on a
+ * left-to-right page, as an interview shows them when the page around it is
+ * in English. The label's direction is for its own words. Where it sits is the
+ * track's business, so the first answer's label is still under the first
+ * value, at the left.
+ */
+export const RotatedLabelsWrittenInAnotherDirection: Story = {
+  args: {
+    options: [...arabicAgreementOptions],
+    value: 1,
+  },
+  render: (args) => (
+    <div style={{ width: 365 }}>
+      <ControlledLikert {...args} initialValue={args.value} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(document.documentElement.dir).toBe('ltr');
+
+    const first = await placedLabel(
+      canvas,
+      arabicAgreementOptions[0].label.text,
+    );
+    const last = await placedLabel(
+      canvas,
+      arabicAgreementOptions[4].label.text,
+    );
+    // The story is about the turned labels; fail if the width stops
+    // producing them.
+    await expect(getComputedStyle(first).rotate).toBe('45deg');
+
+    const thumb = canvasElement.querySelector('[data-index="0"]');
+    await expect(thumb).not.toBeNull();
+    await expect(centre(first)).toBeLessThan(centre(last));
+    await expect(Math.abs(centre(first) - centre(thumb!))).toBeLessThan(2);
+  },
+};

@@ -12,6 +12,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import {
   AMBIGUOUS_VARIANT_CONTAINERS,
@@ -135,16 +136,26 @@ describe('the exclusive-variant containers of a stage document', () => {
     );
     const hybrid = {
       ...base,
+      assetManifest: {
+        map: { id: 'map', type: 'image', name: 'Map', source: 'map.png' },
+      },
       stages: base.stages.map((stage) =>
         stage.type === 'Sociogram'
-          ? { ...stage, background: { concentricCircles: 4, image: 'map.png' } }
+          ? { ...stage, background: { concentricCircles: 4, image: 'map' } }
           : stage,
       ),
     };
 
-    expect(ProtocolSchemaV9.safeParse(withFinishStage(hybrid)).success).toBe(
-      false,
-    );
+    expect(
+      parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(hybrid))),
+    ).toEqual([
+      {
+        path: 'stages.1.background.concentricCircles',
+        code: 'custom',
+        message:
+          'concentricCircles cannot be set when background has an image.',
+      },
+    ]);
   });
 
   it('refuses a skip-logic destination carrying both variants', () => {
@@ -176,9 +187,15 @@ describe('the exclusive-variant containers of a stage document', () => {
       ),
     };
 
-    expect(ProtocolSchemaV9.safeParse(withFinishStage(hybrid)).success).toBe(
-      false,
-    );
+    expect(
+      parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(hybrid))),
+    ).toEqual([
+      {
+        path: 'stages.1.skipLogic.destination',
+        code: 'unrecognized_keys',
+        keys: ['stageId'],
+      },
+    ]);
   });
 });
 

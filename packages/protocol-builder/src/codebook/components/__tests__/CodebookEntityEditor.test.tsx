@@ -7,27 +7,30 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement, ReactNode } from 'react';
-import { describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import NodeLabelField from '../../../fields/NodeLabelField.tsx';
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
+import { NodeLabelFieldProvider } from '../../nodeLabelFieldSlot.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
-import CodebookEntityEditor, {
-  type CodebookEntityEditorProps,
-} from '../CodebookEntityEditor.tsx';
+import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
 
 /** Every editor here edits a protocol written in English. */
 function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <ProtocolLocalizationProvider
-      localization={{ defaultLocale: 'en', locales: ['en'] }}
-    >
-      {children}
-    </ProtocolLocalizationProvider>
+    <CodebookEditorHost>
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en'] }}
+      >
+        {children}
+      </ProtocolLocalizationProvider>
+    </CodebookEditorHost>
   );
 }
 
@@ -78,16 +81,6 @@ const renderUpdateEditor = (onSubmit: SubmitEntity) =>
   );
 
 describe('CodebookEntityEditor', () => {
-  it('requires create mode to provide a successful completion callback', () => {
-    type CreateEditorProps = Extract<
-      CodebookEntityEditorProps,
-      Readonly<{ mode: 'create' }>
-    >;
-    expectTypeOf<CreateEditorProps['onApplied']>().toEqualTypeOf<
-      (outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>) => void
-    >();
-  });
-
   it('does not submit an unchanged existing entity', () => {
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     const { container } = render(
@@ -108,37 +101,6 @@ describe('CodebookEntityEditor', () => {
     if (form === null) throw new Error('expected entity editor form');
     fireEvent.submit(form);
     expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  /**
-   * The dialog's title already names the editor, so the editor writes no
-   * heading of its own: Architect's `TypeEditor` had four topic sections and
-   * no restatement of the title above them.
-   */
-  it('names its groups after Architect’s topics and restates no dialog title', () => {
-    render(
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="topics"
-        dialog={{ title: 'Edit this node type', open: true }}
-        subject={NODE_SUBJECT}
-        initialDraft={NODE_DOCUMENT}
-        authoritativeDocument={NODE_DOCUMENT}
-        existingEntityNames={[]}
-        onSubmit={async () => applied()}
-      />,
-    );
-
-    const dialog = within(screen.getByRole('dialog'));
-    expect(
-      dialog.getAllByRole('heading').map((heading) => heading.textContent),
-    ).toEqual([
-      'Edit this node type',
-      'Type identity',
-      'Type color',
-      'Node appearance',
-      'Interface icon',
-    ]);
   });
 
   it.each([
@@ -190,35 +152,6 @@ describe('CodebookEntityEditor', () => {
       expect(screen.queryByText(/Protocol color|color reference/)).toBeNull();
     },
   );
-
-  /**
-   * Cancel and the save belong to the dialog's own footer, in that order: the
-   * footer is what pins the first of its children left, so a control rendered
-   * anywhere else reads as part of the form rather than as what commits it.
-   */
-  it('puts Cancel and the save in the dialog’s footer, cancel first', () => {
-    render(
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="footer"
-        dialog={{ title: 'Edit this node type', open: true }}
-        subject={NODE_SUBJECT}
-        initialDraft={NODE_DOCUMENT}
-        authoritativeDocument={NODE_DOCUMENT}
-        existingEntityNames={[]}
-        onCancel={() => undefined}
-        onSubmit={async () => applied()}
-      />,
-    );
-
-    const footer = screen.getByRole('dialog').querySelector('footer');
-    if (footer === null) throw new Error('expected a dialog footer');
-    expect(
-      within(footer)
-        .getAllByRole('button')
-        .map((button) => button.textContent),
-    ).toEqual(['Cancel', 'Save entity']);
-  });
 
   /**
    * And it still commits from there. The save sits outside the `<form>`
@@ -491,6 +424,7 @@ describe('CodebookEntityEditor', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ icon: 'add-a-place' }),
+        undefined,
       );
     });
   });
@@ -710,5 +644,111 @@ describe('CodebookEntityEditor', () => {
     expect(screen.getByRole('combobox', { name: 'Icon' })).toHaveTextContent(
       'add-a-place',
     );
+  });
+});
+
+describe('a node type’s Dynamic label', () => {
+  const CODEBOOK = {
+    node: {
+      'person:adult': {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        icon: 'add-a-person',
+        shape: { default: 'circle' },
+        variables: {
+          age: { name: 'Age', type: 'number', component: 'Number' },
+        },
+      },
+    },
+  } as const;
+
+  const LABELLED: SectionDoc = {
+    ...NODE_DOCUMENT,
+    dynamicLabel: { text: { en: 'Friend' } },
+  };
+
+  const renderWithCodebook = (document: SectionDoc, onSubmit: SubmitEntity) =>
+    render(
+      <NodeLabelFieldProvider value={NodeLabelField}>
+        <CodebookEntityEditor
+          mode="update"
+          sessionKey="label"
+          subject={NODE_SUBJECT}
+          initialDraft={document}
+          authoritativeDocument={document}
+          existingEntityNames={[]}
+          codebook={CODEBOOK}
+          onSubmit={onSubmit}
+        />
+      </NodeLabelFieldProvider>,
+    );
+
+  const labelSwitch = () =>
+    screen.getByRole('switch', { name: 'Dynamic label' });
+
+  it('is offered only where there is a codebook to write it against', () => {
+    render(
+      <NodeLabelFieldProvider value={NodeLabelField}>
+        <CodebookEntityEditor
+          mode="update"
+          sessionKey="no-codebook"
+          subject={NODE_SUBJECT}
+          initialDraft={NODE_DOCUMENT}
+          authoritativeDocument={NODE_DOCUMENT}
+          existingEntityNames={[]}
+          onSubmit={async () => applied()}
+        />
+      </NodeLabelFieldProvider>,
+    );
+    expect(
+      screen.queryByRole('switch', { name: 'Dynamic label' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens switched off on a type that holds no label, and on with one', () => {
+    const { unmount } = renderWithCodebook(NODE_DOCUMENT, async () =>
+      applied(),
+    );
+    expect(labelSwitch()).not.toBeChecked();
+    unmount();
+    renderWithCodebook(LABELLED, async () => applied());
+    expect(labelSwitch()).toBeChecked();
+  });
+
+  it('refuses a save while it is switched on with nothing written', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(NODE_DOCUMENT, onSubmit);
+
+    await user.click(labelSwitch());
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(
+      await screen.findByText('Write the label, or turn off Dynamic label.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('removes the stored label when it is switched off', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(LABELLED, onSubmit);
+
+    await user.click(labelSwitch());
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('dynamicLabel');
+  });
+
+  it('keeps the label through switching it off and on again in one edit', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(LABELLED, onSubmit);
+
+    await user.click(labelSwitch());
+    await user.click(labelSwitch());
+    // Back where it started, so there is nothing to save.
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
   });
 });

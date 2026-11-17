@@ -18,6 +18,7 @@ const directions = {
   'pt-BR': 'ltr',
   'it': 'ltr',
   'fr': 'ltr',
+  'ar': 'rtl',
 } as const satisfies Record<Locale, 'ltr' | 'rtl'>;
 
 export const siteAppLocales = defineAppLocales(

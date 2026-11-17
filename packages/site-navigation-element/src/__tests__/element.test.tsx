@@ -32,6 +32,7 @@ async function rendered(host: HTMLElement) {
 
 beforeEach(() => {
   document.body.innerHTML = '';
+  document.documentElement.removeAttribute('dir');
 });
 
 describe('<nc-site-navigation>', () => {
@@ -86,6 +87,26 @@ describe('<nc-site-navigation>', () => {
     expect(
       host.shadowRoot?.querySelector('nav[aria-label="Navegación principal"]'),
     ).not.toBeNull();
+  });
+
+  // Every language the websites offer, so a host never falls back to English
+  // for one of them; Arabic is the language most recently added.
+  it('accepts every language the websites offer', async () => {
+    document.documentElement.dir = 'rtl';
+    const host = mount({ 'active-item': 'updates', 'locale': 'ar' });
+    await rendered(host);
+
+    const nav = host.shadowRoot?.querySelector<HTMLElement>(
+      'nav[aria-label="التنقل الرئيسي"]',
+    );
+    expect(nav).not.toBeNull();
+    // On a right-to-left page the header lays itself out right to left.
+    expect(nav && getComputedStyle(nav).direction).toBe('rtl');
+    expect(
+      shadowLink(host, 'https://networkcanvas.com/ar/updates/')?.getAttribute(
+        'aria-current',
+      ),
+    ).toBe('page');
   });
 
   it('resolves explicit themes and re-renders on attribute change', async () => {

@@ -9,38 +9,45 @@ const messages = defineMessages({
   autoLockAfter: {
     id: 'interviewer.securityBehaviorControls.autoLockAfter',
     defaultMessage: 'Auto-lock after',
-    description: 'The label label in Interviewer Security Behavior Controls.',
+    description:
+      'Field label for a dropdown in the security settings: the idle time after which the app locks itself. Appears in Settings, Security section and in the setup wizard.',
   },
   howLongTheAppMaySitIdle: {
     id: 'interviewer.securityBehaviorControls.howLongTheAppMaySitIdle',
     defaultMessage:
       'How long the app may sit idle before automatically locking.',
-    description: 'The hint label in Interviewer Security Behavior Controls.',
+    description:
+      'Hint under the auto-lock dropdown; says how long the app can sit unused before it locks.',
   },
   requireUnlockWhenEnteringAnInterview: {
     id: 'interviewer.securityBehaviorControls.requireUnlockWhenEnteringAnInterview',
     defaultMessage: 'Require unlock when entering an interview',
-    description: 'The label label in Interviewer Security Behavior Controls.',
+    description:
+      'Toggle label in the security settings; when on, the researcher must re-enter their unlock method before an interview opens.',
   },
   requireUnlockWhenExitingAnInterview: {
     id: 'interviewer.securityBehaviorControls.requireUnlockWhenExitingAnInterview',
     defaultMessage: 'Require unlock when exiting an interview',
-    description: 'The label label in Interviewer Security Behavior Controls.',
+    description:
+      'Toggle label in the security settings; when on, the researcher must re-enter their unlock method before leaving an interview.',
   },
   requireUnlockBeforeExportingData: {
     id: 'interviewer.securityBehaviorControls.requireUnlockBeforeExportingData',
     defaultMessage: 'Require unlock before exporting data',
-    description: 'The label label in Interviewer Security Behavior Controls.',
+    description:
+      'Toggle label in the security settings; when on, the researcher must re-enter their unlock method before exporting interview data.',
   },
   minutes: {
     id: 'interviewer.securityBehaviorControls.minutes',
     defaultMessage: '{count, plural, one {# minute} other {# minutes}}',
-    description: 'Administration text in Interviewer SecurityBehaviorControls.',
+    description:
+      'Option in the auto-lock dropdown, a duration in minutes; count is the number of minutes.',
   },
   hours: {
     id: 'interviewer.securityBehaviorControls.hours',
     defaultMessage: '{count, plural, one {# hour} other {# hours}}',
-    description: 'Administration text in Interviewer SecurityBehaviorControls.',
+    description:
+      'Option in the auto-lock dropdown, a duration in hours; count is the number of hours.',
   },
 });
 

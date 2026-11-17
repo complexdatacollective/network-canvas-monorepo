@@ -371,12 +371,16 @@ export const holding = <A, E, R>(
           use({
             query: (statement, parameters) =>
               Effect.orDie(held.executeRaw(statement, parameters ?? [])),
+            // `pg_locks`, not `pg_stat_activity`: inside this open transaction
+            // the latter keeps the backend list from its first read, so a waiter
+            // whose connection opened after that read would never be counted.
             blockedByMe: Effect.orDie(
               Effect.map(
                 held.execute(
-                  `SELECT count(*)::int AS blocked
-                     FROM pg_stat_activity
-                    WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))`,
+                  `SELECT count(DISTINCT pid)::int AS blocked
+                     FROM pg_locks
+                    WHERE NOT granted
+                      AND pg_backend_pid() = ANY(pg_blocking_pids(pid))`,
                   [],
                   undefined,
                 ),

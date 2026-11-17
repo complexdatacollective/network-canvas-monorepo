@@ -1,13 +1,6 @@
 import { Plus } from 'lucide-react';
 import { motion, Reorder, type Variants } from 'motion/react';
-import {
-  createElement,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createElement, useCallback, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -52,46 +45,48 @@ const messages = defineMessages({
   oK: {
     id: 'architect.timeline.timeline.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / Timeline / Timeline.',
+    description:
+      'Button that dismisses the warning dialogs on the timeline, such as the ones for a stage that cannot be deleted.',
   },
   cannotDeleteStage: {
     id: 'architect.timeline.timeline.cannotDeleteStage',
     defaultMessage: 'Cannot delete stage',
-    description: 'The title text in components / Timeline / Timeline.',
+    description:
+      'Title of the dialog shown when the researcher tries to delete a Family Pedigree stage that a Narrative Pedigree stage still uses.',
   },
   thisFamilyPedigreeStageIsUsed: {
     id: 'architect.timeline.timeline.thisFamilyPedigreeStageIsUsed',
     defaultMessage:
       '{stageCount, plural, one {This Family Pedigree stage is used by the Narrative Pedigree stage {names}. Remove that stage or change its source before deleting this stage.} other {This Family Pedigree stage is used by the Narrative Pedigree stages {names}. Remove those stages or change their source before deleting this stage.}}',
-    description: 'The description text in components / Timeline / Timeline.',
+    description:
+      'Body of the Cannot delete stage dialog. stageCount is the number of Narrative Pedigree stages that use this Family Pedigree stage as their source; names is the list of those stages.',
   },
   deleteStage: {
     id: 'architect.timeline.timeline.deleteStage',
     defaultMessage: 'Delete stage',
-    description: 'The title text in components / Timeline / Timeline.',
+    description:
+      'Title of the dialog that asks the researcher to confirm deleting a stage from the timeline.',
   },
   areYouSureYouWantTo: {
     id: 'architect.timeline.timeline.areYouSureYouWantTo',
     defaultMessage:
       'Are you sure you want to delete this stage from your protocol? You can restore it with Undo while this protocol remains open.',
-    description: 'The description text in components / Timeline / Timeline.',
-  },
-  protocolStages: {
-    id: 'architect.timeline.timeline.protocolStages',
-    defaultMessage: 'Protocol stages',
-    description: 'The aria-label text in components / Timeline / Timeline.',
+    description:
+      "Body of the dialog that asks the researcher to confirm deleting a stage from the timeline. Undo is the protocol editor's undo command.",
   },
   addNewStage: {
     id: 'architect.timeline.timeline.addNewStage',
     defaultMessage: 'Add new stage',
-    description: 'Visible text in components / Timeline / Timeline.',
+    description:
+      'Button at the end of the timeline. Opens the dialog for choosing the interface type of a new stage, which is added after the last stage.',
   },
 });
 const finalMessages = defineMessages({
   untitledStage: {
     id: 'architect.final.components.Timeline.Timeline.untitledStage',
     defaultMessage: 'Untitled stage',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Name shown for a stage on the timeline that has no title yet.',
   },
 });
 
@@ -145,12 +140,6 @@ const warningDialogText = (warning: {
 
 const Timeline = () => {
   const intl = useAppIntl();
-  // The delete confirmation announces in the language current when it is
-  // confirmed, which may not be the one it was opened in.
-  const intlRef = useRef(intl);
-  useLayoutEffect(() => {
-    intlRef.current = intl;
-  });
   const stages = useSelector(getStageList);
   // `getStageList` maps each stage down to `{id, type, label, hasFilter,
   // hasSkipLogic, skipLogic: {destination}}` for cheap render diffing — the
@@ -344,13 +333,7 @@ const Timeline = () => {
         intent: 'destructive',
         onConfirm: () => {
           deleteStage(stageId);
-          announce(
-            getStageDeletedAnnouncement(
-              stageIndex + 1,
-              remaining,
-              intlRef.current,
-            ),
-          );
+          announce(getStageDeletedAnnouncement(stageIndex + 1, remaining));
         },
         // Cancel returns to the row's own Delete control, which survives.
         // Confirm destroys it, and without an answer here focus would land on
@@ -434,16 +417,11 @@ const Timeline = () => {
       setOrderedStages(proposedStages);
       dispatch(stageActions.moveStage(oldIndex, newIndex));
       announce(
-        getStageMovedAnnouncement(
-          oldIndex + 1,
-          newIndex + 1,
-          stages.length,
-          intl,
-        ),
+        getStageMovedAnnouncement(oldIndex + 1, newIndex + 1, stages.length),
       );
       return true;
     },
-    [announce, dispatch, openDialog, readOnly, stages, intl],
+    [announce, dispatch, openDialog, readOnly, stages],
   );
 
   // Commit the whole reorder as a single moveStage once the drag ends, using the
@@ -504,7 +482,7 @@ const Timeline = () => {
         <Reorder.Group
           axis="y"
           onReorder={handleReorder}
-          aria-label={intl.formatMessage(messages.protocolStages)}
+          aria-label="Protocol stages"
           // `role="list"` is redundant in the abstract, which is what the lint
           // rule objects to, but not on a Tailwind page: preflight sets
           // `list-style: none` on every `ul`, and Safari drops list semantics

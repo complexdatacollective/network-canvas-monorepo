@@ -494,7 +494,8 @@ const errorMessages = defineMessages({
   empty: {
     id: 'architect.resourceImport.empty',
     defaultMessage: "This network file doesn't contain any nodes or edges.",
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown when a network file (CSV or JSON) added as a resource contains no nodes or edges.',
   },
   names: {
     id: 'architect.resourceImport.names',
@@ -514,17 +515,20 @@ const errorMessages = defineMessages({
     id: 'architect.resourceImport.columns',
     defaultMessage:
       'Some rows have a different number of columns. Make each row match the column headers, then import the file again.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown when a CSV network file added as a resource has rows with a different number of columns from the header row.',
   },
   unsupported: {
     id: 'architect.resourceImport.unsupported',
     defaultMessage: 'That file type is not supported as a resource.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown when the file added as a resource is not one of the file types Architect accepts.',
   },
   generic: {
     id: 'architect.resourceImport.generic',
     defaultMessage: 'Check that it is a supported file type, and try again.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Fallback error shown when adding a file as a resource fails for a reason that has no specific message. Suggests checking the file type and trying again.',
   },
   charactersInColumnName: {
     id: 'architect.resourceImport.charactersInColumnName',
@@ -565,6 +569,7 @@ const errorMessages = defineMessages({
     id: 'architect.resourceImport.replacementType',
     defaultMessage:
       'This file is a different kind of resource from the one it would replace. Choose a file of the same kind, and try again.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown when the researcher supplies a file to replace a missing resource, but the file is a different kind of resource (for example an image instead of a video) from the one it replaces.',
   },
 });

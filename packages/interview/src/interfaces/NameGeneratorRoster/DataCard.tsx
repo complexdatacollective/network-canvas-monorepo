@@ -9,7 +9,6 @@ import type { VariableValue } from '@codaco/shared-consts';
 
 import { type ContentFormat } from '../../localization/contentFormat';
 import { useContentFormat } from '../../localization/useContentFormat';
-import { interfaceMessages } from '../messages';
 
 export type DataCardDetail = {
   id: string;
@@ -120,7 +119,12 @@ const DataCard = ({
       aria-label={label}
     >
       <header className="border-platinum-dark/30 border-b px-6 py-4">
-        <Heading level="label" margin="none">
+        <Heading
+          level="label"
+          margin="none"
+          dir="auto"
+          className="text-match-parent"
+        >
           {label}
         </Heading>
       </header>
@@ -134,17 +138,21 @@ const DataCard = ({
                 variant="all-caps"
                 margin="none"
                 render={<dt />}
-                className="text-right text-xs leading-tight font-extrabold wrap-break-word"
+                className="text-end text-xs leading-tight font-extrabold wrap-break-word"
               >
                 {detailLabel}
               </Heading>
-              <dd className="text-sm leading-tight font-medium wrap-break-word">
+              <dd
+                dir="auto"
+                className="text-match-parent text-sm leading-tight font-medium wrap-break-word"
+              >
                 {isEmptyValue(value) ? (
                   <>
                     {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative dash for an empty value; the words follow for screen readers. */}
                     <span aria-hidden="true">—</span>
-                    <span className="sr-only">
-                      {intl.formatMessage(interfaceMessages.emptyValue)}
+                    <span className="sr-only" lang="en">
+                      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+                      {'No value'}
                     </span>
                   </>
                 ) : (

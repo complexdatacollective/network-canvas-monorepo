@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../../localization/messageArguments.ts';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { assetReference } from '../asset-reference.ts';
 import {
@@ -13,15 +17,7 @@ import {
   localizedString,
   nonBlankText,
 } from '../localized-string.ts';
-import {
-  hasMaximumNodes,
-  hasMinimumNodes,
-  requireWhenShown,
-  type StageRecord,
-} from '../stage-wording/conditions.ts';
-import { UNNAMED_LABEL } from '../stage-wording/name-generator-roster.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
-import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 import {
   MAX_NODES_ARGUMENTS,
@@ -53,19 +49,19 @@ const rosterColumnReference = () =>
 
 /**
  * What the label of an item with no name may use: the number that tells it
- * from other unnamed items, which every translation must show where the
- * supplied wording does, and the name of the stage's node type.
+ * from other unnamed items, which it must show, and the name of the stage's
+ * node type.
  */
-export const UNNAMED_LABEL_ARGUMENTS = requireSuppliedPlacements(
-  { count: { kind: 'text' }, ...SUBJECT_ARGUMENTS },
-  UNNAMED_LABEL,
-);
+export const UNNAMED_LABEL_ARGUMENTS: MessageArguments = {
+  count: { kind: 'text', required: EVERY_VERSION },
+  ...SUBJECT_ARGUMENTS,
+};
 
 /**
  * The roster's own words (`stage-wording/name-generator-roster.ts`). The
- * roster always loads its data, so its all-added notice and the label of an
- * unnamed item are always required; its limit notices are required only while
- * the limit is on.
+ * roster always loads its data, so it always shows its all-added notice and
+ * the label of an unnamed item; it shows a limit notice only while the limit
+ * is on. A stage that omits one shows Network Canvas's wording.
  */
 const rosterWording = {
   minNodesNotice: localizedMessage(nonBlankText(), {
@@ -76,82 +72,76 @@ const rosterWording = {
   }).optional(),
   allAddedNotice: localizedMessage(nonBlankText(), {
     arguments: SUBJECT_ARGUMENTS,
-  }),
+  }).optional(),
   unnamedLabel: localizedMessage(nonBlankText(), {
     arguments: UNNAMED_LABEL_ARGUMENTS,
-  }),
+  }).optional(),
 };
 
-const requireRosterWording = (stage: StageRecord, ctx: z.RefinementCtx) =>
-  requireWhenShown(stage, ctx, [
+export const nameGeneratorRosterStage = baseStageSchema.extend({
+  type: z.literal('NameGeneratorRoster'),
+  subject: NodeStageSubjectSchema,
+  dataSource: assetReference(),
+  // The heading above the people the participant can add. The roster IS the
+  // panel, so it is named for what it heads rather than as the stage's title.
+  panelTitle: localizedString(
+    nonBlankText(),
+    { format: 'plain', lines: 'single' },
     {
-      name: 'minNodesNotice',
-      when: hasMinimumNodes,
-      message: 'A stage with a minimum needs a minimum notice.',
-    },
-    {
-      name: 'maxNodesNotice',
-      when: hasMaximumNodes,
-      message: 'A stage with a maximum needs a maximum notice.',
-    },
-  ]);
-
-export const nameGeneratorRosterStage = baseStageSchema
-  .extend({
-    type: z.literal('NameGeneratorRoster'),
-    subject: NodeStageSubjectSchema,
-    dataSource: assetReference(),
-    // The heading above the people the participant can add. The roster IS the
-    // panel, so it is named for what it heads rather than as the stage's title.
-    panelTitle: localizedString(nonBlankText(), 'plain', {
       dynamicValues: 'stageText',
+    },
+  ).optional(),
+  cardOptions: z
+    .strictObject({
+      additionalProperties: z
+        .array(
+          z.strictObject({
+            label: localizedString(nonBlankText(), {
+              format: 'plain',
+              lines: 'single',
+            }),
+            variable: rosterColumnReference(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  sortOptions: z
+    .strictObject({
+      sortOrder: SortOrderSchema.optional(),
+      sortableProperties: z
+        .array(
+          z.strictObject({
+            label: localizedString(nonBlankText(), {
+              format: 'plain',
+              lines: 'single',
+            }),
+            variable: rosterColumnReference(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  searchOptions: z
+    .strictObject({
+      fuzziness: z.number(),
+      matchProperties: z.array(rosterColumnReference()).min(1),
+    })
+    .optional(),
+  prompts: z
+    .array(nameGeneratorPromptSchema)
+    .min(1)
+    .superRefine((prompts, ctx) => {
+      // Check for duplicate prompt IDs
+      const duplicatePromptId = findDuplicateId(prompts);
+      if (duplicatePromptId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+          path: [],
+        });
+      }
     }),
-    cardOptions: z
-      .strictObject({
-        additionalProperties: z
-          .array(
-            z.strictObject({
-              label: localizedString(nonBlankText(), 'plain'),
-              variable: rosterColumnReference(),
-            }),
-          )
-          .optional(),
-      })
-      .optional(),
-    sortOptions: z
-      .strictObject({
-        sortOrder: SortOrderSchema.optional(),
-        sortableProperties: z
-          .array(
-            z.strictObject({
-              label: localizedString(nonBlankText(), 'plain'),
-              variable: rosterColumnReference(),
-            }),
-          )
-          .optional(),
-      })
-      .optional(),
-    searchOptions: z
-      .strictObject({
-        fuzziness: z.number(),
-        matchProperties: z.array(rosterColumnReference()).min(1),
-      })
-      .optional(),
-    prompts: z
-      .array(nameGeneratorPromptSchema)
-      .min(1)
-      .superRefine((prompts, ctx) => {
-        // Check for duplicate prompt IDs
-        const duplicatePromptId = findDuplicateId(prompts);
-        if (duplicatePromptId) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-            path: [],
-          });
-        }
-      }),
-    behaviours: nameGeneratorBehavioursSchema,
-    ...rosterWording,
-  })
-  .superRefine(requireRosterWording);
+  behaviours: nameGeneratorBehavioursSchema,
+  ...rosterWording,
+});

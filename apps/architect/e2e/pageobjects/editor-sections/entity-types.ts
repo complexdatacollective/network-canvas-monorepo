@@ -10,7 +10,7 @@ import { expect, type Page } from '@playwright/test';
 //
 // "Create a new {node|edge} type" opens the package's `CodebookEntityEditor`,
 // whose name field is labelled "{Node|Edge} type name", whose icon is a
-// searchable combobox named "Icon" inside its "Interface icon" group, and
+// searchable combobox named "Icon" inside its "Node appearance" group, and
 // whose submit reads "Save entity" from the dialog's footer.
 async function selectOrCreateEntityType(
   page: Page,
@@ -149,7 +149,7 @@ export async function mapNodeShapeToAttribute(
     // group is named for the answer it maps; each swatch is named for the
     // shape it offers.
     await dialog
-      .getByRole('radiogroup', { name: `Shape for ${value}`, exact: true })
+      .getByRole('radiogroup', { name: value, exact: true })
       .getByRole('radio', { name: `Select shape ${shape}`, exact: true })
       .click();
   }

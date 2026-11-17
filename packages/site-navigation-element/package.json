@@ -38,6 +38,7 @@
     "@codaco/vitest-config": "workspace:^",
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
+    "@fontsource-variable/readex-pro": "catalog:",
     "@tailwindcss/cli": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

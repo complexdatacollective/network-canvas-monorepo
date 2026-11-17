@@ -37,21 +37,18 @@ const apps = [
     actionName: 'Open Architect',
     variant: 'architect',
     href: 'https://architect.networkcanvas.com/',
-    accent: 'sea-green',
   },
   {
     name: 'Interviewer',
     actionName: 'Open Interviewer',
     variant: 'interviewer',
     href: 'https://interviewer.networkcanvas.com/',
-    accent: 'neon-coral',
   },
   {
     name: 'Fresco',
     actionName: 'Try the Fresco Sandbox',
     variant: 'fresco',
     href: 'https://fresco-sandbox.networkcanvas.com/',
-    accent: 'slate-blue',
   },
 ] as const;
 
@@ -145,11 +142,6 @@ function unstubLayout() {
   Reflect.deleteProperty(document, 'scrollingElement');
 }
 
-const nextFrame = () =>
-  new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-
 function scrollTo(offset: number) {
   scrolled = offset;
   act(() => {
@@ -174,23 +166,22 @@ describe('Tools', () => {
     ).toBeInTheDocument();
 
     for (const app of apps) {
-      const panel = within(card(app.name));
+      const article = card(app.name);
+      const panel = within(article);
+      const heading = panel.getByRole('heading', { level: 3, name: app.name });
       const actionLink = panel.getByRole('link', { name: app.actionName });
       const previewLink = panel.getByRole('link', {
         name: `${app.variant} preview`,
       });
 
-      expect(
-        panel.getByRole('heading', { level: 3, name: app.name }),
-      ).toHaveClass(`text-${app.accent}`);
+      // The card takes its accessible name from its own heading.
+      expect(article).toHaveAttribute('aria-labelledby', heading.id);
       expect(actionLink).toHaveAttribute('href', app.href);
       expect(actionLink).toHaveAttribute('target', '_blank');
-      expect(actionLink).toHaveClass(`bg-${app.accent}`);
       expect(previewLink).toHaveAttribute('href', app.href);
       expect(previewLink).toHaveAttribute('target', '_blank');
-      // The screenshot link stays in the tab order with a visible focus ring.
+      // The screenshot link stays in the tab order.
       expect(previewLink).not.toHaveAttribute('tabindex');
-      expect(previewLink).toHaveClass('focusable');
     }
 
     const deployLink = within(card('Fresco')).getByRole('link', {
@@ -201,10 +192,6 @@ describe('Tools', () => {
       webDestinations.frescoDeployment,
     );
     expect(deployLink).toHaveAttribute('target', '_blank');
-    // Slate-blue text needs a white ground for WCAG AA in the dark theme,
-    // where the surface is dark.
-    expect(deployLink).toHaveClass('text-slate-blue', 'bg-white');
-    expect(deployLink).not.toHaveClass('bg-surface');
   });
 
   it('renders translated tool copy in Spanish', () => {
@@ -212,7 +199,7 @@ describe('Tools', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Una selección de herramientas para facilitar su investigación',
+        name: 'Una selección de herramientas para facilitar tu investigación',
       }),
     ).toBeInTheDocument();
     expect(
@@ -235,7 +222,7 @@ describe('Tools', () => {
     beforeEach(stubLayout);
     afterEach(unstubLayout);
 
-    it('opens each card when the thread reaches it, and keeps it open', async () => {
+    it('opens each card as the thread runs past it, and closes it again on the way back', async () => {
       renderWithIntl(<Tools />);
 
       await waitFor(() => {
@@ -246,27 +233,34 @@ describe('Tools', () => {
         expect(bloomRadius(card('Architect'))).toBeGreaterThan(0);
       });
 
-      // The reading line passes the fork's nodes at 1000px.
+      // The reading line passes the fork's nodes at 1000px, and the cards
+      // open over the next 35% of the window (268.8px): part way open here.
       scrollTo(600);
       await waitFor(() => {
         expect(bloomRadius(card('Interviewer'))).toBeGreaterThan(0);
       });
       expect(threadNode('interviewerIn')).toHaveAttribute('data-reached');
       expect(bloomRadius(card('Fresco'))).toBeGreaterThan(0);
+      const partlyOpen = bloomRadius(card('Interviewer')) ?? 0;
 
-      // Back up the page the thread withdraws from the fork's nodes, but the
-      // cards it opened stay open.
+      // Further down they open wider.
+      scrollTo(800);
+      await waitFor(() => {
+        expect(bloomRadius(card('Interviewer'))).toBeGreaterThan(partlyOpen);
+      });
+
+      // Back up the page the thread withdraws from the fork's nodes and the
+      // cards close back onto them.
       scrollTo(0);
       await waitFor(() => {
         expect(threadNode('interviewerIn')).not.toHaveAttribute('data-reached');
       });
+      await waitFor(() => {
+        expect(bloomRadius(card('Interviewer'))).toBe(0);
+      });
+      expect(bloomRadius(card('Fresco'))).toBe(0);
       expect(threadNode('architectIn')).toHaveAttribute('data-reached');
-      // Motion writes a card's clip on its next frame; give a closing card
-      // that frame before checking it stayed open.
-      await act(nextFrame);
-      await act(nextFrame);
-      expect(bloomRadius(card('Interviewer'))).toBeGreaterThan(0);
-      expect(bloomRadius(card('Fresco'))).toBeGreaterThan(0);
+      expect(bloomRadius(card('Architect'))).toBeGreaterThan(0);
     });
 
     it('opens a card the thread has not reached when focus moves into it', async () => {

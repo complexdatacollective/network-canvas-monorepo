@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { Effect, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import { SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
@@ -372,11 +373,16 @@ describe.skipIf(!storeDb)('publishDraft', () => {
   });
 
   for (const fixture of FIXTURES) {
-    it(`publishes ${fixture} and reads it back unchanged but for its sealed API keys`, async () => {
-      const protocol = readFixtureProtocol(fixture);
+    it(`publishes ${fixture} and reads it back as it is stored, unchanged but for its sealed API keys`, async () => {
+      const imported = readFixtureProtocol(fixture);
       const { protocolId, draftId } = await run(
-        createProtocol(TEST_TEAM_ID, cipher, { protocol }),
+        createProtocol(TEST_TEAM_ID, cipher, { protocol: imported }),
       );
+      // Studio assembles a protocol holding, of the interface text, only the
+      // author's own wording for what the protocol shows. A fixture that
+      // holds a copy of Network Canvas's wording (all-interfaces) comes back
+      // without it; one already stored that way comes back as it went in.
+      const protocol = withInterfaceText(imported);
       const sectionCount = Object.keys(
         (await run(getDraftSections(TEST_TEAM_ID, draftId))).sections,
       ).length;

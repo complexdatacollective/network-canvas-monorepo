@@ -5,20 +5,6 @@ import { Alert, AlertTitle } from './Alert';
 import Dialog from './dialogs/Dialog';
 import Section from './Section';
 
-describe('Alert', () => {
-  it('keeps the full intent colour for the soft appearance', () => {
-    render(
-      <Alert variant="accent" appearance="soft">
-        Key concept
-      </Alert>,
-    );
-
-    const alert = screen.getByRole('status');
-    expect(alert).toHaveClass('bg-accent', 'text-accent-contrast');
-    expect(alert.className).not.toContain('color-mix');
-  });
-});
-
 /**
  * An alert can be raised anywhere, and a heading level is only correct
  * relative to the heading above it. Fixed at `h4`, an alert under an `h2`

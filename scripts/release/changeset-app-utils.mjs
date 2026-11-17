@@ -59,6 +59,7 @@ export function workspaceManifests(root = REPO_ROOT) {
 export const GATED_PRODUCT_PACKAGES = [
   '@codaco/documentation',
   'networkcanvas.com',
+  '@codaco/protocol-review-worker',
   '@codaco/studio-api',
   '@codaco/studio-contract',
   '@codaco/studio-sync',
@@ -68,22 +69,31 @@ export const GATED_PRODUCT_PACKAGES = [
 export const GATED_PRODUCT_DIRS = {
   '@codaco/documentation': 'apps/documentation',
   'networkcanvas.com': 'apps/networkcanvas.com',
+  '@codaco/protocol-review-worker': 'workers/protocol-review',
   '@codaco/studio-api': 'apps/studio/api',
   '@codaco/studio-contract': 'packages/studio-contract',
   '@codaco/studio-sync': 'packages/studio-sync',
   '@codaco/studio-web': 'apps/studio/web',
 };
 
-// Documentation, Website, and Studio keep separately generated release PRs
-// because they release independently from the normal Changesets lane.
-// Architect and Interviewer are private packages in that normal lane alongside
-// libraries. The Studio lane spans all four Studio workspace packages — the
-// two deployable halves plus their private boundary packages — so a Studio
-// changeset can name any of them without touching the normal lane.
+// Documentation, Website, the protocol review Worker, and Studio keep
+// separately generated release PRs because they release independently from
+// the normal Changesets lane. Architect and Interviewer are private packages
+// in that normal lane alongside libraries. The Studio lane spans all four
+// Studio workspace packages — the two deployable halves plus their private
+// boundary packages — so a Studio changeset can name any of them without
+// touching the normal lane.
+//
+// The protocol review Worker has a lane of its own rather than a place in the
+// normal one because it is a service with a budget, not an app: merging its
+// release PR deploys it to Cloudflare, and nothing else's release should be
+// able to do that. Architect imports the Worker's wire contract as source, so
+// an Architect release needs no Worker release and the reverse.
 export const GATED_PRODUCT_RELEASE_LANES = {
-  documentation: ['@codaco/documentation'],
-  website: ['networkcanvas.com'],
-  studio: [
+  'documentation': ['@codaco/documentation'],
+  'website': ['networkcanvas.com'],
+  'protocol-review': ['@codaco/protocol-review-worker'],
+  'studio': [
     '@codaco/studio-api',
     '@codaco/studio-contract',
     '@codaco/studio-sync',
@@ -162,9 +172,10 @@ export function missingBundlingApps(
 // `changeset-app-utils.test.mjs` holds every derived entry to the same standard
 // from the other side, and names packages that must and must not be in it.
 // A Cloudflare Worker deploys from its own `wrangler` config — by hand for
-// `workers/posthog-proxy`, whose changesets say so in as many words. Deployed
-// is a release path, so a changeset may name one; it is the artefact rather
-// than the directory that says so, and nothing outside `workers/` carries one.
+// `workers/posthog-proxy`, whose changesets say so in as many words, and from
+// its own gated lane for `workers/protocol-review`. Deployed is a release
+// path, so a changeset may name one; it is the artefact rather than the
+// directory that says so, and nothing outside `workers/` carries one.
 const isDeployedWorker = (directory) =>
   readdirSync(directory).some((entry) => entry.startsWith('wrangler.'));
 

@@ -93,7 +93,7 @@ it('applies a choice, stores it, and follows another tab’s change', async () =
     );
   });
   expect(trigger()).toHaveTextContent('Español');
-  expect(trigger()).toHaveAccessibleName('Idioma de la interfaz: Español');
+  expect(trigger()).toHaveAccessibleName('Interface language: Español');
   expect(document.documentElement).toHaveAttribute('lang', 'es');
 });
 
@@ -106,6 +106,15 @@ it('never persists the development locale', async () => {
   fireEvent.click(trigger());
   await screen.findByRole('dialog');
   expect(status()).toBeEmptyDOMElement();
+});
+
+it('lays Architect out right to left under the right-to-left development locale, without persisting it', async () => {
+  await renderAndOpen();
+  await choose(/^Pseudo right-to-left/);
+  expect(trigger()).toHaveTextContent('Pseudo right-to-left (ar-XB)');
+  expect(document.documentElement).toHaveAttribute('lang', 'ar-XB');
+  expect(document.documentElement).toHaveAttribute('dir', 'rtl');
+  expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBeNull();
 });
 
 it('still applies the selected language when storage refuses the write, and offers a retry', async () => {
@@ -135,7 +144,7 @@ it('names the language automatic resolves to and returns to it', async () => {
   expect(trigger()).toHaveTextContent(/^Español$/);
   expect(trigger().querySelector('[lang]')).toHaveAttribute('lang', 'es');
   expect(trigger()).toHaveAccessibleName(
-    'Idioma de la interfaz: Automático (Español)',
+    'Interface language: Automático (Español)',
   );
   expect(
     screen.getByRole('option', { name: /^Automático \(Español\)/ }),

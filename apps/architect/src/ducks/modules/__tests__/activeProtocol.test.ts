@@ -241,37 +241,6 @@ describe('activeProtocol', () => {
     });
   });
 
-  describe('action creators', () => {
-    it('should create setActiveProtocol action', () => {
-      const action = actionCreators.setActiveProtocol(mockProtocol);
-
-      expect(action.type).toBe(actionCreators.setActiveProtocol.type);
-      expect(action.payload).toEqual(mockProtocol);
-    });
-
-    it('should create updateProtocol action', () => {
-      const updates = { description: 'updated' };
-      const action = actionCreators.updateProtocol(updates);
-
-      expect(action.type).toBe(actionCreators.updateProtocol.type);
-      expect(action.payload).toEqual(updates);
-    });
-
-    it('should create updateProtocolDescription action', () => {
-      const options = { description: 'Updated desc' };
-      const action = actionCreators.updateProtocolDescription(options);
-
-      expect(action.type).toBe(actionCreators.updateProtocolDescription.type);
-      expect(action.payload).toEqual(options);
-    });
-
-    it('should create clearActiveProtocol action', () => {
-      const action = actionCreators.clearActiveProtocol();
-
-      expect(action.type).toBe(actionCreators.clearActiveProtocol.type);
-    });
-  });
-
   describe('sub-reducers integration', () => {
     type TestStore = ReturnType<
       typeof configureStore<{
@@ -301,6 +270,55 @@ describe('activeProtocol', () => {
       expect(state.description).toBe('another description');
       expect(state.stages).toHaveLength(1);
       expect(state.codebook.node?.person).toBeDefined();
+    });
+
+    // Network Canvas words the Back button "Back" and the finish button
+    // "Finish"; "Onwards" and "Really finish?" are the researcher's own.
+    const holdingSuppliedWording = {
+      ...mockProtocol,
+      stages: [
+        { id: 'anon', type: 'Anonymisation', label: { en: 'Passphrase' } },
+        {
+          id: 'finish',
+          type: 'FinishSession',
+          label: { en: 'Finish' },
+          finishLabel: { en: 'Finish' },
+          finishConfirmation: { en: 'Really finish?' },
+        },
+      ],
+      interfaceText: {
+        navigation: { back: { en: 'Back' }, continue: { en: 'Onwards' } },
+        passphrase: { passphraseAccepted: { en: 'Thank you' } },
+      },
+    } as unknown as CurrentProtocol;
+
+    it('stores a protocol holding only the wording its author changed', () => {
+      store.dispatch(actionCreators.setActiveProtocol(holdingSuppliedWording));
+
+      const state = store.getState().activeProtocol;
+      expect(state?.interfaceText).toEqual({
+        navigation: { continue: { en: 'Onwards' } },
+        passphrase: { passphraseAccepted: { en: 'Thank you' } },
+      });
+      expect(state?.stages[1]).toEqual({
+        id: 'finish',
+        type: 'FinishSession',
+        label: { en: 'Finish' },
+        finishConfirmation: { en: 'Really finish?' },
+      });
+    });
+
+    it('drops wording for a shared text once no stage shows it', () => {
+      store.dispatch(actionCreators.setActiveProtocol(holdingSuppliedWording));
+
+      // Only a passphrase stage shows the "passphrase accepted" text.
+      store.dispatch(stagesTest.deleteStage('anon'));
+
+      const state = store.getState().activeProtocol;
+      expect(state?.stages.map(({ id }) => id)).toEqual(['finish']);
+      expect(state?.interfaceText).toEqual({
+        navigation: { continue: { en: 'Onwards' } },
+      });
     });
 
     it('should not process sub-reducers when no protocol data', () => {

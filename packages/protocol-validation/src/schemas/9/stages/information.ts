@@ -12,9 +12,13 @@ const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 const textItemSchema = z.strictObject({
   id: z.string(),
   type: z.literal('text'),
-  content: localizedString(nonBlankText(), 'markdown', {
-    dynamicValues: 'stageText',
-  }),
+  content: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'multiple' },
+    {
+      dynamicValues: 'stageText',
+    },
+  ),
   description: z.string().optional(),
 });
 
@@ -24,7 +28,10 @@ const assetItemSchema = z.strictObject({
   type: z.literal('asset'),
   content: assetReference(),
   // An image's description stands in for the image, so it stays literal.
-  description: localizedString(nonBlankText(), 'plain').optional(),
+  description: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional(),
   size: ItemSizeSchema.optional(),
 });
 
@@ -37,8 +44,12 @@ export type Item = z.infer<typeof ItemSchema>;
 
 export const informationStage = baseStageSchema.extend({
   type: z.literal('Information'),
-  title: localizedString(nonBlankText(), 'plain', {
-    dynamicValues: 'stageText',
-  }),
+  title: localizedString(
+    nonBlankText(),
+    { format: 'plain', lines: 'single' },
+    {
+      dynamicValues: 'stageText',
+    },
+  ),
   items: z.array(ItemSchema).superRefine(duplicateIdRefinement('Items')),
 });

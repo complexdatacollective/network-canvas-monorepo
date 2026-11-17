@@ -1,10 +1,14 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { familyPedigreeStage } from '@codaco/protocol-validation';
 
 import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
+import { markdownTextShapeAt } from '../../../localization/textShape.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
+
+const PROMPT_SHAPE = markdownTextShapeAt(familyPedigreeStage, ['prompt']);
 
 /**
  * The one instruction shown on the canvas while the participant draws their
@@ -22,11 +26,11 @@ export default function PedigreePromptSection() {
       <Field<typeof LocalizedRichTextField>
         name="prompt"
         component={LocalizedRichTextField}
+        shape={PROMPT_SHAPE}
         dynamicValues="prompt"
         label={intl.formatMessage(messages.promptLabel)}
         hint={intl.formatMessage(messages.promptHint)}
         placeholder={intl.formatMessage(messages.promptPlaceholder)}
-        singleLine
         required={REQUIRED}
       />
     </BuilderSection>

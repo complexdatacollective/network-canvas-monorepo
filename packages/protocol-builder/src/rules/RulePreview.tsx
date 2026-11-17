@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
@@ -22,21 +21,6 @@ import type {
   RuleDescriptionOperand,
 } from './ruleDescription.ts';
 import { ruleSubjectMessages } from './ruleMessages.ts';
-
-const messages = defineMessages({
-  attribute: {
-    id: 'protocolBuilder.rulePreview.attribute',
-    defaultMessage: '{label} (attribute type: {type})',
-    description:
-      'Read out in place of the attribute chip in a rule preview, so assistive technology says what kind of attribute it is as well as its name. label is the researcher’s own name for the attribute; type is the schema’s own word for the kind of value it holds — text, number, boolean, ordinal, categorical, datetime, scalar, location or layout — and is not translated.',
-  },
-  attributeMissing: {
-    id: 'protocolBuilder.rulePreview.attributeMissing',
-    defaultMessage: '{label} (attribute is no longer in the codebook)',
-    description:
-      'Read out in place of the attribute chip in a rule preview when the protocol’s codebook no longer describes that attribute, so its kind cannot be named. label is the researcher’s own name for the attribute.',
-  },
-});
 
 type ProtocolIconStyle = CSSProperties & {
   '--icon-tone-primary'?: string;
@@ -70,7 +54,7 @@ function RuleEntity({ entity }: { entity: RuleDescriptionEntity }) {
   return (
     <span className="inline" data-rule-entity={entity.kind}>
       <span
-        className="mr-2 inline-flex size-8 items-center justify-center align-middle"
+        className="me-2 inline-flex size-8 items-center justify-center align-middle"
         data-rule-entity-glyph={entity.kind}
         aria-hidden
       >
@@ -111,15 +95,11 @@ function RuleEntity({ entity }: { entity: RuleDescriptionEntity }) {
  * attribute itself.
  */
 function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
-  const intl = useAppIntl();
   // A name followed by a labelled value, rather than a sentence assembled
   // around the type: nothing here has to agree grammatically with a type name.
   const description = attribute.missing
-    ? intl.formatMessage(messages.attributeMissing, { label: attribute.label })
-    : intl.formatMessage(messages.attribute, {
-        label: attribute.label,
-        type: attribute.type ?? 'text',
-      });
+    ? `${attribute.label} (attribute is no longer in the codebook)`
+    : `${attribute.label} (attribute type: ${attribute.type ?? 'text'})`;
 
   return (
     <span

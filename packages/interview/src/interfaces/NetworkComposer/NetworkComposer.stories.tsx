@@ -1,11 +1,20 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
+import {
+  expect,
+  fireEvent,
+  screen,
+  spyOn,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import type { NavigationOrientation } from '../../Shell';
+import { exitOffsetOf } from '../../storybook-support/drawerExit';
 import { choosePassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -403,6 +412,87 @@ export const UnsavedEditInDrawer: Story = {
     await waitFor(() =>
       expect(screen.getByRole('spinbutton', { name: /age/i })).toHaveValue(34),
     );
+  },
+};
+
+/**
+ * In a right-to-left interview the drawer is on the left, the end edge, with
+ * its resize handle on the edge that faces the canvas. Widening it is a drag
+ * or an arrow key towards the canvas, which is now to the right.
+ */
+export const DrawerInARightToLeftInterview: Story = {
+  globals: { appDirection: 'rtl' },
+  render: () => <NetworkComposerStoryWrapper buildFn={buildValidatedAges} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Alice' }, { timeout: 10_000 }),
+    );
+
+    const handle = await screen.findByRole('separator', {
+      name: 'Resize panel',
+    });
+    // Assert the direction landed, so a story that lost it fails here rather
+    // than passing on a left-to-right layout.
+    await expect(getComputedStyle(handle).direction).toBe('rtl');
+
+    const panel = handle.parentElement!;
+    // Once it has slid in, the drawer sits against the left of the window.
+    await waitFor(() =>
+      expect(Math.abs(panel.getBoundingClientRect().left)).toBeLessThan(1),
+    );
+    await expect(
+      Math.abs(
+        handle.getBoundingClientRect().right -
+          panel.getBoundingClientRect().right,
+      ),
+    ).toBeLessThan(1);
+
+    const width = () => Number(handle.getAttribute('aria-valuenow'));
+    const initial = width();
+
+    handle.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    await expect(width()).toBeGreaterThan(initial);
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect(width()).toBe(initial);
+
+    // The handle captures the pointer on press, which Firefox refuses for a
+    // pointer no device produced.
+    const setCapture = spyOn(
+      window.HTMLElement.prototype,
+      'setPointerCapture',
+    ).mockImplementation(() => {});
+    const releaseCapture = spyOn(
+      window.HTMLElement.prototype,
+      'releasePointerCapture',
+    ).mockImplementation(() => {});
+    try {
+      const { right, top } = handle.getBoundingClientRect();
+      const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
+      await fireEvent.pointerDown(handle, {
+        ...pointer,
+        buttons: 1,
+        clientX: right,
+        clientY: top + 20,
+      });
+      await fireEvent.pointerMove(handle, {
+        ...pointer,
+        buttons: 1,
+        clientX: right + 40,
+        clientY: top + 20,
+      });
+      await fireEvent.pointerUp(handle, pointer);
+    } finally {
+      setCapture.mockRestore();
+      releaseCapture.mockRestore();
+    }
+    await expect(width()).toBe(initial + 40);
+
+    // It leaves the way it came: off the left of the window, and at a swipe
+    // towards that edge.
+    await expect(exitOffsetOf(panel)).toBeLessThan(0);
+    await expect(panel).toHaveAttribute('data-swipe-direction', 'left');
   },
 };
 

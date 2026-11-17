@@ -4,6 +4,7 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import Section from '@codaco/fresco-ui/Section';
+import { promptSchema } from '@codaco/protocol-validation';
 
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
 import {
@@ -28,10 +29,13 @@ import type { RowEditorProps, RowPreviewProps } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../../localization/textShape.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import PromptsSection from '../PromptsSection.tsx';
 import { useStageSubject } from '../useStageSubject.ts';
+
+const PROMPT_TEXT_SHAPE = markdownTextShapeAt(promptSchema, ['text']);
 
 /**
  * Stable identities for the empty cases: `initialValue` is a dependency of the
@@ -168,12 +172,12 @@ function NameGeneratorPromptEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name="text"
           component={LocalizedRichTextField}
+          shape={PROMPT_TEXT_SHAPE}
           dynamicValues="prompt"
           label={intl.formatMessage(nameGeneratorPromptMessages.textLabel)}
           placeholder={intl.formatMessage(
             nameGeneratorPromptMessages.textPlaceholder,
           )}
-          singleLine
           initialValue={asLocalizedString(item.text)}
           required={WRITE_THE_QUESTION}
         />

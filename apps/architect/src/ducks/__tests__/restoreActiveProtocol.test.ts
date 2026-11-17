@@ -1,10 +1,8 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  type CurrentProtocol,
-  withInterfaceText,
-} from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { type CurrentProtocol } from '@codaco/protocol-validation';
 import { APP_SCHEMA_VERSION } from '~/config';
 
 import createTimeline from '../middleware/timeline';

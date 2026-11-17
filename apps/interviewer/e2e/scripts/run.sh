@@ -35,6 +35,9 @@ fi
 # timing. Reuse the app's build-time analytics gate so the build under test
 # never initializes PostHog at all.
 #
+# VITE_DISABLE_ANIMATIONS=true turns off Motion and Base UI animations before
+# the app mounts, so every capture and check sees the page at rest.
+#
 # INTERVIEWER_SKIP_LEGACY_V8=true leaves the pinned Interviewer 8 out of the
 # build under test. Bundled, its worker downloads in the background and the
 # offline-readiness status races it. The specs that host a schema 8 interview
@@ -42,6 +45,7 @@ fi
 docker run --rm \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
+  -e VITE_DISABLE_ANIMATIONS=true \
   -e INTERVIEWER_SKIP_LEGACY_V8=true \
   -v "$(pwd)":/workspace \
   -v interviewer-e2e-node-modules:/workspace/node_modules \

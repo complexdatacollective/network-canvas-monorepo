@@ -52,6 +52,7 @@ describe('the worked example (first-year friendships and drinking)', () => {
         "Narrative",
         "Information",
         "FinishSession",
+        "FinishSession",
       ]
     `);
   });

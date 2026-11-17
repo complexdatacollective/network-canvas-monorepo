@@ -81,7 +81,6 @@ after the fact is marked in place.
 | `ruleSet`                   | `rules/ruleSet.ts`, `fields/RuleSetField.tsx`                                                                                                                                                                                                                                         | i18n-1a   |
 | `ruleValue`                 | `fields/RuleValueField.tsx`                                                                                                                                                                                                                                                           | i18n-1a   |
 | `ruleList`                  | `rules/RuleList.tsx`                                                                                                                                                                                                                                                                  | i18n-1a   |
-| `rulePreview`               | `rules/RulePreview.tsx`                                                                                                                                                                                                                                                               | i18n-1a   |
 | `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                                                                                                                                   | i18n-1a   |
 | `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                                                                                                                               | i18n-1a   |
 | `resourceKinds`             | `resources/components/resourceKinds.ts`                                                                                                                                                                                                                                               | i18n-1b   |
@@ -356,22 +355,23 @@ A family that needs different words from a shared section names them one at a
 time as `MessageDescriptor` props — `PromptsSection`'s `description`,
 `FormFieldsSection`'s `title`, `SectionCapability.confirmClear` — never as
 strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
-is the scan that keeps it that way, and it covers these directories the moment
-they exist: its `NOT_CONVERTED_YET` exclusion list is empty, so a section
-reintroducing a `copy?:` prop or a string-bearing `…Copy` type fails there.
+is the scan that keeps it that way: it excludes only the test-support
+directory `testing/`, so a section reintroducing a `copy?:` prop or a
+string-bearing `…Copy` type fails there.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
 for something else or reopens a decision that has been made:
 
 - **`autoName`** — `naming/` produces a stage's proposed `label`, which is
-  SAVED into the protocol document and then read back by `dedupeStageLabel` to
-  decide uniqueness and cut to 50 characters by `truncateToWord`. A translated
-  proposal would stop colliding with the same stage named in another language,
-  and would be cut in a different place, so the same configuration would
-  acquire a different stored name depending on who created it. It is the
-  `INTERFACE_NAMES` case and stays English; the argument is written out over
-  `STAGE_TYPE_NAMES`.
+  SAVED into the protocol document as the default language's text. It is not
+  app copy, so it has no ids here: it follows the PROTOCOL's default language,
+  not the language Architect is shown in, and its wording is a table in
+  `@codaco/protocol-validation` (`stage-wording/stage-names.ts`) with one
+  entry per language Network Canvas supplies protocol wording for. Where the
+  default language is none of those, no name is proposed. A test
+  (`naming/__tests__/stageNameWording.test.ts`) keeps its names for kinds of
+  stage identical to `protocolBuilder.interface.*` above.
 - **`markdown`** — `markdown/markdownAdapter.ts` transforms a document tree
   and holds no copy.
 - **`builderSection`** — `sections/BuilderSection.tsx` renders only the words
@@ -592,9 +592,7 @@ defect it exists to find:
 There was a second, `stillEnglish` — an unconverted area's leaks in full,
 asserted as an EQUALITY so that landing the conversion broke the test and made
 whoever converted it delete the entry. `src/resources` was what it was for, and
-i18n-1b converted it, so the allowance went with it. Its discipline survives
-where it is still needed, in the empty `NOT_CONVERTED_YET` of
-`src/__tests__/packageSource.ts` and the expected-failure guard over it.
+i18n-1b converted it, so the allowance went with it.
 
 ## Reading a story in another language
 

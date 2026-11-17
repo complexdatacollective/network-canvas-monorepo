@@ -197,7 +197,7 @@ function buildCoreClickScenario(): ScenarioDefinition {
       expect(isStub).toBe(browserName !== 'chromium');
 
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       const state = await protocol.getNetworkState(interview.interviewId);
       const value = state!.nodes[0]![entityAttributesProperty][variableId];
@@ -258,7 +258,7 @@ function buildTargetFeaturePropertyScenario(): ScenarioDefinition {
       // Right-of-centre click (x=0.75) always lands in tract-east: the map is
       // centred on [0, 0], so screen x=0.5 is longitude 0 by construction.
       await stage.geospatial.clickOnMap(0.75, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       const stateAfterClick = await protocol.getNetworkState(
         interview.interviewId,
@@ -342,7 +342,7 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
       await expect(
         stage.geospatial.outsideSelectableAreasButton,
       ).toBeDisabled();
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       const stateSelected = await protocol.getNetworkState(
         interview.interviewId,
@@ -354,7 +354,7 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
       await stage.geospatial.deselectOutsideArea();
       await expect(stage.geospatial.outsideSelectableOverlay).not.toBeVisible();
       await expect(stage.geospatial.outsideSelectableAreasButton).toBeEnabled();
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(false);
+      await interview.expectNotReadyToContinue();
 
       await expect
         .poll(async () => {
@@ -410,17 +410,17 @@ function buildNodeSteppingScenario(): ScenarioDefinition {
       // next button and settle on the new node badge instead.
       await expect(stage.geospatial.getNode('Node 1')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
       await interview.nextButton.click();
 
       await expect(stage.geospatial.getNode('Node 2')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
       await interview.nextButton.click();
 
       await expect(stage.geospatial.getNode('Node 3')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       const state = await protocol.getNetworkState(interview.interviewId);
       expect(state!.nodes).toHaveLength(3);
@@ -499,12 +499,12 @@ function buildMultiPromptScenario(): ScenarioDefinition {
       await expect(page.getByText('Where is the home location?')).toBeVisible();
       await expect(stage.geospatial.getNode('Node 1')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
       await interview.nextButton.click();
 
       await expect(stage.geospatial.getNode('Node 2')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
       await interview.nextButton.click();
 
       // Prompt boundary crossed: text switches and the node cursor resets.
@@ -513,12 +513,12 @@ function buildMultiPromptScenario(): ScenarioDefinition {
 
       // Prompt 2 for both nodes.
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
       await interview.nextButton.click();
 
       await expect(stage.geospatial.getNode('Node 2')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       const state = await protocol.getNetworkState(interview.interviewId);
       expect(state!.nodes).toHaveLength(2);
@@ -572,7 +572,7 @@ function buildSelectionRestoreScenario(): ScenarioDefinition {
 
       await expect(stage.geospatial.getNode('Node 1')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       const stateNode1 = await protocol.getNetworkState(interview.interviewId);
       const node1Value =
@@ -583,13 +583,13 @@ function buildSelectionRestoreScenario(): ScenarioDefinition {
       await interview.nextButton.click();
       await expect(stage.geospatial.getNode('Node 2')).toBeVisible();
       await stage.geospatial.clickOnMap(0.35, 0.35);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       // Back to Node 1: its stored value is unchanged and the button pulses on
       // arrival with no re-selection.
       await page.getByTestId('previous-button').click();
       await expect(stage.geospatial.getNode('Node 1')).toBeVisible();
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       const stateAfterBack = await protocol.getNetworkState(
         interview.interviewId,
@@ -669,12 +669,12 @@ function buildSubjectFiltersScenario(): ScenarioDefinition {
 
       await expect(stage.geospatial.getNode('Node 1')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
       await interview.nextButton.click();
 
       await expect(stage.geospatial.getNode('Node 2')).toBeVisible();
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
 
       await expect(stage.geospatial.getNode('Venue 1')).toHaveCount(0);
 
@@ -1186,7 +1186,7 @@ function buildOfflineIndicatorScenario(): ScenarioDefinition {
       // Move to the following Information stage, where the indicator must never
       // mount.
       await stage.geospatial.clickOnMap(0.5, 0.5);
-      await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
+      await interview.expectReadyToContinue();
       await interview.next();
       await expect(
         page.getByRole('heading', { name: 'Other stage' }),

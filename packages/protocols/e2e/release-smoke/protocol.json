@@ -1158,10 +1158,6 @@
         "en-US": "Cancel",
         "es": "Cancelar"
       },
-      "done": {
-        "en-US": "Done",
-        "es": "Listo"
-      },
       "delete": {
         "en-US": "Delete",
         "es": "Eliminar"
@@ -1216,17 +1212,9 @@
         "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
         "es": "Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed.",
-        "es": "No se pudo mostrar este elemento."
-      },
       "error": {
         "en-US": "An error occurred.",
         "es": "Se ha producido un error."
-      },
-      "loading": {
-        "en-US": "Loading…",
-        "es": "Cargando…"
       },
       "unnamed": {
         "en-US": "Unnamed",
@@ -1264,10 +1252,6 @@
         "en-US": "Your answers have not been saved. Enter your passphrase, then try again.",
         "es": "Tus respuestas no se han guardado. Introduce tu frase de contraseña y vuelve a intentarlo."
       },
-      "protectedAnswersUnavailable": {
-        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.",
-        "es": "Las respuestas protegidas por una frase de contraseña no se pueden mostrar ni guardar en esta entrevista. Avisa a la persona que te invitó a participar en este estudio."
-      },
       "answerUnavailable": {
         "en-US": "Answer unavailable",
         "es": "Respuesta no disponible"
@@ -1283,10 +1267,6 @@
       "passphraseAccepted": {
         "en-US": "Passphrase accepted! Click \"Next\" to continue.",
         "es": "¡Frase de contraseña aceptada! Pulsa la flecha de avance para continuar."
-      },
-      "checkingPassphrase": {
-        "en-US": "Checking your passphrase…",
-        "es": "Comprobando tu frase de contraseña…"
       },
       "passwordPlaceholder": {
         "en-US": "Enter password",
@@ -1383,28 +1363,12 @@
       "redoDescription": {
         "en-US": "Bring back the change you undid.",
         "es": "Vuelve a hacer el cambio que deshiciste."
-      },
-      "trackerAllDetails": {
-        "en-US": "Add required details for all family members",
-        "es": "Añade los datos obligatorios de todos los miembros de la familia"
-      }
-    },
-    "categoricalBin": {
-      "placeHere": {
-        "en-US": "Place here",
-        "es": "Colocar aquí"
       }
     },
     "quickAdd": {
       "quickAddHint": {
         "en-US": "Press Enter when you are finished.",
         "es": "Pulsa Intro cuando hayas terminado."
-      }
-    },
-    "egoForm": {
-      "scrollForQuestions": {
-        "en-US": "Scroll to see more questions",
-        "es": "Desplázate para ver más preguntas"
       }
     }
   }

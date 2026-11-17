@@ -334,7 +334,7 @@
       "bestFor": "Ideal für",
       "downloadVersion": "Version {version} herunterladen",
       "platformAccessibleName": "{app} für {platform}",
-      "schemaVersionInfo": "Architect Classic und Interviewer Classic unterstützen Protokolle mit Schema 7. Die browserbasierten Apps Architect und Interviewer sowie Fresco verwenden Schema 9, das die neuesten Funktionen enthält. Die Aktualisierung eines Protokolls lässt sich nicht rückgängig machen. Bewahren Sie daher die ursprüngliche Datei mit Schema 7 auf, wenn Sie die Classic-Apps weiterhin benötigen.",
+      "schemaVersionInfo": "Architect Classic und Interviewer Classic unterstützen Protokolle mit einem älteren Schema. Die browserbasierten Apps Architect, Interviewer und Fresco verwenden das neueste Schema, das alle neuen Funktionen enthält. Die Migration eines Protokolls auf das neueste Schema lässt sich nicht rückgängig machen. Bewahren Sie daher eine Kopie der ursprünglichen Datei auf, wenn Sie die Classic-Apps weiterhin benötigen.",
       "schemaVersionLink": "Mehr über Schemaversionen erfahren"
     },
     "platforms": {
@@ -387,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · Wartungsmodus",
-        "description": "Verwenden Sie diese App nur, wenn Ihre Studie mit Interviewer Classic und Schema 7 kompatibel bleiben muss.",
+        "description": "Verwenden Sie diese App nur, wenn Ihre Studie mit Interviewer Classic und dessen älterem Schema kompatibel bleiben muss.",
         "bestFor": {
           "classicCompatibility": "Eine bestehende Studie, die mit Interviewer Classic kompatibel bleiben muss",
-          "editWithoutMigration": "Ein Protokoll mit Schema 7, das ohne Migration weiter bearbeitet werden muss"
+          "editWithoutMigration": "Ein Protokoll, das ein älteres Schema verwendet und ohne Migration weiter bearbeitet werden muss"
         }
       },
       "interviewerClassic": {
         "status": "Classic · Bestehende Studien",
-        "description": "Für bestehende Studien mit Schema 7 und für Offline-Arbeitsabläufe auf Desktop-Computern oder Tablets. Wird für Kompatibilität und Fehlerbehebungen weiter gepflegt.",
+        "description": "Für bestehende Studien mit einem älteren Schema und für Offline-Arbeitsabläufe auf Desktop-Computern oder Tablets. Wird für Kompatibilität und Fehlerbehebungen weiter gepflegt.",
         "bestFor": {
-          "schema7Study": "Eine bestehende Studie, die auf Schema 7 angewiesen ist",
+          "schema7Study": "Eine bestehende Studie, die auf ein älteres Schema angewiesen ist",
           "desktopTablet": "Einen bestehenden Arbeitsablauf auf Desktop-Computern oder Tablets beibehalten",
           "offlineCollection": "Studien, die den bisherigen Offline-Arbeitsablauf für die Erhebung benötigen"
         }

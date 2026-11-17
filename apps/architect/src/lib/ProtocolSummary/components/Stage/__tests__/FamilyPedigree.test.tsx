@@ -219,7 +219,7 @@ describe('Protocol Summary family pedigree', () => {
     expect(screen.getAllByText('Attribute')).toHaveLength(2);
   });
 
-  it('shows the wording participants read, each set of versions folded to its pill', () => {
+  it('shows the wording participants read, a line for each version of a set that is all of it', () => {
     const recommended = {
       scope: 'parents',
       enforcement: 'recommended',
@@ -267,11 +267,15 @@ describe('Protocol Summary family pedigree', () => {
 
     expect(screen.getByText('What is their name?')).toBeInTheDocument();
     expect(screen.getByText('A nickname is fine.')).toBeInTheDocument();
-    // A text with a version for each case is folded to one pill, as the
-    // editor shows it, never the syntax it is stored in.
-    expect(document.querySelector('[data-token="isYou"]')).toHaveTextContent(
-      'Participant or someone else',
-    );
+    // A text that is nothing but a version for each case is written out, a
+    // line for each, as the editor lists it open: never the syntax it is
+    // stored in, and never only a pill hiding the words.
+    const parents = [...document.querySelectorAll('[data-version-summary]')];
+    expect(parents.map((version) => version.textContent)).toEqual([
+      expect.stringMatching(/Add your parents$/),
+      expect.stringMatching(/Parents of Name$/),
+    ]);
+    expect(document.querySelector('[data-token="isYou"]')).toBeNull();
     // A placeholder is a pill inside the line, so each line is found by the
     // words it reads as.
     const line = (text: string) =>

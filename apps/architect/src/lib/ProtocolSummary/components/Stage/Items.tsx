@@ -12,7 +12,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.items.items',
     defaultMessage: 'Items',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Items.',
+      'Section heading in the printable protocol summary, above the list of text and media items on an Information stage.',
   },
 });
 

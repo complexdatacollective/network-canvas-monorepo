@@ -1,8 +1,10 @@
 import type { ChangeEvent, FocusEvent, KeyboardEvent } from 'react';
 
+import { textEntryDirection } from '@codaco/fresco-ui/form/textEntryDirection';
 import useSelectOnFocus from '@codaco/fresco-ui/hooks/useSelectOnFocus';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 
 /**
  * Type and box metrics the control and its sizing replica below MUST share:
@@ -122,7 +124,7 @@ const StageNameInput = ({
     // `maxLength` is the browser's, applied before this runs, so shortening
     // the string here spends cap characters the finished name had room for —
     // an indented 51-character paste normalising to 45 came back cut at 44.
-    onChange?.(event.target.value.replace(/[\r\n]/g, ' '));
+    onChange?.(lineBreaksAsSpaces(event.target.value));
   };
 
   const handleBlur = (_event: FocusEvent<HTMLTextAreaElement>) => {
@@ -132,6 +134,10 @@ const StageNameInput = ({
   // Typing replaces a proposed name rather than landing inside it.
   const selectOnFocusHandlers =
     useSelectOnFocus<HTMLTextAreaElement>(selectOnFocus);
+
+  // The editing language's direction when there is one; otherwise the name
+  // is read by its own first letter.
+  const direction = textEntryDirection({ dir });
 
   return (
     /*
@@ -147,7 +153,15 @@ const StageNameInput = ({
       dir={dir}
       className="grid w-full grid-cols-[minmax(0,1fr)]"
     >
-      <div aria-hidden="true" className={cx(sharedTextLayout, 'invisible')}>
+      {/*
+       * Both the copy that sizes the box and the box itself take the same
+       * direction (`textEntryDirection`), so they wrap alike.
+       */}
+      <div
+        aria-hidden="true"
+        dir={direction.dir}
+        className={cx(sharedTextLayout, direction.className, 'invisible')}
+      >
         {/*
          * The trailing space holds the height of a line ending in whitespace,
          * which a block collapses away and the textarea shows a caret on.
@@ -175,8 +189,10 @@ const StageNameInput = ({
         aria-invalid={ariaInvalid}
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
+        dir={direction.dir}
         className={cx(
           sharedTextLayout,
+          direction.className,
           'focusable h-full resize-none overflow-hidden bg-transparent outline-none placeholder:opacity-40',
           ariaInvalid && 'text-destructive-ink',
         )}

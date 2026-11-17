@@ -1,13 +1,5 @@
-import {
-  type IntlShape,
-  createAppIntl,
-  defineMessages,
-} from '@codaco/app-i18n/messages';
-
-const defaultIntl = createAppIntl({ locale: 'en' });
 import { useCallback, useMemo } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
@@ -15,69 +7,6 @@ import {
   undoWithNavigation,
 } from '~/ducks/modules/activeProtocol';
 import { getCanRedo, getCanUndo } from '~/selectors/protocol';
-const utilityMessages = defineMessages({
-  changeUndoneMovedToStagesTo: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToStagesTo',
-    defaultMessage: 'Change undone. Moved to Stages to show the result.',
-    description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
-  },
-  changeUndoneMovedToResourcesTo: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToResourcesTo',
-    defaultMessage: 'Change undone. Moved to Resources to show the result.',
-    description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
-  },
-  changeUndoneMovedToCodebookTo: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToCodebookTo',
-    defaultMessage: 'Change undone. Moved to Codebook to show the result.',
-    description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
-  },
-  changeUndoneMovedToLanguages: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToLanguages',
-    defaultMessage: 'Change undone. Moved to Languages to show the result.',
-    description:
-      'Screen-reader announcement after an undo moved the researcher to the Languages page. "Languages" is the name of that page in the project navigation.',
-  },
-  changeUndone: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndone',
-    defaultMessage: 'Change undone.',
-    description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
-  },
-  changeRedoneMovedToStagesTo: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToStagesTo',
-    defaultMessage: 'Change redone. Moved to Stages to show the result.',
-    description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
-  },
-  changeRedoneMovedToResourcesTo: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToResourcesTo',
-    defaultMessage: 'Change redone. Moved to Resources to show the result.',
-    description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
-  },
-  changeRedoneMovedToCodebookTo: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToCodebookTo',
-    defaultMessage: 'Change redone. Moved to Codebook to show the result.',
-    description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
-  },
-  changeRedoneMovedToLanguages: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToLanguages',
-    defaultMessage: 'Change redone. Moved to Languages to show the result.',
-    description:
-      'Screen-reader announcement after a redo moved the researcher to the Languages page. "Languages" is the name of that page in the project navigation.',
-  },
-  changeRedone: {
-    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedone',
-    defaultMessage: 'Change redone.',
-    description:
-      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
-  },
-});
-
 type ProtocolUndoRedo = {
   canUndo: boolean;
   canRedo: boolean;
@@ -85,47 +14,41 @@ type ProtocolUndoRedo = {
   redo: () => void;
 };
 
-// Whole sentences rather than assembled fragments, so they can be localised
-// later without depending on English word order (see the repo's i18n rules).
+// Whole English sentences: they are announced to a screen reader only, and
+// screen-reader text stays English in every language.
 // `navigatedTo` is the page the operation moved the researcher to, and matches
 // the targets `resolveTimelineNavTarget` can produce. Destinations are named
 // exactly as ProjectNav labels them, so what a researcher hears matches the
 // page they arrive on.
-const undoAnnouncement = (
-  navigatedTo: string | null,
-  intl: IntlShape = defaultIntl,
-): string => {
+const undoAnnouncement = (navigatedTo: string | null): string => {
   switch (navigatedTo) {
     case '/protocol':
-      return intl.formatMessage(utilityMessages.changeUndoneMovedToStagesTo);
+      return 'Change undone. Moved to Stages to show the result.';
     case '/protocol/assets':
-      return intl.formatMessage(utilityMessages.changeUndoneMovedToResourcesTo);
+      return 'Change undone. Moved to Resources to show the result.';
     case '/protocol/codebook':
-      return intl.formatMessage(utilityMessages.changeUndoneMovedToCodebookTo);
+      return 'Change undone. Moved to Codebook to show the result.';
     case '/protocol/localization':
-      return intl.formatMessage(utilityMessages.changeUndoneMovedToLanguages);
+      return 'Change undone. Moved to Languages to show the result.';
     case null:
     default:
-      return intl.formatMessage(utilityMessages.changeUndone);
+      return 'Change undone.';
   }
 };
 
-const redoAnnouncement = (
-  navigatedTo: string | null,
-  intl: IntlShape = defaultIntl,
-): string => {
+const redoAnnouncement = (navigatedTo: string | null): string => {
   switch (navigatedTo) {
     case '/protocol':
-      return intl.formatMessage(utilityMessages.changeRedoneMovedToStagesTo);
+      return 'Change redone. Moved to Stages to show the result.';
     case '/protocol/assets':
-      return intl.formatMessage(utilityMessages.changeRedoneMovedToResourcesTo);
+      return 'Change redone. Moved to Resources to show the result.';
     case '/protocol/codebook':
-      return intl.formatMessage(utilityMessages.changeRedoneMovedToCodebookTo);
+      return 'Change redone. Moved to Codebook to show the result.';
     case '/protocol/localization':
-      return intl.formatMessage(utilityMessages.changeRedoneMovedToLanguages);
+      return 'Change redone. Moved to Languages to show the result.';
     case null:
     default:
-      return intl.formatMessage(utilityMessages.changeRedone);
+      return 'Change redone.';
   }
 };
 
@@ -145,7 +68,6 @@ const redoAnnouncement = (
  * never claim a change that did not happen.
  */
 export const useProtocolUndoRedo = (): ProtocolUndoRedo => {
-  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { announce } = useAccessibilityAnnouncements();
 
@@ -155,14 +77,14 @@ export const useProtocolUndoRedo = (): ProtocolUndoRedo => {
   const undo = useCallback(() => {
     const outcome = dispatch(undoWithNavigation());
     if (!outcome.applied) return;
-    announce(undoAnnouncement(outcome.navigatedTo, intl));
-  }, [announce, dispatch, intl]);
+    announce(undoAnnouncement(outcome.navigatedTo));
+  }, [announce, dispatch]);
 
   const redo = useCallback(() => {
     const outcome = dispatch(redoWithNavigation());
     if (!outcome.applied) return;
-    announce(redoAnnouncement(outcome.navigatedTo, intl));
-  }, [announce, dispatch, intl]);
+    announce(redoAnnouncement(outcome.navigatedTo));
+  }, [announce, dispatch]);
 
   return useMemo(
     () => ({ canUndo, canRedo, undo, redo }),

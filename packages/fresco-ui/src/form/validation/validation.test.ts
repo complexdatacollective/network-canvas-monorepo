@@ -23,21 +23,7 @@ describe('Validation Utils', () => {
   const mockFormValues: Record<string, FieldValue> = {};
 
   describe('validateFieldValue', () => {
-    it('should validate with no schema (passthrough)', async () => {
-      // When no validation is provided, we can use z.unknown() which accepts anything
-      const result = await validateFieldValue(
-        'test',
-        z.unknown(),
-        mockFormValues,
-      );
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toBe('test');
-      }
-    });
-
-    it('should validate with Zod schema', async () => {
+    it('validates against a schema passed directly', async () => {
       const schema = z.string().check(z.minLength(3, 'Too short'));
 
       // Valid case
@@ -46,10 +32,7 @@ describe('Validation Utils', () => {
         schema,
         mockFormValues,
       );
-      expect(validResult.success).toBe(true);
-      if (validResult.success) {
-        expect(validResult.data).toBe('hello');
-      }
+      expect(validResult).toMatchObject({ success: true, data: 'hello' });
 
       // Invalid case
       const invalidResult = await validateFieldValue(
@@ -58,9 +41,7 @@ describe('Validation Utils', () => {
         mockFormValues,
       );
       expect(invalidResult.success).toBe(false);
-      if (!invalidResult.success) {
-        expect(invalidResult.error.issues[0]?.message).toBe('Too short');
-      }
+      expect(invalidResult.error?.issues[0]?.message).toBe('Too short');
     });
 
     it('should validate with function returning schema', async () => {
@@ -74,10 +55,10 @@ describe('Validation Utils', () => {
         validationFn,
         mockFormValues,
       );
-      expect(validResult.success).toBe(true);
-      if (validResult.success) {
-        expect(validResult.data).toBe('test@example.com');
-      }
+      expect(validResult).toMatchObject({
+        success: true,
+        data: 'test@example.com',
+      });
 
       // Invalid case
       const invalidResult = await validateFieldValue(
@@ -86,9 +67,7 @@ describe('Validation Utils', () => {
         mockFormValues,
       );
       expect(invalidResult.success).toBe(false);
-      if (!invalidResult.success) {
-        expect(invalidResult.error.issues[0]?.message).toBe('Invalid email');
-      }
+      expect(invalidResult.error?.issues[0]?.message).toBe('Invalid email');
     });
 
     it('should validate with async function returning schema', async () => {
@@ -106,10 +85,7 @@ describe('Validation Utils', () => {
         asyncValidationFn,
         mockFormValues,
       );
-      expect(validResult.success).toBe(true);
-      if (validResult.success) {
-        expect(validResult.data).toBe('hello');
-      }
+      expect(validResult).toMatchObject({ success: true, data: 'hello' });
 
       // Invalid case
       const invalidResult = await validateFieldValue(
@@ -118,9 +94,7 @@ describe('Validation Utils', () => {
         mockFormValues,
       );
       expect(invalidResult.success).toBe(false);
-      if (!invalidResult.success) {
-        expect(invalidResult.error.issues[0]?.message).toBe('Too short');
-      }
+      expect(invalidResult.error?.issues[0]?.message).toBe('Too short');
     });
 
     it('should handle validation errors gracefully', async () => {
@@ -154,11 +128,7 @@ describe('Validation Utils', () => {
         formValuesWithMinLength,
       );
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0]?.message).toBe(
-          'Must be at least 5 chars',
-        );
-      }
+      expect(result.error?.issues[0]?.message).toBe('Must be at least 5 chars');
     });
   });
 

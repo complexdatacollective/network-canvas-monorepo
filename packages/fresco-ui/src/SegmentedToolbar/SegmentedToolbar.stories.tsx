@@ -657,7 +657,10 @@ function PageActions({ width, ...args }: TrailingRestArgs) {
           className="max-w-full"
         >
           <SegmentedToolbar {...args}>
-            <ToolbarButtonComponent icon={<ArrowLeftToLine />} onClick={noop}>
+            <ToolbarButtonComponent
+              icon={<ArrowLeftToLine className="rtl:-scale-x-100" />}
+              onClick={noop}
+            >
               Return to Start Screen
             </ToolbarButtonComponent>
             <ToolbarSeparatorComponent />

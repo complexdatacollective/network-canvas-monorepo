@@ -15,13 +15,13 @@ const messages = defineMessages({
     id: 'fresco.RecruitmentTestSectionServer.recruitmentTest',
     defaultMessage: 'Recruitment Test',
     description:
-      'Researcher-facing RecruitmentTestSectionServer: Recruitment Test',
+      'Label of a field in the Developer Tools section of Settings; the field lets the researcher open a test interview as if a participant had followed a recruitment link.',
   },
   thisSectionAllowsYouToTestRecruitment: {
     id: 'fresco.RecruitmentTestSectionServer.thisSectionAllowsYouToTestRecruitment',
     defaultMessage: 'This section allows you to test recruitment.',
     description:
-      'Researcher-facing RecruitmentTestSectionServer: This section allows you to test recruitment.',
+      'Hint under the Recruitment Test label in the Developer Tools section of Settings; the controls below start a test interview for a chosen protocol and participant.',
   },
 });
 

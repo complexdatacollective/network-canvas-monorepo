@@ -1,20 +1,5 @@
-import type { z } from 'zod';
-
 /** A stage as a protocol holds it, before its shape is known. */
 export type StageRecord = Readonly<Record<string, unknown>>;
-
-/**
- * A setting whose wording the stage shows only in some configurations, and
- * the configuration that shows it (see `SuppliedStageSetting.when`).
- */
-export type ConditionalSetting = Readonly<{
-  /** The stage's own key for the setting. */
-  name: string;
-  /** Whether the stage shows the setting in its current configuration. */
-  when: (stage: StageRecord) => boolean;
-  /** What the refusal says when the setting is needed and missing. */
-  message: string;
-}>;
 
 const fieldOf = (value: unknown, key: string): unknown =>
   typeof value === 'object' && value !== null && key in value
@@ -55,24 +40,3 @@ export const hasExternalPanels = (stage: StageRecord): boolean => {
 /** Whether a Geospatial stage's map has a search box. */
 export const hasMapSearch = (stage: StageRecord): boolean =>
   fieldOf(fieldOf(stage, 'mapOptions'), 'allowSearch') === true;
-
-/**
- * Refuses a stage that shows one of its conditional settings without holding
- * it. Each setting is optional in the schema, because the configurations that
- * do not show it need none; this makes it required wherever they do.
- */
-export const requireWhenShown = (
-  stage: StageRecord,
-  ctx: z.RefinementCtx,
-  settings: readonly ConditionalSetting[],
-): void => {
-  for (const setting of settings) {
-    if (!setting.when(stage) || fieldOf(stage, setting.name) !== undefined)
-      continue;
-    ctx.addIssue({
-      code: 'custom' as const,
-      message: setting.message,
-      path: [setting.name],
-    });
-  }
-};

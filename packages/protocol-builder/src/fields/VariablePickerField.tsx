@@ -200,12 +200,6 @@ const messages = defineMessages({
     description:
       'Notice under the control, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated.',
   },
-  attributeTypeLabel: {
-    id: 'protocolBuilder.variablePicker.attributeTypeLabel',
-    defaultMessage: 'Attribute type: {attributeType}',
-    description:
-      'Read out after the chosen attribute’s name, saying what kind of answer it records. attributeType is a protocol schema token such as "number", "text" or "categorical", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence.',
-  },
 });
 
 /**
@@ -759,10 +753,8 @@ export default function VariablePickerField({
                     same pill renders as a row of the window's list, that row's
                     accessible NAME has to be the attribute's own name. */}
                 {selected?.type !== undefined && (
-                  <span className="sr-only">
-                    {intl.formatMessage(messages.attributeTypeLabel, {
-                      attributeType: selected.type,
-                    })}
+                  <span className="sr-only" lang="en">
+                    {`Attribute type: ${selected.type}`}
                   </span>
                 )}
               </div>

@@ -1,5 +1,9 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  colorSequenceHueName,
+  resolveSwatchColor,
+} from '@codaco/fresco-ui/form/fields/ColorPicker';
 import { mapboxStyleOptions } from '~/config/mapboxConstants';
 import { formatConfig } from '~/i18n/formatConfig';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
@@ -20,13 +24,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.mapOptions.mapboxAPIKey',
     defaultMessage: 'Mapbox API Key',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / MapOptions.',
+      "Section heading in the printable protocol summary, above the Mapbox API key resource used by a geospatial stage's map.",
   },
   geoJSONDataSource: {
     id: 'architect.protocolSummary.stage.mapOptions.geoJSONDataSource',
     defaultMessage: 'GeoJSON Data Source',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / MapOptions.',
+      "Section heading in the printable protocol summary, above the uploaded GeoJSON file that supplies the regions of a geospatial stage's map.",
   },
 });
 
@@ -103,13 +107,23 @@ const MapOptions = ({ mapOptions = null }: MapOptionsProps) => {
   if (color) {
     configRows.push([
       intl.formatMessage(summaryMessages.selectionColor),
-      color,
+      // The swatch and its name, as the colour picker shows it; a colour the
+      // theme's sequences do not name is shown as the protocol records it.
+      <span key="color" className="inline-flex items-center gap-2">
+        <span
+          aria-hidden
+          className="inline-block size-4 flex-none rounded-full"
+          style={{ backgroundColor: resolveSwatchColor(color) }}
+        />
+        {colorSequenceHueName(color, intl) ?? <code>{color}</code>}
+      </span>,
     ]);
   }
   if (targetFeatureProperty) {
     configRows.push([
       intl.formatMessage(summaryMessages.targetFeatureProperty),
-      targetFeatureProperty,
+      // A property name from the researcher's GeoJSON file.
+      <bdi key="property">{targetFeatureProperty}</bdi>,
     ]);
   }
 

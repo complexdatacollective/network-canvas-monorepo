@@ -6,12 +6,14 @@ const messages = defineMessages({
   confirmYourIdentity: {
     id: 'interviewer.stepUpAuthDialog.confirmYourIdentity',
     defaultMessage: 'Confirm your identity',
-    description: 'The title label in Interviewer Step Up Auth Dialog.',
+    description:
+      'Title of the dialog that asks the researcher to unlock again before a sensitive action, such as starting, exiting or exporting an interview.',
   },
   authenticateToContinue: {
     id: 'interviewer.stepUpAuthDialog.authenticateToContinue',
     defaultMessage: 'Authenticate to continue.',
-    description: 'The description label in Interviewer Step Up Auth Dialog.',
+    description:
+      'Instruction under the title of the confirm-identity dialog, asking the researcher to authenticate with their PIN, passphrase or biometrics to continue.',
   },
 });
 

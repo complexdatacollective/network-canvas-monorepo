@@ -1,17 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { Fragment } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { cx } from '~/utils/cva';
-const messages = defineMessages({
-  breadcrumb: {
-    id: 'architect.projectNav.breadcrumb.breadcrumb',
-    defaultMessage: 'Breadcrumb',
-    description: 'The aria-label text in components / ProjectNav / Breadcrumb.',
-  },
-});
-
 export type BreadcrumbItem = {
   label: string;
   onClick?: () => void;
@@ -21,7 +11,8 @@ type BreadcrumbProps = {
   items: BreadcrumbItem[];
 };
 
-const labelClasses = 'inline-block text-current truncate max-w-xs';
+const labelClasses =
+  'inline-block text-current truncate max-w-xs text-match-parent';
 
 // `truncate` clips the LOGICAL end of a string and puts the ellipsis there.
 // Under the app's inherited LTR base direction, bidi reordering places the
@@ -32,10 +23,9 @@ const labelClasses = 'inline-block text-current truncate max-w-xs';
 // `title` exposes the whole value either way.
 
 const Breadcrumb = ({ items }: BreadcrumbProps) => {
-  const intl = useAppIntl();
   return (
     <nav
-      aria-label={intl.formatMessage(messages.breadcrumb)}
+      aria-label={'Breadcrumb'}
       className="flex min-w-0 flex-1 items-center gap-2.5"
     >
       {items.map((item, index) => (
@@ -43,7 +33,7 @@ const Breadcrumb = ({ items }: BreadcrumbProps) => {
           {index > 0 && (
             <ChevronRight
               aria-hidden
-              className="size-4 shrink-0 text-current/40"
+              className="size-4 shrink-0 text-current/40 rtl:-scale-x-100"
             />
           )}
           {item.onClick ? (

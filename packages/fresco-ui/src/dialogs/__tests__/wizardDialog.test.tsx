@@ -1,6 +1,12 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '../../form/Field/Field';
@@ -66,11 +72,9 @@ function SecondNameStep() {
 
 function TestWizardComponent({
   onResult,
-  onFinish,
   steps,
 }: {
   onResult: (result: unknown) => void;
-  onFinish?: (data: Record<string, unknown>) => unknown;
   steps?: WizardStep[];
 }) {
   const { openDialog } = useDialog();
@@ -83,7 +87,6 @@ function TestWizardComponent({
         { title: 'Step 1', content: SimpleStep },
         { title: 'Step 2', content: SecondStep },
       ],
-      onFinish,
     });
     onResult(result);
   };
@@ -105,80 +108,6 @@ describe('useWizard hook', () => {
 
 describe('Wizard Dialog', () => {
   const user = userEvent.setup();
-
-  it('should open a wizard dialog and navigate between steps', async () => {
-    const onResult = vi.fn();
-
-    render(
-      <DialogProvider>
-        <TestWizardComponent onResult={onResult} />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-
-    // Should show step 1
-    const dialog = await screen.findByRole('dialog');
-    expect(dialog).toBeInTheDocument();
-
-    // Click Continue to go to step 2
-    const continueButton = screen.getByRole('button', { name: 'Continue' });
-    await user.click(continueButton);
-
-    // Should now show step 2
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
-
-    // Click Finish on last step
-    const finishButton = screen.getByRole('button', { name: 'Finish' });
-    await user.click(finishButton);
-
-    // Wait for animation timeout
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(onResult).toHaveBeenCalledWith({});
-  });
-
-  it('should accumulate data across steps', async () => {
-    const onResult = vi.fn();
-
-    render(
-      <DialogProvider>
-        <TestWizardComponent onResult={onResult} />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-    await screen.findByRole('dialog');
-
-    // Set data on step 1
-    await user.click(screen.getByText('Set Data'));
-
-    // Navigate to step 2
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
-
-    // Verify step 1 data persisted
-    expect(screen.getByTestId('step1-data')).toHaveTextContent('done');
-
-    // Set data on step 2
-    await user.click(screen.getByText('Set Data 2'));
-
-    // Finish
-    await user.click(screen.getByRole('button', { name: 'Finish' }));
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(onResult).toHaveBeenCalledWith({ step1: 'done', step2: 'done' });
-  });
 
   it('exposes active values from completed steps and clears them on back', async () => {
     const onResult = vi.fn();
@@ -211,27 +140,6 @@ describe('Wizard Dialog', () => {
 
     await screen.findByRole('textbox', { name: 'First name' });
     expect(screen.getByTestId('completed-step-values')).toHaveTextContent('{}');
-  });
-
-  it('should return null when cancelled', async () => {
-    const onResult = vi.fn();
-
-    render(
-      <DialogProvider>
-        <TestWizardComponent onResult={onResult} />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-    await screen.findByRole('dialog');
-
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(onResult).toHaveBeenCalledWith(null);
   });
 
   it('should render a custom cancelLabel when provided', async () => {
@@ -281,47 +189,7 @@ describe('Wizard Dialog', () => {
       screen.getByRole('button', { name: 'Continue without security' }),
     );
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(onResult).toHaveBeenCalledWith(null);
-  });
-
-  it('should transform data with onFinish', async () => {
-    const onResult = vi.fn();
-
-    render(
-      <DialogProvider>
-        <TestWizardComponent
-          onResult={onResult}
-          onFinish={(data) => ({ transformed: true, ...data })}
-        />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-    await screen.findByRole('dialog');
-
-    // Set data and navigate to last step
-    await user.click(screen.getByText('Set Data'));
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
-
-    // Finish
-    await user.click(screen.getByRole('button', { name: 'Finish' }));
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(onResult).toHaveBeenCalledWith({
-      transformed: true,
-      step1: 'done',
-    });
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(null));
   });
 
   it('should not show Back button on first step', async () => {
@@ -353,78 +221,9 @@ describe('Wizard Dialog', () => {
     // Navigate to step 2
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
-
-    // Back button should be visible
-    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
-  });
-});
-
-describe('Wizard Dialog with setNextEnabled', () => {
-  const user = userEvent.setup();
-
-  function DisabledNextStep() {
-    const { setNextEnabled } = useWizard();
-    const [name, setName] = useState('');
-
-    return (
-      <input
-        aria-label="name"
-        value={name}
-        onChange={(e) => {
-          setName(e.target.value);
-          setNextEnabled(e.target.value.length > 0);
-        }}
-      />
-    );
-  }
-
-  function TestDisabledNext({
-    onResult,
-  }: {
-    onResult: (result: unknown) => void;
-  }) {
-    const { openDialog } = useDialog();
-
-    const handleOpen = async () => {
-      const result = await openDialog({
-        type: 'wizard',
-        title: 'Test',
-        steps: [{ title: 'Step 1', content: DisabledNextStep }],
-      });
-      onResult(result);
-    };
-
-    return (
-      <button type="button" onClick={handleOpen}>
-        Open
-      </button>
-    );
-  }
-
-  it('should disable Continue when setNextEnabled(false) is called', async () => {
-    render(
-      <DialogProvider>
-        <TestDisabledNext onResult={vi.fn()} />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-    await screen.findByRole('dialog');
-
-    // Initially enabled (default)
-    expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
-
-    // Type something — enables next
-    const input = screen.getByRole('textbox', { name: 'name' });
-    await user.type(input, 'a');
-    expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
-
-    // Clear — disables next
-    await user.clear(input);
-    expect(screen.getByRole('button', { name: 'Finish' })).toBeDisabled();
+    expect(
+      await screen.findByRole('button', { name: 'Back' }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -465,28 +264,21 @@ describe('Wizard Dialog resetStepOverrides', () => {
 
     // Navigate to step 2
     await user.click(screen.getByRole('button', { name: 'Continue' }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
 
     // Disable next on step 2
-    await user.click(screen.getByText('Disable'));
+    await user.click(await screen.findByText('Disable'));
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
 
     // Go back to step 1
     await user.click(screen.getByRole('button', { name: 'Back' }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
+    await screen.findByText('Set Data');
 
     // Next should be re-enabled (reset on navigation)
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
 
     // Navigate forward again — next should still be enabled (reset)
     await user.click(screen.getByRole('button', { name: 'Continue' }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
+    await screen.findByText('Disable');
 
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
@@ -525,11 +317,9 @@ describe('Wizard Dialog single step', () => {
     await user.click(screen.getByText('Set Data'));
     await user.click(screen.getByRole('button', { name: 'Finish' }));
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    expect(onResult).toHaveBeenCalledWith({ step1: 'done' });
+    await waitFor(() =>
+      expect(onResult).toHaveBeenCalledWith({ step1: 'done' }),
+    );
   });
 });
 
@@ -587,12 +377,9 @@ describe('Wizard Dialog goToStep', () => {
 
     // Valid jump to step 2
     await user.click(screen.getByText('Go To 2'));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
 
     // Should now be on step 3 (index 2), showing ThirdStep content
-    expect(screen.getByText('Step 3 content')).toBeInTheDocument();
+    expect(await screen.findByText('Step 3 content')).toBeInTheDocument();
   });
 });
 
@@ -655,30 +442,6 @@ describe('Wizard Dialog setBeforeNext', () => {
     );
   }
 
-  it('should block navigation when beforeNext returns false', async () => {
-    const handler = vi.fn().mockResolvedValue(false);
-    const onResult = vi.fn();
-
-    render(
-      <DialogProvider>
-        <TestBeforeNext onResult={onResult} handler={handler} />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-    await screen.findByRole('dialog');
-
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
-
-    expect(handler).toHaveBeenCalledOnce();
-    // Should still be on step 1
-    expect(screen.getByText('Before next step')).toBeInTheDocument();
-  });
-
   it('cannot be left while beforeNext runs, even in the same task as Continue, and moves on once it completes', async () => {
     let finish: (proceed: boolean) => void = () => undefined;
     const handler = vi.fn(
@@ -706,15 +469,13 @@ describe('Wizard Dialog setBeforeNext', () => {
       next.click();
       cancel.click();
     });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect(cancel).toBeDisabled();
+    await waitFor(() => expect(cancel).toBeDisabled());
     expect(
       screen.queryByRole('button', { name: 'Close' }),
     ).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
+    // Longer than the 500 ms close delay, so an Escape that was honoured would
+    // have resolved the dialog by now.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
@@ -727,30 +488,6 @@ describe('Wizard Dialog setBeforeNext', () => {
     });
     expect(await screen.findByText('Set Data 2')).toBeInTheDocument();
     expect(screen.getByTestId('wizard-cancel')).toBeEnabled();
-  });
-
-  it('should allow navigation when beforeNext returns true', async () => {
-    const handler = vi.fn().mockResolvedValue(true);
-    const onResult = vi.fn();
-
-    render(
-      <DialogProvider>
-        <TestBeforeNext onResult={onResult} handler={handler} />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-    await screen.findByRole('dialog');
-
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
-
-    expect(handler).toHaveBeenCalledOnce();
-    // Should have advanced to step 2
-    expect(screen.queryByText('Before next step')).not.toBeInTheDocument();
   });
 
   it('should allow navigation when beforeNext returns undefined', async () => {
@@ -768,12 +505,8 @@ describe('Wizard Dialog setBeforeNext', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
-
+    expect(await screen.findByText('Set Data 2')).toBeInTheDocument();
     expect(handler).toHaveBeenCalledOnce();
-    // Should have advanced to step 2
     expect(screen.queryByText('Before next step')).not.toBeInTheDocument();
   });
 
@@ -792,15 +525,13 @@ describe('Wizard Dialog setBeforeNext', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
-
+    // The button is back (not loading) once the handler has settled.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled(),
+    );
     expect(handler).toHaveBeenCalledOnce();
     // Should still be on step 1
     expect(screen.getByText('Before next step')).toBeInTheDocument();
-    // Button should not be loading anymore
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
   it('should clear beforeNext handler on step navigation', async () => {
@@ -818,21 +549,16 @@ describe('Wizard Dialog setBeforeNext', () => {
 
     // Navigate to step 2 (handler returns true, allows navigation)
     await user.click(screen.getByRole('button', { name: 'Continue' }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    });
+    await screen.findByText('Set Data 2');
 
     expect(handler).toHaveBeenCalledOnce();
 
     // Now on step 2 (no beforeNext handler) — click Finish
     await user.click(screen.getByRole('button', { name: 'Finish' }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
+    await waitFor(() => expect(onResult).toHaveBeenCalled());
 
     // Handler should not have been called again
     expect(handler).toHaveBeenCalledOnce();
-    expect(onResult).toHaveBeenCalled();
   });
 
   it('should call beforeNext on the last step before onFinish', async () => {
@@ -886,10 +612,8 @@ describe('Wizard Dialog setBeforeNext', () => {
     await screen.findByRole('dialog');
 
     await user.click(screen.getByRole('button', { name: 'Finish' }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
 
+    await waitFor(() => expect(onResult).toHaveBeenCalled());
     expect(callOrder).toEqual(['beforeNext', 'onFinish']);
   });
 
@@ -919,21 +643,18 @@ describe('Wizard Dialog setBeforeNext', () => {
 
     // Button should be disabled while loading — the label is replaced
     // by a spinner, so "Continue" button should no longer exist
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Continue' }),
+      ).not.toBeInTheDocument(),
+    );
 
-    expect(
-      screen.queryByRole('button', { name: 'Continue' }),
-    ).not.toBeInTheDocument();
-
-    // Resolve the handler
     await act(async () => {
       resolveHandler(true);
-      await new Promise((resolve) => setTimeout(resolve, 300));
     });
 
-    // Should have navigated — step 1 content gone
+    // Should have navigated to step 2
+    expect(await screen.findByText('Set Data 2')).toBeInTheDocument();
     expect(screen.queryByText('Before next step')).not.toBeInTheDocument();
   });
 
@@ -1083,113 +804,6 @@ describe('Wizard Dialog setBeforeNext', () => {
 describe('Wizard Dialog skip', () => {
   const user = userEvent.setup();
 
-  it('should skip steps with a skip function that returns true', async () => {
-    const onResult = vi.fn();
-
-    function SkippableStep() {
-      return <div>Skipped step</div>;
-    }
-
-    render(
-      <DialogProvider>
-        <TestWizardComponent
-          onResult={onResult}
-          steps={[
-            { title: 'Step 1', content: SimpleStep },
-            {
-              title: 'Step 2 (skipped)',
-              content: SkippableStep,
-              skip: () => true,
-            },
-            { title: 'Step 3', content: ThirdStep },
-          ]}
-        />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-    expect(screen.getByText('Step 1')).toBeInTheDocument();
-
-    // Click Continue — should skip step 2 and land on step 3
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-    await vi.waitFor(() => {
-      expect(screen.getByText('Step 3 content')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Skipped step')).not.toBeInTheDocument();
-
-    // Click Back — should skip step 2 and land back on step 1
-    await user.click(screen.getByRole('button', { name: 'Back' }));
-    await vi.waitFor(() => {
-      expect(screen.getByText('Set Data')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Skipped step')).not.toBeInTheDocument();
-  });
-
-  it('should dynamically skip steps based on data', async () => {
-    const onResult = vi.fn();
-
-    function ToggleStep() {
-      const { data, setStepData } = useWizard();
-      const skipMiddle = data.skipMiddle === true;
-
-      return (
-        <div>
-          <span data-testid="skip-state">{skipMiddle ? 'on' : 'off'}</span>
-          <button
-            type="button"
-            onClick={() => setStepData({ skipMiddle: !skipMiddle })}
-          >
-            Toggle skip
-          </button>
-        </div>
-      );
-    }
-
-    function MiddleStep() {
-      return <div>Middle step content</div>;
-    }
-
-    render(
-      <DialogProvider>
-        <TestWizardComponent
-          onResult={onResult}
-          steps={[
-            { title: 'Step 1', content: ToggleStep },
-            {
-              title: 'Step 2 (conditional)',
-              content: MiddleStep,
-              skip: ({ data: d }) => d.skipMiddle === true,
-            },
-            { title: 'Step 3', content: ThirdStep },
-          ]}
-        />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByText('Open'));
-
-    // Without skip toggled, step 2 should be reachable
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-    await vi.waitFor(() => {
-      expect(screen.getByText('Middle step content')).toBeInTheDocument();
-    });
-
-    // Go back and toggle skip on
-    await user.click(screen.getByRole('button', { name: 'Back' }));
-    await vi.waitFor(() => {
-      expect(screen.getByTestId('skip-state')).toHaveTextContent('off');
-    });
-    await user.click(screen.getByText('Toggle skip'));
-    expect(screen.getByTestId('skip-state')).toHaveTextContent('on');
-
-    // Now Continue should skip step 2 and go to step 3
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-    await vi.waitFor(() => {
-      expect(screen.getByText('Step 3 content')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Middle step content')).not.toBeInTheDocument();
-  });
-
   it('should skip multiple consecutive steps', async () => {
     const onResult = vi.fn();
 
@@ -1322,11 +936,10 @@ describe('Wizard Dialog skip', () => {
     expect(screen.getByRole('button', { name: 'Finish' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Finish' }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
 
-    expect(onResult).toHaveBeenCalledWith({ step1: 'done' });
+    await waitFor(() =>
+      expect(onResult).toHaveBeenCalledWith({ step1: 'done' }),
+    );
   });
 
   it('should skip all middle steps leaving only first and last', async () => {

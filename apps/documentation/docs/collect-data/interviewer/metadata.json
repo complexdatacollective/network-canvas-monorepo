@@ -1,8 +1,16 @@
 {
   "type": "folder",
   "slug": "interviewer",
-  "localeLabels": { "en": "Interviewer" },
-  "localeIndexFiles": { "en": "about.en.mdx" },
+  "localeLabels": {
+    "en": "Interviewer",
+    "es": "Interviewer",
+    "fr": "Interviewer"
+  },
+  "localeIndexFiles": {
+    "en": "about.en.mdx",
+    "es": "about.es.mdx",
+    "fr": "about.fr.mdx"
+  },
   "navOrder": 3,
   "isExpanded": true
 }

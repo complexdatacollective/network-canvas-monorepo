@@ -8,13 +8,16 @@ import {
   type CurrentProtocol,
   type ExtractedAsset,
   extractProtocolFromZip,
+  formatRefusedContent,
   getMigrationInfo,
+  MigrationContentRefusedError,
   type MigrationNote,
   migrateProtocol,
   NetcanvasInflationLimitError,
   type ProtocolValidationError,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import { protocolFileErrorMessages } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
 import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
@@ -33,7 +36,7 @@ import {
 } from '~/utils/beforeUnloadGuard';
 import {
   downloadProtocolAsNetcanvas,
-  MissingDefaultLanguageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import { beginExport, setImportInProgress } from '~/utils/criticalOperation';
@@ -75,37 +78,44 @@ const extraMessages = defineMessages({
   failed: {
     id: 'architect.protocolActions.failed',
     defaultMessage: 'Failed to Open Protocol',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Title of the error dialog shown when a protocol file could not be opened (wrong file type, too large, damaged, or failed the upgrade).',
   },
   unsupported: {
     id: 'architect.protocolActions.unsupported',
     defaultMessage: 'Unsupported file type. Please open a .netcanvas file.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Body of the error dialog shown when the researcher tries to open a file whose name does not end in .netcanvas, the protocol file extension, which stays as written.',
   },
   migrationFailed: {
     id: 'architect.protocolActions.migrationFailed',
     defaultMessage: 'Protocol migration failed.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Body of the error dialog shown when upgrading an older protocol to the current schema failed.',
   },
   importError: {
     id: 'architect.protocolActions.importError',
     defaultMessage: 'Protocol Import Error',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Title of the error dialog shown when importing a protocol that was already in memory (not from a file the researcher chose) failed.',
   },
   notFound: {
     id: 'architect.protocolActions.notFound',
     defaultMessage: 'Protocol Not Found',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Title of the error dialog shown when the protocol the researcher chose from the start screen library no longer exists.',
   },
   missing: {
     id: 'architect.protocolActions.missing',
     defaultMessage: 'This protocol could not be found in your library.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Body of the error dialog shown when a protocol chosen from the start screen library cannot be found there.',
   },
   openError: {
     id: 'architect.protocolActions.openError',
     defaultMessage: 'Protocol Open Error',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Title of the error dialog shown when opening a protocol from the library (or copying one from the previous version of Architect) failed.',
   },
 });
 
@@ -142,7 +152,16 @@ export type ProtocolOpenResult =
     }
   | {
       status: 'validation-error';
+      /** Each issue, in English, for the dialog's details. */
       message: string;
+      /** Replace the dialog's general title and sentence when present. */
+      localizedTitle?: LocalizedText;
+      localizedMessage?: LocalizedText;
+      /**
+       * Show the issues without the researcher opening the details: true when
+       * they are what the researcher has to correct, not a record for support.
+       */
+      showDetails?: boolean;
     }
   | {
       status: 'migration-required';
@@ -156,6 +175,39 @@ export type ProtocolOpenResult =
     };
 
 const openedResult: ProtocolOpenResult = { status: 'opened' };
+
+/**
+ * What the researcher is shown when `migrateProtocol` throws.
+ *
+ * A protocol the upgrade refused because of its own content (a prompt, an
+ * option value or a name left empty, which the upgrade will not invent) is
+ * presented the way a protocol that fails validation is: each problem listed
+ * with its place, to be corrected in the Architect that made it. Every other
+ * failure keeps `describeMigrationFailure`'s sentence, since it may be a fault
+ * in the upgrade itself.
+ */
+const describeThrownMigration = (
+  caught: unknown,
+  protocol: unknown,
+): Extract<ProtocolOpenResult, { status: 'error' | 'validation-error' }> => {
+  if (caught instanceof MigrationContentRefusedError) {
+    return {
+      status: 'validation-error',
+      message: formatRefusedContent(caught.problems),
+      localizedTitle: { message: extraMessages.failed },
+      localizedMessage: {
+        message: protocolFileErrorMessages.upgradeRefusedContent,
+      },
+      showDetails: true,
+    };
+  }
+  const { title, message, detail } = describeMigrationFailure(
+    ensureError(caught),
+    protocol,
+    getArchitectIntl(),
+  );
+  return { status: 'error', title, message, detail };
+};
 
 // A protocol failed schema validation during import. This is an expected
 // outcome for an old or malformed file, so we record an analytics event
@@ -485,7 +537,13 @@ type ProtocolMigrationResult =
       status: 'needs-ui';
       result: Extract<
         ProtocolOpenResult,
-        { status: 'migration-required' | 'app-upgrade-required' | 'error' }
+        {
+          status:
+            | 'migration-required'
+            | 'app-upgrade-required'
+            | 'error'
+            | 'validation-error';
+        }
       >;
     };
 
@@ -540,15 +598,12 @@ const handleProtocolMigration = ({
         // because of a bug in it is re-raised as `MigrationStepError`, which
         // `getImportFailureKind` deliberately does not treat as the file's
         // fault, so this is what puts our own migration defects in front of us.
+        // A refusal of the protocol's own content is the file's, and is
+        // recorded by its kind alone.
         trackImportFailure(source, caught);
-        const { title, message, detail } = describeMigrationFailure(
-          ensureError(caught),
-          protocol,
-          getArchitectIntl(),
-        );
         return {
           status: 'needs-ui',
-          result: { status: 'error', title, message, detail },
+          result: describeThrownMigration(caught, protocol),
         };
       }
     }
@@ -589,6 +644,8 @@ export const createNetcanvas = createAppAsyncThunk(
     { name, description, localization }: CreateNetcanvasParams,
     { dispatch },
   ) => {
+    // It holds none of the wording Network Canvas supplies: the interview
+    // shows that for a protocol that does not hold it.
     const newProtocol: CurrentProtocol = {
       name,
       description,
@@ -822,9 +879,9 @@ export const exportNetcanvas = createAppAsyncThunk(
           assetNames: error.assetNames,
         } as const;
       }
-      if (error instanceof MissingDefaultLanguageTextError) {
+      if (error instanceof DownloadRefusedError) {
         return {
-          status: 'missing-default-language-text',
+          status: 'download-refused',
           problem: error.problem,
         } as const;
       }
@@ -1037,12 +1094,7 @@ export const upgradeLegacyProtocol = createAppAsyncThunk(
       } catch (caught) {
         // As for a file: see `handleProtocolMigration`.
         trackImportFailure('legacy-library', caught);
-        const { title, message, detail } = describeMigrationFailure(
-          ensureError(caught),
-          snapshot.row.protocol,
-          getArchitectIntl(),
-        );
-        return { status: 'error', title, message, detail };
+        return describeThrownMigration(caught, snapshot.row.protocol);
       }
 
       const validation = await validateProtocol(protocol, { draft: true });

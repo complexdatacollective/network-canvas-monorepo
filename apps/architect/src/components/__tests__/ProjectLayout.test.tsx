@@ -10,6 +10,7 @@ import activeProtocol, {
   updateProtocolName,
 } from '~/ducks/modules/activeProtocol';
 import app, { setProtocolLockState } from '~/ducks/modules/app';
+import protocolReview from '~/ducks/modules/protocolReview';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 import { getCanUndo } from '~/selectors/protocol';
@@ -53,6 +54,7 @@ const createTestStore = () =>
       app,
       protocols,
       protocolValidation,
+      protocolReview,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });
@@ -112,9 +114,9 @@ describe('ProjectLayout', () => {
 
     expect(screen.queryByRole('button', { name: /undo/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
-    // Download is still offered: it is how the work gets out.
+    // Export is still offered: it is how the work gets out.
     expect(
-      screen.getByRole('button', { name: /^download$/i }),
+      screen.getByRole('button', { name: /^export$/i }),
     ).toBeInTheDocument();
   });
 

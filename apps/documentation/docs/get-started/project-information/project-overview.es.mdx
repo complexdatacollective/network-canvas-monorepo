@@ -1,0 +1,98 @@
+---
+title: Resumen del proyecto
+navOrder: 2
+wip: false
+toc: true
+translatedFrom: 9cb83971d55066121d5788ddc8cc414ad21d350a
+---
+
+## Justificación {#rationale}
+
+En disciplinas muy diversas se reconoce cada vez más el importante papel que desempeñan los factores estructurales en resultados de todo tipo, así como la capacidad de las explicaciones estructurales para esclarecer las causas de las desigualdades persistentes. Sin embargo, recopilar los complejos datos de red que exigen estos análisis sigue suponiendo una carga elevada, tanto para quienes investigan como para quienes participan en la investigación.
+
+Mientras que las herramientas para recopilar y analizar datos de rastros digitales han proliferado, es evidente que no ha habido un crecimiento equivalente en metodologías como las entrevistas y las encuestas. Incluso cuando _sí_ existen herramientas digitales de encuesta de alta calidad, suelen estar optimizadas para recopilar datos individuales, no datos de red.
+
+El proyecto Network Canvas pretende resolver estos y otros problemas ofreciendo un conjunto de herramientas digitales de alta calidad que facilitan la recopilación de datos de red complejos. Ofrece pantallas intuitivas para quienes participan y herramientas potentes y fáciles de aprender para quienes investigan, con el fin de hacer posible una recopilación de datos que antes resultaba inabordable.
+
+En el siguiente vídeo puedes conocer mejor a nuestro equipo, nuestros objetivos y los orígenes del conjunto de herramientas Network Canvas.
+
+<VideoIFrame title="Introducción al conjunto de herramientas Network Canvas" src="https://www.youtube.com/embed/XzfE6j-LnII"></VideoIFrame>
+
+## Los componentes de Network Canvas {#the-components-of-network-canvas}
+
+Network Canvas se organiza en torno a las fases del proceso de investigación: el diseño, la realización de las entrevistas y el análisis. El conjunto consta de tres aplicaciones:
+
+- **Architect**: una herramienta para crear protocolos de entrevista de Network Canvas; consulta [Diseñar protocolos](/es/design-protocols).
+- **Interviewer**: una herramienta para realizar entrevistas presenciales en un dispositivo que tú controlas; consulta [Recopilar datos](/es/collect-data).
+- **Fresco**: una herramienta para publicar en la web los protocolos creados en Architect, de modo que cada participante pueda completar la entrevista a distancia; consulta [Fresco](/es/collect-data/fresco).
+
+Las versiones **Classic** descargables de las dos primeras aplicaciones, **Architect Classic** e **Interviewer Classic**, siguen disponibles para los estudios existentes del esquema 7 y para los flujos de trabajo de escritorio completamente sin conexión; consulta [Migrar desde las aplicaciones Classic](/es/get-started/migrating-from-classic).
+
+Estas aplicaciones funcionan de forma conjunta para ofrecer un [flujo de trabajo integral](/es/collect-data/protocol-and-data-workflows) y sin interrupciones hasta llegar al análisis.
+
+<ImageFullWidth src="/assets/img/offline-data/online.png" alt="Diagrama del flujo de trabajo con conexión"></ImageFullWidth>
+
+<TipBox>
+
+Las herramientas de Network Canvas también se pueden usar en un flujo de trabajo sin conexión. Para obtener más información, consulta el tutorial [Flujos de trabajo de Interviewer con y sin conexión](/es/collect-data/interviewer-online-and-offline-workflows#the-offline-workflow).
+
+</TipBox>
+
+## Cinco principios de diseño clave {#five-key-design-principles}
+
+Cinco principios de diseño sustentan cada una de las tres aplicaciones. Los extrajimos de nuestras observaciones y experiencias sobre los problemas a los que se enfrentan quienes quieren diseñar y realizar investigaciones sobre redes personales.
+
+### Flexibilidad ontológica {#ontological-flexibility}
+
+El análisis de redes sociales no es una metodología única, sino un enfoque amplio de la investigación que abarca varias disciplinas y ontologías de investigación. Somos conscientes de que estas perspectivas a menudo discrepan sobre elementos fundamentales del proceso de investigación, lo que nos llevó a centrarnos en dotar al software de una flexibilidad ontológica de base. Así nos aseguramos de imponer el menor número posible de restricciones al tipo de estudio que se puede desarrollar.
+
+Esta flexibilidad empieza por la abstracción central del modelo de datos: puedes definir libremente los nodos y los vínculos de tus entrevistas, junto con sus atributos, en los términos que mejor se ajusten a tu enfoque. No hay límite en el número ni en el tipo de estas «entidades», ni se presupone nada sobre cómo se relacionan.
+
+Después, defines íntegramente el contenido de tu entrevista. Esto significa que controlas tanto la secuencia de las tareas de recopilación de datos como la forma en que se presentan estas tareas a cada participante. Así, se dispone de una gran flexibilidad para afinar el objeto de red.
+
+### Presencial y con asistencia de una persona entrevistadora {#in-person-and-interviewer-assisted}
+
+Creemos que lo que constituye «datos de alta calidad» depende fundamentalmente de la situación y del contexto. En el caso del proyecto Network Canvas, nuestro equipo de investigación ya se había enfrentado a las dificultades concretas de recopilar datos muy sensibles y profundamente íntimos en un contexto de investigación. Esto nos llevó a valorar las ventajas específicas que ofrecen los enfoques presenciales y con asistencia de una persona entrevistadora a la hora de dar forma a la «puesta en escena» de la entrevista.
+
+Por eso diseñamos las herramientas de Network Canvas partiendo de la base de que las entrevistas se realizan en presencia de una persona entrevistadora, en un dispositivo que esta controla, y de que esta persona ha recibido una formación específica para guiar el proceso de la entrevista.
+
+![Una entrevista con asistencia de una persona entrevistadora](/assets/img/introduction-images/interviewer-assisted.png)
+
+Por supuesto, sabemos que no siempre es posible realizar las entrevistas de esta manera. Algunos equipos han realizado con éxito sesiones a distancia con asistencia de una persona entrevistadora mediante herramientas para compartir pantalla.
+
+También sabemos que los flujos de trabajo con recopilación de datos sin supervisión y entrevistas autoadministradas son importantes para quienes investigan redes. La recopilación presencial y con asistencia de una persona entrevistadora sigue siendo el método central en torno al que se ha diseñado el conjunto de herramientas, y [Fresco](/es/collect-data/fresco) amplía el conjunto de herramientas a la recopilación de datos a distancia, de modo que cada participante puede completar la entrevista por su cuenta en su propio navegador web.
+
+### La «visualidad» y la importancia de la experiencia de uso {#visuality-and-an-emphasis-on-user-experience}
+
+Hemos dedicado un gran esfuerzo al diseño visual de nuestro software, tanto en las pantallas para quienes participan como en las destinadas a quienes investigan. No se trata de un simple barniz estético, sino de una «característica» fundamentalmente funcional que distingue nuestro enfoque.
+
+Los problemas asociados a un diseño visual deficiente en la metodología de encuestas están ampliamente documentados en la bibliografía. Las pantallas que confunden a quienes participan o sesgan la tarea dan lugar a datos de una calidad demostrablemente inferior. Creemos que esto es especialmente cierto en la investigación sobre redes, porque supone la carga añadida de hacer preguntas «poco habituales» y de introducir conceptos y metáforas que a menudo resultan extraños. Nuestro enfoque ha consistido en basarnos en la bibliografía sobre interacción persona-ordenador (IPO), así como en artículos de la comunidad de análisis de redes que han hecho avanzar de formas novedosas el diseño y la aplicación de las entrevistas de redes. Lo hemos combinado con nuestras propias ideas y mejoras para crear una experiencia de entrevista atractiva y fácil de entender para quienes participan, con interacciones claras, coherentes y táctiles.
+
+![Una entrevista en un iPad Pro](/assets/img/introduction-images/visual.png)
+
+Sin embargo, los problemas de diseño no se limitan a quienes participan. El software destinado a quienes investigan a menudo les exige dominar el propio software antes de poder sacarle partido. Nuestro enfoque pretende que quienes investigan puedan centrarse en su papel como especialistas en su materia e ir aprendiendo sobre la marcha los conceptos que necesitan para llevar a la práctica sus ideas. Architect y Fresco ofrecen pantallas útiles y claras, que logran un equilibrio entre sofisticación y sencillez.
+
+### Flujo de trabajo integral {#end-to-end-workflow}
+
+Un elemento clave de nuestro enfoque es abordar de forma global el proceso de «hacer investigación». Nuestra experiencia nos enseñó que los obstáculos para realizar investigaciones sobre redes no se limitan a una sola parte del proceso, sino que están tanto dentro de cada fase como repartidos por todo el proceso.
+
+La primera versión del concepto de Network Canvas ofrecía únicamente una herramienta de entrevista, con el protocolo programado directamente en un formato de texto que exigía un alto grado de conocimientos técnicos a quien quisiera diseñar una investigación. Además, los datos que recopilábamos con esta herramienta había que limpiarlos y gestionarlos minuciosamente mediante una serie de scripts y procesos.
+
+Por eso decidimos que simplificar el proceso de recopilación de datos estructurales complejos no requería solo una herramienta de entrevista, sino también una herramienta para diseñar estas entrevistas y otra para gestionar y exportar los datos. Este flujo de trabajo completo de principio a fin reduce los costes (tanto materiales como técnicos) para quienes investigan redes.
+
+### Desarrollo de código abierto {#open-source-development}
+
+Sabíamos que la clave para mantener este esfuerzo serían las aportaciones y la colaboración de la comunidad. Observamos que gran parte del software de investigación se desarrolla como una «caja negra» (es decir, su código no se puede mejorar ni examinar) y sigue procesos verticales, de arriba abajo. También observamos que desarrollar software y herramientas conlleva costes económicos y técnicos considerables, lo que a menudo los deja fuera del alcance de la mayoría de quienes investigan e incentiva la comercialización como forma de hacer viable el desarrollo.
+
+Creemos que, para romper con estas prácticas, necesitábamos desarrollar una base sólida sobre la que otras personas pudieran construir, compartiendo las mejoras con todas las personas que usan el software. Para avanzar en esta dirección, publicamos todo el código de Network Canvas como código abierto, pusimos en marcha un programa de desarrollo impulsado por la comunidad e hicimos que el software fuera de uso gratuito.
+
+Creamos una entidad sin ánimo de lucro (Complex Data Collective, o CODACO), que es titular de toda la propiedad intelectual y los derechos de autor asociados al proyecto. CODACO distribuye Network Canvas bajo la licencia «GPLv3», una licencia de código abierto muy extendida que garantiza ciertas libertades a todas las personas usuarias:
+
+- Libertad para usar el software con fines comerciales, sin restricciones
+- Libertad para modificar el software como consideren oportuno
+- Libertad para distribuir el software
+
+Estas libertades están protegidas por algunos requisitos que incorpora la licencia GPL:
+
+- Cualquier modificación debe ponerse a disposición bajo la licencia GPL
+- Debes incluir una copia del código fuente original con cualquier versión que distribuyas, para que otras personas puedan modificarla

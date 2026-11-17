@@ -20,19 +20,22 @@ const messages = defineMessages({
   pageDescription: {
     id: 'fresco.signin.metadata.pageDescription',
     defaultMessage: 'Sign in to Fresco.',
-    description: 'Researcher-facing signin.metadata: Sign in to Fresco.',
+    description:
+      'Meta description of the sign-in page, used by search engines and link previews. Fresco is the product name; the sentence invites the researcher to sign in.',
   },
 
   pageTitle: {
     id: 'fresco.signin.metadata.pageTitle',
     defaultMessage: 'Fresco - Sign In',
-    description: 'Researcher-facing signin.metadata: Fresco - Sign In',
+    description:
+      'Browser tab title of the sign-in page. Fresco is the product name; Sign In is the name of the page.',
   },
 
   signInToFresco: {
     id: 'fresco.signin.page.signInToFresco',
     defaultMessage: 'Sign In To Fresco',
-    description: 'Researcher-facing signin / page: Sign In To Fresco',
+    description:
+      'Heading above the sign-in form on the page where a researcher signs in to the Fresco installation. It is a heading, not a button.',
   },
 });
 

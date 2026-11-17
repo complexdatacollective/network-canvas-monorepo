@@ -12,7 +12,8 @@ const messages = defineMessages({
   incorrectPIN: {
     id: 'interviewer.pinUnlockForm.incorrectPIN',
     defaultMessage: 'Incorrect PIN.',
-    description: 'User-facing message in Interviewer Pin Unlock Form.',
+    description:
+      'Error shown in the PIN unlock dialog when the PIN entered does not match and no more specific reason is available.',
   },
 });
 

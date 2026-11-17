@@ -23,7 +23,11 @@ export function ProtocolCitation({
       className="bg-neutral-contrast text-neutral"
     >
       <OverlineHeading>{t('citation')}</OverlineHeading>
-      <Paragraph margin="none" className="mt-4 whitespace-pre-line">
+      <Paragraph
+        margin="none"
+        dir="auto"
+        className="text-match-parent mt-4 whitespace-pre-line"
+      >
         {citation}
       </Paragraph>
       <span className="mt-5 inline-flex items-center gap-2">

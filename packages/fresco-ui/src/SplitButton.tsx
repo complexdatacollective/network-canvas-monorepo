@@ -2,21 +2,9 @@
 
 import * as React from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
-
 import { Button, type ButtonProps } from './Button';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
 import { cx } from './utils/cva';
-
-const messages = defineMessages({
-  openOptions: {
-    id: 'frescoUi.splitButton.openOptions',
-    defaultMessage: 'Open options',
-    description:
-      'Accessible name of the split button’s smaller segment when it shows only an icon and the caller named it nothing else.',
-  },
-});
 
 type SplitButtonSegmentPosition = 'left' | 'right';
 
@@ -136,21 +124,21 @@ function splitButtonGapClass(size: ButtonProps['size']): string {
 function mainButtonRadiusClass(
   segmentPosition: SplitButtonSegmentPosition,
 ): string {
-  return segmentPosition === 'left' ? 'rounded-l-none!' : 'rounded-r-none!';
+  return segmentPosition === 'left' ? 'rounded-s-none!' : 'rounded-e-none!';
 }
 
 function popoverSegmentRadiusClass(
   segmentPosition: SplitButtonSegmentPosition,
 ): string {
-  return segmentPosition === 'left' ? 'rounded-r-none!' : 'rounded-l-none!';
+  return segmentPosition === 'left' ? 'rounded-e-none!' : 'rounded-s-none!';
 }
 
 function iconOnlySegmentAlignmentClass(
   segmentPosition: SplitButtonSegmentPosition,
 ): string {
   return segmentPosition === 'left'
-    ? '[&>.lucide]:translate-x-0.5'
-    : '[&>.lucide]:-translate-x-0.5';
+    ? '[&>.lucide]:translate-x-0.5 rtl:[&>.lucide]:-translate-x-0.5'
+    : '[&>.lucide]:-translate-x-0.5 rtl:[&>.lucide]:translate-x-0.5';
 }
 
 const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
@@ -174,7 +162,6 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
     },
     ref,
   ) => {
-    const intl = useAppIntl();
     const generatedSegmentId = React.useId();
     const popoverContentProps = getPopoverContentProps(popover);
     const {
@@ -196,7 +183,7 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
     const segmentDisabled = disabled || segmentOwnDisabled;
     const segmentLabel = segmentHasVisibleContent
       ? segmentAriaLabel
-      : (segmentAriaLabel ?? intl.formatMessage(messages.openOptions));
+      : (segmentAriaLabel ?? 'Open options');
 
     const mainButton = (
       <Button
@@ -223,6 +210,7 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
       <Button
         id={segmentId}
         aria-label={segmentLabel}
+        lang={segmentHasVisibleContent ? undefined : 'en'}
         color={color}
         disabled={segmentDisabled}
         icon={segmentIcon}

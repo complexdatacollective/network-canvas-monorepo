@@ -21,60 +21,51 @@ const configMessages = defineMessages({
     id: 'architect.assetBrowser.assets.config.all',
     defaultMessage: 'All',
     description:
-      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+      'Option in the filter switcher above the resource library that shows resources of every kind.',
   },
   image: {
     id: 'architect.assetBrowser.assets.config.image',
     defaultMessage: 'Image',
     description:
-      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+      'Option in the filter switcher above the resource library that shows only image resources. Names the kind of file.',
   },
   video: {
     id: 'architect.assetBrowser.assets.config.video',
     defaultMessage: 'Video',
     description:
-      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+      'Option in the filter switcher above the resource library that shows only video resources. Names the kind of file.',
   },
   audio: {
     id: 'architect.assetBrowser.assets.config.audio',
     defaultMessage: 'Audio',
     description:
-      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+      'Option in the filter switcher above the resource library that shows only audio resources. Names the kind of file.',
   },
   network: {
     id: 'architect.assetBrowser.assets.config.network',
     defaultMessage: 'Network',
     description:
-      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+      'Option in the filter switcher above the resource library that shows only network data resources (a file of nodes or edges, such as CSV or JSON). Names the kind of file.',
   },
   geoJSON: {
     id: 'architect.assetBrowser.assets.config.geoJSON',
     defaultMessage: 'GeoJSON',
     description:
-      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+      'Option in the filter switcher above the resource library that shows only GeoJSON map data resources. GeoJSON is a file format name.',
   },
   aPIKey: {
     id: 'architect.assetBrowser.assets.config.aPIKey',
     defaultMessage: 'API key',
     description:
-      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+      'Option in the filter switcher above the resource library that shows only API key resources (for example a map service key).',
   },
 });
 const messages = defineMessages({
-  filterResourcesByType: {
-    id: 'architect.assetBrowser.assets.filterResourcesByType',
-    defaultMessage: 'Filter resources by type',
-    description: 'The aria-label text in components / AssetBrowser / Assets.',
-  },
-  resourceLibrary: {
-    id: 'architect.assetBrowser.assets.resourceLibrary',
-    defaultMessage: 'Resource library',
-    description: 'The aria-label text in components / AssetBrowser / Assets.',
-  },
   noResourcesToDisplay: {
     id: 'architect.assetBrowser.assets.noResourcesToDisplay',
     defaultMessage: 'No resources to display.',
-    description: 'Visible text in components / AssetBrowser / Assets.',
+    description:
+      'Message shown in place of the resource cards when no resources match the selected filter or the protocol has none.',
   },
 });
 
@@ -211,7 +202,7 @@ const Assets = ({
     <div className="flex min-h-0 flex-col gap-5">
       {!type && (
         <SegmentedSwitcher
-          aria-label={intl.formatMessage(messages.filterResourcesByType)}
+          aria-label="Filter resources by type"
           options={formatConfig(ASSET_TYPES, intl)}
           value={selectedAssetType}
           onValueChange={handleAssetTypeChange}
@@ -220,7 +211,7 @@ const Assets = ({
         />
       )}
       <Collection
-        aria-label={intl.formatMessage(messages.resourceLibrary)}
+        aria-label="Resource library"
         items={assets}
         keyExtractor={(asset) => asset.id}
         textValueExtractor={assetName}
@@ -232,7 +223,7 @@ const Assets = ({
         animate
         animationKey={selectedAssetType}
         className="!flex-none"
-        viewportClassName="pr-3"
+        viewportClassName="pe-3"
         emptyState={
           <Paragraph emphasis="muted" margin="none" className="py-10">
             {intl.formatMessage(messages.noResourcesToDisplay)}

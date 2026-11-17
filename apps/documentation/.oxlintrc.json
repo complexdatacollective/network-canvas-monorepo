@@ -1,5 +1,9 @@
 {
-  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/direction.json"
+  ],
   "plugins": ["nextjs"],
   "jsPlugins": ["oxlint-tailwindcss"],
   "settings": {
@@ -28,6 +32,12 @@
       }
     ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "error"
+    "tailwindcss/enforce-canonical": "error",
+    // Right-to-left languages. The same rule, with the same exception, as
+    // `@codaco/fresco-ui`'s configuration, which says why.
+    "tailwindcss/enforce-logical": [
+      "error",
+      { "direction": "inline", "allowlist": ["(^|:)left-1/2$"] }
+    ]
   }
 }

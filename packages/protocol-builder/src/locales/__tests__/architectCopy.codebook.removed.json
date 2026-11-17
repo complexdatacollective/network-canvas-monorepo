@@ -1,4 +1,6 @@
 [
   "protocolBuilder.codebookEntity.createTitle",
-  "protocolBuilder.codebookEntity.editTitle"
+  "protocolBuilder.codebookEntity.editTitle",
+  "protocolBuilder.codebookEntity.shapeBelowFirstThresholdFixed",
+  "protocolBuilder.codebookEntity.shapeRemoveThreshold"
 ]

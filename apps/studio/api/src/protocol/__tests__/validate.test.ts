@@ -57,6 +57,36 @@ describe('validateSection', () => {
     expect(result).toEqual({ success: true });
   });
 
+  it('accepts the protocol review experiment in settings', () => {
+    const result = validateSection('settings', {
+      name: 'P',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      experiments: {
+        protocolReview: {
+          studyContext: {
+            researchQuestions: ['Q?'],
+            population: 'Adults',
+            administration: 'self_administered',
+          },
+        },
+      },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it('accepts protocol review content of a shape the schema does not define', () => {
+    const result = validateSection('settings', {
+      name: 'P',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      experiments: {
+        protocolReview: { studyContext: { researchQuestions: [] } },
+      },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
   it('rejects the encrypted attributes experiment, which is no longer one', () => {
     const result = validateSection('settings', {
       name: 'P',

@@ -22,6 +22,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { WritesInFlightProvider } from '../../../store/WritesInFlightContext';
@@ -281,29 +282,31 @@ function renderComposer(store: Store, composerStage = stage) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <TestProtocolLocalization>
-          <ContractProvider
-            onFinish={vi.fn()}
-            onRequestAsset={vi.fn()}
-            flags={{ isE2E: false, isDevelopment: false }}
-          >
-            <DialogProvider>
-              <WritesInFlightProvider
-                writesSettled={store.writesSettled}
-                trackWrite={store.trackWrite}
-              >
-                <CurrentStepProvider
-                  currentStep={0}
-                  onStepChange={() => undefined}
+        <InterviewQueryClientProvider protocolKey="test-protocol">
+          <TestProtocolLocalization>
+            <ContractProvider
+              onFinish={vi.fn()}
+              onRequestAsset={vi.fn()}
+              flags={{ isE2E: false, isDevelopment: false }}
+            >
+              <DialogProvider>
+                <WritesInFlightProvider
+                  writesSettled={store.writesSettled}
+                  trackWrite={store.trackWrite}
                 >
-                  <StageMetadataContext.Provider value={registerBeforeNext}>
-                    {children}
-                  </StageMetadataContext.Provider>
-                </CurrentStepProvider>
-              </WritesInFlightProvider>
-            </DialogProvider>
-          </ContractProvider>
-        </TestProtocolLocalization>
+                  <CurrentStepProvider
+                    currentStep={0}
+                    onStepChange={() => undefined}
+                  >
+                    <StageMetadataContext.Provider value={registerBeforeNext}>
+                      {children}
+                    </StageMetadataContext.Provider>
+                  </CurrentStepProvider>
+                </WritesInFlightProvider>
+              </DialogProvider>
+            </ContractProvider>
+          </TestProtocolLocalization>
+        </InterviewQueryClientProvider>
       </Provider>
     );
   }
@@ -500,6 +503,7 @@ describe('NetworkComposer with encrypted variables', () => {
         (attempt) =>
           attempt.nodeId === 'node-b' && attempt.variableId === variableId,
       );
+    // Long enough for a wrongly repeated decryption to be attempted.
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(attemptsOn(QUICK_ADD_VAR)).toHaveLength(1);
     expect(attemptsOn(NOTES_VAR)).toHaveLength(1);
@@ -878,6 +882,7 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     first.release();
 
     await allSaved();
+    // Long enough for a save that wrongly came after the undo to land.
     await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
     await allSaved();
     expect(await storedNotes(store)).toBe('Met at work');
@@ -905,6 +910,7 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     first.release();
 
     await allSaved();
+    // Long enough for a save that wrongly came after the undo to land.
     await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
     await allSaved();
     // What the undo put back, not the same answer saved again over it.

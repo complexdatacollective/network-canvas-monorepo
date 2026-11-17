@@ -9,10 +9,18 @@ import { localizedString, nonBlankText } from '../localized-string.ts';
  * something, as the title's must.
  */
 export const IntroductionPanelSchema = z.strictObject({
-  title: localizedString(nonBlankText(), 'plain', {
-    dynamicValues: 'stageText',
-  }),
-  text: localizedString(nonBlankText(), 'markdown', {
-    dynamicValues: 'stageText',
-  }).optional(),
+  title: localizedString(
+    nonBlankText(),
+    { format: 'plain', lines: 'single' },
+    {
+      dynamicValues: 'stageText',
+    },
+  ),
+  text: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'multiple' },
+    {
+      dynamicValues: 'stageText',
+    },
+  ).optional(),
 });

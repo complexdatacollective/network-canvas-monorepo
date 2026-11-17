@@ -38,6 +38,13 @@ describe('withLabelBreakPoints', () => {
     );
   });
 
+  it('breaks before a letter pair that begins a syllable', () => {
+    expect(withLabelBreakPoints('Something')).toBe(`Some${SOFT_HYPHEN}thing`);
+    expect(withLabelBreakPoints('Christopher')).toBe(
+      `Chri${SOFT_HYPHEN}sto${SOFT_HYPHEN}pher`,
+    );
+  });
+
   it('leaves short words, existing soft hyphens and other scripts alone', () => {
     expect(withLabelBreakPoints('Ash')).toBe('Ash');
     expect(withLabelBreakPoints('Maria')).toBe('Maria');
@@ -46,8 +53,6 @@ describe('withLabelBreakPoints', () => {
     expect(withLabelBreakPoints('佐藤アレクサンドラ美咲')).toBe(
       '佐藤アレクサンドラ美咲',
     );
-    expect(withLabelBreakPoints('bio­logical')).toBe(
-      withLabelBreakPoints('bio­logical'),
-    );
+    expect(withLabelBreakPoints('bio\u00ADlogical')).toBe('bio\u00ADlogical');
   });
 });

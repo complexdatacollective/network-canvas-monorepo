@@ -2,9 +2,10 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  type CurrentProtocol,
   withInterfaceText,
-} from '@codaco/protocol-validation';
+  withSuppliedWording,
+} from '@codaco/interview/supplied-wording';
+import { type CurrentProtocol } from '@codaco/protocol-validation';
 import createTimeline, { timelineActions } from '~/ducks/middleware/timeline';
 import activeProtocol, {
   actionCreators,
@@ -94,6 +95,37 @@ describe('protocol language reducers and undo', () => {
     store.dispatch(timelineActions.undo());
 
     expect(presentOf(store)).toEqual(englishProtocol());
+  });
+
+  it('writes none of Network Canvas’s wording for text the researcher reworded, in the same undo step that adds the language', () => {
+    const english = presentOf(store);
+    const reworded: CurrentProtocol = {
+      ...english,
+      interfaceText: {
+        ...english.interfaceText,
+        navigation: {
+          ...english.interfaceText?.navigation,
+          continue: { en: 'Next' },
+        },
+      },
+    };
+    store.dispatch(setActiveProtocol(reworded));
+    const before = pastLength(store);
+
+    store.dispatch(addProtocolLocales({ locales: ['fr'] }));
+
+    expect(pastLength(store)).toBe(before + 1);
+    expect(presentOf(store).interfaceText?.navigation?.continue).toEqual({
+      en: 'Next',
+    });
+    // The interview shows Network Canvas's French beside the rewording.
+    expect(
+      withSuppliedWording(presentOf(store)).interfaceText?.navigation?.continue,
+    ).toEqual({ en: 'Next', fr: 'Continuer' });
+
+    store.dispatch(timelineActions.undo());
+
+    expect(presentOf(store)).toEqual(reworded);
   });
 
   it('refuses to change a language into one the protocol already has', () => {

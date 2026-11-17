@@ -11,7 +11,8 @@ const messages = defineMessages({
   homeView: {
     id: 'interviewer.viewSwitcher.homeView',
     defaultMessage: 'Home view',
-    description: 'The aria-label label in Interviewer View Switcher.',
+    description:
+      'Accessible name of the switch in the home top bar that toggles between the Protocols and Data views, read only by screen readers.',
   },
   protocols: {
     id: 'interviewer.viewSwitcher.protocols',

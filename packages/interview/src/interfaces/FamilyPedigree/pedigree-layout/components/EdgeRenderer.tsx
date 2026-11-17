@@ -1,6 +1,6 @@
 'use client';
 
-import { type JSX, useMemo } from 'react';
+import { type JSX, useId, useMemo } from 'react';
 
 import { dimColor } from '../dimColor';
 import { EDGE_WIDTH } from '../layoutDimensions';
@@ -1061,7 +1061,16 @@ type PedigreeEdgeSvgProps = {
   offsetY?: number;
   highlightedNodeIds?: Set<string>;
   highlightedEdgeKeys?: Set<string>;
+  /**
+   * Boxes, in the connectors' own coordinates, inside which no line is
+   * drawn. A line ending on a person runs on to their centre under their
+   * symbol, which hides it; a custom drawing may be see-through, so the
+   * lines are hidden across the box it fills instead.
+   */
+  hiddenBoxes?: readonly HiddenBox[];
 };
+
+export type HiddenBox = { x: number; y: number; width: number; height: number };
 
 function isDimmedByIds(
   highlightedNodeIds: Set<string> | undefined,
@@ -1083,7 +1092,9 @@ export function PedigreeEdgeSvg({
   offsetY = 0,
   highlightedNodeIds,
   highlightedEdgeKeys,
+  hiddenBoxes = [],
 }: PedigreeEdgeSvgProps) {
+  const maskId = `pedigree-lines-${useId().replace(/[^A-Za-z0-9_-]/g, '')}`;
   const svgElements = useMemo(() => {
     if (!connectorData) return [];
 
@@ -1206,16 +1217,41 @@ export function PedigreeEdgeSvg({
     <svg
       version="1.1"
       xmlns="http://www.w3.org/2000/svg"
+      // oxlint-disable-next-line tailwindcss/enforce-logical -- the drawing's own coordinates start at its top left
       className="absolute top-0 left-0"
       width={width}
       height={height}
       aria-hidden="true"
     >
-      {offsetX !== 0 || offsetY !== 0 ? (
-        <g transform={`translate(${offsetX},${offsetY})`}>{svgElements}</g>
-      ) : (
-        svgElements
+      {hiddenBoxes.length > 0 && (
+        <mask
+          id={maskId}
+          maskUnits="userSpaceOnUse"
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+        >
+          <rect width={width} height={height} fill="white" />
+          {hiddenBoxes.map((box) => (
+            <rect
+              key={`${box.x},${box.y}`}
+              x={box.x + offsetX}
+              y={box.y + offsetY}
+              width={box.width}
+              height={box.height}
+              fill="black"
+            />
+          ))}
+        </mask>
       )}
+      <g mask={hiddenBoxes.length > 0 ? `url(#${maskId})` : undefined}>
+        {offsetX !== 0 || offsetY !== 0 ? (
+          <g transform={`translate(${offsetX},${offsetY})`}>{svgElements}</g>
+        ) : (
+          svgElements
+        )}
+      </g>
     </svg>
   );
 }

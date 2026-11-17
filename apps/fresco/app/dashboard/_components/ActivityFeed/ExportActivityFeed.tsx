@@ -15,30 +15,32 @@ const messages = defineMessages({
   success: {
     id: 'fresco.ActivityFeed.ExportActivityFeed.success',
     defaultMessage: 'Success',
-    description: 'Researcher-facing ActivityFeed / ExportActivityFeed: Success',
+    description:
+      'Title of the toast shown on the dashboard after the activity feed has been downloaded as a CSV file.',
   },
   activityFeedExportedSuccessfully: {
     id: 'fresco.ActivityFeed.ExportActivityFeed.activityFeedExportedSuccessfully',
     defaultMessage: 'Activity feed exported successfully',
     description:
-      'Researcher-facing ActivityFeed / ExportActivityFeed: Activity feed exported successfully',
+      'Body of the success toast shown after the activity feed has been downloaded as a CSV file.',
   },
   error: {
     id: 'fresco.ActivityFeed.ExportActivityFeed.error',
     defaultMessage: 'Error',
-    description: 'Researcher-facing ActivityFeed / ExportActivityFeed: Error',
+    description:
+      'Title of the error toast shown on the dashboard when exporting the activity feed as a CSV file failed.',
   },
   anErrorOccurredWhileExportingTheActivity: {
     id: 'fresco.ActivityFeed.ExportActivityFeed.anErrorOccurredWhileExportingTheActivity',
     defaultMessage: 'An error occurred while exporting the activity feed',
     description:
-      'Researcher-facing ActivityFeed / ExportActivityFeed: An error occurred while exporting the activity feed',
+      'Body of the error toast shown when downloading the activity feed as a CSV file failed.',
   },
   exportCSV: {
     id: 'fresco.ActivityFeed.ExportActivityFeed.exportCSV',
     defaultMessage: 'Export CSV',
     description:
-      'Researcher-facing ActivityFeed / ExportActivityFeed: Export CSV',
+      'Button on the dashboard activity feed that downloads the whole activity feed as a CSV file. Export is the action; CSV is the file format.',
   },
 });
 

@@ -92,7 +92,7 @@ Next, you choose how you will unlock the app. Depending on your device, the opti
 
 <TipBox danger={true}>
 
-A forgotten **PIN or passphrase** cannot be recovered — the data it protects is permanently inaccessible on that device. **Biometric** setup also enrolls a mandatory **recovery passphrase**, so losing the authenticator alone falls back to it; losing both means the same permanent loss. Re-enrolling a replacement PIN or passphrase (after proving your current one) preserves access to your data, but changing to or from biometric requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. Whichever method you use, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
+A forgotten **PIN or passphrase** cannot be recovered — the data it protects is permanently inaccessible on that device. **Biometric** setup also enrolls a mandatory **recovery passphrase**, so losing the authenticator alone falls back to it; losing both means the same permanent loss. Replacing your PIN or passphrase with a new one (after proving your current one) preserves access to your data, but changing to a different unlock method (from a PIN to a passphrase, for example, or to or from biometric) requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. Whichever method you use, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
 
 </TipBox>
 
@@ -118,7 +118,7 @@ For extra protection, you can require re-authentication at interview boundaries 
 
 **About** reports basic information about the app and this device: the app version, how much of your storage is in use (shown as a usage bar — on desktop it also shows free disk space), and your installation ID, a unique per-device identifier. The version and installation ID are the details to quote when contacting us for support. This area also lets you re-show the one-click sample protocol card on the home screen if you previously dismissed it.
 
-**Language** holds the **App language** select, which sets the language of Interviewer's own screens on this device. Choose a language, or **Automatic (browser)** to follow your browser's language preferences. See [Interface language](#interface-language) below.
+**Language** holds the **App language** select, which sets the language of Interviewer's own screens on this device. Choose a language, or **Automatic** to follow your browser's language preferences; that entry also names the language it currently resolves to, such as _Automatic (English)_. See [Interface language](#interface-language) below.
 
 **Interview** has a single **Allow stage navigation** toggle, on by default. While it is on, tapping the progress bar during an interview opens a stages menu, from which you can jump directly to any stage. When it is off, the progress bar stops opening that menu; the up and down arrows still move one screen at a time, which on a stage with several prompts means one prompt rather than one whole stage. Jumping between stages is useful when piloting a protocol, but is usually turned off for real interviews.
 
@@ -129,7 +129,7 @@ For extra protection, you can require re-authentication at interview boundaries 
 
 **Privacy** has a single **Enable analytics** toggle. When it is on (the default), the app sends a small amount of anonymous usage and error information — which interview stages and features are used, when protocols are imported or data is exported, and details of any crashes — to help us improve the app. No participant data ever leaves the device: network data, responses, case IDs, protocol contents, and asset files are never collected, and analytics contain nothing that identifies you. You can change this at any time.
 
-**Security** is always listed. On a device used without a lock it offers **Enable app security**, which runs the **Get started** wizard so you can set a device lock. Adding that first lock keeps whatever is already on the device: the protocols and sessions stored there are re-encrypted with a key derived from your new credential, not erased. So a device that has been collecting data without a lock can be secured at any point. Once a security method is set, it shows your current method and when it was set and, for a PIN, lets you **change your PIN** without losing data. It also holds the auto-lock timeout and the re-authentication options described under [Locking and unlocking](#locking-and-unlocking) above. Finally, it offers a **Revoke / Reset device** option: because your stored data is tied to your security method, using this **wipes every protocol and session on the device** and returns you to first-run setup.
+**Security** is always listed. On a device used without a lock it offers **Enable app security**, which runs the **Get started** wizard so you can set a device lock. Adding that first lock keeps whatever is already on the device: the protocols and sessions stored there are re-encrypted with a key derived from your new credential, not erased. So a device that has been collecting data without a lock can be secured at any point. Once a security method is set, it shows your current method and when it was set and, for a PIN or passphrase, lets you replace it with **Change PIN** or **Change passphrase** without losing data. Changing to a different unlock method means resetting the device and running setup again. It also holds the auto-lock timeout and the re-authentication options described under [Locking and unlocking](#locking-and-unlocking) above. Finally, it offers a **Revoke / Reset device** option: because your stored data is tied to your security method, using this **wipes every protocol and session on the device** and returns you to first-run setup.
 
 **Synthetic data** generates fake interview sessions so you can rehearse and validate your export pipeline before collecting real data. Choose a **protocol**, set the **number of sessions** to create (1–1000, default 10), and optionally **simulate participant drop-out** (on by default, which leaves some sessions incomplete to mirror real-world data) or **respect skip logic and filtering** (off by default). Generated sessions appear in your **Data** view and export exactly like real ones; **Delete All** removes every synthetic session in one step. For how synthetic data fits into a full rehearsal of your study, see [Piloting Your Study](/en/get-started/planning-a-study/piloting-your-study).
 
@@ -155,7 +155,7 @@ The interface language never changes your protocol, your interviews or your data
 
 A protocol can be written in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)). An interview doesn't use the **App language**. When it opens, it uses the first of the device's or browser's preferred languages that the protocol is written in (a close regional match counts), or the protocol's default language if there is none. A text that isn't translated into that language is shown in the best available other translation: in another of the device's or browser's preferred languages that has it, or else the default language, or else any language of the protocol that has it. See [The default language and which translation participants see](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
 
-Everything an interview shows, including its buttons and messages such as Back, Continue and validation messages, comes from the protocol and is shown in the interview's language (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Interviewer's own **App language** setting does not change it.
+Everything an interview shows, including its buttons and messages such as Back, Continue and validation messages, is shown in the interview's language: in the protocol's wording where its author changed it, and in Network Canvas's own otherwise (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Interviewer's own **App language** setting does not change it.
 
 The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in the protocol. Their choice lasts until the browser tab is closed, so it is used again if the page is reloaded or the interview is resumed in the same tab. It isn't saved with the interview or included in exported data: a resumed interview in a new tab starts again from the device's or browser's languages.
 
@@ -280,9 +280,9 @@ Once a protocol has been imported, a new section will appear on the start screen
 
 <AppOnly axis="interviewer" app="current">
 
-The sample protocol is built into Interviewer — select it from the protocol deck on the **Home** screen to follow along. Alternatively, <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">click here</DownloadLink> to download the file, and import it from the **Protocols** area.
+The sample protocol is built into Interviewer — select it from the protocol deck in the **Protocols** view to follow along. Alternatively, <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">click here</DownloadLink> to download the file, and import it with the **Import a protocol** card at the end of the deck.
 
-Once a protocol is installed it appears as a card in the Home deck, representing the protocol you imported.
+Once a protocol is installed it appears as a card in the protocol deck, representing the protocol you imported.
 
 </AppOnly>
 
@@ -304,7 +304,7 @@ Above the protocol name, the card shows the schema version the protocol was made
 
 </AppOnly>
 
-It also contains a **Start new interview** button, a **Requires internet** indicator (shown when the protocol uses internet-dependent interfaces such as Geospatial), and a trash icon for removing the protocol from the device.
+It also contains a **Start new interview** button, a **Requires Internet** indicator (shown when the protocol uses internet-dependent interfaces such as Geospatial), and a trash icon for removing the protocol from the device.
 
 <AppOnly axis="interviewer" app="classic">
 
@@ -330,7 +330,7 @@ From within this overlay, you can sort your installed protocols, as well as filt
 
 <AppOnly axis="interviewer" app="current">
 
-Open the **Protocols** area to manage everything installed on the device. Each protocol lists its schema version, import date, and the number of interviews collected against it. Deleting a protocol asks you to confirm first, since it cannot be undone — and any interviews recorded against that protocol are removed along with it.
+Every protocol installed on the device has a card in the deck in the **Protocols** view, showing its schema version, when it was imported, and the number of interviews collected against it. To remove a protocol, use the trash icon on its card. Deleting a protocol asks you to confirm first, since it cannot be undone — and any interviews recorded against that protocol are removed along with it.
 
 ![Confirming protocol deletion in Interviewer](/assets/img/interviewer-guide/delete-protocol.png)
 
@@ -350,7 +350,7 @@ If you have more than one protocol installed in Interviewer, a card stack will a
 
 <AppOnly axis="interviewer" app="current">
 
-To begin an interview, find the protocol in the **Home** deck and click **Start new interview** on its card (shown in the card anatomy above). The card you most recently used sits at the front of the deck for quick access; if you have several protocols installed, flip through the deck or open the **Protocols** area to search the full list.
+To begin an interview, find the protocol in the deck in the **Protocols** view and click **Start new interview** on its card (shown in the card anatomy above). The deck opens on the card you most recently used, for quick access; if you have several protocols installed, flip through the deck to find the one you want.
 
 </AppOnly>
 
@@ -436,7 +436,7 @@ Interviewer keeps the interview chrome deliberately minimal. The navigation adap
 - An **up** arrow to move to the previous stage or prompt.
 - A **down** arrow to advance to the next stage or prompt.
 
-Between the up and down arrows, a **progress bar** fills as the participant moves through the interview. While **Allow stage navigation** is on in **Settings → Interview** (the default), the progress bar is also a button (announced to screen readers as **Go to another screen**) that opens a stages menu for jumping directly to any stage. Progress is saved continuously, so you can exit an interview and resume it later from the **Interviews** list without losing data.
+Between the up and down arrows, a **progress bar** fills as the participant moves through the interview. While **Allow stage navigation** is on in **Settings → Interview** (the default), the progress bar is also a button (announced to screen readers as **Go to another screen**) that opens a stages menu for jumping directly to any stage. Progress is saved continuously, so you can exit an interview and resume it later from the **Data** view without losing data.
 
 The settings menu holds only these participant-facing options; every other app setting lives in the dashboard **Settings** area, reached after exiting the interview.
 
@@ -444,7 +444,7 @@ The settings menu holds only these participant-facing options; every other app s
 
 <TipBox danger={true}>
 
-If you hand the device to the participant during an interview, first turn on **require authentication when exiting an interview** in Settings. Otherwise a participant who chooses **Exit interview** from the settings menu reaches the dashboard, where they could see other participants' data.
+If you hand the device to the participant during an interview, first turn on **Require unlock when exiting an interview** in Settings. Otherwise a participant who chooses **Exit interview** from the settings menu reaches the dashboard, where they could see other participants' data.
 
 </TipBox>
 
@@ -502,7 +502,7 @@ Prompts are defined by the researcher, and frame the data collection task. Many 
 
 ### Side panels
 
-Clicking forwards through an information stage and into the next name generator stage, a side panel will appear that contains all of the nodes named on the first stage. We can drag and drop nodes from this side panel into the node list area, or we can create new nodes by clicking on the add button in the bottom right right corner as we did previously.
+Clicking forwards through an information stage and into the next name generator stage, a side panel will appear that contains all of the nodes named on the first stage. We can drag and drop nodes from this side panel into the node list area, or we can create new nodes by clicking on the add button in the bottom right corner as we did previously.
 
 <Screenshot axis="interviewer" name="side-panel" alt="A name generator with a side panel"></Screenshot>
 
@@ -696,7 +696,7 @@ The data export process consists of selecting one or more sessions from this sec
 
 <AppOnly axis="interviewer" app="current">
 
-Every session you collect — whether in progress, finished, or already exported — is listed in the **Interviews** area. Each row shows the case ID, the protocol used, when the interview started, and its status.
+Every session you collect — whether in progress, finished, or already exported — is listed in the **Interviews** table in the **Data** view. Each row shows the case ID, the protocol used, when the interview started, and its status.
 
 <Screenshot axis="interviewer" name="resume-section" alt="The Interviews list"></Screenshot>
 

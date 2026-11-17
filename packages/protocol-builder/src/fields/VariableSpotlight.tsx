@@ -38,24 +38,6 @@ import {
 import type { VariablePickerOption } from './VariablePickerField.tsx';
 
 const messages = defineMessages({
-  dialogName: {
-    id: 'protocolBuilder.variablePicker.dialogName',
-    defaultMessage: 'Select an attribute',
-    description:
-      'Accessible name of the window a researcher searches the protocol’s codebook in, used only where the control that opened it carries no label of its own to be named after. An attribute is one thing an interview records about a network member.',
-  },
-  searchLabel: {
-    id: 'protocolBuilder.variablePicker.searchLabel',
-    defaultMessage: 'Find or create an attribute',
-    description:
-      'Accessible name of the search box at the top of the attribute window, where this control allows a new attribute to be created. Typing in it narrows the list below and offers to create an attribute under whatever was typed.',
-  },
-  searchOnlyLabel: {
-    id: 'protocolBuilder.variablePicker.searchOnlyLabel',
-    defaultMessage: 'Find an attribute',
-    description:
-      'Accessible name of the search box at the top of the attribute window where this control only chooses from attributes that already exist. Typing in it narrows the list below.',
-  },
   searchPlaceholder: {
     id: 'protocolBuilder.variablePicker.searchPlaceholder',
     defaultMessage: 'Find or create an attribute…',
@@ -67,18 +49,6 @@ const messages = defineMessages({
     defaultMessage: 'Find an attribute…',
     description:
       'Placeholder in the attribute window’s search box where this control only chooses from attributes that already exist.',
-  },
-  resultsLabel: {
-    id: 'protocolBuilder.variablePicker.resultsLabel',
-    defaultMessage: 'Attribute results',
-    description:
-      'Accessible name of the list of attributes under the attribute window’s search box.',
-  },
-  rowTypeDescription: {
-    id: 'protocolBuilder.variablePicker.rowTypeDescription',
-    defaultMessage: 'Attribute type: {attributeType}',
-    description:
-      'Read out after an attribute’s name in the list, saying what kind of answer it records. attributeType is a protocol schema token such as "number", "text" or "categorical", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence.',
   },
   createRow: {
     id: 'protocolBuilder.variablePicker.createRow',
@@ -533,10 +503,8 @@ export default function VariableSpotlight({
           >
             <AttributePill name={option.label} type={option.type} />
             {option.type !== undefined && (
-              <span id={describedBy} hidden>
-                {intl.formatMessage(messages.rowTypeDescription, {
-                  attributeType: option.type,
-                })}
+              <span id={describedBy} hidden lang="en">
+                {`Attribute type: ${option.type}`}
               </span>
             )}
           </div>
@@ -585,12 +553,12 @@ export default function VariableSpotlight({
     if (rows.length > 0) return undefined;
     if (onCreate !== undefined) {
       return {
-        icon: <Info aria-hidden className="mt-1 mr-3 size-5 shrink-0" />,
+        icon: <Info aria-hidden className="me-3 mt-1 size-5 shrink-0" />,
         text: intl.formatMessage(messages.firstAttribute, firstAttributeTags),
       };
     }
     return {
-      icon: <TriangleAlert aria-hidden className="mt-1 mr-3 size-5 shrink-0" />,
+      icon: <TriangleAlert aria-hidden className="me-3 mt-1 size-5 shrink-0" />,
       text: intl.formatMessage(
         term === '' ? messages.nothingToSelect : messages.nothingMatches,
       ),
@@ -608,9 +576,7 @@ export default function VariableSpotlight({
         finalFocus={finalFocus}
         aria-labelledby={ariaLabelledBy}
         aria-label={
-          ariaLabelledBy === undefined
-            ? intl.formatMessage(messages.dialogName)
-            : undefined
+          ariaLabelledBy === undefined ? 'Select an attribute' : undefined
         }
         // No z-index: a raise here paints this window over the editor it opens.
         className="fixed top-10 left-1/2 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
@@ -645,11 +611,11 @@ export default function VariableSpotlight({
               // invent an attribute, because a researcher who hears only the
               // name would be told they may create one where no create row
               // will ever appear.
-              aria-label={intl.formatMessage(
+              aria-label={
                 onCreate === undefined
-                  ? messages.searchOnlyLabel
-                  : messages.searchLabel,
-              )}
+                  ? 'Find an attribute'
+                  : 'Find or create an attribute'
+              }
               placeholder={intl.formatMessage(
                 onCreate === undefined
                   ? messages.searchOnlyPlaceholder
@@ -672,7 +638,7 @@ export default function VariableSpotlight({
             {rows.length > 0 && (
               <Collection
                 id={resultsId}
-                aria-label={intl.formatMessage(messages.resultsLabel)}
+                aria-label="Attribute results"
                 items={rows}
                 keyExtractor={(row) => row.id}
                 textValueExtractor={rowText}

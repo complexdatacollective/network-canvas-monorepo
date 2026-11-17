@@ -38,17 +38,40 @@ function mothersOf(graph: GeneticGraph, id: string): AnnotatedParent[] {
  * - Affected nodes → `affected`.
  * - Every DAUGHTER (female child) of an affected male → `obligateCarrier` (he
  *   passes his single X to all daughters). His SONS get the Y → nothing.
- * - A female with ≥2 affected sons, OR an affected son AND an affected MATERNAL
- *   SIBLING (a male sharing her own mother) → `obligateCarrier`. An affected
- *   male who is merely an ANCESTOR of the mother (father, maternal grandfather,
- *   …) does NOT make her obligate: he transmits to her with probability ≤50%.
- * - The mother of a SINGLE affected male with no affected maternal sibling →
- *   `atRiskCarrier` (de novo is not excluded — NOT obligate).
- * - The maternal grandmother and maternal aunts of an affected male →
- *   `atRiskCarrier`; the maternal uncles → `atRiskAffected`.
- * - From every carrier female (obligate or at-risk), DAUGHTERS → `atRiskCarrier`
- *   (themselves carrier females, recursed) and SONS → `atRiskAffected`. NO
- *   male-to-male transmission.
+ * - A female not recorded affected → `obligateCarrier` when the condition shows
+ *   on TWO SIDES of her and no one man could explain all of it through his
+ *   daughters. A side is the line of one of her children or her genetic
+ *   mother's family. A daughter's line is the daughter if affected plus her
+ *   children's lines. Her mother's family is the mother if affected, the
+ *   mother's affected father, the lines of the mother's other children, and
+ *   the mother's own mother's family in turn. A female on any of these routes
+ *   passes nothing on when another parent of hers, or a man who may be her
+ *   father, is affected. An affected
+ *   female with no recorded father passes nothing on either and is not
+ *   evidence herself, since that father may be affected. Two sides must rest
+ *   on at least two different affected people. A man could explain an
+ *   affected person when he fathered a female on the route to them (the
+ *   person included, and an affected mother too), because a single event in
+ *   him (a germline mosaic, or an affected man not recorded as such) would
+ *   reach them through his daughter.
+ *   A female with no recorded father stands for an unrecorded man and for
+ *   every recorded father of her mother's other children. Affected men
+ *   reached only through an unbroken male line give nothing.
+ * - Otherwise the mother of an affected male → `atRiskCarrier` (a new variant
+ *   in him is not excluded).
+ * - From every mother of an affected male and every obligate carrier, UP the
+ *   maternal line without limit: her mother and her maternal sisters →
+ *   `atRiskCarrier`, her maternal brothers → `atRiskAffected`, then the same
+ *   from her mother. The climb ends above a woman whose recorded father is
+ *   affected, since his X accounts for hers, unless she is affected herself
+ *   and may have a copy from each parent.
+ * - From every carrier female (obligate or at-risk) and every AFFECTED female,
+ *   DAUGHTERS → `atRiskCarrier` (themselves carrier females, recursed) and SONS
+ *   → `atRiskAffected`. An affected female may be homozygous or a manifesting
+ *   heterozygote, so her children are only ever at risk. On its own her
+ *   affected status adds nothing about her parents; it can be one of the two
+ *   sides above.
+ *   NO male-to-male transmission.
  * - A person whose sex is `unknown` in a sex-dependent step → `unknown`
  *   (sex-blocked); such a node is simply never written.
  */
@@ -100,73 +123,219 @@ export function computeXLinkedRecessive(
     }
   }
 
-  // (2) Mothers of affected males, plus the maternal-line collaterals of each
-  // affected male.
+  // (2) The mother of an affected male is at risk unless step (2b) finds the
+  // condition on two sides of her: a new variant in him is not excluded.
+  const mothersOfAffectedMales = new Set<string>();
   for (const affectedId of affected) {
     if (resolveSex(affectedId) !== 'male') {
       continue;
     }
+    for (const { id: motherId } of mothersOf(graph, affectedId)) {
+      markAtRiskFemale(motherId);
+      mothersOfAffectedMales.add(motherId);
+    }
+  }
 
-    const mothers = mothersOf(graph, affectedId).map((parent) => parent.id);
+  // (2b) A female is an obligate carrier when the condition shows on two
+  // sides of her (each child's line, and her mother's family) and no one man
+  // could explain all of it through his daughters. Each side maps every
+  // affected person standing as its evidence to the fathers who could have
+  // passed it down to them: the fathers of the females on the route to that
+  // person. `path` holds the people on the current walk, so a loop in the
+  // recorded links ends the walk instead of repeating it.
+  type Evidence = Map<string, Set<string>>;
+  const noFathers = new Set<string>();
 
-    for (const motherId of mothers) {
-      // Affected sons of THIS mother (the affected male is one of them).
-      const affectedSons = graph
-        .childrenOf(motherId)
-        .filter(
-          (childId) => resolveSex(childId) === 'male' && affected.has(childId),
-        );
+  const addWitness = (
+    evidence: Evidence,
+    id: string,
+    fathers: Set<string>,
+  ): void => {
+    const existing = evidence.get(id);
+    evidence.set(id, existing ? new Set([...existing, ...fathers]) : fathers);
+  };
 
-      // A corroborating affected male whose affected status makes THIS mother's
-      // carriership deterministic. The only such collateral is an affected
-      // MATERNAL SIBLING of the mother — a male who shares the mother's own
-      // mother. The mother and her maternal brother both draw an X from that
-      // shared carrier mother, so an affected brother proves the shared X
-      // carries the allele, which the mother then necessarily inherited.
-      //
-      // We do NOT count affected males who are ANCESTORS of the mother (her
-      // father, maternal grandfather, maternal great-uncle, …): each transmits
-      // to the mother with probability ≤50%, never deterministically. Counting
-      // them would over-state `obligateCarrier` (the §3 refutation).
-      const motherOwnMothers = new Set(
-        mothersOf(graph, motherId).map((parent) => parent.id),
-      );
-      const sonSet = new Set(affectedSons);
-      const hasAffectedMaternalSibling = [...affected].some((maleId) => {
-        if (resolveSex(maleId) !== 'male' || sonSet.has(maleId)) {
-          return false;
-        }
-        // Shares the mother's own mother ⇒ maternal sibling on her X lineage.
-        return mothersOf(graph, maleId).some((parent) =>
-          motherOwnMothers.has(parent.id),
-        );
-      });
+  const recordedFathersOf = (childId: string, motherId: string): string[] =>
+    graph
+      .parentsOf(childId)
+      .filter((parent) => parent.id !== motherId && parent.sex === 'male')
+      .map((parent) => parent.id);
 
-      if (affectedSons.length >= 2 || hasAffectedMaternalSibling) {
-        markObligateFemale(motherId);
-      } else {
-        // Single affected son, no affected maternal sibling: de novo is not
-        // excluded → at-risk carrier, NOT obligate.
-        markAtRiskFemale(motherId);
+  // The fathers who could have passed the X down to `daughterId`. A daughter
+  // with no recorded father may share a father with any of her mother's other
+  // children, so she stands for an unrecorded man and for each of theirs.
+  const fathersOfDaughter = (
+    daughterId: string,
+    motherId: string,
+  ): string[] => {
+    const recorded = recordedFathersOf(daughterId, motherId);
+    if (recorded.length > 0) {
+      return recorded;
+    }
+    const siblingsFathers = graph
+      .childrenOf(motherId)
+      .filter((id) => id !== daughterId)
+      .flatMap((id) => recordedFathersOf(id, motherId));
+    return [`unrecorded:${motherId}`, ...siblingsFathers];
+  };
+
+  // The fathers who could have passed an X to `femaleId` herself.
+  const ownFathersOf = (femaleId: string): string[] => {
+    const mothers = mothersOf(graph, femaleId);
+    if (mothers.length > 0) {
+      return mothers.flatMap(({ id }) => fathersOfDaughter(femaleId, id));
+    }
+    return graph
+      .parentsOf(femaleId)
+      .filter((parent) => parent.sex === 'male')
+      .map((parent) => parent.id);
+  };
+
+  // The affected people in the X line that runs from `motherId` down through
+  // her genetic child `childId`, with the fathers along the way. A son's line
+  // is the son himself. A daughter's line is blocked when another parent of
+  // hers, or a man who may be her father, is affected, because his X would
+  // explain everything below her. An affected daughter with no recorded
+  // father blocks it too, since that father may be affected; a daughter who
+  // only links to affected people further down needs no recorded father.
+  const evidenceBelow = (
+    childId: string,
+    motherId: string,
+    path: Set<string>,
+    fathersAbove: Set<string>,
+  ): Evidence => {
+    const evidence: Evidence = new Map();
+    if (path.has(childId)) {
+      return evidence;
+    }
+    const childSex = resolveSex(childId);
+    if (childSex === 'male') {
+      if (affected.has(childId)) {
+        evidence.set(childId, fathersAbove);
+      }
+      return evidence;
+    }
+    if (childSex !== 'female') {
+      return evidence;
+    }
+    const otherParents = graph
+      .parentsOf(childId)
+      .filter((parent) => parent.id !== motherId);
+    const possibleFathers = fathersOfDaughter(childId, motherId);
+    if (
+      otherParents.some((parent) => affected.has(parent.id)) ||
+      possibleFathers.some((id) => affected.has(id))
+    ) {
+      return evidence;
+    }
+    const fathers = new Set([...fathersAbove, ...possibleFathers]);
+    if (affected.has(childId)) {
+      if (!otherParents.some((parent) => parent.sex === 'male')) {
+        return evidence;
+      }
+      evidence.set(childId, fathers);
+    }
+    path.add(childId);
+    for (const grandchildId of graph.childrenOf(childId)) {
+      const below = evidenceBelow(grandchildId, childId, path, fathers);
+      for (const [id, witnessFathers] of below) {
+        addWitness(evidence, id, witnessFathers);
       }
     }
+    path.delete(childId);
+    return evidence;
+  };
 
-    // Maternal grandmother + maternal aunts (mother's female parents/sisters) →
-    // atRiskCarrier; maternal uncles (mother's brothers) → atRiskAffected.
-    for (const motherId of mothers) {
-      for (const grandparent of graph.parentsOf(motherId)) {
-        if (grandparent.sex === 'female') {
-          markAtRiskFemale(grandparent.id);
+  // The affected people in the family of `womanId`'s genetic mother: the
+  // mother herself, the mother's affected father, the lines of the mother's
+  // other children, and the same again one generation up.
+  const evidenceAbove = (womanId: string, path: Set<string>): Evidence => {
+    const evidence: Evidence = new Map();
+    for (const { id: motherId } of mothersOf(graph, womanId)) {
+      if (path.has(motherId)) {
+        continue;
+      }
+      if (affected.has(motherId)) {
+        addWitness(evidence, motherId, new Set(ownFathersOf(motherId)));
+      }
+      for (const parent of graph.parentsOf(motherId)) {
+        if (parent.sex === 'male' && affected.has(parent.id)) {
+          addWitness(evidence, parent.id, noFathers);
         }
       }
-      // Only the mother's MATERNAL-line siblings share the maternal
-      // grandmother's X. Full siblings share both parents (hence the
-      // grandmother); half-siblings count only when they share her mother — a
-      // PATERNAL half-sibling (shared grandfather only) carries none of the
-      // grandmother's disease-bearing X and must not be marked at risk.
+      path.add(motherId);
+      // `womanId` is on `path`, so her own line is never counted here.
+      for (const siblingId of graph.childrenOf(motherId)) {
+        const below = evidenceBelow(siblingId, motherId, path, noFathers);
+        for (const [id, fathers] of below) {
+          addWitness(evidence, id, fathers);
+        }
+      }
+      for (const [id, fathers] of evidenceAbove(motherId, path)) {
+        addWitness(evidence, id, fathers);
+      }
+      path.delete(motherId);
+    }
+    return evidence;
+  };
+
+  for (const womanId of graph.nodeIds()) {
+    if (resolveSex(womanId) !== 'female' || affected.has(womanId)) {
+      continue;
+    }
+    const path = new Set([womanId]);
+    const sides = [
+      ...graph
+        .childrenOf(womanId)
+        .map((childId) => evidenceBelow(childId, womanId, path, noFathers)),
+      evidenceAbove(womanId, path),
+    ].filter((side) => side.size > 0);
+    const witnesses: Evidence = new Map();
+    for (const side of sides) {
+      for (const [id, fathers] of side) {
+        addWitness(witnesses, id, fathers);
+      }
+    }
+    // A man who could have passed it to every affected person would explain
+    // all of the sides without her, however many there are.
+    const [first, ...rest] = [...witnesses.values()];
+    const sharedFathers = [...(first ?? noFathers)].filter((father) =>
+      rest.every((fathers) => fathers.has(father)),
+    );
+    if (
+      sides.length >= 2 &&
+      witnesses.size >= 2 &&
+      sharedFathers.length === 0
+    ) {
+      markObligateFemale(womanId);
+    }
+  }
+
+  // (2c) Climb the maternal line from every mother of an affected male and
+  // every obligate carrier. Her disease X came from her mother unless it arose
+  // new, so her mother and her mother's other daughters are at-risk carriers
+  // and her mother's other sons are at risk of being affected, and the same
+  // holds for her mother in turn. The climb ends above a woman whose recorded
+  // father is affected, because his X accounts for hers, unless she is
+  // affected herself and may have a copy from each parent.
+  graph.propagate(
+    [...new Set([...mothersOfAffectedMales, ...obligateCarrierFemales])],
+    (womanId) => {
+      const parents = graph.parentsOf(womanId);
+      if (
+        !affected.has(womanId) &&
+        parents.some(
+          (parent) => parent.sex === 'male' && affected.has(parent.id),
+        )
+      ) {
+        return [];
+      }
+      // Only her MATERNAL-line siblings share her mother's X. Full siblings
+      // share both parents; half-siblings count only when they share her
+      // mother. A PATERNAL half-sibling carries none of it and is not marked.
       const maternalSiblings = [
-        ...graph.fullSiblingsOf(motherId),
-        ...graph.maternalHalfSiblingsOf(motherId),
+        ...graph.fullSiblingsOf(womanId),
+        ...graph.maternalHalfSiblingsOf(womanId),
       ];
       for (const siblingId of maternalSiblings) {
         const siblingSex = resolveSex(siblingId);
@@ -176,15 +345,27 @@ export function computeXLinkedRecessive(
           assign(result, siblingId, 'atRiskAffected');
         }
       }
-    }
-  }
+      const mothers = parents
+        .filter((parent) => parent.sex === 'female')
+        .map((parent) => parent.id);
+      for (const motherId of mothers) {
+        markAtRiskFemale(motherId);
+      }
+      return mothers;
+    },
+  );
 
-  // (3) Propagate DOWN from every carrier female (obligate and at-risk) through
-  // the maternal line: daughters become at-risk carrier females (recursed via
-  // the visited-set), sons become at-risk affected. No male-to-male step.
+  // (3) Propagate DOWN from every carrier female (obligate and at-risk) and
+  // every affected female through the maternal line: daughters become at-risk
+  // carrier females (recursed via the visited-set), sons become at-risk
+  // affected. No male-to-male step.
+  const affectedFemales = [...affected].filter(
+    (id) => resolveSex(id) === 'female',
+  );
   const carrierFemaleSeeds = [
     ...obligateCarrierFemales,
     ...atRiskCarrierFemales,
+    ...affectedFemales,
   ];
   const visitedFemales = new Set<string>();
   graph.propagate(

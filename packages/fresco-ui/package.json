@@ -46,6 +46,7 @@
     "./IdentityMark": "./src/IdentityMark.tsx",
     "./Kbd": "./src/Kbd.tsx",
     "./Label": "./src/Label.tsx",
+    "./LocaleDirectionProvider": "./src/LocaleDirectionProvider.tsx",
     "./LocaleLoadFailureToast": "./src/LocaleLoadFailureToast.tsx",
     "./Modal": "./src/Modal/index.tsx",
     "./Modal/ModalBackdrop": "./src/Modal/ModalBackdrop.tsx",
@@ -141,6 +142,7 @@
     "./form/fields/InputField": "./src/form/fields/InputField.tsx",
     "./form/fields/LikertScale": "./src/form/fields/LikertScale.tsx",
     "./form/fields/LocaleSelect": "./src/form/fields/LocaleSelect.tsx",
+    "./form/fields/OptionMappingField": "./src/form/fields/OptionMappingField.tsx",
     "./form/fields/PasswordField": "./src/form/fields/PasswordField.tsx",
     "./form/fields/RadioGroup": "./src/form/fields/RadioGroup.tsx",
     "./form/fields/RadioMatrixField": "./src/form/fields/RadioMatrixField.tsx",
@@ -163,6 +165,7 @@
     "./form/hooks/useFormValue": "./src/form/hooks/useFormValue.ts",
     "./form/store/formStoreProvider": "./src/form/store/formStoreProvider.tsx",
     "./form/store/types": "./src/form/store/types.ts",
+    "./form/textEntryDirection": "./src/form/textEntryDirection.ts",
     "./form/utils/focusFirstError": "./src/form/utils/focusFirstError.ts",
     "./form/utils/getInputState": "./src/form/utils/getInputState.ts",
     "./form/utils/objectPath": "./src/form/utils/objectPath.ts",
@@ -195,6 +198,7 @@
     "./navigation/SiteNavigation.messages": "./src/navigation/SiteNavigation.messages.ts",
     "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
+    "./node/nodeShapeSvg": "./src/node/nodeShapeSvg.ts",
     "./stages/StageBar": "./src/stages/StageBar.tsx",
     "./stages/stageTypes": "./src/stages/stageTypes.ts",
     "./storybook-support/awaitPassiveEffects": "./src/storybook-support/awaitPassiveEffects.ts",
@@ -337,6 +341,10 @@
       "./Label": {
         "types": "./dist/Label.d.ts",
         "default": "./dist/Label.js"
+      },
+      "./LocaleDirectionProvider": {
+        "types": "./dist/LocaleDirectionProvider.d.ts",
+        "default": "./dist/LocaleDirectionProvider.js"
       },
       "./LocaleLoadFailureToast": {
         "types": "./dist/LocaleLoadFailureToast.d.ts",
@@ -718,6 +726,10 @@
         "types": "./dist/form/fields/LocaleSelect.d.ts",
         "default": "./dist/form/fields/LocaleSelect.js"
       },
+      "./form/fields/OptionMappingField": {
+        "types": "./dist/form/fields/OptionMappingField.d.ts",
+        "default": "./dist/form/fields/OptionMappingField.js"
+      },
       "./form/fields/PasswordField": {
         "types": "./dist/form/fields/PasswordField.d.ts",
         "default": "./dist/form/fields/PasswordField.js"
@@ -805,6 +817,10 @@
       "./form/store/types": {
         "types": "./dist/form/store/types.d.ts",
         "default": "./dist/form/store/types.js"
+      },
+      "./form/textEntryDirection": {
+        "types": "./dist/form/textEntryDirection.d.ts",
+        "default": "./dist/form/textEntryDirection.js"
       },
       "./form/utils/focusFirstError": {
         "types": "./dist/form/utils/focusFirstError.d.ts",
@@ -934,6 +950,10 @@
         "types": "./dist/navigation/ThemeSwitcher.d.ts",
         "default": "./dist/navigation/ThemeSwitcher.js"
       },
+      "./node/nodeShapeSvg": {
+        "types": "./dist/node/nodeShapeSvg.d.ts",
+        "default": "./dist/node/nodeShapeSvg.js"
+      },
       "./stages/StageBar": {
         "types": "./dist/stages/StageBar.d.ts",
         "default": "./dist/stages/StageBar.js"
@@ -1045,6 +1065,7 @@
     "cva": "1.0.0-beta.12",
     "es-toolkit": "catalog:",
     "fuse.js": "catalog:",
+    "gemoji": "^8.1.0",
     "immer": "^11.2.9",
     "lucide-react": "catalog:",
     "nanoid": "^6.0.2",
@@ -1055,6 +1076,7 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gemoji": "^8.0.0",
     "remark-gfm": "^4.0.1",
+    "saxes": "^6.0.0",
     "tailwind-merge": "catalog:",
     "usehooks-ts": "^3.1.1"
   },

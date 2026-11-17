@@ -25,13 +25,21 @@ import { useContentFormat } from '../../../localization/useContentFormat';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
-import { showPiped, usePedigreePiped } from '../pedigreeWords';
+import {
+  type CompletenessWording,
+  showPiped,
+  usePedigreePiped,
+} from '../pedigreeWords';
 
-/** The stage's completeness setting: its enforcement and its wording. */
+/**
+ * The stage's completeness setting: its enforcement, and its wording as the
+ * interview shows it.
+ */
 type TrackerCompleteness = Pick<
   NonNullable<FamilyPedigreeStageDefinition['completeness']>,
-  'enforcement' | 'itemText' | 'recommendedNote'
->;
+  'enforcement'
+> &
+  CompletenessWording;
 
 type CompletenessTrackerProps = {
   progress: CompletenessProgress;
@@ -96,7 +104,9 @@ function DoneText({
 }) {
   return (
     <span className="line-through opacity-70">
-      <span className="sr-only">{prefix}</span>
+      <span className="sr-only" lang="en">
+        {prefix}
+      </span>
       {children}
     </span>
   );
@@ -204,11 +214,12 @@ function CompletenessTracker({
   const fraction = progress.total === 0 ? 0 : progress.done / progress.total;
   const complete = progress.total > 0 && progress.items.length === 0;
   // Read out before each item already done, apart from the item's words.
-  const donePrefix = `${intl.formatMessage(messages.trackerItemDone)} `;
-  const progressLabel = intl.formatMessage(messages.trackerProgressLabel, {
-    complete: complete ? 'true' : 'false',
-    percent: fraction,
-  });
+  const donePrefix = 'Done: ';
+  const progressLabel = `${
+    complete
+      ? 'Your family tree has everything needed'
+      : `Family tree ${Math.round(fraction * 100)}% complete`
+  }. Show what’s still needed.`;
 
   // The answered item leaves the list, taking focus with it: focus moves to
   // the list, or to the ring once nothing is left.
@@ -239,6 +250,7 @@ function CompletenessTracker({
         <ToolbarButton
           ref={triggerRef}
           aria-label={progressLabel}
+          lang="en"
           className="aspect-square w-16 p-0!"
           data-testid="pedigree-completeness"
           onPointerEnter={pointerEnter}
@@ -313,7 +325,7 @@ function CompletenessTracker({
                       <div className="flex flex-col items-start gap-2">
                         <button
                           type="button"
-                          className="focusable cursor-pointer text-left underline-offset-4 hover:underline"
+                          className="focusable cursor-pointer text-start underline-offset-4 hover:underline"
                           onClick={() => {
                             // The list is put away for what it leads to, the
                             // person's panel, which it would otherwise cover.

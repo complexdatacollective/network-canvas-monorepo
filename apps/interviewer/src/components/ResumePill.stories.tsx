@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, waitFor } from 'storybook/test';
 
 import type { StoredSessionLite } from '~/lib/db/types';
 
@@ -45,7 +46,59 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
-export const Default: Story = {};
+// Overrides a document property and returns a function that puts back
+// whatever own property was there before (none, or an earlier stub).
+function overrideDocument(
+  name: 'hasFocus' | 'visibilityState',
+  descriptor: PropertyDescriptor,
+) {
+  const previous = Object.getOwnPropertyDescriptor(document, name);
+  Object.defineProperty(document, name, { configurable: true, ...descriptor });
+  return () => {
+    if (previous) Object.defineProperty(document, name, previous);
+    else Reflect.deleteProperty(document, name);
+  };
+}
+
+const announceVisibility = () =>
+  document.dispatchEvent(new Event('visibilitychange'));
+
+/**
+ * The status dot pulses only while the page is active, so a hidden tab does
+ * not keep animating. Focus is stubbed so the play does not depend on the
+ * runner's window having focus.
+ */
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const dot = canvasElement.querySelector('span[aria-hidden].rounded-full');
+    if (!dot) throw new Error('status dot not found');
+    const restoreFocus = overrideDocument('hasFocus', { value: () => true });
+    try {
+      announceVisibility();
+      await waitFor(() =>
+        expect(getComputedStyle(dot).animationName).toBe('animate-pulse-glow'),
+      );
+      const restoreVisibility = overrideDocument('visibilityState', {
+        get: () => 'hidden',
+      });
+      try {
+        announceVisibility();
+        await waitFor(() =>
+          expect(getComputedStyle(dot).animationName).toBe('none'),
+        );
+      } finally {
+        restoreVisibility();
+        announceVisibility();
+      }
+      await waitFor(() =>
+        expect(getComputedStyle(dot).animationName).toBe('animate-pulse-glow'),
+      );
+    } finally {
+      restoreFocus();
+      announceVisibility();
+    }
+  },
+};
 
 export const UntitledCase: Story = {
   args: { caseId: '' },

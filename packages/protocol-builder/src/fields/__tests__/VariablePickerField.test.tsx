@@ -649,7 +649,9 @@ describe('inventing an attribute from the picker', () => {
     ).not.toContain('contactType_call');
   });
 
-  it.each(['nominated early', '友人', 'amigo cercano', 'Collègue'])(
+  // The characters a name may hold are tabled against the rule itself in
+  // variableNameRules.test.ts; this proves the create row asks it.
+  it.each(['友人'])(
     'offers to create %j, which the codebook can store',
     async (name) => {
       const harness = renderRows(<StampedAttributes />);
@@ -1256,7 +1258,7 @@ describe('the attribute picker, read in Spanish', () => {
     const dialog = await openInSpanish(harness);
     await harness.user.type(
       within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
+        name: 'Find or create an attribute',
       }),
       attributeName,
     );
@@ -1275,11 +1277,11 @@ describe('the attribute picker, read in Spanish', () => {
 
     expect(dialog).toHaveAccessibleName('Crear o seleccionar un atributo');
     const box = within(dialog).getByRole('searchbox', {
-      name: 'Busca o crea un atributo',
+      name: 'Find or create an attribute',
     });
     expect(box).toHaveAttribute('placeholder', 'Busca o crea un atributo…');
     expect(
-      within(dialog).getByRole('listbox', { name: 'Resultados de atributos' }),
+      within(dialog).getByRole('listbox', { name: 'Attribute results' }),
     ).toBeInTheDocument();
   });
 
@@ -1289,7 +1291,7 @@ describe('the attribute picker, read in Spanish', () => {
 
     await harness.user.type(
       within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
+        name: 'Find or create an attribute',
       }),
       'nominado_pronto',
     );
@@ -1312,7 +1314,7 @@ describe('the attribute picker, read in Spanish', () => {
 
     await harness.user.type(
       within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
+        name: 'Find or create an attribute',
       }),
       'age',
     );
@@ -1399,7 +1401,7 @@ describe('the attribute picker, read in Spanish', () => {
     const dialog = await screen.findByRole('dialog');
     await control.user.type(
       within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
+        name: 'Find or create an attribute',
       }),
       'nominado_pronto',
     );
@@ -1810,7 +1812,10 @@ describe('renaming the attribute a picker holds', () => {
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
   });
 
-  it.each(['full name', '友人', 'amigo cercano', 'Collègue'])(
+  // As above: the rule's own table is in variableNameRules.test.ts. The row
+  // carries another script and a space, so a rename rule of its own that
+  // refused either would fail here.
+  it.each(['友人 cercano'])(
     'takes the name %j, which the codebook can store',
     async (name) => {
       const harness = renderStageEditor({

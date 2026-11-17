@@ -31,12 +31,6 @@ import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import ControlsColumn from './ControlsColumn';
 import UsageColumn from './UsageColumn';
 const messages = defineMessages({
-  tableLabel: {
-    id: 'architect.codebook.variables.tableLabel',
-    defaultMessage: 'Attributes',
-    description:
-      'Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached.',
-  },
   unknown: {
     id: 'architect.codebook.variables.unknown',
     defaultMessage: 'Unknown',
@@ -46,33 +40,33 @@ const messages = defineMessages({
   deleteAttribute: {
     id: 'architect.codebook.variables.deleteAttribute',
     defaultMessage: 'Delete attribute',
-    description: 'The title text in components / Codebook / Variables.',
+    description:
+      'Title of the dialog, and label of its destructive confirm button, for deleting a codebook variable (attribute) from a node type, edge type or ego. Delete is a verb.',
   },
   areYouSureYouWantTo: {
     id: 'architect.codebook.variables.areYouSureYouWantTo',
     defaultMessage:
       'Are you sure you want to delete the attribute “{name}”? You can restore it with Undo while this protocol remains open.',
-    description: 'The description text in components / Codebook / Variables.',
+    description:
+      'Body of the confirmation dialog for deleting a codebook variable (attribute). name is the variable name, shown in quotation marks. Notes that Undo can restore it while the protocol stays open.',
   },
   name: {
     id: 'architect.codebook.variables.name',
     defaultMessage: 'Name',
-    description: 'The title text in components / Codebook / Variables.',
+    description:
+      'Column header of the codebook variables table, above the variable names. Clicking it sorts the table.',
   },
   usedIn: {
     id: 'architect.codebook.variables.usedIn',
     defaultMessage: 'Used In',
-    description: 'The title text in components / Codebook / Variables.',
-  },
-  actions: {
-    id: 'architect.codebook.variables.actions',
-    defaultMessage: 'Actions',
-    description: 'Visible text in components / Codebook / Variables.',
+    description:
+      'Column header of the codebook variables table, above the stages that use each variable. Clicking it sorts the table.',
   },
   noAttributes: {
     id: 'architect.codebook.variables.noAttributes',
     defaultMessage: 'No attributes.',
-    description: 'The emptyText text in components / Codebook / Variables.',
+    description:
+      'Message shown in place of the rows of the codebook variables table when the node type, edge type or ego has no variables (attributes).',
   },
 });
 
@@ -148,12 +142,12 @@ const UsageCell = ({ row }: CellContext<DataTableFeatures, Variable>) => (
   <UsageColumn inUse={row.original.inUse} usage={row.original.usage} />
 );
 
-const ActionsHeader = () => {
-  const intl = useAppIntl();
-  return (
-    <span className="sr-only">{intl.formatMessage(messages.actions)}</span>
-  );
-};
+const ActionsHeader = () => (
+  <span className="sr-only" lang="en">
+    {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+    {'Actions'}
+  </span>
+);
 
 /**
  * The actions cell is the one renderer that has to close over a value the
@@ -285,7 +279,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
     <div className="@container mt-7">
       <DataTable
         table={table}
-        aria-label={intl.formatMessage(messages.tableLabel)}
+        aria-label="Attributes"
         showPagination={false}
         emptyText={intl.formatMessage(messages.noAttributes)}
       />

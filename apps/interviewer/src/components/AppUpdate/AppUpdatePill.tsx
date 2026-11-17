@@ -9,12 +9,14 @@ const messages = defineMessages({
   updateCaveat: {
     id: 'interviewer.appUpdatePill.updateCaveat',
     defaultMessage: 'Your saved responses are kept when the update is applied.',
-    description: 'Administration text in Interviewer AppUpdatePill.',
+    description:
+      'Reassurance in the app update popover on the home screen; says saved responses are kept when the update is applied.',
   },
   version: {
     id: 'interviewer.appUpdatePill.version',
     defaultMessage: 'Interviewer {version}',
-    description: 'Administration text in Interviewer AppUpdatePill.',
+    description:
+      'Label of the version indicator at the bottom right of the home screen. version is the installed app version number.',
   },
 });
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { MousePointer2, Redo2, Undo2, Unlink, Waypoints } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
@@ -57,12 +58,14 @@ import {
   writeSubmissionResult,
 } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
+import { useCustomShapeSvgs } from '../../hooks/useCustomShapeSvgs';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../localization/useContentFormat';
+import { useStageWording } from '../../localization/useStageWording';
 import {
   getActiveSession,
   getEdgeColorForType,
@@ -112,7 +115,10 @@ import {
   usePedigreeZoomButtons,
   zoomForKey,
 } from '../pedigree-common/PedigreeCanvas';
-import { symbolShapesOf } from '../pedigree-common/symbolShapes';
+import {
+  symbolOutlinesOf,
+  symbolShapesOf,
+} from '../pedigree-common/symbolShapes';
 import {
   answersContradictedBy,
   type CompletenessItem,
@@ -184,6 +190,7 @@ import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { pedigreeLinksOf } from './pedigreeLinks';
 import {
+  completenessWordingFrom,
   PedigreeWordsProvider,
   showPiped,
   usePedigreeWordsOf,
@@ -294,7 +301,8 @@ const changesAnything = (changes: StandInChanges) =>
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
   const contentFormat = useContentFormat();
-  const words = usePedigreeWordsOf(stage.wording);
+  const stageWording = useStageWording(stage);
+  const words = usePedigreeWordsOf(stageWording);
   const { wording, text, piped } = words;
   const dispatch = useAppDispatch();
   const { currentStep, displayedStep } = useCurrentStep();
@@ -683,7 +691,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // A person's symbol is the person type's shape in the codebook, which the
   // researcher may map to one of their attributes, such as gender identity
   // or sex assigned at birth.
-  const shapeDefinition = codebook.node?.[config.personType]?.shape;
+  const personDefinition = codebook.node?.[config.personType];
+  const shapeSvgs = useCustomShapeSvgs();
 
   // The gender identity question offers the attribute's own options, with
   // the labels the researcher gave them.
@@ -779,6 +788,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  // The panel is on the end edge of the screen, as `PersonDrawer` places it.
+  const panelOnTheLeft = useDirection() === 'rtl';
   const [stepNavigation, setStepNavigation] = useState<HTMLElement | null>(
     null,
   );
@@ -902,9 +913,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     askFramingOnLoad.current = false;
     writePedigreeMetadata({ framing: chosen });
     setAnnouncement(
-      intl.formatMessage(messages.framingChosenAnnouncement, {
-        framing: chosen,
-      }),
+      chosen === 'gamete'
+        ? 'Family members are now described with words like egg parent, sperm parent and sibling.'
+        : 'Family members are now described with words like mother, father, sister and brother.',
     );
   };
   // Everyone the participant has not named is shown by the label that will
@@ -1087,11 +1098,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   if (justAddedId && family.byId.has(justAddedId)) {
     setJustAddedId(null);
-    setAnnouncement(
-      intl.formatMessage(messages.addedAnnouncement, {
-        name: displayName(justAddedId),
-      }),
-    );
+    setAnnouncement(`${displayName(justAddedId)} added to your family.`);
   }
 
   // Announce a connection once it is in the family, in the words people have
@@ -1108,7 +1115,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         describeConnection(
           justConnected,
           words,
-          intl,
           family,
           displayName,
           optionLabels.parentKind,
@@ -1126,11 +1132,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => new Map(shown.people.map((person) => [person.id, person.name ?? ''])),
     [shown.people],
   );
-  // The shape each person's symbol is drawn with, so that lines meet the
-  // symbols' edges.
+  // The shape each person's symbol is drawn with, and its outline, so that
+  // lines meet the symbols' edges.
+  const symbolShapes = useMemo(
+    () => symbolShapesOf(shown.people, personDefinition, shapeSvgs),
+    [shown.people, personDefinition, shapeSvgs],
+  );
   const nodeShapes = useMemo(
-    () => symbolShapesOf(shown.people, shapeDefinition),
-    [shown.people, shapeDefinition],
+    () => symbolOutlinesOf(symbolShapes),
+    [symbolShapes],
   );
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
@@ -1244,19 +1254,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           (other): other is HTMLButtonElement =>
             other !== undefined && other !== element,
         );
+      // The panel covers the end of the screen: its right, or its left in a
+      // right-to-left interview. The person is centred in what it leaves
+      // uncovered. The panel is measured by its width, not by where it is
+      // drawn, because it is still sliding in.
+      const covered = drawer?.offsetWidth ?? 0;
+      const canvas = viewportRef.current?.getBoundingClientRect();
+      const visible = panelOnTheLeft
+        ? { left: covered }
+        : { right: window.innerWidth - covered };
+      const roomBeside = panelOnTheLeft
+        ? (canvas?.right ?? window.innerWidth) - covered
+        : window.innerWidth - covered - (canvas?.left ?? 0);
       // A panel as wide as the screen leaves nothing beside it, so the
       // person is centred on the whole canvas.
-      const visibleRight = window.innerWidth - (drawer?.offsetWidth ?? 0);
-      const canvasLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
       panZoom.centreOn([element, ...new Set(closeFamily)], {
-        visibleRight:
-          visibleRight - canvasLeft > 160 ? visibleRight : undefined,
+        visible: roomBeside > 160 ? visible : undefined,
         insets: clearInsets(),
       });
     };
     frame = requestAnimationFrame(centre);
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, panelAnchorId, panZoom, clearInsets]);
+  }, [selectedId, panelAnchorId, panZoom, clearInsets, panelOnTheLeft]);
 
   // Closing the panel, once someone is added or edited (or the panel is
   // cancelled), shows the whole family again.
@@ -1337,6 +1356,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // How far the family is from what the researcher requires (or recommends)
   // before the participant continues.
   const completeness = stage.completeness;
+  const completenessWording = useMemo(
+    () => completenessWordingFrom(stageWording),
+    [stageWording],
+  );
+  // The name question, and the hint beneath it.
+  const nameField = useMemo(
+    () => ({
+      prompt: stageWording.text('nodeConfiguration', 'nameField', 'prompt'),
+      hint: stageWording.text('nodeConfiguration', 'nameField', 'hint'),
+    }),
+    [stageWording],
+  );
   const progress = useMemo(
     () =>
       completeness
@@ -1573,16 +1604,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       ),
     );
+    const relatives =
+      item.kind === 'siblings' ? 'brothers or sisters' : 'children';
     setAnnouncement(
-      intl.formatMessage(
-        item.kind === 'siblings'
-          ? messages.siblingsAnsweredAnnouncement
-          : messages.childrenAnsweredAnnouncement,
-        {
-          isYou: person.isEgo ? 'true' : 'false',
-          name: displayName(person.id),
-        },
-      ),
+      person.isEgo
+        ? `Recorded that you have no biological ${relatives}.`
+        : `Recorded that ${displayName(person.id)} has no biological ${relatives}.`,
     );
   };
 
@@ -2341,7 +2368,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           }),
         );
       }
-      setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
+      setAnnouncement('Details saved.');
       // Said to have the siblings or children the list asked for, the
       // participant goes on to adding one, to the person as the family now
       // stores them, with the answers just saved.
@@ -2518,16 +2545,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (chosenPair) return;
     if (!linkingId) {
       setLinkingId(personId);
+      const [verb, preposition] =
+        tool === 'connect' ? ['connect', 'to'] : ['disconnect', 'from'];
       setAnnouncement(
-        intl.formatMessage(
-          tool === 'connect'
-            ? messages.connectHintLinking
-            : messages.disconnectHintLinking,
-          {
-            isYou: family.byId.get(personId)?.isEgo ? 'true' : 'false',
-            name: displayName(personId),
-          },
-        ),
+        family.byId.get(personId)?.isEgo
+          ? `Now select the person to ${verb} ${preposition} you.`
+          : `Now select the person to ${verb} ${preposition} ${displayName(personId)}.`,
       );
       return;
     }
@@ -2592,13 +2615,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     endConnecting();
     setConnectNotice(null);
     await undoStore.getState()[direction]();
-    setAnnouncement(
-      intl.formatMessage(
-        direction === 'undo'
-          ? messages.undoneAnnouncement
-          : messages.redoneAnnouncement,
-      ),
-    );
+    setAnnouncement(direction === 'undo' ? 'Change undone.' : 'Change redone.');
   };
   // Ctrl+Z (⌘Z) undoes, and Ctrl+Shift+Z (⌘⇧Z) or Ctrl+Y redoes, anywhere on
   // the stage but in a text field, which keeps its own undo.
@@ -2701,7 +2718,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         reportRefusedStandIn(await keepStandInRule());
       });
       setAnnouncement(
-        intl.formatMessage(messages.disconnectedAnnouncement, args),
+        args.firstIsYou === 'true'
+          ? `The connection between you and ${args.second} was removed.`
+          : `The connection between ${args.first} and ${args.second} was removed.`,
       );
     }
   };
@@ -2756,11 +2775,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }
         setAnnouncement(
           cutOffIds.length === 0
-            ? intl.formatMessage(messages.removedAnnouncement, { name })
-            : intl.formatMessage(messages.removedWithOthersAnnouncement, {
-                name,
-                count: cutOffIds.length,
-              }),
+            ? `${name} removed from your family.`
+            : `${name} and ${cutOffIds.length === 1 ? 'one other person' : `${cutOffIds.length} other people`} removed from your family.`,
         );
       },
     });
@@ -2932,7 +2948,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     }
                     accessibleName={displayName(personId)}
                     color={nodeColor}
-                    shape={nodeShapes.get(personId) ?? 'circle'}
+                    shape={symbolShapes.get(personId) ?? 'circle'}
                     selected={
                       nomination ? isNominated(person) : personId === selectedId
                     }
@@ -3066,14 +3082,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               }}
             >
               <SegmentedToolbar
-                aria-label={intl.formatMessage(messages.toolsLabel)}
+                aria-label="Family tree tools"
                 size="lg"
                 className="pointer-events-auto"
               >
                 {/* Answering a nomination prompt, selecting is all there is. */}
                 {!nomination && (
                   <ToolbarToggleGroup
-                    aria-label={intl.formatMessage(messages.toolGroupLabel)}
+                    aria-label="What clicking a person does"
                     disabled={detailsLocked || wordingForced}
                     value={[tool]}
                     onValueChange={(value) => {
@@ -3136,9 +3152,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 )}
                 {(!nomination || participantFraming) && <ToolbarSeparator />}
                 <ToolbarGroup
-                  aria-label={intl.formatMessage(
-                    interfaceMessages.historyTools,
-                  )}
+                  aria-label="History tools"
                   disabled={historyLocked}
                 >
                   <ToolbarIconButton
@@ -3178,7 +3192,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 {progress && completeness && !nomination && (
                   <CompletenessTracker
                     progress={progress}
-                    completeness={completeness}
+                    completeness={{
+                      enforcement: completeness.enforcement,
+                      ...completenessWording,
+                    }}
                     open={trackerOpen}
                     onOpenChange={setTrackerOpen}
                     family={family}
@@ -3193,7 +3210,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 )}
               </SegmentedToolbar>
               <SegmentedToolbar
-                aria-label={intl.formatMessage(messages.viewToolsLabel)}
+                aria-label="View controls"
                 size="lg"
                 className="pointer-events-auto"
               >
@@ -3214,7 +3231,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           onConnect={(connection) => void handleConnect(connection)}
           onClose={endConnecting}
         />
-        <div aria-live="polite" className="sr-only">
+        <div aria-live="polite" className="sr-only" lang="en">
           {announcement}
         </div>
         <PassphraseOverlay
@@ -3248,7 +3265,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     type="button"
                     variant="text"
                     color="destructive"
-                    className="mr-auto"
+                    className="me-auto"
                     onClick={() => void handleRemove(editedPerson.id)}
                   >
                     <AppMessage message={commonMessages.delete} />
@@ -3258,7 +3275,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               <Button
                 type="button"
                 variant="text"
-                className={panel?.mode.kind === 'add' ? 'mr-auto' : undefined}
+                className={panel?.mode.kind === 'add' ? 'me-auto' : undefined}
                 onClick={cancelPanel}
               >
                 <AppMessage message={commonMessages.cancel} />
@@ -3290,7 +3307,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               generatedLabels={generatedLabels}
               decryptedNames={decryptedNames}
               displayName={displayName}
-              nameField={stage.nodeConfiguration.nameField}
+              nameField={nameField}
               askAbout={
                 panel.mode.kind === 'edit' && progress && completeness
                   ? {
@@ -3302,8 +3319,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       required: completeness.enforcement === 'required',
                       answeredYes: saidYes.get(panel.mode.person.id),
                       questions: {
-                        siblings: completeness.itemText.siblings.question,
-                        children: completeness.itemText.children.question,
+                        siblings:
+                          completenessWording.itemText.siblings.question,
+                        children:
+                          completenessWording.itemText.children.question,
                       },
                     }
                   : undefined

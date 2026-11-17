@@ -62,9 +62,8 @@ export const hasDirtyNestedDraft = (): boolean => {
  *
  * And an open editor does not have to be dirty to be a hazard. It was seeded
  * from the editing buffer as it stood when it opened, and it goes on showing
- * those values after a reclaim replaces that buffer (pinned by
- * `Codebook/__tests__/EntityTypeDialog.bufferRefresh.test.tsx`) — so changing
- * one field and saving would write the rest of the older definition back over
+ * those values after a reclaim replaces that buffer — so changing one field
+ * and saving would write the rest of the older definition back over
  * what the other tab saved. Nothing about the editor says so on screen.
  */
 export const hasOpenNestedEditor = (): boolean => draftPredicates.size > 0;
@@ -136,7 +135,7 @@ const syncBeforeUnloadListener = () => {
   listenerAttached = wanted;
 };
 
-const registerNestedDraft = (isDirty: DirtyPredicate): (() => void) => {
+export const registerNestedDraft = (isDirty: DirtyPredicate): (() => void) => {
   const key = Symbol('nested-draft');
   draftPredicates.set(key, isDirty);
   syncBeforeUnloadListener();

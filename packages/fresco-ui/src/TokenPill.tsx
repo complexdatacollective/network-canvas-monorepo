@@ -1,16 +1,53 @@
+'use client';
+
 import type { DOMOutputSpec } from '@tiptap/pm/model';
-import { Syringe } from 'lucide-react';
+import { Split, Syringe } from 'lucide-react';
 import { type ComponentPropsWithoutRef, Fragment } from 'react';
 
+import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
+
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from './PresentationalText';
 import { cx } from './utils/cva';
+
+/**
+ * What a pill says. A plain string is the interface's own words (“Today”, “The
+ * first person's age”); the object form is text with a language of its own,
+ * such as `{ text, dir: 'auto' }` for a name someone wrote (an attribute
+ * called “team-b!”), which reads in its own direction rather than the
+ * interface's.
+ */
+export type TokenPillLabel = PresentationalText;
+
+type InterfaceLanguage = Readonly<{ lang: string; dir: 'ltr' | 'rtl' }>;
+
+/**
+ * `lang` and `dir` for a pill that says `label`. The interface's words take
+ * the interface's language and direction, whatever language the text around
+ * the pill is in (a protocol's English text in an Arabic interface), so a
+ * screen reader reads them in the right voice and they take the interface's
+ * typeface. Text with a language of its own keeps it.
+ */
+export const tokenPillLanguage = (
+  label: TokenPillLabel,
+  interfaceLanguage: InterfaceLanguage,
+): Readonly<{ lang?: string; dir?: 'ltr' | 'rtl' | 'auto' }> =>
+  typeof label === 'string'
+    ? interfaceLanguage
+    : presentationalTextProps(label);
 
 type TokenPillProps = Omit<ComponentPropsWithoutRef<'span'>, 'children'> & {
   /** What the text records for the placeholder, such as `name`. */
   token: string;
   /** What the pill says: the placeholder's name, such as “Name”. */
-  label: string;
+  label: TokenPillLabel;
   /** Outlines the pill, as the editor does while its caret is on it. */
   selected?: boolean;
+  /** Whether the pill is a value or a piece of logic; a value when absent. */
+  variant?: TokenPillVariant;
 };
 
 /**
@@ -18,7 +55,17 @@ type TokenPillProps = Omit<ComponentPropsWithoutRef<'span'>, 'children'> & {
  * placeholders it holds as DOM it builds itself. Outlines the pill while it is
  * `selected`, or while the editor marks it as the selected node.
  */
-export const tokenPillClasses = (className?: string) =>
+/**
+ * What a pill stands for: a `value` filled in later, or `logic`, a piece of
+ * text that reads differently by case. Logic is drawn in a colour and with an
+ * icon of its own, so it can be told from a value in a line of pills.
+ */
+export type TokenPillVariant = 'value' | 'logic';
+
+export const tokenPillClasses = (
+  className?: string,
+  variant: TokenPillVariant = 'value',
+) =>
   cx(
     // A long label wraps like the words around it, each line drawn as the
     // pill, so a narrow column or table cell is never pushed wider.
@@ -26,9 +73,10 @@ export const tokenPillClasses = (className?: string) =>
     // The value's name in bold body type, whatever the text around it is set
     // in, so a pill in a bold label or a heading reads as it does in the
     // editor.
-    'border-primary/40 bg-primary/10 font-body font-bold',
-    'data-selected:outline-primary data-selected:outline-2',
-    '[&.ProseMirror-selectednode]:outline-primary [&.ProseMirror-selectednode]:outline-2',
+    'font-body font-bold data-selected:outline-2 [&.ProseMirror-selectednode]:outline-2',
+    variant === 'logic'
+      ? 'border-info/50 bg-info/10 data-selected:outline-info [&.ProseMirror-selectednode]:outline-info'
+      : 'border-primary/40 bg-primary/10 data-selected:outline-primary [&.ProseMirror-selectednode]:outline-primary',
     className,
   );
 
@@ -87,9 +135,9 @@ const tokenPillIconSpec: DOMOutputSpec = [
  * the label.
  */
 export const tokenPillContentSpec = (
-  label: string,
+  label: TokenPillLabel,
 ): (DOMOutputSpec | string)[] => {
-  const [first, rest] = splitFirstWord(label);
+  const [first, rest] = splitFirstWord(presentationalTextValue(label));
   return [
     ['span', { class: tokenPillLeadClasses }, tokenPillIconSpec, first],
     ...(rest === '' ? [] : [rest]),
@@ -101,12 +149,19 @@ export const tokenPillContentSpec = (
  * the rest of the label. For a pill drawn by an element of its own, such as
  * one that is also a button.
  */
-export const TokenPillContent = ({ label }: { label: string }) => {
-  const [first, rest] = splitFirstWord(label);
+export const TokenPillContent = ({
+  label,
+  variant = 'value',
+}: {
+  label: TokenPillLabel;
+  variant?: TokenPillVariant;
+}) => {
+  const [first, rest] = splitFirstWord(presentationalTextValue(label));
+  const Icon = variant === 'logic' ? Split : Syringe;
   return (
     <>
       <span className={tokenPillLeadClasses}>
-        <Syringe aria-hidden className={tokenPillIconClasses} />
+        <Icon aria-hidden className={tokenPillIconClasses} />
         {first}
       </span>
       {rest}
@@ -125,18 +180,35 @@ export const TokenPill = ({
   token,
   label,
   selected = false,
+  variant = 'value',
   className,
   ...props
-}: TokenPillProps) => (
-  <span
-    {...props}
-    data-token={token}
-    data-selected={selected || undefined}
-    className={tokenPillClasses(className)}
-  >
-    <TokenPillContent label={label} />
-  </span>
-);
+}: TokenPillProps) => {
+  const language = useTokenPillLanguage(label);
+  return (
+    <span
+      {...props}
+      {...language}
+      data-token={token}
+      data-variant={variant === 'logic' ? 'logic' : undefined}
+      data-selected={selected || undefined}
+      className={tokenPillClasses(className, variant)}
+    >
+      <TokenPillContent label={label} variant={variant} />
+    </span>
+  );
+};
+
+/**
+ * `lang` and `dir` for a pill, or another label drawn inside text in the
+ * protocol's language, that says `label`: see `tokenPillLanguage`. Without a
+ * label, for the interface's own words.
+ */
+export const useTokenPillLanguage = (label: TokenPillLabel = '') => {
+  const intl = useAppIntl();
+  const dir = useAppDirection();
+  return tokenPillLanguage(label, { lang: intl.locale, dir });
+};
 
 /** A run of text, or a placeholder in it, named by what the text records. */
 export type TokenizedTextPart = string | Readonly<{ token: string }>;
@@ -152,7 +224,7 @@ export const TokenizedText = ({
   tokens,
 }: {
   parts: readonly TokenizedTextPart[];
-  tokens: readonly Readonly<{ id: string; label: string }>[];
+  tokens: readonly Readonly<{ id: string; label: TokenPillLabel }>[];
 }) => (
   <>
     {parts.map((part, index) =>
@@ -163,7 +235,11 @@ export const TokenizedText = ({
           key={index}
           token={part.token}
           label={
-            tokens.find(({ id }) => id === part.token)?.label ?? part.token
+            tokens.find(({ id }) => id === part.token)?.label ?? {
+              // The name the text records, as it was written.
+              text: part.token,
+              dir: 'auto',
+            }
           }
         />
       ),

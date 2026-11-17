@@ -15,9 +15,9 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
-import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
+import Node from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import {
   SegmentedToolbar,
@@ -30,15 +30,18 @@ import type { NodeColorReference } from '@codaco/protocol-validation';
 import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
 
 import { useDynamicValueSources } from '../../../dynamicValues/DynamicValueScope';
+import { useCustomShapeSvgs } from '../../../hooks/useCustomShapeSvgs';
 import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   useLocalizedString,
+  useProtocolLocalization,
   useResolveLocalizedMessage,
   useResolveLocalizedString,
   useResolveLocalizedStringIn,
 } from '../../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../../localization/useContentFormat';
+import { useStageWording } from '../../../localization/useStageWording';
 import {
   getActiveSession,
   getEdgeColorForType,
@@ -62,6 +65,7 @@ import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
 import { pedigreeLinksOf } from '../../FamilyPedigree/pedigreeLinks';
 import {
   type PedigreeWords,
+  pedigreeWordingOf,
   useKinshipLocale,
   usePedigreePiped,
   usePedigreeText,
@@ -75,7 +79,11 @@ import {
   usePedigreeZoomButtons,
   zoomForKey,
 } from '../../pedigree-common/PedigreeCanvas';
-import { symbolShapesOf } from '../../pedigree-common/symbolShapes';
+import {
+  notationShapesOf,
+  symbolOutlinesOf,
+  symbolShapesOf,
+} from '../../pedigree-common/symbolShapes';
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
 import { computeStatuses } from '../genetics/computeStatuses';
@@ -108,7 +116,7 @@ const NODE_COLOR_VARIABLES = {
   'node-color-seq-8': 'var(--node-8)',
 } as const satisfies Record<NodeColorReference, string>;
 
-export function resolveDiseaseColor(color: NodeColorReference): string {
+function resolveDiseaseColor(color: NodeColorReference): string {
   return NODE_COLOR_VARIABLES[color];
 }
 
@@ -149,11 +157,15 @@ export default function NarrativePedigreeView({
   const resolve = useResolveLocalizedString();
   const resolveMessage = useResolveLocalizedMessage();
   const stageLabel = useLocalizedString(stage.label).text;
-  // The stage's own words (`stage-wording/narrative-pedigree.ts`).
+  // The stage's own words (`stage-wording/narrative-pedigree.ts`): as the
+  // stage words them, and as Network Canvas does where the stage does not.
+  const stageWording = useStageWording(stage);
   const conditionControlWords: ConditionControlWords = {
-    selectCondition: resolve(stage.conditionText.selectCondition).text,
+    selectCondition: resolve(
+      stageWording.text('conditionText', 'selectCondition'),
+    ).text,
   };
-  const saveSnapshotText = resolve(stage.saveSnapshot).text;
+  const saveSnapshotText = resolve(stageWording.text('saveSnapshot')).text;
   // The key and the clear focus button are worded alike on every Narrative
   // Pedigree (the protocol's interface text).
   const clearFocusText = intl.formatMessage(messages.clearFocus);
@@ -227,36 +239,43 @@ export default function NarrativePedigreeView({
   // stage's words. Soft hyphens let long kinship words break inside a symbol.
   const pedigreeText = usePedigreeText();
   const pedigreePiped = usePedigreePiped();
-  const kinshipLocale = useKinshipLocale(sourceStage?.wording);
+  // The source stage's words as it shows them: its own, and Network Canvas's
+  // where it holds none.
+  const localization = useProtocolLocalization();
+  const sourceWording = useMemo(
+    () => (sourceStage ? pedigreeWordingOf(sourceStage, localization) : null),
+    [sourceStage, localization],
+  );
+  const kinshipLocale = useKinshipLocale(sourceWording ?? undefined);
   // The participant is called as the source stage calls them, with that
   // stage's dynamic values (their name from an earlier form, say) written in.
   const dynamicValueSources = useDynamicValueSources();
   const resolveIn = useResolveLocalizedStringIn();
   const sourceYou = useMemo(
     () =>
-      sourceStage
+      sourceStage && sourceWording
         ? resolveIn(
-            sourceStage.wording.you,
+            sourceWording.you,
             dynamicValueSources && {
               ...dynamicValueSources,
               bindings: sourceStage.dynamicValues ?? {},
             },
           ).text
         : '',
-    [sourceStage, resolveIn, dynamicValueSources],
+    [sourceStage, sourceWording, resolveIn, dynamicValueSources],
   );
   const sourceWords = useMemo<PedigreeWords | null>(
     () =>
-      sourceStage
+      sourceWording
         ? {
-            wording: sourceStage.wording,
+            wording: sourceWording,
             text: pedigreeText,
             piped: pedigreePiped,
             you: sourceYou,
             locale: kinshipLocale,
           }
         : null,
-    [sourceStage, pedigreeText, pedigreePiped, sourceYou, kinshipLocale],
+    [sourceWording, pedigreeText, pedigreePiped, sourceYou, kinshipLocale],
   );
   const labels = useMemo(
     () =>
@@ -404,15 +423,17 @@ export default function NarrativePedigreeView({
     ? codebook.node?.[config.personType]
     : undefined;
   const nodeColor = personDefinition?.color ?? 'node-color-seq-1';
-  const shapeDefinition = personDefinition?.shape;
+  const shapeSvgs = useCustomShapeSvgs();
 
-  // Each symbol is drawn, and the lines meeting it laid out, with one shape.
-  const nodeShapes = useMemo(
-    () => symbolShapesOf(family?.people ?? [], shapeDefinition),
-    [family, shapeDefinition],
+  const symbolShapes = useMemo(
+    () => symbolShapesOf(family?.people ?? [], personDefinition, shapeSvgs),
+    [family, personDefinition, shapeSvgs],
   );
-  const shapeFor = (personId: string): NodeShape =>
-    nodeShapes.get(personId) ?? 'circle';
+  // With a condition chosen, each person is drawn as a notation symbol.
+  const notationShapes = useMemo(
+    () => notationShapesOf(symbolShapes),
+    [symbolShapes],
+  );
   const isAdopted = (personId: string) =>
     (family?.links ?? []).some(
       (link) => link.kind === 'adoptive' && link.target === personId,
@@ -429,13 +450,9 @@ export default function NarrativePedigreeView({
     const parts = shownDiseases.map((disease) => {
       const status =
         displayedStatusesByDisease.get(disease.id)?.get(personId) ?? 'unknown';
-      const statusText = getStatusLabel(status, intl);
-      return intl.formatMessage(messages.diseaseStatus, {
-        condition: disease.label,
-        status: statusText,
-      });
+      return `${disease.label}: ${getStatusLabel(status)}`;
     });
-    return intl.formatList(parts, { type: 'conjunction' });
+    return new Intl.ListFormat('en', { type: 'conjunction' }).format(parts);
   };
 
   const selectedDisease =
@@ -461,12 +478,16 @@ export default function NarrativePedigreeView({
   // SELECTED condition, so it is only meaningful once a condition is chosen
   // from the key. Until then the focal affordance is disabled.
   const focalEnabled = selectedDisease !== undefined;
+  // Each symbol is drawn, and the lines meeting it laid out, with one shape.
+  const nodeShapes = useMemo(
+    () => (focalEnabled ? notationShapes : symbolOutlinesOf(symbolShapes)),
+    [focalEnabled, notationShapes, symbolShapes],
+  );
 
   // The person's symbol: plain, or — with a condition chosen — the condition's
   // status in standard pedigree notation. Drawn the same on screen and in the
   // printable snapshot.
   const renderSymbol = (personId: string): ReactNode => {
-    const shape = shapeFor(personId);
     const label = labelFor(personId);
     const dimmed = !highlight.nodes.has(personId);
     const isSelected = personId === focalId;
@@ -479,7 +500,7 @@ export default function NarrativePedigreeView({
           <Node
             presentational
             label={label}
-            shape={shape}
+            shape={symbolShapes.get(personId) ?? 'circle'}
             color={nodeColor}
             size="sm"
             selected={isSelected}
@@ -520,7 +541,7 @@ export default function NarrativePedigreeView({
           <Sticker
             status={status}
             color={color}
-            shape={shape}
+            shape={notationShapes.get(personId) ?? 'circle'}
             size="100%"
             surfaceColor={dimmed ? dimColor('white') : undefined}
             nodeMode="single"
@@ -669,9 +690,7 @@ export default function NarrativePedigreeView({
           data-node-id={personId}
           data-dimmed={dimmed ? 'true' : 'false'}
           tabIndex={personId === tabStopId ? 0 : -1}
-          aria-label={intl.formatMessage(messages.focusOn, {
-            name: label || personId,
-          })}
+          aria-label={`Focus on ${label || personId}`}
           aria-describedby={statusSummaryId}
           // Disabled (but still announced, with its status, and still a stop
           // for the arrow keys) until a condition is chosen.
@@ -709,20 +728,26 @@ export default function NarrativePedigreeView({
     const base = stageLabel;
     if (!selectedDiseaseLabel) return base;
     return focalLabel
-      ? resolveMessage(stage.conditionText.snapshotInheritance, {
-          title: base,
-          condition: selectedDiseaseLabel,
-          name: focalLabel,
-        }).text
-      : resolveMessage(stage.conditionText.snapshotCondition, {
-          title: base,
-          condition: selectedDiseaseLabel,
-        }).text;
+      ? resolveMessage(
+          stageWording.text('conditionText', 'snapshotInheritance'),
+          {
+            title: base,
+            condition: selectedDiseaseLabel,
+            name: focalLabel,
+          },
+        ).text
+      : resolveMessage(
+          stageWording.text('conditionText', 'snapshotCondition'),
+          {
+            title: base,
+            condition: selectedDiseaseLabel,
+          },
+        ).text;
   }, [
     stageLabel,
     selectedDiseaseLabel,
     focalLabel,
-    stage.conditionText,
+    stageWording,
     resolveMessage,
   ]);
 
@@ -805,7 +830,7 @@ export default function NarrativePedigreeView({
         onKeyDown={(event) => zoomForKey(event, panZoom)}
       >
         <SegmentedToolbar
-          aria-label={intl.formatMessage(messages.toolbarLabel)}
+          aria-label="Family tree controls"
           size="lg"
           className="pointer-events-auto max-w-full min-w-0"
         >
@@ -887,14 +912,11 @@ export default function NarrativePedigreeView({
       {/* Visually-hidden aria-live region for announcing state changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {selectedDiseaseLabel !== null && (
-          <AppMessage
-            message={
-              focalId === null
-                ? messages.showingCondition
-                : messages.showingFocused
-            }
-            values={{ condition: selectedDiseaseLabel, name: focalLabel ?? '' }}
-          />
+          <>
+            {focalId === null
+              ? `Showing ${selectedDiseaseLabel}`
+              : `Showing ${selectedDiseaseLabel}. Focused on ${focalLabel ?? ''}. Showing who contributes to their inheritance.`}
+          </>
         )}
       </div>
 
@@ -907,7 +929,7 @@ export default function NarrativePedigreeView({
           max={45}
           minSizePx={300}
           className="min-h-0 w-full grow"
-          aria-label={intl.formatMessage(messages.resizeKey)}
+          aria-label="Resize the condition key panel"
         >
           {/* Key panel — the resized (first) pane, shown only while a
               condition is: it explains that condition's symbols. In `reverse`
@@ -938,6 +960,7 @@ function AdoptionBrackets() {
       aria-hidden
       className={cx(
         'pointer-events-none absolute -inset-y-2 w-3 border-solid border-current',
+        // oxlint-disable-next-line tailwindcss/enforce-logical -- a pair of brackets, one on each side of the symbol
         side === 'left' ? '-left-4' : '-right-4',
       )}
       style={{

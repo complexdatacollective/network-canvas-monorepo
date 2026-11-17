@@ -295,53 +295,21 @@ describe('recordLoginAttempt', () => {
     mockDeleteMany.mockResolvedValue({ count: 0 });
   });
 
-  it('creates a login attempt record with the provided data', async () => {
-    await recordLoginAttempt('testuser', '127.0.0.1', false);
+  it.each([
+    ['testuser', '127.0.0.1', false],
+    ['testuser', '127.0.0.1', true],
+    [null, '127.0.0.1', false],
+    ['testuser', null, false],
+  ])(
+    'records username %s from %s with success %s',
+    async (username, ipAddress, success) => {
+      await recordLoginAttempt(username, ipAddress, success);
 
-    expect(mockCreate).toHaveBeenCalledWith({
-      data: {
-        username: 'testuser',
-        ipAddress: '127.0.0.1',
-        success: false,
-      },
-    });
-  });
-
-  it('creates a successful login attempt record', async () => {
-    await recordLoginAttempt('testuser', '127.0.0.1', true);
-
-    expect(mockCreate).toHaveBeenCalledWith({
-      data: {
-        username: 'testuser',
-        ipAddress: '127.0.0.1',
-        success: true,
-      },
-    });
-  });
-
-  it('creates a record with null username', async () => {
-    await recordLoginAttempt(null, '127.0.0.1', false);
-
-    expect(mockCreate).toHaveBeenCalledWith({
-      data: {
-        username: null,
-        ipAddress: '127.0.0.1',
-        success: false,
-      },
-    });
-  });
-
-  it('creates a record with null ipAddress', async () => {
-    await recordLoginAttempt('testuser', null, false);
-
-    expect(mockCreate).toHaveBeenCalledWith({
-      data: {
-        username: 'testuser',
-        ipAddress: null,
-        success: false,
-      },
-    });
-  });
+      expect(mockCreate).toHaveBeenCalledWith({
+        data: { username, ipAddress, success },
+      });
+    },
+  );
 
   it('calls cleanupOldAttempts probabilistically after creating the record', async () => {
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.01);
@@ -408,11 +376,5 @@ describe('cleanupOldAttempts', () => {
         timestamp: { lt: expectedCutoff },
       },
     });
-  });
-
-  it('calls deleteMany exactly once', async () => {
-    await cleanupOldAttempts();
-
-    expect(mockDeleteMany).toHaveBeenCalledTimes(1);
   });
 });

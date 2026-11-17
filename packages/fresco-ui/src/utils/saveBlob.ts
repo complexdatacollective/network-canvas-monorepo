@@ -107,8 +107,7 @@ export function saveAction(blob: Blob, suggestedName: string): SaveAction {
 
 // Saves a Blob via the most reliable mechanism the platform offers. Must be
 // called from within a user gesture, with no `await` before it. Rungs, in
-// order (see docs/superpowers/specs/2026-07-08-interviewer-export-save-ladder-design.md
-// and its amendments):
+// order:
 // 1. File System Access Save-As picker (desktop Chromium) — the only path
 //    that can confirm the bytes reached disk. A cancelled picker is a final
 //    "no"; a picker that never appeared, or a failure after picking, falls

@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react';
 
-import { commonMessages } from '@codaco/app-i18n/common';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { AppMessage } from '@codaco/app-i18n/react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -24,7 +23,6 @@ export default function PassphraseNotice({
   status: PassphraseNoticeStatus;
   className?: string;
 }) {
-  const intl = useAppIntl();
   const { requirePassphrase, lockedNotice } = usePassphrase();
 
   useEffect(() => {
@@ -41,8 +39,9 @@ export default function PassphraseNotice({
       {status === 'pending' ? (
         <>
           <Spinner size="sm" />
-          <span className="sr-only">
-            {intl.formatMessage(commonMessages.loading)}
+          <span className="sr-only" lang="en">
+            {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
+            {'Loading…'}
           </span>
         </>
       ) : (

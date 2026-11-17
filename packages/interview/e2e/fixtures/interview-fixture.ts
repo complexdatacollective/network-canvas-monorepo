@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+const READY_TO_CONTINUE = 'You can continue to the next step.';
+
 type CaptureOptions = {
   mask?: Locator[];
   fullPage?: boolean;
@@ -214,9 +216,18 @@ export class InterviewFixture {
     return this.page.getByTestId('next-button');
   }
 
-  async nextButtonHasPulse(): Promise<boolean> {
-    const className = await this.nextButton.getAttribute('class');
-    return className?.includes('bg-success') ?? false;
+  /**
+   * The stage reports that it is ready to continue: the Next button is
+   * described as such (and pulses for sighted participants).
+   */
+  async expectReadyToContinue(): Promise<void> {
+    await expect(this.nextButton).toHaveAccessibleDescription(
+      READY_TO_CONTINUE,
+    );
+  }
+
+  async expectNotReadyToContinue(): Promise<void> {
+    await expect(this.nextButton).toHaveAccessibleDescription('');
   }
 
   /**

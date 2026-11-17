@@ -14,12 +14,14 @@ const messages = defineMessages({
   backToTheEditor: {
     id: 'architect.nestedDraftReclaimDialog.backToTheEditor',
     defaultMessage: 'Back to the Editor',
-    description: 'The label text in components / NestedDraftReclaimDialog.',
+    description:
+      'Label of the primary button in the dialog explaining that an open editor blocks resuming editing; closes the dialog so the researcher can finish or cancel that editor.',
   },
   decideLater: {
     id: 'architect.nestedDraftReclaimDialog.decideLater',
     defaultMessage: 'Decide Later',
-    description: 'The label text in components / NestedDraftReclaimDialog.',
+    description:
+      'Label of the cancel button in the dialog explaining that an open editor blocks resuming editing; closes the dialog without changing anything.',
   },
 });
 
@@ -53,7 +55,7 @@ const TITLE = defineMessages({
     id: 'architect.constants.components.nesteddraftreclaimdialog.title',
     defaultMessage: 'An editor is still open',
     description:
-      'Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx.',
+      'Title of the dialog shown when the other tab holding this protocol has closed but a variable, node type, resource or rule editor is still open here.',
   },
 }).message;
 
@@ -67,7 +69,7 @@ const DESCRIPTION = defineMessages({
     defaultMessage:
       'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with. It was filled in from the version this tab had before, so saving it now would write those older settings over what the other tab saved. Cancel that editor to continue — if you have made changes in it, you will be asked to confirm before anything is discarded.',
     description:
-      'Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx.',
+      "Body of the dialog shown when the other tab holding this protocol has closed but an editor is still open here. Explains the editor must be cancelled before editing can resume, to avoid overwriting the other tab's changes.",
   },
 }).message;
 

@@ -45,68 +45,50 @@ const messages = defineMessages({
   removeOption: {
     id: 'architect.form.arrayFields.option.removeOption',
     defaultMessage: 'Remove option',
-    description: 'The title text in components / Form / arrayFields / Option.',
+    description:
+      'Title and confirm button of the dialog that asks the researcher to confirm removing one option from a categorical or ordinal variable. Remove is the action.',
   },
   areYouSureYouWantTo: {
     id: 'architect.form.arrayFields.option.areYouSureYouWantTo',
     defaultMessage: 'Are you sure you want to remove this option?',
     description:
-      'The description text in components / Form / arrayFields / Option.',
-  },
-  reorderOptionOf: {
-    id: 'architect.form.arrayFields.option.reorderOptionOf',
-    defaultMessage: 'Reorder option {value1, number} of {itemCount, number}',
-    description: 'The label text in components / Form / arrayFields / Option.',
+      'Body of the confirmation dialog shown before removing one option from a categorical or ordinal variable.',
   },
   untitledOption: {
     id: 'architect.form.arrayFields.option.untitledOption',
     defaultMessage: 'Untitled option',
-    description: 'Visible text in components / Form / arrayFields / Option.',
+    description:
+      "Shown in italics in the summary line of an option in a variable's option list when the option has no label yet.",
   },
   noValue: {
     id: 'architect.form.arrayFields.option.noValue',
     defaultMessage: 'No value',
-    description: 'Visible text in components / Form / arrayFields / Option.',
-  },
-  editOption: {
-    id: 'architect.form.arrayFields.option.editOption',
-    defaultMessage: 'Edit option {value1, number}',
     description:
-      'Accessible edit-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value.',
-  },
-  removeOption45a9b: {
-    id: 'architect.form.arrayFields.option.removeOption45a9b',
-    defaultMessage: 'Remove option {value1, number}',
-    description:
-      'Accessible remove-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value.',
-  },
-  finishEditingOption: {
-    id: 'architect.form.arrayFields.option.finishEditingOption',
-    defaultMessage: 'Finish editing option',
-    description:
-      'The aria-label text in components / Form / arrayFields / Option.',
+      "Shown in italics in the summary line of an option in a variable's option list when the option has no value yet.",
   },
   label: {
     id: 'architect.form.arrayFields.option.label',
     defaultMessage: 'Label',
-    description: 'The label text in components / Form / arrayFields / Option.',
+    description:
+      'Field label for the text of an option, which is what the participant reads, in the inline option editor of a categorical or ordinal variable.',
   },
   enterALabel: {
     id: 'architect.form.arrayFields.option.enterALabel',
     defaultMessage: 'Enter a label...',
     description:
-      'The placeholder text in components / Form / arrayFields / Option.',
+      'Placeholder in the label field of the inline option editor for a categorical or ordinal variable.',
   },
   value: {
     id: 'architect.form.arrayFields.option.value',
     defaultMessage: 'Value',
-    description: 'The label text in components / Form / arrayFields / Option.',
+    description:
+      'Field label for the value of an option, which is what is stored and exported when the participant picks it, in the inline option editor of a categorical or ordinal variable.',
   },
   enterAValue: {
     id: 'architect.form.arrayFields.option.enterAValue',
     defaultMessage: 'Enter a value...',
     description:
-      'The placeholder text in components / Form / arrayFields / Option.',
+      'Placeholder in the value field of the inline option editor for a categorical or ordinal variable.',
   },
 });
 
@@ -140,13 +122,15 @@ export type OptionsContextValue = {
   arrayName: string;
   /** The whole array, for cross-row validators. */
   allValues: Record<string, unknown>;
-  /**
-   * The whole array with each label as its plain text in `labelLocale`, for
-   * the label cells' cross-row validators.
-   */
-  labelValues: Record<string, unknown>;
   /** The translation the label cells edit: the protocol's default language. */
   labelLocale: LocaleTag;
+  /**
+   * The positions of the options a participant would read the same way as
+   * another, by the rule the list itself is refused by (`uniqueOptionLabels`).
+   */
+  duplicatedLabels: ReadonlySet<number>;
+  /** What a label cell of one of `duplicatedLabels` says. */
+  duplicatedLabelMessage: string;
   /** The array field itself is reporting an error (minTwoOptions et al). */
   showArrayError: boolean;
 };
@@ -178,8 +162,14 @@ const Option = ({
   readOnly,
 }: ArrayFieldItemProps<OptionValue>) => {
   const intl = useAppIntl();
-  const { arrayName, allValues, labelValues, labelLocale, showArrayError } =
-    useOptionsContext();
+  const {
+    arrayName,
+    allValues,
+    labelLocale,
+    duplicatedLabels,
+    duplicatedLabelMessage,
+    showArrayError,
+  } = useOptionsContext();
   const localization = useSelector(getLocalization);
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
@@ -249,13 +239,11 @@ const Option = ({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={intl.formatMessage(messages.reorderOptionOf, {
-              value1: index + 1,
-              itemCount: itemCount,
-            })}
+            // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
+            label={`Reorder option ${index + 1} of ${itemCount}`}
           />
         )}
-        <div className="min-w-0 flex-1 truncate">
+        <div dir="auto" className="text-match-parent min-w-0 flex-1 truncate">
           {hasLabel ? (
             <OptionLabel label={localizedText(item.label, localization)} />
           ) : (
@@ -281,18 +269,16 @@ const Option = ({
         <div className="flex shrink-0 items-center gap-2">
           <IconButton
             icon={<Pencil />}
-            aria-label={intl.formatMessage(messages.editOption, {
-              value1: index + 1,
-            })}
+            aria-label={`Edit option ${index + 1}`}
+            lang="en"
             color="dynamic"
             disabled={interactionDisabled}
             onClick={onEdit}
           />
           <IconButton
             icon={<Trash2 />}
-            aria-label={intl.formatMessage(messages.removeOption45a9b, {
-              value1: index + 1,
-            })}
+            aria-label={`Remove option ${index + 1}`}
+            lang="en"
             color="destructive"
             disabled={interactionDisabled}
             onClick={handleDelete}
@@ -319,16 +305,16 @@ const Option = ({
       <div className="flex items-center justify-end gap-2">
         <IconButton
           icon={<Check />}
-          aria-label={intl.formatMessage(messages.finishEditingOption)}
+          aria-label="Finish editing option"
+          lang="en"
           color="primary"
           disabled={interactionDisabled}
           onClick={handleFinishEditing}
         />
         <IconButton
           icon={<Trash2 />}
-          aria-label={intl.formatMessage(messages.removeOption45a9b, {
-            value1: index + 1,
-          })}
+          aria-label={`Remove option ${index + 1}`}
+          lang="en"
           color="destructive"
           disabled={interactionDisabled}
           onClick={handleDelete}
@@ -355,8 +341,15 @@ const Option = ({
             ),
           });
         }}
-        validation={{ required: true, uniqueArrayAttribute: true }}
-        allValues={labelValues}
+        // Says where the researcher is typing that another row reads the
+        // same, by the rule the list's own `uniqueOptionLabels` refuses the
+        // save by (`findDuplicateOptionLabels`), so the two never disagree.
+        validation={{ required: true }}
+        issues={
+          duplicatedLabels.has(committedIndex ?? index)
+            ? [duplicatedLabelMessage]
+            : undefined
+        }
         forceShowErrors={forceShowErrors}
         disabled={interactionDisabled}
       />

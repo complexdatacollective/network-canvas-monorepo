@@ -14,9 +14,8 @@ import RangeFilter from '../DataTable/filters/RangeFilter';
 import { type OperatorFilterConfig } from '../DataTable/filters/types';
 import SegmentedCodeField from '../form/fields/SegmentedCodeField';
 import VisualAnalogScaleField from '../form/fields/VisualAnalogScale';
-import { ARABIC, arabicNumber, sourceTemplate } from './catalogFixtures';
-
-const SEGMENT_ID = 'frescoUi.segmentedCodeField.segment';
+import ProgressBar from '../ProgressBar';
+import { ARABIC, arabicNumber } from './catalogFixtures';
 
 function Arabic({
   children,
@@ -181,11 +180,9 @@ describe('the operator filter’s numbers', () => {
 });
 
 describe('the segmented code field’s box names', () => {
-  it('numbers the boxes in the reader’s digits', () => {
-    expect(arabicNumber(1)).not.toBe('1');
-
+  it('keeps the boxes in plain English digits whatever the interface language', () => {
     const { container } = render(
-      <Arabic messages={{ [SEGMENT_ID]: sourceTemplate(SEGMENT_ID) }}>
+      <Arabic>
         <SegmentedCodeField name="code" segments={3} />
       </Arabic>,
     );
@@ -194,10 +191,26 @@ describe('the segmented code field’s box names', () => {
       (input) => input.getAttribute('aria-label'),
     );
 
-    expect(labels).toEqual([
-      `Digit ${arabicNumber(1)} of ${arabicNumber(3)}`,
-      `Digit ${arabicNumber(2)} of ${arabicNumber(3)}`,
-      `Digit ${arabicNumber(3)} of ${arabicNumber(3)}`,
-    ]);
+    expect(labels).toEqual(['Digit 1 of 3', 'Digit 2 of 3', 'Digit 3 of 3']);
+  });
+});
+
+describe('the progress bar’s value', () => {
+  it('announces its percentage in the interface’s language, not the runtime’s', () => {
+    // Fixture guard: the runtime here formats in the source language, so the
+    // assertion only discriminates while the two write 50% differently.
+    expect(percent(0.5)).not.toBe(
+      new Intl.NumberFormat(undefined, { style: 'percent' }).format(0.5),
+    );
+
+    render(
+      <Arabic>
+        <ProgressBar percentProgress={50} />
+      </Arabic>,
+    );
+
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe(
+      percent(0.5),
+    );
   });
 });

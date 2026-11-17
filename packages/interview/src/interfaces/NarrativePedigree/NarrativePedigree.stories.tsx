@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -19,11 +19,14 @@ type NarrativePedigreeArgs = {
   // (not a control) because MRT is not participant-reachable — see the
   // MitochondrialDonation story.
   includeMrtBranch: boolean;
+  // Whether the codebook draws people with custom shapes. Fixed per story.
+  customSymbols: boolean;
 };
 
 function NarrativePedigreeStory({
   showAtRiskStatuses,
   includeMrtBranch,
+  customSymbols,
 }: NarrativePedigreeArgs) {
   const rawPayload = useMemo(
     () =>
@@ -32,11 +35,12 @@ function NarrativePedigreeStory({
           1,
           showAtRiskStatuses,
           includeMrtBranch,
+          customSymbols,
         ).getInterviewPayload({
           currentStep: NP_STEP,
         }),
       ),
-    [showAtRiskStatuses, includeMrtBranch],
+    [showAtRiskStatuses, includeMrtBranch, customSymbols],
   );
 
   return (
@@ -59,8 +63,13 @@ const meta = {
     // Fixed per story rather than a control: the MRT branch is Architect/import-
     // authored, so it belongs to its own story, not a toggle on the default one.
     includeMrtBranch: { table: { disable: true } },
+    customSymbols: { table: { disable: true } },
   },
-  args: { showAtRiskStatuses: true, includeMrtBranch: false },
+  args: {
+    showAtRiskStatuses: true,
+    includeMrtBranch: false,
+    customSymbols: false,
+  },
 } satisfies Meta<typeof NarrativePedigreeStory>;
 
 export default meta;
@@ -144,5 +153,32 @@ export const MitochondrialDonation: Story = {
     await expect(
       await canvas.findByRole('button', { name: 'Focus on Chloe Nolan' }),
     ).toBeVisible();
+  },
+};
+
+/**
+ * The same family with a codebook that draws people with custom shapes: a
+ * circle for women, a wide plaque for men and a house for anyone else. Before
+ * a condition is chosen each person is drawn with their shape, and the lines
+ * end on the box the drawing fills. Choosing a condition draws the notation
+ * symbols, where a person with a custom shape takes the circle.
+ */
+export const CustomShapes: Story = {
+  args: { customSymbols: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const drawings = () =>
+      canvasElement.querySelectorAll('[data-node-shape-artwork]').length;
+    await waitFor(() => expect(drawings()).toBeGreaterThan(0));
+    await userEvent.click(
+      await canvas.findByTestId('narrative-pedigree-condition'),
+    );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole(
+        'menuitemradio',
+        { name: "Huntington's Disease" },
+      ),
+    );
+    await waitFor(() => expect(drawings()).toBe(0));
   },
 };

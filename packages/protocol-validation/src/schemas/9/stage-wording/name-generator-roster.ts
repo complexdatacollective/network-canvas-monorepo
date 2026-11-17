@@ -1,69 +1,29 @@
-import type {
-  SuppliedStageSetting,
-  SuppliedWording,
-} from '../supplied-stage-setting.ts';
+import type { SuppliedStageSetting } from '../supplied-stage-setting.ts';
 import { hasMaximumNodes, hasMinimumNodes } from './conditions.ts';
-import { MAX_NODES_NOTICE, MIN_NODES_NOTICE } from './name-generator.ts';
-
-/**
- * The heading above the people a Name Generator Roster offers, in each
- * language Network Canvas's apps ship in.
- */
-const ROSTER_PANEL_TITLE = {
-  'en': 'Available to add',
-  'de': 'Zum Hinzufügen verfügbar',
-  'es': 'Disponibles para añadir',
-  'fr': 'Éléments disponibles',
-  'it': 'Disponibili da aggiungere',
-  'nl': 'Beschikbaar om toe te voegen',
-  'pt-BR': 'Disponíveis para adicionar',
-  'zh-Hans': '可添加',
-  'zh-Hant': '可新增的項目',
-} as const satisfies SuppliedWording;
-
-/** The notice once everything the roster offers has been added. */
-const ALL_ADDED_NOTICE = {
-  'en': 'There is nothing left to add from this list.',
-  'de': 'Aus dieser Liste gibt es nichts mehr hinzuzufügen.',
-  'es': 'No queda nada que añadir de esta lista.',
-  'fr': 'Il ne reste rien à ajouter depuis cette liste.',
-  'it': 'Non c’è più nulla da aggiungere da questo elenco.',
-  'nl': 'Er is niets meer om toe te voegen uit deze lijst.',
-  'pt-BR': 'Não há mais nada para adicionar desta lista.',
-  'zh-Hans': '此列表中已没有可添加的内容。',
-  'zh-Hant': '此清單中已沒有可新增的內容。',
-} as const satisfies SuppliedWording;
-
-/**
- * The label of an item the roster has no name for, numbered to tell unnamed
- * items apart.
- */
-export const UNNAMED_LABEL = {
-  'en': 'Unnamed {count}',
-  'de': 'Ohne Namen {count}',
-  'es': 'Sin nombre {count}',
-  'fr': 'Sans nom {count}',
-  'it': 'Senza nome {count}',
-  'nl': 'Zonder naam {count}',
-  'pt-BR': 'Sem nome {count}',
-  'zh-Hans': '未命名 {count}',
-  'zh-Hant': '未命名 {count}',
-} as const satisfies SuppliedWording;
 
 /** The Name Generator for Roster Data's settings Network Canvas words. */
 export const NAME_GENERATOR_ROSTER_SUPPLIED_TEXT: readonly SuppliedStageSetting[] =
   [
-    { path: ['panelTitle'], message: ROSTER_PANEL_TITLE },
+    {
+      path: ['panelTitle'],
+      wording: 'interview.stageWording.nameGeneratorRoster.panelTitle',
+    },
     {
       path: ['minNodesNotice'],
-      message: MIN_NODES_NOTICE,
+      wording: 'interview.stageWording.nameGenerator.minNodesNotice',
       when: hasMinimumNodes,
     },
     {
       path: ['maxNodesNotice'],
-      message: MAX_NODES_NOTICE,
+      wording: 'interview.stageWording.nameGenerator.maxNodesNotice',
       when: hasMaximumNodes,
     },
-    { path: ['allAddedNotice'], message: ALL_ADDED_NOTICE },
-    { path: ['unnamedLabel'], message: UNNAMED_LABEL },
+    {
+      path: ['allAddedNotice'],
+      wording: 'interview.stageWording.nameGeneratorRoster.allAddedNotice',
+    },
+    {
+      path: ['unnamedLabel'],
+      wording: 'interview.stageWording.nameGeneratorRoster.unnamedLabel',
+    },
   ];

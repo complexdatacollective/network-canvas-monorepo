@@ -41,7 +41,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Define las enfermedades que se visualizarán en la genealogía. Cada enfermedad se asocia a un atributo booleano de nodo de la etapa de genealogía familiar de origen.',
+        'Define las enfermedades que se visualizarán en la genealogía. Cada enfermedad se asocia a un atributo booleano de nodo de la etapa «Genealogía familiar» de origen.',
       ),
     ).toBeInTheDocument();
     // The outline reads its headings out of the same catalog, so a section
@@ -58,7 +58,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
       'Estados de riesgo',
       'Personalizar la redacción predeterminada',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ]);
   });
 
@@ -78,7 +78,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
 
     expect(
       await screen.findByText(
-        'La etapa de genealogía familiar que lee esta ya no forma parte de la entrevista. Elige otra, o restáurala, antes de poder guardar esta etapa.',
+        'La etapa «Genealogía familiar» de la que esta etapa toma los datos ya no forma parte de la entrevista. Elige otra o restáurala para poder guardar esta etapa.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -95,7 +95,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
     // a word, so this is where an English noun in a Spanish sentence would
     // show up.
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Editar enfermedad' }),
+      await screen.findByRole('button', { name: 'Edit enfermedad' }),
     );
     // Scoped to the dialog: `screen` would compute an accessible name for
     // every control in the editor behind it to answer a question about one

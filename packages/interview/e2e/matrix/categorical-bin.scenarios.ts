@@ -189,7 +189,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
             /^0 unplaced\b/,
           );
-          expect(await interview.nextButtonHasPulse()).toBe(true);
+          await interview.expectReadyToContinue();
         },
       };
     })(),
@@ -336,7 +336,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           await stage.categoricalBin.dragNodeToBin('Alice', 'Work');
           await stage.categoricalBin.dragNodeToBin('Bob', 'Work');
-          expect(await interview.nextButtonHasPulse()).toBe(true);
+          await interview.expectReadyToContinue();
 
           await interview.nextButton.click();
 
@@ -1058,8 +1058,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
     ((): ScenarioDefinition => {
       let friendVarId = '';
       return {
-        id: 'duplicate-labels-and-ten-bins',
-        covers: ['duplicate-option-labels-index-keyed'],
+        id: 'similar-labels-and-ten-bins',
+        covers: ['similar-option-labels-value-keyed'],
         visual: true,
         seedNetwork: true,
         build: () => {
@@ -1069,13 +1069,14 @@ export const categoricalBinScenarios: InterfaceScenarios = {
             name: 'name',
             type: 'text',
           });
-          // Two options share the label 'Friend' but differ in value.
+          // Two options whose labels both start with 'Friend' (an attribute's
+          // labels must differ, so they cannot be identical) and differ in value.
           const friendVar = personType.addVariable({
             name: 'FriendCat',
             type: 'categorical',
             options: [
               { label: 'Friend', value: 10 },
-              { label: 'Friend', value: 20 },
+              { label: 'Friend (school)', value: 20 },
             ],
           });
           const manyVar = personType.addVariable({
@@ -1103,13 +1104,13 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           return synth;
         },
         run: async ({ page, interview, stage, protocol }) => {
-          // Both same-label bins render.
+          // Both 'Friend' bins render.
           await expect(
             page.getByRole('button', { name: /Category Friend/ }),
           ).toHaveCount(2);
 
           // Drop onto the SECOND 'Friend' bin (drop target 2). Bins are keyed
-          // by index/value, not label, so this must write value 20 not 10.
+          // by value, not by label, so this must write value 20 not 10.
           await keyboardDropNode(
             page,
             stage.categoricalBin.getNodeInDrawer('Alex'),
@@ -1168,7 +1169,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview, stage }) => {
-        expect(await interview.nextButtonHasPulse()).toBe(false);
+        await interview.expectNotReadyToContinue();
         // Uncategorised nodes: forward navigation is blocked with the notice.
         await interview.nextButton.click();
         await expect(page.getByText(/must place every item/i)).toBeVisible();
@@ -1182,7 +1183,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         // Every node placed: advancing succeeds.
         await stage.categoricalBin.dragNodeToBin('Jon', 'Work');
         // Ready for the next stage once every node is placed.
-        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.expectReadyToContinue();
         await interview.next();
         await expect(
           page.getByRole('heading', { name: 'All done' }),

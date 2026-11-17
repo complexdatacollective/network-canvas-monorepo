@@ -6,7 +6,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
-import { getVariableMeta } from '../helpers';
+import { ControlName, getVariableMeta } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
 import {
@@ -21,13 +21,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.form.form',
     defaultMessage: 'Form',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Form.',
+      "Section heading in the printable protocol summary, above the table of the fields of a stage's form.",
   },
   title: {
     id: 'architect.protocolSummary.stage.form.title',
     defaultMessage: 'Title: {value1}',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / Form.',
+      "Heading in the printable protocol summary giving the title of a stage's form. value1 is the title as written in the protocol.",
   },
 });
 
@@ -53,7 +53,7 @@ const Form = ({ form = null }: FormProps) => {
       const meta = getVariableMeta(index, variable);
       return [
         <Variable key={`var-${variable}`} id={variable} />,
-        <span key={`comp-${variable}`}>{meta.component ?? ''}</span>,
+        <ControlName key={`comp-${variable}`} component={meta.component} />,
         <SummaryMarkdown key={`prompt-${variable}`} value={prompt} />,
       ];
     }) ?? [];

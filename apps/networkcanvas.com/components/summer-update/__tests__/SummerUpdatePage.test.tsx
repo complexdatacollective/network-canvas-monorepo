@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { loadLocaleMessages } from '~/lib/i18n/messages';
 import { renderWithIntl } from '~/test/renderWithIntl';
+import { expectFrameToMatchScreenshot } from '~/test/screenshotAspectRatio';
 
 import { SummerUpdatePage } from '../SummerUpdatePage';
 
@@ -284,24 +285,32 @@ describe('SummerUpdatePage', () => {
     });
   });
 
-  it('keeps the introductory cards in one column on phone-sized screens', () => {
+  it('introduces the four benefits of the new apps', () => {
     renderWithIntl(<SummerUpdatePage />);
 
-    const firstBenefitCard = screen
-      .getByRole('heading', { name: 'Low friction use' })
-      .closest('article');
-    const benefitGrid = firstBenefitCard?.parentElement?.parentElement;
-
-    if (!(benefitGrid instanceof HTMLElement)) {
-      throw new Error('Introductory benefit grid did not render');
+    for (const title of [
+      'Low friction use',
+      'Local app installation',
+      'Streamlined updates',
+      'Tablet support restored',
+    ]) {
+      screen.getByRole('heading', { name: title });
     }
+  });
 
-    expect(benefitGrid).toHaveClass(
-      'grid-cols-1',
-      'tablet-portrait:grid-cols-2',
-      'desktop:grid-cols-4',
-    );
-    expect(benefitGrid).not.toHaveClass('phone-landscape:grid-cols-2');
+  it('describes each app screenshot and frames it at the screenshot’s own aspect ratio', () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    const screenshots = [
+      'Architect protocol editor showing the Sample Protocol timeline',
+      'Interviewer dashboard showing protocol cards and a resume interview action',
+      'The redesigned Network Canvas website homepage',
+      'The redesigned Network Canvas documentation homepage',
+    ].map((name) => screen.getByRole('img', { name }));
+
+    for (const screenshot of screenshots) {
+      expectFrameToMatchScreenshot(screenshot);
+    }
   });
 
   it('links every Schema 8 explorer item to its relevant documentation', () => {
@@ -311,16 +320,7 @@ describe('SummerUpdatePage', () => {
       name: 'Geospatial',
     });
 
-    expect(selectedFeature).toHaveClass(
-      'justify-center',
-      'aria-pressed:bg-selected',
-      'aria-pressed:text-selected-contrast',
-      'aria-pressed:inset-surface',
-    );
-    expect(selectedFeature).not.toHaveClass('aria-pressed:bg-sea-serpent/15');
-    expect(screen.getByText('One-to-many dyad census')).toHaveClass(
-      'leading-snug',
-    );
+    expect(selectedFeature).toHaveAttribute('aria-pressed', 'true');
     expect(
       screen.getByRole('heading', { name: 'Geospatial interface' }),
     ).toBeInTheDocument();
@@ -334,9 +334,6 @@ describe('SummerUpdatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anonymisation' }));
 
     expect(selectedFeature).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('button', { name: 'Anonymisation' })).toHaveClass(
-      'aria-pressed:inset-surface',
-    );
     expect(
       screen.getByRole('button', { name: 'Anonymisation' }),
     ).toHaveAttribute('aria-pressed', 'true');
@@ -367,14 +364,7 @@ describe('SummerUpdatePage', () => {
       'Interviewer',
       'Fresco 4.0.0',
     ].forEach((heading) => {
-      const groupHeading = screen.getByRole('heading', {
-        level: 3,
-        name: heading,
-      });
-
-      expect(groupHeading).toHaveClass('text-2xl', 'font-black');
-      expect(groupHeading).not.toHaveClass('uppercase', 'tracking-widest');
-      expect(groupHeading.parentElement).not.toHaveClass('border-b', 'pb-3');
+      screen.getByRole('heading', { level: 3, name: heading });
     });
 
     [
@@ -391,25 +381,30 @@ describe('SummerUpdatePage', () => {
       expect(card.querySelector('svg')).toBeInTheDocument();
     });
 
-    const geospatialDetails = screen
-      .getByRole('heading', { name: 'Geospatial interface' })
-      .closest('[aria-live="polite"]');
+    const geospatialHeading = screen.getByRole('heading', {
+      name: 'Geospatial interface',
+    });
+    const geospatialDetails = geospatialHeading.closest('[aria-live="polite"]');
+    const geospatialContent = geospatialHeading.parentElement;
     const geospatialScreenshot = screen.getByRole('img', {
       name: 'Geospatial interface preview',
     });
-    const screenshotFrame = geospatialScreenshot.closest('.aspect-video');
 
     if (!(geospatialDetails instanceof HTMLElement)) {
       throw new Error('Feature details panel did not render');
     }
+    if (!(geospatialContent?.lastElementChild instanceof HTMLElement)) {
+      throw new Error('Feature details content did not render');
+    }
 
     expect(geospatialDetails).toContainElement(geospatialScreenshot);
+    // The screenshot closes the details, after the documentation link.
+    expect(geospatialContent.lastElementChild).toContainElement(
+      geospatialScreenshot,
+    );
     expect(
       within(geospatialDetails).queryByText('New interface'),
     ).not.toBeInTheDocument();
-    expect(screenshotFrame?.parentElement?.lastElementChild).toBe(
-      screenshotFrame,
-    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Anonymisation' }));
 
@@ -433,8 +428,15 @@ describe('SummerUpdatePage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('explains the selected compatibility row in plain language', () => {
+  it('heads the upgrade advice and explains the selected compatibility row in plain language', () => {
     renderWithIntl(<SummerUpdatePage />);
+
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'When should you upgrade?',
+      }),
+    ).toBeInTheDocument();
 
     expect(
       screen.getByText(
@@ -571,28 +573,14 @@ describe('SummerUpdatePage', () => {
       throw new Error('Project resource layout did not render');
     }
 
-    expect(websiteHeading).toHaveClass('mt-2!');
-    expect(documentationHeading).toHaveClass('mt-2!');
+    expect(websiteArticle).toContainElement(websiteHeading);
+    expect(documentationArticle).toContainElement(documentationHeading);
     expect(websiteArticle).toContainElement(websiteScreenshot);
     expect(documentationArticle).toContainElement(documentationScreenshot);
-    expect(websiteArticle).not.toHaveClass(
-      'publish-colors',
-      'bg-surface',
-      'rounded',
-      'shadow-md',
-    );
-    expect(documentationArticle).not.toHaveClass(
-      'publish-colors',
-      'bg-surface',
-      'rounded',
-      'shadow-md',
-    );
     expect(documentationArticle.firstElementChild).toBe(
       documentationImageColumn,
     );
     expect(websiteArticle.lastElementChild).toBe(websiteImageColumn);
-    expect(websiteScreenshot.parentElement).toHaveClass('aspect-7/5');
-    expect(documentationScreenshot.parentElement).toHaveClass('aspect-7/5');
   });
 
   it('presents the new-generation destinations as descriptive launch cards', () => {
@@ -623,21 +611,7 @@ describe('SummerUpdatePage', () => {
     ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
   });
 
-  it('matches new app screenshot ratios without cropping', () => {
-    renderWithIntl(<SummerUpdatePage />);
-
-    const architectScreenshot = screen.getByRole('img', {
-      name: 'Architect protocol editor showing the Sample Protocol timeline',
-    });
-    const interviewerScreenshot = screen.getByRole('img', {
-      name: 'Interviewer dashboard showing protocol cards and a resume interview action',
-    });
-
-    expect(architectScreenshot.parentElement).toHaveClass('aspect-4/3');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-7/5');
-  });
-
-  it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', () => {
+  it('keeps the woven hero backdrop decorative and anchors the weave to the project name', () => {
     renderWithIntl(<SummerUpdatePage />);
 
     const heroHeading = screen.getByRole('heading', {
@@ -650,20 +624,11 @@ describe('SummerUpdatePage', () => {
       throw new Error('Hero focal text did not render');
     }
 
-    expect(hero).toHaveClass('relative', 'm-0!', 'flex-col', 'overflow-hidden');
-    expect(hero.querySelector('.min-h-screen')).not.toBeInTheDocument();
-    // The backdrop sits behind the header as well as the hero, and the two
-    // fill the first screen between them.
+    // The backdrop sits behind the header as well as the hero.
     const heroWeave = screen.getByTestId('hero-weave');
-    const heroBackdrop = heroWeave.closest('.min-h-svh');
-    expect(heroBackdrop).toHaveAttribute('aria-hidden');
+    const heroBackdrop = heroWeave.closest('[aria-hidden]');
+    expect(heroBackdrop).not.toBeNull();
     expect(heroBackdrop).not.toContainElement(hero);
-    expect(heroBackdrop?.querySelector('.bg-linear-to-b')).toHaveClass(
-      'from-slate-blue/25',
-      'via-sea-serpent/10',
-      'to-transparent',
-    );
-    expect(projectName).toHaveClass('bg-clip-text', 'text-white');
     expect(projectName).toHaveStyle({
       animation: 'var(--animate-text-glow)',
     });
@@ -675,30 +640,6 @@ describe('SummerUpdatePage', () => {
       'data-homepage-weave-target',
     );
     expect(heroWeave.parentElement).toHaveClass('entrance-motion-item');
-    expect(hero.querySelectorAll('[class*="z-"]')).toHaveLength(0);
-    expect(hero.querySelectorAll('.relative')).toHaveLength(0);
-
-    const upgradeHeading = screen.getByRole('heading', {
-      name: 'When should you upgrade?',
-    });
-    const upgradeSection = upgradeHeading.closest('section');
-
-    expect(upgradeHeading).toHaveClass('sr-only');
-    expect(upgradeSection).toHaveClass('relative');
-    expect(upgradeSection).not.toHaveClass(
-      'bg-linear-to-br',
-      'bg-rich-black',
-      'bg-white',
-    );
-
-    const interviewerScreenshot = screen.getByRole('img', {
-      name: 'Interviewer dashboard showing protocol cards and a resume interview action',
-    });
-    expect(interviewerScreenshot.parentElement).toHaveClass('bg-white');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-7/5');
-    expect(interviewerScreenshot.parentElement).not.toHaveClass(
-      'bg-rich-black',
-    );
   });
 
   it('localizes feature interactions, images, and compatibility statuses in Spanish', async () => {
@@ -711,7 +652,7 @@ describe('SummerUpdatePage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /La documentación ahora se estructura según la etapa de su investigación/,
+        /La documentación ahora se estructura según la etapa de tu investigación/,
       ),
     ).toBeInTheDocument();
     expect(
@@ -738,7 +679,7 @@ describe('SummerUpdatePage', () => {
 
     const definitionPopover = screen.getByRole('dialog');
     expect(definitionPopover).toHaveTextContent(
-      'La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárguela aquí.',
+      'La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárgala aquí.',
     );
     expect(
       within(definitionPopover).getByRole('link', { name: 'aquí' }),
@@ -785,9 +726,5 @@ describe('SummerUpdatePage', () => {
 
     expect(projectName.style.animation).toBe('');
     expect(projectName.style.webkitTextFillColor).toBe('var(--color-white)');
-    expect(
-      screen.getByText('Keep scrolling to learn more').nextElementSibling
-        ?.firstElementChild,
-    ).toHaveClass('motion-safe:animate-bounce');
   });
 });

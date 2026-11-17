@@ -52,33 +52,6 @@ const messages = defineMessages({
     description:
       'Names one card of the codebook overview, and is the card’s accessible name. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. The ego is the interview participant themselves, and has attributes but no type name.',
   },
-  editSubject: {
-    id: 'protocolBuilder.codebookEntity.editSubjectLabel',
-    defaultMessage:
-      '{entity, select, node {Edit Node type: {name}} edge {Edit Edge type: {name}} other {Edit Ego attributes}}',
-    description:
-      'Accessible name of the button that opens one codebook card for editing. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. Names the card because the page shows one such button per card.',
-  },
-  createAttributeForSubject: {
-    id: 'protocolBuilder.codebookEntity.createAttributeLabel',
-    defaultMessage:
-      '{entity, select, node {Create attribute for Node type: {name}} edge {Create attribute for Edge type: {name}} other {Create attribute for Ego attributes}}',
-    description:
-      'Accessible name of the button that adds an attribute (a codebook variable) to one entity. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. Names the card because the page shows one such button per card.',
-  },
-  editAttributeForSubject: {
-    id: 'protocolBuilder.codebookEntity.editAttributeLabel',
-    defaultMessage:
-      '{entity, select, node {Edit attribute {attributeName} for Node type: {name}} edge {Edit attribute {attributeName} for Edge type: {name}} other {Edit attribute {attributeName} for Ego attributes}}',
-    description:
-      'Accessible name of the button that opens one attribute (a codebook variable) for editing. attributeName is the researcher’s own name for the attribute; entity is node, edge or ego; name is their own name for that node or edge type.',
-  },
-  attributeListLabel: {
-    id: 'protocolBuilder.codebookEntity.attributeListLabel',
-    defaultMessage: '{name} attributes',
-    description:
-      'Accessible name of the list of one entity’s attributes (its codebook variables). name is the researcher’s own name for the node or edge type, or the word for the ego.',
-  },
   manageAttributes: {
     id: 'protocolBuilder.codebookEntity.manageEgoAttributes',
     defaultMessage: 'Manage attributes',
@@ -127,12 +100,6 @@ const messages = defineMessages({
     description:
       'Sentence under the codebook heading saying what the page is for. Entity types are the node and edge types a protocol defines; attributes are their codebook variables.',
   },
-  createEntityGroupLabel: {
-    id: 'protocolBuilder.codebookEntity.createEntityGroupLabel',
-    defaultMessage: 'Create codebook entity',
-    description:
-      'Accessible name of the group holding the buttons that add a node type, an edge type or the ego definition to the codebook.',
-  },
   createNodeType: {
     id: 'protocolBuilder.codebookEntity.createNodeType',
     defaultMessage: 'Create node type',
@@ -156,12 +123,6 @@ const messages = defineMessages({
     defaultMessage: 'Some codebook data could not be displayed',
     description:
       'Heading of the warning listing parts of the stored codebook this page could not read.',
-  },
-  issuesListLabel: {
-    id: 'protocolBuilder.codebookEntity.issuesListLabel',
-    defaultMessage: 'Codebook issues',
-    description:
-      'Accessible name of the list of parts of the stored codebook this page could not read.',
   },
   nodeTypesHeading: {
     id: 'protocolBuilder.codebookEntity.nodeTypesHeading',
@@ -211,6 +172,17 @@ const subjectDescription = (
     name,
   });
 
+/**
+ * The card an accessible name is about, in English: screen-reader-only text
+ * stays English in every language, so this is a plain string rather than a
+ * message.
+ */
+const subjectPhrase = (subject: CodebookSubject, name: string): string => {
+  if (subject.entity === 'node') return `Node type: ${name}`;
+  if (subject.entity === 'edge') return `Edge type: ${name}`;
+  return 'Ego attributes';
+};
+
 function EntityCard({
   subject,
   name,
@@ -244,10 +216,7 @@ function EntityCard({
                 type="button"
                 color="primary"
                 size="sm"
-                aria-label={intl.formatMessage(messages.editSubject, {
-                  entity: subject.entity,
-                  name,
-                })}
+                aria-label={`Edit ${subjectPhrase(subject, name)}`}
                 onClick={() => onEditEntity(subject)}
               >
                 {intl.formatMessage(
@@ -270,10 +239,7 @@ function EntityCard({
                   color="primary"
                   size="sm"
                   icon={<Plus aria-hidden="true" />}
-                  aria-label={intl.formatMessage(
-                    messages.createAttributeForSubject,
-                    { entity: subject.entity, name },
-                  )}
+                  aria-label={`Create attribute for ${subjectPhrase(subject, name)}`}
                   onClick={() => onCreateVariable(subject)}
                 >
                   {intl.formatMessage(messages.createAttribute)}
@@ -288,9 +254,7 @@ function EntityCard({
             ) : (
               <ul
                 className="flex flex-col gap-2"
-                aria-label={intl.formatMessage(messages.attributeListLabel, {
-                  name,
-                })}
+                aria-label={`${name} attributes`}
               >
                 {variableEntries.map(([variableId, variable]) => (
                   <li
@@ -306,14 +270,7 @@ function EntityCard({
                         variant="text"
                         color="dynamic"
                         size="sm"
-                        aria-label={intl.formatMessage(
-                          messages.editAttributeForSubject,
-                          {
-                            attributeName: variable.name,
-                            entity: subject.entity,
-                            name,
-                          },
-                        )}
+                        aria-label={`Edit attribute ${variable.name} for ${subjectPhrase(subject, name)}`}
                         onClick={() => onEditVariable(subject, variableId)}
                       >
                         {intl.formatMessage(messages.editAttribute)}
@@ -375,7 +332,7 @@ export default function CodebookSurface({
           {onCreateEntity !== undefined && (
             <div
               className="flex flex-wrap gap-3"
-              aria-label={intl.formatMessage(messages.createEntityGroupLabel)}
+              aria-label="Create codebook entity"
             >
               <Button
                 type="button"
@@ -415,8 +372,8 @@ export default function CodebookSurface({
             <AlertTitle>{intl.formatMessage(messages.issuesTitle)}</AlertTitle>
             <AlertDescription>
               <ul
-                className="list-disc space-y-1 pl-5"
-                aria-label={intl.formatMessage(messages.issuesListLabel)}
+                className="list-disc space-y-1 ps-5"
+                aria-label="Codebook issues"
               >
                 {/* An issue's message is a plain string carrying either this
                     package's own encoded descriptor or the protocol schema's own

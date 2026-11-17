@@ -16,14 +16,14 @@ const RECLAIM_BLOCKED_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
       defaultMessage:
         'These changes cannot be saved over the version the other tab saved. Choose whether to keep them or discard them first.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error in the stage editor when finishing editing is refused: the other tab saved the protocol meanwhile and this tab has unsaved stage changes. The researcher must choose to keep or discard them first.',
     },
     'nested-editor': {
       id: 'architect.constants.utils.protocollockmessages.reclaimBlockedMessages.nestedEditor',
       defaultMessage:
         'These changes cannot be saved over the version the other tab saved. Cancel this editor to continue, and you will be asked to confirm before anything in it is discarded.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error in a nested editor when finishing is refused: the other tab saved the protocol meanwhile. The researcher cancels the editor, after which they are asked to confirm discarding.',
     },
     // By the time this is reached both of the key form's fields hold something,
     // so that form is itself one of the things the reclaim is waiting on (see
@@ -34,7 +34,7 @@ const RECLAIM_BLOCKED_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
       defaultMessage:
         'These changes cannot be saved over the version the other tab saved. Cancel this form to let the saved copy be read back, then create the key again.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error in the form for adding a Mapbox API key when creating the key is refused: the other tab saved the protocol meanwhile. The researcher cancels the form and creates the key again.',
     },
     // The two shapes a blocked reclaim has (#1387), named apart because the
     // researcher adding a file is not the one holding the reclaim up: each of
@@ -44,14 +44,24 @@ const RECLAIM_BLOCKED_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
       defaultMessage:
         'These changes cannot be saved over the version the other tab saved. Choose whether to keep your unsaved changes to that stage or discard them, then add the file again.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error shown when adding a resource file is refused: the other tab saved the protocol meanwhile and a stage with unsaved changes is waiting for a keep-or-discard choice. The researcher adds the file again afterwards.',
     },
     'asset-import-nested-editor': {
       id: 'architect.constants.utils.protocollockmessages.reclaimBlockedMessages.assetImportNestedEditor',
       defaultMessage:
         'These changes cannot be saved over the version the other tab saved. Finish or cancel the editor you still have open, then add the file again.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error shown when adding a resource file is refused: the other tab saved the protocol meanwhile and a nested editor is still open. The researcher finishes or cancels it, then adds the file again.',
+    },
+    // The wizard is not what holds the reclaim up either, and it sits in
+    // front of whatever does. Closing it would discard what was typed, so the
+    // way out says what is kept and names neither blocker.
+    'study-details': {
+      id: 'architect.constants.utils.protocollockmessages.reclaimBlockedMessages.studyDetails',
+      defaultMessage:
+        'These changes cannot be saved over the version the other tab saved. The study details you entered are kept. First choose whether to keep or discard this tab’s unsaved changes elsewhere in the protocol, then try again.',
+      description:
+        'Error on the last step of the study details dialog for the automated protocol review, when saving is refused: the other tab saved the protocol meanwhile and this tab has other unsaved changes waiting for a decision. The dialog stays open with what the researcher entered.',
     },
   });
 const OPEN_ELSEWHERE_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
@@ -61,21 +71,21 @@ const OPEN_ELSEWHERE_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
       defaultMessage:
         'This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error in the stage editor when finishing editing is refused because the protocol is open in another tab that holds the saved copy. The researcher closes the other tab.',
     },
     'nested-editor': {
       id: 'architect.constants.utils.protocollockmessages.openElsewhereMessages.nestedEditor',
       defaultMessage:
         'This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error in a nested editor when finishing is refused because the protocol is open in another tab that holds the saved copy. The researcher closes the other tab.',
     },
     'api-key': {
       id: 'architect.constants.utils.protocollockmessages.openElsewhereMessages.apiKey',
       defaultMessage:
         'This protocol is open in another tab, which holds the saved copy. Close the other tab, then create the key again.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error in the form for adding a Mapbox API key when creating the key is refused because the protocol is open in another tab that holds the saved copy. The researcher closes it, then creates the key again.',
     },
     // No reclaim is under way, so neither blocker is on screen: both asset-import
     // surfaces say the one thing that is true.
@@ -84,14 +94,21 @@ const OPEN_ELSEWHERE_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
       defaultMessage:
         'This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error shown when adding a resource file is refused because the protocol is open in another tab that holds the saved copy. The researcher closes the other tab, then adds the file again.',
     },
     'asset-import-nested-editor': {
       id: 'architect.constants.utils.protocollockmessages.openElsewhereMessages.assetImportNestedEditor',
       defaultMessage:
         'This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.',
       description:
-        'Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts.',
+        'Error shown when adding a resource file is refused because the protocol is open in another tab that holds the saved copy. The researcher closes the other tab, then adds the file again.',
+    },
+    'study-details': {
+      id: 'architect.constants.utils.protocollockmessages.openElsewhereMessages.studyDetails',
+      defaultMessage:
+        'This protocol is open in another tab, which holds the saved copy. What you have entered here is kept. Close the other tab, then try again.',
+      description:
+        'Error on the last step of the study details dialog for the automated protocol review, when saving is refused because the protocol is open in another tab that holds the saved copy. The dialog stays open with what the researcher entered; they close the other tab and press the button again.',
     },
   });
 
@@ -113,6 +130,10 @@ const OPEN_ELSEWHERE_MESSAGES: Record<RefusalSurface, MessageDescriptor> =
  *   store keyed by protocol id and then names it in the manifest. This is the
  *   one surface that is not itself the thing holding the reclaim, so it is
  *   listed once per blocker; see `assetImportSurface`.
+ * - `study-details` — the last step of the protocol review's study details
+ *   wizard, which writes the details into the protocol. The wizard keeps what
+ *   was typed in its own store, so a refusal leaves it open rather than
+ *   closing it.
  */
 export const REFUSAL_SURFACES = [
   'stage',
@@ -120,6 +141,7 @@ export const REFUSAL_SURFACES = [
   'api-key',
   'asset-import-stage-draft',
   'asset-import-nested-editor',
+  'study-details',
 ] as const;
 
 export type RefusalSurface = (typeof REFUSAL_SURFACES)[number];

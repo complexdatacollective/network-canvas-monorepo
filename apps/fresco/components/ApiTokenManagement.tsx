@@ -47,125 +47,143 @@ const messages = defineMessages({
   copyNever: {
     id: 'fresco.ApiTokenManagement.copyNever',
     defaultMessage: 'Never',
-    description: 'Researcher-facing ApiTokenManagement: Never',
+    description:
+      'Shown in the Last Used cell of the API tokens table in Settings when the token has never been used to make a request.',
   },
   copyCreating: {
     id: 'fresco.ApiTokenManagement.copyCreating',
     defaultMessage: 'Creating...',
-    description: 'Researcher-facing ApiTokenManagement: Creating...',
+    description:
+      'Label of the confirm button of the Create API Token dialog while the new token is being created. Replaces Create Token for a moment.',
   },
   copyCreateToken: {
     id: 'fresco.ApiTokenManagement.copyCreateToken',
     defaultMessage: 'Create Token',
-    description: 'Researcher-facing ApiTokenManagement: Create Token',
+    description:
+      'Confirm button of the Create API Token dialog in Settings; pressing it creates the API token. A verb phrase.',
   },
   copyDeleting: {
     id: 'fresco.ApiTokenManagement.copyDeleting',
     defaultMessage: 'Deleting...',
-    description: 'Researcher-facing ApiTokenManagement: Deleting...',
+    description:
+      'Label of the confirm button of the Delete API Token dialog while the token is being deleted. Replaces Delete Token for a moment.',
   },
   copyDeleteToken: {
     id: 'fresco.ApiTokenManagement.copyDeleteToken',
     defaultMessage: 'Delete Token',
-    description: 'Researcher-facing ApiTokenManagement: Delete Token',
+    description:
+      'Confirm button of the Delete API Token dialog in Settings; pressing it permanently deletes the API token. A verb phrase.',
   },
   description: {
     id: 'fresco.ApiTokenManagement.description',
     defaultMessage: 'Description',
-    description: 'Researcher-facing ApiTokenManagement: Description',
+    description:
+      'Column heading in the API tokens table in Settings above the text the researcher gave each token to remember what it is for. A noun.',
   },
   untitled: {
     id: 'fresco.ApiTokenManagement.untitled',
     defaultMessage: 'Untitled',
-    description: 'Researcher-facing ApiTokenManagement: Untitled',
+    description:
+      'Shown in italics in the Description cell of the API tokens table for a token created without a description. Also used in the accessible name of its switch.',
   },
   created: {
     id: 'fresco.ApiTokenManagement.created',
     defaultMessage: 'Created',
-    description: 'Researcher-facing ApiTokenManagement: Created',
+    description:
+      'Column heading in the API tokens table in Settings above when each token was created. A noun phrase, not a status.',
   },
   lastUsed: {
     id: 'fresco.ApiTokenManagement.lastUsed',
     defaultMessage: 'Last Used',
-    description: 'Researcher-facing ApiTokenManagement: Last Used',
+    description:
+      'Column heading in the API tokens table in Settings above when each token last made a request.',
   },
   status: {
     id: 'fresco.ApiTokenManagement.status',
     defaultMessage: 'Status',
-    description: 'Researcher-facing ApiTokenManagement: Status',
+    description:
+      'Column heading in the API tokens table in Settings above the switch that turns each token on or off.',
   },
   createNewToken: {
     id: 'fresco.ApiTokenManagement.createNewToken',
     defaultMessage: 'Create New Token',
-    description: 'Researcher-facing ApiTokenManagement: Create New Token',
+    description:
+      'Button above the API tokens table in Settings that opens the dialog for creating a new API token.',
   },
   noAPITokensCreatedYet: {
     id: 'fresco.ApiTokenManagement.noAPITokensCreatedYet',
     defaultMessage: 'No API tokens created yet.',
     description:
-      'Researcher-facing ApiTokenManagement: No API tokens created yet.',
+      'Message shown in place of the rows of the API tokens table in Settings when no API token exists yet.',
   },
   createAPIToken: {
     id: 'fresco.ApiTokenManagement.createAPIToken',
     defaultMessage: 'Create API Token',
-    description: 'Researcher-facing ApiTokenManagement: Create API Token',
+    description:
+      'Title of the dialog in Settings where the researcher creates a new API token. API tokens authorise programs to read interview data.',
   },
   createANewAPITokenForAuthenticating: {
     id: 'fresco.ApiTokenManagement.createANewAPITokenForAuthenticating',
     defaultMessage:
       'Create a new API token for authenticating Interview Data API requests.',
     description:
-      'Researcher-facing ApiTokenManagement: Create a new API token for authenticating Interview Data API requests.',
+      'Explanatory text under the title of the Create API Token dialog. Interview Data API is the name of the Fresco feature that lets programs fetch interview data.',
   },
   descriptionOptional: {
     id: 'fresco.ApiTokenManagement.descriptionOptional',
     defaultMessage: 'Description (optional)',
-    description: 'Researcher-facing ApiTokenManagement: Description (optional)',
+    description:
+      'Label of the text field in the Create API Token dialog for a note about what the token is for. The field may be left empty.',
   },
   eGDevelopmentToken: {
     id: 'fresco.ApiTokenManagement.eGDevelopmentToken',
     defaultMessage: 'e.g., Development token',
     description:
-      'Researcher-facing ApiTokenManagement: e.g., Development token',
+      'Placeholder example shown in the empty description field of the Create API Token dialog; it suggests a possible description and is not kept.',
   },
   aPITokenCreated: {
     id: 'fresco.ApiTokenManagement.aPITokenCreated',
     defaultMessage: 'API Token Created',
-    description: 'Researcher-facing ApiTokenManagement: API Token Created',
+    description:
+      'Title of the success dialog shown after an API token has been created; the dialog displays the new token one time.',
   },
   yourTokenHasBeenCreatedAndIs: {
     id: 'fresco.ApiTokenManagement.yourTokenHasBeenCreatedAndIs',
     defaultMessage:
       "Your token has been created and is displayed below. Save this token somewhere safe now - you won't be able to see it again after you close this dialog.",
     description:
-      "Researcher-facing ApiTokenManagement: Your token has been created and is displayed below. Save this token somewhere safe now - you won't be able to see it aga",
+      'Explanatory text under the title of the API Token Created dialog, warning that the displayed API token cannot be shown again after the dialog is closed.',
   },
   copyToClipboard: {
     id: 'fresco.ApiTokenManagement.copyToClipboard',
     defaultMessage: 'Copy to Clipboard',
-    description: 'Researcher-facing ApiTokenManagement: Copy to Clipboard',
+    description:
+      'Button in the API Token Created dialog that copies the new API token to the clipboard. A verb phrase.',
   },
   copiedToClipboard: {
     id: 'fresco.ApiTokenManagement.copiedToClipboard',
     defaultMessage: 'Copied to clipboard',
-    description: 'Researcher-facing ApiTokenManagement: Copied to clipboard',
+    description:
+      'Title of the success toast shown after the researcher copies the newly created API token to the clipboard. A statement of what happened.',
   },
   yourAPIToken: {
     id: 'fresco.ApiTokenManagement.yourAPIToken',
     defaultMessage: 'Your API Token',
-    description: 'Researcher-facing ApiTokenManagement: Your API Token',
+    description:
+      'Heading of the highlighted box in the API Token Created dialog, above the newly created API token text.',
   },
   deleteAPIToken: {
     id: 'fresco.ApiTokenManagement.deleteAPIToken',
     defaultMessage: 'Delete API Token',
-    description: 'Researcher-facing ApiTokenManagement: Delete API Token',
+    description:
+      'Title of the dialog that asks the researcher to confirm deleting an API token in Settings.',
   },
   areYouSureYouWantToDelete: {
     id: 'fresco.ApiTokenManagement.areYouSureYouWantToDelete',
     defaultMessage:
       'Are you sure you want to delete this API token? Any applications using this token will no longer be able to authenticate.',
     description:
-      'Researcher-facing ApiTokenManagement: Are you sure you want to delete this API token? Any applications using this token will no longer be able to authenticate',
+      'Question in the Delete API Token dialog asking the researcher to confirm; it warns that programs using the token will stop being able to access interview data.',
   },
 });
 

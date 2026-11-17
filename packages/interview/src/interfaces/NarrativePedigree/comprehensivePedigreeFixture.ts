@@ -1,6 +1,8 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type { PedigreeSexAssignedAtBirth } from '@codaco/protocol-validation';
 
+import { addCustomSymbols } from '../pedigree-common/customSymbolsFixture';
+
 // Shared fixture for the NarrativePedigree examples: one integrated five-
 // generation family whose six conditions all reach ego's own household, so the
 // interface reads as a single lived pedigree rather than six disjoint demos.
@@ -77,11 +79,15 @@ const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
  *   (donor Ivy, child Chloe, and the two-egg parentage edges). Defaults to `false`
  *   so the default pedigree stays participant-reachable; the dedicated MRT story
  *   sets it `true`.
+ * @param customSymbols  Whether the person type draws people with custom
+ *   shapes (see `addCustomSymbols`). Defaults to `false`: circles, squares and
+ *   diamonds.
  */
 export function addComprehensivePedigree(
   si: SyntheticInterview,
   showAtRisk = true,
   includeMrtBranch = false,
+  customSymbols = false,
 ): void {
   const people = si.addNodeType({ name: 'Person' });
 
@@ -106,7 +112,9 @@ export function addComprehensivePedigree(
   // Circles for women, squares for men, diamonds for anyone else, as the
   // researcher might map the person type's shape in the codebook.
   const genderIdentity = fpStage.genderIdentity;
-  if (genderIdentity) {
+  if (genderIdentity && customSymbols) {
+    addCustomSymbols(si, people, genderIdentity);
+  } else if (genderIdentity) {
     people.setShape({
       default: 'diamond',
       dynamic: {
@@ -439,8 +447,9 @@ export function buildComprehensivePedigree(
   seed: number,
   showAtRisk = true,
   includeMrtBranch = false,
+  customSymbols = false,
 ) {
   const si = new SyntheticInterview(seed);
-  addComprehensivePedigree(si, showAtRisk, includeMrtBranch);
+  addComprehensivePedigree(si, showAtRisk, includeMrtBranch, customSymbols);
   return si;
 }

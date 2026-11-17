@@ -1,8 +1,9 @@
 import type { MessageFormatElement } from 'react-intl';
 
 /**
- * Metadata for one app UI locale. Structurally identical to the protocol
- * localization design's `LocaleMetadata` so switch UI can present either.
+ * Metadata for one app UI locale. Structurally identical to protocol
+ * localization's `LocaleMetadata` (`@codaco/protocol-validation`) so switch
+ * UI can present either.
  * App locales are a closed, maintainer-curated set: `label` is a static
  * autonym reviewed in the PR that adds the locale, never derived at runtime.
  */
@@ -63,6 +64,8 @@ export function defineAppLocales<const T extends readonly AppLocale[]>(
  * (common.*, frescoUi.*, interview.*) must be complete for each entry; app
  * registries must be subsets. Extend this list in the same PR that adds a
  * locale to any app — the catalog guards fail until shared catalogs exist.
+ * A language may be listed before any app offers it (Arabic was): the shared
+ * catalogs come first, and each app then adds its own.
  */
 export const ecosystemLocales = defineAppLocales([
   { locale: 'en', label: 'English', direction: 'ltr' },
@@ -75,6 +78,7 @@ export const ecosystemLocales = defineAppLocales([
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
   { locale: 'it', label: 'Italiano', direction: 'ltr' },
   { locale: 'fr', label: 'Français', direction: 'ltr' },
+  { locale: 'ar', label: 'العربية', direction: 'rtl' },
 ]);
 
 /**
@@ -89,6 +93,34 @@ export const pseudoAppLocale: AppLocale = {
   label: 'Þséûðö Éñglîsh (en-XA)',
   direction: 'ltr',
 };
+
+/**
+ * Development-only right-to-left pseudo-locale: the interface is laid out
+ * right to left and every message's own text runs right to left too, while
+ * interpolated values keep their own direction, as a name or a number does
+ * inside an Arabic sentence. It shows what a right-to-left language does to a
+ * layout before any translation into one exists. The tag is the one Android
+ * gives its own right-to-left pseudo-locale; like `en-XA`, never include it in
+ * a production registry and never persist it.
+ */
+export const PSEUDO_RTL_LOCALE = 'ar-XB';
+
+export const pseudoRtlAppLocale: AppLocale = {
+  locale: PSEUDO_RTL_LOCALE,
+  label: 'Pseudo right-to-left (ar-XB)',
+  direction: 'rtl',
+};
+
+/** Every development pseudo-locale, in the order a language list shows them. */
+export const pseudoAppLocales: readonly AppLocale[] = [
+  pseudoAppLocale,
+  pseudoRtlAppLocale,
+];
+
+/** Whether a tag is one of the development pseudo-locales. */
+export function isPseudoLocale(locale: string | null | undefined): boolean {
+  return pseudoAppLocales.some((entry) => entry.locale === locale);
+}
 
 /**
  * Merges catalogs for one locale. Merge order at a host is

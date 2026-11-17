@@ -15,7 +15,10 @@ import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import Paragraph from '../../typography/Paragraph';
+import DatePickerField from './DatePicker';
+import { expectInvalidControlToKeepFocusRing } from './focusRingTestHelpers';
 import InputField from './InputField';
+import RelativeDatePickerField from './RelativeDatePicker';
 
 const meta: Meta<typeof InputField> = {
   title: 'Systems/Form/Fields/InputField',
@@ -354,6 +357,47 @@ export const InputTypes: Story = {
 };
 
 /**
+ * An empty native date input shows its format hint muted and italic, the way
+ * other inputs show a placeholder, and a filled one shows its value plainly.
+ * The hint is not a `::placeholder`, so the input carries the treatment
+ * itself while it has no value.
+ */
+export const EmptyDate: Story = {
+  render: () => (
+    <div className="flex w-80 flex-col gap-3">
+      <InputField type="date" aria-label="Empty date" value="" />
+      <DatePickerField
+        type="full"
+        aria-label="Empty absolute date"
+        name="absolute-date"
+        value=""
+      />
+      <RelativeDatePickerField
+        aria-label="Empty relative date"
+        name="relative-date"
+        value=""
+      />
+      <InputField type="date" aria-label="Filled date" value="2026-09-01" />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const label of [
+      'Empty date',
+      'Empty absolute date',
+      'Empty relative date',
+    ]) {
+      await expect(
+        getComputedStyle(canvas.getByLabelText(label)).fontStyle,
+      ).toBe('italic');
+    }
+    await expect(
+      getComputedStyle(canvas.getByLabelText('Filled date')).fontStyle,
+    ).toBe('normal');
+  },
+};
+
+/**
  * Input with prefix and suffix icons demonstrating various use cases.
  * Use controls to change size for all inputs.
  */
@@ -542,11 +586,13 @@ export const NumberInputFeatures: Story = {
       .closest('div')
       ?.parentElement?.querySelector('[aria-label="Increase value"]');
 
-    if (increaseButton) {
-      // Click increase until we hit max
-      for (let i = 0; i < 6; i++) {
-        await userEvent.click(increaseButton);
-      }
+    if (!increaseButton) {
+      throw new Error('Expected the constrained input to have a stepper');
+    }
+    await expect(constrainedInput).toHaveValue(5);
+    // One click past the max of 10
+    for (let i = 0; i < 6; i++) {
+      await userEvent.click(increaseButton);
     }
 
     // Value should be clamped at 10
@@ -724,5 +770,36 @@ export const KeyboardNavigation: Story = {
     await expect(input).toHaveValue('Test');
     await userEvent.tab();
     await expect(input).not.toHaveFocus();
+  },
+};
+
+/**
+ * An invalid field keeps its focus ring: its red border says the value is
+ * wrong, not which field the keyboard is in.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  // This play reads a style that exists only while a control matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs; the invalid state itself is in
+  // the states story's snapshot.
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="flex w-80 flex-col gap-6">
+      <InputField aria-label="Valid" value="A valid value" />
+      <InputField aria-label="Invalid" aria-invalid value="An invalid value" />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('textbox', { name: 'Valid' }),
+        ringOn: 'wrapper',
+      },
+      {
+        control: canvas.getByRole('textbox', { name: 'Invalid' }),
+        ringOn: 'wrapper',
+      },
+    );
   },
 };

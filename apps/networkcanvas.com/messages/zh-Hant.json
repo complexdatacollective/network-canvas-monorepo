@@ -334,7 +334,7 @@
       "bestFor": "最適合",
       "downloadVersion": "下載 {version} 版",
       "platformAccessibleName": "{app}（{platform}）",
-      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援架構 7 協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用架構 9，並包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始的架構 7 檔案。",
+      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援使用舊版架構的協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用最新架構，其中包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始檔案的副本。",
       "schemaVersionLink": "瞭解架構版本"
     },
     "platforms": {
@@ -387,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · 維護模式",
-        "description": "僅在您的研究必須與 Interviewer Classic 及架構 7 保持相容時使用。",
+        "description": "僅在您的研究必須與 Interviewer Classic 及其舊版架構保持相容時使用。",
         "bestFor": {
           "classicCompatibility": "必須與 Interviewer Classic 保持相容的既有研究",
-          "editWithoutMigration": "必須在不移轉的情況下繼續編輯的架構 7 協定"
+          "editWithoutMigration": "使用舊版架構、須繼續編輯但不移轉至最新架構的協定"
         }
       },
       "interviewerClassic": {
         "status": "Classic · 既有研究",
-        "description": "適用於既有的架構 7 研究，以及離線的桌上型電腦或平板電腦工作流程。持續維護以確保相容性並修正錯誤。",
+        "description": "適用於使用舊版架構的既有研究，以及離線的桌上型電腦或平板電腦工作流程。持續維護以確保相容性並修正錯誤。",
         "bestFor": {
-          "schema7Study": "仰賴架構 7 的既有研究",
+          "schema7Study": "仰賴舊版架構的既有研究",
           "desktopTablet": "延續既有的桌上型電腦或平板電腦工作流程",
           "offlineCollection": "需要舊版離線蒐集工作流程的研究"
         }
