@@ -695,36 +695,6 @@ export const NarrativePedigreeConditionsScene = defineScene(8.4, ({ t }) => {
   };
 });
 
-/**
- * Shows a narrative pedigree where the same family is marked under three
- * inheritance patterns, with possible statuses shown, so who carries the
- * condition and who may develop it changes with the pattern.
- */
-export const NarrativePedigreePatternsScene = defineScene(9.0, ({ t }) => {
-  const index = t < 3 ? 0 : t < 6 ? 1 : 2;
-  const key = CONDITION_ORDER[index] ?? 'cf';
-  const condition = CONDITIONS[key];
-  const pop = backOut(segment(t, index * 3, 0.4));
-  return {
-    rail: { progress: 0.9 },
-    body: (
-      <>
-        <g transform={`translate(${KEY_SHIFT} 0)`}>
-          <Family condition={condition} atRisk k={() => pop} />
-        </g>
-        <Chip
-          x={STAGE_CENTER_X + KEY_SHIFT}
-          y={STAGE.bottom - 30}
-          text={condition.pattern}
-          size={15}
-          k={pop}
-        />
-        <Key condition={condition} atRisk k={1} />
-      </>
-    ),
-  };
-});
-
 const SWITCH: Point = [STAGE.x + 34, STAGE.bottom - 30];
 
 /**

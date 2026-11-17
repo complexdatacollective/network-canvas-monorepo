@@ -16,26 +16,12 @@
                          form name instead of the whole section
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
-      dialog: <text>     a step for a dialog, not the editor: it is shown
-                         only while a dialog whose title matches is open.
-                         "form field" matches any title containing it
-                         ("Create form field", "Edit form field");
-                         "=attribute" matches a title that is exactly that;
-                         alternatives are separated by "|". Dialog steps
-                         play in order while it is open, and each dialog
-                         keeps its place while another is opened from
-                         inside it. The last one asks the researcher to
-                         save (naming the dialog's own save button, e.g.
-                         "Add") and rings that button, or, for a dialog
-                         with no save button, to make their choice; once
-                         the dialog closes the walkthrough picks up where
-                         it was. Their "field:" looks inside the dialog.
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
     Consecutive ones are grouped together.
   - A line "include: <name>" in an HTML comment, between steps, is replaced
     by the steps in shared/<name>.md. Use it for steps every stage type that
-    has that section shares (node type, skip logic, interviewer guidance and
-    so on); edit those steps there, once.
+    has that section shares (skip logic, interviewer guidance and so on);
+    edit those steps there, once.
   - Anything above the "# " heading (like this note) is ignored.
 
   Save the file and the panel updates live.
@@ -75,11 +61,7 @@ Choose the **node type** whose alters are paired up, such as _Person_. The parti
 
 Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
-<!-- include: node-type -->
-
 <!-- include: stage-filter -->
-
-<!-- include: rule -->
 
 ## Write the prompts
 
@@ -88,24 +70,9 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt asks about one kind of relationship. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many screens as there are pairs.
 
+Each prompt's **Created edge type** is the edge a yes creates. If a pair already has an edge of that type, for example from a sociogram, **Yes** is already selected, and answering **No** removes that edge.
+
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
-
-## Write the prompt text
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: text -->
-
-This is the question shown below each pair, such as _"Do these two know each other?"_. Phrase it so that yes and no are both sensible answers. To name the pair in the question, use the syringe button in the toolbar to insert **First node: label** and **Second node: label**.
-
-## Choose the edge a yes creates
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: createEdge -->
-<!-- scene: dyad-census-existing -->
-
-**Created edge type** sets which edge type a yes creates between the pair. If a pair already has an edge of that type, for example from a sociogram, **Yes** is already selected when the pair appears, and answering **No** removes that edge.
-
-<!-- include: edge-type -->
 
 <!-- include: skip-logic -->
 

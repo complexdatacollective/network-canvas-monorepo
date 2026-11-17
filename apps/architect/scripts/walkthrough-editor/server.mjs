@@ -46,7 +46,7 @@ const sceneNames = () => {
 };
 
 const meta = () => {
-  const values = { section: new Set(), field: new Set(), dialog: new Set() };
+  const values = { section: new Set(), field: new Set() };
   const shared = {};
   const files = [];
   for (const path of listFiles()) {

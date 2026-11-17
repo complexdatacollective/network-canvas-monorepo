@@ -461,7 +461,6 @@
     </main>
     <datalist id="values-section"></datalist>
     <datalist id="values-field"></datalist>
-    <datalist id="values-dialog"></datalist>
 
     <script type="module">
       import { DIRECTIVES, parse, problems, serialize } from '/format.mjs';
@@ -470,14 +469,11 @@
         section: 'Highlight section',
         field: 'Highlight field',
         scene: 'Animation',
-        dialog: 'Only in window',
       };
       const DIRECTIVE_HINTS = {
         section: "The editor section's title, e.g. Participant prompts",
-        field: 'A form field name inside that section (or inside the window)',
+        field: 'A form field name inside that section',
         scene: 'An animation from scenes/sceneRegistry.ts',
-        dialog:
-          'Shown only while a window whose title contains this is open. Separate alternatives with |; start with = for an exact title',
       };
 
       let meta = { files: [], scenes: [], shared: {}, values: {} };
@@ -558,30 +554,21 @@
         const scene = directive('scene');
         const section = directive('section');
         const field = directive('field');
-        const dialog = directive('dialog');
         const preview = h('div', {
           'className': 'preview',
           'aria-label': 'Preview',
         });
         const position = steps.indexOf(step) + 1;
         preview.append(
-          h(
-            'div',
-            { className: 'eyebrow' },
-            dialog ? 'Window step' : `Step ${position} in this file`,
-          ),
+          h('div', { className: 'eyebrow' }, `Step ${position} in this file`),
           h('h3', {}, step.title || 'Untitled step'),
         );
-        if (section || field || dialog) {
+        if (section || field) {
           preview.append(
             h(
               'div',
               { className: 'target' },
-              [
-                dialog && `In the “${dialog}” window`,
-                section && `Rings “${section}”`,
-                field && `field “${field}”`,
-              ]
+              [section && `Rings “${section}”`, field && `field “${field}”`]
                 .filter(Boolean)
                 .join(' · '),
             ),
@@ -641,7 +628,7 @@
             .filter((file) => file.path.startsWith('shared/'))
             .map(link),
         );
-        for (const name of ['section', 'field', 'dialog']) {
+        for (const name of ['section', 'field']) {
           $(`#values-${name}`).replaceChildren(
             ...(meta.values[name] ?? []).map((value) => h('option', { value })),
           );
@@ -822,10 +809,6 @@
           preview = next;
           updateStatus();
         };
-        const dialog = step.directives
-          .find((d) => d.name === 'dialog')
-          ?.value.trim();
-
         const directiveInputs = DIRECTIVES.map((name) => {
           const value =
             step.directives.find((d) => d.name === name)?.value ?? '';
@@ -1007,15 +990,6 @@
                 refreshPreview();
               },
             }),
-            dialog &&
-              h(
-                'span',
-                {
-                  className: 'badge',
-                  title: `Shown only in the “${dialog}” window`,
-                },
-                'Window step',
-              ),
             moveButtons(items, index),
           ),
           h(

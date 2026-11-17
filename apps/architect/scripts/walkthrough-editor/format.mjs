@@ -11,9 +11,9 @@
 // Loaded by the editor server (Node) and by the editor page (browser), so it
 // imports nothing.
 
-export const DIRECTIVES = ['section', 'field', 'scene', 'dialog'];
+export const DIRECTIVES = ['section', 'field', 'scene'];
 
-const DIRECTIVE = /^<!--\s*(section|field|scene|dialog):\s*(.*?)\s*-->$/;
+const DIRECTIVE = /^<!--\s*(section|field|scene):\s*(.*?)\s*-->$/;
 const INCLUDE = /^<!--\s*include:\s*(.*?)\s*-->$/;
 const PRACTICE = /^>\s*(Do|Avoid):\s*(.*)$/i;
 

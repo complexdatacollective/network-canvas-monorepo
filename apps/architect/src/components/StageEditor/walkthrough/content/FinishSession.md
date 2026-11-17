@@ -16,26 +16,12 @@
                          form name instead of the whole section
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
-      dialog: <text>     a step for a dialog, not the editor: it is shown
-                         only while a dialog whose title matches is open.
-                         "form field" matches any title containing it
-                         ("Create form field", "Edit form field");
-                         "=attribute" matches a title that is exactly that;
-                         alternatives are separated by "|". Dialog steps
-                         play in order while it is open, and each dialog
-                         keeps its place while another is opened from
-                         inside it. The last one asks the researcher to
-                         save (naming the dialog's own save button, e.g.
-                         "Add") and rings that button, or, for a dialog
-                         with no save button, to make their choice; once
-                         the dialog closes the walkthrough picks up where
-                         it was. Their "field:" looks inside the dialog.
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
     Consecutive ones are grouped together.
   - A line "include: <name>" in an HTML comment, between steps, is replaced
     by the steps in shared/<name>.md. Use it for steps every stage type that
-    has that section shares (node type, skip logic, interviewer guidance and
-    so on); edit those steps there, once.
+    has that section shares (skip logic, interviewer guidance and so on);
+    edit those steps there, once.
   - Anything above the "# " heading (like this note) is ignored.
 
   Save the file and the panel updates live.

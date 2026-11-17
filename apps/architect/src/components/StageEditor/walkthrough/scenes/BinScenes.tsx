@@ -14,7 +14,6 @@ import {
   smooth,
   STAGE,
   STAGE_CENTER_X,
-  TextBox,
   Toast,
   type Point,
   type Stop,
@@ -443,49 +442,6 @@ function requireScene(kind: 'ordinal' | 'categorical') {
  */
 export const OrdinalBinRequireScene = requireScene('ordinal');
 
-/**
- * Shows an ordinal bin where the bins switch between three color gradients,
- * each with the full color in the first bin and a lighter shade in each bin
- * after it.
- */
-export const OrdinalBinGradientScene = defineScene(6.0, ({ t, id }) => {
-  const steps = [0, 2, 5];
-  const at = [0, 2.0, 4.0];
-  const phase = t >= 4.0 ? 2 : t >= 2.0 ? 1 : 0;
-  const start = at[phase] ?? 0;
-  const blend = phase === 0 ? 0 : smooth(segment(t, start, 0.6));
-  const from = steps[Math.max(0, phase - 1)] ?? 0;
-  const to = steps[phase] ?? 0;
-  return {
-    rail: { progress: 0.45 },
-    body: (
-      <>
-        <Prompt text={TEXT.ordinalPrompt} y={STAGE.y + 32} size={19} />
-        <OrdinalBins
-          id={id}
-          labels={TEXT.closeness}
-          color={phase === 0 ? to : from}
-          next={phase === 0 ? undefined : to}
-          blend={blend}
-        />
-        <BinNode at={ordSlot(0, 0)} label={JO} />
-        <BinNode at={ordSlot(2, 0)} label={SAM} />
-        <BinNode at={ordSlot(3, 0)} label={ANA} />
-        <Chip
-          key={phase}
-          x={STAGE_CENTER_X}
-          y={STAGE.bottom - 40}
-          text={TEXT.gradient(to + 1)}
-          size={15}
-          k={backOut(segment(t, start, 0.4))}
-        />
-      </>
-    ),
-  };
-});
-
-/* ------------------------------------------------------------ categorical */
-
 const CAT_R = 46;
 const CAT_STROKES = [
   'stroke-cat-1',
@@ -773,118 +729,6 @@ export const CategoricalBinTapScene = defineScene(5.2, ({ t }) => {
  */
 export const CategoricalBinRequireScene = requireScene('categorical');
 
-/**
- * Shows a categorical bin where the participant drags an alter into the Other
- * circle, types an answer to the follow-up question, and saves it, leaving the
- * alter in the Other circle.
- */
-export const CategoricalBinOtherScene = defineScene(6.4, ({ t }) => {
-  const labels = [...TEXT.categories.slice(0, 4), TEXT.other];
-  const drop: Move = { label: KAI, to: catCentre(4), at: 0.6, bin: 4 };
-  const from = drawerSlot(0, 1);
-  const p = moved(t, drop, from);
-  const dialog =
-    backOut(segment(t, 1.4, 0.4)) * (1 - smooth(segment(t, 4.6, 0.3)));
-  const typed = TEXT.otherAnswer.slice(
-    0,
-    Math.round(TEXT.otherAnswer.length * segment(t, 2.0, 1.4)),
-  );
-  const card = {
-    x: STAGE_CENTER_X - 190,
-    y: STAGE.y + 70,
-    width: 380,
-    height: 190,
-  };
-  const save: Point = [card.x + card.width - 70, card.y + card.height - 30];
-  const after = t >= 4.6;
-  return {
-    rail: { progress: 0.5 },
-    body: (
-      <>
-        <Prompt text={TEXT.categoricalPrompt} y={STAGE.y + 32} size={19} />
-        <CategoryCircles
-          labels={labels}
-          members={[[SAM], [ANA], [], [], after ? [KAI] : []]}
-          highlight={p.moving ? 4 : undefined}
-        />
-        <Drawer />
-        {p.done ? null : <BinNode at={p.pos} label={KAI} />}
-      </>
-    ),
-    modal:
-      dialog > 0 ? (
-        <g opacity={Math.min(1, dialog * 1.5)}>
-          <rect
-            x={CONTENT.x}
-            y={CONTENT.y}
-            width={CONTENT.right - CONTENT.x}
-            height={CONTENT.bottom - CONTENT.y}
-            className="fill-navy-taupe/60"
-          />
-          <g transform={`translate(0 ${(1 - dialog) * 20})`}>
-            <rect
-              x={card.x}
-              y={card.y}
-              width={card.width}
-              height={card.height}
-              rx={18}
-              className="fill-cyber-grape stroke-white/30"
-              strokeWidth={3}
-            />
-            <text
-              x={card.x + 26}
-              y={card.y + 40}
-              fontSize={21}
-              fontWeight={900}
-              className="fill-white"
-            >
-              {TEXT.other}
-            </text>
-            <BinNode at={[card.x + 50, card.y + 100]} label={KAI} />
-            <text
-              x={card.x + 88}
-              y={card.y + 80}
-              fontSize={15}
-              fontWeight={700}
-              className="fill-white"
-            >
-              {TEXT.otherQuestion}
-            </text>
-            <TextBox
-              x={card.x + 88}
-              y={card.y + 92}
-              width={card.width - 116}
-              text={typed}
-              caret={t >= 2.0 && t < 3.6}
-            />
-            <Chip
-              x={save[0]}
-              y={save[1]}
-              text={TEXT.save}
-              size={16}
-              width={100}
-              fill="fill-sea-green"
-              ink="fill-white"
-            />
-          </g>
-        </g>
-      ) : null,
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: from, at: drop.at - 0.05, ring: false },
-          { to: drop.to, at: drop.at + 0.7, glide: 0.7, ring: false },
-          { to: save, at: 4.4 },
-        ]}
-        leave={4.9}
-      />
-    ),
-  };
-});
-
-/* -------------------------------------------------------- concept scenes */
-
 function DataTable({
   x,
   y,
@@ -1050,51 +894,6 @@ export const OrdinalBinDataScene = binDataScene('ordinal');
  * for the circle it was placed in.
  */
 export const CategoricalBinDataScene = binDataScene('categorical');
-
-const bucketSlot = (i: number): Point => [
-  STAGE_CENTER_X + (i - 1.5) * 64,
-  STAGE.bottom - 40,
-];
-
-/**
- * Shows a bin stage where a Bucket order rule of name, A to Z, rearranges the
- * alters waiting in the drawer into alphabetical order.
- */
-export const BinBucketOrderScene = defineScene(4.8, ({ t }) => {
-  const before = [KAI, ANA, SAM, JO];
-  const after = [ANA, JO, KAI, SAM];
-  const k = smooth(segment(t, 1.6, 0.9));
-  return {
-    rail: { progress: 0.45 },
-    body: (
-      <>
-        <Chip
-          x={STAGE_CENTER_X}
-          y={STAGE.y + 120}
-          text={TEXT.bucketOrder}
-          size={16}
-          k={backOut(segment(t, 1.0, 0.4))}
-        />
-        <Drawer width={300} />
-        {before.map((name, i) => {
-          const j = after.indexOf(name);
-          const a = bucketSlot(i);
-          const b = bucketSlot(j);
-          return (
-            <BinNode
-              key={name}
-              at={[
-                lerp(a[0], b[0], k),
-                lerp(a[1], b[1], k) - Math.sin(Math.PI * k) * 26,
-              ]}
-              label={name}
-            />
-          );
-        })}
-      </>
-    ),
-  };
-});
 
 /**
  * Shows a stage filter of close_friend is true, where only the alters with that

@@ -16,26 +16,12 @@
                          form name instead of the whole section
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
-      dialog: <text>     a step for a dialog, not the editor: it is shown
-                         only while a dialog whose title matches is open.
-                         "form field" matches any title containing it
-                         ("Create form field", "Edit form field");
-                         "=attribute" matches a title that is exactly that;
-                         alternatives are separated by "|". Dialog steps
-                         play in order while it is open, and each dialog
-                         keeps its place while another is opened from
-                         inside it. The last one asks the researcher to
-                         save (naming the dialog's own save button, e.g.
-                         "Add") and rings that button, or, for a dialog
-                         with no save button, to make their choice; once
-                         the dialog closes the walkthrough picks up where
-                         it was. Their "field:" looks inside the dialog.
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
     Consecutive ones are grouped together.
   - A line "include: <name>" in an HTML comment, between steps, is replaced
     by the steps in shared/<name>.md. Use it for steps every stage type that
-    has that section shares (node type, skip logic, interviewer guidance and
-    so on); edit those steps there, once.
+    has that section shares (skip logic, interviewer guidance and so on);
+    edit those steps there, once.
   - Anything above the "# " heading (like this note) is ignored.
 
   Save the file and the panel updates live.
@@ -112,15 +98,6 @@ Read more about [the default language](https://documentation.networkcanvas.com/d
 
 Click **Add languages** to offer participants another language. Text you have written has no translation in the new language until you add one. Wording that Network Canvas supplies, such as this stage's heading, is filled in for the new language if Network Canvas has wording in that language and you haven't changed that wording in your default language.
 
-## Choose languages to add
-
-<!-- dialog: =add languages -->
-<!-- field: languages -->
-
-Search for each language by its name, its name in its own language, or its code. Choose as many languages as you need.
-
-If you choose a regional variant of a language that Network Canvas has wording in, such as Mexican Spanish, Architect asks whether to add the main language too, such as Spanish. Participants using the variant then see Network Canvas's wording wherever you haven't written your own.
-
 ## Remove or relabel a language
 
 <!-- section: Languages -->
@@ -131,16 +108,7 @@ If text was recorded under the wrong language, use the button with two arrows to
 
 Read more about [removing a language](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#removing-a-language).
 
-## Choose the right language
-
-<!-- dialog: to a different language -->
-<!-- field: language -->
-
-Choose the language the text is really written in. For example, text in a protocol upgraded from an older version may be recorded under the wrong language. Every translation recorded under the old language moves to the language you choose. If the old language was the default language, the language you choose becomes the default.
-
 <!-- include: skip-logic -->
-
-<!-- include: rule -->
 
 <!-- include: interviewer-guidance -->
 

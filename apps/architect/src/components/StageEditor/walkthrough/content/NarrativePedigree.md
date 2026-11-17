@@ -1,7 +1,7 @@
 <!--
   Walkthrough for the "Narrative Pedigree" stage. See Sociogram.md for how
   this file becomes a walkthrough: "## " headings are steps, and HTML-comment
-  directives (section:, field:, scene:, dialog:, include:) say where a step
+  directives (section:, field:, scene:, include:) say where a step
   points.
 -->
 
@@ -51,40 +51,9 @@ Changing the source stage removes every condition you have added, because each c
 
 The editor calls conditions diseases. Each condition you add appears in the menu on the participant's toolbar, drawn in its own color. Add at least one condition, because without any, the participant sees an unmarked family.
 
+Each condition reads a true or false attribute recorded by a nomination prompt on the source Family Pedigree, so add that prompt first. Its **Inheritance pattern** decides who else is marked. Statuses pass only through genetic links, and the sex-linked patterns use sex assigned at birth.
+
 > Do: Name conditions in words participants recognize. The name is all the participant sees of the condition's definition.
-
-## Name the condition
-
-<!-- dialog: =create disease | =edit disease -->
-<!-- field: label -->
-
-The **Disease label** is the condition's name. The participant picks the condition by this name in the toolbar menu, and the name is the title of a saved snapshot.
-
-## Pick the condition's color
-
-<!-- dialog: =create disease | =edit disease -->
-<!-- field: color -->
-
-The status symbols are drawn in this color while the participant has this condition chosen.
-
-## Choose who has the condition
-
-<!-- dialog: =create disease | =edit disease -->
-<!-- field: attribute -->
-
-Pick the true or false **Node attribute** that records who has the condition. A person is marked as having the condition when the attribute is true.
-
-Only attributes recorded by a nomination prompt on the source Family Pedigree are listed. You can't create an attribute here, so add the nomination prompt to the Family Pedigree first.
-
-## Choose how the condition is inherited
-
-<!-- dialog: =create disease | =edit disease -->
-<!-- field: inheritancePattern -->
-<!-- scene: narrative-pedigree-patterns -->
-
-The **Inheritance pattern** decides who else is marked: autosomal dominant or recessive, X-linked dominant or recessive, Y-linked, or mitochondrial. **Multifactorial** and **Unknown** mark only the people nominated, and infer nothing about anyone else.
-
-Statuses pass only through genetic links (biological parents and egg or sperm donors). They do not pass through adoptive or social parents or surrogates. The sex-linked patterns use each person's sex assigned at birth, and gender identity plays no part.
 
 > Avoid: Choosing an inheritance pattern for a condition whose inheritance is not established. Choose **Unknown** or **Multifactorial** instead, so that only recorded statuses are shown.
 

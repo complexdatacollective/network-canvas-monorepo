@@ -16,26 +16,12 @@
                          form name instead of the whole section
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
-      dialog: <text>     a step for a dialog, not the editor: it is shown
-                         only while a dialog whose title matches is open.
-                         "form field" matches any title containing it
-                         ("Create form field", "Edit form field");
-                         "=attribute" matches a title that is exactly that;
-                         alternatives are separated by "|". Dialog steps
-                         play in order while it is open, and each dialog
-                         keeps its place while another is opened from
-                         inside it. The last one asks the researcher to
-                         save (naming the dialog's own save button, e.g.
-                         "Add") and rings that button, or, for a dialog
-                         with no save button, to make their choice; once
-                         the dialog closes the walkthrough picks up where
-                         it was. Their "field:" looks inside the dialog.
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
     Consecutive ones are grouped together.
   - A line "include: <name>" in an HTML comment, between steps, is replaced
     by the steps in shared/<name>.md. Use it for steps every stage type that
-    has that section shares (node type, skip logic, interviewer guidance and
-    so on); edit those steps there, once.
+    has that section shares (skip logic, interviewer guidance and so on);
+    edit those steps there, once.
   - Anything above the "# " heading (like this note) is ignored.
 
   Save the file and the panel updates live.
@@ -89,8 +75,6 @@ Choose the **node type** this stage creates, such as _Person_. Each alter added 
 
 If the type you need does not exist yet, you can create it here.
 
-<!-- include: node-type -->
-
 ## Choose the roster
 
 <!-- section: Roster source -->
@@ -98,9 +82,9 @@ If the type you need does not exist yet, you can create it here.
 
 The roster is the network data file that supplies this stage's alters. Choose the file first, because the later roster settings, such as what the cards show and what can be searched, are chosen from its columns. Once you choose a file, the editor lists the attributes its entries have.
 
-Read more about [preparing a roster file](https://documentation.networkcanvas.com/design-protocols/tutorials/working-with-rosters#how-to-create-a-roster).
+The file is stored inside the protocol. Large rosters are slower to load and search, so test yours on the devices you will use in the field.
 
-<!-- include: data-file -->
+Read more about [preparing a roster file](https://documentation.networkcanvas.com/design-protocols/tutorials/working-with-rosters#how-to-create-a-roster).
 
 ## Write the prompts
 
@@ -108,11 +92,11 @@ Read more about [preparing a roster file](https://documentation.networkcanvas.co
 
 The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Which of your classmates do you spend time with outside school?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
 
+Each prompt can also set **additional attributes** on every alter added in response to it, such as `discuss_matters` set to true, so your data shows which prompt each alter was added for.
+
 Each roster entry can be added only once, so an alter added on the first prompt is no longer in the list on the second.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
-
-<!-- include: name-generator-prompts -->
 
 ## Title the list of cards
 

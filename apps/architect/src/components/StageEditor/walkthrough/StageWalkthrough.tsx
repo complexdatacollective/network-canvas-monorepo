@@ -1,4 +1,4 @@
-import { Minus, MousePointerClick } from 'lucide-react';
+import { Minus } from 'lucide-react';
 import {
   animate,
   AnimatePresence,
@@ -16,14 +16,12 @@ import {
   useState,
   useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
@@ -49,11 +47,9 @@ import {
 } from './parseWalkthrough';
 import Practices from './Practices';
 import { SCENES } from './scenes/sceneRegistry';
-import { subscribeToPage, useOpenModals, type OpenModal } from './useOpenModal';
 import {
   closeWalkthrough,
   getWalkthroughPosition,
-  goToDetourStep,
   goToWalkthroughStep,
   setWalkthroughCollapsed,
   setWalkthroughPosition,
@@ -90,47 +86,13 @@ const messages = defineMessages({
     description:
       'Compact step count inside the progress ring of the minimized walkthrough, e.g. "1/8". index is one-based.',
   },
-  resume: {
-    id: 'architect.stageEditor.walkthrough.resume',
-    defaultMessage: 'Resume',
-    description:
-      'Button on the minimized walkthrough that opens it again at the step the researcher was on.',
-  },
   collapse: {
     id: 'architect.stageEditor.walkthrough.collapse',
     defaultMessage: 'Hide the walkthrough for now',
     description:
       'Button that folds the walkthrough panel down to a small bar, so the researcher can work on the page behind it.',
   },
-  inThisDialog: {
-    id: 'architect.stageEditor.walkthrough.inThisDialog',
-    defaultMessage: 'In this window',
-    description:
-      'Eyebrow on walkthrough steps about the dialog the researcher has open, rather than the stage editor behind it.',
-  },
-  saveToContinue: {
-    id: 'architect.stageEditor.walkthrough.saveToContinue',
-    defaultMessage:
-      'Click <strong>{label}</strong> to save this, and the walkthrough will carry on.',
-    description:
-      'Shown on the last walkthrough step about an open dialog, in place of a Next button. label is the text of the dialog’s own save button, such as “Add” or “Save”. The walkthrough resumes by itself once the dialog closes.',
-  },
-  saveToContinueUnlabelled: {
-    id: 'architect.stageEditor.walkthrough.saveToContinueUnlabelled',
-    defaultMessage: 'Save this window, and the walkthrough will carry on.',
-    description:
-      'Shown on the last walkthrough step about an open dialog whose save button has no text. The walkthrough resumes by itself once the dialog closes.',
-  },
-  chooseToContinue: {
-    id: 'architect.stageEditor.walkthrough.chooseToContinue',
-    defaultMessage:
-      'Make your choice here and this window closes by itself; the walkthrough will carry on.',
-    description:
-      'Shown on the last walkthrough step about an open dialog that has no save button, such as a picker that closes once something is chosen. The walkthrough resumes by itself once the dialog closes.',
-  },
 });
-
-const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 const MARKDOWN_TAGS = [...ALLOWED_MARKDOWN_SECTION_TAGS, 'img', 'code'];
 
@@ -155,81 +117,38 @@ export function useStageWalkthrough(): Walkthrough | undefined {
   return identity === undefined ? undefined : walkthroughFor(identity.type);
 }
 
-const normalise = (text: string) =>
-  text.replace(/\*$/, '').trim().toLowerCase();
-
-/**
- * Whether a step is written for this dialog. A step names one or more
- * alternatives separated by "|"; each matches a title containing it, or,
- * written as "=text", a title that is exactly that.
- */
-const matchesModal = (step: WalkthroughStep, modal: OpenModal) => {
-  if (step.dialog === undefined) return false;
-  const title = normalise(modal.title);
-  return step.dialog.split('|').some((alternative) => {
-    const wanted = alternative.trim();
-    return wanted.startsWith('=')
-      ? title === normalise(wanted.slice(1))
-      : title.includes(normalise(wanted));
-  });
-};
-
-/**
- * A guide to the stage being edited, in a panel floating over the editor.
- *
- * It follows the researcher into the dialogs the editor opens: a modal makes
- * the rest of the page inert, so while one is open the panel renders inside
- * the topmost modal's layer, and any steps written for an open dialog take
- * over until it closes.
- */
+/** A guide to the stage being edited, in a panel floating over the editor. */
 export default function StageWalkthrough({
   sections,
 }: Readonly<{ sections: StageSectionsStore }>) {
   const walkthrough = useStageWalkthrough();
   const { open } = useWalkthroughState();
-  const modals = useOpenModals();
   const portalContainer = usePortalContainer();
 
   useEffect(() => () => closeWalkthrough({ restoreFocus: false }), []);
 
   if (!open || walkthrough === undefined) return null;
 
-  const top = modals.at(-1);
-  const host = modals.findLast((modal) =>
-    walkthrough.steps.some((step) => matchesModal(step, modal)),
-  );
-
-  // Portalling into a different layer remounts the panel, which is what lets
-  // it take focus only when asked and keep its place across dialogs.
   return createPortal(
     <WalkthroughPanel
       title={walkthrough.title}
       sections={sections}
-      allSteps={walkthrough.steps}
-      host={host}
-      covered={top !== undefined && top !== host}
+      steps={walkthrough.steps}
     />,
-    top?.layer ?? portalContainer ?? document.body,
+    portalContainer ?? document.body,
   );
 }
 
 function WalkthroughPanel({
   title,
   sections,
-  allSteps,
-  host,
-  covered,
+  steps,
 }: Readonly<{
   title: string;
   sections: StageSectionsStore;
-  allSteps: readonly WalkthroughStep[];
-  /** The open dialog the current steps are about, if any. */
-  host: OpenModal | undefined;
-  /** Whether a dialog the steps say nothing about sits over what they do. */
-  covered: boolean;
+  steps: readonly WalkthroughStep[];
 }>) {
-  const intl = useAppIntl();
-  const { step: mainIndex, collapsed, detours } = useWalkthroughState();
+  const { step: current, collapsed } = useWalkthroughState();
 
   const entries = useSyncExternalStore(
     sections.subscribe,
@@ -237,17 +156,11 @@ function WalkthroughPanel({
     sections.getServerSnapshot,
   );
 
-  const steps = allSteps.filter((step) =>
-    host === undefined ? step.dialog === undefined : matchesModal(step, host),
-  );
-  const index = Math.min(
-    host === undefined ? mainIndex : (detours[host.serial] ?? 0),
-    steps.length - 1,
-  );
+  const index = Math.min(current, steps.length - 1);
   const step = steps[index];
 
   const sectionId =
-    host !== undefined || step?.section === undefined
+    step?.section === undefined
       ? undefined
       : entries.find(
           (entry) => entry.title.toLowerCase() === step.section?.toLowerCase(),
@@ -257,97 +170,27 @@ function WalkthroughPanel({
     return () => setWalkthroughSection(undefined);
   }, [collapsed, sectionId]);
 
-  const target = useStepTarget(host?.popup ?? null, sectionId, step?.field);
+  const target = useStepTarget(sectionId, step?.field);
   const isLast = index === steps.length - 1;
-  const awaitingSave = host !== undefined && isLast;
-  const saveButton = useSaveButton(
-    awaitingSave && !covered ? host.popup : null,
-  );
 
-  if (step === undefined) return null;
-
-  if (collapsed) {
-    // Minimised over the editor, it sits in the editor's toolbar instead;
-    // a dialog makes that toolbar inert, so inside one it stays a pill.
-    if (host === undefined) return null;
-    return (
-      <MinimizedPill index={index} total={steps.length} title={step.title} />
-    );
-  }
-
-  const goTo = (next: number) =>
-    host === undefined
-      ? goToWalkthroughStep(next)
-      : goToDetourStep(host.serial, next);
+  // Minimised, the walkthrough sits in the editor's toolbar instead.
+  if (step === undefined || collapsed) return null;
 
   return (
     <WalkthroughCard
-      eyebrow={intl.formatMessage(
-        host === undefined ? messages.walkthrough : messages.inThisDialog,
-      )}
-      title={host?.title ?? title}
+      title={title}
       step={step}
       index={index}
       total={steps.length}
-      // A ring over something a dialog covers would point at what cannot be used.
-      target={covered ? null : target}
-      saveButton={saveButton}
-      awaitingSave={awaitingSave}
-      onBack={index === 0 ? undefined : () => goTo(index - 1)}
+      target={target}
+      onBack={index === 0 ? undefined : () => goToWalkthroughStep(index - 1)}
       onNext={
         isLast
           ? () => closeWalkthrough({ finished: true })
-          : () => goTo(index + 1)
+          : () => goToWalkthroughStep(index + 1)
       }
       isLast={isLast}
     />
-  );
-}
-
-/** The walkthrough minimised to a pill in the corner, to pick up again. */
-function MinimizedPill({
-  index,
-  total,
-  title,
-}: Readonly<{ index: number; total: number; title: string }>) {
-  const intl = useAppIntl();
-  const ref = useRef<HTMLButtonElement>(null);
-  const reducedMotion = usePrefersReducedMotion() === true;
-
-  useEffect(() => {
-    if (takeWalkthroughFocus()) ref.current?.focus({ preventScroll: true });
-  }, []);
-
-  return (
-    <MotionSurface
-      as="section"
-      aria-label={intl.formatMessage(messages.walkthrough)}
-      floating
-      shadow="lg"
-      spacing="none"
-      noContainer
-      className="pointer-events-auto fixed inset-e-6 bottom-24 flex items-center gap-3 rounded-full py-2 ps-2 pe-3"
-      initial={reducedMotion ? false : { opacity: 0, y: 12, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={SPRING}
-    >
-      <StepRing index={index} total={total} />
-      <span className="flex max-w-[min(14rem,calc(100vw-16rem))] min-w-0 flex-col">
-        <Eyebrow render={<span />}>
-          {intl.formatMessage(messages.walkthrough)}
-        </Eyebrow>
-        <span className="font-heading truncate text-sm font-bold">{title}</span>
-      </span>
-      <Button
-        ref={ref}
-        color="primary"
-        size="sm"
-        onClick={() => setWalkthroughCollapsed(false)}
-      >
-        {intl.formatMessage(messages.resume)}
-      </Button>
-      <CloseButton size="sm" onClick={() => closeWalkthrough()} />
-    </MotionSurface>
   );
 }
 
@@ -401,31 +244,20 @@ function StepSegments({
  * tall as its step; the footer is pinned and long copy scrolls in the body.
  */
 function WalkthroughCard({
-  eyebrow,
   title,
   step,
   index,
   total,
   target,
-  saveButton,
-  awaitingSave,
   onBack,
   onNext,
   isLast,
 }: Readonly<{
-  eyebrow: string;
   title: string;
   step: WalkthroughStep;
   index: number;
   total: number;
   target: HTMLElement | null;
-  /** The open dialog's save button, ringed on the last step about it. */
-  saveButton: HTMLButtonElement | null;
-  /**
-   * The last step about an open dialog: it ends when the dialog is saved and
-   * closes, so it asks for that instead of offering Next.
-   */
-  awaitingSave: boolean;
   onBack: (() => void) | undefined;
   onNext: () => void;
   isLast: boolean;
@@ -472,20 +304,12 @@ function WalkthroughCard({
     startDrag,
     placeBeside,
   } = useMovablePanel(clearOfNav, reducedMotion);
-  const {
-    surfaceRef,
-    headerRef,
-    contentRef,
-    extraRef,
-    footerRef,
-    height,
-    finalHeight,
-  } = usePanelHeight(body, bounds, reducedMotion);
+  const { surfaceRef, headerRef, contentRef, footerRef, height, finalHeight } =
+    usePanelHeight(body, bounds, reducedMotion);
 
-  // Once the step's target has scrolled into place, the panel moves beside it
-  // (or beside the save button it points at), and stays there as the step's
-  // height settles.
-  const anchor = target ?? saveButton;
+  // Once the step's target has scrolled into place, the panel moves beside it,
+  // and stays there as the step's height settles.
+  const anchor = target;
   const [settled, setSettled] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (anchor === null) return undefined;
@@ -509,15 +333,11 @@ function WalkthroughCard({
     placeBeside(settled, finalHeight);
   }, [anchor, finalHeight, placeBeside, settled]);
   const Scene = step.scene === undefined ? undefined : SCENES[step.scene];
-  const saveLabel = saveButton?.textContent?.trim() ?? '';
 
   return (
     <>
       {target !== null && (
         <Spotlight target={target} reducedMotion={reducedMotion} />
-      )}
-      {saveButton !== null && saveButton !== target && (
-        <Spotlight target={saveButton} reducedMotion={reducedMotion} />
       )}
       <div
         ref={bounds}
@@ -559,7 +379,7 @@ function WalkthroughCard({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 flex-col">
-                <Eyebrow>{eyebrow}</Eyebrow>
+                <Eyebrow>{intl.formatMessage(messages.walkthrough)}</Eyebrow>
                 <span className="font-heading truncate text-sm font-bold">
                   {title}
                 </span>
@@ -609,27 +429,6 @@ function WalkthroughCard({
               </AnimatePresence>
             </div>
           </ScrollArea>
-          <div ref={extraRef} className="shrink-0">
-            {awaitingSave && (
-              <div className="px-5 pb-1">
-                <Alert
-                  variant="info"
-                  density="compact"
-                  icon={MousePointerClick}
-                  className="my-0"
-                >
-                  {saveButton === null
-                    ? intl.formatMessage(messages.chooseToContinue)
-                    : saveLabel === ''
-                      ? intl.formatMessage(messages.saveToContinueUnlabelled)
-                      : intl.formatMessage(messages.saveToContinue, {
-                          label: saveLabel,
-                          strong: renderStrong,
-                        })}
-                </Alert>
-              </div>
-            )}
-          </div>
           <footer
             ref={footerRef}
             className="grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-3"
@@ -650,16 +449,14 @@ function WalkthroughCard({
               {`Step ${index + 1} of ${total}`}
             </span>
             <div className="flex justify-end">
-              {!awaitingSave && (
-                <Button
-                  ref={nextRef}
-                  color="primary"
-                  size="sm"
-                  onClick={toTop(onNext)}
-                >
-                  {intl.formatMessage(isLast ? messages.finish : messages.next)}
-                </Button>
-              )}
+              <Button
+                ref={nextRef}
+                color="primary"
+                size="sm"
+                onClick={toTop(onNext)}
+              >
+                {intl.formatMessage(isLast ? messages.finish : messages.next)}
+              </Button>
             </div>
           </footer>
         </MotionSurface>
@@ -677,25 +474,6 @@ function Block({ block }: Readonly<{ block: WalkthroughBlock }>) {
   );
 }
 
-/** The submit button of a dialog's form, which saves and closes it. */
-function useSaveButton(popup: HTMLElement | null): HTMLButtonElement | null {
-  // The dialog's own save sits in its footer, outside the form it submits,
-  // and names that form; a submit inside the body (a preview's "Check
-  // response") belongs to something else.
-  const getSnapshot = useCallback(() => {
-    if (popup === null) return null;
-    const submits = [
-      ...popup.querySelectorAll<HTMLButtonElement>('button[type="submit"]'),
-    ];
-    return (
-      submits.find((button) => button.hasAttribute('form')) ??
-      submits.at(-1) ??
-      null
-    );
-  }, [popup]);
-  return useSyncExternalStore(subscribeToPage, getSnapshot, () => null);
-}
-
 /**
  * How long the page must go without scrolling before the step's target is
  * taken to be in place.
@@ -706,7 +484,7 @@ const SCROLL_QUIET_MS = 150;
  * Lets the researcher move the panel out of the way by dragging its header. It
  * stays inside `bounds`, which keep clear of the navigation bar and the
  * toolbar, moves beside what each step points at, and keeps where it was put
- * when it remounts to follow a dialog. It opens in the corner above the
+ * when it remounts after being minimised. It opens in the corner above the
  * toolbar.
  */
 function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
@@ -887,16 +665,15 @@ function usePanelHeight(
   const surface = useRef<HTMLElement>(null);
   const header = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
-  const extra = useRef<HTMLDivElement>(null);
   const footer = useRef<HTMLElement>(null);
   const height = useMotionValue(0);
   const [finalHeight, setFinalHeight] = useState<number>();
 
   useLayoutEffect(() => {
-    const parts = [surface, header, content, extra, footer, viewport, bounds];
+    const parts = [surface, header, content, footer, viewport, bounds];
     const measure = () => {
-      const [s, h, c, e, f, v, b] = parts.map((part) => part.current);
-      if (!s || !h || !c || !e || !f || !v || !b) return;
+      const [s, h, c, f, v, b] = parts.map((part) => part.current);
+      if (!s || !h || !c || !f || !v || !b) return;
       const padding = getComputedStyle(v);
       // The step's whole height, borders and all: what the panel would be with
       // nothing to scroll.
@@ -904,7 +681,6 @@ function usePanelHeight(
         s.offsetHeight -
         s.clientHeight +
         h.offsetHeight +
-        e.offsetHeight +
         f.offsetHeight +
         c.offsetHeight +
         Number.parseFloat(padding.paddingTop) +
@@ -918,7 +694,7 @@ function usePanelHeight(
     };
     measure();
     const observer = new ResizeObserver(measure);
-    for (const part of [header, content, extra, footer, bounds]) {
+    for (const part of [header, content, footer, bounds]) {
       if (part.current !== null) observer.observe(part.current);
     }
     return () => observer.disconnect();
@@ -940,7 +716,6 @@ function usePanelHeight(
     surfaceRef: surface,
     headerRef: header,
     contentRef: content,
-    extraRef: extra,
     footerRef: footer,
     height,
     finalHeight,
@@ -989,32 +764,34 @@ function closeOnEscape(event: KeyboardEvent) {
   closeWalkthrough();
 }
 
-/**
- * The element a step points at. On the page, a section (or a field inside
- * it); inside a dialog, a field of that dialog.
- */
+/** The element a step points at: a section, or a field inside it. */
 function useStepTarget(
-  scope: HTMLElement | null,
   sectionId: string | undefined,
   field: string | undefined,
 ): HTMLElement | null {
   const getSnapshot = useCallback(() => {
-    const fieldSelector =
-      field === undefined
-        ? undefined
-        : `[data-field-name="${CSS.escape(field)}"]`;
-    if (scope !== null) {
-      return fieldSelector === undefined
-        ? null
-        : scope.querySelector<HTMLElement>(fieldSelector);
-    }
     if (sectionId === undefined) return null;
     const section = document.getElementById(sectionId);
-    if (section === null || fieldSelector === undefined) return section;
-    return section.querySelector<HTMLElement>(fieldSelector) ?? section;
-  }, [field, scope, sectionId]);
+    if (section === null || field === undefined) return section;
+    return (
+      section.querySelector<HTMLElement>(
+        `[data-field-name="${CSS.escape(field)}"]`,
+      ) ?? section
+    );
+  }, [field, sectionId]);
 
   return useSyncExternalStore(subscribeToPage, getSnapshot, () => null);
+}
+
+/** Calls back whenever the page's DOM changes. */
+function subscribeToPage(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+  return () => observer.disconnect();
 }
 
 const SPOTLIGHT_INSET = 8;

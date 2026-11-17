@@ -5,7 +5,6 @@ import {
   Card,
   DataTable,
   DyadPairs,
-  DYAD_Y,
   Heading,
   JoinedNodes,
   type DyadPair,
@@ -227,95 +226,6 @@ export const TieStrengthIntroScene = defineScene(6.0, ({ t }) => {
         ]}
         leave={4.0}
       />
-    ),
-  };
-});
-
-/**
- * Shows a tie-strength census where the attribute's values appear one by one as
- * options in order, followed by the decline option, and the participant then
- * chooses an option to create the edge.
- */
-export const TieStrengthScaleScene = defineScene(5.0, ({ t }) => {
-  const reveal = (i: number) => backOut(segment(t, 0.5 + i * 0.45, 0.4));
-  const pair: DyadPair = {
-    from: SAM,
-    to: KAI,
-    enter: 0,
-    leave: 99,
-    answer: 'yes',
-    answerAt: 3.9,
-  };
-  return {
-    rail: { progress: 0.7 },
-    body: (
-      <>
-        <DyadPairs t={t} pairs={[pair]} />
-        <ScaleCard chosen={t >= 3.9 ? 2 : undefined} reveal={reveal} />
-        {TEXT.values.map((value, i) => {
-          const [x] = optionAt(i);
-          return (
-            <Chip
-              key={value}
-              x={x}
-              y={OPTIONS_Y + OPTION.height + 26}
-              text={value}
-              size={12}
-              k={backOut(segment(t, 0.8 + i * 0.45, 0.4))}
-            />
-          );
-        })}
-        <Chip
-          x={optionAt(DECLINE)[0]}
-          y={OPTIONS_Y + OPTION.height + 26}
-          text={TEXT.declineChip}
-          size={12}
-          fill="fill-white/20"
-          ink="fill-white"
-          k={backOut(segment(t, 2.2, 0.4))}
-        />
-      </>
-    ),
-    overlay: <Click t={t} stops={[{ to: optionAt(2), at: 3.9 }]} leave={4.4} />,
-  };
-});
-
-/**
- * Shows a tie-strength census where a pair that is already rated appears with
- * its option chosen, and choosing the decline option removes the edge.
- */
-export const TieStrengthDeclineScene = defineScene(4.6, ({ t }) => {
-  const rated: readonly Rated[] = [
-    {
-      pair: {
-        from: SAM,
-        to: ANA,
-        enter: 0,
-        leave: 99,
-        existing: true,
-        answerAt: 2.4,
-      },
-      option: DECLINE,
-      preset: 1,
-    },
-  ];
-  return {
-    rail: { progress: 0.7 },
-    body: (
-      <>
-        <DyadPairs t={t} pairs={rated.map(toPair)} />
-        <ScaleCard chosen={chosenOption(t, rated)} />
-        <Chip
-          x={STAGE_CENTER_X}
-          y={DYAD_Y - 72}
-          text={TEXT.already}
-          size={13}
-          k={backOut(segment(t, 0.6, 0.4)) * (1 - smooth(segment(t, 2.4, 0.3)))}
-        />
-      </>
-    ),
-    overlay: (
-      <Click t={t} stops={[{ to: optionAt(DECLINE), at: 2.4 }]} leave={3.0} />
     ),
   };
 });

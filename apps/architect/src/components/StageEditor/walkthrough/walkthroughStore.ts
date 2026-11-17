@@ -4,12 +4,6 @@ type WalkthroughState = Readonly<{
   open: boolean;
   step: number;
   collapsed: boolean;
-  /**
-   * Where the researcher is in the steps written for each open dialog, by
-   * the dialog's serial, so a dialog keeps its place while another is opened
-   * from inside it.
-   */
-  detours: Readonly<Record<number, number>>;
   /** The editor section the current step is about, for the section list. */
   section: string | undefined;
   /** The stage the walkthrough is about, whose progress it keeps. */
@@ -24,7 +18,6 @@ const CLOSED: WalkthroughState = {
   open: false,
   step: 0,
   collapsed: false,
-  detours: {},
   section: undefined,
   stage: undefined,
   focusRequest: 0,
@@ -33,9 +26,9 @@ const CLOSED: WalkthroughState = {
 let state: WalkthroughState = CLOSED;
 /**
  * Where the researcher has moved the panel to, from its home in the corner.
- * Kept apart from the state above: the panel remounts when it follows a
- * dialog, and reading this then puts it back where it was, while writing it
- * on every drag would re-render the panel for nothing.
+ * Kept apart from the state above: the panel remounts when it is restored
+ * from the toolbar, and reading this then puts it back where it was, while
+ * writing it on every drag would re-render the panel for nothing.
  */
 let position: Position | undefined;
 let returnFocusTo: HTMLElement | null = null;
@@ -96,9 +89,9 @@ export function openWalkthrough(
 }
 
 /**
- * Whether the panel should take focus now. True once per request: the panel
- * remounts when it moves into or out of a dialog, and taking focus then would
- * pull it out of the dialog the researcher is working in.
+ * Whether the panel should take focus now. True once per request, so only
+ * opening, minimising or restoring the walkthrough moves focus, not any other
+ * remount.
  */
 export function takeWalkthroughFocus(): boolean {
   const pending = focusPending;
@@ -109,10 +102,6 @@ export function takeWalkthroughFocus(): boolean {
 export function goToWalkthroughStep(step: number) {
   if (state.stage !== undefined) progress.set(state.stage, step);
   set({ ...state, step });
-}
-
-export function goToDetourStep(serial: number, index: number) {
-  set({ ...state, detours: { ...state.detours, [serial]: index } });
 }
 
 /** Where the panel was last put, if anywhere: it opens in the corner. */

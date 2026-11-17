@@ -10,7 +10,6 @@ import {
   defineScene,
   lerp,
   PersonNode,
-  pressAt,
   PromptPips,
   smooth,
   STAGE,
@@ -50,8 +49,6 @@ const SAM = 'Sam';
 const ANA = 'Ana';
 const JO = 'Jo';
 const KAI = 'Kai';
-const CAFE = 'Café';
-
 /** The canvas the interview draws: concentric circles filling its height. */
 export const CANVAS = {
   x: STAGE_CENTER_X,
@@ -247,9 +244,6 @@ function PromptCard({
     </g>
   );
 }
-
-const CARD_X = STAGE.right - 14 - 125;
-const CARD_BOTTOM = STAGE.y + 12 + 84;
 
 /** The drawer of nodes still to be placed, at the bottom of the canvas. */
 const DRAWER = {
@@ -564,249 +558,6 @@ export const SociogramDataScene = defineScene(
   },
   { url: TEXT.exported },
 );
-
-const SHARED_PLAN: Point[] = [
-  [CANVAS.x - 70, CANVAS.y - 20],
-  [CANVAS.x, CANVAS.y - 90],
-  [CANVAS.x + 10, CANVAS.y + 70],
-];
-const SHARED_NAMES = [SAM, ANA, CAFE];
-
-/**
- * Shows a sociogram where the participant places alters on the first prompt,
- * the second prompt saves to the same layout attribute and keeps that
- * arrangement while the participant draws an edge, and a third prompt that
- * saves to a different layout attribute starts with every node back in the
- * drawer.
- */
-export const SociogramSharedLayoutScene = defineScene(6.0, ({ t }) => {
-  const second = t >= 2.2;
-  const third = t >= 4.0;
-  const current = third ? 2 : second ? 1 : 0;
-  const lines =
-    current === 0 ? TEXT.place : current === 1 ? TEXT.connect : TEXT.arrange;
-  const plan = SHARED_PLAN.map((to, i) => ({
-    label: SHARED_NAMES[i] ?? '',
-    to,
-    at: 0.4 + i * 0.5,
-  }));
-  const drawerOpen = third
-    ? smooth(segment(t, 4.05, 0.4))
-    : 1 - smooth(segment(t, 1.9, 0.3));
-  const reset = smooth(segment(t, 4.0, 0.4));
-  return {
-    rail: {
-      progress: lerp(0.4, 0.6, current / 2),
-      press: pressAt(t, [2.1, 3.9]),
-    },
-    body: (
-      <>
-        <Circles n={4} />
-        {plan.map((p, i) => {
-          const { pos, held, done } = placed(t, p, drawerSlot(i, plan.length));
-          const on = (held || done) && reset < 1;
-          return on ? (
-            <CanvasNode key={p.label} at={pos} label={p.label} k={1 - reset} />
-          ) : null;
-        })}
-        {second && !third ? (
-          <Edge
-            from={SHARED_PLAN[0] ?? [0, 0]}
-            to={SHARED_PLAN[1] ?? [0, 0]}
-            k={smooth(segment(t, 3.0, 0.3))}
-          />
-        ) : null}
-        <PromptCard
-          lines={lines}
-          count={3}
-          current={current}
-          height={110}
-          extra={
-            <Chip
-              x={CARD_X}
-              y={CARD_BOTTOM + 8}
-              text={third ? TEXT.savesToWork : TEXT.savesTo}
-              size={11}
-              k={1}
-            />
-          }
-        />
-        {drawerOpen > 0 ? (
-          <g transform={`translate(0 ${(1 - drawerOpen) * 90})`}>
-            <Drawer />
-            {plan.map((p, i) => {
-              const { held, done } = placed(t, p, drawerSlot(i, plan.length));
-              return held || (done && !third) ? null : (
-                <CanvasNode
-                  key={p.label}
-                  at={drawerSlot(i, plan.length)}
-                  label={p.label}
-                  r={22}
-                />
-              );
-            })}
-          </g>
-        ) : null}
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          ...plan.flatMap((p, i) => [
-            { to: drawerSlot(i, plan.length), at: p.at - 0.05, ring: false },
-            { to: p.to, at: p.at + 0.7, glide: 0.6, ring: false },
-          ]),
-          { to: [CONTENT.x + 33, CONTENT.bottom - 40], at: 2.1 },
-          { to: SHARED_PLAN[0] ?? [0, 0], at: 2.7 },
-          { to: SHARED_PLAN[1] ?? [0, 0], at: 3.0 },
-          { to: [CONTENT.x + 33, CONTENT.bottom - 40], at: 3.9 },
-        ]}
-        leave={4.4}
-      />
-    ),
-  };
-});
-
-const TAP: readonly [Point, Point, Point, Point] = [
-  [CANVAS.x - 80, CANVAS.y - 20],
-  [CANVAS.x + 10, CANVAS.y - 95],
-  [CANVAS.x - 10, CANVAS.y + 70],
-  [CANVAS.x + 90, CANVAS.y + 50],
-];
-const TAP_NAMES = [SAM, ANA, JO, KAI];
-
-/**
- * Shows a sociogram where, on an edge-creation prompt, the participant taps two
- * nodes to draw an edge and taps the same two nodes again to remove it, then,
- * on an attribute-toggling prompt, taps two nodes to mark them with a highlight
- * ring.
- */
-export const SociogramTapScene = defineScene(6.6, ({ t }) => {
-  const [sam, ana, jo, kai] = TAP;
-  const second = t >= 3.6;
-  const edge =
-    smooth(segment(t, 1.2, 0.25)) * (1 - smooth(segment(t, 2.7, 0.25)));
-  return {
-    rail: { progress: second ? 0.6 : 0.5, press: pressAt(t, [3.5]) },
-    body: (
-      <>
-        <Circles n={4} />
-        <Edge from={sam} to={ana} k={edge} />
-        {TAP.map((at, i) => (
-          <CanvasNode
-            key={TAP_NAMES[i]}
-            at={at}
-            label={TAP_NAMES[i] ?? ''}
-            pulse={
-              i === 0 && ((t >= 0.7 && t < 1.2) || (t >= 2.2 && t < 2.7))
-                ? t - 0.7
-                : undefined
-            }
-            ring={
-              second
-                ? i === 2
-                  ? segment(t, 4.4, 0.4)
-                  : i === 3
-                    ? segment(t, 5.2, 0.4)
-                    : 0
-                : 0
-            }
-          />
-        ))}
-        <PromptCard
-          lines={second ? TEXT.weekly : TEXT.connect}
-          count={2}
-          current={second ? 1 : 0}
-        />
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: sam, at: 0.7 },
-          { to: ana, at: 1.2 },
-          { to: sam, at: 2.2 },
-          { to: ana, at: 2.7 },
-          { to: [CONTENT.x + 33, CONTENT.bottom - 40], at: 3.5 },
-          { to: jo, at: 4.4 },
-          { to: kai, at: 5.2 },
-        ]}
-        leave={5.7}
-      />
-    ),
-  };
-});
-
-/**
- * Shows a sociogram where the participant draws two edges on the first prompt,
- * then moves to a prompt for a second edge type, where the earlier edges stay
- * on screen while the participant draws new edges in another color.
- */
-export const SociogramDisplayEdgesScene = defineScene(6.0, ({ t }) => {
-  const [sam, ana, jo, kai] = TAP;
-  const second = t >= 2.6;
-  return {
-    rail: { progress: second ? 0.6 : 0.5, press: pressAt(t, [2.5]) },
-    body: (
-      <>
-        <Circles n={4} />
-        <Edge from={sam} to={ana} k={smooth(segment(t, 0.9, 0.3))} />
-        <Edge from={ana} to={kai} k={smooth(segment(t, 1.8, 0.3))} />
-        <Edge from={jo} to={kai} type={2} k={smooth(segment(t, 3.6, 0.3))} />
-        <Edge from={sam} to={jo} type={2} k={smooth(segment(t, 4.5, 0.3))} />
-        {TAP.map((at, i) => (
-          <CanvasNode key={TAP_NAMES[i]} at={at} label={TAP_NAMES[i] ?? ''} />
-        ))}
-        <PromptCard
-          lines={second ? TEXT.works : TEXT.connect}
-          count={2}
-          current={second ? 1 : 0}
-          height={second ? 120 : 84}
-          extra={
-            second ? (
-              <>
-                <Chip
-                  x={CARD_X}
-                  y={CARD_BOTTOM + 4}
-                  text={TEXT.knows}
-                  size={11}
-                  k={backOut(segment(t, 2.7, 0.4))}
-                />
-                <Chip
-                  x={CARD_X}
-                  y={CARD_BOTTOM + 26}
-                  text={TEXT.worksWith}
-                  size={11}
-                  fill="fill-sea-serpent"
-                  k={backOut(segment(t, 2.9, 0.4))}
-                />
-              </>
-            ) : null
-          }
-        />
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: sam, at: 0.6 },
-          { to: ana, at: 0.9 },
-          { to: ana, at: 1.5 },
-          { to: kai, at: 1.8 },
-          { to: [CONTENT.x + 33, CONTENT.bottom - 40], at: 2.5 },
-          { to: jo, at: 3.3 },
-          { to: kai, at: 3.6 },
-          { to: sam, at: 4.2 },
-          { to: jo, at: 4.5 },
-        ]}
-        leave={5.0}
-      />
-    ),
-  };
-});
 
 /**
  * Shows a sociogram where the background changes from three concentric circles

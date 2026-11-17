@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { parse, serialize } from '../walkthrough-editor/format.mjs';
+import { DIRECTIVES, parse, serialize } from '../walkthrough-editor/format.mjs';
 
 // The walkthrough editor saves a file by rebuilding it from its parsed form,
 // so every content file must come back unchanged: otherwise saving one step
@@ -25,6 +25,36 @@ describe('walkthrough editor format', () => {
   it.each(files)('%s survives parse and serialize unchanged', (file) => {
     const source = readFileSync(join(content, file), 'utf8');
     expect(serialize(parse(source))).toBe(source);
+  });
+
+  // A directive the walkthrough does not know, such as the retired "dialog:",
+  // would be read as step text and shown as nothing.
+  it.each(files)('%s uses only known directives', (file) => {
+    const doc = parse(readFileSync(join(content, file), 'utf8'));
+    const stray = doc.items.flatMap((item) =>
+      item.type === 'step'
+        ? item.blocks.flatMap((block) =>
+            block.text
+              .split('\n')
+              .filter((line) => /^<!--\s*[a-z]+:/.test(line.trim())),
+          )
+        : [],
+    );
+    expect(stray).toEqual([]);
+    for (const item of doc.items) {
+      if (item.type !== 'step') continue;
+      for (const directive of item.directives) {
+        expect(DIRECTIVES).toContain(directive.name);
+      }
+    }
+  });
+
+  it('reads a retired dialog directive as text, not a directive', () => {
+    const doc = parse('# T\n\n## One\n\n<!-- dialog: edit prompt -->\n');
+    expect(doc.items[0]).toMatchObject({
+      directives: [],
+      blocks: [{ type: 'text', text: '<!-- dialog: edit prompt -->' }],
+    });
   });
 
   it('writes edits in the content files’ own layout', () => {

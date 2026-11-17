@@ -15,7 +15,6 @@ import {
   STAGE,
   STAGE_CENTER_X,
   TextBar,
-  type Point,
 } from './parts';
 
 const TEXT = {
@@ -431,105 +430,6 @@ export const InformationBlocksScene = defineScene(6.2, ({ t, id }) => {
             />
           ))}
         </g>
-      </>
-    ),
-  };
-});
-
-/**
- * Shows an information stage where a video and an audio player start playing as
- * the page opens, with the video muted and looping until the participant clicks
- * to unmute it.
- */
-export const InformationMediaScene = defineScene(5.6, ({ t, id }) => {
-  const videoTop = PAGE.y + 66;
-  const videoHeight = 170;
-  const audioTop = videoTop + videoHeight + 18;
-  const unmute: Point = [
-    INNER.x + INNER.width - 23,
-    videoTop + videoHeight - 22,
-  ];
-  return {
-    rail: { progress: 0.05 },
-    body: (
-      <>
-        <Card x={PAGE.x} y={PAGE.y} width={PAGE.width} height={328} />
-        <Heading text={TEXT.watch} y={PAGE.y + 44} />
-        <VideoBlock
-          clip={`${id}-media-video`}
-          t={t}
-          y={videoTop}
-          height={videoHeight}
-          muted={t < 3.6}
-        />
-        <AudioBlock y={audioTop} progress={Math.min(1, t / 10)} />
-        <Chip
-          x={INNER.x + INNER.width - 150}
-          y={videoTop + 24}
-          text={TEXT.muted}
-          size={13}
-          align="start"
-          k={backOut(segment(t, 1.0, 0.4)) * (1 - segment(t, 3.6, 0.3))}
-        />
-        <Chip
-          x={INNER.x + AUDIO_WIDTH + 12}
-          y={audioTop + 22}
-          text={TEXT.starts}
-          size={13}
-          align="start"
-          k={backOut(segment(t, 1.8, 0.4))}
-        />
-      </>
-    ),
-    overlay: <Click t={t} stops={[{ to: unmute, at: 3.6 }]} leave={4.2} />,
-  };
-});
-
-/**
- * Shows an information stage where an image changes between the Full size,
- * Small, Medium and Large display sizes, getting shorter or taller but keeping
- * its proportions.
- */
-export const InformationSizeScene = defineScene(6.2, ({ t, id }) => {
-  const heights = [200, 70, 120, 170] as const;
-  const changes = [1.2, 2.6, 4.0] as const;
-  let height: number = heights[0];
-  let current = 0;
-  changes.forEach((at, i) => {
-    const k = smooth(segment(t, at, 0.4));
-    if (k > 0) height = lerp(heights[i] ?? 0, heights[i + 1] ?? 0, k);
-    if (t >= at + 0.2) current = i + 1;
-  });
-  const imageTop = PAGE.y + 70;
-  return {
-    rail: { progress: 0.05 },
-    body: (
-      <>
-        <Card
-          x={PAGE.x}
-          y={PAGE.y}
-          width={PAGE.width}
-          height={70 + height + 62}
-        />
-        <Heading text={TEXT.aboutStudy} y={PAGE.y + 46} />
-        <Picture
-          clip={`${id}-size-image`}
-          y={imageTop}
-          width={height * 1.6}
-          height={height}
-        />
-        <Chip
-          key={current}
-          x={STAGE_CENTER_X}
-          y={imageTop + height + 32}
-          text={TEXT.sizes[current] ?? ''}
-          size={15}
-          k={
-            current === 0
-              ? 1
-              : backOut(segment(t, changes[current - 1] ?? 0, 0.4))
-          }
-        />
       </>
     ),
   };

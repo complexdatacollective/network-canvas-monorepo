@@ -286,14 +286,6 @@ export const NameGeneratorLimitsScene = defineScene(6.2, ({ t, id }) => {
   };
 });
 
-/** The side panels a name generator puts beside its list of people. */
-export const PANEL = {
-  x: STAGE.x + 14,
-  width: 214,
-  top: STAGE.y + 76,
-  bottom: STAGE.bottom - 10,
-} as const;
-
 const SOURCES = {
   interview: 'Earlier in this interview',
   file: 'classmates.csv',

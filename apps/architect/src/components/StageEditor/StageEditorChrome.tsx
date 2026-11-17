@@ -315,9 +315,7 @@ function StageEditorActions({
   const respectSkipLogic = useSelector(getPreviewRespectSkipLogic);
   const walkthroughState = useWalkthroughState();
   const { identity } = useStageEdit();
-  const walkthroughSteps = useStageWalkthrough()?.steps.filter(
-    (step) => step.dialog === undefined,
-  );
+  const walkthroughSteps = useStageWalkthrough()?.steps;
   const minimisedIndex = Math.min(
     walkthroughState.step,
     (walkthroughSteps?.length ?? 1) - 1,

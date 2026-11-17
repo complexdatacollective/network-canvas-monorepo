@@ -1,7 +1,7 @@
 <!--
   Walkthrough for the "Network Composer" stage. See Sociogram.md for how
   this file becomes a walkthrough: "## " headings are steps, and HTML-comment
-  directives (section:, field:, scene:, dialog:, include:) say where a step
+  directives (section:, field:, scene:, include:) say where a step
   points.
 -->
 
@@ -58,8 +58,6 @@ Choose what kind of node this canvas creates, such as _Person_. Every node of th
 
 Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
-<!-- include: node-type -->
-
 ## Choose where typed names are saved
 
 <!-- section: Node configuration -->
@@ -112,14 +110,6 @@ Grouping is optional. Without a grouping attribute, the Groups tool is not shown
 
 Once the stage has a grouping attribute, the interviewer can also select several alters at once with the select tool, either by drawing a freehand lasso around them or by shift-clicking each one. A row of group buttons then rises from the bottom of the canvas, and one tap on a group button adds the whole selection to that group. The interviewer can also delete the whole selection at once.
 
-## Name the groups
-
-<!-- dialog: create a new grouping attribute -->
-
-Give the attribute a name, then use **Create new option** under **Choice values** to add one option for each group. Each option's label is what the interviewer sees in the Groups tool and on the group buttons, and its value is what is saved in your data.
-
-Read more about [variables and attributes](https://documentation.networkcanvas.com/design-protocols/key-concepts/variables).
-
 ## Ask about each node
 
 <!-- section: Editable attributes -->
@@ -130,61 +120,7 @@ Switch on **Editable attributes** to give nodes a form. When the interviewer sel
 
 Drag the fields to set their order. If there are no fields, the panel says there are no attributes to edit.
 
-## Choose what this field records
-
-<!-- dialog: form field -->
-<!-- field: variable -->
-
-Each field saves its answer to an **attribute**. Use **Select attribute** to find one, or type a new name there to create it. Only attributes a form can collect are listed. Position and map location attributes are left out, because they are set by moving things on screen rather than by answering a question. An attribute can appear only once on a form.
-
-## Choose the input control
-
-<!-- dialog: form field -->
-<!-- field: component -->
-<!-- scene: form-field-input-controls -->
-
-The **input control** decides what the interviewer uses to answer, such as a text box, a set of options, a toggle or a slider.
-
-Unlike on other forms, the input control is chosen here, on the stage, rather than on the attribute. This means the same attribute can be collected with a different input control on another stage. For a new attribute, the input control you pick also decides what kind of answer the attribute holds.
-
-Read more about [input controls](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls).
-
-## Set what the field accepts
-
-<!-- dialog: form field -->
-<!-- field: parameters -->
-
-Some input controls have settings, such as the two ends of a scale or the window a date must fall in. These settings start with the attribute's own values. A change you make applies only to this field, and the attribute and other stages stay as they were.
-
-## Write the question
-
-<!-- dialog: form field -->
-<!-- field: label -->
-
-Every field needs a **question**. The question starts as the attribute's name, so change it to the words you want shown, such as _"How close are you?"_. The question can be translated.
-
-## Add help text
-
-<!-- dialog: form field -->
-<!-- field: hint -->
-
-**Help text** appears under the question. Use it for an example or a short explanation, rather than making the question longer.
-
-## Show the rules
-
-<!-- dialog: form field -->
-<!-- field: showValidationHints -->
-<!-- scene: form-field-validation -->
-
-The validation rules come from the attribute, such as being required or having a minimum length. Switch on **Show validation hints** to show the interviewer what a valid answer looks like before they answer.
-
-Read more about [validation](https://documentation.networkcanvas.com/design-protocols/key-concepts/field-validation).
-
-## Try the field
-
-<!-- dialog: form field -->
-
-The **Interactive preview**, on the other half of this window, shows the field as it will appear in the interview. Answer the field there, and use **Check response** to test the validation rules.
+A field's question starts as the attribute's name, so change it to the words you want shown. Unlike on other forms, the input control is chosen on this stage rather than on the attribute, and for a new attribute it also decides what kind of answer the attribute holds.
 
 ## Choose the edges that can be drawn
 
@@ -195,27 +131,9 @@ Add a **connection type** for each kind of relationship the interviewer can draw
 
 The **Draw edge** tool opens a menu of these connection types. After the interviewer picks one, the Draw edge button takes on that type's color, and tapping one alter and then another connects them. Tapping the same pair again removes the edge. Tapping the first alter twice cancels an edge that is only half drawn.
 
-Each edge type can be added only once. The Draw edge tool appears when the stage has at least one connection type.
+Each edge type can be added only once. The Draw edge tool appears when the stage has at least one connection type. Changing a connection type's edge type later removes the fields of its attribute form.
 
 > Do: Prompt explicitly for alters who have no edges. A clustering, on-screen picture can shape what people report and tends to draw attention away from unconnected alters, so isolated members of the network are easily overlooked.
-
-## Pick the edge type
-
-<!-- dialog: add a connection type | edit connection type -->
-<!-- field: subject -->
-
-Pick an **edge type** from the codebook, or create a new one. Edges of this type are drawn on the canvas in the edge type's color.
-
-If you change the edge type of an existing connection type, Architect removes the fields of its attribute form, because those fields record attributes of the old edge type.
-
-## Label the connection type
-
-<!-- dialog: add a connection type | edit connection type -->
-<!-- field: label -->
-
-The **label** is the name of this connection type in the Draw edge menu, and the title of its attribute form. If you leave the label empty, the edge type's name is used. The label can be translated.
-
-<!-- include: edge-type -->
 
 ## Ask about each edge
 
@@ -244,14 +162,6 @@ The background sits behind the whole canvas. **Concentric Circles** draws rings,
 > Do: Customize the background to orient placement, for example using rings to suggest closeness. Position is stored as raw coordinates, so treat any spatial meaning as a cue for discussion rather than a measurement.
 
 Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/design-protocols/responsive-svg-backgrounds).
-
-## Pick the background image
-
-<!-- dialog: choose an image -->
-
-Import an image from your computer, or choose one already stored in this protocol. A responsive SVG keeps its regions and labels readable as the canvas changes between portrait and landscape.
-
-Read more about [resources](https://documentation.networkcanvas.com/design-protocols/key-concepts/resources).
 
 <!-- include: skip-logic -->
 

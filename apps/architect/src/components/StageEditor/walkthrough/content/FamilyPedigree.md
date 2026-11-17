@@ -1,7 +1,7 @@
 <!--
   Walkthrough for the "Family Pedigree" stage. See Sociogram.md for how
   this file becomes a walkthrough: "## " headings are steps, and HTML-comment
-  directives (section:, field:, scene:, dialog:, include:) say where a step
+  directives (section:, field:, scene:, include:) say where a step
   points.
 -->
 
@@ -60,8 +60,6 @@ Pointing at a person shows four buttons for adding a relative: a parent above, a
 
 Pick the **node type** each family member is saved as, for example _Person_. If a Narrative Pedigree reads this stage's family, you can't change the node type.
 
-<!-- include: node-type -->
-
 ## Write the prompt
 
 <!-- section: Prompt -->
@@ -103,13 +101,9 @@ With **Ask about gender identity** switched on, the side panel asks about each p
 
 With **Ask about gender identity** switched off, the question is not asked, and words such as mother or brother follow each person's sex assigned at birth instead.
 
+The options belong to this stage, because it decides their words, so another Family Pedigree stage needs a gender identity attribute of its own.
+
 > Do: Give the gender identity attribute an option such as "Don't know" when the stage asks about it. The question must be answered for every person the participant adds, and many participants do not know every relative's gender identity.
-
-## Set up the gender identity options
-
-<!-- dialog: create a new gender identity attribute | edit gender identity options -->
-
-Each option is a gender identity the participant can choose. For each option, pick the kinship words used for an unnamed person with that gender identity. The options belong to this stage, because this stage decides their words, so another Family Pedigree stage needs a gender identity attribute of its own.
 
 ## Choose the symbols
 
@@ -168,15 +162,11 @@ The choice changes only the words participants read, and adds nothing to your ex
 <!-- section: Additional person fields -->
 <!-- field: form.fields -->
 
-Switch on **Additional person fields** to ask more about each family member, such as whether they are still living. These questions come last in the side panel. The participant answers them for every person they add, and for themselves.
+Switch on **Additional person fields** to ask more about each family member, such as whether they are still living. These questions come last in the side panel. The participant answers them for every person they add, and for themselves. For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
 
 > Do: Word an additional person field for the participant as well as for their relatives with **Participant or someone else**, so that a question such as "Is this person still living?" reads "Are you still living?" in the participant's own panel.
 
 > Avoid: Long forms with many items. Participants answer the additional person fields for every family member, so shorter forms reduce response burden and encourage more complete family trees.
-
-<!-- include: node-form-field -->
-
-<!-- include: form-field-details -->
 
 ## Check the family is complete enough
 
@@ -216,30 +206,9 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 
 Nomination prompts ask questions about the whole family once it is drawn, such as "Who in your family has had heart disease?" The participant selects everyone the question applies to. Participants see the prompts in order, after drawing the family.
 
-A Narrative Pedigree reads the attribute each prompt records to show who has a condition.
+Each prompt records a true or false attribute: true for everyone the participant selects, false for anyone they select and then deselect, and blank for everyone else. A Narrative Pedigree reads this attribute to show who has a condition.
 
 > Do: Use a nomination prompt when you want to know which relatives a condition applies to. The participant looks over the whole family and selects everyone it applies to, instead of answering the same question for each person one at a time.
-
-## Write the question
-
-<!-- dialog: create nomination prompt | edit nomination prompt -->
-<!-- field: text -->
-
-The **Prompt text** is the question the participant reads above the family while selecting people.
-
-## Choose what it records
-
-<!-- dialog: create nomination prompt | edit nomination prompt -->
-<!-- field: attribute -->
-
-Pick a true or false **Attribute**. It is set to true on everyone the participant selects, and to false on anyone they select and then deselect. Everyone else is left blank.
-
-## Limit who can be selected
-
-<!-- dialog: create nomination prompt | edit nomination prompt -->
-<!-- field: onlyForSexAssignedAtBirth -->
-
-Use **Who can be selected** to leave out people assigned male at birth or people assigned female at birth, for a condition that only people of one sex can have. The people left out are shown as unavailable. Everyone else can still be selected, including people whose sex at birth is not known.
 
 <!-- include: skip-logic -->
 

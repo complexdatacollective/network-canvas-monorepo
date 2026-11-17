@@ -822,7 +822,7 @@ export const EdgeFormSourceScene = defineScene(
 
 /* --------------------------------------------------------- dyad census */
 
-export const DYAD_Y = STAGE.y + 110;
+const DYAD_Y = STAGE.y + 110;
 const DYAD_CARD = {
   x: STAGE_CENTER_X - 190,
   y: STAGE.y + 200,
@@ -961,41 +961,6 @@ export const DyadCensusIntroScene = defineScene(6.0, ({ t }) => {
         leave={4.0}
       />
     ),
-  };
-});
-
-/**
- * Shows a dyad census where a pair that is already connected appears with Yes
- * selected, and choosing No removes the edge between the two alters.
- */
-export const DyadCensusExistingScene = defineScene(4.6, ({ t }) => {
-  const pairs: readonly DyadPair[] = [
-    {
-      from: SAM,
-      to: ANA,
-      enter: 0,
-      leave: 99,
-      existing: true,
-      answer: 'no',
-      answerAt: 2.4,
-    },
-  ];
-  return {
-    rail: { progress: 0.7 },
-    body: (
-      <>
-        <DyadPairs t={t} pairs={pairs} />
-        <DyadCard question={TEXT.censusQuestion} chosen={chosenAt(t, pairs)} />
-        <Chip
-          x={STAGE_CENTER_X}
-          y={DYAD_Y - 72}
-          text={TEXT.already}
-          size={13}
-          k={backOut(segment(t, 0.6, 0.4)) * (1 - smooth(segment(t, 2.4, 0.3)))}
-        />
-      </>
-    ),
-    overlay: <Click t={t} stops={[{ to: NO_AT, at: 2.4 }]} leave={3.0} />,
   };
 });
 

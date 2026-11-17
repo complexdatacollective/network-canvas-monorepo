@@ -16,26 +16,12 @@
                          form name instead of the whole section
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
-      dialog: <text>     a step for a dialog, not the editor: it is shown
-                         only while a dialog whose title matches is open.
-                         "form field" matches any title containing it
-                         ("Create form field", "Edit form field");
-                         "=attribute" matches a title that is exactly that;
-                         alternatives are separated by "|". Dialog steps
-                         play in order while it is open, and each dialog
-                         keeps its place while another is opened from
-                         inside it. The last one asks the researcher to
-                         save (naming the dialog's own save button, e.g.
-                         "Add") and rings that button, or, for a dialog
-                         with no save button, to make their choice; once
-                         the dialog closes the walkthrough picks up where
-                         it was. Their "field:" looks inside the dialog.
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
     Consecutive ones are grouped together.
   - A line "include: <name>" in an HTML comment, between steps, is replaced
     by the steps in shared/<name>.md. Use it for steps every stage type that
-    has that section shares (node type, skip logic, interviewer guidance and
-    so on); edit those steps there, once.
+    has that section shares (skip logic, interviewer guidance and so on);
+    edit those steps there, once.
   - Anything above the "# " heading (like this note) is ignored.
 
   Save the file and the panel updates live.
@@ -75,11 +61,7 @@ Choose the **node type** this stage sorts, such as _Person_. Every node of that 
 
 Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
-<!-- include: node-type -->
-
 <!-- include: stage-filter -->
-
-<!-- include: rule -->
 
 ## Write the prompts
 
@@ -87,50 +69,9 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt asks one question and sorts the alters by one categorical attribute. The participant sees one prompt at a time, in the order you set. An alter waits in the drawer until it has a value for the current prompt's attribute, or an answer for the prompt's Other circle.
 
+Each of the attribute's values becomes a circle. A prompt can have at most ten circles, including the Other circle you add with **Follow-up other option**, which asks a follow-up question and saves the answer in a text attribute.
+
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
-
-## Write the prompt text
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: text -->
-
-This is the question the participant reads above the circles, such as _"Which of these best describes how you know each person?"_.
-
-## Choose the categories
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: variable -->
-
-Under **Categorical response**, pick the categorical attribute this prompt records. Each of its values becomes a circle. A prompt can have at most ten circles, including the Other circle if you switch it on, and Architect will not save a prompt with more.
-
-## Set the category labels
-
-<!-- dialog: create prompt | edit prompt -->
-
-The attribute's values are listed below the picker, and you can edit them here. Each value has a label, which the participant reads on its circle, and a value, which is saved in your data. Your edits are saved when you save the prompt. A label can be as long as a short sentence, but check your longest label in [Preview](https://documentation.networkcanvas.com/design-protocols/preview-mode).
-
-## Add an Other circle
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- scene: categorical-bin-other -->
-
-Switch on **Follow-up other option** to add an extra circle, the Other circle, for alters that none of the categories describe. Then choose the **Other attribute**, a text attribute that stores what the participant types, and give the circle an **Other bin label**, such as _Other_.
-
-## Ask the follow-up question
-
-<!-- dialog: create prompt | edit prompt -->
-
-The **Follow-up question** appears as soon as the participant drops an alter in the Other circle, with a box for their answer. Ask for the detail you need, such as _"How do you know this person?"_.
-
-<!-- include: bin-sort-orders -->
-
-## Create the category attribute
-
-<!-- dialog: create a new attribute -->
-
-Typing a new name in the attribute picker opens this window with that name filled in. A categorical attribute needs a list of values, so add its values here, each with a label and a value.
-
-<!-- include: attribute-search -->
 
 ## Choose how alters are placed
 

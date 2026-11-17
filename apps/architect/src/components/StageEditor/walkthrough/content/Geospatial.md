@@ -16,26 +16,12 @@
                          form name instead of the whole section
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
-      dialog: <text>     a step for a dialog, not the editor: it is shown
-                         only while a dialog whose title matches is open.
-                         "form field" matches any title containing it
-                         ("Create form field", "Edit form field");
-                         "=attribute" matches a title that is exactly that;
-                         alternatives are separated by "|". Dialog steps
-                         play in order while it is open, and each dialog
-                         keeps its place while another is opened from
-                         inside it. The last one asks the researcher to
-                         save (naming the dialog's own save button, e.g.
-                         "Add") and rings that button, or, for a dialog
-                         with no save button, to make their choice; once
-                         the dialog closes the walkthrough picks up where
-                         it was. Their "field:" looks inside the dialog.
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
     Consecutive ones are grouped together.
   - A line "include: <name>" in an HTML comment, between steps, is replaced
     by the steps in shared/<name>.md. Use it for steps every stage type that
-    has that section shares (node type, skip logic, interviewer guidance and
-    so on); edit those steps there, once.
+    has that section shares (skip logic, interviewer guidance and so on);
+    edit those steps there, once.
   - Anything above the "# " heading (like this note) is ignored.
 
   Save the file and the panel updates live.
@@ -77,11 +63,7 @@ Changing the node type later clears this stage's other settings, including the m
 
 > Do: Consider switching on **Filter network** to narrow down nodes to only those that fall within the selectable map areas. An earlier stage, such as a [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) or [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), can capture the attribute to filter on, so participants are only asked about relevant nodes.
 
-<!-- include: node-type -->
-
 <!-- include: stage-filter -->
-
-<!-- include: rule -->
 
 ## Add a Mapbox API key
 
@@ -90,17 +72,11 @@ Changing the node type later clears this stage's other settings, including the m
 
 The map can only be drawn with an API key from your own [Mapbox](https://www.mapbox.com/) account. Mapbox offers a free tier that suits small projects. Create an account, copy the token from your account overview, and add it here.
 
-The key is stored with the protocol's resources, so every Geospatial stage in the protocol can use the same one.
+The key is stored with the protocol's resources, so every Geospatial stage in the protocol can use the same one. It is saved as plain text, so anyone you give the protocol file to can read it.
+
+A protocol started from a template that has a map uses Network Canvas's shared testing key, which is rate-limited and for evaluation only. Replace it with your own key before you collect data.
 
 Read how to [get a Mapbox key](https://documentation.networkcanvas.com/design-protocols/interface-documentation/geospatial#mapbox-configuration).
-
-## Add or choose the key
-
-<!-- dialog: choose an api key -->
-
-Add a key by giving it a name and pasting the key itself, or choose a key already stored in this protocol. The key is saved inside your protocol as plain text, so anyone you give the protocol file to can read it.
-
-A protocol started from a template that has a map uses Network Canvas's shared testing key. This key is rate-limited and for evaluation only, and the protocol's timeline shows a warning while it is in use. Replace it with your own key before you collect data.
 
 ## Choose the selectable areas
 
@@ -110,14 +86,6 @@ A protocol started from a template that has a map uses Network Canvas's shared t
 The **Layer data source** is a [GeoJSON](https://geojson.org/) file that outlines the areas the participant can select, such as census tracts, ZIP codes or neighborhoods. Each area in the file carries properties, such as its ID or name.
 
 > Avoid: Excessively large GeoJSON files that contain areas far outside the intended selection areas. This can lead to slower performance when loading the map.
-
-## Import or reuse a map layer
-
-<!-- dialog: choose a map layer -->
-
-Import a `.geojson` file from your computer, or choose one already stored in this protocol. The file is stored inside the protocol, so every participant sees the same areas.
-
-Read more about [resources](https://documentation.networkcanvas.com/design-protocols/key-concepts/resources).
 
 ## Choose what a selection records
 
@@ -136,24 +104,6 @@ The **Map selection property** is the property whose value is saved when the par
 Each prompt asks one question about where the alters are, and records the answer in its own location attribute. The participant answers the first prompt for every alter, then the next prompt for every alter.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
-
-## Write the prompt text
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: text -->
-
-This is the question shown in the panel at the top right of the map, above the alter it asks about, such as _"Which area does this person live in?"_. To name the alter in the question, use the syringe button in the toolbar to insert **Node label**.
-
-## Choose where the answer is saved
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: variable -->
-
-Under **Location response**, choose the **Location attribute** this prompt records. Only location attributes can hold a selected area.
-
-Each prompt needs its own attribute. Two prompts on one stage can't share an attribute, because the later answer would replace the earlier one. Architect also doesn't offer an attribute that a form collects elsewhere in the protocol.
-
-<!-- include: attribute-search -->
 
 ## Choose the map style
 
@@ -191,12 +141,6 @@ This color outlines every selectable area, and fills the area the participant ha
 Type the longitude and latitude the map is centered on and its **Starting zoom**, or click **Set the starting view on a map** to find the view by moving a map. The recenter button on the participant's map returns to this view.
 
 > Do: Make sure the selectable areas from your GeoJSON file are visible within the initial map view.
-
-## Frame the starting view
-
-<!-- dialog: =map starting position -->
-
-Pan and zoom the map to the view participants should see when the map first opens. **Use this view** appears once you have moved the map.
 
 ## Customize built-in wording
 

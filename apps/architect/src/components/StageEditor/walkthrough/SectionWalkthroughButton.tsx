@@ -26,11 +26,9 @@ function SectionWalkthroughButton({ title }: Readonly<{ title: string }>) {
   const walkthrough = useStageWalkthrough();
   const { identity } = useStageEdit();
   const step =
-    walkthrough?.steps
-      .filter((candidate) => candidate.dialog === undefined)
-      .findIndex(
-        (candidate) => candidate.section?.toLowerCase() === title.toLowerCase(),
-      ) ?? -1;
+    walkthrough?.steps.findIndex(
+      (candidate) => candidate.section?.toLowerCase() === title.toLowerCase(),
+    ) ?? -1;
   if (step === -1) return null;
   const label = intl.formatMessage(messages.label, { section: title });
   return (

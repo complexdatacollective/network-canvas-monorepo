@@ -16,26 +16,12 @@
                          form name instead of the whole section
       scene: <name>      play an animated scene (see scenes/sceneRegistry.ts
                          for the names)
-      dialog: <text>     a step for a dialog, not the editor: it is shown
-                         only while a dialog whose title matches is open.
-                         "form field" matches any title containing it
-                         ("Create form field", "Edit form field");
-                         "=attribute" matches a title that is exactly that;
-                         alternatives are separated by "|". Dialog steps
-                         play in order while it is open, and each dialog
-                         keeps its place while another is opened from
-                         inside it. The last one asks the researcher to
-                         save (naming the dialog's own save button, e.g.
-                         "Add") and rings that button, or, for a dialog
-                         with no save button, to make their choice; once
-                         the dialog closes the walkthrough picks up where
-                         it was. Their "field:" looks inside the dialog.
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
     Consecutive ones are grouped together.
   - A line "include: <name>" in an HTML comment, between steps, is replaced
     by the steps in shared/<name>.md. Use it for steps every stage type that
-    has that section shares (node type, skip logic, interviewer guidance and
-    so on); edit those steps there, once.
+    has that section shares (skip logic, interviewer guidance and so on);
+    edit those steps there, once.
   - Anything above the "# " heading (like this note) is ignored.
 
   Save the file and the panel updates live.
@@ -75,11 +61,7 @@ Choose the **node type** whose alters are paired up, such as _Person_. The parti
 
 Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
-<!-- include: node-type -->
-
 <!-- include: stage-filter -->
-
-<!-- include: rule -->
 
 ## Write the prompts
 
@@ -87,57 +69,11 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt asks about one kind of relationship, on its own scale. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many screens as there are pairs.
 
-Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
-
-## Write the prompt text
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: text -->
-
-This is the question shown below each pair, such as _"How close are these two to each other?"_. Phrase it so that every option on the scale, and the no-tie option, is a sensible answer. To name the pair in the question, use the syringe button in the toolbar to insert **First node: label** and **Second node: label**.
-
-## Choose the edge a rating creates
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: createEdge -->
-
-**Edge type** sets which edge type is created between the pair when the participant chooses an option on the scale. Choose the edge type first: the scale is an attribute of this edge type, so choosing a different edge type later clears the attribute.
-
-## Choose the scale
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: edgeVariable -->
-<!-- scene: tie-strength-scale -->
-
-**Ordinal attribute** is the attribute of the edge type that holds this prompt's scale. Its values become the options the participant chooses from, shown from left to right in the attribute's own order. Architect warns you if the attribute has more than five values.
+The scale is an **Ordinal attribute** of the prompt's **Edge type**, so choose the edge type first: choosing a different one later clears the attribute. Choosing the **Decline option** creates no edge and removes any edge of this type the pair already had.
 
 > Avoid: Ordinal variables with more than 5 options, since this will create a very crowded interface.
 
-If the pair already has an edge of this type with a value for this attribute, that option is already chosen when the pair appears. An edge with no value for this attribute, for example one from a sociogram, is asked about as if it were new.
-
-## Set the scale labels
-
-<!-- dialog: create prompt | edit prompt -->
-
-The attribute's values are listed below the **Ordinal attribute** picker, where you can edit them. Each one has a label, which the participant reads on its option, and a value, which is saved in your data. Your changes are saved when you save the prompt.
-
-## Name the no-tie option
-
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: negativeLabel -->
-<!-- scene: tie-strength-decline -->
-
-The **Decline option** is for a pair with no tie, such as _"Don't know each other"_. It appears last, on the far right of the options. Choosing it creates no edge and removes any edge of this type the pair already had. The participant must choose an option before moving on.
-
-<!-- include: edge-type -->
-
-## Create the scale attribute
-
-<!-- dialog: create a new attribute -->
-
-Typing a new name in the attribute picker opens this window with that name filled in. An ordinal attribute needs a list of values, so add its values here in order, each with a label and a value.
-
-<!-- include: attribute-search -->
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 <!-- include: skip-logic -->
 

@@ -8,14 +8,11 @@ import {
   AnonymisationRulesScene,
 } from './AnonymisationScenes';
 import {
-  BinBucketOrderScene,
   CategoricalBinDataScene,
   CategoricalBinIntroScene,
-  CategoricalBinOtherScene,
   CategoricalBinRequireScene,
   CategoricalBinTapScene,
   OrdinalBinDataScene,
-  OrdinalBinGradientScene,
   OrdinalBinIntroScene,
   OrdinalBinRequireScene,
   OrdinalBinTapScene,
@@ -26,9 +23,7 @@ import {
   OneToManyIntroScene,
   OneToManyRemoveScene,
   TieStrengthDataScene,
-  TieStrengthDeclineScene,
   TieStrengthIntroScene,
-  TieStrengthScaleScene,
 } from './CensusScenes';
 import {
   FamilyPedigreeCompletenessScene,
@@ -61,12 +56,9 @@ import {
   InformationBlocksScene,
   InformationDataScene,
   InformationIntroScene,
-  InformationMediaScene,
-  InformationSizeScene,
 } from './InformationScenes';
 import {
   DyadCensusDataScene,
-  DyadCensusExistingScene,
   DyadCensusIntroScene,
   DyadCensusPairsScene,
   DyadCensusPromptsScene,
@@ -85,12 +77,8 @@ import {
   LanguageChooserOrderScene,
 } from './LanguageChooserScenes';
 import {
-  NameGeneratorAdditionalAttributesScene,
   NameGeneratorDataScene,
-  NameGeneratorFilterScene,
   NameGeneratorSkipLogicScene,
-  FormFieldInputControlsScene,
-  FormFieldValidationScene,
 } from './NameGeneratorConsequenceScenes';
 import {
   NameGeneratorFormScene,
@@ -104,17 +92,13 @@ import {
   NarrativePedigreeConditionsScene,
   NarrativePedigreeDataScene,
   NarrativePedigreeIntroScene,
-  NarrativePedigreePatternsScene,
   NarrativePedigreeSnapshotScene,
   NarrativePedigreeSourceScene,
 } from './NarrativePedigreeScenes';
 import {
   NarrativeDataScene,
   NarrativeDrawScene,
-  NarrativeGroupsScene,
-  NarrativeHighlightScene,
   NarrativeIntroScene,
-  NarrativeLayoutScene,
 } from './NarrativeScenes';
 import {
   NetworkComposerAddScene,
@@ -140,11 +124,8 @@ import {
 import {
   SociogramBackgroundScene,
   SociogramDataScene,
-  SociogramDisplayEdgesScene,
   SociogramIntroScene,
   SociogramLayoutModeScene,
-  SociogramSharedLayoutScene,
-  SociogramTapScene,
 } from './SociogramScenes';
 
 /** Scenes a walkthrough step can name with a `scene:` directive. */
@@ -155,17 +136,9 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'name-generator-limits': NameGeneratorLimitsScene,
   'name-generator-panel-sources': NameGeneratorPanelSourcesScene,
   'name-generator-data': NameGeneratorDataScene,
-  'form-field-input-controls': FormFieldInputControlsScene,
-  'form-field-validation': FormFieldValidationScene,
-  'name-generator-additional-attributes':
-    NameGeneratorAdditionalAttributesScene,
-  'name-generator-filter': NameGeneratorFilterScene,
   'skip-logic': NameGeneratorSkipLogicScene,
   'sociogram-intro': SociogramIntroScene,
   'sociogram-data': SociogramDataScene,
-  'sociogram-shared-layout': SociogramSharedLayoutScene,
-  'sociogram-tap': SociogramTapScene,
-  'sociogram-display-edges': SociogramDisplayEdgesScene,
   'sociogram-background': SociogramBackgroundScene,
   'sociogram-layout-mode': SociogramLayoutModeScene,
   'roster-intro': RosterIntroScene,
@@ -176,15 +149,12 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'roster-limits': RosterLimitsScene,
   'ordinal-bin-intro': OrdinalBinIntroScene,
   'ordinal-bin-data': OrdinalBinDataScene,
-  'ordinal-bin-gradient': OrdinalBinGradientScene,
   'ordinal-bin-tap': OrdinalBinTapScene,
   'ordinal-bin-require': OrdinalBinRequireScene,
   'categorical-bin-intro': CategoricalBinIntroScene,
   'categorical-bin-data': CategoricalBinDataScene,
-  'categorical-bin-other': CategoricalBinOtherScene,
   'categorical-bin-tap': CategoricalBinTapScene,
   'categorical-bin-require': CategoricalBinRequireScene,
-  'bin-bucket-order': BinBucketOrderScene,
   'stage-filter': StageFilterScene,
   'alter-form-intro': AlterFormIntroScene,
   'ego-form-intro': EgoFormIntroScene,
@@ -195,28 +165,20 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'edge-form-data': EdgeFormDataScene,
   'edge-form-source': EdgeFormSourceScene,
   'dyad-census-intro': DyadCensusIntroScene,
-  'dyad-census-existing': DyadCensusExistingScene,
   'dyad-census-prompts': DyadCensusPromptsScene,
   'dyad-census-data': DyadCensusDataScene,
   'dyad-census-pairs': DyadCensusPairsScene,
   'tie-strength-intro': TieStrengthIntroScene,
   'tie-strength-data': TieStrengthDataScene,
-  'tie-strength-scale': TieStrengthScaleScene,
-  'tie-strength-decline': TieStrengthDeclineScene,
   'one-to-many-intro': OneToManyIntroScene,
   'one-to-many-data': OneToManyDataScene,
   'one-to-many-remove': OneToManyRemoveScene,
   'narrative-intro': NarrativeIntroScene,
   'narrative-data': NarrativeDataScene,
-  'narrative-layout': NarrativeLayoutScene,
-  'narrative-groups': NarrativeGroupsScene,
-  'narrative-highlight': NarrativeHighlightScene,
   'narrative-draw': NarrativeDrawScene,
   'information-intro': InformationIntroScene,
   'information-data': InformationDataScene,
   'information-blocks': InformationBlocksScene,
-  'information-media': InformationMediaScene,
-  'information-size': InformationSizeScene,
   'geospatial-intro': GeospatialIntroScene,
   'geospatial-data': GeospatialDataScene,
   'geospatial-property': GeospatialPropertyScene,
@@ -261,7 +223,6 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'narrative-pedigree-data': NarrativePedigreeDataScene,
   'narrative-pedigree-source': NarrativePedigreeSourceScene,
   'narrative-pedigree-conditions': NarrativePedigreeConditionsScene,
-  'narrative-pedigree-patterns': NarrativePedigreePatternsScene,
   'narrative-pedigree-at-risk': NarrativePedigreeAtRiskScene,
   'narrative-pedigree-snapshot': NarrativePedigreeSnapshotScene,
 };
