@@ -1,12 +1,11 @@
 import { backOut, segment } from '@codaco/art/illustration/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import { Card, Heading } from './InterpreterScenes';
+import { Card } from './InterpreterScenes';
 import {
   Chip,
   Click,
   CONTENT,
-  DataTable,
   defineScene,
   lerp,
   NEXT_BUTTON,
@@ -30,16 +29,6 @@ const TEXT = {
   failed: ['The interview could not', 'be finished. Please try', 'again.'],
   earlier: 'About you',
   noWayBack: 'No way back',
-  egoList: 'Ego list',
-  columns: ['sessionFinish', 'networkCanvasFinishOutcome'],
-  rows: [
-    ['2026-05-12T14:03:22.000Z', 'completed'],
-    ['2026-05-12T15:41:07.000Z', 'ineligible'],
-    ['', ''],
-  ],
-  unfinished: 'Not finished: left empty',
-  graphml: 'GraphML',
-  graphmlKeys: ['nc:sessionFinishTime', 'nc:finishOutcome'],
   protocol: 'Protocol',
   stages: ['Screening', 'Survey', 'Finish', 'Not eligible'],
   skipTo: 'Skipped: go to Not eligible',
@@ -257,59 +246,6 @@ export const FinishSessionIntroScene = defineScene(5.2, ({ t }) => {
     ),
   };
 });
-
-/**
- * Shows how a finish screen's data is exported: each finished interview's
- * finish time and outcome fill two columns of the ego list, an unfinished
- * interview leaves both empty, and GraphML includes them as two attributes.
- */
-export const FinishSessionDataScene = defineScene(
-  4.8,
-  ({ t }) => {
-    const tableX = CONTENT.x + 100;
-    const top = CONTENT.y + 66;
-    const graphmlY = top + 40 * 4 + 50;
-    return {
-      body: (
-        <>
-          <Heading x={tableX} y={CONTENT.y + 42} text={TEXT.egoList} />
-          <DataTable
-            x={tableX}
-            y={top}
-            columns={TEXT.columns}
-            rows={TEXT.rows}
-            cellReveal={(row, cell) =>
-              smooth(segment(t, 0.4 + row * 0.7 + cell * 0.3, 0.4))
-            }
-            colWidth={250}
-          />
-          <Chip
-            x={tableX + 250}
-            y={top + 40 * 3 + 20}
-            text={TEXT.unfinished}
-            size={13}
-            fill="fill-white/20"
-            ink="fill-white"
-            k={backOut(segment(t, 2.4, 0.4))}
-          />
-          <Heading x={tableX} y={graphmlY} text={TEXT.graphml} />
-          {TEXT.graphmlKeys.map((key, i) => (
-            <Chip
-              key={key}
-              x={tableX + i * 230}
-              y={graphmlY + 34}
-              text={key}
-              size={14}
-              align="start"
-              k={backOut(segment(t, 3.0 + i * 0.3, 0.4))}
-            />
-          ))}
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
 
 /**
  * Shows a finish screen set to finish automatically, where the participant

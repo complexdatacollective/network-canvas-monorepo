@@ -2,12 +2,11 @@ import { KeyRound, Lock } from 'lucide-react';
 
 import { backOut, segment } from '@codaco/art/illustration/motion';
 
-import { Card, Heading } from './InterpreterScenes';
+import { Card } from './InterpreterScenes';
 import {
   Chip,
   Click,
   CONTENT,
-  DataTable,
   defineScene,
   lerp,
   PersonNode,
@@ -37,17 +36,6 @@ const TEXT = {
     'earlier in this interview. Check it and try again.',
   ],
   prompt: 'Who do you talk to about important matters?',
-  interview: 'In the interview',
-  saved: 'Saved',
-  exported: 'Exported',
-  ciphertext: '[183, 22, 9, 240, …]',
-  notSaved: 'Passphrase: never saved',
-  columns: ['name', 'age'],
-  rows: [
-    ['ENCRYPTED', '34'],
-    ['ENCRYPTED', '29'],
-  ],
-  lost: 'Forgotten passphrase: no one can read it',
   alters: ['Sofia', 'Omar', 'Leila'],
   rain: ['Sofia', 'Omar', 'Leila', 'Klaus', 'Margot', 'Henrik', 'Fatima'],
 } as const;
@@ -316,93 +304,6 @@ export const AnonymisationIntroScene = defineScene(6.2, ({ t }) => {
     ),
   };
 });
-
-/**
- * Shows how an anonymisation stage's data is exported: an alter's name is saved
- * only in encrypted form, the passphrase is never saved, and the exported name
- * column reads ENCRYPTED, so no one can read it if the passphrase is forgotten.
- */
-export const AnonymisationDataScene = defineScene(
-  5.6,
-  ({ t }) => {
-    const top = CONTENT.y + 50;
-    const middle = CONTENT.y + 160;
-    const columns = { interview: 40, saved: 240, exported: 478 } as const;
-    const arrow = (from: number, to: number, at: number) => {
-      const k = smooth(segment(t, at, 0.4));
-      return (
-        <line
-          x1={from}
-          y1={middle}
-          x2={lerp(from, to, k)}
-          y2={middle}
-          className="stroke-white/40"
-          strokeWidth={5}
-          strokeLinecap="round"
-          strokeDasharray="10 10"
-          opacity={k > 0 ? 1 : 0}
-        />
-      );
-    };
-    return {
-      body: (
-        <>
-          <Heading x={columns.interview} y={top} text={TEXT.interview} />
-          <PersonNode
-            x={columns.interview + 80}
-            y={middle}
-            label={TEXT.alters[0]}
-            k={segment(t, 0.3, 0.5)}
-            r={50}
-          />
-          {arrow(columns.interview + 140, columns.saved - 10, 1.0)}
-          <Heading x={columns.saved} y={top} text={TEXT.saved} />
-          <Chip
-            x={columns.saved}
-            y={middle}
-            text={TEXT.ciphertext}
-            size={16}
-            align="start"
-            fill="fill-cyber-grape"
-            ink="fill-white"
-            k={backOut(segment(t, 1.4, 0.4))}
-          />
-          <Chip
-            x={columns.saved}
-            y={middle + 62}
-            text={TEXT.notSaved}
-            size={13}
-            align="start"
-            fill="fill-white/20"
-            ink="fill-white"
-            k={backOut(segment(t, 2.0, 0.4))}
-          />
-          {arrow(columns.saved + 215, columns.exported - 10, 2.6)}
-          <Heading x={columns.exported} y={top} text={TEXT.exported} />
-          <DataTable
-            x={columns.exported}
-            y={middle - 60}
-            columns={TEXT.columns}
-            rows={TEXT.rows}
-            cellReveal={(r, cell) =>
-              smooth(segment(t, 3.0 + r * 0.4 + cell * 0.2, 0.4))
-            }
-            colWidth={105}
-          />
-          <Chip
-            x={(CONTENT.x + CONTENT.right) / 2}
-            y={CONTENT.bottom - 60}
-            text={TEXT.lost}
-            size={16}
-            fill="fill-mustard"
-            k={backOut(segment(t, 4.2, 0.4))}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
 
 /**
  * Shows an anonymisation stage where a passphrase shorter than the minimum is

@@ -20,16 +20,10 @@ import {
 const TEXT = {
   welcome: 'Welcome to the study',
   aboutStudy: 'About this study',
-  watch: 'Watch and listen',
-  nothing: 'Nothing is recorded',
-  unchanged: 'No nodes, edges or attributes',
   text: 'Text',
   image: 'Image',
   video: 'Video',
   audio: 'Audio',
-  muted: 'Muted, on a loop',
-  starts: 'Starts by itself',
-  sizes: ['Full size', 'Small', 'Medium', 'Large'],
 } as const;
 
 /** The page: one raised surface, centered, with its heading on top. */
@@ -309,53 +303,6 @@ export const InformationIntroScene = defineScene(5.2, ({ t, id }) => {
       </g>
     ),
     overlay: <Click t={t} stops={[{ to: NEXT_BUTTON, at: 4.2 }]} leave={4.6} />,
-  };
-});
-
-/**
- * Shows an information stage where the participant moves on from a page of text
- * and video, and nothing is recorded: no nodes, edges or attributes.
- */
-export const InformationDataScene = defineScene(5.4, ({ t, id }) => {
-  const leave = smooth(segment(t, 2.4, 0.5));
-  return {
-    rail: { progress: 0.05, press: pressAt(t, [2.2]) },
-    body: (
-      <>
-        <g transform={`translate(0 ${-leave * 60})`} opacity={1 - leave}>
-          <Card x={PAGE.x} y={PAGE.y} width={PAGE.width} height={300} />
-          <Heading text={TEXT.aboutStudy} y={PAGE.y + 46} />
-          <Paragraph y={PAGE.y + 84} widths={[380, 300]} />
-          <VideoBlock
-            clip={`${id}-data-video`}
-            t={t}
-            y={PAGE.y + 128}
-            height={150}
-          />
-        </g>
-        <Chip
-          x={STAGE_CENTER_X}
-          y={STAGE.y + 150}
-          text={TEXT.nothing}
-          size={22}
-          fill="fill-cyber-grape"
-          ink="fill-white"
-          k={backOut(segment(t, 3.1, 0.4))}
-        />
-        <text
-          x={STAGE_CENTER_X}
-          y={STAGE.y + 210}
-          textAnchor="middle"
-          fontSize={17}
-          fontWeight={700}
-          className="fill-white/70"
-          opacity={smooth(segment(t, 3.6, 0.4))}
-        >
-          {TEXT.unchanged}
-        </text>
-      </>
-    ),
-    overlay: <Click t={t} stops={[{ to: NEXT_BUTTON, at: 2.2 }]} leave={2.6} />,
   };
 });
 

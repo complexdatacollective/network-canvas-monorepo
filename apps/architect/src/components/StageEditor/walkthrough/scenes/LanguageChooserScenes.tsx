@@ -1,5 +1,3 @@
-import { X } from 'lucide-react';
-
 import { backOut, segment } from '@codaco/art/illustration/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -26,13 +24,6 @@ const TEXT = {
   autonyms: ['Deutsch', 'English', 'español', 'français'],
   nowIn: 'Now shown in español',
   later: 'Every later screen in español',
-  tab: 'This browser tab',
-  kept: 'Kept when the page reloads',
-  gone: 'Gone once the tab closes',
-  exported: 'Exported data',
-  notRecorded: 'No language recorded',
-  notSaved: 'Not saved with the interview',
-  noEntities: 'No nodes or edges',
   protocol: 'Protocol',
   stages: ['Language', 'Welcome', 'About you', 'Contacts'],
   chosenFirst: 'Chosen on the first screen',
@@ -252,98 +243,6 @@ export const LanguageChooserIntroScene = defineScene(6.2, ({ t }) => {
     ),
   };
 });
-
-/**
- * Shows how a language chooser's data is exported: the chosen language is kept
- * in the browser tab through a reload and is gone once the tab closes, and no
- * language is recorded in the exported data.
- */
-export const LanguageChooserDataScene = defineScene(
-  4.6,
-  ({ t }) => {
-    const box = { y: CONTENT.y + 50, width: 280, height: 220 };
-    const left = CONTENT.x + 47;
-    const right = CONTENT.right - 47 - box.width;
-    const gapCenter: Point = [
-      (left + box.width + right) / 2,
-      box.y + box.height / 2,
-    ];
-    const line = (x: number, y: number, text: string, at: number) => (
-      <text
-        x={x}
-        y={y}
-        fontSize={15}
-        fontWeight={700}
-        opacity={smooth(segment(t, at, 0.4))}
-        className="fill-white/70"
-      >
-        {text}
-      </text>
-    );
-    const cross = backOut(segment(t, 2.4, 0.4));
-    return {
-      body: (
-        <>
-          <Card x={left} y={box.y} width={box.width} height={box.height} />
-          <Heading x={left + 24} y={box.y + 36} text={TEXT.tab} />
-          <Chip
-            x={left + box.width / 2}
-            y={box.y + 90}
-            text={TEXT.chosen}
-            size={20}
-            k={backOut(segment(t, 0.4, 0.4))}
-          />
-          {line(left + 24, box.y + 150, TEXT.kept, 1.0)}
-          {line(left + 24, box.y + 180, TEXT.gone, 1.5)}
-
-          <line
-            x1={left + box.width + 8}
-            y1={gapCenter[1]}
-            x2={right - 8}
-            y2={gapCenter[1]}
-            className="stroke-white/30"
-            strokeWidth={4}
-            strokeDasharray="8 8"
-            opacity={smooth(segment(t, 2.1, 0.3))}
-          />
-          {cross > 0 ? (
-            <g transform={pivot(gapCenter[0], gapCenter[1], cross)}>
-              <circle
-                cx={gapCenter[0]}
-                cy={gapCenter[1]}
-                r={18}
-                className="fill-destructive"
-              />
-              <X
-                x={gapCenter[0] - 11}
-                y={gapCenter[1] - 11}
-                width={22}
-                height={22}
-                strokeWidth={3}
-                className="text-white"
-              />
-            </g>
-          ) : null}
-
-          <Card x={right} y={box.y} width={box.width} height={box.height} />
-          <Heading x={right + 24} y={box.y + 36} text={TEXT.exported} />
-          <Chip
-            x={right + box.width / 2}
-            y={box.y + 90}
-            text={TEXT.notRecorded}
-            size={15}
-            fill="fill-white/20"
-            ink="fill-white"
-            k={backOut(segment(t, 2.8, 0.4))}
-          />
-          {line(right + 24, box.y + 150, TEXT.notSaved, 3.3)}
-          {line(right + 24, box.y + 180, TEXT.noEntities, 3.7)}
-        </>
-      ),
-    };
-  },
-  { url: TEXT.exported },
-);
 
 /**
  * Shows a protocol that starts with a language chooser, where the participant

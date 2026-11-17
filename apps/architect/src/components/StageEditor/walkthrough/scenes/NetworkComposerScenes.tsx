@@ -19,7 +19,6 @@ import {
   Chip,
   Click,
   CONTENT,
-  DataTable,
   defineScene,
   lerp,
   midpoint,
@@ -56,10 +55,6 @@ const TEXT = {
   talkOptions: ['Daily', 'Weekly', 'Monthly'],
   remove: 'Delete',
   savedAsYouGo: 'Saved as you go',
-  nodes: 'Nodes',
-  edges: 'Edges',
-  nodeColumns: ['name', 'position_x', 'position_y', 'group_family'],
-  edgeColumns: ['from', 'to', 'type'],
 } as const;
 
 /** The width and height of the canvas beside the navigation rail. */
@@ -569,77 +564,6 @@ export const NetworkComposerIntroScene = defineScene(8.0, ({ t }) => {
     ),
   };
 });
-
-/** The size of the exported-data scene's tables. */
-const TABLE = {
-  rowHeight: 30,
-  fontSize: 12,
-  baseline: 20,
-  inset: 12,
-  rx: 8,
-} as const;
-
-/**
- * Shows how a network composer's data is exported: each node becomes a row with
- * its name, its position and a true or false column for its group, and each
- * edge becomes a row with the two alters it connects and its type.
- */
-export const NetworkComposerDataScene = defineScene(
-  5.4,
-  ({ t }) => {
-    const small = { x: CONTENT.x + 140, y: CONTENT.y + 180, r: 120 };
-    const nodes: { label: string; at: Point }[] = [
-      { label: NAMES.sam, at: [small.x - 55, small.y - 30] },
-      { label: NAMES.ana, at: [small.x + 20, small.y - 70] },
-      { label: NAMES.jo, at: [small.x + 30, small.y + 55] },
-    ];
-    const node = (i: number): Point => nodes[i]?.at ?? [small.x, small.y];
-    const tableX = CONTENT.x + 290;
-    return {
-      body: (
-        <>
-          <Circles n={3} x={small.x} y={small.y} r={small.r} />
-          <Hull points={[node(0), node(1)]} color={1} k={1} />
-          <Edge from={node(0)} to={node(1)} />
-          <Edge from={node(1)} to={node(2)} type={2} />
-          {nodes.map((n) => (
-            <CanvasNode key={n.label} at={n.at} label={n.label} r={22} />
-          ))}
-          <DataTable
-            x={tableX}
-            y={CONTENT.y + 40}
-            title={TEXT.nodes}
-            columns={TEXT.nodeColumns}
-            offsets={[0, 70, 170, 270]}
-            rows={[
-              [NAMES.sam, '0.31', '0.42', 'true'],
-              [NAMES.ana, '0.42', '0.27', 'true'],
-              [NAMES.jo, '0.44', '0.61', 'false'],
-            ]}
-            reveal={(r) => smooth(segment(t, 0.6 + r * 0.35, 0.3))}
-            width={CONTENT.right - 16 - tableX}
-            {...TABLE}
-          />
-          <DataTable
-            x={tableX}
-            y={CONTENT.y + 220}
-            title={TEXT.edges}
-            columns={TEXT.edgeColumns}
-            offsets={[0, 110, 220]}
-            rows={[
-              [NAMES.sam, NAMES.ana, 'friends'],
-              [NAMES.ana, NAMES.jo, 'family'],
-            ]}
-            reveal={(r) => smooth(segment(t, 2.0 + r * 0.35, 0.3))}
-            width={CONTENT.right - 16 - tableX}
-            {...TABLE}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
 
 /**
  * Shows the network composer's tool palette with a numbered pin beside each

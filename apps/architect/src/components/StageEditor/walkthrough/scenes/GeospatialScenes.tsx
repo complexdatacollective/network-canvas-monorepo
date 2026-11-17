@@ -1,7 +1,6 @@
 import {
   GripHorizontal,
   LocateFixed,
-  X,
   ZoomIn,
   ZoomOut,
   type LucideIcon,
@@ -15,7 +14,6 @@ import {
   Chip,
   Click,
   CONTENT,
-  DataTable,
   defineScene,
   lerp,
   NAMES,
@@ -24,18 +22,12 @@ import {
   pressAt,
   smooth,
   STAGE,
-  STAGE_CENTER_X,
   type Point,
 } from './parts';
-
-const OUTSIDE_VALUE = 'outside-selectable-areas';
 
 const TEXT = {
   question: (name: string) => ['Which area does', `${name} live in?`],
   outside: 'Outside selectable areas',
-  answered: 'Answers',
-  attributeList: 'Node attribute list',
-  columns: ['name', 'home_area'],
   properties: 'Area properties',
   property: 'Map selection property',
   saved: 'home_area: 1702',
@@ -306,45 +298,6 @@ function PromptPanel({
   );
 }
 
-const DESELECT: Point = [STAGE_CENTER_X - 40, STAGE.y + 200];
-
-/**
- * The map dimmed under the outside-areas label, with the button that takes
- * the choice back.
- */
-function OutsideOverlay({ k }: { k: number }) {
-  if (k <= 0) return null;
-  return (
-    <g opacity={k}>
-      <rect
-        x={STAGE.x}
-        y={STAGE.y}
-        width={STAGE.right - STAGE.x}
-        height={STAGE.bottom - STAGE.y}
-        className="fill-navy-taupe"
-        opacity={0.75}
-      />
-      <text
-        x={DESELECT[0]}
-        y={DESELECT[1] - 38}
-        textAnchor="middle"
-        fontSize={17}
-        fontWeight={800}
-        className="fill-white"
-      >
-        {TEXT.outside}
-      </text>
-      <circle
-        cx={DESELECT[0]}
-        cy={DESELECT[1]}
-        r={18}
-        className="fill-sea-green"
-      />
-      <Glyph icon={X} at={DESELECT} size={18} className="text-white" />
-    </g>
-  );
-}
-
 /**
  * Shows a geospatial stage where the participant selects an area for one alter
  * and clicks Next, and the next alter appears with nothing selected until the
@@ -390,74 +343,6 @@ export const GeospatialIntroScene = defineScene(6.4, ({ t }) => {
     ),
   };
 });
-
-/** When the data scene's row `k` is answered. */
-const answeredAt = (k: number) => 0.6 + k * 1.2;
-
-/**
- * Shows how a geospatial stage's data is exported: the property value of each
- * alter's selected area fills that alter's row, and an alter marked outside the
- * selectable areas gets the value outside-selectable-areas.
- */
-export const GeospatialDataScene = defineScene(
-  5.4,
-  ({ t }) => {
-    const answers = [
-      { name: NAMES.sam, value: '1702' },
-      { name: NAMES.ana, value: '1703' },
-      { name: NAMES.jo, value: OUTSIDE_VALUE },
-    ];
-    const tableX = CONTENT.x + 272;
-    const top = CONTENT.y + 70;
-    const current = answers.findLast((_, i) => t >= answeredAt(i));
-    const fill = current
-      ? smooth(segment(t, answeredAt(answers.indexOf(current)), 0.3))
-      : 0;
-    return {
-      body: (
-        <>
-          <Heading x={CONTENT.x + 30} y={CONTENT.y + 44} text={TEXT.answered} />
-          <g transform="translate(-40 70) scale(0.6)">
-            <Areas selected={current?.value} fill={fill} labels />
-          </g>
-          {current ? (
-            <PersonNode
-              x={CONTENT.x + 60}
-              y={CONTENT.bottom - 50}
-              label={current.name}
-              k={backOut(
-                segment(t, answeredAt(answers.indexOf(current)) - 0.3, 0.4),
-              )}
-              r={26}
-            />
-          ) : null}
-          <Chip
-            x={CONTENT.x + 95}
-            y={CONTENT.bottom - 50}
-            text={TEXT.outside}
-            size={11}
-            align="start"
-            fill="fill-white/20"
-            ink="fill-white"
-            k={backOut(segment(t, answeredAt(2), 0.4))}
-          />
-          <Heading x={tableX} y={CONTENT.y + 44} text={TEXT.attributeList} />
-          <DataTable
-            x={tableX}
-            y={top}
-            columns={TEXT.columns}
-            rows={answers.map((a) => [a.name, a.value])}
-            cellReveal={(row, cell) =>
-              smooth(segment(t, answeredAt(row) + (cell === 1 ? 0.4 : 0), 0.4))
-            }
-            colWidth={205}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
 
 /**
  * Shows a geospatial stage's map layer, where a selected area carries several
@@ -553,43 +438,3 @@ export const GeospatialPropertyScene = defineScene(
   },
   { url: 'Map layer' },
 );
-
-/**
- * Shows a geospatial stage where the participant selects the map outside every
- * area to mark the alter as outside, takes that back with the cross, and then
- * marks the alter as outside with the button in the panel.
- */
-export const GeospatialOutsideScene = defineScene(6.0, ({ t }) => {
-  const outsidePoint: Point = [STAGE.right - 150, STAGE.bottom - 50];
-  const overlay =
-    smooth(segment(t, 1.2, 0.3)) * (1 - smooth(segment(t, 3.0, 0.3))) +
-    smooth(segment(t, 4.4, 0.3));
-  const outside = (t >= 1.2 && t < 3.0) || t >= 4.4;
-  return {
-    rail: {
-      progress: 0.6,
-      pulse: outside,
-      pulseFrom: t < 3.0 ? 1.2 : 4.4,
-    },
-    body: (
-      <>
-        <Basemap />
-        <Areas />
-        <MapToolbar />
-        <OutsideOverlay k={overlay} />
-        <PromptPanel from={NAMES.sam} outsideDisabled={outside} />
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: outsidePoint, at: 1.2 },
-          { to: DESELECT, at: 3.0 },
-          { to: OUTSIDE_BUTTON, at: 4.4 },
-        ]}
-        leave={5.0}
-      />
-    ),
-  };
-});

@@ -38,10 +38,6 @@ const TEXT = {
     atRiskCarrier: 'May carry this condition',
     unknown: 'Not known',
   },
-  nominated: 'has_cf: set by the Family Pedigree',
-  nothing: 'Nothing from this stage',
-  savedImage: 'Saved as an image',
-  nodes: 'Nodes',
   stages: ['Your family', 'How it runs', 'Later family'],
 } as const;
 
@@ -157,8 +153,6 @@ function Family({
 const TOOLBAR_WIDTH = 400;
 const TOOLBAR_X = STAGE_CENTER_X - TOOLBAR_WIDTH / 2;
 const SELECT_AT: Point = [TOOLBAR_X + 90, TOOLBAR_Y];
-const SNAPSHOT_AT: Point = [TOOLBAR_X + 330, TOOLBAR_Y];
-
 /** The toolbar: the condition menu, the zoom buttons and Save snapshot. */
 function Toolbar({ chosen }: { chosen?: Condition }) {
   const icons = [ZoomOut, ZoomIn, Scan];
@@ -414,118 +408,6 @@ export const NarrativePedigreeIntroScene = defineScene(7.2, ({ t }) => {
   };
 });
 
-/** A row of the exported data table. */
-function Row({
-  x,
-  y,
-  cells,
-  header = false,
-  offsets,
-  width,
-}: {
-  x: number;
-  y: number;
-  cells: readonly string[];
-  header?: boolean;
-  offsets: readonly number[];
-  width: number;
-}) {
-  return (
-    <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={30}
-        rx={header ? 8 : 0}
-        className={header ? 'fill-cyber-grape' : 'fill-white/5'}
-      />
-      {cells.map((cell, i) => (
-        <text
-          key={`${i}-${cell}`}
-          x={x + 12 + (offsets[i] ?? 0)}
-          y={y + 20}
-          fontSize={12}
-          fontWeight={header ? 800 : 700}
-          className="fill-white"
-        >
-          {cell}
-        </text>
-      ))}
-    </g>
-  );
-}
-
-/**
- * Shows how a narrative pedigree's data is exported: the nodes and the
- * condition attribute all come from the Family Pedigree, and this stage adds
- * nothing.
- */
-export const NarrativePedigreeDataScene = defineScene(
-  4.6,
-  ({ t }) => {
-    const x = CONTENT.x + 150;
-    const width = 400;
-    const offsets = [0, 140, 270];
-    const rows = [
-      ['Sam', 'male', 'true'],
-      ['Rose', 'female', ''],
-      ['David', 'male', ''],
-    ];
-    return {
-      body: (
-        <>
-          <text
-            x={x}
-            y={CONTENT.y + 40}
-            fontSize={12}
-            fontWeight={800}
-            className="fill-white/60 uppercase"
-          >
-            {TEXT.nodes}
-          </text>
-          <Row
-            x={x}
-            y={CONTENT.y + 50}
-            cells={['name', 'sex_at_birth', 'has_cf']}
-            header
-            offsets={offsets}
-            width={width}
-          />
-          {rows.map((cells, i) => (
-            <g key={cells[0]} opacity={smooth(segment(t, 0.4 + i * 0.3, 0.3))}>
-              <Row
-                x={x}
-                y={CONTENT.y + 80 + i * 30}
-                cells={cells}
-                offsets={offsets}
-                width={width}
-              />
-            </g>
-          ))}
-          <Chip
-            x={x + width / 2}
-            y={CONTENT.y + 220}
-            text={TEXT.nominated}
-            size={13}
-            k={backOut(segment(t, 1.6, 0.4))}
-          />
-          <Chip
-            x={x + width / 2}
-            y={CONTENT.y + 270}
-            text={TEXT.nothing}
-            size={14}
-            fill="fill-white/20"
-            ink="fill-white"
-            k={backOut(segment(t, 2.4, 0.4))}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
-
 /** A stage card in the protocol timeline. */
 function StageCard({
   x,
@@ -761,102 +643,5 @@ export const NarrativePedigreeAtRiskScene = defineScene(6.4, ({ t }) => {
         leave={5.1}
       />
     ),
-  };
-});
-
-const SNAPSHOT_ROWS: readonly PedigreeStatus[] = [
-  'affected',
-  'obligateCarrier',
-  'unknown',
-];
-
-/**
- * Shows a narrative pedigree where the participant clicks the save snapshot
- * button and an image of the pedigree with its key is saved.
- */
-export const NarrativePedigreeSnapshotScene = defineScene(5.6, ({ t }) => {
-  const sheet = smooth(segment(t, 1.3, 0.7));
-  const page = {
-    x: STAGE_CENTER_X - 120,
-    y: STAGE.y + 20,
-    width: 240,
-    height: 290,
-  };
-  return {
-    rail: { progress: 0.9 },
-    body: (
-      <>
-        <g opacity={1 - sheet * 0.6}>
-          <Family condition={CONDITIONS.cf} />
-        </g>
-        <Toolbar chosen={CONDITIONS.cf} />
-        {sheet > 0 ? (
-          <g transform={`translate(0 ${(1 - sheet) * 300})`}>
-            <rect
-              x={page.x}
-              y={page.y}
-              width={page.width}
-              height={page.height}
-              rx={6}
-              className="fill-white"
-            />
-            <text
-              x={page.x + 16}
-              y={page.y + 28}
-              fontSize={13}
-              fontWeight={900}
-              className="fill-navy-taupe"
-            >
-              {CONDITIONS.cf.name}
-            </text>
-            <g
-              transform={`translate(${page.x + page.width / 2} ${page.y + 130}) scale(0.42) translate(${-STAGE_CENTER_X} ${-(STAGE.y + 140)})`}
-            >
-              <rect
-                x={STAGE.x}
-                y={STAGE.y}
-                width={STAGE.right - STAGE.x}
-                height={300}
-                className="fill-navy-taupe"
-              />
-              <Family condition={CONDITIONS.cf} />
-            </g>
-            {SNAPSHOT_ROWS.map((status, i) => (
-              <g key={status}>
-                <rect
-                  x={page.x + 20}
-                  y={page.y + 220 + i * 20}
-                  width={10}
-                  height={10}
-                  className={
-                    status === 'affected'
-                      ? CONDITIONS.cf.fill
-                      : 'stroke-sea-green fill-none'
-                  }
-                  strokeWidth={2}
-                />
-                <text
-                  x={page.x + 38}
-                  y={page.y + 229 + i * 20}
-                  fontSize={10}
-                  fontWeight={700}
-                  className="fill-navy-taupe"
-                >
-                  {TEXT.rows[status]}
-                </text>
-              </g>
-            ))}
-          </g>
-        ) : null}
-        <Chip
-          x={page.x + page.width + 90}
-          y={STAGE.y + 150}
-          text={TEXT.savedImage}
-          size={14}
-          k={backOut(segment(t, 2.4, 0.4))}
-        />
-      </>
-    ),
-    overlay: <Click t={t} stops={[{ to: SNAPSHOT_AT, at: 1.0 }]} leave={1.6} />,
   };
 });

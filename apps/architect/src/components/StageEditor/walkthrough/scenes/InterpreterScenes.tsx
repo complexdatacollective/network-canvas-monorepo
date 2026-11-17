@@ -5,7 +5,6 @@ import {
   Chip,
   Click,
   CONTENT,
-  DataTable,
   defineScene,
   lerp,
   NAMES,
@@ -28,28 +27,17 @@ const TEXT = {
   typedAge: '34',
   yes: 'Yes',
   no: 'No',
-  more: ['Where were you born?', 'What is your job?', 'How many siblings?'],
   titleChip: 'Title',
   textChip: 'Introduction text',
-  egoList: 'Ego list',
-  egoRow: 'One row for the participant',
-  egoColumns: ['age', 'has_partner'],
-  trueValue: 'true',
   known: 'How long have you known each other?',
   typedKnown: '5 years',
-  edgeList: 'Edge list',
-  knows: 'knows',
   oneForm: 'One form for each edge',
   ofThree: ['1 of 3', '2 of 3', '3 of 3'],
   noEdge: 'No edge, no form',
   censusQuestion: 'Do these two know each other?',
   censusWork: 'Do these two work together?',
-  dyadColumns: ['from', 'to', 'type'],
-  answered: 'Answers',
-  noEdgeRow: 'No: no edge',
   fourAlters: '4 alters: 6 pairs',
   sixAlters: '6 alters: 15 pairs',
-  already: 'Already connected',
   secondPrompt: 'Prompt 2 starts from the first pair',
 } as const;
 
@@ -385,139 +373,6 @@ export const EgoFormIntroductionScene = defineScene(4.2, ({ t }) => {
     ),
   };
 });
-
-/**
- * Shows an ego form where the form runs past the bottom of the screen, a button
- * with bouncing arrows appears below the form, and clicking the button scrolls
- * to the rest of the questions.
- */
-export const EgoFormScrollScene = defineScene(5.8, ({ t, id }) => {
-  const scroll = smooth(segment(t, 3.4, 0.8)) * 210;
-  const nudge =
-    backOut(segment(t, 1.2, 0.4)) * (1 - smooth(segment(t, 3.3, 0.3)));
-  const bounce = Math.abs(Math.sin(t * Math.PI * 2)) * 6;
-  const questions = [TEXT.age, TEXT.partner, ...TEXT.more];
-  const nudgeY = CONTENT.bottom - 36;
-  const top = STAGE.y + 22 - scroll;
-  const clip = `${id}-ego-scroll`;
-  return {
-    rail: { progress: 0.12, pulse: t >= 4.3, pulseFrom: 4.3 },
-    body: (
-      <>
-        <clipPath id={clip}>
-          <rect
-            x={STAGE.x}
-            y={STAGE.y}
-            width={STAGE.right - STAGE.x}
-            height={STAGE.bottom - STAGE.y - nudge * 64}
-          />
-        </clipPath>
-        <g clipPath={`url(#${clip})`}>
-          <Card x={EGO.x} y={top} width={EGO.width} height={70} />
-          <text
-            x={EGO.x + 28}
-            y={top + 44}
-            fontSize={24}
-            fontWeight={900}
-            className="fill-white"
-          >
-            {TEXT.aboutYou}
-          </text>
-          <Card x={EGO.x} y={top + 86} width={EGO.width} height={470} />
-          {questions.map((q, i) => (
-            <g key={q}>
-              <Label x={EGO.x + 28} y={top + 120 + i * 90} text={q} />
-              <TextBox
-                x={EGO.x + 28}
-                y={top + 132 + i * 90}
-                width={EGO.width - 56}
-                text=""
-              />
-            </g>
-          ))}
-        </g>
-        {nudge > 0 ? (
-          <g transform={`translate(0 ${(1 - nudge) * 40})`} opacity={nudge}>
-            <rect
-              x={STAGE_CENTER_X - 46}
-              y={nudgeY - 22}
-              width={92}
-              height={44}
-              rx={22}
-              className="fill-cyber-grape stroke-white/30"
-              strokeWidth={2}
-            />
-            {[-16, 16].map((dx) => (
-              <path
-                key={dx}
-                d={`M ${STAGE_CENTER_X + dx - 9} ${nudgeY - 6 + bounce} l 9 9 l 9 -9`}
-                className="fill-none stroke-white"
-                strokeWidth={3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
-          </g>
-        ) : null}
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[{ to: [STAGE_CENTER_X, nudgeY], at: 3.2 }]}
-        leave={3.7}
-      />
-    ),
-  };
-});
-
-/**
- * Shows how an ego form's data is exported: the participant's answers fill one
- * row of the ego list, with one column for each question.
- */
-export const EgoFormDataScene = defineScene(
-  4.4,
-  ({ t }) => {
-    const left = CONTENT.x + 40;
-    const top = CONTENT.y + 70;
-    const tableX = CONTENT.x + 400;
-    return {
-      body: (
-        <>
-          <Card x={left} y={top} width={290} height={190} />
-          <Label x={left + 24} y={top + 34} text={TEXT.age} />
-          <TextBox
-            x={left + 24}
-            y={top + 46}
-            width={240}
-            text={TEXT.typedAge}
-          />
-          <Label x={left + 24} y={top + 120} text={TEXT.partner} />
-          <YesNo x={left + 24} y={top + 134} chosen="yes" width={100} />
-          <Heading x={tableX} y={CONTENT.y + 44} text={TEXT.egoList} />
-          <DataTable
-            x={tableX}
-            y={top}
-            columns={TEXT.egoColumns}
-            rows={[[TEXT.typedAge, TEXT.trueValue]]}
-            cellReveal={(_, cell) => smooth(segment(t, 1.0 + cell * 0.7, 0.4))}
-            colWidth={130}
-          />
-          <Chip
-            x={tableX + 130}
-            y={top + 130}
-            text={TEXT.egoRow}
-            size={13}
-            k={backOut(segment(t, 2.6, 0.4))}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
-
-/* ---------------------------------------------------------- edge form */
 
 const PAIR_Y = STAGE.y + 64;
 const EDGE_CARD = {
@@ -918,67 +773,6 @@ export const DyadCensusPromptsScene = defineScene(5.6, ({ t }) => {
     ),
   };
 });
-
-/**
- * Shows how a dyad census's data is exported: each pair answered yes becomes
- * one row of the edge list, and the pair answered no adds no row.
- */
-export const DyadCensusDataScene = defineScene(
-  4.8,
-  ({ t }) => {
-    const answers = [
-      { from: NAMES.sam, to: NAMES.ana, yes: true },
-      { from: NAMES.sam, to: NAMES.jo, yes: false },
-      { from: NAMES.ana, to: NAMES.jo, yes: true },
-    ];
-    const left = CONTENT.x + 30;
-    const tableX = CONTENT.x + 380;
-    const top = CONTENT.y + 70;
-    const yesRows = answers.filter((a) => a.yes);
-    return {
-      body: (
-        <>
-          <Heading x={left} y={CONTENT.y + 44} text={TEXT.answered} />
-          {answers.map((a, i) => {
-            const y = top + 40 + i * 92;
-            const k = backOut(segment(t, 0.2 + i * 0.15, 0.4));
-            return (
-              <g key={`${a.from}-${a.to}`} opacity={Math.min(1, k)}>
-                <JoinedNodes
-                  centre={[left + 110, y]}
-                  from={a.from}
-                  to={a.to}
-                  gap={130}
-                  r={26}
-                  fill={a.yes ? smooth(segment(t, 0.6 + i * 0.2, 0.4)) : 0}
-                />
-                <Chip
-                  x={left + 260}
-                  y={y}
-                  text={a.yes ? TEXT.yes : TEXT.noEdgeRow}
-                  size={13}
-                  fill={a.yes ? 'fill-sea-green' : 'fill-white/20'}
-                  ink="fill-white"
-                  k={backOut(segment(t, 0.8 + i * 0.2, 0.4))}
-                />
-              </g>
-            );
-          })}
-          <Heading x={tableX} y={CONTENT.y + 44} text={TEXT.edgeList} />
-          <DataTable
-            x={tableX}
-            y={top}
-            columns={TEXT.dyadColumns}
-            rows={yesRows.map((a) => [a.from, a.to, TEXT.knows])}
-            cellReveal={(row) => smooth(segment(t, 1.8 + row * 0.8, 0.4))}
-            colWidth={95}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
 
 function ring(count: number, centre: Point, radius: number): Point[] {
   return Array.from({ length: count }, (_, i) => {

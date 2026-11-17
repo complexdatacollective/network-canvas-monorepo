@@ -1,20 +1,12 @@
 import { backOut, segment } from '@codaco/art/illustration/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import {
-  Card,
-  DyadPairs,
-  Heading,
-  JoinedNodes,
-  type DyadPair,
-} from './InterpreterScenes';
+import { Card, DyadPairs, type DyadPair } from './InterpreterScenes';
 import {
   Chip,
   Click,
   CONTENT,
-  DataTable,
   defineScene,
-  lerp,
   NAMES,
   NEXT_BUTTON,
   PersonNode,
@@ -237,80 +229,6 @@ export const TieStrengthIntroScene = defineScene(6.0, ({ t }) => {
   };
 });
 
-/**
- * Shows how a tie-strength census's data is exported: each pair given an option
- * on the scale becomes one row of the edge list, with the chosen value in its
- * own column, and the pair given No tie adds no row.
- */
-export const TieStrengthDataScene = defineScene(
-  4.8,
-  ({ t }) => {
-    const answers = [
-      { from: NAMES.sam, to: NAMES.ana, option: 1 },
-      { from: NAMES.sam, to: NAMES.jo, option: DECLINE },
-      { from: NAMES.ana, to: NAMES.jo, option: 2 },
-    ];
-    const left = CONTENT.x + 30;
-    const tableX = CONTENT.x + 340;
-    const top = CONTENT.y + 70;
-    const edges = answers.filter((a) => a.option !== DECLINE);
-    return {
-      body: (
-        <>
-          <Heading x={left} y={CONTENT.y + 44} text={TEXT.answered} />
-          {answers.map((a, i) => {
-            const y = top + 40 + i * 92;
-            const k = backOut(segment(t, 0.2 + i * 0.15, 0.4));
-            const declined = a.option === DECLINE;
-            return (
-              <g key={`${a.from}-${a.to}`} opacity={Math.min(1, k)}>
-                <JoinedNodes
-                  centre={[left + 100, y]}
-                  from={a.from}
-                  to={a.to}
-                  gap={120}
-                  r={24}
-                  fill={declined ? 0 : smooth(segment(t, 0.6 + i * 0.2, 0.4))}
-                />
-                <Chip
-                  x={left + 240}
-                  y={y}
-                  text={
-                    declined
-                      ? TEXT.noRow
-                      : (TEXT.scale[a.option] ?? TEXT.decline)
-                  }
-                  size={13}
-                  fill={declined ? 'fill-white/20' : 'fill-sea-green'}
-                  ink="fill-white"
-                  k={backOut(segment(t, 0.8 + i * 0.2, 0.4))}
-                />
-              </g>
-            );
-          })}
-          <Heading x={tableX} y={CONTENT.y + 44} text={TEXT.edgeList} />
-          <DataTable
-            x={tableX}
-            y={top}
-            columns={TEXT.columns}
-            rows={edges.map((a) => [
-              a.from,
-              a.to,
-              TEXT.knows,
-              TEXT.values[a.option] ?? '',
-            ])}
-            cellReveal={(row, cell) =>
-              smooth(segment(t, 1.8 + row * 0.8 + (cell === 3 ? 0.3 : 0), 0.4))
-            }
-            colWidth={86}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
-
 /* ------------------------------------------- one to many dyad census */
 
 const FOCAL: Point = [STAGE_CENTER_X, STAGE.y + 132];
@@ -436,74 +354,6 @@ export const OneToManyIntroScene = defineScene(6.4, ({ t }) => {
     ),
   };
 });
-
-/**
- * Shows how a one to many dyad census's data is exported: each alter tapped is
- * joined to the focal node by an edge, and each edge becomes one row of the
- * edge list.
- */
-export const OneToManyDataScene = defineScene(
-  4.6,
-  ({ t }) => {
-    const focal: Point = [CONTENT.x + 160, CONTENT.y + 120];
-    const tapped = [
-      { label: NAMES.ana, at: [CONTENT.x + 70, CONTENT.y + 290] as Point },
-      { label: NAMES.kai, at: [CONTENT.x + 250, CONTENT.y + 290] as Point },
-    ];
-    const tableX = CONTENT.x + 360;
-    const top = CONTENT.y + 70;
-    return {
-      body: (
-        <>
-          <Heading x={CONTENT.x + 30} y={CONTENT.y + 44} text={TEXT.tapped} />
-          {tapped.map((n, i) => {
-            const k = smooth(segment(t, 0.6 + i * 0.5, 0.5));
-            return (
-              <line
-                key={n.label}
-                x1={focal[0]}
-                y1={focal[1]}
-                x2={lerp(focal[0], n.at[0], k)}
-                y2={lerp(focal[1], n.at[1], k)}
-                className="stroke-edge-1"
-                strokeWidth={8}
-                strokeLinecap="round"
-                opacity={k > 0 ? 1 : 0}
-              />
-            );
-          })}
-          <PersonNode
-            x={focal[0]}
-            y={focal[1]}
-            label={NAMES.sam}
-            k={1}
-            r={36}
-          />
-          {tapped.map((n, i) => (
-            <PersonNode
-              key={n.label}
-              x={n.at[0]}
-              y={n.at[1]}
-              label={n.label}
-              r={30}
-              k={backOut(segment(t, 0.2 + i * 0.15, 0.4))}
-            />
-          ))}
-          <Heading x={tableX} y={CONTENT.y + 44} text={TEXT.edgeList} />
-          <DataTable
-            x={tableX}
-            y={top}
-            columns={TEXT.oneToManyColumns}
-            rows={tapped.map((n) => [NAMES.sam, n.label, TEXT.knows])}
-            cellReveal={(row) => smooth(segment(t, 1.4 + row * 0.6, 0.4))}
-            colWidth={100}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
 
 /**
  * Shows the two removal behaviors of a one to many dyad census side by side

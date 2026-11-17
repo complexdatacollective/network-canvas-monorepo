@@ -37,11 +37,8 @@ const TEXT = {
   live: 'Who do you live with?',
   work: 'Who do you work with?',
   friends: 'Who are your closest friends?',
-  classmates: 'Who do you study with?',
   alreadyNamed: 'Already named',
   yourClassmates: 'Your classmates',
-  fromInterview: 'From this interview',
-  fromRoster: 'From a roster file',
   // The interview's own notices for a minimum of 2 and for a maximum.
   minimum: ['You must create at least 2', 'items before you can', 'continue.'],
   maximum: [

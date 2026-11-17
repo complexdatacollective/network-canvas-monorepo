@@ -6,7 +6,6 @@ import {
   CONTENT,
   defineScene,
   lerp,
-  PersonNode,
   pivot,
   smooth,
   TextBar,
@@ -14,162 +13,12 @@ import {
 } from './parts';
 
 const TEXT = {
-  addPerson: 'Add a person',
-  movingOn: 'Trying to move on with no answer',
-  accepted: 'Answer accepted',
-  important: 'Who do you talk to about important things?',
-  discuss: 'Who do you discuss important matters with?',
-  work: 'Who do you work with?',
-  study: 'Who do you study with?',
-  lunch: 'Who do you have lunch with?',
-  classmates: 'Your classmates',
-  filter: 'Filter: class is 7B',
-  name: 'What is their name?',
-  required: ['You must answer this question', 'before continuing.'],
-  saves: 'Saves',
-  columns: ['name', 'relationship'],
-  rowPerPerson: 'A row for each person',
-  columnPerField: 'A column for each field',
-  exported: 'Exported data',
   protocol: 'Protocol',
   rule: 'Show if: has a partner',
   hasPartner: 'Participant A: has a partner',
   noPartner: 'Participant B: no partner',
   stages: ['Information', 'This stage', 'Next stage', 'Finish'],
 } as const;
-
-const dataNodeY = (i: number) => CONTENT.y + 78 + i * 96;
-
-const PEOPLE = [
-  { name: 'Sam', relationship: 'Friend' },
-  { name: 'Ana', relationship: 'Family' },
-  { name: 'Jo', relationship: 'Work' },
-] as const;
-
-/**
- * Shows how a name generator's data is exported: each alter becomes a row, and
- * each question on the form becomes a column.
- */
-export const NameGeneratorDataScene = defineScene(
-  5.0,
-  ({ t }) => {
-    const nodeX = CONTENT.x + 110;
-    const table = { x: 290, y: CONTENT.y + 56, width: 380, row: 52 };
-    const colX = [table.x + 24, table.x + 200];
-    const rowY = (i: number) => table.y + table.row * (i + 1);
-    const header = backOut(segment(t, 0.5, 0.45));
-    return {
-      body: (
-        <>
-          {PEOPLE.map(({ name, relationship }, i) => {
-            const at = 1.0 + i * 0.7;
-            const fly = smooth(segment(t, at, 0.5));
-            const from: Point = [nodeX, dataNodeY(i)];
-            const to: Point = [colX[0] ?? 0, rowY(i) + table.row / 2];
-            return (
-              <g key={name}>
-                <PersonNode
-                  x={from[0]}
-                  y={from[1]}
-                  r={36}
-                  label={name}
-                  k={backOut(segment(t, 0.2 + i * 0.12, 0.4))}
-                />
-                <Chip
-                  x={from[0] + 70}
-                  y={from[1] + 30}
-                  text={relationship}
-                  size={13}
-                  k={backOut(segment(t, 0.4 + i * 0.12, 0.4))}
-                />
-                {fly > 0 && fly < 1 ? (
-                  <circle
-                    cx={lerp(from[0], to[0], fly)}
-                    cy={
-                      lerp(from[1], to[1], fly) - Math.sin(Math.PI * fly) * 40
-                    }
-                    r={lerp(14, 6, fly)}
-                    className="fill-neon-coral"
-                  />
-                ) : null}
-                <g opacity={segment(t, at + 0.45, 0.25)}>
-                  <rect
-                    x={table.x}
-                    y={rowY(i)}
-                    width={table.width}
-                    height={table.row}
-                    className={i % 2 === 0 ? 'fill-white/5' : 'fill-white/10'}
-                  />
-                  <text
-                    x={colX[0]}
-                    y={rowY(i) + 33}
-                    fontSize={20}
-                    fontWeight={700}
-                    className="fill-white"
-                  >
-                    {name}
-                  </text>
-                  <text
-                    x={colX[1]}
-                    y={rowY(i) + 33}
-                    fontSize={20}
-                    fontWeight={700}
-                    className="fill-white"
-                  >
-                    {relationship}
-                  </text>
-                </g>
-              </g>
-            );
-          })}
-          <g opacity={header}>
-            <rect
-              x={table.x}
-              y={table.y}
-              width={table.width}
-              height={table.row}
-              rx={10}
-              className="fill-cyber-grape"
-            />
-            {TEXT.columns.map((column, i) => (
-              <text
-                key={column}
-                x={colX[i]}
-                y={table.y + 33}
-                fontSize={20}
-                fontWeight={900}
-                className="fill-mustard"
-              >
-                {column}
-              </text>
-            ))}
-          </g>
-        </>
-      ),
-      overlay: (
-        <>
-          <Chip
-            x={table.x + table.width / 2}
-            y={table.y - 26}
-            text={TEXT.columnPerField}
-            size={15}
-            outlined
-            k={backOut(segment(t, 3.4, 0.45))}
-          />
-          <Chip
-            x={table.x + table.width / 2}
-            y={rowY(3) + 28}
-            text={TEXT.rowPerPerson}
-            size={15}
-            outlined
-            k={backOut(segment(t, 3.8, 0.45))}
-          />
-        </>
-      ),
-    };
-  },
-  { url: TEXT.exported },
-);
 
 /**
  * Shows skip logic on a protocol's stages: the interview visits this stage for

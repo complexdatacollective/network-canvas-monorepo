@@ -6,7 +6,6 @@ import {
   Chip,
   Click,
   CONTENT,
-  DataTable,
   defineScene,
   Drawer,
   drawerSlot,
@@ -28,20 +27,8 @@ const TEXT = {
   categoricalPrompt: 'Which best describes how you know each person?',
   closeness: ['Not close', 'Somewhat', 'Close', 'Very close', 'Extremely'],
   categories: ['Family', 'Work', 'School', 'Neighbours', 'Social'],
-  other: 'Other',
-  otherQuestion: 'How do you know this person?',
-  otherAnswer: 'Football club',
-  save: 'Save',
   unplaced: ['You must place every', 'item before you can', 'continue.'],
-  exported: 'Exported data',
-  nameColumn: 'name',
-  closenessColumn: 'closeness',
   // A categorical attribute exports one true-or-false column per value.
-  categoryColumns: ['group_family', 'group_work'],
-  yes: 'true',
-  no: 'false',
-  gradient: (n: number) => `Color: gradient ${n}`,
-  bucketOrder: 'Bucket order: name, A to Z',
   network: 'In the interview',
   thisStage: 'On this stage',
   filter: 'Filter network: close_friend is true',
@@ -703,106 +690,6 @@ export const CategoricalBinTapScene = defineScene(5.2, ({ t }) => {
  * participant then drags that alter into a circle so they can continue.
  */
 export const CategoricalBinRequireScene = requireScene('categorical');
-
-function binDataScene(kind: 'ordinal' | 'categorical') {
-  return defineScene(
-    5.0,
-    ({ t }) => {
-      const people = [NAMES.sam, NAMES.ana, NAMES.jo];
-      const rows =
-        kind === 'ordinal'
-          ? [
-              [NAMES.sam, '3'],
-              [NAMES.ana, '4'],
-              [NAMES.jo, '1'],
-            ]
-          : [
-              [NAMES.sam, TEXT.yes, TEXT.no],
-              [NAMES.ana, TEXT.no, TEXT.yes],
-              [NAMES.jo, TEXT.no, TEXT.yes],
-            ];
-      const placesTo =
-        kind === 'ordinal'
-          ? [TEXT.closeness[2], TEXT.closeness[3], TEXT.closeness[0]]
-          : [TEXT.categories[0], TEXT.categories[1], TEXT.categories[1]];
-      const left = CONTENT.x + 40;
-      const tableX = CONTENT.x + (kind === 'ordinal' ? 360 : 300);
-      const tableY = CONTENT.y + 70;
-      const reveal = people.map((_, i) =>
-        smooth(segment(t, 1.2 + i * 0.8, 0.4)),
-      );
-      return {
-        body: (
-          <>
-            <text
-              x={tableX}
-              y={CONTENT.y + 44}
-              fontSize={15}
-              fontWeight={800}
-              className="fill-white/60 uppercase"
-            >
-              {TEXT.exported}
-            </text>
-            {people.map((name, i) => {
-              const y = CONTENT.y + 100 + i * 90;
-              const k = backOut(segment(t, 0.2 + i * 0.15, 0.4));
-              const fly = smooth(segment(t, 1.2 + i * 0.8, 0.5));
-              return (
-                <g key={name}>
-                  <BinNode at={[left + 30, y]} label={name} k={k} />
-                  <Chip
-                    x={left + 160}
-                    y={y}
-                    text={placesTo[i] ?? ''}
-                    size={13}
-                    k={k}
-                  />
-                  {fly > 0 && fly < 1 ? (
-                    <circle
-                      cx={lerp(left + 230, tableX + 60, fly)}
-                      cy={
-                        lerp(y, tableY + 60 + i * 40, fly) -
-                        Math.sin(Math.PI * fly) * 30
-                      }
-                      r={8}
-                      className="fill-neon-coral"
-                    />
-                  ) : null}
-                </g>
-              );
-            })}
-            <DataTable
-              x={tableX}
-              y={tableY}
-              columns={
-                kind === 'ordinal'
-                  ? [TEXT.nameColumn, TEXT.closenessColumn]
-                  : [TEXT.nameColumn, ...TEXT.categoryColumns]
-              }
-              rows={rows}
-              reveal={(r) => reveal[r] ?? 0}
-              inset={16}
-              colWidth={kind === 'ordinal' ? 120 : 125}
-            />
-          </>
-        ),
-      };
-    },
-    { url: 'Exported data' },
-  );
-}
-
-/**
- * Shows how an ordinal bin's data is exported: each alter is one row, and the
- * bin the alter was placed in becomes a number in the closeness column.
- */
-export const OrdinalBinDataScene = binDataScene('ordinal');
-/**
- * Shows how a categorical bin's data is exported: each category becomes a true
- * or false column, such as group_family, and each alter has true in the column
- * for the circle it was placed in.
- */
-export const CategoricalBinDataScene = binDataScene('categorical');
 
 /**
  * Shows a stage filter of close_friend is true, where only the alters with that

@@ -7,34 +7,14 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { backOut, segment } from '@codaco/art/illustration/motion';
+import { segment } from '@codaco/art/illustration/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import {
-  Chip,
-  Click,
-  CONTENT,
-  defineScene,
-  lerp,
-  NAMES,
-  smooth,
-  STAGE,
-  type Point,
-} from './parts';
+import { Click, defineScene, NAMES, smooth, STAGE, type Point } from './parts';
 import { CANVAS, CanvasNode, Circles, Edge, NODE_R } from './SociogramScenes';
 
 const TEXT = {
   presets: ['Friends', 'Groups', 'Support'],
-  attributes: 'Attributes',
-  highlights: ['Gives support', 'Sees weekly'],
-  groups: ['Family', 'Work'],
-  sociogram: 'Sociogram',
-  narrative: 'Narrative',
-  savesTo: 'Layout attribute: position',
-  noPosition: 'No position: not shown',
-  nodes: 'Nodes',
-  columns: ['name', 'position_x', 'position_y'],
-  unchanged: 'Nothing from this stage',
 } as const;
 
 /** One network, laid out as a participant left it on a sociogram. */
@@ -241,154 +221,6 @@ export const NarrativeIntroScene = defineScene(6.2, ({ t }) => {
     ),
   };
 });
-
-/**
- * Shows how a narrative's data is exported: the participant drags a node and
- * draws a line on the canvas, and the exported positions stay exactly as they
- * were.
- */
-export const NarrativeDataScene = defineScene(
-  5.4,
-  ({ t }) => {
-    const small = { x: CONTENT.x + 150, y: CONTENT.y + 180, r: 130 };
-    const nodes: { label: string; at: Point; xy: [string, string] }[] = [
-      {
-        label: NAMES.sam,
-        at: [small.x - 50, small.y - 40],
-        xy: ['0.31', '0.42'],
-      },
-      {
-        label: NAMES.ana,
-        at: [small.x + 45, small.y - 55],
-        xy: ['0.58', '0.33'],
-      },
-      {
-        label: NAMES.jo,
-        at: [small.x + 10, small.y + 55],
-        xy: ['0.55', '0.66'],
-      },
-    ];
-    const drag = smooth(segment(t, 0.6, 0.8));
-    const dragged: Point = [
-      lerp(nodes[2]?.at[0] ?? 0, small.x - 70, drag),
-      lerp(nodes[2]?.at[1] ?? 0, small.y + 70, drag),
-    ];
-    const stroke = smooth(segment(t, 1.8, 0.8));
-    const strokeFade = 1 - smooth(segment(t, 3.0, 1.2));
-    const table = { x: CONTENT.x + 330, y: CONTENT.y + 60, row: 36 };
-    const cols = [0, 90, 210];
-    return {
-      body: (
-        <>
-          <Circles n={3} x={small.x} y={small.y} r={small.r} />
-          {nodes.map((n, i) => (
-            <CanvasNode
-              key={n.label}
-              at={i === 2 ? dragged : n.at}
-              label={n.label}
-              r={22}
-            />
-          ))}
-          <path
-            d={`M ${small.x - 90} ${small.y - 80} Q ${small.x} ${small.y - 130} ${small.x + 90} ${small.y - 80}`}
-            pathLength={1}
-            strokeDasharray={1}
-            strokeDashoffset={1 - stroke}
-            className="fill-none stroke-white"
-            strokeWidth={3}
-            strokeLinecap="round"
-            opacity={strokeFade}
-          />
-          <text
-            x={table.x}
-            y={table.y - 14}
-            fontSize={13}
-            fontWeight={800}
-            className="fill-white/60 uppercase"
-          >
-            {TEXT.nodes}
-          </text>
-          <rect
-            x={table.x}
-            y={table.y}
-            width={330}
-            height={table.row}
-            rx={8}
-            className="fill-cyber-grape"
-          />
-          {TEXT.columns.map((c, i) => (
-            <text
-              key={c}
-              x={table.x + 14 + (cols[i] ?? 0)}
-              y={table.y + 23}
-              fontSize={13}
-              fontWeight={800}
-              className="fill-white"
-            >
-              {c}
-            </text>
-          ))}
-          {nodes.map((n, r) => {
-            const y = table.y + table.row * (r + 1);
-            return (
-              <g key={n.label}>
-                <rect
-                  x={table.x}
-                  y={y}
-                  width={330}
-                  height={table.row}
-                  className={r % 2 === 0 ? 'fill-white/5' : 'fill-white/10'}
-                />
-                {[n.label, ...n.xy].map((cell, i) => (
-                  <text
-                    key={`${n.label}-${TEXT.columns[i] ?? i}`}
-                    x={table.x + 14 + (cols[i] ?? 0)}
-                    y={y + 23}
-                    fontSize={13}
-                    fontWeight={700}
-                    className="fill-white"
-                  >
-                    {cell}
-                  </text>
-                ))}
-              </g>
-            );
-          })}
-          <Chip
-            x={table.x + 165}
-            y={table.y + table.row * 4 + 50}
-            text={TEXT.unchanged}
-            size={14}
-            k={backOut(segment(t, 3.6, 0.4))}
-          />
-        </>
-      ),
-      overlay: (
-        <Click
-          t={t}
-          stops={[
-            { to: nodes[2]?.at ?? [0, 0], at: 0.55, ring: false },
-            {
-              to: [small.x - 70, small.y + 70],
-              at: 1.4,
-              glide: 0.8,
-              ring: false,
-            },
-            { to: [small.x - 90, small.y - 80], at: 1.75, ring: false },
-            {
-              to: [small.x + 90, small.y - 80],
-              at: 2.6,
-              glide: 0.8,
-              ring: false,
-            },
-          ]}
-          leave={3.0}
-        />
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
 
 const TOOLBAR = { x: STAGE.x + 16, y: STAGE.bottom - 62, height: 46 } as const;
 const toolAt = (i: number): Point => [

@@ -51,61 +51,43 @@ export const SCENES: Readonly<
     nameGeneratorScenes,
     'NameGeneratorPanelSourcesScene',
   ),
-  'name-generator-data': scene(
-    nameGeneratorConsequenceScenes,
-    'NameGeneratorDataScene',
-  ),
   'skip-logic': scene(
     nameGeneratorConsequenceScenes,
     'NameGeneratorSkipLogicScene',
   ),
   'sociogram-intro': scene(sociogramScenes, 'SociogramIntroScene'),
-  'sociogram-data': scene(sociogramScenes, 'SociogramDataScene'),
   'sociogram-background': scene(sociogramScenes, 'SociogramBackgroundScene'),
   'sociogram-layout-mode': scene(sociogramScenes, 'SociogramLayoutModeScene'),
   'roster-intro': scene(rosterScenes, 'RosterIntroScene'),
-  'roster-data': scene(rosterScenes, 'RosterDataScene'),
   'roster-card-display': scene(rosterScenes, 'RosterCardDisplayScene'),
   'roster-sort': scene(rosterScenes, 'RosterSortScene'),
   'roster-search': scene(rosterScenes, 'RosterSearchScene'),
   'roster-limits': scene(rosterScenes, 'RosterLimitsScene'),
   'ordinal-bin-intro': scene(binScenes, 'OrdinalBinIntroScene'),
-  'ordinal-bin-data': scene(binScenes, 'OrdinalBinDataScene'),
   'ordinal-bin-tap': scene(binScenes, 'OrdinalBinTapScene'),
   'ordinal-bin-require': scene(binScenes, 'OrdinalBinRequireScene'),
   'categorical-bin-intro': scene(binScenes, 'CategoricalBinIntroScene'),
-  'categorical-bin-data': scene(binScenes, 'CategoricalBinDataScene'),
   'categorical-bin-tap': scene(binScenes, 'CategoricalBinTapScene'),
   'categorical-bin-require': scene(binScenes, 'CategoricalBinRequireScene'),
   'stage-filter': scene(binScenes, 'StageFilterScene'),
   'alter-form-intro': scene(alterFormScenes, 'AlterFormIntroScene'),
   'ego-form-intro': scene(interpreterScenes, 'EgoFormIntroScene'),
   'ego-form-introduction': scene(interpreterScenes, 'EgoFormIntroductionScene'),
-  'ego-form-scroll': scene(interpreterScenes, 'EgoFormScrollScene'),
-  'ego-form-data': scene(interpreterScenes, 'EgoFormDataScene'),
   'edge-form-intro': scene(interpreterScenes, 'EdgeFormIntroScene'),
   'edge-form-source': scene(interpreterScenes, 'EdgeFormSourceScene'),
   'dyad-census-intro': scene(interpreterScenes, 'DyadCensusIntroScene'),
   'dyad-census-prompts': scene(interpreterScenes, 'DyadCensusPromptsScene'),
-  'dyad-census-data': scene(interpreterScenes, 'DyadCensusDataScene'),
   'dyad-census-pairs': scene(interpreterScenes, 'DyadCensusPairsScene'),
   'tie-strength-intro': scene(censusScenes, 'TieStrengthIntroScene'),
-  'tie-strength-data': scene(censusScenes, 'TieStrengthDataScene'),
   'one-to-many-intro': scene(censusScenes, 'OneToManyIntroScene'),
-  'one-to-many-data': scene(censusScenes, 'OneToManyDataScene'),
   'one-to-many-remove': scene(censusScenes, 'OneToManyRemoveScene'),
   'narrative-intro': scene(narrativeScenes, 'NarrativeIntroScene'),
-  'narrative-data': scene(narrativeScenes, 'NarrativeDataScene'),
   'narrative-draw': scene(narrativeScenes, 'NarrativeDrawScene'),
   'information-intro': scene(informationScenes, 'InformationIntroScene'),
-  'information-data': scene(informationScenes, 'InformationDataScene'),
   'information-blocks': scene(informationScenes, 'InformationBlocksScene'),
   'geospatial-intro': scene(geospatialScenes, 'GeospatialIntroScene'),
-  'geospatial-data': scene(geospatialScenes, 'GeospatialDataScene'),
   'geospatial-property': scene(geospatialScenes, 'GeospatialPropertyScene'),
-  'geospatial-outside': scene(geospatialScenes, 'GeospatialOutsideScene'),
   'finish-session-intro': scene(finishSessionScenes, 'FinishSessionIntroScene'),
-  'finish-session-data': scene(finishSessionScenes, 'FinishSessionDataScene'),
   'finish-session-automatic': scene(
     finishSessionScenes,
     'FinishSessionAutomaticScene',
@@ -122,10 +104,6 @@ export const SCENES: Readonly<
     languageChooserScenes,
     'LanguageChooserIntroScene',
   ),
-  'language-chooser-data': scene(
-    languageChooserScenes,
-    'LanguageChooserDataScene',
-  ),
   'language-chooser-order': scene(
     languageChooserScenes,
     'LanguageChooserOrderScene',
@@ -135,7 +113,6 @@ export const SCENES: Readonly<
     'LanguageChooserLanguagesScene',
   ),
   'anonymisation-intro': scene(anonymisationScenes, 'AnonymisationIntroScene'),
-  'anonymisation-data': scene(anonymisationScenes, 'AnonymisationDataScene'),
   'anonymisation-rules': scene(anonymisationScenes, 'AnonymisationRulesScene'),
   'anonymisation-return': scene(
     anonymisationScenes,
@@ -144,10 +121,6 @@ export const SCENES: Readonly<
   'network-composer-intro': scene(
     networkComposerScenes,
     'NetworkComposerIntroScene',
-  ),
-  'network-composer-data': scene(
-    networkComposerScenes,
-    'NetworkComposerDataScene',
   ),
   'network-composer-tools': scene(
     networkComposerScenes,
@@ -188,10 +161,6 @@ export const SCENES: Readonly<
   'family-pedigree-intro': scene(
     familyPedigreeScenes,
     'FamilyPedigreeIntroScene',
-  ),
-  'family-pedigree-data': scene(
-    familyPedigreeScenes,
-    'FamilyPedigreeDataScene',
   ),
   'family-pedigree-tools': scene(
     familyPedigreeScenes,
@@ -234,10 +203,6 @@ export const SCENES: Readonly<
     narrativePedigreeScenes,
     'NarrativePedigreeIntroScene',
   ),
-  'narrative-pedigree-data': scene(
-    narrativePedigreeScenes,
-    'NarrativePedigreeDataScene',
-  ),
   'narrative-pedigree-source': scene(
     narrativePedigreeScenes,
     'NarrativePedigreeSourceScene',
@@ -249,10 +214,6 @@ export const SCENES: Readonly<
   'narrative-pedigree-at-risk': scene(
     narrativePedigreeScenes,
     'NarrativePedigreeAtRiskScene',
-  ),
-  'narrative-pedigree-snapshot': scene(
-    narrativePedigreeScenes,
-    'NarrativePedigreeSnapshotScene',
   ),
 };
 

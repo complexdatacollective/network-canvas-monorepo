@@ -20,7 +20,6 @@ import {
   Chip,
   Click,
   CONTENT,
-  DataTable,
   defineScene,
   lerp,
   midpoint,
@@ -59,12 +58,9 @@ const TEXT = {
     'Show the whole family',
   ],
   percent: '%',
-  nodes: 'Nodes',
-  edges: 'Edges',
   sam: 'Sam',
   rose: 'Rose',
   mother: 'Mother',
-  father: 'Father',
   you: 'You',
   words: ' words',
   done: '✓ ',
@@ -645,74 +641,6 @@ export const FamilyPedigreeIntroScene = defineScene(7.4, ({ t }) => {
     ),
   };
 });
-
-/** The size of the exported-data scene's tables. */
-const TABLE = {
-  rowHeight: 28,
-  fontSize: 11,
-  baseline: 19,
-  inset: 10,
-  rx: 8,
-} as const;
-
-/**
- * Shows how a family pedigree's data is exported: each family member becomes a
- * row in the nodes table, each partnership and parent-child relationship
- * becomes a row in the edges table with its kind, and siblings have no edge
- * between them because they share a parent.
- */
-export const FamilyPedigreeDataScene = defineScene(
-  5.2,
-  ({ t }) => {
-    const x = CONTENT.x + 40;
-    return {
-      body: (
-        <>
-          <DataTable
-            x={x}
-            y={CONTENT.y + 40}
-            width={300}
-            title={TEXT.nodes}
-            columns={['name', 'sex_at_birth', 'relationship']}
-            offsets={[0, 90, 190]}
-            rows={[
-              ['You', 'female', ''],
-              ['Mother', 'female', 'parent'],
-              ['Father', 'male', 'parent'],
-              ['Brother', 'male', 'sibling'],
-            ]}
-            reveal={(r) => smooth(segment(t, 0.5 + r * 0.25, 0.3))}
-            {...TABLE}
-          />
-          <DataTable
-            x={x + 330}
-            y={CONTENT.y + 40}
-            width={300}
-            title={TEXT.edges}
-            columns={['from', 'to', 'kind']}
-            offsets={[0, 90, 180]}
-            rows={[
-              ['Mother', 'Father', 'partner'],
-              ['Mother', 'You', 'biological'],
-              ['Father', 'You', 'biological'],
-              ['Mother', 'Brother', 'biological'],
-            ]}
-            reveal={(r) => smooth(segment(t, 1.6 + r * 0.25, 0.3))}
-            {...TABLE}
-          />
-          <Chip
-            x={CX}
-            y={CONTENT.bottom - 60}
-            text="Siblings share a parent: no edge between them"
-            size={13}
-            k={backOut(segment(t, 2.9, 0.4))}
-          />
-        </>
-      ),
-    };
-  },
-  { url: 'Exported data' },
-);
 
 /** The toolbar's buttons in the order the walkthrough numbers them. */
 const NUMBERED: readonly ToolKey[] = [
