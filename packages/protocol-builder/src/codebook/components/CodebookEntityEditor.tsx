@@ -58,6 +58,7 @@ import {
   ResourceClientProvider,
   useStagedResources,
 } from '../../resources/client.tsx';
+import { useDialogUploadCheckpoint } from '../../resources/useDialogUploadCheckpoint.ts';
 import type { ResourcePromotion } from '../../state/hooks.ts';
 import { useStagedCodebookStore } from '../../state/stagedCodebook.ts';
 import { codebookEditingMessages } from '../codebookMessages.ts';
@@ -971,7 +972,8 @@ export type CodebookEntityEditorProps = CommonEditorProps &
  * Opened from inside a stage editor it is part of that stage's edit instead:
  * its save is kept with the stage's draft (see `StagedCodebookStore`), so the
  * files imported in it are the stage edit's too, promoted by the stage's save
- * and discarded with its cancel.
+ * and discarded with its cancel. Those imported in a dialog that is cancelled
+ * are discarded with the dialog.
  */
 export default function CodebookEntityEditor(props: CodebookEntityEditorProps) {
   if (useStagedCodebookStore() !== undefined) {
@@ -1005,6 +1007,9 @@ function EntityEditor({
         };
   const staged = useStagedResources();
   const partOfStageEdit = useStagedCodebookStore() !== undefined;
+  // Files imported here and abandoned with the dialog are not the stage's to
+  // promote (see `useDialogUploadCheckpoint`).
+  const keepUploads = useDialogUploadCheckpoint(partOfStageEdit);
   // The save lives in the dialog's footer, outside the `<form>` element, so it
   // names the form it submits rather than being inside it.
   const formDomId = useId();
@@ -1104,7 +1109,8 @@ function EntityEditor({
       if (outcome.status === 'applied') {
         // Kept with a stage's draft, the files are still the stage's to
         // promote when it is saved.
-        if (!partOfStageEdit) staged.promoted();
+        if (partOfStageEdit) keepUploads();
+        else staged.promoted();
         if (modeProps.mode === 'create') modeProps.onApplied(outcome);
         else modeProps.onApplied?.(outcome);
         return;

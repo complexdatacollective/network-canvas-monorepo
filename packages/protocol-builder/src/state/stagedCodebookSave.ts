@@ -16,6 +16,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { attempt } from './attempt.ts';
+import { listWrittenSection } from './channel.ts';
 import type { CodebookRefusal } from './codebookRefusal.ts';
 import type { ProtocolBuilderAdapter } from './context.ts';
 import { mergeSection, type StagedCodebook } from './stagedCodebook.ts';
@@ -71,6 +72,7 @@ export function cacheSavedCodebook(
   codebook: CodebookSave | undefined,
   revision: Revision,
 ): void {
+  const deps = { adapter, queryClient, protocolId };
   for (const section of codebook?.sections ?? []) {
     queryClient.setQueryData<(typeof SectionAtRevisionSchema)['Type']>(
       adapter.rpcKey('GetSection', {
@@ -82,6 +84,10 @@ export function cacheSavedCodebook(
           ? cached
           : { document: Redacted.make(section.document), revision },
     );
+    // A section the save created is one the protocol's list does not hold yet
+    // either: without it, the type or attribute would be passed over by
+    // everything that enumerates sections until the event arrives.
+    listWrittenSection(deps, section.sectionId);
   }
 }
 

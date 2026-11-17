@@ -168,6 +168,18 @@ export async function readCreatedSection(
   updateSectionList(deps, sectionId, 'present');
 }
 
+/**
+ * Lists a section this client has just written into the protocol, so whatever
+ * enumerates sections (`ListSections`) finds it before the channel's event for
+ * it arrives. The section's own document is the caller's to cache.
+ */
+export function listWrittenSection(
+  deps: ChannelDeps,
+  sectionId: ProtocolSectionId,
+): void {
+  updateSectionList(deps, sectionId, 'present');
+}
+
 function updateSectionList(
   deps: ChannelDeps,
   sectionId: ProtocolSectionId,

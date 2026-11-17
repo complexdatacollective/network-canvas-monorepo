@@ -449,6 +449,33 @@ describe('cacheSavedCodebook', () => {
     },
   );
 
+  it('lists a section the save created, so the types it enumerates include it', () => {
+    const host = newHost();
+    const queryClient = new QueryClient();
+    const listKey = host.adapter.rpcKey('ListSections', {
+      protocolId: host.protocolId,
+    });
+    queryClient.setQueryData(listKey, { sectionIds: [PERSON] });
+
+    cacheSavedCodebook(
+      queryClient,
+      host.adapter,
+      host.protocolId,
+      {
+        sections: [
+          { sectionId: PERSON, document: { name: 'Person' } },
+          { sectionId: PLACE, document: { name: 'Place' } },
+        ],
+        staged: {},
+      },
+      revisionAt(7n),
+    );
+
+    expect(queryClient.getQueryData(listKey)).toEqual({
+      sectionIds: [PERSON, PLACE],
+    });
+  });
+
   it('caches nothing for a save without a codebook', () => {
     const host = newHost();
     const queryClient = new QueryClient();
