@@ -39,6 +39,26 @@ blocks or inline code. "Architect" is never written 架构师 and never shortene
 | protocol | 协议               | Only the interview design file (`.netcanvas`). A network protocol is named ("HTTPS"), or 网络协议 when generic. A licence is 许可证 and terms of use are 使用条款. |
 | schema   | 架构               | The protocol file format specification; schema 8 and schema 9 are its versions. Never bare (see below). Never 模式, 结构描述 or 结构定义.                          |
 
+## Logic in text and dynamic labels
+
+Text that shows values (a prompt, a form question, a node type's own label) can
+hold logic: an "If" whose rules the researcher sets, or different wording for
+each of an attribute's answers. The terms are the ones the editors ship.
+
+| English                    | Simplified Chinese        | Notes                                                                           |
+| -------------------------- | ------------------------- | ------------------------------------------------------------------------------- |
+| dynamic label              | 动态标签                  | The node type editor's section and toggle; “动态标签” when named in a sentence. |
+| default label              | 默认标签                  | The label the interview would otherwise choose for a node.                      |
+| logic (inserted in a text) | 逻辑                      | "插入逻辑", "逻辑按钮". Not 跳过逻辑, which is skip logic.                      |
+| If / If not                | 如果 / 如果不满足         | Names of a block's rows; “如果” in quotation marks when named in a sentence.    |
+| Else if / Else if not      | 否则如果 / 否则如果不满足 |                                                                                 |
+| Otherwise                  | 否则                      | The row shown when no rule set is met.                                          |
+| wording                    | 措辞                      | One version of a text: "每个回答使用不同的措辞".                                |
+| number of edges            | 关系数量                  | The rule that counts a node's edges.                                            |
+| pill                       | 胶囊块                    | The chip an inserted value or piece of logic is shown as.                       |
+| emoji                      | 表情符号                  |                                                                                 |
+| syringe button             | 注射器按钮                | The toolbar button that opens the menu of values.                               |
+
 ## Writing about the schema
 
 架构 is the term the apps ship ("架构版本 {version}", "升级到架构版本 {version}"), and the one Microsoft (XML 架构, Active Directory 架构) and Google BigQuery (表架构) use for "schema". Database textbooks use 模式; we deliberately do not, because the apps already use 模式 for "mode" (只读模式) and "pattern" (遗传模式).

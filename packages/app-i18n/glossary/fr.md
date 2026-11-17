@@ -171,6 +171,26 @@ l’entretien".
 | condition (Narrative Pedigree, Family Pedigree) | affection                                    | What participants see, and prose: "Présente cette affection" (about 29 strings use "affection"). In Architect’s Narrative Pedigree strings (the stage editor, the translation table, label-collision messages, the stage-type description), follow the English word: its "condition" strings say "affection" (« Nom de l’affection », « Sélectionnez une affection »), and its "disease" strings say "maladie" (section « Association des maladies », list « Maladies », button « Créer une maladie », field « Libellé de la maladie »; "Disease {n}" is « Maladie {n} »). Quote the labels when naming editor controls. Never "condition" or "pathologie".                                               |
 | interviewee                                     | personne interrogée                          | Only where the English contrasts the interviewee with the person conducting the interview; where "interviewee" means ego, write "l’ego" or "la personne participante" (Architect’s one "personne interrogée" string, which means ego, is being changed).                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
+## Logic in text and dynamic labels
+
+Text that shows values (a prompt, a form question, a node type's own label) can
+hold logic: an "If" whose rules the researcher sets, or different wording for
+each of an attribute's answers. The terms are the ones the editors ship.
+
+| English                    | French                     | Notes                                                                                      |
+| -------------------------- | -------------------------- | ------------------------------------------------------------------------------------------ |
+| dynamic label              | libellé dynamique          | The node type editor's section and toggle; « Libellé dynamique » when named in a sentence. |
+| default label              | libellé par défaut         | The label the interview would otherwise choose for a node.                                 |
+| logic (inserted in a text) | logique                    | "Insérer de la logique", "bouton de logique". Not "logique de saut", which is skip logic.  |
+| If / If not                | Si / Sauf si               | Names of a block's rows; « Si » in guillemets when named in a sentence.                    |
+| Else if / Else if not      | Sinon, si / Sinon, sauf si |                                                                                            |
+| Otherwise                  | Sinon                      | The row shown when no rule set is met.                                                     |
+| wording                    | formulation                | One version of a text: "une formulation différente pour chaque réponse".                   |
+| number of edges            | nombre de liens            | The rule that counts a node's edges.                                                       |
+| pill                       | pastille                   | The chip an inserted value or piece of logic is shown as.                                  |
+| emoji                      | emoji (emojis)             |                                                                                            |
+| syringe button             | bouton seringue            | The toolbar button that opens the menu of values.                                          |
+
 ## Inclusive language
 
 Use wording that is neutral by construction: "la personne participante", "les

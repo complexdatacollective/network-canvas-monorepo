@@ -39,6 +39,26 @@ blocks or inline code. "Architect" is never written 架構師 and never shortene
 | protocol | 協定                | On its own, only the interview design file (`.netcanvas`); 協定 is Taiwan's technical term, as in 通訊協定. Not 協議, the mainland technical term. Never use 協定 for an agreement; write 協議 there. A network protocol is named ("HTTPS"), or 通訊協定 when generic. A licence is 授權, terms of use 使用條款. |
 | schema   | 架構                | The protocol file format specification; schema 8 and schema 9 are its versions. Never bare (see below). Never 模式, 結構描述, 結構定義 or 綱要.                                                                                                                                                                  |
 
+## Logic in text and dynamic labels
+
+Text that shows values (a prompt, a form question, a node type's own label) can
+hold logic: an "If" whose rules the researcher sets, or different wording for
+each of an attribute's answers. The terms are the ones the editors ship.
+
+| English                    | Traditional Chinese       | Notes                                                                             |
+| -------------------------- | ------------------------- | --------------------------------------------------------------------------------- |
+| dynamic label              | 動態標籤                  | The node type editor's section and toggle; 「動態標籤」 when named in a sentence. |
+| default label              | 預設標籤                  | The label the interview would otherwise choose for a node.                        |
+| logic (inserted in a text) | 邏輯                      | "插入邏輯", "邏輯按鈕". Not 略過邏輯, which is skip logic.                        |
+| If / If not                | 如果 / 如果不符合         | Names of a block's rows; 「如果」 in quotation marks when named in a sentence.    |
+| Else if / Else if not      | 否則如果 / 否則如果不符合 |                                                                                   |
+| Otherwise                  | 否則                      | The row shown when no rule set is met.                                            |
+| wording                    | 措辭                      | One version of a text: "依每個答案選項使用不同措辭".                              |
+| number of edges            | 關係數量                  | The rule that counts a node's edges.                                              |
+| pill                       | 膠囊標記                  | The chip an inserted value or piece of logic is shown as.                         |
+| emoji                      | 表情符號                  |                                                                                   |
+| syringe button             | 注射器按鈕                | The toolbar button that opens the menu of values.                                 |
+
 ## Writing about the schema
 
 架構 is the term the apps ship ("架構版本 {version}", "升級至架構版本 {version}"), and it matches Simplified Chinese 架构. That consistency is the reason for it: Taiwan technical writing more often uses 結構描述 (Microsoft's SQL Server documentation) or 結構定義 (Google), with 架構 in some of Microsoft's .NET documentation ("XML 架構"). Not 模式, which the apps already use for "mode" (唯讀模式) and "pattern" (遺傳模式).
