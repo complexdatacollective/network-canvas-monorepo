@@ -47,9 +47,9 @@
 
 <!-- scene: alter-form-intro -->
 
-The Per Alter Form is a name interpreter: it collects information about alters already named, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each alter in turn. The alter is shown beside the form, or above it on a screen that is taller than it is wide, and the participant moves on to the next alter with the Next arrow.
+The Per Alter Form is a name interpreter: it collects information about alters already named, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms) for each alter in turn. The alter is shown beside the form, or above it on a screen that is taller than it is wide, and the participant moves on to the next alter with the Next arrow.
 
-Read the full [Per Alter Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form).
+Read the full [Per Alter Form documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form).
 
 ## What data it collects
 
@@ -63,9 +63,9 @@ Use this stage to ask the same few questions about every alter.
 
 > Do: Use it as a simple way to collect data on alters systematically.
 
-> Do: Place an [Information](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/information) stage before it, to tell participants about the form they will complete for each alter.
+> Do: Place an [Information](https://documentation.networkcanvas.com/design-protocols/interface-documentation/information) stage before it, to tell participants about the form they will complete for each alter.
 
-> Avoid: Too many fields or text-heavy questions. Consider more interactive interfaces, such as the [Categorical Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin) and [Ordinal Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin), to ease participant burden.
+> Avoid: Too many fields or text-heavy questions. Consider more interactive interfaces, such as the [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) and [Ordinal Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin), to ease participant burden.
 
 ## Choose what this stage shows
 
@@ -88,7 +88,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 The form holds the questions asked about each alter. Each field records one attribute of the alter, and the fields appear in the order listed here. The form has no title of its own. Instead, the alter it asks about is shown beside it.
 
-Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
+Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
 
 <!-- include: node-form-field -->
 

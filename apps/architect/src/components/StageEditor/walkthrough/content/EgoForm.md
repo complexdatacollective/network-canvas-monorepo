@@ -47,9 +47,9 @@
 
 <!-- scene: ego-form-intro -->
 
-The Ego Form collects data about the participant, known as **ego**, rather than about any alter. The participant completes one [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) about themselves. An introduction above the form explains what the form is for.
+The Ego Form collects data about the participant, known as **ego**, rather than about any alter. The participant completes one [form](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms) about themselves. An introduction above the form explains what the form is for.
 
-Read the full [Ego Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ego-form).
+Read the full [Ego Form documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ego-form).
 
 ## What data it collects
 
@@ -82,7 +82,7 @@ The introduction sits above the form, so the participant knows what the question
 
 The form holds the questions the participant answers about themselves. Each field records one attribute of ego, and the fields appear in the order listed here, in a single form the participant scrolls through.
 
-Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
+Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
 
 ## Choose what this field records
 
@@ -90,13 +90,6 @@ Read more about [forms](https://documentation.networkcanvas.com/en/design-protoc
 <!-- field: variable -->
 
 Each field saves its answer to an **attribute** of ego. Select an ego attribute already in the codebook, or create a new one.
-
-## Write the question
-
-<!-- dialog: form field -->
-<!-- field: prompt -->
-
-This is the question the participant reads above the input, such as _"How old are you?"_. The question is asked only once, about the participant themselves.
 
 <!-- include: form-field-details -->
 
@@ -111,7 +104,7 @@ When a form runs past the bottom of the screen and the participant has not used 
 
 This wording is shared by every Ego Form stage, so changing it here changes it on all of them. This section appears only after an Ego Form stage has been saved to the protocol.
 
-Read more about [translating your protocol](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol).
+Read more about [translating your protocol](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol).
 
 <!-- include: skip-logic -->
 

@@ -1,10 +1,21 @@
 <!--
   Shared steps for the form field window that hold for any form, whatever it
-  is about: hint, input control, options, validation and preview. A form's
-  own walkthrough writes the two steps before these (what the field records,
-  and its question), then includes these with the line
-  "include: form-field-details" in an HTML comment.
+  is about: question, hint, input control, options, validation and preview.
+  A form's own walkthrough writes the step before these (what the field
+  records), then includes these with the line "include: form-field-details"
+  in an HTML comment.
 -->
+
+## Write the question
+
+<!-- dialog: form field -->
+<!-- field: prompt -->
+
+This is the question the participant reads above the input. Keep the question short, especially on a form the participant answers for every alter or edge.
+
+> Do: Use [piped text](https://documentation.networkcanvas.com/design-protocols/piped-text) as part of the question to improve it
+
+> Avoid: Long questions with many clauses can be confusing or hard to read. State the question simply, and use hint text for details or examples.
 
 ## Add a hint
 
@@ -19,17 +30,15 @@ A hint appears in smaller text under the question. Use it to give an example or 
 <!-- field: _component -->
 <!-- scene: form-field-input-controls -->
 
-The **input control** is what the participant uses to answer, such as a text box, a set of options, a toggle or a slider. For a new attribute, the control you pick also sets the kind of data the attribute holds. For an existing attribute, only the controls that suit its type are offered.
+The **input control** is what the participant uses to answer. For a new attribute, the control you pick also sets the kind of data the attribute holds. For an existing attribute, only the controls that suit its type are offered.
 
-The choice of control appears once the field has an attribute, so in a new field, choose or create an attribute first.
-
-Read more about [input controls](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls).
+Read more about [input controls](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls).
 
 ## Set the options
 
 <!-- dialog: form field -->
 
-Controls that offer a choice, such as radio buttons, checkboxes or a Likert scale, need a list of options. Each option has a label, which the participant sees, and a value, which is saved in your data.
+Controls that offer a choice, such as radio buttons, checkboxes or a Likert scale, need a list of options. Each option has a label, which the participant sees, and a value, which is what appears in your exported data.
 
 ## Set validation rules
 
@@ -37,9 +46,9 @@ Controls that offer a choice, such as radio buttons, checkboxes or a Likert scal
 <!-- field: showValidationHints -->
 <!-- scene: form-field-validation -->
 
-Validation rules set conditions an answer must meet, such as being required or having a minimum length. The form cannot be saved until the answer meets them. Switch on **Show validation hints** to show participants the rules before they answer, rather than only after an answer breaks one.
+Validation rules set conditions an answer must meet, such as being required or having a minimum length. Switch on **Show validation hints** to show participants the rules as part of the hint text.
 
-Read more about [validation](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/field-validation).
+Read more about [validation](https://documentation.networkcanvas.com/design-protocols/key-concepts/field-validation).
 
 ## Try the field
 

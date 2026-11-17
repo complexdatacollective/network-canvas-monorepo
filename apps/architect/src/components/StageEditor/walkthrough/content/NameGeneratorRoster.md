@@ -49,7 +49,7 @@ Name generators are a fundamental part of a network interview. They let particip
 
 Network Canvas has several name generators, each suited to a different way of naming alters.
 
-Read the full [Name Generator for Roster Data documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
+Read the full [Name Generator for Roster Data documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
 
 ## This one uses a roster
 
@@ -57,7 +57,7 @@ Read the full [Name Generator for Roster Data documentation](https://documentati
 
 In the Name Generator for Roster Data, the participant does not type anything. Instead, the alters already exist in a **roster**: a data file you import, such as the members of a class or team. The screen is split in two, with a panel of **cards** on one side, one for each entry in the roster, and the participant's network on the other. The participant drags a card across to add that alter, and can drag the alter back to remove it.
 
-If participants should name alters you can't list in advance, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms) or the [Name Generator (using quick add)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add).
+If participants should name alters you can't list in advance, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms) or the [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add).
 
 ## What data it collects
 
@@ -71,7 +71,7 @@ Once an alter is added, its card leaves the list for the rest of the interview, 
 
 Use this stage when participants will nominate from a known set of alters, such as a class, a team or an organization.
 
-> Do: Make sure the roster file has a `name` attribute, so cards and nodes are labeled correctly. See [node labeling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling).
+> Do: Make sure the roster file has a `name` attribute, so cards and nodes are labeled correctly. See [node labeling](https://documentation.networkcanvas.com/design-protocols/key-concepts/node-labelling).
 
 > Do: Configure the display and sorting options of the cards, to help participants find entries in the roster.
 
@@ -98,7 +98,7 @@ If the type you need does not exist yet, you can create it here.
 
 The roster is the network data file that supplies this stage's alters. Choose the file first, because the later roster settings, such as what the cards show and what can be searched, are chosen from its columns. Once you choose a file, the editor lists the attributes its entries have.
 
-Read more about [preparing a roster file](https://documentation.networkcanvas.com/en/design-protocols/tutorials/working-with-rosters#how-to-create-a-roster).
+Read more about [preparing a roster file](https://documentation.networkcanvas.com/design-protocols/tutorials/working-with-rosters#how-to-create-a-roster).
 
 <!-- include: data-file -->
 
@@ -110,7 +110,7 @@ The prompt explains the task to the participant. It is the question shown at the
 
 Each roster entry can be added only once, so an alter added on the first prompt is no longer in the list on the second.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 <!-- include: name-generator-prompts -->
 
@@ -130,7 +130,7 @@ Every card is titled with the entry's name from the data file. Switch on **Card 
 
 Show whatever participants need to tell entries with similar names apart.
 
-Read more about [formatting the display of the roster](https://documentation.networkcanvas.com/en/design-protocols/tutorials/working-with-rosters#formatting-the-display-of-the-roster).
+Read more about [formatting the display of the roster](https://documentation.networkcanvas.com/design-protocols/tutorials/working-with-rosters#formatting-the-display-of-the-roster).
 
 ## Set the starting order
 
@@ -185,7 +185,7 @@ These messages can include the node type's name, so give the node type a name th
 
 A message also appears when the participant drags an added alter back to remove it. Its wording is under **Shared by every stage of this kind**, so changing it changes it on every roster stage. **Shared by every stage of this kind** appears only after a roster stage has been saved to the protocol.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 <!-- include: skip-logic -->
 

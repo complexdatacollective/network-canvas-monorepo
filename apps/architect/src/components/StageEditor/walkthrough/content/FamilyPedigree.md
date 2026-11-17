@@ -17,7 +17,7 @@ Once the family is drawn, nomination prompts can ask participants to select anyo
 
 The stage suits family-history taking, such as a quick survey of a condition across relatives. It also suits studies of who a participant counts as family, whether biological, chosen or both.
 
-Read the full [Family Pedigree documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/family-pedigree).
+Read the full [Family Pedigree documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/family-pedigree).
 
 ## What data it collects
 
@@ -27,7 +27,7 @@ This stage collects a participant's family: its members and the relationships be
 
 ## When to use it
 
-Use this stage when you need a participant's family as a structure: who is related to whom, and how. Pair it with a [Narrative Pedigree](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative-pedigree) to show the participant how a condition may run through the family they drew.
+Use this stage when you need a participant's family as a structure: who is related to whom, and how. Pair it with a [Narrative Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree) to show the participant how a condition may run through the family they drew.
 
 ## The tools on the canvas
 
@@ -206,7 +206,7 @@ A ring in the toolbar fills as the family nears what you require, and pointing a
 
 This section holds the wording Network Canvas supplies for this stage, including the side panel's questions, the connect and disconnect messages, and the completeness checklist when completeness is switched on. Many of these items have one version about the participant and another about someone else. Wording that every Family Pedigree stage shows, such as the tool names, is under **Shared by every stage of this kind**, and a change there applies to every stage that shows it.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 ## Ask about the whole family
 

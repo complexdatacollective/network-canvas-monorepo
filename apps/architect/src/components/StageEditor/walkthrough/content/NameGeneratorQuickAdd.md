@@ -51,13 +51,13 @@ Name generators are a fundamental part of a network interview. They let particip
 
 The form and quick-add name generators have the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds an alter, and optionally one or two **side panels**.
 
-Read the full [Name Generator using Quick Add documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add).
+Read the full [Name Generator using Quick Add documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add).
 
 ## This one uses quick add
 
 In the Name Generator (using quick add), the add button opens a text box. The participant types a short label, usually a name, and presses Enter to add the alter. This is the quickest way to name many alters.
 
-If you also want to ask a few questions about each alter as it is named, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms). If you already have a list of the alters participants might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
+If you also want to ask a few questions about each alter as it is named, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms). If you already have a list of the alters participants might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
 
 ## What data it collects
 
@@ -90,7 +90,7 @@ Whatever the participant types into the box is saved to one text **attribute**. 
 
 > Do: Use an attribute called `name` unless you have a good reason to use another. Keep in mind that Network Canvas will label nodes using this variable throughout the interview.
 
-Read more about [node labeling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling).
+Read more about [node labeling](https://documentation.networkcanvas.com/design-protocols/key-concepts/node-labelling).
 
 ## Decide whether an answer is required
 
@@ -100,7 +100,7 @@ The **Validation** section under the picker holds the rules for what the partici
 
 These rules belong to the attribute in the codebook, so a change applies wherever a value for this attribute is typed in, not only on this stage.
 
-Read more about [field validation](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/field-validation).
+Read more about [field validation](https://documentation.networkcanvas.com/design-protocols/key-concepts/field-validation).
 
 <!-- include: attribute-search -->
 
@@ -111,7 +111,7 @@ Read more about [field validation](https://documentation.networkcanvas.com/en/de
 
 The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Who have you discussed important matters with in the last six months?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 <!-- include: name-generator-prompts -->
 
@@ -143,7 +143,7 @@ Each of these messages can include the node type's name, so give the node type a
 
 If the participant hasn't pressed Enter after a few seconds, a hint reminds them to. The wording of this hint is under **Shared by every stage of this kind**, so changing it changes it on every quick-add stage. **Shared by every stage of this kind** appears only after a quick-add stage has been saved to the protocol.
 
-Read more about [translating your protocol](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol).
+Read more about [translating your protocol](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol).
 
 <!-- include: skip-logic -->
 

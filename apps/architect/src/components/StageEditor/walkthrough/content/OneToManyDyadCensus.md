@@ -47,9 +47,9 @@
 
 <!-- scene: one-to-many-intro -->
 
-The One to Many Dyad Census is a name interpreter that collects edges between alters already named. Unlike the [Dyad Census](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census), it does not ask about one pair at a time. Instead, it shows the participant one alter, the **focal node**, above a list of the other alters. The participant taps every alter in the list that the question applies to, then moves on to the next focal node.
+The One to Many Dyad Census is a name interpreter that collects edges between alters already named. Unlike the [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census), it does not ask about one pair at a time. Instead, it shows the participant one alter, the **focal node**, above a list of the other alters. The participant taps every alter in the list that the question applies to, then moves on to the next focal node.
 
-Read the full [One to Many Dyad Census documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/one-to-many-dyad-census).
+Read the full [One to Many Dyad Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/one-to-many-dyad-census).
 
 ## What data it collects
 
@@ -63,7 +63,7 @@ This stage collects edges between alters already named. Each alter the participa
 
 > Do: Use this interface in favor of the standard Dyad Census when you expect that one alter will have many relationships with others, as it simplifies the process for participants.
 
-> Avoid: Using this interface with a large number of alters, which will still result in many screens. There is one screen per focal node, so the number of screens grows in line with the number of alters. If you have many alters, consider other methods to collect edges, such as the [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram).
+> Avoid: Using this interface with a large number of alters, which will still result in many screens. There is one screen per focal node, so the number of screens grows in line with the number of alters. If you have many alters, consider other methods to collect edges, such as the [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
 ## Choose what this stage shows
 
@@ -85,7 +85,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt asks about one kind of relationship. The participant goes through every focal node for the first prompt, then every focal node again for the next.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 ## Write the prompt text
 

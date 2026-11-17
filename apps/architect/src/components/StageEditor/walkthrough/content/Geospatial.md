@@ -51,7 +51,7 @@ The Geospatial stage is a name interpreter: it collects information about alters
 
 The map is drawn by Mapbox, a map service, so the stage needs an internet connection during the interview.
 
-Read the full [Geospatial documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/geospatial).
+Read the full [Geospatial documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/geospatial).
 
 ## What data it collects
 
@@ -75,7 +75,7 @@ Choose the **node type** this stage asks about, for example _Person_. The partic
 
 Changing the node type later clears this stage's other settings, including the map settings, because they depend on the node type. Only the stage's name, interviewer notes and built-in wording are kept. Architect asks you to confirm first.
 
-> Do: Consider using a **Stage filter** to narrow down nodes to only those that fall within the selectable map areas. An earlier stage, such as a [Categorical Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin) or [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form), can capture the attribute to filter on, so participants are only asked about relevant nodes.
+> Do: Consider switching on **Filter network** to narrow down nodes to only those that fall within the selectable map areas. An earlier stage, such as a [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) or [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), can capture the attribute to filter on, so participants are only asked about relevant nodes.
 
 <!-- include: node-type -->
 
@@ -92,7 +92,7 @@ The map can only be drawn with an API key from your own [Mapbox](https://www.map
 
 The key is stored with the protocol's resources, so every Geospatial stage in the protocol can use the same one.
 
-Read how to [get a Mapbox key](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/geospatial#mapbox-configuration).
+Read how to [get a Mapbox key](https://documentation.networkcanvas.com/design-protocols/interface-documentation/geospatial#mapbox-configuration).
 
 ## Add or choose the key
 
@@ -117,7 +117,7 @@ The **Layer data source** is a [GeoJSON](https://geojson.org/) file that outline
 
 Import a `.geojson` file from your computer, or choose one already stored in this protocol. The file is stored inside the protocol, so every participant sees the same areas.
 
-Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
+Read more about [resources](https://documentation.networkcanvas.com/design-protocols/key-concepts/resources).
 
 ## Choose what a selection records
 
@@ -135,7 +135,7 @@ The **Map selection property** is the property whose value is saved when the par
 
 Each prompt asks one question about where the alters are, and records the answer in its own location attribute. The participant answers the first prompt for every alter, then the next prompt for every alter.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 ## Write the prompt text
 
@@ -207,7 +207,7 @@ This section holds the wording Network Canvas supplies for the map, which you ca
 
 Under **Shared by every stage of this kind** are the messages shown when the map can't be used as usual: while the device is offline, when the map can't be drawn, and when a search fails. A change to these messages applies to every Geospatial stage.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 <!-- include: skip-logic -->
 

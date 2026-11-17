@@ -49,9 +49,9 @@
 
 On the Sociogram, participants work with the alters they have already named. They position the alters on a canvas, draw edges between them, and tap an alter to highlight it. Each edge is saved as one of the stage's edge types, and highlighting an alter sets a true/false attribute to true for it. The Sociogram does not create new nodes.
 
-Its companion, the [Narrative](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative) Interface, displays a network the participant has already laid out so that it can be discussed. It collects no new data.
+Its companion, the [Narrative](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative) Interface, displays a network the participant has already laid out so that it can be discussed. It collects no new data.
 
-Read the full [Sociogram documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram).
+Read the full [Sociogram documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
 ## What data it collects
 
@@ -89,7 +89,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt sets one task on the canvas, such as placing nodes, drawing one kind of edge, or marking nodes with a characteristic. The participant works through the prompts one at a time, in the order you set, on the same canvas.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 ## Write the prompt text
 
@@ -112,7 +112,7 @@ To create a new layout attribute, type its name in the picker. A layout attribut
 
 > Do: Keep the same layout attribute across a stage's prompts when you want participants to build up one arrangement of their network, so the positions they set on an early prompt are still there on later ones.
 
-Read more about [variables](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/variables).
+Read more about [variables](https://documentation.networkcanvas.com/design-protocols/key-concepts/variables).
 
 ## Order the nodes waiting to be placed
 
@@ -153,7 +153,7 @@ The background sits behind the whole stage. **Concentric Circles** draws a numbe
 
 > Do: Consider customizing the background to orient participants to the activity or to give the layout meaning, for example dividing the canvas into quadrants or social contexts that positions can then be read against.
 
-Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/en/design-protocols/responsive-svg-backgrounds).
+Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/design-protocols/responsive-svg-backgrounds).
 
 ## Pick the background image
 
@@ -161,7 +161,7 @@ Read more about [responsive SVG backgrounds](https://documentation.networkcanvas
 
 Import an image from your computer, or choose one already stored in this protocol. A responsive SVG keeps its regions and labels readable as the canvas changes between portrait and landscape.
 
-Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
+Read more about [resources](https://documentation.networkcanvas.com/design-protocols/key-concepts/resources).
 
 ## Choose how nodes are first arranged
 

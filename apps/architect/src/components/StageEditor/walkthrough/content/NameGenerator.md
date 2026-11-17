@@ -51,7 +51,7 @@ Name generators are a fundamental part of a network interview. They let particip
 
 The form and quick-add name generators have the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds an alter, and optionally one or two **side panels**.
 
-Read the full [Name Generator using Forms documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms).
+Read the full [Name Generator using Forms documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms).
 
 ## This one uses a form
 
@@ -59,7 +59,7 @@ Read the full [Name Generator using Forms documentation](https://documentation.n
 
 In the Name Generator (using forms), the add button opens a **form** that the participant fills in to create each node. The form can include one or more fields, each capturing an attribute of the node. This stage therefore lets participants name alters and answer a few basic questions about each one, a task known as name interpreting, at the same time.
 
-If you only need names, the [Name Generator (using quick add)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants. If you already have a list of the alters they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
+If you only need names, the [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants. If you already have a list of the alters they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
 
 ## What data it collects
 
@@ -71,11 +71,11 @@ This stage collects new alters and attributes of each one. In your exported data
 
 Use this stage when you want to collect a small amount of information about each alter at the moment it is named.
 
-> Do: Use this interface when you want to collect small amounts of attribute data at the same time as a node is elicited. This can be more efficient than adding additional [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form) Interfaces, or dedicated name interpreter Interfaces later.
+> Do: Use this interface when you want to collect small amounts of attribute data at the same time as a node is elicited. This can be more efficient than adding additional [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form) Interfaces, or dedicated name interpreter Interfaces later.
 
 > Avoid: Resist the urge to create long forms with many items. This may discourage participants from naming additional alters, as it will make the task of nominating an alter more burdensome.
 
-> Avoid: Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin) Interface.
+> Avoid: Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin) Interface.
 
 ## Choose what this stage creates
 
@@ -95,9 +95,9 @@ If the type you need does not exist yet, you can create it here.
 
 The form holds the questions the participant answers each time they add a node. The **form title** is the heading shown at the top of the form, such as _Add a person_. Each field below it records one attribute of the node.
 
-> Do: Include a field for an attribute called `name`, so [node labeling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling) works correctly everywhere else in the interview.
+> Do: Include a field for an attribute called `name`, so [node labeling](https://documentation.networkcanvas.com/design-protocols/key-concepts/node-labelling) works correctly everywhere else in the interview.
 
-Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
+Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
 
 <!-- include: node-form-field -->
 
@@ -112,7 +112,7 @@ Read more about [forms](https://documentation.networkcanvas.com/en/design-protoc
 
 The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Who have you discussed important matters with in the last six months?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 <!-- include: name-generator-prompts -->
 
@@ -137,7 +137,7 @@ Once the participant reaches the maximum, the add button is switched off and the
 
 This section appears only once the stage has a nomination limit. It holds the **Minimum not reached** and **Maximum reached** messages that Network Canvas supplies. Switch it on to rewrite them for your study. Both messages can include the node type's name, so give the node type a name that reads naturally to participants.
 
-Read more about [translating your protocol](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol).
+Read more about [translating your protocol](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol).
 
 <!-- include: skip-logic -->
 

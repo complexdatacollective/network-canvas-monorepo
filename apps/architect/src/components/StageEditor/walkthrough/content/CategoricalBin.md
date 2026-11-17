@@ -49,7 +49,7 @@
 
 The Categorical Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into a colored circle. Each circle stands for one category, such as _Family_, _Work_ or _School_. Tapping a circle opens it, so the participant can move the alters inside to another category.
 
-Read the full [Categorical Bin documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin).
+Read the full [Categorical Bin documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin).
 
 ## What data it collects
 
@@ -61,11 +61,11 @@ This stage collects one categorical attribute for each prompt. The circle an alt
 
 Use this stage to sort alters into categories that have no order.
 
-> Do: Use it to collect nominal data on alters. A toggle button group [input control](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls) on another interface can collect the same data, but dragging alters into bins is more tactile and engaging for participants.
+> Do: Use it to collect nominal data on alters. A toggle button group [input control](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls) on another interface can collect the same data, but dragging alters into bins is more tactile and engaging for participants.
 
 > Avoid: More than eight categories. More make the category labels hard to read and crowd the rest of the screen.
 
-> Avoid: Dichotomous variables. A yes-or-no answer is better collected with a toggle [input control](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls) on a [Name Generator](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms) or [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form), or by attribute toggling on a [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram).
+> Avoid: Dichotomous variables. A yes-or-no answer is better collected with a toggle [input control](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls) on a [Name Generator](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms) or [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), or by attribute toggling on a [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
 ## Choose what this stage shows
 
@@ -87,7 +87,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt asks one question and sorts the alters by one categorical attribute. The participant sees one prompt at a time, in the order you set. An alter waits in the drawer until it has a value for the current prompt's attribute, or an answer for the prompt's Other circle.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 ## Write the prompt text
 
@@ -107,7 +107,7 @@ Under **Categorical response**, pick the categorical attribute this prompt recor
 
 <!-- dialog: create prompt | edit prompt -->
 
-The attribute's values are listed below the picker, and you can edit them here. Each value has a label, which the participant reads on its circle, and a value, which is saved in your data. Your edits are saved when you save the prompt. A label can be as long as a short sentence, but check your longest label in [Preview](https://documentation.networkcanvas.com/en/design-protocols/preview-mode).
+The attribute's values are listed below the picker, and you can edit them here. Each value has a label, which the participant reads on its circle, and a value, which is saved in your data. Your edits are saved when you save the prompt. A label can be as long as a short sentence, but check your longest label in [Preview](https://documentation.networkcanvas.com/design-protocols/preview-mode).
 
 ## Add an Other circle
 
@@ -156,7 +156,7 @@ While **Require every node to be placed** is switched on, this section holds **N
 
 Once the protocol has a Categorical Bin stage, the section also holds **Place here**, the wording of the button on an opened circle while **Tap to place** is on. It is under **Shared by every stage of this kind**, so changing it changes it on every Categorical Bin stage.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 <!-- include: skip-logic -->
 

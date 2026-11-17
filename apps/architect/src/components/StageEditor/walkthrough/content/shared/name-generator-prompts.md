@@ -18,4 +18,4 @@ This is the question the participant reads while adding alters. Ask about one re
 
 You can set an attribute on every node added in response to this prompt, such as `discuss_matters` set to true. Your data then shows which question each alter was added for, even when several prompts share one stage. Attributes the participant fills in on this stage cannot be set here.
 
-Read more about [additional attributes](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/additional-variables).
+Read more about [additional attributes](https://documentation.networkcanvas.com/design-protocols/key-concepts/additional-variables).

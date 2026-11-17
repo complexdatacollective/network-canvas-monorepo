@@ -5,6 +5,8 @@
 
 ## Try it in Preview
 
-Use **Preview** in the toolbar to try this stage as a participant will see it. To fill the interview with example alters, open **Preview settings**, next to **Preview**, and switch on **Start preview with example data**.
+Use **Preview** in the toolbar to open this stage in a mock interview environment so that you can experience it as a participant will.
+
+By default, preview mode will create sample data. To see the stage without any sample data, open **Preview settings**, next to **Preview**, and switch off **Start preview with example data**.
 
 When you're happy with the stage, click **Finished Editing** in the toolbar to save your changes. The button appears only when there are changes to save.

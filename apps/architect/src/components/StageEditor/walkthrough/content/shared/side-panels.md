@@ -15,7 +15,7 @@ A side panel lists nodes beside the question, so the participant can drag them i
 
 A stage can have up to two panels, for example one listing alters already named and one listing a roster.
 
-Read more about [working with roster data](https://documentation.networkcanvas.com/en/design-protocols/tutorials/working-with-rosters).
+Read more about [working with roster data](https://documentation.networkcanvas.com/design-protocols/tutorials/working-with-rosters).
 
 ## Name the panel
 
@@ -41,4 +41,4 @@ The title appears at the top of the panel in the interview, for example _People 
 
 Switch on **Panel filter** to show only some of the nodes, for example only nodes whose `close_friend` attribute is true, or only roster rows for one class. The filter applies to every prompt of this stage. Without a filter, the panel shows every node in its source that isn't already on this prompt.
 
-Read more about [network filtering](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/network-filtering).
+Read more about [network filtering](https://documentation.networkcanvas.com/design-protocols/key-concepts/network-filtering).

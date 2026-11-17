@@ -49,7 +49,7 @@
 
 The Ordinal Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into a **bin**. The bins sit in a row and are ordered along a scale, such as from _Not close_ to _Extremely close_. After placing an alter, the participant can move it to another bin.
 
-Read the full [Ordinal Bin documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin).
+Read the full [Ordinal Bin documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin).
 
 ## What data it collects
 
@@ -61,11 +61,11 @@ This stage collects one ordinal attribute for each prompt. The bin an alter is p
 
 Use this stage to rate alters on an ordered scale.
 
-> Do: Use it to collect ordinal or interval scale data on alters. A Likert scale [input control](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls) on another interface can collect the same data, but dragging alters into bins is more tactile and engaging for participants.
+> Do: Use it to collect ordinal or interval scale data on alters. A Likert scale [input control](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls) on another interface can collect the same data, but dragging alters into bins is more tactile and engaging for participants.
 
 > Avoid: Scales of more than six bins. Larger scales make the bin labels hard to read and crowd the rest of the screen.
 
-> Avoid: Collecting nominal data that would suit the [Categorical Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin) better.
+> Avoid: Collecting nominal data that would suit the [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) better.
 
 ## Choose what this stage shows
 
@@ -87,7 +87,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt asks one question and sorts the alters by one ordinal attribute. The participant sees one prompt at a time, in the order you set. An alter waits in the drawer until it has a value for the current prompt's attribute, so if a prompt reuses an earlier prompt's attribute, the alters placed on the earlier prompt start out in their bins.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 ## Write the prompt text
 
@@ -107,7 +107,7 @@ Under **Ordinal response**, pick the ordinal attribute this prompt records. Its 
 
 <!-- dialog: create prompt | edit prompt -->
 
-The attribute's values are listed below the picker, and you can edit them here. Each value has a label, which the participant reads on its bin, and a value, which is saved in your data. Your edits are saved when you save the prompt. A label can be as long as a short sentence, but check your longest label in [Preview](https://documentation.networkcanvas.com/en/design-protocols/preview-mode).
+The attribute's values are listed below the picker, and you can edit them here. Each value has a label, which the participant reads on its bin, and a value, which is saved in your data. Your edits are saved when you save the prompt. A label can be as long as a short sentence, but check your longest label in [Preview](https://documentation.networkcanvas.com/design-protocols/preview-mode).
 
 ## Choose the color gradient
 
@@ -149,7 +149,7 @@ Switch on **Require every node to be placed** to stop the participant from leavi
 
 This section appears only while **Require every node to be placed** is switched on. It holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. The message can include the node type's name, so give the node type a name that reads naturally to participants.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 <!-- include: skip-logic -->
 

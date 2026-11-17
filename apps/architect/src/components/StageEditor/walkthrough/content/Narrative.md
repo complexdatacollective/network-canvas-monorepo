@@ -49,9 +49,9 @@
 
 The Narrative shows the participant's network back to them for discussion, replaying an arrangement they made earlier. The interviewer or participant switches between **presets**, each a different view of the same network. A preset sets which edges are drawn, which nodes are grouped, and which nodes are highlighted. The Narrative does not create nodes or collect data.
 
-Its companion, the [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram), is where participants lay out the network this stage shows.
+Its companion, the [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram), is where participants lay out the network this stage shows.
 
-Read the full [Narrative documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative).
+Read the full [Narrative documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative).
 
 ## What data it collects
 
@@ -59,7 +59,7 @@ Read the full [Narrative documentation](https://documentation.networkcanvas.com/
 
 This stage collects no data. Nothing done here is saved to the participant's network: switching presets, moving nodes and drawing on the canvas all leave your exported data exactly as it was.
 
-> Avoid: Relying on the Narrative to collect data. If you need to record an attribute or an edge a participant identifies while talking, gather it on a data-collecting stage such as the [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram) or a name interpreter.
+> Avoid: Relying on the Narrative to collect data. If you need to record an attribute or an edge a participant identifies while talking, gather it on a data-collecting stage such as the [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram) or a name interpreter.
 
 ## When to use it
 
@@ -106,7 +106,7 @@ The **Preset label** names this view in the preset switcher. The participant see
 
 The **Layout attribute** decides where each node is drawn. Only nodes with a value for this attribute appear, so if no node has one, the canvas is empty.
 
-> Do: Reuse the layout attribute your participants filled in on an earlier [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram). This replays their own arrangement of the network rather than starting from an empty canvas.
+> Do: Reuse the layout attribute your participants filled in on an earlier [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram). This replays their own arrangement of the network rather than starting from an empty canvas.
 
 ## Group nodes that share a category
 
@@ -137,7 +137,7 @@ Tick the **Highlight attributes** this preset offers. These are true or false at
 
 The background sits behind the whole stage. **Concentric Circles** draws rings, and you choose how many. **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.
 
-Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/en/design-protocols/responsive-svg-backgrounds).
+Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/design-protocols/responsive-svg-backgrounds).
 
 ## Pick the background image
 
@@ -145,7 +145,7 @@ Read more about [responsive SVG backgrounds](https://documentation.networkcanvas
 
 Import an image from your computer, or choose one already stored in this protocol. A responsive SVG keeps its regions and labels readable as the canvas changes between portrait and landscape.
 
-Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
+Read more about [resources](https://documentation.networkcanvas.com/design-protocols/key-concepts/resources).
 
 ## Arrange nodes automatically
 
@@ -175,7 +175,7 @@ With **Allow repositioning** on, nodes can be dragged around the canvas while yo
 
 This section appears when any preset groups nodes, draws edges or highlights attributes, or when free-draw is on. It holds the headings of the preset switcher's lists: **Attributes**, **Links** and **Groups**. While free-draw is on, it also holds the names of the drawing buttons.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 <!-- include: skip-logic -->
 

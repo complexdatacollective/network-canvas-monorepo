@@ -41,7 +41,7 @@ const TEXT = {
   bucketOrder: 'Bucket order: name, A to Z',
   network: 'In the interview',
   thisStage: 'On this stage',
-  filter: 'Stage filter: close_friend is true',
+  filter: 'Filter network: close_friend is true',
   tagged: 'close_friend',
   summary: (name: string, more: number) =>
     more > 0 ? `${name} +${more}` : name,
@@ -1192,5 +1192,5 @@ export const StageFilterScene = defineScene(
       ),
     };
   },
-  { url: 'Stage filter' },
+  { url: 'Filter network' },
 );

@@ -11,11 +11,11 @@
 
 <!-- scene: narrative-pedigree-intro -->
 
-The Narrative Pedigree shows the participant the family they drew on an earlier [Family Pedigree](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/family-pedigree), laid out as a conventional pedigree. When the participant picks a condition from the menu in the toolbar, each relative is marked with their status for that condition. Each status is worked out from who was nominated as having the condition and how they are related. A key beside the pedigree explains the symbols. Selecting a person highlights the relatives the condition could have passed through.
+The Narrative Pedigree shows the participant the family they drew on an earlier [Family Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/family-pedigree), laid out as a conventional pedigree. When the participant picks a condition from the menu in the toolbar, each relative is marked with their status for that condition. Each status is worked out from who was nominated as having the condition and how they are related. A key beside the pedigree explains the symbols. Selecting a person highlights the relatives the condition could have passed through.
 
 The stage turns the answers into a picture that a participant, researcher or clinician can talk through together.
 
-Read the full [Narrative Pedigree documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative-pedigree).
+Read the full [Narrative Pedigree documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree).
 
 ## What data it collects
 
@@ -107,7 +107,7 @@ Possible statuses are off by default. While **Show possible (at-risk) statuses**
 
 This section holds the wording Network Canvas supplies for this stage: the **Save snapshot** button, the "Select a condition" choice in the menu, and the titles of saved snapshots. The zoom button labels, which this stage shares with the Family Pedigree, are under **Shared by every stage of this kind**.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 <!-- include: skip-logic -->
 

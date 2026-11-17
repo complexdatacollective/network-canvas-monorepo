@@ -51,7 +51,7 @@ The Language Chooser is a screen where the participant chooses the language for 
 
 When the participant chooses a language, this screen and every screen after it switch to that language straight away. The participant can change their mind before moving on, and can move on without choosing anything.
 
-Read the full [Language Chooser documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/language-chooser).
+Read the full [Language Chooser documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/language-chooser).
 
 ## What data it collects
 
@@ -82,7 +82,7 @@ The **Heading** is shown above the list of languages. A new Language Chooser sta
 
 When the **Customize built-in wording** section is switched off, the stage uses Network Canvas's wording. The section starts switched on when your protocol has more than one language, so you can check the heading in each language. If Network Canvas has no wording in your default language, the section can't be switched off, and the protocol can't be downloaded until you write the heading in that language.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 ## See where the languages come from
 
@@ -95,7 +95,7 @@ The interview sorts the languages alphabetically by their own names, so the orde
 
 > Do: Translate every text of your protocol into each of its languages before you start collecting data. A **Missing translations** badge marks each language that some texts aren't translated into yet, and the translation table on the **Languages** page shows what is still missing.
 
-Read more about [managing your protocol's languages](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#managing-your-protocols-languages).
+Read more about [managing your protocol's languages](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#managing-your-protocols-languages).
 
 ## Choose the default language
 
@@ -104,7 +104,7 @@ Read more about [managing your protocol's languages](https://documentation.netwo
 
 Once your protocol has more than one language, choose its **Default language** here. Participants see the default language wherever text has no translation in the language they use. The interview also starts in the default language if the participant's browser doesn't prefer any of your protocol's languages.
 
-Read more about [the default language](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
+Read more about [the default language](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
 
 ## Add a language
 
@@ -129,7 +129,7 @@ The delete button at the end of a language's row removes that language and delet
 
 If text was recorded under the wrong language, use the button with two arrows to record that language's translations as a different language. Nothing is translated or deleted.
 
-Read more about [removing a language](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#removing-a-language).
+Read more about [removing a language](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#removing-a-language).
 
 ## Choose the right language
 

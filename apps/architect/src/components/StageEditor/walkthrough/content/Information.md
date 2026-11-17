@@ -49,7 +49,7 @@
 
 The Information stage is a page the participant reads before moving on. It shows a heading, followed by blocks of text, images, video and audio in the order you set. It asks no questions and does not create nodes or edges.
 
-Read the full [Information documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/information).
+Read the full [Information documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/information).
 
 ## What data it collects
 
@@ -59,7 +59,7 @@ This stage collects no data. Nothing the participant does here, such as reading 
 
 ## When to use it
 
-Use this stage to introduce your study, or to explain the task on the stage that follows it, such as before a [Dyad Census](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census).
+Use this stage to introduce your study, or to explain the task on the stage that follows it, such as before a [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census).
 
 > Do: Use it to explain stage activities to participants to increase comprehension and engagement. This may be especially important for increasing survey accessibility.
 
@@ -103,7 +103,7 @@ For a text item, the **Content** is what the participant reads. The toolbar adds
 
 For an image, video or audio item, the **Content** is a file stored in the protocol. You import or choose the file in a separate window. Audio and video start playing as soon as the page opens, and the participant can pause and replay them with the media controls. Video starts muted and loops.
 
-Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
+Read more about [resources](https://documentation.networkcanvas.com/design-protocols/key-concepts/resources).
 
 ## Describe the media
 
@@ -126,7 +126,7 @@ Images and videos have a **Display size**. **Full size** shows them at their nat
 
 Import a file from your computer, or choose one already stored in this protocol. Images can be JPG, GIF, PNG or SVG files. Videos can be MP4 or MOV files, and audio can be MP3, M4A or AIFF files.
 
-Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
+Read more about [resources](https://documentation.networkcanvas.com/design-protocols/key-concepts/resources).
 
 <!-- include: skip-logic -->
 

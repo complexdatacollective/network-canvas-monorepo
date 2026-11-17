@@ -15,7 +15,7 @@ The Network Composer builds a whole network on one canvas. Instead of moving thr
 
 The Network Composer is dense and fast to use. It is meant for a researcher or interviewer, working with or without a participant, to sketch, pilot or model a network.
 
-Read the full [Network Composer documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/network-composer).
+Read the full [Network Composer documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/network-composer).
 
 ## What data it collects
 
@@ -78,7 +78,7 @@ Pick a text attribute, or type a new name in the picker to create one. No window
 <!-- field: layoutVariable -->
 <!-- scene: network-composer-positions -->
 
-The **layout attribute** stores where each node sits on the canvas, as a pair of coordinates from 0 to 1. It updates every time a node is moved. Reusing the same layout attribute on a later [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram) or [Narrative](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative) stage carries the arrangement over.
+The **layout attribute** stores where each node sits on the canvas, as a pair of coordinates from 0 to 1. It updates every time a node is moved. Reusing the same layout attribute on a later [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram) or [Narrative](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative) stage carries the arrangement over.
 
 > Avoid: Treating where alters sit as if it were measured data. On-screen position is soft and is interpreted differently by different people. If ring or zone membership matters to your analysis, capture it as an explicit attribute instead of inferring it from coordinates.
 
@@ -118,7 +118,7 @@ Once the stage has a grouping attribute, the interviewer can also select several
 
 Give the attribute a name, then use **Create new option** under **Choice values** to add one option for each group. Each option's label is what the interviewer sees in the Groups tool and on the group buttons, and its value is what is saved in your data.
 
-Read more about [variables and attributes](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/variables).
+Read more about [variables and attributes](https://documentation.networkcanvas.com/design-protocols/key-concepts/variables).
 
 ## Ask about each node
 
@@ -147,7 +147,7 @@ The **input control** decides what the interviewer uses to answer, such as a tex
 
 Unlike on other forms, the input control is chosen here, on the stage, rather than on the attribute. This means the same attribute can be collected with a different input control on another stage. For a new attribute, the input control you pick also decides what kind of answer the attribute holds.
 
-Read more about [input controls](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls).
+Read more about [input controls](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls).
 
 ## Set what the field accepts
 
@@ -178,7 +178,7 @@ Every field needs a **question**. The question starts as the attribute's name, s
 
 The validation rules come from the attribute, such as being required or having a minimum length. Switch on **Show validation hints** to show the interviewer what a valid answer looks like before they answer.
 
-Read more about [validation](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/field-validation).
+Read more about [validation](https://documentation.networkcanvas.com/design-protocols/key-concepts/field-validation).
 
 ## Try the field
 
@@ -232,7 +232,7 @@ This section holds the wording Network Canvas supplies for the canvas, including
 
 **Connection label** is the panel title for an edge whose type this stage does not draw, such as an edge drawn on an earlier stage.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 ## Choose the background
 
@@ -243,7 +243,7 @@ The background sits behind the whole canvas. **Concentric Circles** draws rings,
 
 > Do: Customize the background to orient placement, for example using rings to suggest closeness. Position is stored as raw coordinates, so treat any spatial meaning as a cue for discussion rather than a measurement.
 
-Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/en/design-protocols/responsive-svg-backgrounds).
+Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/design-protocols/responsive-svg-backgrounds).
 
 ## Pick the background image
 
@@ -251,7 +251,7 @@ Read more about [responsive SVG backgrounds](https://documentation.networkcanvas
 
 Import an image from your computer, or choose one already stored in this protocol. A responsive SVG keeps its regions and labels readable as the canvas changes between portrait and landscape.
 
-Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
+Read more about [resources](https://documentation.networkcanvas.com/design-protocols/key-concepts/resources).
 
 <!-- include: skip-logic -->
 

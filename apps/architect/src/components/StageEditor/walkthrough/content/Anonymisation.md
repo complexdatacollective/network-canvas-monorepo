@@ -49,7 +49,7 @@
 
 The Anonymisation stage asks the participant to choose a passphrase and to type it a second time to confirm it. The passphrase protects the answers to the node attributes you choose to encrypt. The interview encrypts these answers on the participant's device before saving them, so only someone who knows the passphrase can read them. The participant can't move forward from this stage until their passphrase has been accepted.
 
-Read the full [Anonymisation documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/anonymisation).
+Read the full [Anonymisation documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/anonymisation).
 
 ## What data it collects
 

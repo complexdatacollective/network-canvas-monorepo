@@ -1,14 +1,14 @@
 <!--
-  Shared step for the Stage filter section, on stage types that work with
+  Shared step for the Filter network section, on stage types that work with
   alters already named. Include with the line "include: stage-filter" in an
   HTML comment.
 -->
 
 ## Show only some nodes
 
-<!-- section: Stage filter -->
+<!-- section: Filter network -->
 <!-- scene: stage-filter -->
 
-Switch on **Stage filter** to include only some of the nodes on this stage, for example only those whose `close_friend` attribute is true. Without a filter, every node of the chosen type appears.
+Switch on **Filter network** to include only some of the nodes on this stage, for example only those whose `close_friend` attribute is true. Without a filter, every node of the chosen type appears.
 
-Read more about [network filtering](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/network-filtering).
+Read more about [network filtering](https://documentation.networkcanvas.com/design-protocols/key-concepts/network-filtering).

@@ -1,6 +1,7 @@
 <!--
-  Shared steps for the first two decisions in the form field window of a
-  form about nodes (a name generator or Per Alter Form). Follow it with
+  Shared step for the first decision in the form field window of a form
+  about nodes (a name generator, Per Alter Form or Family Pedigree): what the
+  field records. Follow it with
   "include: form-field-details" for the steps every form shares. Include with
   the line "include: node-form-field" in an HTML comment.
 -->
@@ -11,10 +12,3 @@
 <!-- field: variable -->
 
 Each field saves its answer to an **attribute** of the node. Select an existing attribute, or create a new one.
-
-## Write the question
-
-<!-- dialog: form field -->
-<!-- field: prompt -->
-
-This is the question the participant reads above the input, such as "_What is this person's first name?_" Keep it short, because the participant answers it for every alter.

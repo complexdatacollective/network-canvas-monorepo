@@ -47,9 +47,9 @@
 
 <!-- scene: tie-strength-intro -->
 
-The Tie-Strength Census is a name interpreter that collects edges between alters already named, along with how strong each tie is. Like the [Dyad Census](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census), it shows the participant two alters at a time. Instead of answering yes or no, the participant chooses an option on a scale, or an option that says there is no tie. Once they choose, the next pair appears, until every pair has been asked about.
+The Tie-Strength Census is a name interpreter that collects edges between alters already named, along with how strong each tie is. Like the [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census), it shows the participant two alters at a time. Instead of answering yes or no, the participant chooses an option on a scale, or an option that says there is no tie. Once they choose, the next pair appears, until every pair has been asked about.
 
-Read the full [Tie-Strength Census documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/tie-strength-census).
+Read the full [Tie-Strength Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/tie-strength-census).
 
 ## What data it collects
 
@@ -87,7 +87,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt asks about one kind of relationship, on its own scale. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many screens as there are pairs.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 ## Write the prompt text
 

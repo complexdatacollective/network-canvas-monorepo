@@ -49,7 +49,7 @@
 
 The Finish Screen is the last screen of an interview. It ends the interview, either when the participant confirms that they are finished or as soon as they reach it. After that, the participant sees the finished text and can't go back through the interview. The same finished text appears whenever the finished interview is opened again.
 
-Read the full [Finish Screen documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/finish-screen).
+Read the full [Finish Screen documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/finish-screen).
 
 ## What data it collects
 
@@ -113,7 +113,7 @@ A new Finish Screen starts with closing text that Network Canvas supplies, which
 
 This section holds the wording the participant reads while finishing, apart from the closing text and the finished text. Network Canvas supplies starting wording for each item, in each of your protocol's languages that it has wording for. While the section is switched off, the stage uses Network Canvas's wording. Switch the section on to change it.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
 > Do: Check the closing text, the finished text and the words in **Customize built-in wording** in every language of your protocol. If you have added languages after changing the text, translate it in each one.
 

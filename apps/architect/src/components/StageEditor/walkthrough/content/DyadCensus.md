@@ -49,7 +49,7 @@
 
 The Dyad Census is a name interpreter that collects edges between alters already named. It shows the participant two alters at a time and asks a yes or no question about them. Answering yes creates an edge between the two alters, and either answer moves the participant straight on to the next pair, until every pair has been asked about.
 
-Read the full [Dyad Census documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census).
+Read the full [Dyad Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census).
 
 ## What data it collects
 
@@ -61,7 +61,7 @@ This stage collects edges between alters already named. Each yes creates one edg
 
 <!-- scene: dyad-census-pairs -->
 
-Use this stage to ask about the relationships between alters systematically. Participants need to understand the task before they start, so place an [Information](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/information) stage before this one.
+Use this stage to ask about the relationships between alters systematically. Participants need to understand the task before they start, so place an [Information](https://documentation.networkcanvas.com/design-protocols/interface-documentation/information) stage before this one.
 
 > Do: Use it to encourage participants to add edges they might not have considered.
 
@@ -88,7 +88,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 Each prompt asks about one kind of relationship. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many screens as there are pairs.
 
-Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
+Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 ## Write the prompt text
 
