@@ -81,6 +81,7 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "sharp": "^0.35.5",
+    "smol-toml": "^1.9.1",
     "tailwindcss": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

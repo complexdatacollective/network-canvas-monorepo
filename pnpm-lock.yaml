@@ -1118,6 +1118,9 @@ importers:
       sharp:
         specifier: ^0.35.5
         version: 0.35.5(@types/node@24.19.2)
+      smol-toml:
+        specifier: ^1.9.1
+        version: 1.9.1
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
