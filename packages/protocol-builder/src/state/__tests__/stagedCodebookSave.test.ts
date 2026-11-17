@@ -12,10 +12,9 @@ import {
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
-import type { ProtocolBuilderAdapter } from '../context.ts';
 import type { StagedCodebook } from '../stagedCodebook.ts';
 import {
-  cacheSavedCodebook,
+  readSavedCodebook,
   stageAskHash,
   withStagedCodebook,
   type CodebookSave,
@@ -356,141 +355,86 @@ describe('withStagedCodebook', () => {
   });
 });
 
-describe('cacheSavedCodebook', () => {
-  const revisionAt = (sequence: bigint): Revision => ({
-    sequence,
-    contentHash: `hash-${sequence}`,
-  });
-  const saved = (document: SectionDoc): CodebookSave => ({
-    sections: [{ sectionId: PERSON, document }],
-    staged: {},
-  });
-  const keyFor = (host: InMemoryHost, adapter: ProtocolBuilderAdapter) =>
-    adapter.rpcKey('GetSection', {
+describe('readSavedCodebook', () => {
+  const getKey = (host: InMemoryHost, id: typeof PERSON) =>
+    host.adapter.rpcKey('GetSection', {
       protocolId: host.protocolId,
-      sectionId: PERSON,
+      sectionId: id,
     });
-  const cachedAt = (
+  const cached = (
     queryClient: QueryClient,
     host: InMemoryHost,
-    adapter: ProtocolBuilderAdapter,
-  ) =>
-    queryClient.getQueryData<{
-      document: Redacted.Redacted;
+    id: typeof PERSON,
+  ) => {
+    const entry = queryClient.getQueryData<{
+      document: Redacted.Redacted<SectionDoc>;
       revision: Revision;
-    }>(keyFor(host, adapter));
+    }>(getKey(host, id));
+    return entry === undefined
+      ? undefined
+      : { document: Redacted.value(entry.document), revision: entry.revision };
+  };
+  const savedOf = (...ids: (typeof PERSON)[]): CodebookSave => ({
+    sections: ids.map((id) => ({ sectionId: id, document: {} })),
+    staged: {},
+  });
 
-  it('puts the sections it wrote into the read cache at the revision it was answered with', () => {
+  it('reads the sections the save wrote back from the host, over what the cache held before it', async () => {
     const host = newHost();
     const queryClient = new QueryClient();
-    const document: SectionDoc = { name: 'Person', color: 'node-color-seq-3' };
+    // What the editor read before the save, at the revision it was read at.
+    const before = host.store.read(PERSON);
+    queryClient.setQueryData(getKey(host, PERSON), {
+      document: Redacted.make(before.document),
+      revision: before.revision,
+    });
+    // The save, as the host stored it.
+    host.store.applyAsCollaborator(PERSON, {
+      ...before.document,
+      icon: 'add-a-treatment',
+    });
 
-    cacheSavedCodebook(
+    await readSavedCodebook(
       queryClient,
       host.adapter,
       host.protocolId,
-      saved(document),
-      revisionAt(7n),
+      savedOf(PERSON),
     );
 
-    const cached = cachedAt(queryClient, host, host.adapter);
-    // At the save's place in the history, under this section's own hash: the
-    // save's revision names the stage's document, not this one.
-    expect(cached?.revision).toEqual({
-      sequence: 7n,
-      contentHash: contentHash(document),
-    });
-    expect(
-      cached === undefined ? undefined : Redacted.value(cached.document),
-    ).toEqual(document);
+    expect(cached(queryClient, host, PERSON)).toEqual(host.store.read(PERSON));
   });
 
-  it('replaces an entry from an earlier revision', () => {
-    const host = newHost();
-    const queryClient = new QueryClient();
-    queryClient.setQueryData(keyFor(host, host.adapter), {
-      document: Redacted.make({ name: 'Old' }),
-      revision: revisionAt(3n),
-    });
-
-    cacheSavedCodebook(
-      queryClient,
-      host.adapter,
-      host.protocolId,
-      saved({ name: 'New' }),
-      revisionAt(7n),
-    );
-
-    const cached = cachedAt(queryClient, host, host.adapter);
-    expect(cached?.revision.sequence).toBe(7n);
-    expect(
-      cached === undefined ? undefined : Redacted.value(cached.document),
-    ).toEqual({ name: 'New' });
-  });
-
-  it.each([7n, 9n])(
-    'leaves an entry the event already put there at revision %s alone',
-    (sequence) => {
-      const host = newHost();
-      const queryClient = new QueryClient();
-      queryClient.setQueryData(keyFor(host, host.adapter), {
-        document: Redacted.make({ name: 'Theirs' }),
-        revision: revisionAt(sequence),
-      });
-
-      cacheSavedCodebook(
-        queryClient,
-        host.adapter,
-        host.protocolId,
-        saved({ name: 'Ours' }),
-        revisionAt(7n),
-      );
-
-      const cached = cachedAt(queryClient, host, host.adapter);
-      expect(cached?.revision.sequence).toBe(sequence);
-      expect(
-        cached === undefined ? undefined : Redacted.value(cached.document),
-      ).toEqual({ name: 'Theirs' });
-    },
-  );
-
-  it('lists a section the save created, so the types it enumerates include it', () => {
+  it('lists a section the save created, so the types it enumerates include it', async () => {
     const host = newHost();
     const queryClient = new QueryClient();
     const listKey = host.adapter.rpcKey('ListSections', {
       protocolId: host.protocolId,
     });
     queryClient.setQueryData(listKey, { sectionIds: [PERSON] });
+    host.store.applyAsCollaborator(PLACE, { name: 'Place', variables: {} });
 
-    cacheSavedCodebook(
+    await readSavedCodebook(
       queryClient,
       host.adapter,
       host.protocolId,
-      {
-        sections: [
-          { sectionId: PERSON, document: { name: 'Person' } },
-          { sectionId: PLACE, document: { name: 'Place' } },
-        ],
-        staged: {},
-      },
-      revisionAt(7n),
+      savedOf(PERSON, PLACE),
     );
 
     expect(queryClient.getQueryData(listKey)).toEqual({
       sectionIds: [PERSON, PLACE],
     });
+    expect(cached(queryClient, host, PLACE)).toEqual(host.store.read(PLACE));
   });
 
-  it('caches nothing for a save without a codebook', () => {
+  it('reads nothing for a save without a codebook', async () => {
     const host = newHost();
     const queryClient = new QueryClient();
 
-    cacheSavedCodebook(
+    await readSavedCodebook(
       queryClient,
       host.adapter,
       host.protocolId,
       undefined,
-      revisionAt(7n),
     );
 
     expect(queryClient.getQueryCache().getAll()).toEqual([]);

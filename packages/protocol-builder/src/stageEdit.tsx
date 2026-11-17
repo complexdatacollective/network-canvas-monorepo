@@ -46,7 +46,7 @@ import {
 import { useKeptRequestId } from './state/requestKey.ts';
 import { NOTHING_STAGED, type StagedCodebook } from './state/stagedCodebook.ts';
 import {
-  cacheSavedCodebook,
+  readSavedCodebook,
   codebookPayload,
   stageAskHash,
   withStagedCodebook,
@@ -372,13 +372,7 @@ function CreatingStage({
           : { status: 'unanswered', message: ADD_FAILED_MESSAGE };
       }
       const { data } = created;
-      cacheSavedCodebook(
-        queryClient,
-        adapter,
-        protocolId,
-        codebook,
-        data.revision,
-      );
+      await readSavedCodebook(queryClient, adapter, protocolId, codebook);
       staged.promoted();
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };

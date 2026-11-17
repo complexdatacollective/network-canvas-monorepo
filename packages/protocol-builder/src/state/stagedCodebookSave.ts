@@ -2,11 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { Redacted } from 'effect';
 import { isEqual } from 'es-toolkit';
 
-import type {
-  Revision,
-  SectionAtRevisionSchema,
-  StageCodebookSection,
-} from '@codaco/protocol-builder-core/contract/schemas';
+import type { StageCodebookSection } from '@codaco/protocol-builder-core/contract/schemas';
 import type { InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -16,7 +12,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { attempt } from './attempt.ts';
-import { listWrittenSection } from './channel.ts';
+import { readWrittenSection } from './channel.ts';
 import type { CodebookRefusal } from './codebookRefusal.ts';
 import type { ProtocolBuilderAdapter } from './context.ts';
 import { mergeSection, type StagedCodebook } from './stagedCodebook.ts';
@@ -54,50 +50,30 @@ export function codebookPayload(
 }
 
 /**
- * Puts the codebook sections a stage's save wrote into the read cache, at the
- * revision the host answered with.
+ * Reads the codebook sections a stage's save wrote back into the read cache,
+ * before the stage stops holding its codebook changes.
  *
- * The saved stage stops holding its codebook changes as soon as the save
- * lands, and everything that read the codebook through them reads the
- * protocol's own sections again. Left to the channel, those are the sections
- * from before the save until its event arrives, so a type or attribute the
- * save just wrote would vanish from the editor for that moment. A section the
- * cache already holds at this revision or a later one (the event got here
- * first) is left as it is.
+ * The saved stage stops holding them as soon as the save lands, and
+ * everything that read the codebook through them reads the protocol's own
+ * sections again. Left to the channel, those are the sections from before the
+ * save until its events arrive, so a type, attribute or rule the save just
+ * wrote would vanish from the editor for that moment. The sections are read
+ * from the host rather than made from what was sent: the save's answer names
+ * the stage's revision, and a host may store a section differently from how
+ * it was sent.
  */
-export function cacheSavedCodebook(
+export async function readSavedCodebook(
   queryClient: QueryClient,
   adapter: ProtocolBuilderAdapter,
   protocolId: string,
   codebook: CodebookSave | undefined,
-  revision: Revision,
-): void {
+): Promise<void> {
   const deps = { adapter, queryClient, protocolId };
-  for (const section of codebook?.sections ?? []) {
-    queryClient.setQueryData<(typeof SectionAtRevisionSchema)['Type']>(
-      adapter.rpcKey('GetSection', {
-        protocolId,
-        sectionId: section.sectionId,
-      }),
-      (cached) =>
-        cached !== undefined && cached.revision.sequence >= revision.sequence
-          ? cached
-          : {
-              document: Redacted.make(section.document),
-              // The save's place in the protocol's history, and the hash of
-              // this section's own document: what a section's revision says
-              // everywhere else, and what derivations of it are keyed by.
-              revision: {
-                sequence: revision.sequence,
-                contentHash: contentHash(section.document),
-              },
-            },
-    );
-    // A section the save created is one the protocol's list does not hold yet
-    // either: without it, the type or attribute would be passed over by
-    // everything that enumerates sections until the event arrives.
-    listWrittenSection(deps, section.sectionId);
-  }
+  await Promise.all(
+    (codebook?.sections ?? []).map(({ sectionId: id }) =>
+      readWrittenSection(deps, id),
+    ),
+  );
 }
 
 /**

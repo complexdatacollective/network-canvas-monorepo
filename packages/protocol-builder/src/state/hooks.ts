@@ -44,7 +44,7 @@ import { useProtocolSections } from './protocolContext.ts';
 import { useKeptRequestId } from './requestKey.ts';
 import { useStagedCodebook } from './stagedCodebook.ts';
 import {
-  cacheSavedCodebook,
+  readSavedCodebook,
   codebookPayload,
   stageAskHash,
   type CodebookSave,
@@ -518,13 +518,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       if (submitted.answered) saveKey.settled(requestId);
       if (submitted.isSuccess) {
         const { data } = submitted;
-        cacheSavedCodebook(
-          queryClient,
-          adapter,
-          protocolId,
-          codebook,
-          data.revision,
-        );
+        await readSavedCodebook(queryClient, adapter, protocolId, codebook);
         return {
           status: 'written',
           revision: data.revision,

@@ -169,14 +169,32 @@ export async function readCreatedSection(
 }
 
 /**
- * Lists a section this client has just written into the protocol, so whatever
- * enumerates sections (`ListSections`) finds it before the channel's event for
- * it arrives. The section's own document is the caller's to cache.
+ * Reads a section this client has just written back from the host, and lists
+ * it, so everything reading the protocol sees the write before the channel's
+ * event for it arrives.
+ *
+ * Read again even when the cache holds the section: what the cache holds is
+ * from before the write, and only the host can say which revision the write
+ * left the section at. A read that fails leaves the cache to the event.
  */
-export function listWrittenSection(
+export async function readWrittenSection(
   deps: ChannelDeps,
   sectionId: ProtocolSectionId,
-): void {
+): Promise<void> {
+  try {
+    await deps.queryClient.fetchQuery({
+      ...deps.adapter.rpcQuery('GetSection', {
+        protocolId: deps.protocolId,
+        sectionId,
+      }),
+      // Asked whatever the browser says about the network, as a create's read
+      // is (see `readCreatedSection`).
+      networkMode: 'always',
+      staleTime: 0,
+    });
+  } catch {
+    return;
+  }
   updateSectionList(deps, sectionId, 'present');
 }
 
