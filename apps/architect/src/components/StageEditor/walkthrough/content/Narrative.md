@@ -48,13 +48,13 @@ Use this stage to talk through the network with the participant after they have 
 
 This stage collects no data, so plan separately how you will capture the discussion, for example with screen and audio recording.
 
-## Choose what this stage shows
+## Choose the node type
 
 <!-- section: node-type -->
 
 Choose the **node type** this stage shows on the canvas, such as _Person_. Each preset has its own layout attribute, and a node of that type appears only when it has a position saved in the layout attribute of the preset on screen.
 
-Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type.
 
 <!-- include: stage-filter -->
 

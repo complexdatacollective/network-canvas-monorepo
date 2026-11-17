@@ -54,13 +54,13 @@ Use this stage to systematically survey edges between alters, specifically in si
 
 > Do: Consider using alternative methods of capturing alter-alter edges instead, such as the one-to-many dyad census, or the sociogram.
 
-## Choose what this stage shows
+## Choose the node type
 
 <!-- section: node-type -->
 
 Choose the **node type** whose alters are paired up, such as _Person_. The participant is asked about every pair of nodes of that type already in their network.
 
-Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type.
 
 <!-- include: stage-filter -->
 

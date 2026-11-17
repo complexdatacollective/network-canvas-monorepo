@@ -47,7 +47,7 @@ A palette of tools runs down the left of the canvas. A tool stays active until t
 
 Choose what kind of node this canvas creates, such as _Person_. Every node of that type already in the participant's network, such as alters named on an earlier stage, also appears on the canvas. The interviewer can move, connect and group those nodes too.
 
-Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type.
 
 ## Choose where typed names are saved
 

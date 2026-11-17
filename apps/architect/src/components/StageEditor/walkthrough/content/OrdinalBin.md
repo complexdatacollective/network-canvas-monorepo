@@ -50,13 +50,13 @@ Use this stage to rate alters on an ordered scale.
 
 > Avoid: Collecting nominal data that would suit the [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) better.
 
-## Choose what this stage shows
+## Choose the node type
 
 <!-- section: node-type -->
 
 Choose the **node type** this stage sorts, such as _Person_. Every node of that type already in the participant's network waits in the drawer.
 
-Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type.
 
 <!-- include: stage-filter -->
 

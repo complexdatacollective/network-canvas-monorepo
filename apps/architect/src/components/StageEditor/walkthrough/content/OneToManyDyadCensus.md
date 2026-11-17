@@ -48,13 +48,13 @@ Read the full [One to Many Dyad Census documentation](https://documentation.netw
 
 > Avoid: Using this interface with a large number of alters, which will still result in many screens. There is one screen per focal node, so the number of screens grows in line with the number of alters. If you have many alters, consider other methods to collect edges, such as the [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
-## Choose what this stage shows
+## Choose the node type
 
 <!-- section: node-type -->
 
 Choose the **node type** whose alters are asked about, such as _Person_. Each node of that type already in the participant's network takes a turn as the focal node. If there are fewer than two nodes of that type, the stage is skipped.
 
-Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type.
 
 <!-- include: stage-filter -->
 

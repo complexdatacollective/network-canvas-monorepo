@@ -48,13 +48,13 @@ Use this stage when you want participants to build a visual picture of their net
 
 > Avoid: Nodes positioned too close together may visually occlude one another, or the edge between them. Caution participants not to place nodes directly on top of one another.
 
-## Choose what this stage shows
+## Choose the node type
 
 <!-- section: node-type -->
 
 Choose the **node type** this stage places on the canvas, such as _Person_. Every node of that type that is already in the participant's network appears on this stage.
 
-Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type.
 
 <!-- include: stage-filter -->
 
