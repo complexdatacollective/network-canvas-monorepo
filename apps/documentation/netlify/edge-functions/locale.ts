@@ -1,4 +1,4 @@
-import type { Config, Context } from '@netlify/edge-functions';
+import type { Context } from '@netlify/edge-functions';
 
 import {
   parseAcceptLanguage,
@@ -79,8 +79,3 @@ export default async function localeRedirect(
       : replaced;
   return Response.redirect(target, 307);
 }
-
-// Addresses with a file extension are files, never pages.
-export const config: Config = {
-  pattern: '^/[^.]*$',
-};
