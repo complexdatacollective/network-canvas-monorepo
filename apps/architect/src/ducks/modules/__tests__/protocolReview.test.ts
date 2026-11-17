@@ -723,6 +723,47 @@ describe('decisions', () => {
     );
   });
 
+  it('does not change the interface of the stage an editor has open', async () => {
+    await open(store);
+    const names = protocolOf(store).stages.find(
+      (stage) => stage.id === 'names',
+    );
+    if (!names) throw new Error('The fixture needs the names stage');
+    const converted = makeFinding(
+      'convert',
+      [
+        op('set', '/stages/welcome', {
+          ...names,
+          id: 'welcome',
+          prompts: [{ id: 'p9', text: { en: 'Name others', fr: 'Autres' } }],
+        }),
+      ],
+      { stageId: 'welcome', category: 'structure' },
+    );
+    vi.stubGlobal(
+      'fetch',
+      answering({ ...RESULT, findings: [converted] }).fetchImpl,
+    );
+    await store.dispatch(startReview());
+    await store.dispatch(checkFixAvailability());
+    const before = protocolOf(store);
+
+    const close = registerOpenStage('welcome', () => {});
+    expect(await store.dispatch(decideFinding('convert', 'fix'))).toEqual({
+      ok: false,
+      reason: 'invalid',
+    });
+    expect(protocolOf(store)).toBe(before);
+
+    close();
+    expect(await store.dispatch(decideFinding('convert', 'fix'))).toEqual({
+      ok: true,
+    });
+    expect(
+      protocolOf(store).stages.find((stage) => stage.id === 'welcome')?.type,
+    ).toBe(names.type);
+  });
+
   it('returns a fix that reorders stages to undecided when the order is put back', async () => {
     await open(store);
     const stageIds = () => protocolOf(store).stages.map((stage) => stage.id);

@@ -1186,14 +1186,16 @@ const commitProtocolEdit = (
   const state = getState();
   if (!getProtocolOwnedHere(state)) return 'not_owned';
   if (getProtocol(state) !== from) return 'changed';
-  // Removing the stage an editor has open would take its unsaved draft with
-  // it (there is nothing left to carry the draft into, and Undo restores only
-  // the saved stage), so such an edit is left to the researcher.
+  // Removing the stage an editor has open, or changing its interface (which
+  // swaps the editor for another), would take its unsaved draft with it:
+  // there is nothing left to carry the draft into, and Undo restores only
+  // the saved stage. Such an edit is left to the researcher.
   const held = openStageId();
+  const heldBefore = from.stages.find((stage) => stage.id === held);
+  const heldAfter = to.stages.find((stage) => stage.id === held);
   if (
-    held !== null &&
-    from.stages.some((stage) => stage.id === held) &&
-    !to.stages.some((stage) => stage.id === held)
+    heldBefore !== undefined &&
+    (heldAfter === undefined || heldAfter.type !== heldBefore.type)
   ) {
     return 'invalid';
   }
