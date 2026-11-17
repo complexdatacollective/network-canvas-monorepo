@@ -9,7 +9,7 @@ import {
 import { codebookHref } from '~/components/Codebook/codebookLinks';
 import { localizedText } from '~/utils/localizedText';
 
-import type { StoredOperation } from './fixEngine';
+import type { StoredOperation, TargetSnapshot } from './fixEngine';
 import {
   findArrayMember,
   formatPath,
@@ -17,7 +17,11 @@ import {
   parsePath,
   readPath,
 } from './fixPath';
-import { isLocalizedValue, writesPlaceholder } from './protocolFix';
+import {
+  eachReplacedText,
+  isLocalizedValue,
+  writesPlaceholder,
+} from './protocolFix';
 
 /**
  * What a fix and a finding mean on screen, as data: the UI turns it into
@@ -355,6 +359,69 @@ export const describeFixTextEdits = (
   operations.flatMap((operation): FixTextEdit[] =>
     operation.op === 'set' ? describeSetSafely(protocol, operation) : [],
   );
+
+/**
+ * The languages a fix rewords text in, and the languages whose translations
+ * of that text it leaves as they were, each sorted.
+ */
+export type FixTranslationScope = { changed: string[]; kept: string[] };
+
+/**
+ * Which translations a fix rewords and which it leaves, for every text it
+ * writes over one the protocol already has: a single translation, a whole
+ * text, or the texts inside a prompt, a list or a stage it replaces. Null
+ * when it leaves none.
+ *
+ * Read from what the protocol held when it was reviewed (`targets`, one per
+ * operation), not from the protocol now, so the answer is the same once the
+ * fix has been made. Only a single translation's sibling languages are read
+ * from `protocol`, where the fix leaves them.
+ */
+export const fixTranslationScope = (
+  protocol: CurrentProtocol,
+  operations: readonly StoredOperation[],
+  targets: readonly TargetSnapshot[] | null,
+): FixTranslationScope | null => {
+  const { locales } = protocol.localization;
+  const changed = new Set<string>();
+  const kept = new Set<string>();
+  const note = (reworded: readonly string[], left: readonly string[]) => {
+    if (reworded.length === 0 || left.length === 0) return;
+    for (const locale of reworded) changed.add(locale);
+    for (const locale of left) kept.add(locale);
+  };
+  for (const [index, operation] of operations.entries()) {
+    if (operation.op !== 'set') continue;
+    const segments = parsePath(operation.path);
+    const written = parsed(operation.value);
+    if (segments === null || written === undefined) continue;
+    if (typeof written === 'string') {
+      const locale = segments.at(-1) ?? '';
+      const text = readPath(protocol, segments.slice(0, -1));
+      if (text.found && isLocalizedValue(text.value, locales)) {
+        note(
+          [locale],
+          Object.keys(text.value).filter((other) => other !== locale),
+        );
+      }
+      continue;
+    }
+    const target = targets?.[index];
+    if (target?.op !== 'set' || !target.present) continue;
+    eachReplacedText(written, target.value, locales, (after, before) => {
+      const reworded = Object.keys(after).filter(
+        (locale) => after[locale] !== before[locale],
+      );
+      note(
+        reworded,
+        Object.keys(before).filter((locale) => !reworded.includes(locale)),
+      );
+    });
+  }
+  return kept.size === 0
+    ? null
+    : { changed: [...changed].toSorted(), kept: [...kept].toSorted() };
+};
 
 /** Where a finding is, for display and for a link to it. */
 export type FindingLocation =

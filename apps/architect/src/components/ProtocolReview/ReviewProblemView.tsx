@@ -35,6 +35,7 @@ import {
   ChangeLabel,
   fixEditMessages,
   FixText,
+  headingsNameLanguage,
   NowBox,
   useFixEditContexts,
 } from './fixEditText';
@@ -376,22 +377,6 @@ const languagesLink = (onFollow: () => void) => (chunks: ReactNode[]) => (
   </ProtocolPlaceLink>
 );
 
-/**
- * The languages a fix rewords text in and the ones whose translations of that
- * text it keeps as they are, each sorted; null when it keeps none.
- */
-const translationScope = (textEdits: readonly FixTextEdit[]) => {
-  const translated = textEdits.filter(
-    (edit) => edit.locale !== null && edit.otherTranslations.length > 0,
-  );
-  if (translated.length === 0) return null;
-  const changed = new Set(translated.flatMap(({ locale }) => locale ?? []));
-  const kept = new Set(
-    translated.flatMap(({ otherTranslations }) => otherTranslations),
-  );
-  return { changed: [...changed].toSorted(), kept: [...kept].toSorted() };
-};
-
 const editIsValid = (edit: FixTextEdit, value: string) =>
   edit.kind === 'text' ||
   (value.trim() !== '' && Number.isFinite(Number(value)));
@@ -452,7 +437,7 @@ const ReviewProblemView = ({
       locales.map((locale) => languageName(locale)),
       { type: 'conjunction' },
     );
-  const scope = translationScope(current.textEdits);
+  const scope = current.translations;
   const scopeValues = scope && {
     changed: languageList(scope.changed),
     changedCount: scope.changed.length,
@@ -461,8 +446,7 @@ const ReviewProblemView = ({
   };
   // A fix that rewords several languages names each in the heading over its
   // boxes; otherwise the boxes' own labels do.
-  const labelsNameLanguage =
-    new Set(current.textEdits.map((edit) => edit.locale)).size <= 1;
+  const labelsNameLanguage = !headingsNameLanguage(current.textEdits);
   const labelLanguage = (edit: FixTextEdit) =>
     labelsNameLanguage &&
     edit.locale !== null &&

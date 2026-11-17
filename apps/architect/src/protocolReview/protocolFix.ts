@@ -77,9 +77,12 @@ const parseJson = (value: string | null): unknown => {
  * writes it in the protocol's language, so "capitals" means no lower-case
  * letter in any script: [NÚMERO DE TELÉFONO], and [热线名称] in a script that
  * has no case. The brackets must hold a letter, so [1] is not one, and the
- * text of a Markdown link ([NHS 111](https://…)) is not one either.
+ * text of a Markdown link ([NHS 111](https://…)) is not one either. One
+ * character is enough only in a script without case, where it can be a
+ * whole word ([姓]); a lone capital ([A], [X]) is far likelier a label.
  */
-const PLACEHOLDER = /\[(?=[^[\]\n]*\p{L})[^[\]\n\p{Ll}]{2,}\](?!\()/u;
+const PLACEHOLDER =
+  /\[(?=[^[\]\n]*\p{L})(?:[^[\]\n\p{Ll}]{2,}|\p{Lo})\](?!\()/u;
 
 const holdsPlaceholder = (value: unknown): boolean => {
   if (typeof value === 'string') return PLACEHOLDER.test(value);
@@ -117,27 +120,98 @@ export const fixStaysInBounds = (
 
 /**
  * What identifies a member of an array across a rewrite of the array: its
- * `id`, or for an answer option (which has none) its `value`.
+ * `id`, or for an answer option (which has none) its `value`, which may be
+ * text, a number, or true or false.
  */
 const memberKey = (member: unknown): string | null => {
   if (!isJsonObject(member)) return null;
   for (const key of ['id', 'value']) {
     const found = member[key];
-    if (typeof found === 'string' || typeof found === 'number') {
+    if (
+      typeof found === 'string' ||
+      typeof found === 'number' ||
+      typeof found === 'boolean'
+    ) {
       return `${key}:${typeof found}:${found}`;
     }
   }
   return null;
 };
 
+const occursOnce = (members: readonly unknown[], key: string): boolean =>
+  members.filter((member) => memberKey(member) === key).length === 1;
+
+/**
+ * The member of `current` that the member at `index` of `written` replaces:
+ * the one with the same `memberKey`, when each array has exactly one such
+ * member, or the one in the same position when no member of either array
+ * can be told apart and both are the same length. Otherwise there is no
+ * telling, and nothing is carried over.
+ */
+const replacedMember = (
+  written: readonly unknown[],
+  current: readonly unknown[],
+  index: number,
+): unknown => {
+  const key = memberKey(written[index]);
+  if (key !== null) {
+    return occursOnce(written, key) && occursOnce(current, key)
+      ? current.find((candidate) => memberKey(candidate) === key)
+      : undefined;
+  }
+  const keyed = [...written, ...current].some(
+    (member) => memberKey(member) !== null,
+  );
+  return !keyed && written.length === current.length
+    ? current[index]
+    : undefined;
+};
+
+/**
+ * Calls `visit` with every text in `written` that replaces a text `current`
+ * holds in the same place, and that text. Members of arrays are paired as
+ * `replacedMember` pairs them.
+ */
+export const eachReplacedText = (
+  written: unknown,
+  current: unknown,
+  locales: readonly string[],
+  visit: (
+    written: Record<string, string>,
+    current: Record<string, string>,
+  ) => void,
+): void => {
+  if (isLocalizedValue(written, locales)) {
+    if (isLocalizedValue(current, locales)) visit(written, current);
+    return;
+  }
+  if (Array.isArray(written)) {
+    if (!Array.isArray(current)) return;
+    for (const [index, member] of written.entries()) {
+      eachReplacedText(
+        member,
+        replacedMember(written, current, index),
+        locales,
+        visit,
+      );
+    }
+    return;
+  }
+  if (isJsonObject(written) && isJsonObject(current)) {
+    for (const [key, value] of Object.entries(written)) {
+      if (Object.hasOwn(current, key)) {
+        eachReplacedText(value, current[key], locales, visit);
+      }
+    }
+  }
+};
+
 /**
  * `written` with, in every text that `current` holds in the same place, the
  * translations `written` does not name. The review writes only the
  * protocol's default language, so a fix that replaces a whole prompt, option
- * or stage would otherwise delete every other language's text in it. A
- * member of an array is matched to the one it replaces by `memberKey`, or by
- * position when neither array's members can be told apart and both are the
- * same length.
+ * or stage would otherwise delete every other language's text in it. Members
+ * of arrays are paired as `replacedMember` pairs them.
  */
 const keepTranslations = (
   written: unknown,
@@ -151,16 +225,13 @@ const keepTranslations = (
   }
   if (Array.isArray(written)) {
     if (!Array.isArray(current)) return written;
-    return written.map((member: unknown, index) => {
-      const key = memberKey(member);
-      const replaced: unknown =
-        key === null
-          ? written.length === current.length
-            ? current[index]
-            : undefined
-          : current.find((candidate) => memberKey(candidate) === key);
-      return keepTranslations(member, replaced, locales);
-    });
+    return written.map((member: unknown, index) =>
+      keepTranslations(
+        member,
+        replacedMember(written, current, index),
+        locales,
+      ),
+    );
   }
   if (isJsonObject(written)) {
     if (!isJsonObject(current)) return written;

@@ -136,6 +136,14 @@ const editContext = (
 };
 
 /**
+ * Whether the heading over each edit names its language: when the edits are
+ * not all texts in one language. Otherwise the labels on its boxes do.
+ */
+export const headingsNameLanguage = (
+  textEdits: readonly FixTextEdit[],
+): boolean => new Set(textEdits.map((edit) => edit.locale)).size > 1;
+
+/**
  * What each of a fix's edits is, by its path: where the editor shows a text
  * (with its language when the fix changes several), or a number's setting
  * and what it belongs to. Null where there is nothing to say.
@@ -146,8 +154,7 @@ export const useFixEditContexts = (
   const intl = useAppIntl();
   const protocol = useAppSelector(getProtocol);
   const languageName = useLanguageName();
-  const severalLanguages =
-    new Set(textEdits.map((edit) => edit.locale)).size > 1;
+  const severalLanguages = headingsNameLanguage(textEdits);
   return Object.fromEntries(
     textEdits.map((edit) => [
       edit.path,
