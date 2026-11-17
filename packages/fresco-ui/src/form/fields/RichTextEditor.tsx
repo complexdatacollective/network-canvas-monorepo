@@ -1388,6 +1388,12 @@ export default function RichTextEditorField({
   const pickEmoji = (suggestion: EmojiSuggestion) => {
     if (typedEmoji === null || typedEmoji.editor.isDestroyed) return;
     const { editor: into, from, typed } = typedEmoji;
+    // A command changes the text whether or not the editor is editable, so
+    // a field that went read-only or disabled under the list takes nothing.
+    if (!into.isEditable) {
+      setTypedEmoji(null);
+      return;
+    }
     into
       .chain()
       .focus()
@@ -2356,7 +2362,7 @@ export default function RichTextEditorField({
           }}
         />
       )}
-      {typedEmoji !== null && suggestions.length > 0 && (
+      {typedEmoji !== null && suggestions.length > 0 && !isDisabled && (
         // Beside the caret, under the name being typed, while the keyboard
         // stays in the text: the arrow keys move through the list, Enter or
         // Tab takes the one highlighted, and Escape puts it away.

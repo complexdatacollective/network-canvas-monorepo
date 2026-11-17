@@ -14,7 +14,13 @@ import RichTextEditorField from '../RichTextEditor';
 
 const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
 
-function Host({ emojiMenu }: { emojiMenu?: boolean }) {
+function Host({
+  emojiMenu,
+  readOnly,
+}: {
+  emojiMenu?: boolean;
+  readOnly?: boolean;
+}) {
   const [value, setValue] = useState<JSONContent | undefined>(EMPTY);
   return (
     <RichTextEditorField
@@ -26,6 +32,7 @@ function Host({ emojiMenu }: { emojiMenu?: boolean }) {
       changeMode="input"
       toolbarOptions={{ bold: false, italic: false, history: false }}
       {...(emojiMenu !== undefined && { emojiMenu })}
+      {...(readOnly !== undefined && { readOnly })}
       value={value}
       onChange={setValue}
     />
@@ -183,6 +190,22 @@ describe('emoji suggested as a name is typed in a RichTextEditorField', () => {
 
     await waitFor(() => expect(editor.textContent).toBe('🚀'));
     expect(editor).toHaveFocus();
+  });
+
+  // A field can go read-only under the list — while its form submits, say.
+  // A command would change the text all the same, so the list goes with it.
+  it('is withdrawn when the field becomes read-only, and changes nothing', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    const { rerender } = render(<Host />);
+    const editor = await screen.findByRole('textbox', { name: 'Note' });
+
+    await user.click(editor);
+    await user.keyboard(':rocke');
+    await suggestionsShown();
+    rerender(<Host readOnly />);
+
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    expect(editor.textContent).toBe(':rocke');
   });
 
   it('is put away by Escape, keeping what was typed, and stays away for that name', async () => {

@@ -1144,21 +1144,30 @@ export function DynamicMessageEditor({
     const nextBindings: Record<string, DynamicValueBinding> = {};
     const dropped: string[] = [];
     for (const [bindingName, binding] of Object.entries(bindings)) {
-      if (!removed.includes(bindingName) || inUse.has(bindingName)) {
+      if (!removed.includes(bindingName)) {
+        nextBindings[bindingName] = binding;
+        continue;
+      }
+      const conditionId = conditionIdOf(binding);
+      // Kept on every removal from this text, not only the last one in the
+      // stage: another text may drop the condition later, and undoing the
+      // removal here must still bring its rules back.
+      if (conditionId !== undefined) {
+        removedConditions.current.set(bindingName, {
+          binding,
+          value: Object.hasOwn(conditionValues, conditionId)
+            ? conditionValues[conditionId]
+            : undefined,
+        });
+      }
+      if (inUse.has(bindingName)) {
         nextBindings[bindingName] = binding;
         continue;
       }
       // A condition goes with the last text that tested it.
-      const conditionId = conditionIdOf(binding);
       if (conditionId === undefined) continue;
       dropped.push(conditionId);
       retireConditionId(bindingName);
-      removedConditions.current.set(bindingName, {
-        binding,
-        value: Object.hasOwn(conditionValues, conditionId)
-          ? conditionValues[conditionId]
-          : undefined,
-      });
     }
     for (const [used, binding] of recorded) nextBindings[used] = binding;
     setBindings(nextBindings);
