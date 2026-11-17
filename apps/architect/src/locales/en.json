@@ -824,7 +824,7 @@
     "description": "Error in the stage editor when finishing editing is refused: the other tab saved the protocol meanwhile and this tab has unsaved stage changes. The researcher must choose to keep or discard them first."
   },
   "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.studyDetails": {
-    "defaultMessage": "These changes cannot be saved over the version the other tab saved. What you have entered here is kept. Deal with the other unsaved changes in this tab first, then try again.",
+    "defaultMessage": "These changes cannot be saved over the version the other tab saved. The study details you entered are kept. First choose whether to keep or discard this tab’s unsaved changes elsewhere in the protocol, then try again.",
     "description": "Error on the last step of the study details dialog for the automated protocol review, when saving is refused: the other tab saved the protocol meanwhile and this tab has other unsaved changes waiting for a decision. The dialog stays open with what the researcher entered."
   },
   "architect.document.previewTitle": {
@@ -2359,18 +2359,6 @@
     "defaultMessage": "Offline",
     "description": "Why a review cannot be started: there is no internet connection."
   },
-  "architect.protocolReview.button.failed": {
-    "defaultMessage": "Protocol review could not be completed. Open Review protocol to see why.",
-    "description": "Read by screen readers when an automated review fails. \"Review protocol\" is the name of the toolbar button and must match its translation."
-  },
-  "architect.protocolReview.button.finished": {
-    "defaultMessage": "Protocol review finished. {count, plural, =0 {It found no problems.} one {It found # problem.} other {It found # problems.}}",
-    "description": "Read by screen readers when an automated review finishes. {count} is how many problems it found."
-  },
-  "architect.protocolReview.button.notStarted": {
-    "defaultMessage": "The review could not start. Review protocol says why.",
-    "description": "Read by screen readers when a review could not start (offline, the hourly limit, or another reason shown in the panel). \"Review protocol\" is the name of the toolbar button."
-  },
   "architect.protocolReview.button.reviewProtocol": {
     "defaultMessage": "Review protocol",
     "description": "Toolbar button on the Stages screen that opens the automated protocol review."
@@ -2378,10 +2366,6 @@
   "architect.protocolReview.button.reviewing": {
     "defaultMessage": "Reviewing…",
     "description": "Label of the Review protocol toolbar button while an automated review runs."
-  },
-  "architect.protocolReview.button.undecided": {
-    "defaultMessage": "Review protocol, {count, plural, one {# problem still to decide} other {# problems still to decide}}",
-    "description": "Accessible name, read by screen readers, of the Review protocol toolbar button while it shows a count badge. It must start with the button’s visible text (\"Review protocol\", as translated for that button). {count} is how many problems from the last review the researcher has not decided about."
   },
   "architect.protocolReview.category.attributesAndForms": {
     "defaultMessage": "Attributes and forms",
@@ -2515,10 +2499,6 @@
     "defaultMessage": "Fixed by you",
     "description": "Status of a problem the researcher chose to fix themselves and then marked Done."
   },
-  "architect.protocolReview.popover.filter": {
-    "defaultMessage": "Show",
-    "description": "Accessible name, read by screen readers, of the switch above the list of problems that chooses between all of them and those the researcher chose to fix themselves."
-  },
   "architect.protocolReview.popover.filterAll": {
     "defaultMessage": "All problems",
     "description": "Option of the switch above the list of problems: show every problem the review found."
@@ -2530,10 +2510,6 @@
   "architect.protocolReview.popover.filterMineHere": {
     "defaultMessage": "For you to fix here",
     "description": "Option of the switch above the list of problems, when the review is opened from a stage or the Codebook page: show only the problems the researcher chose to fix themselves on that screen."
-  },
-  "architect.protocolReview.popover.fixUndone": {
-    "defaultMessage": "Fix undone: {title}",
-    "description": "Read by screen readers after Undo in the review list took a fix back out of the protocol. {title} is the problem’s title, written by the review service."
   },
   "architect.protocolReview.popover.fixed": {
     "defaultMessage": "Fixed for you",
@@ -2571,29 +2547,17 @@
     "defaultMessage": "The reviewer is writing up what it found.",
     "description": "Line under the progress bar during the second part of an automated review, while the reviewer (an AI model) writes its answer."
   },
-  "architect.protocolReview.popover.problemsFound": {
-    "defaultMessage": "Problems found",
-    "description": "Accessible name, read by screen readers, of the list of problems the review found."
-  },
-  "architect.protocolReview.popover.progress": {
-    "defaultMessage": "Review progress",
-    "description": "Accessible name, read by screen readers, of the progress bar shown while an automated review runs."
-  },
   "architect.protocolReview.popover.quota": {
     "defaultMessage": "{remaining, number} of {limit, number} reviews left this hour",
     "description": "Caption beside the review buttons: how many reviews the researcher may still start this hour."
   },
   "architect.protocolReview.popover.ready": {
-    "defaultMessage": "A review lists the problems it finds in your protocol, most serious first. Nothing in your protocol changes until you choose.",
+    "defaultMessage": "A review lists the problems it finds in your protocol, most serious first. Nothing in your protocol changes until you choose to fix a problem.",
     "description": "Shown in the review panel while the protocol has no review: what a review gives the researcher."
   },
   "architect.protocolReview.popover.resultsIntro": {
     "defaultMessage": "The results of your review are shown below in order of importance.",
     "description": "Line under the Protocol review heading, above the list of problems the review found."
-  },
-  "architect.protocolReview.popover.reviewDismissed": {
-    "defaultMessage": "Review dismissed.",
-    "description": "Read by screen readers after Dismiss review removed the review."
   },
   "architect.protocolReview.popover.runningBody": {
     "defaultMessage": "This can take a few minutes. You can close this panel and keep working. While the panel is closed, the button shows how far the review has got, then a count of the problems found.",
@@ -2635,14 +2599,6 @@
     "defaultMessage": "After the fix",
     "description": "Label over a piece of text as the suggested fix would change it."
   },
-  "architect.protocolReview.problem.allDecided": {
-    "defaultMessage": "You have been through every problem. Back at the list of problems.",
-    "description": "Read by screen readers when the researcher decides about the last problem still open and the panel returns to the list of all the problems."
-  },
-  "architect.protocolReview.problem.back": {
-    "defaultMessage": "Back",
-    "description": "Button on one problem found by the automated protocol review that returns to the list of all the problems."
-  },
   "architect.protocolReview.problem.cannotFix": {
     "defaultMessage": "This fix cannot be made for you. Make the change yourself, using the description below.",
     "description": "Notice on a problem whose suggested fix Architect cannot apply automatically."
@@ -2650,10 +2606,6 @@
   "architect.protocolReview.problem.changed": {
     "defaultMessage": "This fix can no longer be made for you, because that part of the protocol changed after the review. Make the change yourself, using the description below.",
     "description": "Notice on a problem whose suggested fix no longer fits the protocol, because the researcher has since changed what it would edit."
-  },
-  "architect.protocolReview.problem.checkingFix": {
-    "defaultMessage": "Checking whether this fix can be made for you…",
-    "description": "Read by screen readers with the Fix for me button while Architect works out whether the fix leaves a valid protocol."
   },
   "architect.protocolReview.problem.concentricCircles": {
     "defaultMessage": "Number of concentric circles",
@@ -2683,17 +2635,9 @@
     "defaultMessage": "Your changes would leave the protocol invalid. Change them, or use the suggestion.",
     "description": "Notice when Fix for me is pressed with text or numbers the researcher changed, and the result would not be a valid protocol."
   },
-  "architect.protocolReview.problem.fixApplied": {
-    "defaultMessage": "Fixed for you: {title}",
-    "description": "Read by screen readers after Fix for me changed the protocol. {title} is the problem’s title, written by the review service."
-  },
   "architect.protocolReview.problem.fixForMe": {
     "defaultMessage": "Fix for me",
     "description": "Button that makes the suggested fix in the protocol now (it can be undone), and moves to the next problem."
-  },
-  "architect.protocolReview.problem.fixUndone": {
-    "defaultMessage": "Fix undone: {title}",
-    "description": "Read by screen readers after a fix made for the researcher was taken back out. {title} is the problem’s title, written by the review service."
   },
   "architect.protocolReview.problem.fixedNoUndo": {
     "defaultMessage": "This was fixed for you. You have changed that part of the protocol since, so the fix cannot be undone from here; use Undo in the toolbar instead.",
@@ -2779,10 +2723,6 @@
     "defaultMessage": "Use suggestion",
     "description": "Button that puts back the suggested text or number after the researcher changed it, before the fix is made."
   },
-  "architect.protocolReview.progressRing.label": {
-    "defaultMessage": "Review progress",
-    "description": "Accessible name, read by screen readers, of the small circular progress indicator on the Review protocol toolbar button while an automated protocol review runs."
-  },
   "architect.protocolReview.severity.serious": {
     "defaultMessage": "Serious",
     "description": "How serious a problem the automated protocol review found is: the most serious of three levels. Shown beside the problem’s title in the review results."
@@ -2802,10 +2742,6 @@
   "architect.protocolReview.wizard.before.description": {
     "defaultMessage": "This experimental feature uses LLMs (also known as ‘AI’) to generate review feedback to help you improve your protocol. To use this feature, your protocol must be sent to one of the providers we support (Anthropic and OpenAI). Ensure that you are permitted to do this by your IRB or ethics review body.",
     "description": "Text of the first step of the dialog that starts an automated protocol review. An LLM is a large language model. \"Anthropic\" and \"OpenAI\" are company names and are not translated. An IRB is an institutional review board, the body that approves research involving people."
-  },
-  "architect.protocolReview.wizard.before.sentTable": {
-    "defaultMessage": "What is sent for review, and what is never sent",
-    "description": "Accessible name, read by screen readers, of the two-column table listing what the automated protocol review sends and what it never sends."
   },
   "architect.protocolReview.wizard.before.title": {
     "defaultMessage": "Before you use this feature",
@@ -2906,10 +2842,6 @@
   "architect.protocolReview.wizard.questions.questionLabel": {
     "defaultMessage": "Research question {number, number}",
     "description": "Label of one research question’s text box. {number} counts the questions from 1."
-  },
-  "architect.protocolReview.wizard.questions.remove": {
-    "defaultMessage": "Remove research question {number, number}",
-    "description": "Accessible name of the button beside a research question that removes it from the list. {number} counts the questions from 1."
   },
   "architect.protocolReview.wizard.questions.title": {
     "defaultMessage": "What are your research questions?",
