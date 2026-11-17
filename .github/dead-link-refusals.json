@@ -1,5 +1,5 @@
 {
-  "note": "External links that answer 401/403 to CI because they refuse automation, not because they are broken. Verified 2026-09-11, and again for the entries added 2026-11-05: every DOI here resolves (doi.org 302), none returned 404, and each non-DOI page has a recent 200 capture in the Wayback Machine. A refusal from a URL NOT listed here fails the run, so adding an entry is a deliberate, reviewed act. Remove an entry when the publisher stops refusing us.",
+  "note": "External links that answer 401/403 to CI because they refuse automation, not because they are broken. Verified 2026-09-11, and again for the entries added 2026-11-05 and 2026-11-17: every DOI here resolves (doi.org 302), none returned 404, and each non-DOI page has a recent 200 capture in the Wayback Machine. A refusal from a URL NOT listed here fails the run, so adding an entry is a deliberate, reviewed act. Remove an entry when the publisher stops refusing us.",
   "refusable": [
     {
       "host": "ccsg.isr.umich.edu",
@@ -77,6 +77,11 @@
       "url": "https://doi.org/10.1016/j.josat.2024.209457"
     },
     {
+      "host": "jsatjournal.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1016/j.josat.2026.210094"
+    },
+    {
       "host": "www.sciencedirect.com",
       "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
       "url": "https://doi.org/10.1016/j.socnet.2021.02.003"
@@ -85,6 +90,11 @@
       "host": "www.sciencedirect.com",
       "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
       "url": "https://doi.org/10.1016/j.socnet.2026.02.005"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.socscimed.2026.119832"
     },
     {
       "host": "www.sciencedirect.com",
@@ -160,6 +170,11 @@
       "host": "www.valueinhealthjournal.com",
       "reason": "Elsevier resolver answers 200; its JavaScript hop to valueinhealthjournal.com refuses automation",
       "url": "https://doi.org/10.1111/j.1524-4733.2005.04054.x"
+    },
+    {
+      "host": "bmjopen.bmj.com",
+      "reason": "Cloudflare challenge with no cf-mitigated header",
+      "url": "https://doi.org/10.1136/bmjopen-2022-066068"
     },
     {
       "host": "dl.acm.org",
