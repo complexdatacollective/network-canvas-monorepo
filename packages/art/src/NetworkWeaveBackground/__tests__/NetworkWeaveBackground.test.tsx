@@ -867,23 +867,30 @@ describe('sampleCubicByLength', () => {
     expect(Math.min(...gaps) / Math.max(...gaps)).toBeGreaterThan(0.97);
   });
 
-  it('turns the short way from each stop to the next', () => {
-    // Heading left, the curve crosses from just under half a turn to just
-    // over it, where an angle read on its own would jump by a whole turn.
+  it.each([
+    { name: 'anticlockwise', bend: 1 },
+    { name: 'clockwise', bend: -1 },
+  ])('turns the short way from each stop to the next, $name', ({ bend }) => {
+    // Heading left, the curve's direction crosses half a turn, where an
+    // angle read on its own jumps by a whole turn: one way for a curve
+    // bending anticlockwise, the other for its mirror image.
     const stops = sampleCubicByLength(
       [
         { x: 0, y: 0 },
-        { x: -100, y: 30 },
-        { x: -200, y: -30 },
+        { x: -100, y: 30 * bend },
+        { x: -200, y: -30 * bend },
         { x: -300, y: 0 },
       ],
       24,
     );
-    const turns = stops
+    const headings = stops.map((stop) => stop.angle);
+    const turns = headings
       .slice(1)
-      .map((stop, index) => Math.abs(stop.angle - (stops[index]?.angle ?? 0)));
+      .map((heading, index) => Math.abs(heading - (headings[index] ?? 0)));
 
     expect(Math.max(...turns)).toBeLessThan(30);
-    expect(Math.abs(stops[0]?.angle ?? 0)).toBeGreaterThan(150);
+    // The curve does cross: its headings lie on both sides of half a turn.
+    expect(Math.min(...headings.map(Math.abs))).toBeLessThan(180);
+    expect(Math.max(...headings.map(Math.abs))).toBeGreaterThan(180);
   });
 });
