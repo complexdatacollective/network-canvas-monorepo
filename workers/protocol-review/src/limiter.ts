@@ -164,6 +164,46 @@ export const availability = (
         };
   });
 
+type LimitedKey = { key: string; limit: number };
+
+type CurrentWindow = LimitedKey & { window: HourlyWindow | null };
+
+const currentWindows = (
+  store: LimiterStore,
+  limits: LimitedKey[],
+  now: number,
+): CurrentWindow[] =>
+  limits.map(({ key, limit }) => ({
+    key,
+    limit,
+    window: liveWindow(store, key, now),
+  }));
+
+/** When the last of the windows that are full ends; null when none is full. */
+const blockedUntil = (current: CurrentWindow[], now: number): string | null => {
+  const blocking = current.filter(
+    ({ window, limit }) => window !== null && window.count >= limit,
+  );
+  if (blocking.length === 0) return null;
+  return toIso(
+    Math.max(...blocking.map(({ window }) => window?.windowEnd ?? now)),
+  );
+};
+
+/** Counts one more in each window, opening those that are not open. */
+const countWindows = (
+  store: LimiterStore,
+  current: CurrentWindow[],
+  now: number,
+): HourlyWindow[] =>
+  current.map(({ key, window }) => {
+    const next: HourlyWindow = window
+      ? { ...window, count: window.count + 1 }
+      : { key, windowStart: now, windowEnd: now + HOUR_MS, count: 1 };
+    store.putWindow(next);
+    return next;
+  });
+
 export const admit = (
   store: LimiterStore,
   {
@@ -182,25 +222,16 @@ export const admit = (
   const yesterday = utcDay(now - DAY_MS);
   store.deleteDaysBefore(yesterday < monthStart ? yesterday : monthStart);
 
-  const limits = [
-    { key: installationKey, limit: REVIEW_LIMITS.perInstallationPerHour },
-    { key: addressKey, limit: REVIEW_LIMITS.perAddressPerHour },
-  ];
-  const current = limits.map(({ key, limit }) => ({
-    key,
-    limit,
-    window: liveWindow(store, key, now),
-  }));
-
-  const blocking = current.filter(
-    ({ window, limit }) => window !== null && window.count >= limit,
+  const current = currentWindows(
+    store,
+    [
+      { key: installationKey, limit: REVIEW_LIMITS.perInstallationPerHour },
+      { key: addressKey, limit: REVIEW_LIMITS.perAddressPerHour },
+    ],
+    now,
   );
-  if (blocking.length > 0) {
-    const retryAt = Math.max(
-      ...blocking.map(({ window }) => window?.windowEnd ?? now),
-    );
-    return { ok: false, error: 'hourly_limit', retryAt: toIso(retryAt) };
-  }
+  const retryAt = blockedUntil(current, now);
+  if (retryAt !== null) return { ok: false, error: 'hourly_limit', retryAt };
 
   const spent = spentBudget(store, provider, reservationMicros, now);
   if (spent !== null) return { ok: false, ...spent };
@@ -208,13 +239,7 @@ export const admit = (
   const day = utcDay(now);
   const committed = store.getCommitted(provider, day);
 
-  const counted = current.map(({ key, window }) => {
-    const next: HourlyWindow = window
-      ? { ...window, count: window.count + 1 }
-      : { key, windowStart: now, windowEnd: now + HOUR_MS, count: 1 };
-    store.putWindow(next);
-    return next;
-  });
+  const counted = countWindows(store, current, now);
   store.setCommitted(provider, day, committed + reservationMicros);
 
   const installation = counted[0];
@@ -237,6 +262,43 @@ export const admit = (
       resetsAt: toIso(installation.windowEnd),
     },
   };
+};
+
+export type AdmitFeedbackRequest = {
+  /** Keys of their own: feedback is never counted with reviews. */
+  installationKey: string;
+  addressKey: string;
+  now: number;
+};
+
+export type AdmitFeedbackResult =
+  | { ok: true }
+  | { ok: false; error: 'hourly_limit'; retryAt: string };
+
+/**
+ * Counts one sending of feedback against its own hourly limits, which spend
+ * no provider's budget and leave the limit on reviews alone.
+ */
+export const admitFeedback = (
+  store: LimiterStore,
+  { installationKey, addressKey, now }: AdmitFeedbackRequest,
+): AdmitFeedbackResult => {
+  store.deleteExpiredWindows(now);
+  const current = currentWindows(
+    store,
+    [
+      {
+        key: installationKey,
+        limit: REVIEW_LIMITS.feedbackPerInstallationPerHour,
+      },
+      { key: addressKey, limit: REVIEW_LIMITS.feedbackPerAddressPerHour },
+    ],
+    now,
+  );
+  const retryAt = blockedUntil(current, now);
+  if (retryAt !== null) return { ok: false, error: 'hourly_limit', retryAt };
+  countWindows(store, current, now);
+  return { ok: true };
 };
 
 export const settle = (

@@ -103,17 +103,20 @@ header itself, which is what the limits are for.
 
 ## Limits
 
-| Limit                          | Value                             | Where it is set                                        |
-| ------------------------------ | --------------------------------- | ------------------------------------------------------ |
-| Reviews per installation       | 5 an hour                         | `REVIEW_LIMITS.perInstallationPerHour`, contract.ts    |
-| Reviews per network address    | 30 an hour                        | `REVIEW_LIMITS.perAddressPerHour`, contract.ts         |
-| Largest request                | 750,000 bytes                     | `REVIEW_LIMITS.maxRequestBytes`, contract.ts           |
-| Shared reviews kept for        | 90 days                           | `REVIEW_LIMITS.sharedReviewRetentionDays`, contract.ts |
-| Spending on a provider a month | US $200 each (UTC calendar month) | `MONTHLY_SPEND_CEILING_USD`, constants.ts              |
-| Spending on a provider a day   | US $20 each (UTC day)             | `DAILY_SPEND_CEILING_USD`, constants.ts                |
-| Answer length                  | 40,000 tokens, thinking included  | `MAX_OUTPUT_TOKENS`, constants.ts                      |
-| Findings per review            | 12                                | `MAX_FINDINGS`, constants.ts                           |
-| Time per review                | 8 minutes                         | `MODEL_TIMEOUT_MS`, constants.ts                       |
+| Limit                          | Value                             | Where it is set                                             |
+| ------------------------------ | --------------------------------- | ----------------------------------------------------------- |
+| Reviews per installation       | 5 an hour                         | `REVIEW_LIMITS.perInstallationPerHour`, contract.ts         |
+| Reviews per network address    | 30 an hour                        | `REVIEW_LIMITS.perAddressPerHour`, contract.ts              |
+| Largest request                | 750,000 bytes                     | `REVIEW_LIMITS.maxRequestBytes`, contract.ts                |
+| Shared reviews kept for        | 90 days                           | `REVIEW_LIMITS.sharedReviewRetentionDays`, contract.ts      |
+| Feedback per installation      | 60 sendings an hour               | `REVIEW_LIMITS.feedbackPerInstallationPerHour`, contract.ts |
+| Feedback per network address   | 600 sendings an hour              | `REVIEW_LIMITS.feedbackPerAddressPerHour`, contract.ts      |
+| Largest feedback request       | 16,000 bytes                      | `REVIEW_LIMITS.maxFeedbackBytes`, contract.ts               |
+| Spending on a provider a month | US $200 each (UTC calendar month) | `MONTHLY_SPEND_CEILING_USD`, constants.ts                   |
+| Spending on a provider a day   | US $20 each (UTC day)             | `DAILY_SPEND_CEILING_USD`, constants.ts                     |
+| Answer length                  | 40,000 tokens, thinking included  | `MAX_OUTPUT_TOKENS`, constants.ts                           |
+| Findings per review            | 12                                | `MAX_FINDINGS`, constants.ts                                |
+| Time per review                | 8 minutes                         | `MODEL_TIMEOUT_MS`, constants.ts                            |
 
 An hourly window starts at the first review counted against an installation
 or address and lasts one hour. A review that fails or is refused gives its
@@ -161,7 +164,8 @@ counts can differ at the boundary by the cost of the reviews then running.
 
 - **The limiter** holds counters only: for each hourly window, a SHA-256 hash
   of the installation id or of the network address, when the window started
-  and ended, and how many reviews it counted; and, for each provider and each
+  and ended, and how many reviews (or sendings of feedback, under keys of
+  their own) it counted; and, for each provider and each
   UTC day of the current month, the amount spent. Raw addresses and ids are
   never stored.
   Windows that have ended, and days of earlier months (but for yesterday),
@@ -172,6 +176,15 @@ counts can differ at the boundary by the cost of the reviews then running.
   in the
   `SHARED_REVIEWS` KV namespace under `review:<reviewId>`. KV deletes it after
   90 days.
+- **Feedback on shared reviews.** Architect sends how a shared review was
+  received (`POST /feedback`): what the researcher did with each problem,
+  whether they rated it useful or not and why, and anything they wrote about
+  the review. The service keeps `{ receivedAt, findings, comment }` in the
+  same namespace under `feedback:<reviewId>`, replacing what it held before,
+  and gives it the review's own expiry, so it is deleted at the moment the
+  review is. Feedback naming a review the service holds no shared copy of is
+  refused (`404 unknown_review`) and nothing is kept. The comment is free
+  text and may contain anything the researcher typed.
 - **Nothing else.** A review that was not shared leaves no trace of its
   content. Logs and analytics carry only fixed reason codes, HTTP statuses
   and the provider's name: no text, no ids, no addresses.
@@ -313,6 +326,7 @@ update both together.
 | ------------------------------------ | ------------------------------------------------------------------- |
 | `src/index.ts`                       | Wires everything to Cloudflare; the `ReviewLimiter` Durable Object. |
 | `src/review.ts`                      | The request: origin, size, schema, limits, model, stream, sharing.  |
+| `src/feedback.ts`                    | Feedback on a shared review, kept until the review expires.         |
 | `src/limiter.ts`                     | Hourly windows and each provider's two budgets, as pure functions.  |
 | `src/sql-store.ts`                   | The limiter's state in the Durable Object's SQLite storage.         |
 | `src/anthropic-model.ts`             | The streamed call to Claude, and how its errors are classified.     |

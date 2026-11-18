@@ -6,6 +6,7 @@ import {
 } from '../contract.ts';
 import {
   admit,
+  admitFeedback,
   availability,
   type HourlyWindow,
   type LimiterStore,
@@ -17,7 +18,7 @@ import type {
   ModelRunOutput,
   ReviewModel,
 } from '../model.ts';
-import type { FailureNotice } from '../notify.ts';
+import type { FailureNotice, LoggedFailure } from '../notify.ts';
 import type { ReviewDependencies } from '../review.ts';
 
 /** A one-way stand-in for SHA-256 (FNV-1a), so keys never hold the input. */
@@ -32,6 +33,8 @@ const fakeHash = (value: string): string => {
 
 export const ORIGIN = 'https://architect.networkcanvas.com';
 export const URL_REVIEW = 'https://protocol-review.networkcanvas.com/review';
+export const URL_FEEDBACK =
+  'https://protocol-review.networkcanvas.com/feedback';
 export const INSTALLATION_ID = '3f1c2b9e-4d5a-4e6f-8a7b-9c0d1e2f3a4b';
 export const ADDRESS = '203.0.113.7';
 
@@ -215,8 +218,18 @@ export const answerWith = (findings: unknown[]): string =>
 export type Harness = {
   deps: ReviewDependencies;
   store: ReturnType<typeof createMemoryStore>;
-  shared: { key: string; value: string; expirationTtl: number }[];
-  logs: FailureNotice[];
+  /**
+   * Every write to the shared store, in order: the lifetime it was given
+   * (`expirationTtl`, null when it was given a moment instead) and the moment
+   * it expires (`expiresAt`, in seconds since the epoch).
+   */
+  shared: {
+    key: string;
+    value: string;
+    expirationTtl: number | null;
+    expiresAt: number;
+  }[];
+  logs: LoggedFailure[];
   notices: FailureNotice[];
   clock: { now: number };
   /** Waits for everything handed to `waitUntil`. */
@@ -240,7 +253,7 @@ export const createHarness = (
 ): Harness => {
   const store = createMemoryStore();
   const shared: Harness['shared'] = [];
-  const logs: FailureNotice[] = [];
+  const logs: LoggedFailure[] = [];
   const notices: FailureNotice[] = [];
   const pending: Promise<unknown>[] = [];
   const clock = { now: START };
@@ -251,6 +264,7 @@ export const createHarness = (
     limiter: {
       availability: async (request) => availability(store, request),
       admit: async (request) => admit(store, request),
+      admitFeedback: async (request) => admitFeedback(store, request),
       settle: async (request) => settle(store, request),
     },
     models:
@@ -258,8 +272,24 @@ export const createHarness = (
         ? { anthropic: model, openai: unscripted }
         : model,
     sharedReviews: {
-      put: async (key, value, { expirationTtl }) => {
-        shared.push({ key, value, expirationTtl });
+      put: async (key, value, options) => {
+        shared.push(
+          'expiration' in options
+            ? { key, value, expirationTtl: null, expiresAt: options.expiration }
+            : {
+                key,
+                value,
+                expirationTtl: options.expirationTtl,
+                expiresAt: Math.floor(clock.now / 1000) + options.expirationTtl,
+              },
+        );
+      },
+      // As KV does: what has expired is no longer there.
+      expiration: async (key) => {
+        const entry = shared.findLast((candidate) => candidate.key === key);
+        return entry && entry.expiresAt > clock.now / 1000
+          ? entry.expiresAt
+          : null;
       },
     },
     notify: async (notice) => {

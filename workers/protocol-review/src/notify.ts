@@ -18,15 +18,20 @@ export type FailureNotice = {
   provider: ReviewProvider;
 };
 
+/** A failure as logged: one that is no provider's names none. */
+export type LoggedFailure = Omit<FailureNotice, 'provider'> & {
+  provider: ReviewProvider | null;
+};
+
 /** Writes a failure to the Worker's logs. */
-export type FailureLog = (notice: FailureNotice) => void;
+export type FailureLog = (notice: LoggedFailure) => void;
 
 /** Sends a failure to analytics. Resolves whether or not that succeeded. */
 export type FailureNotifier = (notice: FailureNotice) => Promise<void>;
 
 export const logFailure: FailureLog = ({ reason, status, provider }) => {
   console.error(
-    `protocol_review_failure provider=${provider} reason=${reason} status=${status}`,
+    `protocol_review_failure provider=${provider ?? 'none'} reason=${reason} status=${status}`,
   );
 };
 
