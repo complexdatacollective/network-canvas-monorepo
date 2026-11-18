@@ -475,32 +475,3 @@ export function useDeleteCodebookVariable(): (
     [adapter, protocolId],
   );
 }
-
-/** Removes an entity type, its section, and every reference to it. */
-export function useDeleteCodebookEntity(): (
-  entity: 'node' | 'edge',
-  typeId: string,
-) => Promise<CodebookWriteOutcome> {
-  const { adapter, protocolId } = useProtocolBuilderContext();
-
-  return useCallback(
-    async (entity, typeId) => {
-      const removed = await attempt(adapter, 'RefactorDeleteEntityType', {
-        protocolId,
-        entity,
-        typeId,
-      });
-      if (removed.isSuccess) {
-        return {
-          status: 'applied',
-          sectionId: sectionId({
-            kind: entity === 'node' ? 'codebookNode' : 'codebookEdge',
-            typeId,
-          }),
-        };
-      }
-      return refused(refactorRefusal(removed.refusal));
-    },
-    [adapter, protocolId],
-  );
-}

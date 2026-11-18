@@ -87,7 +87,7 @@ import {
 import type { CodebookWriteOutcome } from '../writes.ts';
 import NodeShapeMappingFields from './NodeShapeMappingFields.tsx';
 
-export const codebookEntityMessages = defineMessages({
+const codebookEntityMessages = defineMessages({
   nameRequired: {
     id: 'protocolBuilder.codebookEntity.nameRequired',
     defaultMessage: 'Enter a type name.',
@@ -616,7 +616,7 @@ export type CodebookEntityFieldsProps = Readonly<{
 }>;
 
 /** Controlled entity-property fields, independent of any host or store. */
-export function CodebookEntityFields({
+function CodebookEntityFields({
   subject,
   draft,
   onChange,
