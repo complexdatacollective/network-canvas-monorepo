@@ -157,41 +157,82 @@ export function localeDirection(locale: LocaleTag): 'ltr' | 'rtl' {
   return getLocaleMetadata(locale).direction;
 }
 
+/** A translation found in one of the protocol's declared languages. */
+export type DeclaredTranslation = Readonly<{
+  text: string;
+  lang: LocaleTag;
+  matchedBy: ResolvedLocalizedString['matchedBy'];
+}>;
+
 /**
- * What a participant reading in `locale` would see, falling back exactly as
- * the interview does for a participant whose browser lists no other protocol
- * language: the editor cannot know which others a browser lists. Empty when
- * the string has no declared translation.
+ * What a participant who chose `locale` (by default the protocol's default
+ * language) would see, falling back exactly as the interview does for a
+ * participant whose browser lists no other protocol language: the editor
+ * cannot know which others a browser lists.
  *
- * Without a declaration — a settings section that has not arrived — the first
- * translation the string holds stands in, so a preview is never blank merely
- * because it rendered first.
+ * Undefined when the protocol's languages are not known or the string has no
+ * translation in any of them. Unlike the interview's resolver this does not
+ * throw on such a string: Architect shows drafts that validation has not seen
+ * yet, and there such a string reads as absent. `resolveTranslation` instead
+ * lets the first translation stand in.
+ */
+export function resolveDeclaredTranslation(
+  value: unknown,
+  localization: ProtocolLocalization | undefined,
+  locale?: LocaleTag,
+): DeclaredTranslation | undefined {
+  const translations = asLocalizedString(value);
+  if (
+    translations === undefined ||
+    localization === undefined ||
+    !localization.locales.some((declared) =>
+      Object.hasOwn(translations, declared),
+    )
+  ) {
+    return undefined;
+  }
+  const resolved = resolveLocalizedString(translations, localization, [
+    locale ?? localization.defaultLocale,
+  ]);
+  return {
+    text: messageText(resolved.text),
+    lang: resolved.locale,
+    matchedBy: resolved.matchedBy,
+  };
+}
+
+/**
+ * The plain text of `resolveDeclaredTranslation`: what a participant who chose
+ * `locale` would see, or `''` where the string has no translation in a
+ * declared language.
+ */
+export function declaredTranslationText(
+  value: unknown,
+  localization: ProtocolLocalization | undefined,
+  locale?: LocaleTag,
+): string {
+  return resolveDeclaredTranslation(value, localization, locale)?.text ?? '';
+}
+
+/**
+ * What a participant reading in `locale` would see, with its language and
+ * direction (see `resolveDeclaredTranslation`). Empty when the string has no
+ * translation.
+ *
+ * Without a declaration — a settings section that has not arrived — or with
+ * no translation in a declared language, the first translation the string
+ * holds stands in, so a preview is never blank merely because it rendered
+ * first.
  */
 export function resolveTranslation(
   value: unknown,
   localization: ProtocolLocalization | undefined,
   locale: LocaleTag | undefined,
 ): ResolvedTranslation {
-  const translations = asLocalizedString(value);
-  if (translations === undefined) return NO_TRANSLATION;
-
-  if (
-    localization !== undefined &&
-    localization.locales.some((declared) =>
-      Object.hasOwn(translations, declared),
-    )
-  ) {
-    const resolved = resolveLocalizedString(translations, localization, [
-      locale ?? localization.defaultLocale,
-    ]);
-    return {
-      text: messageText(resolved.text),
-      lang: resolved.locale,
-      dir: localeDirection(resolved.locale),
-      matchedBy: resolved.matchedBy,
-    };
+  const declared = resolveDeclaredTranslation(value, localization, locale);
+  if (declared !== undefined) {
+    return { ...declared, dir: localeDirection(declared.lang) };
   }
-
-  const [first] = Object.values(translations);
+  const [first] = Object.values(asLocalizedString(value) ?? {});
   return first === undefined ? NO_TRANSLATION : { text: messageText(first) };
 }

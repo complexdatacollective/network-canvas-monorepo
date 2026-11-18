@@ -10,6 +10,7 @@ import {
 import { LocalizedMessageVersionsSummary } from '@codaco/protocol-builder/fields/LocalizedMessageField';
 import {
   fallbackDependsOnBrowser,
+  resolveDeclaredTranslation,
   resolveTranslation,
 } from '@codaco/protocol-builder/localization/localizedText';
 import {
@@ -23,7 +24,6 @@ import {
 } from '@codaco/protocol-validation';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import Markdown from '~/components/Markdown';
-import { resolveLocalizedText } from '~/utils/localizedText';
 
 import SummaryContext from './SummaryContext';
 
@@ -86,7 +86,7 @@ export const useDefaultLanguageText = () => {
   const { protocol } = useContext(SummaryContext);
   return useCallback(
     (value: LocalizedString | undefined) =>
-      resolveLocalizedText(value, protocol.localization),
+      resolveDeclaredTranslation(value, protocol.localization),
     [protocol.localization],
   );
 };
@@ -99,7 +99,7 @@ export const useDefaultLanguageText = () => {
 export const DefaultLanguageText = ({ value }: SummaryTextProps) => {
   const resolved = useDefaultLanguageText()(value);
   if (!resolved) return null;
-  return <span {...languageAttributes(resolved.locale)}>{resolved.text}</span>;
+  return <span {...languageAttributes(resolved.lang)}>{resolved.text}</span>;
 };
 
 export const DefaultLanguageBadge = () => {
@@ -269,7 +269,7 @@ const LocalizedText = ({
   const multilingual = useMultilingualSummary();
   const resolved = useDefaultLanguageText()(value);
   if (!resolved || value === undefined) return null;
-  const text = value[resolved.locale];
+  const text = value[resolved.lang];
   if (text === undefined) return null;
   if (multilingual) {
     return (
@@ -281,11 +281,11 @@ const LocalizedText = ({
     );
   }
   return (
-    <span {...languageAttributes(resolved.locale)}>
+    <span {...languageAttributes(resolved.lang)}>
       <TranslationContent
         text={text}
         format={format}
-        locale={resolved.locale}
+        locale={resolved.lang}
         messageArguments={messageArguments}
       />
     </span>

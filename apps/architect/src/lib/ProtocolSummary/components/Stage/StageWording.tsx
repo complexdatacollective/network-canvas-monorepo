@@ -1,8 +1,5 @@
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { geospatialWordingMessages } from '@codaco/protocol-builder/editors/geospatial/geospatialWording';
-import { binBehavioursMessages } from '@codaco/protocol-builder/sections/bin-behaviours/binBehavioursMessages';
-import { nameGeneratorWordingMessages } from '@codaco/protocol-builder/sections/name-generator-wording/nameGeneratorWording';
+import { stageWordingSettings } from '@codaco/protocol-builder/localization/localizedTextNames';
 import { stageWordingMessages } from '@codaco/protocol-builder/sections/supplied-wording/stageWordingMessages';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
@@ -11,45 +8,47 @@ import { SummaryMessage, SummaryText } from '../SummaryText';
 import SectionFrame from './SectionFrame';
 import { stageMessageArguments } from './stageMessageArguments';
 
-/** Where a stage holds a setting of its wording. */
-export type StageWordingKey =
-  | 'minNodesNotice'
-  | 'maxNodesNotice'
-  | 'addNamePlaceholder'
-  | 'allAddedNotice'
-  | 'unnamedLabel'
-  | 'outsideAreasLabel'
-  | 'unplacedNodesNotice';
+/** A stage as the summary reads it: its type and its settings. */
+export type SummaryStage = Readonly<{ type: string }> &
+  Readonly<Record<string, unknown>>;
 
-/** A setting's label, and where the stage holds its wording. */
-type WordingSetting = readonly [MessageDescriptor, StageWordingKey];
-
-type StageWordingProps = {
-  type: string;
-  configuration: Readonly<Partial<Record<StageWordingKey, LocalizedString>>>;
+/** The text a stage holds at a path, or undefined where it holds none. */
+const textAt = (
+  stage: SummaryStage,
+  path: readonly string[],
+): LocalizedString | undefined => {
+  let current: unknown = stage;
+  for (const key of path) {
+    if (typeof current !== 'object' || current === null) return undefined;
+    current = Reflect.get(current, key);
+  }
+  return typeof current === 'object' && current !== null
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the path names a localized text setting, which the schema holds as a locale-to-string record
+      (current as LocalizedString)
+    : undefined;
 };
 
-/** The label each wording setting is shown under, in the order it is shown. */
-const STAGE_WORDING_SETTINGS: readonly WordingSetting[] = [
-  [nameGeneratorWordingMessages.minNoticeLabel, 'minNodesNotice'],
-  [nameGeneratorWordingMessages.maxNoticeLabel, 'maxNodesNotice'],
-  [nameGeneratorWordingMessages.addNamePlaceholderLabel, 'addNamePlaceholder'],
-  [nameGeneratorWordingMessages.allAddedLabel, 'allAddedNotice'],
-  [nameGeneratorWordingMessages.unnamedLabelLabel, 'unnamedLabel'],
-  [geospatialWordingMessages.outsideAreasLabel, 'outsideAreasLabel'],
-  [binBehavioursMessages.unplacedNoticeLabel, 'unplacedNodesNotice'],
-];
+type StageWordingProps = {
+  stage: SummaryStage;
+  /**
+   * Leaves out a setting the stage holds, by its dotted path. Unset, the
+   * summary prints every setting the stage holds.
+   */
+  omits?: (path: string) => boolean;
+};
 
 /**
- * The words a name generator, a map or a bin stage shows a participant, as the stage holds
- * them. Settings the stage does not hold are left out, so a stage with none
- * prints nothing.
+ * The stage's Customize built-in wording section: each setting its editor
+ * lists there, in the editor's order and under the editor's label, that the
+ * stage holds. A stage that holds none prints nothing.
  */
-const StageWording = ({ type, configuration }: StageWordingProps) => {
+const StageWording = ({ stage, omits }: StageWordingProps) => {
   const intl = useAppIntl();
-  const declarations = stageMessageArguments({ ...configuration, type });
-  const rows = STAGE_WORDING_SETTINGS.flatMap(([label, key]) => {
-    const value = configuration[key];
+  const declarations = stageMessageArguments(stage);
+  const rows = stageWordingSettings(stage.type).flatMap(({ path, label }) => {
+    const key = path.join('.');
+    if (omits?.(key)) return [];
+    const value = textAt(stage, path);
     if (value === undefined) return [];
     const declaration = declarations.get(key);
     return [
@@ -67,9 +66,7 @@ const StageWording = ({ type, configuration }: StageWordingProps) => {
       ],
     ];
   });
-  if (rows.length === 0) {
-    return null;
-  }
+  if (rows.length === 0) return null;
   return (
     <SectionFrame title={intl.formatMessage(stageWordingMessages.title)}>
       <MiniTable rotated rows={rows} />

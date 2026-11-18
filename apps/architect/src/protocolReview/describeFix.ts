@@ -1,4 +1,5 @@
 import { isValidationWithNumberValue } from '@codaco/protocol-builder/codebook/variableValidation';
+import { declaredTranslationText } from '@codaco/protocol-builder/localization/localizedText';
 import type { Finding } from '@codaco/protocol-review-worker/contract';
 import {
   collectLocalizedStrings,
@@ -7,7 +8,6 @@ import {
   messageText,
 } from '@codaco/protocol-validation';
 import { codebookHref } from '~/components/Codebook/codebookLinks';
-import { localizedText } from '~/utils/localizedText';
 
 import type { StoredOperation } from './fixEngine';
 import {
@@ -81,7 +81,7 @@ const numberSettingOwner = (
   if (segments[0] === 'stages') {
     const stage = protocol.stages.find(({ id }) => id === segments[1]);
     return stage
-      ? localizedText(stage.label, protocol.localization) || null
+      ? declaredTranslationText(stage.label, protocol.localization) || null
       : null;
   }
   return null;
@@ -396,7 +396,7 @@ export const resolveFindingLocation = (
         kind: 'stage',
         stageId: stage.id,
         position: index + 1,
-        label: localizedText(stage.label, protocol.localization),
+        label: declaredTranslationText(stage.label, protocol.localization),
         href: `/protocol/stage/${encodeURIComponent(stage.id)}`,
       };
     }

@@ -15,6 +15,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { DialogDraftRegistrarContext } from '@codaco/protocol-builder/form/dialogDraftRegistrar';
+import { declaredTranslationText } from '@codaco/protocol-builder/localization/localizedText';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
 import { isStageType } from '@codaco/protocol-builder/stage-types';
@@ -51,7 +52,6 @@ import {
   getStage,
   getStageIndex,
 } from '~/selectors/protocol';
-import { localizedText } from '~/utils/localizedText';
 const messages = defineMessages({
   stageNotFound: {
     id: 'architect.stageEditor.stageEditor.stageNotFound',
@@ -292,8 +292,8 @@ const StageEditorPage = () => {
   const localization = useSelector(getLocalization);
   const draftLabel = useStageDraft((beacon) => beacon.stage?.label);
   const stageName =
-    localizedText(draftLabel, localization) ||
-    localizedText(stage?.label, localization) ||
+    declaredTranslationText(draftLabel, localization) ||
+    declaredTranslationText(stage?.label, localization) ||
     intl.formatMessage(messages.newStage);
 
   const renderChrome = useCallback(

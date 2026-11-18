@@ -23,6 +23,11 @@ import {
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import OptionLabelField from '@codaco/protocol-builder/fields/OptionLabelField';
+import {
+  declaredTranslationText,
+  translationText,
+  withTranslation,
+} from '@codaco/protocol-builder/localization/localizedText';
 import type { LocaleTag, VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 import {
@@ -32,11 +37,6 @@ import {
 } from '~/components/Options/optionCompleteness';
 import { getLocalization } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
-import {
-  localizedText,
-  translationText,
-  withTranslation,
-} from '~/utils/localizedText';
 
 import RowField from './RowField';
 // Punctuation only, separating two unchanged researcher-authored values.
@@ -245,7 +245,9 @@ const Option = ({
         )}
         <div dir="auto" className="text-match-parent min-w-0 flex-1 truncate">
           {hasLabel ? (
-            <OptionLabel label={localizedText(item.label, localization)} />
+            <OptionLabel
+              label={declaredTranslationText(item.label, localization)}
+            />
           ) : (
             <span className="text-current/50 italic">
               {intl.formatMessage(messages.untitledOption)}
@@ -334,11 +336,14 @@ const Option = ({
           // the stage and adding a draft timeline entry, merely by opening a
           // row.
           onUpdate?.({
-            label: withTranslation(
-              item.label,
-              labelLocale,
-              typeof value === 'string' ? value : '',
-            ),
+            // A label cleared in its last language stays as an empty map
+            // rather than being removed from the option.
+            label:
+              withTranslation(
+                item.label,
+                labelLocale,
+                typeof value === 'string' ? value : '',
+              ) ?? {},
           });
         }}
         // Says where the researcher is typing that another row reads the
