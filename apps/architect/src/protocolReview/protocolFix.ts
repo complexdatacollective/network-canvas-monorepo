@@ -232,41 +232,6 @@ const replacedMembers = (
 };
 
 /**
- * Calls `visit` with every text in `written` that replaces a text `current`
- * holds in the same place, and that text. Members of arrays are paired as
- * `replacedMembers` pairs them.
- */
-export const eachReplacedText = (
-  written: unknown,
-  current: unknown,
-  locales: readonly string[],
-  visit: (
-    written: Record<string, string>,
-    current: Record<string, string>,
-  ) => void,
-): void => {
-  if (isLocalizedValue(written, locales)) {
-    if (isLocalizedValue(current, locales)) visit(written, current);
-    return;
-  }
-  if (Array.isArray(written)) {
-    if (!Array.isArray(current)) return;
-    const replaced = replacedMembers(written, current);
-    for (const [index, member] of written.entries()) {
-      eachReplacedText(member, replaced[index], locales, visit);
-    }
-    return;
-  }
-  if (isJsonObject(written) && isJsonObject(current)) {
-    for (const [key, value] of Object.entries(written)) {
-      if (Object.hasOwn(current, key)) {
-        eachReplacedText(value, current[key], locales, visit);
-      }
-    }
-  }
-};
-
-/**
  * `written` with, in every text that `current` holds in the same place, the
  * translations `written` does not name. The review writes only the
  * protocol's default language, so a fix that replaces a whole prompt, option

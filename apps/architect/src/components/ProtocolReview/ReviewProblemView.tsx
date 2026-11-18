@@ -1,5 +1,5 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import {
@@ -61,25 +61,11 @@ const messages = defineMessages({
     description:
       'Heading of the part of a problem that describes how the automated protocol review suggests fixing it.',
   },
-  translationsKept: {
-    id: 'architect.protocolReview.problem.translationsKept',
-    defaultMessage:
-      'Only the {changed} {changedCount, plural, one {text changes} other {texts change}}. The {languages} {count, plural, one {translation keeps its current wording until you update it} other {translations keep their current wording until you update them}}.',
-    description:
-      'Notice in a suggested fix that rewords text the protocol also has in other languages. {changed} names the language or languages the fix rewords and {languages} the ones it leaves as they are; both are lists of language names already joined for the reader’s language (for example "Spanish and French"). {changedCount} and {count} are how many languages each list names.',
-  },
   translationsUnchanged: {
     id: 'architect.protocolReview.problem.translationsUnchanged',
     defaultMessage: 'Not changed: {languages}',
     description:
       'Short note under one text a suggested fix rewords, naming the languages whose translation of that text the fix leaves as it is. {languages} is a list of language names, already joined for the reader’s language (for example "Spanish and French").',
-  },
-  checkTranslations: {
-    id: 'architect.protocolReview.problem.checkTranslations',
-    defaultMessage:
-      'Only the {changed} {changedCount, plural, one {text was} other {texts were}} changed. Check the {languages} {count, plural, one {translation} other {translations}} on the <page>Languages</page> page.',
-    description:
-      'Notice on a problem that was fixed for the researcher, when the fix reworded text the protocol also has in other languages. {changed} names the language or languages the fix reworded and {languages} the ones it left as they were; both are lists of language names already joined for the reader’s language. {changedCount} and {count} are how many languages each list names. The tag around "Languages" makes it a link to the page of that name, where translations are edited; keep the tag around that word, which must match the name of the page.',
   },
   changed: {
     id: 'architect.protocolReview.problem.changed',
@@ -369,14 +355,6 @@ const AfterFixBox = ({
   );
 };
 
-const LANGUAGES_HREF = '/protocol/localization';
-
-const languagesLink = (onFollow: () => void) => (chunks: ReactNode[]) => (
-  <ProtocolPlaceLink href={LANGUAGES_HREF} onFollow={onFollow}>
-    {chunks}
-  </ProtocolPlaceLink>
-);
-
 const editIsValid = (edit: FixTextEdit, value: string) =>
   edit.kind === 'text' ||
   (value.trim() !== '' && Number.isFinite(Number(value)));
@@ -437,13 +415,6 @@ const ReviewProblemView = ({
       locales.map((locale) => languageName(locale)),
       { type: 'conjunction' },
     );
-  const scope = current.translations;
-  const scopeValues = scope && {
-    changed: languageList(scope.changed),
-    changedCount: scope.changed.length,
-    languages: languageList(scope.kept),
-    count: scope.kept.length,
-  };
   // A fix that rewords several languages names each in the heading over its
   // boxes; otherwise the boxes' own labels do.
   const labelsNameLanguage = !headingsNameLanguage(current.textEdits);
@@ -675,18 +646,6 @@ const ReviewProblemView = ({
                 </AlertDescription>
               </Alert>
             )}
-            {status === 'fixed' &&
-              current.decision === 'fix' &&
-              scopeValues && (
-                <Alert variant="warning" density="compact" className="my-0">
-                  <AlertDescription>
-                    {intl.formatMessage(messages.checkTranslations, {
-                      ...scopeValues,
-                      page: languagesLink(onClose),
-                    })}
-                  </AlertDescription>
-                </Alert>
-              )}
             {notices.map((notice) => (
               <Alert
                 key={notice.id}
@@ -719,13 +678,6 @@ const ReviewProblemView = ({
                     <li key={position}>{change}</li>
                   ))}
                 </ul>
-              )}
-              {status !== 'fixed' && scopeValues && (
-                <Alert variant="info" density="compact" className="my-0">
-                  <AlertDescription>
-                    {intl.formatMessage(messages.translationsKept, scopeValues)}
-                  </AlertDescription>
-                </Alert>
               )}
               {current.textEdits.map((edit) => (
                 <div key={edit.path} className="mt-4 flex flex-col gap-3">

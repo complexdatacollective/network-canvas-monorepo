@@ -8,7 +8,6 @@ import {
 import {
   applyFixEdits,
   describeFixTextEdits,
-  fixTranslationScope,
   placeholdersReplaceable,
   resolveFindingLocation,
   resolveFixPlace,
@@ -260,70 +259,6 @@ describe('a fix that replaces more than one text', () => {
       }),
     ];
     expect(normalizeOperations(protocol, operations)).toEqual(operations);
-  });
-});
-
-describe('which translations a fix rewords and which it leaves', () => {
-  const scopeOf = (operations: ReturnType<typeof op>[]) => {
-    const protocol = makeProtocol();
-    const fix = recordFix(protocol, operations);
-    const applied = applyOperations(protocol, fix.operations);
-    if (!applied.ok) throw new Error('the fix does not apply');
-    return {
-      before: fixTranslationScope(protocol, fix.operations, fix.targets),
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fixture with the fix applied
-      after: fixTranslationScope(
-        applied.result as CurrentProtocol,
-        fix.operations,
-        fix.targets,
-      ),
-    };
-  };
-  const english = { changed: ['en'], kept: ['fr'] };
-
-  it.each([
-    [
-      'one translation',
-      [op('set', '/stages/names/prompts/p1/text/en', 'Who do you know?')],
-    ],
-    [
-      'a whole text',
-      [op('set', '/stages/names/prompts/p1/text', { en: 'Who do you know?' })],
-    ],
-    [
-      'a whole prompt',
-      [
-        op('set', '/stages/names/prompts/p1', {
-          id: 'p1',
-          text: { en: 'Who do you know?' },
-        }),
-      ],
-    ],
-    [
-      'a list of options',
-      [
-        op('set', '/codebook/node/person/variables/freq/options', [
-          { label: { en: 'Seldom' }, value: 2 },
-          { label: { en: 'Frequently' }, value: 1 },
-        ]),
-      ],
-    ],
-  ])('says so for %s, before the fix and once it is made', (_, operations) => {
-    expect(scopeOf(operations)).toEqual({ before: english, after: english });
-  });
-
-  it('says nothing for a fix that rewords every translation', () => {
-    expect(
-      scopeOf([
-        op('set', '/stages/names/prompts/p1/text', { en: 'Who?', fr: 'Qui ?' }),
-      ]),
-    ).toEqual({ before: null, after: null });
-  });
-
-  it('says nothing for a fix that writes no text the protocol has', () => {
-    expect(
-      scopeOf([op('set', '/codebook/node/person/name', 'Friend')]),
-    ).toEqual({ before: null, after: null });
   });
 });
 

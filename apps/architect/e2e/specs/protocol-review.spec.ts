@@ -790,11 +790,7 @@ test.describe('results', () => {
       view.getByText('After the fix · English', { exact: true }),
     ).toBeVisible();
     await expect(view.getByText(NEW_P1_TEXT, { exact: true })).toBeVisible();
-    await expect(
-      view.getByText(
-        'Only the English text changes. The French translation keeps its current wording until you update it.',
-      ),
-    ).toBeVisible();
+    await expect(view.getByText('Not changed: French')).toBeVisible();
 
     await fixForMe(view).click();
     await view.getByRole('button', { name: 'Next problem' }).click();

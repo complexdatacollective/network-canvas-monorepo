@@ -34,8 +34,6 @@ import {
 import {
   applyFixEdits,
   describeFixTextEdits,
-  type FixTranslationScope,
-  fixTranslationScope,
   type FindingLocation,
   placeholdersReplaceable,
   type FixPlace,
@@ -522,8 +520,6 @@ export type ReviewFindingView = {
   fixChanges: string[];
   /** Each text the fix rewrites, now and after. */
   textEdits: FixTextEdit[];
-  /** The languages the fix rewords and the ones it leaves, before and after it is made; null when it leaves none. */
-  translations: FixTranslationScope | null;
   decision: FindingDecision;
   /** `fixed` while a fix that was applied stands, or the protocol already is as the fix would leave it. */
   status: FindingDisplayStatus;
@@ -650,11 +646,6 @@ export const getProtocolReviewFindings = createSelector(
         textEdits: describeFixTextEdits(
           protocolAsReviewed(protocol),
           stored.operations,
-        ),
-        translations: fixTranslationScope(
-          reviewed,
-          stored.operations,
-          stored.targets,
         ),
         decision: stored.decision,
         status,

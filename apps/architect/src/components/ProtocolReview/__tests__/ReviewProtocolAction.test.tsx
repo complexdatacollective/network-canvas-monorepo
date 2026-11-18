@@ -815,11 +815,8 @@ describe('one problem at a time, in the panel', () => {
     ).toBeNull();
     expect(within(dialog).getByText('Name people')).toBeVisible();
     expect(within(dialog).getByText('Name everyone you know')).toBeVisible();
-    expect(
-      within(dialog).getByText(
-        'Only the English text changes. The French translation keeps its current wording until you update it.',
-      ),
-    ).toBeVisible();
+    expect(within(dialog).getByText('Not changed: French')).toBeVisible();
+    expect(within(dialog).queryByText(/English text/)).toBeNull();
 
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Fix for me' }),
@@ -1304,6 +1301,17 @@ describe('one problem at a time, in the panel', () => {
     ).toBeEnabled();
   });
 
+  it('says once, above the problems, which language fixes change, and links to the Languages page', async () => {
+    await reviewed(store);
+    renderToolbar(store);
+    const panel = await openPanel();
+    const note = within(panel).getByText(/Fixes change the English text only/);
+    expect(note).toHaveTextContent(
+      'Fixes change the English text only. After a fix, check your other translations on the Languages page.',
+    );
+    expect(within(note).getByRole('link', { name: 'Languages' })).toBeVisible();
+  });
+
   it('previews a fix that replaces a whole localized text, translation by translation', async () => {
     await reviewed(store, {
       ...RESULT,
@@ -1334,11 +1342,8 @@ describe('one problem at a time, in the panel', () => {
     let dialog = await openProblemFromList('The prompt is vague');
     expect(within(dialog).getByText('Name people')).toBeVisible();
     expect(within(dialog).getByText('Name everyone you know')).toBeVisible();
-    expect(
-      within(dialog).getByText(
-        'Only the English text changes. The French translation keeps its current wording until you update it.',
-      ),
-    ).toBeVisible();
+    expect(within(dialog).getByText('Not changed: French')).toBeVisible();
+    expect(within(dialog).queryByText(/English text/)).toBeNull();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Back' }));
 
     dialog = await openProblemFromListAlreadyOpen(
