@@ -35,10 +35,15 @@ asks an AI model to look for problems in your protocol and suggest fixes.
   the model you chose. Images, video, audio, other resources and any API keys
   saved in the protocol are never sent. Check that your IRB or ethics review
   body permits this before you use the feature.
-- **Share the results of this review with the Network Canvas team** is ticked
-  unless you untick it. While it is ticked, the team keeps a copy of your
-  study details, the protocol and the review for 90 days, and uses them only
-  to improve this feature. Unticked, the service keeps nothing.
+- **Share this review with the Network Canvas team** is ticked unless you
+  untick it. While it is ticked, the team keeps a copy of your study details,
+  your protocol, and the review's findings and suggested fixes, with which
+  model wrote the review, when, and the language you use Architect in. Files
+  in your protocol and the values of saved API keys are not included, only
+  their names, and nothing is added that identifies you or your browser. The
+  copy is deleted automatically 90 days after the review and cannot be
+  removed sooner. It is used only to improve this feature. Unticked, the
+  service keeps nothing.
 - The service is free and limited: 5 reviews an hour for each browser, and a
   daily and a monthly budget for each provider, shared by everyone who uses
   it. A provider whose budget is spent is greyed out until it starts again,

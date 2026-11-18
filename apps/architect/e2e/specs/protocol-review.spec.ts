@@ -81,7 +81,7 @@ const wizardStep = (page: Page, name: string) =>
 
 const shareCheckbox = (page: Page) =>
   wizardStep(page, STEP.before).getByRole('checkbox', {
-    name: 'Share the results of this review with the Network Canvas team',
+    name: 'Share this review with the Network Canvas team',
   });
 
 const modelOption = (page: Page, model: 'Claude Opus 5.5' | 'GPT-6.1 Sol') =>
