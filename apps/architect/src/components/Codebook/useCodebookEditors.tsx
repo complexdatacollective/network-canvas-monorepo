@@ -10,7 +10,6 @@ import CodebookEntityEditorDialog, {
 import CreateCodebookVariableDialog, {
   type CreateCodebookVariableSession,
 } from '@codaco/protocol-builder/codebook/components/CreateCodebookVariableDialog';
-import { DialogDraftRegistrarContext } from '@codaco/protocol-builder/form/dialogDraftRegistrar';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import { registerNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppSelector } from '~/ducks/hooks';
@@ -120,33 +119,33 @@ export function useCodebookEditors(
 
   const dialogs =
     protocolId === null ? null : (
-      <ProtocolBuilder adapter={client.adapter} protocolId={protocolId}>
-        {/*
-          An open editor counts as one of Architect's own nested editors, so
-          the tab lock, the read-only demotion and a refresh all ask about
-          its unsaved work.
-        */}
-        <DialogDraftRegistrarContext.Provider value={registerNestedDraft}>
-          {entitySession !== null && (
-            <CodebookEntityEditorDialog
-              session={entitySession}
-              onClose={closeEntityEditor}
-              onExitComplete={entityEditor.onSessionExited}
-              readOnly={readOnly}
-              {...(entitySession.fromLink
-                ? { finalFocus: returnFocusToHeading }
-                : {})}
-            />
-          )}
-          {variableEditor.session !== null && (
-            <CreateCodebookVariableDialog
-              session={variableEditor.session}
-              onClose={variableEditor.closeSession}
-              onExitComplete={variableEditor.onSessionExited}
-              readOnly={readOnly}
-            />
-          )}
-        </DialogDraftRegistrarContext.Provider>
+      // An open editor counts as one of Architect's own nested editors, so
+      // the tab lock, the read-only demotion and a refresh all ask about its
+      // unsaved work.
+      <ProtocolBuilder
+        adapter={client.adapter}
+        protocolId={protocolId}
+        dialogDraftRegistrar={registerNestedDraft}
+      >
+        {entitySession !== null && (
+          <CodebookEntityEditorDialog
+            session={entitySession}
+            onClose={closeEntityEditor}
+            onExitComplete={entityEditor.onSessionExited}
+            readOnly={readOnly}
+            {...(entitySession.fromLink
+              ? { finalFocus: returnFocusToHeading }
+              : {})}
+          />
+        )}
+        {variableEditor.session !== null && (
+          <CreateCodebookVariableDialog
+            session={variableEditor.session}
+            onClose={variableEditor.closeSession}
+            onExitComplete={variableEditor.onSessionExited}
+            readOnly={readOnly}
+          />
+        )}
       </ProtocolBuilder>
     );
 
