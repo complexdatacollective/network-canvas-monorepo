@@ -1,6 +1,8 @@
 import { Dexie, type EntityTable } from 'dexie';
 
 import type {
+  FeedbackRating,
+  FeedbackReason,
   Finding,
   ReviewProvider,
 } from '@codaco/protocol-review-worker/contract';
@@ -64,6 +66,23 @@ export type StoredFinding = {
    * wrote again (the app's Redo).
    */
   takenOut?: boolean;
+  /**
+   * Whether the researcher changed the fix's text or numbers before it was
+   * applied. Meaningful while the fix is applied.
+   */
+  edited?: boolean;
+  /**
+   * Whether the researcher found the problem useful, and why not when they
+   * said; absent or null until they rate it. Asked only about a review that
+   * was shared.
+   */
+  rating?: FindingRating | null;
+};
+
+export type FindingRating = {
+  rating: FeedbackRating;
+  /** Only with `not_useful`. */
+  reason: FeedbackReason | null;
 };
 
 export type StoredReview = {
@@ -79,6 +98,21 @@ export type StoredReview = {
   provider?: ReviewProvider;
   stageIds?: string[];
   findings: StoredFinding[];
+  /**
+   * Whether the review was sent with sharing on, so the service holds a copy
+   * that feedback can be kept with. The protocol's `shareReviews` is the
+   * choice for the next review; this is what was done with this one. Absent
+   * from reviews saved before it existed, none of which get feedback.
+   */
+  shared?: boolean;
+  /** What the researcher wrote about the review as a whole, as they sent it. */
+  comment?: string;
+  /**
+   * The feedback the service last took, as it was sent (`feedbackSnapshot`).
+   * Absent until some has been taken. Feedback is sent again whenever what
+   * would be sent now differs from this.
+   */
+  feedbackSent?: string;
 };
 
 export type StoredReviewRecord = {

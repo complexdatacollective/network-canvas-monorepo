@@ -145,9 +145,9 @@ const messages = defineMessages({
   shareHint: {
     id: 'architect.protocolReview.wizard.sending.shareHint',
     defaultMessage:
-      'When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. We will use this information only for the purposes of improving this feature.',
+      'When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. The team also keeps, for the same time, what you do with each problem the review finds, any Useful or Not useful rating you give a problem, and any feedback you write about the review. We will use this information only for the purposes of improving this feature.',
     description:
-      'Explanation under the share checkbox. {days} is how long a shared review is kept. "Network Canvas" is a product name and is not translated.',
+      'Explanation under the share checkbox. {days} is how long a shared review is kept. "What you do with each problem" means whether the researcher has it fixed for them, fixes it themselves or dismisses it. "Useful" and "Not useful" are the names of two buttons that rate a problem, and must match their translations. "Network Canvas" is a product name and is not translated.',
   },
   synopsisTitle: {
     id: 'architect.protocolReview.wizard.synopsis.title',

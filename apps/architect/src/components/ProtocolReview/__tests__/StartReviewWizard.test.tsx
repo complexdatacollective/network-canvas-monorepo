@@ -152,7 +152,7 @@ describe('asking for a first review', () => {
     ).toBeChecked();
     expect(
       requestDialog().getByText(
-        'When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for 90 days. We will use this information only for the purposes of improving this feature.',
+        'When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for 90 days. The team also keeps, for the same time, what you do with each problem the review finds, any Useful or Not useful rating you give a problem, and any feedback you write about the review. We will use this information only for the purposes of improving this feature.',
       ),
     ).toBeVisible();
   });

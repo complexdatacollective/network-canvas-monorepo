@@ -5,6 +5,10 @@ import {
 } from '@reduxjs/toolkit';
 
 import {
+  type FeedbackOutcome,
+  type FeedbackRating,
+  type FeedbackReason,
+  type FeedbackRequest,
   type Finding,
   type FindingCategory,
   type FindingSeverity,
@@ -66,12 +70,14 @@ import {
 import {
   requestProviderStatus,
   requestReview,
+  sendReviewFeedback,
 } from '~/protocolReview/reviewClient';
 import {
   type FindingDecision,
   getReviewClearEpoch,
   readReviewRecord,
   type StoredFinding,
+  type StoredReview,
   type StoredReviewRecord,
   writeReviewRecord,
 } from '~/protocolReview/reviewStore';
@@ -358,6 +364,17 @@ export const getProtocolReviewSummary = createSelector(
       : null,
 );
 
+/**
+ * Whether the stored review was shared with the team, so that feedback on it
+ * is sent to them: the ratings and the comment are asked for only then.
+ */
+export const getIsProtocolReviewShared = (state: RootState): boolean =>
+  selectRecord(state)?.review?.shared === true;
+
+/** What the researcher last sent about the review as a whole; empty when nothing. */
+export const getProtocolReviewComment = (state: RootState): string =>
+  selectRecord(state)?.review?.comment ?? '';
+
 /** The quota at `now`: a quota whose reset has passed reads as full. */
 export const getProtocolReviewQuota = (
   state: RootState,
@@ -533,6 +550,10 @@ export type ReviewFindingView = {
   location: FindingLocation;
   /** Where the researcher would make the fix themselves (`resolveFixPlace`). */
   fixPlace: FixPlace;
+  /** Whether the researcher rated the problem useful; null until they do. */
+  rating: FeedbackRating | null;
+  /** Why it was not useful, when they said. */
+  ratingReason: FeedbackReason | null;
 };
 
 /** Whether an applied fix is still exactly as it was left: what Undo needs. */
@@ -658,6 +679,8 @@ export const getProtocolReviewFindings = createSelector(
         canRestore: status === 'dismissed',
         location,
         fixPlace: resolveFixPlace(reviewed, stored.operations, location),
+        rating: stored.rating?.rating ?? null,
+        ratingReason: stored.rating?.reason ?? null,
       };
     });
   },
@@ -682,6 +705,57 @@ export const getProtocolReviewCounts = createSelector(
     return counts;
   },
 );
+
+// ---------------------------------------------------------------------------
+// Feedback
+
+/** What became of a problem, as the feedback says it. */
+const outcomeOf = (
+  stored: StoredFinding,
+  protocol: CurrentProtocol,
+): FeedbackOutcome => {
+  const status = statusOf(stored, protocol);
+  if (status !== 'fixed') return status;
+  // The protocol is as the fix would leave it without Architect's fix
+  // standing in it: the researcher made the change.
+  if (!fixStands(stored, protocol)) return 'done';
+  return stored.edited === true ? 'fixed_edited' : 'fixed';
+};
+
+type ReviewFeedback = Pick<FeedbackRequest, 'findings' | 'comment'>;
+
+/** How the review was received, as the protocol and the record now show it. */
+const reviewFeedback = (
+  review: StoredReview,
+  protocol: CurrentProtocol,
+): ReviewFeedback => ({
+  findings: review.findings.map((stored) => ({
+    id: stored.finding.id,
+    outcome: outcomeOf(stored, protocol),
+    rating: stored.rating?.rating ?? null,
+    reason: stored.rating?.reason ?? null,
+  })),
+  comment: review.comment ? review.comment : null,
+});
+
+/** Feedback as it is compared and remembered (`StoredReview.feedbackSent`). */
+const feedbackSnapshot = (feedback: ReviewFeedback): string =>
+  JSON.stringify(feedback);
+
+/**
+ * The feedback of a review nothing has been done with, which is what the
+ * service has while it has been sent none: there is nothing in it to send.
+ */
+const untouchedSnapshot = (review: StoredReview): string =>
+  feedbackSnapshot({
+    findings: review.findings.map((stored) => ({
+      id: stored.finding.id,
+      outcome: 'undecided',
+      rating: null,
+      reason: null,
+    })),
+    comment: null,
+  });
 
 // ---------------------------------------------------------------------------
 // Thunks
@@ -754,6 +828,9 @@ export const syncProtocolReview =
       abortInflight();
       countStoppedRun(dispatch);
     }
+    // Feedback waiting to go was about the protocol that was open. It is
+    // sent when that protocol is next opened (`feedbackSent` says it is due).
+    cancelScheduledFeedback();
     dispatch(actions.reviewCleared());
     dispatch(actions.quotaUpdated(readStoredQuota()));
     dispatch(actions.providerChosen(readStoredProvider()));
@@ -763,6 +840,7 @@ export const syncProtocolReview =
       dispatch(actions.recordReplaced(record));
       // Nothing has checked this protocol's fixes in this session yet.
       void dispatch(checkFixAvailability());
+      scheduleFeedback(dispatch, getState);
     }
   };
 
@@ -781,6 +859,7 @@ export const refreshProtocolReviewRecord =
     if (!isStillActive(getState(), protocolId)) return;
     dispatch(actions.recordReplaced(record));
     void dispatch(checkFixAvailability());
+    scheduleFeedback(dispatch, getState);
   };
 
 /** Whether `protocolId` is still the protocol open in this tab. */
@@ -1025,6 +1104,7 @@ export const startReview =
         provider,
         stageIds: reviewed.stages.map((stage) => stage.id),
         findings,
+        shared: share,
       },
     });
     dispatch(actions.runFinished({ runId }));
@@ -1096,7 +1176,18 @@ export const dismissReview =
     ) {
       return false;
     }
-    return saveRecord(dispatch, getState, { ...record, review: null });
+    // Feedback not yet sent goes now, as it stands: once the review is
+    // removed there is nothing left here to send it from.
+    const pending = pendingFeedback(getState);
+    const dismissed = await saveRecord(dispatch, getState, {
+      ...record,
+      review: null,
+    });
+    if (dismissed) {
+      cancelScheduledFeedback();
+      if (pending) void sendReviewFeedback({ request: pending.request });
+    }
+    return dismissed;
   };
 
 /** Clears a failed run back to idle. */
@@ -1157,7 +1248,7 @@ const holdsReview = (
 const withFinding = (
   record: StoredReviewRecord,
   findingId: string,
-  update: Pick<StoredFinding, 'decision' | 'inverse' | 'written'>,
+  update: Pick<StoredFinding, 'decision' | 'inverse' | 'written' | 'edited'>,
 ): StoredReviewRecord => ({
   ...record,
   review: record.review
@@ -1246,6 +1337,7 @@ export const decideFinding =
         }),
       );
       if (!saved) return refused('not_owned');
+      scheduleFeedback(dispatch, getState);
       captureReviewDecision(decisionPayload(decision, found.stored.finding));
       // A finding back on the list needs its fix checked, whatever is on
       // screen: after a reload nothing has checked it yet.
@@ -1317,8 +1409,10 @@ export const decideFinding =
         decision: 'fix',
         inverse: edit.inverse,
         written: edit.written,
+        edited: Object.keys(edits).length > 0,
       }),
     );
+    scheduleFeedback(dispatch, getState);
     captureReviewDecision(decisionPayload('fix', stored.finding));
     return { ok: true };
   };
@@ -1386,6 +1480,206 @@ export const undoFix =
     captureReviewDecision(decisionPayload('undecided', stored.finding));
     void dispatch(checkFixAvailability());
     return { ok: true };
+  };
+
+/**
+ * Records whether the researcher found a problem useful, and why not when
+ * they said; null takes the rating back. Kept only for a review that was
+ * shared, since it is asked for the team: it is sent to them with the rest
+ * of the feedback.
+ */
+export const rateFinding =
+  (
+    findingId: string,
+    rating: FeedbackRating | null,
+    reason: FeedbackReason | null = null,
+  ): Thunk<Promise<DecisionResult>> =>
+  async (dispatch, getState) => {
+    const found = findStored(getState, findingId);
+    if (found === null) return refused('no_review');
+    if (found === undefined) return refused('not_found');
+    const { review } = found.record;
+    if (!review?.shared) return refused('no_review');
+    const saved = await saveRecord(dispatch, getState, {
+      ...found.record,
+      review: {
+        ...review,
+        findings: review.findings.map((stored) =>
+          stored.finding.id === findingId
+            ? {
+                ...stored,
+                rating:
+                  rating === null
+                    ? null
+                    : {
+                        rating,
+                        reason: rating === 'not_useful' ? reason : null,
+                      },
+              }
+            : stored,
+        ),
+      },
+    });
+    if (!saved) return refused('not_owned');
+    scheduleFeedback(dispatch, getState);
+    return { ok: true };
+  };
+
+/**
+ * Records what the researcher wrote about the review as a whole and sends it
+ * now, with the rest of the feedback. Answers whether it was recorded; an
+ * empty comment takes the one sent before back.
+ */
+export const commentOnReview =
+  (comment: string): Thunk<Promise<boolean>> =>
+  async (dispatch, getState) => {
+    const record = selectRecord(getState());
+    if (
+      !record?.review?.shared ||
+      record.protocolId !== getActiveProtocolId(getState())
+    ) {
+      return false;
+    }
+    const saved = await saveRecord(dispatch, getState, {
+      ...record,
+      review: {
+        ...record.review,
+        comment: comment
+          .trim()
+          .slice(0, REVIEW_LIMITS.maxFeedbackCommentLength),
+      },
+    });
+    if (!saved) return false;
+    void dispatch(sendFeedback());
+    return true;
+  };
+
+/** How long after the last change feedback is sent, in milliseconds. */
+const FEEDBACK_DELAY_MS = 3000;
+
+/**
+ * How old a review must be before the service saying it holds no shared copy
+ * of it is believed, in milliseconds. A copy just written may not be readable
+ * everywhere yet.
+ */
+const SHARED_COPY_SETTLES_MS = 5 * 60 * 1000;
+
+let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+const cancelScheduledFeedback = () => {
+  if (feedbackTimer !== null) clearTimeout(feedbackTimer);
+  feedbackTimer = null;
+};
+
+/**
+ * Sends the feedback a little after the last change, so that a run of
+ * choices goes as one request. Asked for wherever the feedback may have
+ * changed; whether it has is worked out when the time comes.
+ */
+const scheduleFeedback = (dispatch: AppDispatch, getState: GetState) => {
+  cancelScheduledFeedback();
+  // Only a review that was shared ever has feedback to send.
+  if (selectRecord(getState())?.review?.shared !== true) return;
+  feedbackTimer = setTimeout(() => {
+    feedbackTimer = null;
+    void dispatch(sendFeedback());
+  }, FEEDBACK_DELAY_MS);
+};
+
+/**
+ * The feedback due on the active protocol's review, or null when none is:
+ * only a review that was shared gets any, only from the tab that owns the
+ * protocol, and only while it differs from what the service last took.
+ */
+const pendingFeedback = (
+  getState: GetState,
+): { reviewId: string; snapshot: string; request: FeedbackRequest } | null => {
+  const state = getState();
+  const record = selectRecord(state);
+  const protocol = getProtocol(state);
+  if (!protocol || !record?.review?.shared) return null;
+  if (record.protocolId !== getActiveProtocolId(state)) return null;
+  if (!getProtocolOwnedHere(state)) return null;
+  const { review } = record;
+  const feedback = reviewFeedback(review, protocol);
+  const snapshot = feedbackSnapshot(feedback);
+  if (snapshot === (review.feedbackSent ?? untouchedSnapshot(review))) {
+    return null;
+  }
+  return {
+    reviewId: review.reviewId,
+    snapshot,
+    request: {
+      installationId: getReviewInstallationId(),
+      reviewId: review.reviewId,
+      ...feedback,
+    },
+  };
+};
+
+let sendingFeedback: Promise<void> | null = null;
+
+const sendPendingFeedback = async (
+  dispatch: AppDispatch,
+  getState: GetState,
+) => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  const pending = pendingFeedback(getState);
+  if (!pending) return;
+  const outcome = await sendReviewFeedback({ request: pending.request });
+  // What was sent is about one review: if it was dismissed or replaced, or
+  // another protocol opened, meanwhile, there is nothing here to record.
+  const record = selectRecord(getState());
+  if (
+    !record?.review ||
+    record.review.reviewId !== pending.reviewId ||
+    record.protocolId !== getActiveProtocolId(getState())
+  ) {
+    return;
+  }
+  if (outcome === 'sent') {
+    await saveRecord(dispatch, getState, {
+      ...record,
+      review: { ...record.review, feedbackSent: pending.snapshot },
+    });
+    // A choice made while that was sent is not in it.
+    if (pendingFeedback(getState)) scheduleFeedback(dispatch, getState);
+    return;
+  }
+  if (
+    outcome === 'unknown_review' &&
+    Date.now() - record.review.createdAt > SHARED_COPY_SETTLES_MS
+  ) {
+    // The service kept no copy of this review (keeping it failed, or it has
+    // expired), so it keeps no feedback on it either: stop asking for any.
+    await saveRecord(dispatch, getState, {
+      ...record,
+      review: { ...record.review, shared: false },
+    });
+  }
+  // Anything else is tried again the next time the feedback may have changed.
+};
+
+/**
+ * Sends the feedback on the active protocol's review now, if any is due
+ * (`pendingFeedback`). One request at a time, so an older state of the
+ * feedback never arrives after a newer one: asked while one is out, it waits
+ * for that one and then sends what is due.
+ */
+export const sendFeedback =
+  (): Thunk<Promise<void>> => async (dispatch, getState) => {
+    cancelScheduledFeedback();
+    const before = sendingFeedback;
+    const sending = (async () => {
+      await before;
+      await sendPendingFeedback(dispatch, getState);
+    })();
+    sendingFeedback = sending;
+    try {
+      await sending;
+    } finally {
+      if (sendingFeedback === sending) sendingFeedback = null;
+    }
   };
 
 /** The researcher's choice about sharing reviews with the team; kept between reviews. */
@@ -1561,5 +1855,7 @@ export const checkFixAvailability =
 export const reviewProtocolChanged =
   (): Thunk<Promise<void>> => async (dispatch, getState) => {
     noteFixesTakenOut(dispatch, getState);
+    // The change may have made or unmade a fix, which the feedback says.
+    scheduleFeedback(dispatch, getState);
     await dispatch(checkFixAvailability());
   };

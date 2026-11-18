@@ -1,4 +1,8 @@
 import {
+  FEEDBACK_PATH,
+  type FeedbackErrorCode,
+  FeedbackErrorSchema,
+  type FeedbackRequest,
   PROTOCOL_REVIEW_SERVICE_URL,
   type ProviderAvailability,
   PROVIDERS_PATH,
@@ -237,5 +241,39 @@ export const requestProviderStatus = async ({
     return parsed.success ? parsed.data.providers : null;
   } catch {
     return null;
+  }
+};
+
+type SendReviewFeedbackOptions = {
+  request: FeedbackRequest;
+  url?: string;
+  fetchImpl?: typeof fetch;
+};
+
+/**
+ * Sends how a shared review was received. Never throws: `sent` when the
+ * service kept it, and otherwise why it did not; a network failure or an
+ * answer that is not the contract's is `service_unavailable`. The request
+ * outlives the page (`keepalive`), so feedback sent as a review is dismissed
+ * or the tab closes still arrives.
+ */
+export const sendReviewFeedback = async ({
+  request,
+  url = reviewServiceUrl(FEEDBACK_PATH),
+  fetchImpl = fetch,
+}: SendReviewFeedbackOptions): Promise<'sent' | FeedbackErrorCode> => {
+  try {
+    const response = await fetchImpl(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      keepalive: true,
+    });
+    if (response.ok) return 'sent';
+    const body: unknown = await response.json();
+    const parsed = FeedbackErrorSchema.safeParse(body);
+    return parsed.success ? parsed.data.error : 'service_unavailable';
+  } catch {
+    return 'service_unavailable';
   }
 };

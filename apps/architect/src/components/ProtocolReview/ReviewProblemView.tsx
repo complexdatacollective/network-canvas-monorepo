@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import Pips from '@codaco/fresco-ui/Pips';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
@@ -19,12 +20,19 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
+import {
+  FEEDBACK_REASONS,
+  type FeedbackRating,
+  type FeedbackReason,
+} from '@codaco/protocol-review-worker/contract';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
   type DecisionRefusal,
   decideFinding,
+  getIsProtocolReviewShared,
   getProtocolReviewFindings,
+  rateFinding,
   type ReviewFindingView,
   undoFix,
 } from '~/ducks/modules/protocolReview';
@@ -199,7 +207,55 @@ const messages = defineMessages({
     description:
       'Button that moves on from a problem already fixed to the next problem still to decide.',
   },
+  ratingQuestion: {
+    id: 'architect.protocolReview.problem.ratingQuestion',
+    defaultMessage: 'Was it useful to be told about this problem?',
+    description:
+      'Question under a problem found by the automated protocol review, shown when the review was shared with the Network Canvas team. Two buttons, Useful and Not useful, answer it.',
+  },
+  ratingUseful: {
+    id: 'architect.protocolReview.problem.ratingUseful',
+    defaultMessage: 'Useful',
+    description:
+      'Button that rates a problem found by the automated protocol review as useful. Pressing it again takes the rating back.',
+  },
+  ratingNotUseful: {
+    id: 'architect.protocolReview.problem.ratingNotUseful',
+    defaultMessage: 'Not useful',
+    description:
+      'Button that rates a problem found by the automated protocol review as not useful. Pressing it again takes the rating back.',
+  },
+  ratingReason: {
+    id: 'architect.protocolReview.problem.ratingReason',
+    defaultMessage: 'Why not? (optional)',
+    description:
+      'Label of the choices shown after the researcher rates a problem as not useful, asking why it was not useful. Answering is optional.',
+  },
+  reasonWrong: {
+    id: 'architect.protocolReview.problem.reasonWrong',
+    defaultMessage: 'It is wrong about my protocol',
+    description:
+      'A reason a problem found by the automated protocol review was not useful: what it says about the protocol is not true.',
+  },
+  reasonNotRelevant: {
+    id: 'architect.protocolReview.problem.reasonNotRelevant',
+    defaultMessage: 'It does not matter for my study',
+    description:
+      'A reason a problem found by the automated protocol review was not useful: it may be true, but it is not relevant to this study.',
+  },
+  reasonFixWouldNotWork: {
+    id: 'architect.protocolReview.problem.reasonFixWouldNotWork',
+    defaultMessage: 'The suggested fix would not work',
+    description:
+      'A reason a problem found by the automated protocol review was not useful: the problem may be real, but the fix suggested for it would not solve it.',
+  },
 });
+
+const reasonMessages: Record<FeedbackReason, MessageDescriptor> = {
+  wrong: messages.reasonWrong,
+  not_relevant: messages.reasonNotRelevant,
+  fix_would_not_work: messages.reasonFixWouldNotWork,
+};
 
 /** The next problem still to decide after `fromIndex`, wrapping round. */
 const nextUndecided = (
@@ -415,8 +471,11 @@ const ReviewProblemView = ({
       nextUndecided(getProtocolReviewFindings(state), index, current.id) !==
       null,
   );
+  const shared = useAppSelector(getIsProtocolReviewShared);
   const checkingId = useId();
   const summaryId = useId();
+  const ratingId = useId();
+  const reasonId = useId();
 
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
@@ -507,6 +566,33 @@ const ReviewProblemView = ({
       return;
     }
     announce(`Fix undone: ${current.title}`);
+  };
+
+  /** Rates the problem; the rating it already has is taken back. */
+  const rate = async (
+    rating: FeedbackRating,
+    reason: FeedbackReason | null = null,
+  ) => {
+    const withdrawn = reason === null && current.rating === rating;
+    setRefusal(null);
+    const result = await dispatch(
+      rateFinding(current.id, withdrawn ? null : rating, reason),
+    );
+    if (!result.ok) {
+      setRefusal({
+        findingId: current.id,
+        reason: result.reason,
+        edited: false,
+      });
+      return;
+    }
+    announce(
+      withdrawn
+        ? 'Rating removed.'
+        : rating === 'useful'
+          ? 'Rated useful.'
+          : 'Rated not useful.',
+    );
   };
 
   const shownRefusal =
@@ -722,6 +808,59 @@ const ReviewProblemView = ({
                 </div>
               ))}
             </section>
+            {shared && (
+              <section className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span id={ratingId} className="me-auto text-sm font-bold">
+                    {intl.formatMessage(messages.ratingQuestion)}
+                  </span>
+                  <div
+                    role="group"
+                    aria-labelledby={ratingId}
+                    className="flex flex-wrap items-center gap-2"
+                  >
+                    <Button
+                      size="sm"
+                      aria-pressed={current.rating === 'useful'}
+                      icon={<ThumbsUp aria-hidden />}
+                      onClick={() => void rate('useful')}
+                    >
+                      {intl.formatMessage(messages.ratingUseful)}
+                    </Button>
+                    <Button
+                      size="sm"
+                      aria-pressed={current.rating === 'not_useful'}
+                      icon={<ThumbsDown aria-hidden />}
+                      onClick={() => void rate('not_useful')}
+                    >
+                      {intl.formatMessage(messages.ratingNotUseful)}
+                    </Button>
+                  </div>
+                </div>
+                {current.rating === 'not_useful' && (
+                  <div className="flex flex-col gap-2">
+                    <span id={reasonId} className="text-sm font-bold">
+                      {intl.formatMessage(messages.ratingReason)}
+                    </span>
+                    <RadioGroupField
+                      size="sm"
+                      aria-labelledby={reasonId}
+                      options={FEEDBACK_REASONS.map((reason) => ({
+                        value: reason,
+                        label: intl.formatMessage(reasonMessages[reason]),
+                      }))}
+                      value={current.ratingReason ?? ''}
+                      onChange={(value) => {
+                        const reason = FEEDBACK_REASONS.find(
+                          (candidate) => candidate === value,
+                        );
+                        if (reason) void rate('not_useful', reason);
+                      }}
+                    />
+                  </div>
+                )}
+              </section>
+            )}
             {availability === 'checking' && (
               <span id={checkingId} className="sr-only" lang="en">
                 {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
