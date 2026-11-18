@@ -36,20 +36,55 @@ type NetworkWeavePath = {
   width: number;
 };
 
+/**
+ * One stop on a ribbon's centreline: where a flow signal sits, and the way the
+ * centreline is heading there, in degrees.
+ */
+export type NetworkWeaveSignalStop = {
+  x: number;
+  y: number;
+  angle: number;
+};
+
 type NetworkWeaveRibbon = {
   d: string;
   guideD: string;
   centerlineD: string;
+  /**
+   * The centreline as stops spaced evenly along its length, so a signal moved
+   * from one stop to the next in equal times travels at a constant speed.
+   */
+  signalStops: NetworkWeaveSignalStop[];
   colorIndex: number;
   gradientStart: NetworkWeavePoint;
   gradientEnd: NetworkWeavePoint;
   phase: number;
 };
 
+/** A box in the scene's own units. */
+export type NetworkWeaveBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 type NetworkWeaveScene = {
   tributaries: NetworkWeavePath[];
+  /**
+   * The part of the scene the tributaries cross, or null when they lie
+   * outside it altogether (a convergence on the edge they flow in from).
+   */
+  tributaryBounds: NetworkWeaveBounds | null;
   ribbons: NetworkWeaveRibbon[];
 };
+
+/** How many equal lengths a ribbon's centreline is cut into for its signals. */
+export const NETWORK_WEAVE_SIGNAL_SEGMENTS = 32;
+
+// The widest a tributary's moving dots are drawn, and so how far past the
+// convergence their round caps reach.
+export const NETWORK_WEAVE_DOT_WIDTH = 5.2;
 
 type RibbonPoint = {
   position: NormalizedPoint;
@@ -113,6 +148,93 @@ const createCubicPath = (
   end: NetworkWeavePoint,
 ) =>
   `M ${pointToString(start)} C ${pointToString(firstControl)} ${pointToString(secondControl)} ${pointToString(end)}`;
+
+type CubicPoints = [
+  NetworkWeavePoint,
+  NetworkWeavePoint,
+  NetworkWeavePoint,
+  NetworkWeavePoint,
+];
+
+const cubicAt = ([p0, p1, p2, p3]: CubicPoints, t: number) => {
+  const u = 1 - t;
+  return {
+    x:
+      u * u * u * p0.x +
+      3 * u * u * t * p1.x +
+      3 * u * t * t * p2.x +
+      t * t * t * p3.x,
+    y:
+      u * u * u * p0.y +
+      3 * u * u * t * p1.y +
+      3 * u * t * t * p2.y +
+      t * t * t * p3.y,
+    dx:
+      3 * u * u * (p1.x - p0.x) +
+      6 * u * t * (p2.x - p1.x) +
+      3 * t * t * (p3.x - p2.x),
+    dy:
+      3 * u * u * (p1.y - p0.y) +
+      6 * u * t * (p2.y - p1.y) +
+      3 * t * t * (p3.y - p2.y),
+  };
+};
+
+// Fine enough that the stops' spacing along the curve is even to well under a
+// scene unit.
+const ARC_LENGTH_SAMPLES = 256;
+
+/**
+ * Stops spaced evenly along a cubic curve's length. A curve's own parameter
+ * bunches points where its control points are close, so the stops are placed
+ * by measured distance instead.
+ */
+export const sampleCubicByLength = (
+  points: CubicPoints,
+  segments: number,
+): NetworkWeaveSignalStop[] => {
+  const lengths = [0];
+  let previous = cubicAt(points, 0);
+  for (let index = 1; index <= ARC_LENGTH_SAMPLES; index += 1) {
+    const point = cubicAt(points, index / ARC_LENGTH_SAMPLES);
+    lengths.push(
+      (lengths[index - 1] ?? 0) +
+        Math.hypot(point.x - previous.x, point.y - previous.y),
+    );
+    previous = point;
+  }
+  const total = lengths[ARC_LENGTH_SAMPLES] ?? 0;
+
+  const stops: NetworkWeaveSignalStop[] = [];
+  let sample = 0;
+  let previousAngle: number | null = null;
+  for (let stop = 0; stop <= segments; stop += 1) {
+    const distance = (stop / segments) * total;
+    while (
+      sample < ARC_LENGTH_SAMPLES - 1 &&
+      (lengths[sample + 1] ?? 0) < distance
+    ) {
+      sample += 1;
+    }
+    const start = lengths[sample] ?? 0;
+    const span = (lengths[sample + 1] ?? start) - start;
+    const within = span > 0 ? (distance - start) / span : 0;
+    const point = cubicAt(
+      points,
+      Math.min(1, (sample + within) / ARC_LENGTH_SAMPLES),
+    );
+    let angle = (Math.atan2(point.dy, point.dx) * 180) / Math.PI;
+    // Keep each heading within half a turn of the last, so a signal turning
+    // from one stop to the next never spins the long way round.
+    if (previousAngle !== null) {
+      while (angle - previousAngle > 180) angle -= 360;
+      while (angle - previousAngle < -180) angle += 360;
+    }
+    previousAngle = angle;
+    stops.push({ x: point.x, y: point.y, angle });
+  }
+  return stops;
+};
 
 const distribute = (count: number, start: number, end: number) => {
   if (count === 1) return [(start + end) / 2];
@@ -289,12 +411,7 @@ const createRibbon = (
   );
   const [start, firstControl, secondControl, end] = centerlinePoints;
   const fallback = project({ axis: 0.5, cross: profile.laneCross });
-  const safePoints: [
-    NetworkWeavePoint,
-    NetworkWeavePoint,
-    NetworkWeavePoint,
-    NetworkWeavePoint,
-  ] = [
+  const safePoints: CubicPoints = [
     start ?? fallback,
     firstControl ?? fallback,
     secondControl ?? fallback,
@@ -309,6 +426,7 @@ const createRibbon = (
       safePoints[2],
       safePoints[3],
     ),
+    signalStops: sampleCubicByLength(safePoints, NETWORK_WEAVE_SIGNAL_SEGMENTS),
     colorIndex: profile.colorIndex,
     gradientStart: safePoints[0],
     gradientEnd: safePoints[3],
@@ -404,8 +522,36 @@ const createNetworkWeaveScene = ({
     },
   );
 
+  // Every tributary runs from beyond the edge it flows in from to the
+  // convergence, and a cubic curve stays inside its control points, so none
+  // of them reaches past the convergence by more than a dot's round cap.
+  const reach = NETWORK_WEAVE_DOT_WIDTH / 2 + 1;
+  const along =
+    orientation === 'horizontal' ? NETWORK_WEAVE_WIDTH : NETWORK_WEAVE_HEIGHT;
+  // `mergeAxis` is measured along the flow, so a reversed flow's tributaries
+  // sit at the far end of the scene.
+  const mergeDistance = Math.min(along, Math.max(0, mergeAxis * along) + reach);
+  const mergeStart = reverse ? along - mergeDistance : 0;
+  const tributaryBounds: NetworkWeaveBounds | null =
+    mergeAxis <= 0
+      ? null
+      : orientation === 'horizontal'
+        ? {
+            x: mergeStart,
+            y: 0,
+            width: mergeDistance,
+            height: NETWORK_WEAVE_HEIGHT,
+          }
+        : {
+            x: 0,
+            y: mergeStart,
+            width: NETWORK_WEAVE_WIDTH,
+            height: mergeDistance,
+          };
+
   return {
     tributaries,
+    tributaryBounds,
     ribbons: profiles.map((profile, index) =>
       createRibbon(profile, index, profiles.length, project),
     ),

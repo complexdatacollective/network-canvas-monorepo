@@ -1,8 +1,62 @@
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NetworkWeaveBackground from '../NetworkWeaveBackground';
+import { NETWORK_WEAVE_DOT_SPACING } from '../NetworkWeaveDots';
+import createNetworkWeaveScene, {
+  NETWORK_WEAVE_HEIGHT,
+  NETWORK_WEAVE_SIGNAL_SEGMENTS,
+  NETWORK_WEAVE_WIDTH,
+  sampleCubicByLength,
+} from '../networkWeaveScene';
+
+const motionPreference = vi.hoisted(() => ({
+  reduced: false as boolean | null,
+}));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionPreference.reduced,
+}));
+
+const numbers = (text: string | null | undefined) =>
+  text?.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+
+/** The stylesheet the background renders alongside its moving parts. */
+const stylesOf = (container: HTMLElement) =>
+  container.querySelector('style')?.textContent ?? '';
+
+/** What the dots' layer has been stepped to, in scene units. */
+const dashOffsetOf = (container: HTMLElement) => {
+  const dots = container.querySelector<SVGSVGElement>('.network-weave__dots');
+  if (!dots) throw new Error('The dots layer did not render');
+  return dots.style.getPropertyValue('--network-weave-dash');
+};
+
+/** How many steps a delay is, and how far that is from a whole number. */
+const flowDelay = (delay: number, step: number) => Math.abs(delay) / step;
+const flowUnit = (steps: number) => Math.abs(steps - Math.round(steps));
+
+/** Gives the signal stage a size, as a laid-out page would. */
+const sizeEveryElement = (width: number, height: number) => {
+  const restore = [
+    vi
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockReturnValue(width),
+    vi
+      .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockReturnValue(height),
+  ];
+  return () => restore.forEach((spy) => spy.mockRestore());
+};
+
+beforeEach(() => {
+  motionPreference.reduced = false;
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('NetworkWeaveBackground', () => {
   it('renders as a decorative full-size background', () => {
@@ -13,16 +67,37 @@ describe('NetworkWeaveBackground', () => {
       />,
     );
 
-    const svg = container.querySelector('svg');
-    expect(svg).not.toBeNull();
-    expect(svg?.getAttribute('aria-hidden')).toBe('true');
-    expect(svg?.getAttribute('focusable')).toBe('false');
-    expect(svg?.getAttribute('preserveAspectRatio')).toBe('none');
-    expect(svg?.classList.contains('custom-background')).toBe(true);
-    expect(svg?.style.width).toBe('100%');
-    expect(svg?.style.height).toBe('100%');
-    expect(svg?.style.pointerEvents).toBe('none');
-    expect(svg?.style.opacity).toBe('0.4');
+    const background = container.firstElementChild;
+    if (!(background instanceof HTMLElement)) {
+      throw new Error('The background did not render');
+    }
+    expect(background.getAttribute('aria-hidden')).toBe('true');
+    expect(background.classList.contains('custom-background')).toBe(true);
+    expect(background.style.width).toBe('100%');
+    expect(background.style.height).toBe('100%');
+    expect(background.style.pointerEvents).toBe('none');
+    expect(background.style.opacity).toBe('0.4');
+
+    // Both drawings stretch to the background's box, whatever its shape.
+    const drawings = container.querySelectorAll('svg');
+    expect(drawings.length).toBeGreaterThan(0);
+    for (const drawing of drawings) {
+      expect(drawing.getAttribute('focusable')).toBe('false');
+      expect(drawing.getAttribute('preserveAspectRatio')).toBe('none');
+    }
+  });
+
+  it('fades the whole scene together by its intensity', () => {
+    const { container } = render(<NetworkWeaveBackground intensity={0.3} />);
+    const scene = container.querySelector<HTMLElement>('.network-weave__scene');
+
+    // One group holds the ribbons, the dots and the signals, so they fade as
+    // one drawing and blend only with each other.
+    expect(scene?.style.opacity).toBe('0.3');
+    expect(scene?.style.isolation).toBe('isolate');
+    expect(scene?.querySelector('.network-weave__ribbon')).not.toBeNull();
+    expect(scene?.querySelector('.network-weave__dots')).not.toBeNull();
+    expect(scene?.querySelector('.network-weave__ribbon-flow')).not.toBeNull();
   });
 
   it('generates deterministic geometry from the seed', () => {
@@ -95,20 +170,19 @@ describe('NetworkWeaveBackground', () => {
   });
 
   it('uses a growing guide with unclipped rounded flow signals', () => {
+    const colors = ['#123456', '#abcdef', '#fedcba'];
     const { container } = render(
-      <NetworkWeaveBackground complexity={12} strands={3} />,
+      <NetworkWeaveBackground complexity={12} strands={3} colors={colors} />,
     );
     const guides = container.querySelectorAll('.network-weave__ribbon-guide');
-    const flows = container.querySelectorAll('.network-weave__ribbon-flow');
+    const flows = container.querySelectorAll<HTMLElement>(
+      '.network-weave__ribbon-flow',
+    );
 
     expect(guides).toHaveLength(3);
     expect(flows).toHaveLength(9);
     guides.forEach((guide) => {
-      const coordinates =
-        guide
-          .getAttribute('d')
-          ?.match(/-?\d+(?:\.\d+)?/g)
-          ?.map(Number) ?? [];
+      const coordinates = numbers(guide.getAttribute('d'));
       const startWidth = Math.abs(
         (coordinates.at(-1) ?? 0) - (coordinates[1] ?? 0),
       );
@@ -116,17 +190,54 @@ describe('NetworkWeaveBackground', () => {
 
       expect(endWidth).toBeGreaterThan(startWidth * 5);
     });
-    flows.forEach((flow) => {
-      expect(flow.tagName).toBe('rect');
-      expect(flow.getAttribute('mask')).toBeNull();
-      expect(Number(flow.getAttribute('rx'))).toBeGreaterThan(0);
-      expect(flow.getAttribute('style')).toContain('offset-path: path(');
-      expect(flow.getAttribute('style')).not.toContain("path('M -");
+    // Three signals to a ribbon, each in its ribbon's colour.
+    flows.forEach((flow, index) => {
+      expect(flow.style.backgroundColor).toBe(
+        // jsdom reports the colour it was given as rgb().
+        Object.assign(document.createElement('div').style, {
+          backgroundColor: colors[Math.floor(index / 3)],
+        }).backgroundColor,
+      );
     });
+    const [, radiusX, radiusY] =
+      stylesOf(container).match(/border-radius: ([\d.]+)px \/ ([\d.]+)px/) ??
+      [];
+    expect(Number(radiusX)).toBeGreaterThan(0);
+    expect(Number(radiusY)).toBeGreaterThan(0);
     expect(container.querySelector('mask')).toBeNull();
-    expect(container.querySelector('.network-weave__ribbon-flow-reveal')).toBe(
-      null,
+    expect(container.innerHTML).not.toContain('mask');
+  });
+
+  it('keeps the moving parts out of the drawing that holds the ribbons', () => {
+    const { container } = render(<NetworkWeaveBackground />);
+    const ribbons = container.querySelector('.network-weave__ribbons');
+    const dots = container.querySelector('.network-weave__dots');
+
+    // Anything that moves inside the ribbons' drawing has the whole of it
+    // repainted for every frame it moves in.
+    expect(ribbons?.querySelector('.network-weave__ribbon')).not.toBeNull();
+    expect(ribbons?.querySelector('.network-weave__tributary-flow')).toBeNull();
+    expect(ribbons?.querySelector('.network-weave__ribbon-flow')).toBeNull();
+    expect(dots).not.toBe(ribbons);
+    expect(
+      dots?.querySelectorAll('.network-weave__tributary-flow').length,
+    ).toBe(container.querySelectorAll('.network-weave__tributary').length);
+    for (const flow of container.querySelectorAll(
+      '.network-weave__ribbon-flow',
+    )) {
+      expect(flow.closest('svg')).toBeNull();
+    }
+    // The signals are moved by `transform` alone, the one kind of movement a
+    // browser can make without repainting.
+    const keyframes =
+      stylesOf(container)
+        .split('\n')
+        .find((rule) => rule.trim().startsWith('@keyframes')) ?? '';
+    const declarations = [...keyframes.matchAll(/\{\s*([a-z-]+):/g)].map(
+      (match) => match[1],
     );
+    expect(declarations.length).toBe(NETWORK_WEAVE_SIGNAL_SEGMENTS + 1);
+    expect(new Set(declarations)).toEqual(new Set(['transform']));
   });
 
   it('keeps tributary and ribbon tangents continuous at the join', () => {
@@ -396,62 +507,280 @@ describe('NetworkWeaveBackground', () => {
       /@media \(prefers-reduced-motion: reduce\) \{ :root:not\(\[data-reduced-motion='never'\]\) \.network-weave-ribbon-flow/,
     );
     expect(animated).toContain('network-weave-ribbon-drift');
-    expect(animated).toContain('network-weave-tributary-drift');
     expect(staticMarkup).not.toContain('@keyframes');
+    expect(staticMarkup).not.toContain('network-weave__ribbon-flow');
+    expect(staticMarkup).not.toContain('network-weave__tributary-flow');
   });
 
-  it('moves incoming dots faster than outgoing ribbon signals', () => {
-    const { container } = render(
-      <NetworkWeaveBackground animated speedFactor={2} />,
-    );
-    const styles = container.querySelector('style')?.textContent ?? '';
-    const ribbonDuration = Number(
-      styles.match(/ribbon-drift-\S+ ([\d.]+)s/)?.[1],
-    );
-    const tributaryDuration = Number(
-      styles.match(/tributary-drift-\S+ ([\d.]+)s/)?.[1],
-    );
+  it('steps the dots along their tributaries, at the speed asked for', () => {
+    vi.useFakeTimers({
+      toFake: ['setInterval', 'clearInterval', 'performance'],
+    });
+    const travelAfterOneSecond = (speedFactor: number) => {
+      const { container, unmount } = render(
+        <NetworkWeaveBackground speedFactor={speedFactor} />,
+      );
+      const before = Number.parseFloat(dashOffsetOf(container));
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      const after = Number.parseFloat(dashOffsetOf(container));
+      unmount();
+      // The offset counts down, wrapping once per dot spacing.
+      return (
+        (before - after + NETWORK_WEAVE_DOT_SPACING) % NETWORK_WEAVE_DOT_SPACING
+      );
+    };
 
-    expect(tributaryDuration).toBeLessThan(ribbonDuration);
+    const slow = travelAfterOneSecond(0.2);
+    const fast = travelAfterOneSecond(0.4);
+
+    expect(slow).toBeGreaterThan(1);
+    expect(fast / slow).toBeCloseTo(2, 1);
+  });
+
+  it('leaves the dots where they are under reduced motion', () => {
+    vi.useFakeTimers({
+      toFake: ['setInterval', 'clearInterval', 'performance'],
+    });
+    motionPreference.reduced = true;
+    const { container } = render(<NetworkWeaveBackground />);
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(dashOffsetOf(container)).toBe('');
+  });
+
+  it('does not step the dots before the motion preference is known', () => {
+    vi.useFakeTimers({
+      toFake: ['setInterval', 'clearInterval', 'performance'],
+    });
+    motionPreference.reduced = null;
+    const { container } = render(<NetworkWeaveBackground />);
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(dashOffsetOf(container)).toBe('');
+  });
+
+  it('redraws the dots a few times a second, not on every frame', () => {
+    vi.useFakeTimers({
+      toFake: ['setInterval', 'clearInterval', 'performance'],
+    });
+    // The speed the websites use: the dots drift a few scene units a second.
+    const { container } = render(<NetworkWeaveBackground speedFactor={0.18} />);
+    const offsets = new Set<string>();
+    for (let frame = 0; frame < 60; frame += 1) {
+      act(() => {
+        vi.advanceTimersByTime(1000 / 60);
+      });
+      offsets.add(dashOffsetOf(container));
+    }
+
+    // Sixty display frames pass; the dots are redrawn for a fraction of them.
+    expect(offsets.size).toBeGreaterThanOrEqual(8);
+    expect(offsets.size).toBeLessThanOrEqual(15);
+  });
+
+  it('speeds the signals up with the speed factor', () => {
+    const durationAt = (speedFactor: number) => {
+      const { container, unmount } = render(
+        <NetworkWeaveBackground animated speedFactor={speedFactor} />,
+      );
+      const duration = Number(
+        stylesOf(container).match(/ribbon-drift-\S+ ([\d.]+)s/)?.[1],
+      );
+      unmount();
+      return duration;
+    };
+
+    expect(durationAt(1) / durationAt(2)).toBeCloseTo(2, 5);
   });
 
   it('loops flow motion without phase jumps', () => {
     const { container } = render(<NetworkWeaveBackground animated />);
-    const styles = container.querySelector('style')?.textContent ?? '';
 
-    expect(styles).toMatch(
-      /from \{ offset-distance: 0%;[^}]*\} to \{ offset-distance: 100%;/,
-    );
-    const dashTravel = Number(
-      styles.match(
-        /from \{ stroke-dashoffset: 0; \} to \{ stroke-dashoffset: (-?[\d.]+); \}/,
-      )?.[1],
-    );
-
-    const tributaryFlows = container.querySelectorAll(
+    const tributaryFlows = container.querySelectorAll<SVGPathElement>(
       '.network-weave__tributary-flow',
     );
     expect(tributaryFlows.length).toBeGreaterThan(0);
     for (const flow of tributaryFlows) {
-      // A dash cycle that travels a whole number of dash periods ends where
-      // it began, so the restart is invisible.
-      const dashPeriod = (flow.getAttribute('stroke-dasharray') ?? '')
-        .split(' ')
-        .map(Number)
-        .reduce((sum, length) => sum + length, 0);
-      expect(dashPeriod).toBeGreaterThan(0);
-      expect(Math.abs(dashTravel) % dashPeriod).toBe(0);
-      expect(flow.getAttribute('stroke-dashoffset')).toBeNull();
+      // The dots' offset wraps once per dot spacing, so a wrap is invisible
+      // only if that spacing is the dash pattern's own period.
+      const dashPeriod = numbers(flow.getAttribute('stroke-dasharray')).reduce(
+        (sum, length) => sum + length,
+        0,
+      );
+      expect(dashPeriod).toBe(NETWORK_WEAVE_DOT_SPACING);
+      expect(flow.style.strokeDashoffset).toContain(
+        'var(--network-weave-dash, 0px)',
+      );
     }
-    const ribbonFlows = container.querySelectorAll(
-      '.network-weave__ribbon-flow',
+
+    // A signal ends its journey past the far edge and starts again at the
+    // convergence, from the first stop to the last.
+    const styles = stylesOf(container);
+    expect(styles).toMatch(
+      /@keyframes \S+ \{ 0% \{ transform: translate\(var\(--weave-stop-0\)\)/,
     );
-    expect(ribbonFlows.length).toBeGreaterThan(0);
-    for (const signal of ribbonFlows) {
-      expect(signal.getAttribute('mask')).toBeNull();
-    }
-    expect(styles).not.toContain('opacity:');
+    expect(styles).toContain(
+      `100% { transform: translate(var(--weave-stop-${NETWORK_WEAVE_SIGNAL_SEGMENTS}))`,
+    );
+    expect(styles).not.toContain('opacity: 0;');
     expect(container.innerHTML).toContain('animation-delay: -');
+  });
+
+  it('steps every signal at the same moments', () => {
+    for (const speedFactor of [0.18, 0.35, 1, 2.6]) {
+      const { container, unmount } = render(
+        <NetworkWeaveBackground animated speedFactor={speedFactor} />,
+      );
+      const [, duration, stepsPerSegment] =
+        stylesOf(container).match(
+          /ribbon-drift-\S+ ([\d.]+)s steps\((\d+)\) infinite/,
+        ) ?? [];
+      const step =
+        (Number(duration) * 1000) /
+        (NETWORK_WEAVE_SIGNAL_SEGMENTS * Number(stepsPerSegment));
+
+      // About thirty steps a second, whatever the speed.
+      expect(1000 / step).toBeGreaterThan(24);
+      expect(1000 / step).toBeLessThan(36);
+
+      const delays = [
+        ...container.querySelectorAll<HTMLElement>(
+          '.network-weave__ribbon-flow',
+        ),
+      ].map((flow) => Number.parseFloat(flow.style.animationDelay));
+      expect(new Set(delays).size).toBe(delays.length);
+      for (const delay of delays) {
+        expect(flowUnit(flowDelay(delay, step))).toBeLessThan(0.001);
+      }
+      unmount();
+    }
+  });
+
+  it('follows each ribbon with its signals', () => {
+    const { container } = render(
+      <NetworkWeaveBackground complexity={12} strands={3} />,
+    );
+    const guides = container.querySelectorAll('.network-weave__ribbon-guide');
+    const groups = new Set(
+      [
+        ...container.querySelectorAll<HTMLElement>(
+          '.network-weave__ribbon-flow',
+        ),
+      ].map((flow) => flow.parentElement),
+    );
+
+    expect(groups.size).toBe(guides.length);
+    [...groups].forEach((group, index) => {
+      const centerline = numbers(
+        guides[index]?.getAttribute('data-centerline'),
+      );
+      const stop = (position: number) =>
+        numbers(group?.style.getPropertyValue(`--weave-stop-${position}`));
+
+      // The first stop is the centreline's start and the last is its end.
+      expect(stop(0)[0]).toBeCloseTo(centerline[0] ?? Number.NaN, 1);
+      expect(stop(0)[1]).toBeCloseTo(centerline[1] ?? Number.NaN, 1);
+      expect(stop(NETWORK_WEAVE_SIGNAL_SEGMENTS)[0]).toBeCloseTo(
+        centerline[6] ?? Number.NaN,
+        1,
+      );
+      expect(stop(NETWORK_WEAVE_SIGNAL_SEGMENTS)[1]).toBeCloseTo(
+        centerline[7] ?? Number.NaN,
+        1,
+      );
+      expect(
+        group?.style.getPropertyValue(
+          `--weave-turn-${NETWORK_WEAVE_SIGNAL_SEGMENTS}`,
+        ),
+      ).toMatch(/deg$/);
+    });
+  });
+
+  it('stretches the signals to the size of the background', () => {
+    const restore = sizeEveryElement(800, 1350);
+    const { container } = render(<NetworkWeaveBackground />);
+    restore();
+    const stage = container.querySelector<HTMLElement>(
+      '.network-weave__signals',
+    );
+
+    expect(
+      Number(stage?.style.getPropertyValue('--network-weave-scale-x')),
+    ).toBeCloseTo(800 / NETWORK_WEAVE_WIDTH, 6);
+    expect(
+      Number(stage?.style.getPropertyValue('--network-weave-scale-y')),
+    ).toBeCloseTo(1350 / NETWORK_WEAVE_HEIGHT, 6);
+    expect(stage?.hasAttribute('data-measured')).toBe(true);
+  });
+
+  it('keeps the signals hidden until their size is known', () => {
+    // jsdom lays nothing out, so the stage measures as empty.
+    const { container } = render(<NetworkWeaveBackground />);
+    const stage = container.querySelector<HTMLElement>(
+      '.network-weave__signals',
+    );
+
+    expect(stage?.hasAttribute('data-measured')).toBe(false);
+    expect(stylesOf(container)).toContain(
+      '.network-weave__signals:not([data-measured]) { visibility: hidden; }',
+    );
+  });
+
+  it('draws the dots only over the part of the scene the tributaries cross', () => {
+    const boxOf = (
+      props: Parameters<typeof NetworkWeaveBackground>[0],
+    ): { left: number; top: number; width: number; height: number } | null => {
+      const { container, unmount } = render(
+        <NetworkWeaveBackground {...props} />,
+      );
+      const dots = container.querySelector<SVGSVGElement>(
+        '.network-weave__dots',
+      );
+      const box = dots
+        ? {
+            left: Number.parseFloat(dots.style.left),
+            top: Number.parseFloat(dots.style.top),
+            width: Number.parseFloat(dots.style.width),
+            height: Number.parseFloat(dots.style.height),
+          }
+        : null;
+      unmount();
+      return box;
+    };
+
+    const horizontal = boxOf({ convergence: { x: 0.4, y: 0.5 } });
+    expect(horizontal?.left).toBe(0);
+    expect(horizontal?.width).toBeGreaterThan(40);
+    expect(horizontal?.width).toBeLessThan(41);
+    expect(horizontal?.height).toBe(100);
+
+    const reversed = boxOf({ convergence: { x: 0.4, y: 0.5 }, reverse: true });
+    expect(reversed?.width).toBeGreaterThan(60);
+    expect(reversed?.width).toBeLessThan(61);
+    expect((reversed?.left ?? 0) + (reversed?.width ?? 0)).toBeCloseTo(100, 3);
+
+    const vertical = boxOf({
+      convergence: { x: 0.5, y: 0.25 },
+      orientation: 'vertical',
+    });
+    expect(vertical?.top).toBe(0);
+    expect(vertical?.width).toBe(100);
+    expect(vertical?.height).toBeGreaterThan(25);
+    expect(vertical?.height).toBeLessThan(26);
+
+    // A convergence on the edge the tributaries flow in from leaves them
+    // outside the scene, with nothing to step.
+    expect(boxOf({ convergence: { x: 0, y: 0 } })).toBeNull();
+    expect(
+      boxOf({ convergence: { x: 0.5, y: 0 }, orientation: 'vertical' }),
+    ).toBeNull();
+    expect(boxOf({ convergence: { x: 1, y: 0.5 }, reverse: true })).toBeNull();
   });
 
   it('falls back safely when numeric props are not finite', () => {
@@ -468,5 +797,93 @@ describe('NetworkWeaveBackground', () => {
 
     expect(markup).not.toContain('NaN');
     expect(markup).not.toContain('Infinity');
+  });
+
+  it('keeps every tributary inside the box its dots are drawn in', () => {
+    for (const orientation of ['horizontal', 'vertical'] as const) {
+      for (const reverse of [false, true]) {
+        for (const seed of ['one', 'two', 'three']) {
+          const scene = createNetworkWeaveScene({
+            seed,
+            complexity: 24,
+            strands: 4,
+            colorCount: 5,
+            convergence: { x: 0.37, y: 0.58 },
+            orientation,
+            reverse,
+            flare: 1.5,
+          });
+          const bounds = scene.tributaryBounds;
+          if (!bounds) throw new Error('The tributaries have no bounds');
+
+          for (const tributary of scene.tributaries) {
+            const coordinates = numbers(tributary.d);
+            // A curve stays inside its control points, so it is enough that
+            // the ones inside the scene are inside the box.
+            for (let index = 0; index < coordinates.length; index += 2) {
+              const x = coordinates[index] ?? 0;
+              const y = coordinates[index + 1] ?? 0;
+              const along = orientation === 'horizontal' ? x : y;
+              const start = orientation === 'horizontal' ? bounds.x : bounds.y;
+              const size =
+                orientation === 'horizontal' ? bounds.width : bounds.height;
+              if (reverse) expect(along).toBeGreaterThanOrEqual(start);
+              else expect(along).toBeLessThanOrEqual(start + size);
+            }
+          }
+        }
+      }
+    }
+  });
+});
+
+describe('sampleCubicByLength', () => {
+  // Control points bunched at one end: the curve's own parameter crowds its
+  // points there.
+  const bunched = [
+    { x: 0, y: 0 },
+    { x: 10, y: 0 },
+    { x: 20, y: 5 },
+    { x: 1000, y: 400 },
+  ] as const;
+
+  it('spaces its stops evenly along the curve', () => {
+    const stops = sampleCubicByLength([...bunched], 16);
+    const gaps = stops
+      .slice(1)
+      .map((stop, index) =>
+        Math.hypot(
+          stop.x - (stops[index]?.x ?? 0),
+          stop.y - (stops[index]?.y ?? 0),
+        ),
+      );
+
+    expect(stops).toHaveLength(17);
+    expect(stops[0]).toMatchObject({ x: 0, y: 0 });
+    expect(stops.at(-1)?.x).toBeCloseTo(1000, 6);
+    expect(stops.at(-1)?.y).toBeCloseTo(400, 6);
+    // Evenly spaced in the curve's parameter, the first gap would be a
+    // hundredth of the last.
+    expect(Math.min(...gaps) / Math.max(...gaps)).toBeGreaterThan(0.97);
+  });
+
+  it('turns the short way from each stop to the next', () => {
+    // Heading left, the curve crosses from just under half a turn to just
+    // over it, where an angle read on its own would jump by a whole turn.
+    const stops = sampleCubicByLength(
+      [
+        { x: 0, y: 0 },
+        { x: -100, y: 30 },
+        { x: -200, y: -30 },
+        { x: -300, y: 0 },
+      ],
+      24,
+    );
+    const turns = stops
+      .slice(1)
+      .map((stop, index) => Math.abs(stop.angle - (stops[index]?.angle ?? 0)));
+
+    expect(Math.max(...turns)).toBeLessThan(30);
+    expect(Math.abs(stops[0]?.angle ?? 0)).toBeGreaterThan(150);
   });
 });
