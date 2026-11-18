@@ -16,6 +16,12 @@ import type {
   ProtocolEvent,
   Revision,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  ASSETS_SECTION,
+  SETTINGS_SECTION,
+  STAGE_ORDER_SECTION,
+} from '@codaco/protocol-builder/host/protocolSections';
+import { WriteLedger } from '@codaco/protocol-builder/host/writeLedger';
 import { contentHash } from '@codaco/studio-sync/apply';
 import {
   sectionReferenceAt,
@@ -47,11 +53,6 @@ import {
 
 import type { ArchitectStore } from './architectStore.ts';
 import { ProtocolRevisions, type LoggedEvent } from './protocolRevisions.ts';
-import {
-  ASSETS_SECTION,
-  SETTINGS_SECTION,
-  STAGE_ORDER_SECTION,
-} from './protocolSections.ts';
 import type { ResourceBridge } from './resourceBridge.ts';
 import {
   createSection,
@@ -59,7 +60,6 @@ import {
   stageInterfaceText,
   submitSection,
 } from './sectionWrites.ts';
-import { WriteLedger } from './writeLedger.ts';
 
 export const ArchitectHandlers = (
   store: ArchitectStore,
@@ -87,6 +87,14 @@ export const ArchitectHandlers = (
         Effect.sync(() => new ProtocolRevisions(store)),
         (watching) => Effect.sync(() => watching.dispose()),
       );
+      // Keyed without a session: every call this host answers comes from the
+      // one session its tab opened, so a request id can only meet its own
+      // retries. Memory is enough, and durable storage would be wrong. This
+      // host is the Redux store: the call never leaves the tab, so the only
+      // answer that can go missing is one this process lost with it, and the
+      // store it describes is gone by then too. A record outliving the store
+      // would answer a later session with a revision that session's protocol
+      // never had.
       const ledger = new WriteLedger();
 
       return ProtocolBuilderGroup.of({

@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
+import { STAGE_ORDER_SECTION } from '@codaco/protocol-builder/host/protocolSections';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
@@ -41,7 +42,6 @@ import {
 import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
-import { STAGE_ORDER_SECTION } from './protocolSections.ts';
 
 /**
  * `updateType` reads a type id for `node` and `edge` only; the ego definition

@@ -38,6 +38,14 @@ import {
   type ProtocolEvent,
 } from '@codaco/protocol-builder-core/contract/schemas';
 import {
+  InProcessHostClient,
+  makeInProcessClient,
+} from '@codaco/protocol-builder/host/inProcess';
+import {
+  ASSETS_SECTION,
+  STAGE_ORDER_SECTION,
+} from '@codaco/protocol-builder/host/protocolSections';
+import {
   CurrentProtocolSchema,
   type Experiments,
   type ExtractedAsset,
@@ -51,14 +59,10 @@ import { rootReducer } from '~/ducks/modules/root';
 import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from '../architectStore.ts';
-import { createArchitectClient } from '../client.ts';
+import { ArchitectHostSession, createArchitectClient } from '../client.ts';
 import { ArchitectHandlers } from '../handlers.ts';
-import { makeInProcessClient } from '../inProcessClient.ts';
 import { ProtocolRevisions } from '../protocolRevisions.ts';
-import { ASSETS_SECTION, STAGE_ORDER_SECTION } from '../protocolSections.ts';
 import { ResourceBridge } from '../resourceBridge.ts';
-import { ArchitectHostClient } from '../runtime.ts';
-import { ArchitectHostSession } from '../session.ts';
 
 /**
  * The bytes an import wrote, standing in for Architect's IndexedDB asset
@@ -104,7 +108,7 @@ const FIXTURE_LANGUAGE = 'en-US';
 
 type TestClient = Readonly<{
   call: RpcAdapter<ProtocolBuilderRpcs>['rpcCall'];
-  runtime: ManagedRuntime.ManagedRuntime<ArchitectHostClient, never>;
+  runtime: ManagedRuntime.ManagedRuntime<InProcessHostClient, never>;
 }>;
 
 type OpenProtocol = Readonly<{
@@ -214,7 +218,7 @@ async function open(
 ): Promise<Readonly<{ seen: Seen[]; close: () => Promise<void> }>> {
   const seen: Seen[] = [];
   const fiber = client.runtime.runFork(
-    Effect.flatMap(ArchitectHostClient, (host) =>
+    Effect.flatMap(InProcessHostClient, (host) =>
       Stream.runForEach(
         host('WatchProtocol', {
           protocolId: PROTOCOL_ID,
@@ -2092,7 +2096,7 @@ describe("Architect's in-process protocol-builder host", () => {
       client: TestClient,
       call: (host: ProtocolBuilderClient) => Effect.Effect<A, E>,
     ) =>
-      client.runtime.runPromiseExit(Effect.flatMap(ArchitectHostClient, call));
+      client.runtime.runPromiseExit(Effect.flatMap(InProcessHostClient, call));
 
     it('hands a refusal back as the instance the handler raised, and streams the protocol', async () => {
       const { client } = openProtocol();

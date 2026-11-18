@@ -1,4 +1,3 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
@@ -9,16 +8,28 @@ export const SETTINGS_SECTION = sectionId({ kind: 'settings' });
 export const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
 export const ASSETS_SECTION = sectionId({ kind: 'assets' });
 
+/** What a protocol must hold to be split into sections. */
+export type SplittableProtocol = Readonly<Record<string, unknown>> &
+  Readonly<{
+    codebook: Readonly<{
+      node?: Readonly<Record<string, SectionDoc>> | undefined;
+      edge?: Readonly<Record<string, SectionDoc>> | undefined;
+      ego?: SectionDoc | undefined;
+    }>;
+    stages: readonly (SectionDoc & Readonly<{ id: string }>)[];
+    assetManifest?: SectionDoc | undefined;
+  }>;
+
 /**
- * Architect's committed protocol, split into the sections the host contract
- * addresses — the inverse of `@codaco/studio-sync`'s `assembleProtocolSections`.
+ * A protocol, split into the sections the host contract addresses — the
+ * inverse of `@codaco/studio-sync`'s `assembleProtocolSections`.
  *
- * Stage and codebook-type documents are the store's own objects rather than
- * copies, so a section the last dispatch did not touch is recognised by
- * identity and never hashed.
+ * Stage and codebook-type documents are the protocol's own objects rather
+ * than copies, so a host holding a store's protocol recognises a section the
+ * last change did not touch by identity, and never hashes it.
  */
 export function protocolSections(
-  protocol: CurrentProtocol,
+  protocol: SplittableProtocol,
 ): Map<ProtocolSectionId, SectionDoc> {
   const { codebook, stages, assetManifest, ...settings } = protocol;
   const sections = new Map<ProtocolSectionId, SectionDoc>();
