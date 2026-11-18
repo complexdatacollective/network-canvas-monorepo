@@ -3,18 +3,19 @@ import {
   type Finding,
   type FindingCategory,
   type FindingSeverity,
-  type ReviewErrorCode,
-  type ReviewProvider,
 } from '@codaco/protocol-review-worker/contract';
 import { posthog } from '~/analytics';
 
+import type { ReviewFailureCode, ReviewWriter } from './ownModel';
 import type { FindingDecision } from './reviewStore';
 
 /**
  * The protocol review's analytics events. Each payload is built here from
  * fixed codes, numbers and booleans only: nothing from the protocol, the
  * findings' text or the study details, and no ids, may be sent. The types
- * below are what make that so; keep every property one of them.
+ * below are what make that so; keep every property one of them. A review
+ * written by the researcher's own model says only that it was (`own`): never
+ * the endpoint's address, the model's name or the key.
  */
 
 type CompletedPayload = {
@@ -56,7 +57,7 @@ export const decisionPayload = (
   category: finding.category,
 });
 
-type StartedPayload = { share: boolean; provider: ReviewProvider };
+type StartedPayload = { share: boolean; provider: ReviewWriter };
 
 export const captureReviewStarted = (payload: StartedPayload) => {
   posthog.capture('protocol_review_started', payload);
@@ -64,14 +65,14 @@ export const captureReviewStarted = (payload: StartedPayload) => {
 
 export const captureReviewCompleted = (
   payload: CompletedPayload,
-  provider: ReviewProvider,
+  provider: ReviewWriter,
 ) => {
   posthog.capture('protocol_review_completed', { ...payload, provider });
 };
 
 export const captureReviewFailed = (
-  code: ReviewErrorCode,
-  provider: ReviewProvider,
+  code: ReviewFailureCode,
+  provider: ReviewWriter,
 ) => {
   posthog.capture('protocol_review_failed', { error_code: code, provider });
 };

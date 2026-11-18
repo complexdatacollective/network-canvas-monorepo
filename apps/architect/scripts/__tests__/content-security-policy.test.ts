@@ -28,6 +28,28 @@ describe('content security policy', () => {
     expect(sources).toContain(new URL(PROTOCOL_REVIEW_SERVICE_URL).origin);
   });
 
+  // A review written by the researcher's own model is sent from the browser
+  // to an endpoint they name: any https host, or a server on their computer.
+  it('lets the app reach a model endpoint of the researcher’s own', () => {
+    const sources = connectSources(contentSecurityPolicy(undefined));
+    expect(sources).toContain('https:');
+    expect(sources).toContain('http://localhost:*');
+    expect(sources).toContain('http://127.0.0.1:*');
+    // Plain http to any other machine stays closed, as the browser keeps it.
+    expect(sources).not.toContain('http:');
+    expect(sources).not.toContain('*');
+  });
+
+  it('opens nothing but connections for it', () => {
+    const others = contentSecurityPolicy(undefined)
+      .split('; ')
+      .filter((directive) => !directive.startsWith('connect-src '));
+    for (const directive of others) {
+      expect(directive.split(' ')).not.toContain('https:');
+    }
+    expect(others).toContain("script-src 'self'");
+  });
+
   it('adds nothing for a build that does not set one', () => {
     expect(contentSecurityPolicy('')).toBe(contentSecurityPolicy(undefined));
   });

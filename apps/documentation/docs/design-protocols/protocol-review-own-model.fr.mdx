@@ -1,0 +1,91 @@
+---
+title: Faire la revue d’un protocole avec votre propre modèle
+navOrder: 5.5
+toc: true
+translatedFrom: ae4b8810c5db40a4781bc7b02c31b0994ce62494
+---
+
+<Definition>
+  La revue automatisée de protocole est une fonctionnalité expérimentale
+  d’Architect qui demande à un modèle d’IA de rechercher des problèmes dans
+  votre protocole. Vous pouvez faire rédiger la revue par un modèle que vous
+  exécutez vous-même, ou par un modèle fourni par votre établissement, au lieu
+  des modèles proposés par le service Network Canvas.
+</Definition>
+
+## Quand utiliser votre propre modèle {#when-to-use-your-own-model}
+
+Choisissez **Votre propre modèle** à la dernière étape de la boîte de dialogue **Revue du protocole** lorsque :
+
+- votre établissement ou votre comité d’éthique n’autorise qu’un modèle qu’il a approuvé, ou un modèle qui conserve les données au sein de l’établissement ;
+- vous souhaitez que le protocole et les détails de votre étude restent sur votre propre ordinateur ;
+- vous travaillez sans connexion Internet, avec un modèle qui s’exécute sur le même ordinateur ; ou
+- la limite de revues par heure ou le budget du service Network Canvas a été atteint.
+
+## Ce que deviennent vos données {#what-happens-to-your-data}
+
+Avec votre propre modèle, Architect envoie la revue directement depuis votre navigateur à l’adresse que vous indiquez, et nulle part ailleurs.
+
+- Votre protocole et les détails de votre étude ne transitent **pas** par le service Network Canvas.
+- La revue n’est jamais partagée avec l’équipe de Network Canvas, quel que soit votre choix pour **Partager les résultats de cette revue**.
+- L’adresse, le nom du modèle et la clé d’API sont conservés uniquement dans votre navigateur. Ils ne sont pas enregistrés dans le fichier du protocole.
+- Comme pour toute revue, les images, vidéos, fichiers audio, autres ressources et les clés d’API enregistrées dans le protocole ne sont pas envoyés.
+
+Toute personne qui peut utiliser ce profil de navigateur peut lire une clé d’API qui y est conservée. Si votre fournisseur le permet, utilisez une clé limitée à cet usage.
+
+## Ce dont votre point de terminaison a besoin {#what-your-endpoint-needs}
+
+Architect communique avec une **API de chat compatible avec OpenAI**. La plupart des outils qui exécutent des modèles en local, et de nombreux services hébergés et institutionnels, en proposent une. Pour fonctionner avec Architect, le point de terminaison doit :
+
+- **Répondre à une adresse `https://`, ou à `http://localhost`** (ou `http://127.0.0.1`) pour un modèle qui se trouve sur le même ordinateur que votre navigateur. Les navigateurs ne permettent pas à une page sécurisée comme Architect d’appeler une adresse `http://` non chiffrée sur une autre machine.
+- **Accepter les requêtes provenant de pages web (CORS).** Le serveur doit autoriser l’adresse à laquelle vous ouvrez Architect, par exemple `https://architect.networkcanvas.com`. Les serveurs de modèles refusent généralement les pages web tant que vous n’avez pas modifié ce réglage. Un fournisseur hébergé qui n’accepte pas les requêtes provenant de navigateurs ne peut pas être utilisé.
+- **Avoir de la place pour la revue.** Les instructions de revue sont longues (environ 10 000 jetons) avant même l’ajout de votre protocole. Un modèle doté d’une petite fenêtre de contexte ne peut pas faire la revue d’un protocole volumineux.
+
+Saisissez trois éléments dans la boîte de dialogue :
+
+| Champ                               | Ce qu’il faut saisir                                                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Adresse du point de terminaison** | L’adresse de base de l’API, qui se termine généralement par `/v1`. Architect y ajoute `/chat/completions`.                                 |
+| **Nom du modèle**                   | Le nom du modèle, exactement tel que votre point de terminaison le répertorie.                                                             |
+| **Clé d’API**                       | Uniquement si votre point de terminaison en exige une. Un modèle qui s’exécute sur votre propre ordinateur n’en a généralement pas besoin. |
+
+**Tester la connexion** demande un seul mot au modèle, avec la même adresse, le même nom de modèle et la même clé que la revue. Aucun élément de votre protocole n’est envoyé.
+
+## Ollama {#ollama}
+
+1. Installez [Ollama](https://ollama.com) et téléchargez un modèle.
+2. Autorisez Architect à l’appeler : donnez à la variable d’environnement `OLLAMA_ORIGINS` l’adresse à laquelle vous ouvrez Architect (par exemple `https://architect.networkcanvas.com`), puis redémarrez Ollama.
+3. Vérifiez la longueur de contexte. Ollama choisit une valeur par défaut en fonction de la mémoire graphique de votre ordinateur et, sur la plupart des ordinateurs, elle est trop petite pour une revue ; le texte qui la dépasse est coupé sans avertissement. Définissez une longueur de contexte plus grande dans les réglages d’Ollama, ou avec la variable d’environnement `OLLAMA_CONTEXT_LENGTH`.
+4. Dans Architect, saisissez l’adresse du point de terminaison `http://localhost:11434/v1` et le nom du modèle tel que `ollama list` l’affiche. Laissez la clé d’API vide.
+
+Consultez la documentation d’Ollama pour savoir comment définir des variables d’environnement sur votre système d’exploitation.
+
+## LM Studio {#lm-studio}
+
+1. Installez [LM Studio](https://lmstudio.ai) et téléchargez un modèle.
+2. Démarrez le serveur local depuis la vue développeur de LM Studio et activez son réglage **CORS**.
+3. Chargez le modèle avec une longueur de contexte suffisante pour les instructions de revue et votre protocole.
+4. Dans Architect, saisissez l’adresse du point de terminaison `http://localhost:1234/v1` et l’identifiant du modèle tel que LM Studio l’affiche. Laissez la clé d’API vide.
+
+## Autres points de terminaison {#other-endpoints}
+
+Tout service doté d’une API de chat compatible avec OpenAI peut être utilisé s’il remplit les conditions ci-dessus. Saisissez son adresse de base, le nom du modèle et, s’il en exige une, votre clé d’API. Si vous ne savez pas si un service accepte les requêtes provenant de navigateurs, utilisez **Tester la connexion**.
+
+## En cas de problème {#if-something-goes-wrong}
+
+| Message d’Architect                                                               | Ce qu’il faut vérifier                                                                                                                                                                                  |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Votre point de terminaison est injoignable                                        | L’adresse du point de terminaison, et le fait que le serveur de modèles est en cours d’exécution et que son réglage CORS autorise l’adresse à laquelle vous ouvrez Architect.                           |
+| Votre point de terminaison a refusé la clé d’API                                  | La clé d’API, et qu’elle est autorisée à utiliser le modèle.                                                                                                                                            |
+| L’adresse ou le modèle est introuvable                                            | Le nom du modèle, et que l’adresse est bien l’adresse de base de l’API (elle se termine souvent par `/v1`).                                                                                             |
+| Ce protocole est trop long pour votre modèle                                      | Utilisez un modèle doté d’une fenêtre de contexte plus grande, ou augmentez la longueur de contexte autorisée par votre serveur de modèles.                                                             |
+| La réponse de votre modèle n’a pas pu être utilisée                               | Le modèle n’a pas répondu sous la forme dont Architect a besoin, ou sa réponse a été tronquée. Un modèle plus performant, ou une fenêtre de contexte plus grande, pourrait donner un meilleur résultat. |
+| Votre point de terminaison a renvoyé une erreur ou a mis trop de temps à répondre | Les journaux du serveur de modèles.                                                                                                                                                                     |
+
+Votre navigateur peut aussi demander une autorisation avant de laisser Architect accéder à un serveur de modèles sur votre ordinateur ou votre réseau local. Accordez-la pour que la revue fonctionne.
+
+## À quoi vous attendre {#what-to-expect}
+
+Les instructions de revue ont été rédigées et testées avec les modèles que propose le service Network Canvas. Un modèle plus petit peut trouver moins de problèmes, les décrire moins bien ou proposer des corrections qui ne conviennent pas à votre protocole. Architect vérifie chaque correction avant de proposer **Corriger pour moi** : une correction qui ne s’applique pas, ou qui rendrait le protocole invalide, n’est donc jamais effectuée à votre place.
+
+Un modèle qui s’exécute sur votre propre ordinateur peut prendre beaucoup plus de temps qu’un modèle hébergé. Vous pouvez arrêter une revue à tout moment avec **Annuler la revue**.

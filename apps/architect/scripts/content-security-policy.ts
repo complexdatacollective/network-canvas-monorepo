@@ -23,7 +23,16 @@ const DIRECTIVES = [
   // service (PROTOCOL_REVIEW_SERVICE_URL in workers/protocol-review's
   // contract, which the Node-loaded Vite config cannot import; a test beside
   // this file keeps the two in step).
-  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://protocol-review.networkcanvas.com",
+  //
+  // `https:`, `http://localhost:*` and `http://127.0.0.1:*` are for a
+  // protocol review written by the researcher's own model
+  // (src/protocolReview/ownModelClient.ts): the browser calls an endpoint
+  // the researcher names, which may be any https host, or a model server on
+  // their own computer. This gives up connect-src as a limit on where a
+  // script on the page can send data over https; script-src 'self' is what
+  // still keeps a foreign script off the page. The named hosts stay listed
+  // as the record of what the app itself calls.
+  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://protocol-review.networkcanvas.com https: http://localhost:* http://127.0.0.1:*",
   "worker-src 'self' blob:",
   "frame-src 'self'",
   "base-uri 'none'",

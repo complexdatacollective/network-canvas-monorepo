@@ -30,6 +30,13 @@ export const PROTOCOL_REVIEW_INSTALLATION_ID_KEY =
 export const PROTOCOL_REVIEW_QUOTA_KEY = 'architect-v9-protocol-review-quota';
 export const PROTOCOL_REVIEW_PROVIDER_KEY =
   'architect-v9-protocol-review-provider';
+/**
+ * The researcher's own model endpoint: its address, model name and API key.
+ * Kept in this browser only; never in a protocol file, and never sent to the
+ * protocol review service.
+ */
+export const PROTOCOL_REVIEW_OWN_MODEL_KEY =
+  'architect-v9-protocol-review-own-model';
 
 /**
  * redux-remember's key prefix. Its default, `@@remember-`, is what Architect 8

@@ -9,11 +9,13 @@ import { SESSION_PREFIX } from '../../src/utils/storageNames.js';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import {
   FINDINGS,
+  mockOwnModelEndpoint,
   mockReviewService,
   NEW_P1_TEXT,
   NEW_P2_TEXT,
   OLD_P1_TEXT,
   OLD_P2_TEXT,
+  OWN_MODEL_ADDRESS,
   REVIEW_ID,
   reviewProtocol,
   reviewProtocolWithDetails,
@@ -701,6 +703,143 @@ test.describe('asking for a review', () => {
       countName(FINDINGS.length),
     );
     expect(service.bodies.map((body) => body.share)).toEqual([false, false]);
+  });
+});
+
+test.describe('a review written by the researcher’s own model', () => {
+  const ownModelOption = (page: Page) =>
+    wizardStep(page, STEP.model).getByRole('option', {
+      name: /^Your own model/,
+    });
+
+  test('the endpoint is set up and tested in the last step; the review goes to it and not to the service, and its fixes work', async ({
+    architectPage: page,
+    context,
+    seed,
+  }) => {
+    const service = await mockReviewService(context, RESULT_REVIEW);
+    const endpoint = await mockOwnModelEndpoint(context, {
+      kind: 'result',
+      findings: FINDINGS,
+    });
+    await seed(reviewProtocolWithDetails());
+    await gotoProtocol(page);
+
+    await reviewButton(page).click();
+    await continueToModelStep(page);
+    const last = wizardStep(page, STEP.model);
+    await ownModelOption(page).click();
+    await expect(ownModelOption(page)).toHaveAttribute('aria-selected', 'true');
+    // The hourly limit is the service's: nothing is said of it here.
+    await expect(last.getByText(/reviews left this hour/)).toHaveCount(0);
+
+    // Nothing starts without an address and a model.
+    await last.getByRole('button', { name: 'Start review' }).click();
+    await expect(
+      last.getByText('Enter the address of your endpoint.'),
+    ).toBeVisible();
+    await expect(last.getByText('Enter the name of the model.')).toBeVisible();
+
+    await last
+      .getByRole('textbox', { name: /Endpoint address/ })
+      .fill(OWN_MODEL_ADDRESS);
+    await last.getByRole('textbox', { name: /Model name/ }).fill('llama');
+    await last.getByLabel(/API key \(optional\)/).fill('sk-own');
+
+    // The test reaches the endpoint through the built app's own
+    // Content-Security-Policy, with the key, and sends no protocol.
+    await last.getByRole('button', { name: 'Test connection' }).click();
+    await expect(
+      last.getByText('Connected. The model answered.'),
+    ).toBeVisible();
+    expect(endpoint.requests).toHaveLength(1);
+    expect(endpoint.requests[0]?.authorization).toBe('Bearer sk-own');
+    expect(JSON.stringify(endpoint.requests[0]?.body)).not.toContain(
+      SAVED_SYNOPSIS,
+    );
+
+    await pressStartReview(page);
+    await expect(reviewButton(page)).toHaveAccessibleName(
+      countName(FINDINGS.length),
+    );
+
+    // One review, to the endpoint, with the study details and the protocol
+    // in it; the service was asked for none.
+    expect(service.bodies).toHaveLength(0);
+    const reviews = endpoint.reviews();
+    expect(reviews).toHaveLength(1);
+    const review = reviews[0];
+    if (!review) throw new Error('no review reached the endpoint');
+    expect(review.authorization).toBe('Bearer sk-own');
+    expect(review.body.model).toBe('llama');
+    expect(review.body.messages.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+    ]);
+    expect(review.body.messages[1]?.content).toContain(SAVED_SYNOPSIS);
+    expect(review.body.messages[1]?.content).toContain(OLD_P1_TEXT);
+
+    // Its problems are listed, and a fix is made as for any review.
+    const popover = popoverOf(page);
+    await expect(problemList(popover).getByRole('listitem')).toHaveCount(
+      FINDINGS.length,
+    );
+    const view = await openProblem(page, popover, 'The first prompt is vague');
+    await fixForMe(view).click();
+    const fixed = await readProtocolJson(page, (protocol) =>
+      JSON.stringify(promptText(protocol, 'p1')).includes(NEW_P1_TEXT),
+    );
+    expect(promptText(fixed, 'p1')).toMatchObject({ en: NEW_P1_TEXT });
+
+    // The endpoint is kept in this browser, and chosen again next time.
+    await gotoProtocol(page);
+    await reviewButton(page).click();
+    await popoverOf(page)
+      .getByRole('button', { name: 'Dismiss review' })
+      .click();
+    await expect(popoverOf(page)).toBeHidden();
+    await reviewButton(page).click();
+    await continueToModelStep(page);
+    await expect(ownModelOption(page)).toHaveAttribute('aria-selected', 'true');
+    await expect(
+      wizardStep(page, STEP.model).getByRole('textbox', {
+        name: /Endpoint address/,
+      }),
+    ).toHaveValue(OWN_MODEL_ADDRESS);
+  });
+
+  test('an endpoint that refuses the key says so in the panel, and nothing is saved', async ({
+    architectPage: page,
+    context,
+    seed,
+  }) => {
+    await mockReviewService(context, RESULT_REVIEW);
+    const endpoint = await mockOwnModelEndpoint(context, {
+      kind: 'error',
+      status: 401,
+    });
+    await seed(reviewProtocolWithDetails());
+    await gotoProtocol(page);
+
+    await reviewButton(page).click();
+    await continueToModelStep(page);
+    const last = wizardStep(page, STEP.model);
+    await ownModelOption(page).click();
+    await last
+      .getByRole('textbox', { name: /Endpoint address/ })
+      .fill(OWN_MODEL_ADDRESS);
+    await last.getByRole('textbox', { name: /Model name/ }).fill('llama');
+    await pressStartReview(page);
+
+    const popover = popoverOf(page);
+    await expect(
+      popover.getByText('Your endpoint refused the API key'),
+    ).toBeVisible();
+    await expect(
+      popover.getByRole('button', { name: 'Start review' }),
+    ).toBeVisible();
+    await expect(reviewButton(page)).toHaveAccessibleName('Review protocol');
+    expect(endpoint.reviews()).toHaveLength(1);
   });
 });
 
