@@ -13,10 +13,14 @@ import {
 
 type Stage = {
   id: string;
+  type: string;
+  label: Record<string, string>;
   filter?: Filter;
   panels?: { filter: Filter }[];
   presets?: { id: string; filter?: Filter }[];
-  prompts?: { additionalAttributes?: { variable: string; value: boolean }[] }[];
+  prompts?: {
+    additionalAttributes?: { id: string; variable: string; value: boolean }[];
+  }[];
 };
 
 type CegrmProtocol = { stages: Stage[] };
@@ -27,9 +31,33 @@ const require = createRequire(import.meta.url);
 const protocol =
   require('@codaco/protocols/templates/eco-genetic-relationship-maps') as CegrmProtocol;
 
-const getStage = (id: string): Stage => {
-  const stage = protocol.stages.find((candidate) => candidate.id === id);
-  if (!stage) throw new Error(`The CEGRM template has no stage ${id}`);
+type StageKey = { type: string; label: string };
+
+// Stage ids are UUIDs, so each stage is found by its type and English label.
+const nonKinNameGenerator = {
+  type: 'NameGeneratorQuickAdd',
+  label: 'People in your life',
+};
+const tieTypeBin = {
+  type: 'CategoricalBin',
+  label: 'How you know each person',
+};
+const closenessBin = { type: 'OrdinalBin', label: 'How close you feel' };
+const exchangesSociogram = { type: 'Sociogram', label: 'Exchanges of support' };
+const rolesSociogram = {
+  type: 'Sociogram',
+  label: 'Talking about the condition',
+};
+const completedMapNarrative = { type: 'Narrative', label: 'The completed map' };
+
+const getStage = ({ type, label }: StageKey): Stage => {
+  const matches = protocol.stages.filter(
+    (candidate) => candidate.type === type && candidate.label.en === label,
+  );
+  const [stage] = matches;
+  if (!stage || matches.length > 1) {
+    throw new Error(`The CEGRM template has no single ${type} "${label}"`);
+  }
   return stage;
 };
 
@@ -66,29 +94,32 @@ const idsLeftBy = (applied: Filter): string[] =>
     (node) => node[entityPrimaryKeyProperty] as string,
   );
 
-const idsAfter = (stageId: string): string[] => {
-  const stageFilter = getStage(stageId).filter;
-  if (!stageFilter) throw new Error(`Stage ${stageId} has no filter`);
+const idsAfter = (key: StageKey): string[] => {
+  const stageFilter = getStage(key).filter;
+  if (!stageFilter) throw new Error(`Stage "${key.label}" has no filter`);
   return idsLeftBy(stageFilter);
 };
 
 describe('the CEGRM template tells family from non-kin by the non_kin mark', () => {
   it('sets non_kin on every person the non-kin name generator creates', () => {
-    const prompts = getStage('ng-non-kin').prompts ?? [];
+    const prompts = getStage(nonKinNameGenerator).prompts ?? [];
     expect(prompts.length).toBeGreaterThan(0);
     for (const prompt of prompts) {
-      expect(prompt.additionalAttributes).toEqual([
-        { variable: 'non_kin', value: true },
-      ]);
+      expect(
+        prompt.additionalAttributes?.map(({ variable, value }) => ({
+          variable,
+          value,
+        })),
+      ).toEqual([{ variable: 'non_kin', value: true }]);
     }
   });
 
   it('sorts only the named non-kin people by how the participant knows them', () => {
-    expect(idsAfter('bin-tie-type')).toEqual(['friend']);
+    expect(idsAfter(tieTypeBin)).toEqual(['friend']);
   });
 
   it('offers only non-kin people in the already-named panel', () => {
-    const panelFilter = getStage('ng-non-kin').panels?.[0]?.filter;
+    const panelFilter = getStage(nonKinNameGenerator).panels?.[0]?.filter;
     if (!panelFilter) throw new Error('The non-kin stage has no panel filter');
     expect(
       filter(panelFilter)(network).nodes.map(
@@ -98,20 +129,20 @@ describe('the CEGRM template tells family from non-kin by the non_kin mark', () 
   });
 
   it('asks the family roles about every pedigree person, described or not', () => {
-    expect(idsAfter('socio-roles')).toEqual([
+    expect(idsAfter(rolesSociogram)).toEqual([
       'placeholder-parent',
       'described-relative',
     ]);
   });
 
   it('keeps the participant out of both stages', () => {
-    expect(idsAfter('bin-tie-type')).not.toContain('participant');
-    expect(idsAfter('socio-roles')).not.toContain('participant');
+    expect(idsAfter(tieTypeBin)).not.toContain('participant');
+    expect(idsAfter(rolesSociogram)).not.toContain('participant');
   });
 
   it('still brings everyone but the participant to the whole-network stages', () => {
-    for (const id of ['bin-closeness', 'socio-exchanges']) {
-      expect(idsAfter(id)).toEqual([
+    for (const key of [closenessBin, exchangesSociogram]) {
+      expect(idsAfter(key)).toEqual([
         'placeholder-parent',
         'described-relative',
         'friend',
@@ -122,7 +153,7 @@ describe('the CEGRM template tells family from non-kin by the non_kin mark', () 
   // A Narrative has no filter of its own: each preset narrows the network for
   // itself, so every preset has to keep the participant out.
   it('brings everyone but the participant to every preset of the narrative', () => {
-    const presets = getStage('narrative-cegrm').presets ?? [];
+    const presets = getStage(completedMapNarrative).presets ?? [];
     expect(presets).toHaveLength(3);
     for (const preset of presets) {
       if (!preset.filter) throw new Error(`Preset ${preset.id} has no filter`);
