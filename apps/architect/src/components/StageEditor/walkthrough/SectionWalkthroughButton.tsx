@@ -1,4 +1,4 @@
-import { Info } from 'lucide-react';
+import { CircleHelp } from 'lucide-react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -46,7 +46,7 @@ function SectionWalkthroughButton({ section }: Readonly<{ section: Section }>) {
           <IconButton
             size="sm"
             variant="text"
-            icon={<Info aria-hidden />}
+            icon={<CircleHelp aria-hidden />}
             aria-label={label}
             onClick={(event) =>
               openWalkthrough(event.currentTarget, identity?.id ?? '', step)

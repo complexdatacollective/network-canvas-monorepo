@@ -7,7 +7,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import ProgressRing from '@codaco/fresco-ui/ProgressRing';
 import {
   defineToolbarChild,
-  ToolbarButton,
   ToolbarIconButton,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
@@ -26,7 +25,7 @@ const messages = defineMessages({
     id: 'architect.stageEditor.walkthrough.start',
     defaultMessage: 'Walk me through this',
     description:
-      'Button in the stage editor toolbar that opens a step-by-step guide to the stage being edited, in a floating panel. It is hidden while the guide is open.',
+      'Accessible name and tooltip of the question-mark icon button in the stage editor toolbar that opens a step-by-step guide to the stage being edited, in a floating panel. It is hidden while the guide is open.',
   },
   progressShort: {
     id: 'architect.stageEditor.walkthrough.progressShort',
@@ -79,15 +78,15 @@ export const WalkthroughToolbarControl = defineToolbarChild(
 
     if (!open) {
       return (
-        <ToolbarButton
+        <ToolbarIconButton
           ref={mergedRef}
+          aria-label={intl.formatMessage(messages.start)}
           icon={<CircleHelp />}
           variant="default"
           color="info"
+          tooltipSide="top"
           onClick={(event) => openWalkthrough(event.currentTarget, stage)}
-        >
-          {intl.formatMessage(messages.start)}
-        </ToolbarButton>
+        />
       );
     }
 

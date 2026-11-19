@@ -3481,7 +3481,7 @@
   },
   "architect.stageEditor.walkthrough.start": {
     "defaultMessage": "Walk me through this",
-    "description": "Button in the stage editor toolbar that opens a step-by-step guide to the stage being edited, in a floating panel. It is hidden while the guide is open."
+    "description": "Accessible name and tooltip of the question-mark icon button in the stage editor toolbar that opens a step-by-step guide to the stage being edited, in a floating panel. It is hidden while the guide is open."
   },
   "architect.storageUnavailableBanner.downloadFailed": {
     "defaultMessage": "Download failed",
