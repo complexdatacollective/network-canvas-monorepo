@@ -205,6 +205,41 @@ describe('Protocol Summary edge labels participants see', () => {
     expect(within(edges).getByText('knows')).toBeInTheDocument();
   });
 
+  it('prints a Narrative preset’s own filter with that preset, and none for a preset without one', () => {
+    renderConfigured('Narrative', {
+      presets: [
+        {
+          id: 'filtered',
+          label: { en: 'Friends only' },
+          layoutVariable: 'layout',
+          filter: {
+            rules: [
+              {
+                id: 'rule',
+                type: 'edge',
+                options: { type: 'knows', operator: 'EXISTS' },
+              },
+            ],
+          },
+        },
+        { id: 'everyone', label: { en: 'Everyone' }, layoutVariable: 'layout' },
+      ],
+    });
+
+    const filtered = screen
+      .getByRole('heading', { name: 'Friends only' })
+      .closest('div');
+    const everyone = screen
+      .getByRole('heading', { name: 'Everyone' })
+      .closest('div');
+    if (!filtered || !everyone) throw new Error('A preset was not printed');
+    const row = within(filtered).getByRole('row', { name: /Preset filter/ });
+    expect(within(row).getByText('knows')).toBeInTheDocument();
+    expect(
+      within(everyone).queryByRole('row', { name: /Preset filter/ }),
+    ).toBeNull();
+  });
+
   it('prints each edge type a Network Composer stage lets participants draw with its label', () => {
     renderConfigured('NetworkComposer', {
       edges: [

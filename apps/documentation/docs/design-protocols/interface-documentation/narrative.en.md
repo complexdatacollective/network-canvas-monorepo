@@ -28,6 +28,12 @@ Everything you configure on the Narrative lives in one or more **presets**. A pr
 
 Each preset has a label that identifies it in the interface. During the interview, a floating preset switcher lets the researcher or participant step between presets and toggle the groups, links, and highlighted attributes on and off. Where a preset lists several highlight attributes, they choose which one to show at a time, from a list that shows the label you gave each attribute. The edge types a preset draws are listed by the labels you gave them too. Nothing done here is written back to the data — the Narrative only ever reads.
 
+<AppOnly app="current">
+
+A preset can also have a **filter**: rules that choose which part of the network that preset shows. Each preset has its own filter, so one stage can show the whole network in one preset and only part of it in another — everyone in the first view, for example, and only family members in the second.
+
+</AppOnly>
+
 ![An example Narrative preset, with highlighted nodes, edges between them, and colored group hulls](/assets/img/interface-documentation/narrative/narrative-example.png)
 
 ## Configuring presets in Architect
@@ -41,6 +47,26 @@ A Narrative needs at least one preset. For each preset you set:
 - **Node highlighting** (optional) — one or more boolean variables; nodes whose value is true are highlighted while the preset is active. Each variable you choose also needs a label, which participants see in the preset switcher. The label starts as the variable's name, and you can translate it like any other text (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol#labels-in-a-narrative-stages-legend)).
 
 The group, edge, and highlight options each pick from the variables already in your codebook, so define the variables a preset needs before you build it.
+
+### Filtering a preset
+
+<AppOnly app="current">
+
+Turn on **Preset filter** in a preset to limit that preset to part of the network. You build the filter from rules, in the same way as a [network filter](/en/design-protocols/key-concepts/network-filtering) on any other stage: each rule tests an attribute of a node, or whether a node has an edge of a given type, and you choose whether a node must match every rule or any one of them. A filtered preset draws only the nodes that match, and only the edges between them.
+
+A preset with no filter shows everyone who has a position in its layout attribute. The Narrative stage has no filter of its own, so to show the same part of the network throughout, give each preset the same filter.
+
+Switching presets during the interview switches filters too. Nodes that the new preset filters out leave the canvas, and nodes it lets in appear.
+
+A Narrative stage is left out of the interview when none of its presets has anyone to show, unless **Free-draw** is on.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+In Architect Classic a filter belongs to the whole Narrative stage, and applies to every preset. Turn on **Network Filtering** in the stage editor to set it (see [Network Filtering](/en/design-protocols/key-concepts/network-filtering)).
+
+</AppOnly>
 
 ### Background
 
@@ -81,6 +107,16 @@ Give each preset a single focus that maps to one question, and label it accordin
 Because the Narrative only shows alters that have a value for the preset's layout variable, reuse the layout variable your participants populated on an earlier [Sociogram](/en/design-protocols/interface-documentation/sociogram). This replays their own arrangement of the network rather than starting from an empty canvas.
 
 </GoodPractice>
+
+<AppOnly app="current">
+
+<GoodPractice>
+
+Use preset filters to move from the whole network to the part a question is about. A first preset with no filter shows everyone; later presets can narrow to family, to the people who provide support, or to the people connected by one kind of tie, all without leaving the stage or losing the participant's arrangement.
+
+</GoodPractice>
+
+</AppOnly>
 
 ## Capturing the conversation
 

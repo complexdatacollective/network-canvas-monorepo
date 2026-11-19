@@ -5,9 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Node from '@codaco/fresco-ui/Node';
+import { filter as networkFilter } from '@codaco/network-query';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  type NcEdge,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
@@ -20,11 +23,7 @@ import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useOptionalLocalizedText } from '../../localization/ProtocolLocalizationProvider';
 import { useStageWording } from '../../localization/useStageWording';
-import {
-  getCategoricalOptions,
-  getNetworkEdges,
-  getNetworkNodes,
-} from '../../selectors/session';
+import { getCategoricalOptions, getNetwork } from '../../selectors/session';
 import type { StageProps } from '../../types';
 import { compareCodeUnits } from '../../utils/compareCodeUnits';
 import { interfaceMessages } from '../messages';
@@ -34,10 +33,16 @@ import PresetSwitcher from './PresetSwitcher';
 
 type NarrativeProps = StageProps<'Narrative'>;
 
+// Held as one value so a network with nobody in it does not look like a new
+// network on every render.
+const NO_NODES: NcNode[] = [];
+const NO_EDGES: NcEdge[] = [];
+
 const Narrative = ({ stage }: NarrativeProps) => {
   const intl = useAppIntl();
-  const nodes = useStageSelector(getNetworkNodes);
-  const edges = useStageSelector(getNetworkEdges);
+  // The whole network: a Narrative has no filter of its own, and each preset
+  // narrows the network for itself (below).
+  const network = useStageSelector(getNetwork);
 
   // The stage's own words (`stage-wording/narrative.ts`), and Network
   // Canvas's where the stage holds none. A heading is shown only while a
@@ -173,6 +178,15 @@ const Narrative = ({ stage }: NarrativeProps) => {
   // Stage properties
   const { presets } = stage;
   const currentPreset = presets[presetIndex];
+
+  // The people and connections this preset shows: the whole network, or what
+  // the preset's own filter leaves of it.
+  const presetFilter = currentPreset?.filter;
+  const { nodes, edges } = useMemo(() => {
+    if (!network) return { nodes: NO_NODES, edges: NO_EDGES };
+    const shown = presetFilter ? networkFilter(presetFilter)(network) : network;
+    return { nodes: shown.nodes, edges: shown.edges };
+  }, [network, presetFilter]);
 
   // Behaviour Configuration
   const allowRepositioning = get(stage, 'behaviours.allowRepositioning', false);
