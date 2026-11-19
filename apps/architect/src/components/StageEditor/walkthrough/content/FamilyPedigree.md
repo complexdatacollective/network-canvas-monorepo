@@ -21,7 +21,7 @@ Read the full [Family Pedigree documentation](https://documentation.networkcanva
 
 ## When to use it
 
-Use this stage when you need a participant's family as a structure: who is related to whom, and how. Pair it with a [Narrative Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree) to show the participant how a condition may run through the family they drew.
+Use this stage when you need a participant's family as a structure: who is related to whom, and how. Pair it with a [Narrative Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree) to show the participant how a condition may run through the family they drew. Once a Narrative Pedigree reads this stage's family, this stage's node type can't be changed.
 
 ## The tools on the canvas
 
@@ -48,11 +48,7 @@ The participant can also drag the canvas to move around, and zoom with the mouse
 
 Pointing at a person shows four buttons for adding a relative: a parent above, a sibling to the left, a partner to the right and a child below. When the participant chooses a button, the side panel opens and asks about the new person and their relationship before that person is saved. Selecting a person opens the same panel to edit their details.
 
-## Choose who the family members are
-
-<!-- section: node-type -->
-
-Pick the **node type** each family member is saved as, for example _Person_. If a Narrative Pedigree reads this stage's family, you can't change the node type.
+<!-- include: node-type -->
 
 ## Write the prompt
 

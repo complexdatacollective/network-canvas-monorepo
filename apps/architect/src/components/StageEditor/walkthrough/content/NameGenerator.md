@@ -60,13 +60,7 @@ Use this stage when you want to collect a small amount of information about each
 
 > Avoid: Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin) Interface.
 
-## Choose what this stage creates
-
-<!-- section: node-type -->
-
-Choose the **node type** this stage creates, such as _Person_. Each alter named here becomes a node of that type, and the answers on the form are saved as attributes of that type.
-
-If the type you need does not exist yet, you can create it here.
+<!-- include: node-type -->
 
 ## Build the form
 

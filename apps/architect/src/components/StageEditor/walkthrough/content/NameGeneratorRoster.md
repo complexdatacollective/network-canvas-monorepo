@@ -62,13 +62,7 @@ Use this stage when participants will nominate from a known set of alters, such 
 
 > Avoid: Needless sort options. They confuse participants and can cause display problems on small screens; aim for no more than three.
 
-## Choose what this stage creates
-
-<!-- section: node-type -->
-
-Choose the **node type** this stage creates, such as _Person_. Each alter added here becomes a node of that type.
-
-If the type you need does not exist yet, you can create it here.
+<!-- include: node-type -->
 
 ## Choose the roster
 

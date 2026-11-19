@@ -56,13 +56,7 @@ Use this stage when you want participants to name alters quickly, without collec
 
 > Avoid: Adding additional attributes on this stage that could more accurately be collected elsewhere.
 
-## Choose what this stage creates
-
-<!-- section: node-type -->
-
-Choose the **node type** this stage creates, such as _Person_. Each alter named here becomes a node of that type, and what the participant types is saved as one of that type's attributes.
-
-If the type you need does not exist yet, you can create it here.
+<!-- include: node-type -->
 
 ## Choose what quick add records
 

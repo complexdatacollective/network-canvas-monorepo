@@ -41,13 +41,7 @@ A palette of tools runs down the left of the canvas. A tool stays active until t
 6. **Undo**: reverses the last change, such as adding an edge, changing a group or moving an alter. The usual keyboard shortcut also works.
 7. **Redo**: replays what was undone. The usual keyboard shortcut also works.
 
-## Choose what this stage builds
-
-<!-- section: node-type -->
-
-Choose what kind of node this canvas creates, such as _Person_. Every node of that type already in the participant's network, such as alters named on an earlier stage, also appears on the canvas. The interviewer can move, connect and group those nodes too.
-
-Changing the node type later clears this stage's other settings, because they depend on the node type.
+<!-- include: node-type -->
 
 ## Choose where typed names are saved
 
