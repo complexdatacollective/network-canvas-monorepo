@@ -149,14 +149,14 @@ An open If block has these controls:
 
 - **Edit rules**, on each row that has rules, reopens the rule builder for that row.
 - **Add else if** asks for another set of rules, then adds a row labeled **Else if:** followed by those rules. The interview tests the rows from the top, and shows the wording of the first row that applies.
-- **Remove this case**, on each row when the block has more than one row with rules, removes that row together with its rules and its wording. The last such row can be removed only by deleting the whole If block from the text.
+- **Remove this case**, on each row when the block has more than one row with rules, removes that row together with its rules and its wording. When only one row with rules remains, it can be removed only by deleting the whole If block from the text.
 
 For example, a Per Alter Form question could depend on the age recorded for each person:
 
-| Row                      | Text written                         |
-| ------------------------ | ------------------------------------ |
-| If: age is less than 18  | Which school does this person go to? |
-| Otherwise                | Where does this person work?         |
+| Row                     | Text written                         |
+| ----------------------- | ------------------------------------ |
+| If: age is less than 18 | Which school does this person go to? |
+| Otherwise               | Where does this person work?         |
 
 The interview works out an If block again whenever the answers or edges that its rules test change, so the wording stays current as the interview goes on.
 
