@@ -106,6 +106,7 @@ import InputField from './InputField';
 import {
   AssetBlockNode,
   AssetBlocksContext,
+  AssetBlocksEditableContext,
   insertAssetBlock,
   type RichTextAssetBlockAttributes,
   type RichTextAssetBlockKind,
@@ -2856,10 +2857,12 @@ export default function RichTextEditorField({
     >
       <NestedEditingContext.Provider value={nestedEditing}>
         <AssetBlocksContext.Provider value={assetBlocks ?? null}>
-          <EditorContent
-            editor={editor}
-            className={editorContentVariants({ singleLine })}
-          />
+          <AssetBlocksEditableContext.Provider value={!disabled && !readOnly}>
+            <EditorContent
+              editor={editor}
+              className={editorContentVariants({ singleLine })}
+            />
+          </AssetBlocksEditableContext.Provider>
         </AssetBlocksContext.Provider>
       </NestedEditingContext.Provider>
       {triggered !== null && (

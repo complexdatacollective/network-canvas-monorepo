@@ -71,7 +71,7 @@ const renderField = ({
 } = {}) => {
   const onChange = vi.fn<(value: JSONContent | undefined) => void>();
   const user = userEvent.setup();
-  render(
+  const field = (changed: Partial<FieldProps> = {}) => (
     <RichTextEditorField
       id="content"
       name="content"
@@ -81,11 +81,15 @@ const renderField = ({
       onChange={onChange}
       assetBlocks={assetBlocks}
       {...props}
-    />,
+      {...changed}
+    />
   );
+  const { rerender } = render(field());
   return {
     user,
     onChange,
+    /** Draws the field again with some of its props changed. */
+    change: (changed: Partial<FieldProps>) => rerender(field(changed)),
     editor: () => screen.findByRole('textbox', { name: 'Content' }),
     lastDocument: () => onChange.mock.lastCall?.[0],
   };
@@ -579,4 +583,55 @@ describe('a field that cannot be edited', () => {
       'false',
     );
   });
+
+  // The view is the consumer's and may be showing a control at the moment
+  // the field stops being editable: a form disables its fields as it submits.
+  it.each([
+    ['disabled', { disabled: true }],
+    ['read-only', { readOnly: true }],
+  ] as const)(
+    'tells a view already drawn when the field becomes %s, and changes nothing for it',
+    async (_kind, props) => {
+      const value = doc(block({ assetId: 'a1' }), paragraph('After'));
+      const field = renderField({ value });
+      await field.editor();
+      expect(screen.getByTestId('view')).toHaveAttribute(
+        'data-editable',
+        'true',
+      );
+
+      field.change(props);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('view')).toHaveAttribute(
+          'data-editable',
+          'false',
+        );
+      });
+      await field.user.click(
+        screen.getByRole('button', { name: 'Make large' }),
+      );
+      await field.user.click(
+        screen.getByRole('button', { name: 'Remove block' }),
+      );
+
+      expect(attributesShown()).toMatchObject({ assetId: 'a1', size: null });
+      expect(field.onChange).not.toHaveBeenCalled();
+
+      // And it can be changed again once the field can.
+      field.change({ disabled: false, readOnly: false });
+      await waitFor(() => {
+        expect(screen.getByTestId('view')).toHaveAttribute(
+          'data-editable',
+          'true',
+        );
+      });
+      await field.user.click(
+        screen.getByRole('button', { name: 'Make large' }),
+      );
+      await waitFor(() => {
+        expect(attributesShown().size).toBe('large');
+      });
+    },
+  );
 });

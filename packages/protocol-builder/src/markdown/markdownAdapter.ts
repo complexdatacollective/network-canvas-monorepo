@@ -630,31 +630,100 @@ const flattenInlineContent = (
     return [...flattened, { type: 'text', text: ' ' }, ...inlineContent];
   }, []);
 
-const indentBlock = (value: string): string =>
+// What a list is written with. Two lists of one kind with nothing between
+// them read back as one list, so the second of a pair is written with the
+// other marker, which starts a new list wherever markdown is read.
+type ListMarker = Readonly<{ bullet: '-' | '*'; delimiter: '.' | ')' }>;
+const FIRST_MARKER: ListMarker = { bullet: '-', delimiter: '.' };
+const OTHER_MARKER: ListMarker = { bullet: '*', delimiter: ')' };
+
+const isList = (node: RichTextContent | undefined): boolean =>
+  node?.type === 'bulletList' || node?.type === 'orderedList';
+
+type WrittenBlock = Readonly<{ node: RichTextContent; text: string }>;
+
+/**
+ * Sibling blocks as each is written, leaving out those written as nothing.
+ * A list that follows a list of its own kind takes the other marker.
+ */
+const writtenBlocks = (
+  content: RichTextContent[] | undefined,
+): WrittenBlock[] => {
+  const written: WrittenBlock[] = [];
+  let previousMarker = FIRST_MARKER;
+  for (const node of content ?? []) {
+    const previous = written.at(-1)?.node;
+    const marker =
+      isList(node) && previous?.type === node.type
+        ? previousMarker === FIRST_MARKER
+          ? OTHER_MARKER
+          : FIRST_MARKER
+        : FIRST_MARKER;
+    const text = serializeBlock(node, marker);
+    if (text === '') continue;
+    written.push({ node, text });
+    previousMarker = marker;
+  }
+  return written;
+};
+
+const indentBlock = (value: string, width: number): string =>
   value
     .split('\n')
-    .map((line) => `  ${line}`)
+    .map((line) => `${' '.repeat(width)}${line}`)
     .join('\n');
 
+// A list straight after the paragraph an item opens with is written on the
+// next line, which keeps the list tight. It can be, because such a list
+// interrupts a paragraph: a bulleted one always, a numbered one when it
+// starts at 1.
+const followsOnNextLine = (
+  previous: WrittenBlock,
+  next: WrittenBlock,
+  previousIsFirst: boolean,
+): boolean => {
+  if (!previousIsFirst || previous.node.type !== 'paragraph') return false;
+  if (next.node.type === 'bulletList') return true;
+  if (next.node.type !== 'orderedList') return false;
+  const start = next.node.attrs?.start;
+  return start === undefined || start === 1;
+};
+
+/**
+ * A list item: its marker, then its blocks, each line after the first set in
+ * by the marker's width, which is what makes it part of the item ("10. " is
+ * four wide where "- " is two). The blocks are parted by a blank line, as
+ * blocks are anywhere, or a paragraph would run on into the one before it.
+ * An item that opens with something written as nothing, such as the empty
+ * paragraph an item opening with a file is given, opens with what follows.
+ */
 const serializeListItem = (
   node: RichTextContent,
   index: number,
   ordered: boolean,
   start: number,
+  { bullet, delimiter }: ListMarker,
 ): string => {
-  const blocks = node.content ?? [];
-  const [firstBlock, ...restBlocks] = blocks;
-  const firstContent = firstBlock ? serializeBlock(firstBlock) : '';
-  const marker = ordered ? `${start + index}. ` : '- ';
-  const restContent = restBlocks.map(serializeBlock).filter(Boolean);
+  const marker = ordered ? `${start + index}${delimiter} ` : `${bullet} `;
+  const [first, ...rest] = writtenBlocks(node.content);
+  if (first === undefined) return marker;
 
-  if (restContent.length === 0) {
-    return `${marker}${firstContent}`;
+  // A paragraph's own later lines carry on wherever they start, and stay as
+  // they were written before; anything else an item opens with is set in.
+  const opening =
+    first.node.type === 'paragraph'
+      ? first.text
+      : indentBlock(first.text, marker.length).slice(marker.length);
+  let item = `${marker}${opening}`;
+  let previous = first;
+  for (const [position, block] of rest.entries()) {
+    const separator = followsOnNextLine(previous, block, position === 0)
+      ? '\n'
+      : '\n\n';
+    item += `${separator}${indentBlock(block.text, marker.length)}`;
+    previous = block;
   }
-
-  return [`${marker}${firstContent}`, ...restContent.map(indentBlock)].join(
-    '\n',
-  );
+  return item;
 };
 
 const isOneOf = <Value extends string>(
@@ -691,7 +760,10 @@ const withoutClosingBreaks = (
   return end === 0 || end === content.length ? content : content.slice(0, end);
 };
 
-const serializeBlock = (node: RichTextContent): string => {
+const serializeBlock = (
+  node: RichTextContent,
+  marker: ListMarker = FIRST_MARKER,
+): string => {
   switch (node.type) {
     case 'doc':
       return serializeBlocks(node.content);
@@ -708,14 +780,18 @@ const serializeBlock = (node: RichTextContent): string => {
 
     case 'bulletList':
       return (node.content ?? [])
-        .map((child, index) => serializeListItem(child, index, false, 1))
+        .map((child, index) =>
+          serializeListItem(child, index, false, 1, marker),
+        )
         .join('\n');
 
     case 'orderedList': {
       const rawStart = node.attrs?.start;
       const start = typeof rawStart === 'number' ? rawStart : 1;
       return (node.content ?? [])
-        .map((child, index) => serializeListItem(child, index, true, start))
+        .map((child, index) =>
+          serializeListItem(child, index, true, start, marker),
+        )
         .join('\n');
     }
 
@@ -740,7 +816,9 @@ const serializeBlock = (node: RichTextContent): string => {
 };
 
 const serializeBlocks = (content: RichTextContent[] | undefined): string =>
-  (content ?? []).map(serializeBlock).filter(Boolean).join('\n\n');
+  writtenBlocks(content)
+    .map(({ text }) => text)
+    .join('\n\n');
 
 const containsContent = (node: RichTextContent): boolean => {
   if (node.type === 'horizontalRule') {

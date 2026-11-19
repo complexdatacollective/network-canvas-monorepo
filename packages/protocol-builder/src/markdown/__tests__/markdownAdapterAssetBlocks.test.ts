@@ -307,18 +307,30 @@ describe('a block through markdown and back', () => {
     }
   });
 
-  it('keeps a block that opens a list item', () => {
-    const markdown = '- ![Map](asset:a1)\n- Second';
-    const once = roundTrip(markdown);
-    expect(read(once)).toEqual(read(markdown));
-    // And the text it wrote is a fixed point.
-    expect(roundTrip(once)).toBe(once);
+  it('keeps a block that opens a list item, as it was written', () => {
+    for (const markdown of [
+      '- ![Map](asset:a1)\n- Second',
+      // A numbered item's marker is wider than a bulleted one's, and what
+      // follows it has to be set in by that width to stay in the item.
+      '1. ![Map](asset:a1)\n2. Second',
+      '10. ![Map](asset:a1)\n11. Second',
+    ]) {
+      expect(roundTrip(markdown)).toBe(markdown);
+    }
   });
 
   it('keeps a block after text in a list item', () => {
-    const markdown = '1. Text\n   ![Map](asset:a1)\n2. Second';
-    const doc = read(markdown);
-    expect(read(roundTrip(markdown))).toEqual(doc);
+    for (const markdown of [
+      '1. Text\n   ![Map](asset:a1)\n2. Second',
+      '- Text\n  ![Map](asset:a1)\n- Second',
+      '10. Text\n    ![Map](asset:a1)\n11. Second',
+      '1. Text\n\n   ![Map](asset:a1)\n\n   More\n2. Second',
+    ]) {
+      const once = roundTrip(markdown);
+      expect(read(once)).toEqual(read(markdown));
+      // And the text it wrote is a fixed point.
+      expect(roundTrip(once)).toBe(once);
+    }
   });
 
   it('writes a sentence split around a block as three paragraphs, then keeps them', () => {

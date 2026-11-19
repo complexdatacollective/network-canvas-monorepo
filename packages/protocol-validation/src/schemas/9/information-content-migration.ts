@@ -1,4 +1,5 @@
-import { fromMarkdown } from 'mdast-util-from-markdown';
+import { gfmToMarkdown } from 'mdast-util-gfm';
+import { toMarkdown } from 'mdast-util-to-markdown';
 
 import {
   type AssetBlock,
@@ -10,6 +11,7 @@ import {
 import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
+import { markdownTree } from '../../localization/markdownTree.ts';
 import {
   type MessageNode,
   messageStructure,
@@ -26,7 +28,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * language (`localized`).
  */
 type Part =
-  | Readonly<{ kind: 'plain'; markdown: string }>
+  | Readonly<{
+      kind: 'plain';
+      markdown: string;
+      /**
+       * Whether this was a text item, written by the researcher as markdown,
+       * rather than a heading or a file, which are written here.
+       */
+      authored?: true;
+    }>
   | Readonly<{
       kind: 'localized';
       messages: Readonly<Record<string, string>>;
@@ -115,7 +125,7 @@ const PROBE = 'probe';
 // Whether what is written after this markdown, a blank line on, is read
 // apart from it, as the next of the text's own blocks.
 const endsItself = (markdown: string): boolean => {
-  const last = fromMarkdown(`${markdown}${BETWEEN_BLOCKS}${PROBE}`).children.at(
+  const last = markdownTree(`${markdown}${BETWEEN_BLOCKS}${PROBE}`).children.at(
     -1,
   );
   if (last?.type !== 'paragraph' || last.children.length !== 1) return false;
@@ -127,7 +137,7 @@ const endsItself = (markdown: string): boolean => {
 // fenced code block left open, or HTML that runs until its own end is
 // written (a comment, a `<pre>`).
 const closingOf = (markdown: string): string | undefined => {
-  const last = fromMarkdown(markdown).children.at(-1);
+  const last = markdownTree(markdown).children.at(-1);
   if (last?.type === 'code') {
     const from = last.position?.start.offset;
     if (from === undefined) return undefined;
@@ -164,7 +174,7 @@ const textPart = (content: unknown): Part | undefined => {
   if (typeof content === 'string') {
     return isBlankText(content)
       ? undefined
-      : { kind: 'plain', markdown: selfContained(content) };
+      : { kind: 'plain', markdown: selfContained(content), authored: true };
   }
   if (!isRecord(content)) return undefined;
   const messages = shownMessages(content);
@@ -238,21 +248,190 @@ const itemPart = (item: unknown, assetManifest: unknown): Part | undefined => {
   return undefined;
 };
 
+type Tree = ReturnType<typeof markdownTree>;
+type TreeNode = Tree['children'][number];
+
+const eachNode = (
+  siblings: TreeNode[],
+  visit: (node: TreeNode, index: number, siblings: TreeNode[]) => void,
+): void => {
+  for (const [index, node] of siblings.entries()) {
+    visit(node, index, siblings);
+    // The visit may have put another node in its place.
+    const now = siblings[index];
+    if (now !== undefined && 'children' in now) eachNode(now.children, visit);
+  }
+};
+
+const withoutDefinitions = (siblings: TreeNode[]): void => {
+  for (let index = siblings.length - 1; index >= 0; index -= 1) {
+    const node = siblings[index];
+    if (node === undefined) continue;
+    if (node.type === 'definition') siblings.splice(index, 1);
+    else if ('children' in node) withoutDefinitions(node.children);
+  }
+};
+
 /**
- * The parts as one text. Parts schema 8 wrote are joined as they are, for
- * the migration to record in the protocol's language with the rest of its
- * text. Where a part is already localized, the page is written once for each
- * language any part has: a part without that language reads there as it does
- * in the default language, or failing that in whichever language it has,
- * which is what the interview showed in its place.
+ * What markdown is made of, read by itself, with each link and image that
+ * names its address by reference (`[text][label]`, with `[label]: address`
+ * written elsewhere) holding the address instead. A label belongs to the
+ * whole text it is written in, so two items using one label for two
+ * addresses, or one item's label matching words another wrote in brackets,
+ * would read differently joined; an address written in the link reads the
+ * same anywhere.
+ */
+const blocksOf = (markdown: string): TreeNode[] => {
+  const { children } = markdownTree(markdown);
+  const definitions = new Map<
+    string,
+    Readonly<{ url: string; title?: string | null }>
+  >();
+  eachNode(children, (node) => {
+    if (node.type === 'definition' && !definitions.has(node.identifier)) {
+      definitions.set(node.identifier, node);
+    }
+  });
+  if (definitions.size === 0) return children;
+  eachNode(children, (node, index, siblings) => {
+    if (node.type !== 'linkReference' && node.type !== 'imageReference') {
+      return;
+    }
+    const definition = definitions.get(node.identifier);
+    if (definition === undefined) return;
+    const { url, title } = definition;
+    siblings[index] =
+      node.type === 'linkReference'
+        ? { type: 'link', url, title, children: node.children }
+        : { type: 'image', url, title, alt: node.alt };
+  });
+  withoutDefinitions(children);
+  return children;
+};
+
+// What was read, without where in the text each thing was read from.
+const shapeOf = (blocks: readonly TreeNode[]): string =>
+  JSON.stringify(blocks, (key, value: unknown) =>
+    key === 'position' ? undefined : value,
+  );
+
+const footnotesOf = (blocks: TreeNode[]): Set<string> => {
+  const identifiers = new Set<string>();
+  eachNode(blocks, (node) => {
+    if (node.type === 'footnoteDefinition') identifiers.add(node.identifier);
+  });
+  return identifiers;
+};
+
+/**
+ * Whether the pieces, written one after another with a blank line between,
+ * read as each of them read alone. Schema 8 drew each item by itself, so
+ * this is whether a participant is shown the page they were shown before.
+ * Two lists of one kind, one ending an item and one opening the next, read
+ * joined as one list numbered straight through; a link's label defined in
+ * one item is defined for them all; a footnote numbered 1 in two items is
+ * one footnote.
+ */
+const readsAsItsPieces = (pieces: readonly string[]): boolean => {
+  const alone = pieces.map(blocksOf);
+  const footnotes = new Set<string>();
+  for (const blocks of alone) {
+    for (const identifier of footnotesOf(blocks)) {
+      if (footnotes.has(identifier)) return false;
+      footnotes.add(identifier);
+    }
+  }
+  return (
+    shapeOf(blocksOf(pieces.join(BETWEEN_BLOCKS))) === shapeOf(alone.flat())
+  );
+};
+
+// A footnote's label belongs to the whole text, as a link's does, and cannot
+// be written into the text in its place: each item's are given labels of
+// their own. A participant sees a footnote's number, never its label.
+const withFootnotesOf = (blocks: TreeNode[], item: number): TreeNode[] => {
+  eachNode(blocks, (node) => {
+    if (
+      node.type !== 'footnoteDefinition' &&
+      node.type !== 'footnoteReference'
+    ) {
+      return;
+    }
+    node.label = `${item}-${node.label ?? node.identifier}`;
+    node.identifier = `${item}-${node.identifier}`;
+  });
+  return blocks;
+};
+
+/**
+ * Text items that follow one another, written out again from what each was
+ * read as. Writing from what was read, rather than joining what was
+ * written, is what keeps the items apart: a list that follows a list is
+ * given the other marker, which starts a new list; nothing is left open;
+ * and no label is left to be shared. The words and what they show are
+ * unchanged, though how they are spelled may not be (`*` for `_`, a code
+ * block fenced where it was indented).
+ */
+const writtenAgain = (items: readonly TreeNode[][]): string =>
+  toMarkdown(
+    { type: 'root', children: items.flat() },
+    {
+      extensions: [gfmToMarkdown()],
+      bullet: '-',
+      rule: '-',
+    },
+  ).trimEnd();
+
+/**
+ * The parts schema 8 wrote, as one text. They are joined as they are
+ * wherever that reads as they read apart, which is nearly always. Where it
+ * does not, the heading and the files are still joined as they are, and the
+ * text items between them are written again (see `writtenAgain`).
+ */
+const joinPlainParts = (
+  parts: readonly Extract<Part, { kind: 'plain' }>[],
+): string => {
+  const pieces = parts.map((part) => part.markdown);
+  if (readsAsItsPieces(pieces)) return pieces.join(BETWEEN_BLOCKS);
+
+  const written: string[] = [];
+  let items: TreeNode[][] = [];
+  const endItems = () => {
+    if (items.length === 0) return;
+    const text = writtenAgain(items);
+    if (text !== '') written.push(text);
+    items = [];
+  };
+  for (const [index, part] of parts.entries()) {
+    if (part.authored) {
+      items.push(withFootnotesOf(blocksOf(part.markdown), index + 1));
+      continue;
+    }
+    endItems();
+    written.push(part.markdown);
+  }
+  endItems();
+  return written.join(BETWEEN_BLOCKS);
+};
+
+/**
+ * The parts as one text. Parts schema 8 wrote are joined into one string
+ * (see `joinPlainParts`), for the migration to record in the protocol's
+ * language with the rest of its text. Where a part is already localized,
+ * which only a document written for schema 9 before it kept a page as one
+ * text can be, the page is written once for each language any part has: a
+ * part without that language reads there as it does in the default
+ * language, or failing that in whichever language it has, which is what the
+ * interview showed in its place. Those are joined as they are: a message is
+ * not markdown until its values are filled in, and cannot be written again
+ * from what it reads as.
  */
 const joinParts = (
   parts: readonly Part[],
   defaultLocale: string,
 ): string | Record<string, string> => {
-  if (parts.every((part) => part.kind === 'plain')) {
-    return parts.map((part) => part.markdown).join(BETWEEN_BLOCKS);
-  }
+  const plain = parts.filter((part) => part.kind === 'plain');
+  if (plain.length === parts.length) return joinPlainParts(plain);
   const locales = new Set<string>();
   for (const part of parts) {
     if (part.kind !== 'localized') continue;
@@ -283,7 +462,9 @@ const joinParts = (
  * item as it is, since it was markdown already; and each file as a block
  * naming it (see `AssetBlock`), with its description and size. A text item
  * that left a code block or raw HTML open is closed where it ended (see
- * `selfContained`), so the items below it are still shown. An item
+ * `selfContained`), so the items below it are still shown; and where the
+ * items would still read differently as one text than each read alone, they
+ * are written again in a form that does not (see `joinPlainParts`). An item
  * naming a file that is not an image, an audio recording or a video among the
  * protocol's assets showed a notice that it was unavailable, and is left out.
  *

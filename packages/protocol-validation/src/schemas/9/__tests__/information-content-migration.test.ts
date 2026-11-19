@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { assetBlocksInMarkdown } from '../../../localization/assetBlock.ts';
+import { markdownTree } from '../../../localization/markdownTree.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
@@ -209,6 +210,238 @@ describe('combineInformationContent', () => {
         items: [text('a', '- one\n- two'), text('b', '\n  After the list.')],
       });
       expect(content).toBe('# T\n\n- one\n- two\n\nAfter the list.');
+    });
+  });
+
+  // Schema 8 drew each text item by itself. One text reads some things
+  // across the whole of it, so items written one after another can read
+  // differently from how each read alone.
+  describe('text items that would read differently joined', () => {
+    const page = (...items: string[]): unknown =>
+      combined({
+        title: 'T',
+        items: items.map((content, index) =>
+          content === '@photo'
+            ? asset(`a${index}`, 'photo')
+            : text(`t${index}`, content),
+        ),
+      }).content;
+
+    it('keeps two numbered lists apart, so the second starts again at 1', () => {
+      expect(
+        page(
+          '1. First instruction\n2. Second instruction',
+          '1. First question\n2. Second question',
+        ),
+      ).toBe(
+        '# T\n\n1. First instruction\n2. Second instruction\n\n1) First question\n2) Second question',
+      );
+    });
+
+    it('keeps bulleted lists apart, however many follow one another', () => {
+      expect(page('- a\n- b', '- c', '- d')).toBe(
+        '# T\n\n- a\n- b\n\n* c\n\n- d',
+      );
+    });
+
+    it('leaves lists with a file between them as they were written', () => {
+      expect(page('* a', '@photo', '* b')).toBe(
+        '# T\n\n* a\n\n![](asset:photo)\n\n* b',
+      );
+    });
+
+    it('leaves lists of different kinds as they were written', () => {
+      expect(page('* a', '1. b', '+ c')).toBe('# T\n\n* a\n\n1. b\n\n+ c');
+    });
+
+    it('writes each item’s links with the address its own label gave', () => {
+      expect(
+        page(
+          'See the [policy].\n\n[policy]: https://example.com/privacy "Privacy"',
+          'Sign the [policy][].\n\n[policy]: https://example.com/consent',
+        ),
+      ).toBe(
+        '# T\n\nSee the [policy](https://example.com/privacy "Privacy").\n\nSign the [policy](https://example.com/consent).',
+      );
+    });
+
+    it('keeps words in brackets as words when another item uses them as a label', () => {
+      expect(
+        page(
+          'A literal [note] here.',
+          'A linked [note].\n\n[note]: https://example.com/a',
+        ),
+      ).toBe(
+        '# T\n\nA literal \\[note] here.\n\nA linked [note](https://example.com/a).',
+      );
+    });
+
+    it('writes an image named by a label with its address', () => {
+      expect(
+        page(
+          '![One][pic]\n\n[pic]: https://example.com/1.png',
+          '![Two][pic]\n\n[pic]: https://example.com/2.png',
+        ),
+      ).toBe(
+        '# T\n\n![One](https://example.com/1.png)\n\n![Two](https://example.com/2.png)',
+      );
+    });
+
+    it('reads a label an item defines twice as its first address, as markdown does', () => {
+      expect(
+        page(
+          'A [label].\n\n[label]: https://example.com/first\n\n[label]: https://example.com/second',
+          'A [label] too.\n\n[label]: https://example.com/third',
+        ),
+      ).toBe(
+        '# T\n\nA [label](https://example.com/first).\n\nA [label](https://example.com/third) too.',
+      );
+    });
+
+    it('writes the heading and the files as it always does, whatever the text between them needs', () => {
+      const file = asset('f', 'tune', {
+        description: 'A *loud* [tune] & more',
+      });
+      const alone = combined({ title: 'T # 1 *', items: [file] }).content;
+      if (typeof alone !== 'string') throw new Error('No content');
+      const [heading, block] = alone.split('\n\n');
+
+      expect(
+        combined({
+          title: 'T # 1 *',
+          items: [text('a', '- a'), text('b', '- b'), file, text('c', '- c')],
+        }).content,
+      ).toBe(`${heading}\n\n- a\n\n* b\n\n${block}\n\n- c`);
+    });
+
+    it('gives each item’s footnotes labels of their own', () => {
+      expect(
+        page('One[^1]\n\n[^1]: First note', 'Two[^1]\n\n[^1]: Second note'),
+      ).toBe(
+        '# T\n\nOne[^2-1]\n\n[^2-1]: First note\n\nTwo[^3-1]\n\n[^3-1]: Second note',
+      );
+    });
+
+    it('keeps code written by indenting it out of the list above it', () => {
+      expect(page('- item', '    typed as code')).toBe(
+        '# T\n\n- item\n\n```\ntyped as code\n```',
+      );
+    });
+
+    it('leaves a page that reads the same joined exactly as it was written', () => {
+      const items = [
+        '_emphasis_ and __strong__\n\n* a list\n* of two',
+        'A [link][home] and its label.\n\n[home]: https://example.com',
+        'Setext heading\n---\n\n    indented code',
+        '1) numbered',
+      ];
+      expect(page(...items)).toBe(`# T\n\n${items.join('\n\n')}`);
+    });
+
+    // What a text is read as: every block and what it holds, with a link's
+    // address wherever its label was defined in that text. Written apart
+    // from the migration's own check, which it is here to check.
+    const outline = (markdown: string): string[] => {
+      const tree = markdownTree(markdown);
+      const addresses = new Map<string, string>();
+      const lines: string[] = [];
+      const visit = (node: unknown, depth: number, collect: boolean) => {
+        if (typeof node !== 'object' || node === null) return;
+        const { type, identifier, url, value, ordered, start, children } =
+          node as Record<string, unknown>;
+        if (collect) {
+          if (type === 'definition' && !addresses.has(String(identifier))) {
+            addresses.set(String(identifier), String(url));
+          }
+        } else if (type !== 'definition') {
+          const reference =
+            type === 'linkReference' || type === 'imageReference';
+          const kind =
+            type === 'linkReference'
+              ? 'link'
+              : type === 'imageReference'
+                ? 'image'
+                : String(type);
+          const address = reference
+            ? addresses.get(String(identifier))
+            : type === 'footnoteReference' || type === 'footnoteDefinition'
+              ? undefined
+              : url;
+          lines.push(
+            `${'  '.repeat(depth)}${kind} ${JSON.stringify({
+              address,
+              // HTML left open is closed, and shows nothing either way.
+              value: type === 'html' ? undefined : value,
+              ordered,
+              start,
+            })}`,
+          );
+        }
+        if (Array.isArray(children)) {
+          for (const child of children) visit(child, depth + 1, collect);
+        }
+      };
+      for (const child of tree.children) visit(child, 0, true);
+      for (const child of tree.children) visit(child, 0, false);
+      return lines;
+    };
+
+    // Each is something one text reads across the whole of it, or that the
+    // text before it can change the reading of.
+    const PIECES = [
+      'A paragraph.',
+      '- a\n- b',
+      '* a\n\n* b',
+      '+ a',
+      '1. a\n2. b',
+      '1) a',
+      '3. third',
+      '- a\n  - nested\n\n  second paragraph',
+      'Uses [label] and [other][label].\n\n[label]: https://example.com/one',
+      'Says [label] and means it.',
+      '[label]: https://example.com/two "Two"\n\nAnother [label].',
+      '![picture][label]\n\n[label]: https://example.com/three.png',
+      '    indented code',
+      '```\nfenced and left open',
+      '<!-- a comment left open',
+      '> a quotation',
+      'Heading\n===',
+      '---',
+      '| a | b |\n| - | - |\n| 1 | 2 |',
+      '- [ ] a task',
+      '~~struck~~ and www.example.com',
+      'Line one  \nline two\\\nline three',
+      'A note[^1].\n\n[^1]: The note, with a [label].',
+    ];
+
+    it('reads every pair of items, joined, as each read alone', () => {
+      for (const first of PIECES) {
+        for (const second of PIECES) {
+          const content = page(first, second);
+          if (typeof content !== 'string') throw new Error('No content');
+          expect(
+            outline(content),
+            `${JSON.stringify(first)} then ${JSON.stringify(second)} gave ${JSON.stringify(content)}`,
+          ).toEqual([
+            ...outline('# T'),
+            ...outline(page(first) === undefined ? '' : first),
+            ...outline(second),
+          ]);
+        }
+      }
+    });
+
+    it('reads three of a kind in a row as three', () => {
+      for (const piece of ['- a', '1. a', '1) a\n2) b', '* a\n\n- b']) {
+        const content = page(piece, piece, piece);
+        if (typeof content !== 'string') throw new Error('No content');
+        expect(outline(content), JSON.stringify(content)).toEqual([
+          ...outline('# T'),
+          ...outline(piece),
+          ...outline(piece),
+          ...outline(piece),
+        ]);
+      }
     });
   });
 

@@ -96,6 +96,14 @@ export const AssetBlocksContext = createContext<RichTextAssetBlocks | null>(
   null,
 );
 
+/**
+ * Whether the field around a node view can be changed. The field says so
+ * here because the editor does not: making it read-only or disabled changes
+ * no text, so nothing draws a block's view again, and one that asked the
+ * editor would go on showing what it showed when it was last drawn.
+ */
+export const AssetBlocksEditableContext = createContext(true);
+
 const isSize = (value: unknown): value is 'small' | 'medium' | 'large' =>
   value === 'small' || value === 'medium' || value === 'large';
 
@@ -146,6 +154,7 @@ function AssetBlockView({
   deleteNode,
 }: ReactNodeViewProps) {
   const blocks = useContext(AssetBlocksContext);
+  const editable = useContext(AssetBlocksEditableContext);
   const attributes = attributesOf(node.attrs);
 
   return (
@@ -163,9 +172,15 @@ function AssetBlockView({
         <blocks.View
           attributes={attributes}
           selected={selected}
-          editable={editor.isEditable}
-          update={updateAttributes}
+          editable={editable}
+          // A view may still be showing a control when the field stops being
+          // editable, and a command changes the text whether or not the
+          // editor is: neither does anything then.
+          update={(changes) => {
+            if (editable) updateAttributes(changes);
+          }}
           remove={() => {
+            if (!editable) return;
             // Its controls go with the block, and focus that was in them
             // would be left on nothing: it goes back to the text.
             deleteNode();

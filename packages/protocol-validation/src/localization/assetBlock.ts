@@ -1,6 +1,5 @@
-import { fromMarkdown } from 'mdast-util-from-markdown';
-
 import { escapeMarkdownText } from './markdownText.ts';
+import { markdownTree } from './markdownTree.ts';
 import { type MessageNode, messageStructure } from './messageStructure.ts';
 
 /**
@@ -285,7 +284,7 @@ const blocksUnder = (
 
 const blocksInMarkdown = (markdown: string): Found[] =>
   (
-    fromMarkdown(markdown).children satisfies readonly MarkdownTreeNode[]
+    markdownTree(markdown).children satisfies readonly MarkdownTreeNode[]
   ).flatMap((child) => blocksUnder(child, 'paragraphs'));
 
 /**
@@ -293,7 +292,9 @@ const blocksInMarkdown = (markdown: string): Found[] =>
  * with what is wrong with its address and with where it is written. Found
  * with a markdown parser rather than a pattern, so that an address inside a
  * code span or behind an escaped bracket is the text it reads as, not a
- * block.
+ * block; and with the interview's markdown (see `markdownTree`), so that an
+ * image it reads as struck through or in a table cell, and draws nothing
+ * for, is not taken for one in a paragraph.
  */
 export const assetBlocksInMarkdown = (
   markdown: string,

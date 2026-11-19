@@ -33,17 +33,23 @@ buttons.
 
 Upgrading a protocol from schema 8 joins each Information stage's page heading
 and items into one text, in the order they were shown, so participants see the
-same page. An audio recording keeps playing once, at the start of its line, as
+same page. Where items joined as they are would read differently (two numbered
+lists one after the other, which would number straight through as one list, or
+links in two items that share a label), the page's text is written again in a
+form that reads the same and keeps them apart. An audio recording keeps playing once, at the start of its line, as
 it did before. A page heading that held only spaces is left out, as is an item
 whose file is no longer among the protocol's resources; a page that would then
 be empty shows the name of its stage as its heading. A note written on a block
 of text, which participants never saw, is not kept. The migration notes
 describe this in English; the other languages follow.
 
-Two fixes to how typed text is stored as markdown, in every rich text field: a
-run of `#` before a space (`Section ## 2`) keeps all its signs, where it was
-cut to one; and tildes that would strike words through in an interview
-(`~~old~~`) are shown as typed, as they are in the editor.
+Three fixes to how typed text is stored as markdown, in every rich text field:
+a run of `#` before a space (`Section ## 2`) keeps all its signs, where it was
+cut to one; tildes that would strike words through in an interview (`~~old~~`)
+are shown as typed, as they are in the editor; and a numbered list item keeps
+what is written under its first line (a list inside it, a second paragraph),
+where saving the text again used to move it out of the item or run it into the
+line above. Two lists in a row stay two lists.
 
 For developers: the schema 9 Information stage is `{ content }`, a localized
 markdown string declared with `assetBlocks: true`, in place of `title` and
@@ -53,8 +59,10 @@ a paragraph of its own whose address names an asset:
 `@codaco/protocol-validation` exports the grammar (`assetBlockMarkdown`,
 `readAssetBlockUrl`, `assetBlocksInMessage` and others), reports a block whose
 asset is missing or is not an image, audio or video, or that is written where
-none can be shown (inside a heading, a link, a `select` or `plural` version, or
-with a dynamic value in its description or address), and counts each block as
+none can be shown (inside a heading, a link, struck-through words, a table
+cell, a `select` or `plural` version, or with a dynamic value in its
+description or address), reading the text in the markdown the interview shows
+it in (CommonMark with GitHub's additions), and counts each block as
 an asset reference. `RichTextEditor` takes `assetBlocks` (a block view and an
 optional picker), and `RenderMarkdown` takes `blockImages`, which draws
 matching markdown images with a component of the caller's and never draws one

@@ -1,6 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { assetBlocksInMarkdown } from '@codaco/protocol-validation';
+
 import { type MarkdownBlockImage } from './markdownBlockImages';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
@@ -182,5 +184,54 @@ describe('forging a block', () => {
       `${OPEN}${payload({ url: 'asset:forged', alt: 'f' })}${CLOSE}\n\n![Real](asset:real)`,
     );
     expect(blocks()).toEqual([{ url: 'asset:real', alt: 'Real' }]);
+  });
+});
+
+// A protocol is checked before it is downloaded, by `assetBlocksInMarkdown`,
+// and shown by this component. A block the check accepts and this does not
+// draw is a file a participant is silently not shown, so the two must read a
+// block's place the same way, in the same markdown.
+describe('where a block may be written', () => {
+  const accepted = (markdown: string) => {
+    const found = assetBlocksInMarkdown(markdown);
+    return (
+      found.length > 0 && found.every(({ problems }) => problems.length === 0)
+    );
+  };
+
+  it.each([
+    ['a paragraph of its own', '![Map](asset:a)'],
+    ['a sentence', 'See ![Map](asset:a) here.'],
+    ['an item of a list', '- one\n- ![Map](asset:a)'],
+    ['an item of a numbered list', '1. ![Map](asset:a)\n2. two'],
+    ['an item of a list in a list', '1. one\n   - ![Map](asset:a)'],
+    ['an item of a list of tasks', '- [ ] ![Map](asset:a)'],
+    ['a paragraph beside words struck through', '~~old~~ ![Map](asset:a)'],
+  ])('is drawn, and accepted, in %s', (_where, markdown) => {
+    renderBlocks(markdown);
+    expect(blocks()).toEqual([{ url: 'asset:a', alt: 'Map' }]);
+    expect(accepted(markdown)).toBe(true);
+  });
+
+  it.each([
+    ['a heading', '# ![Map](asset:a)'],
+    ['a link', '[![Map](asset:a)](https://example.com)'],
+    ['emphasis', '*![Map](asset:a)*'],
+    ['words struck through', '~~![Map](asset:a)~~'],
+    ['words struck through with one tilde', '~![Map](asset:a)~'],
+    ['a cell of a table', '| File |\n| - |\n| ![Map](asset:a) |'],
+  ])('is not drawn, and is reported, in %s', (_where, markdown) => {
+    renderBlocks(markdown);
+    expect(blocks()).toEqual([]);
+    expect(accepted(markdown)).toBe(false);
+  });
+
+  // The check is the stricter of the two here: these would be drawn, but the
+  // editor has nowhere to keep a block inside them, so it is reported.
+  it.each([
+    ['a quotation', '> ![Map](asset:a)'],
+    ['a footnote', 'Words[^1]\n\n[^1]: ![Map](asset:a)'],
+  ])('is reported in %s', (_where, markdown) => {
+    expect(accepted(markdown)).toBe(false);
   });
 });

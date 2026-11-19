@@ -144,6 +144,13 @@ describe('files shown as blocks in an Information page', () => {
     ['a link', '[![A](asset:img)](https://example.com)'],
     ['emphasis', '*![A](asset:img)*'],
     ['a quotation', '> ![A](asset:img)'],
+    // Where only the interview's markdown, with GitHub's additions, reads
+    // the image as inside something: plain CommonMark reads each of these as
+    // an image in a paragraph, and the interview draws nothing for them.
+    ['words struck through', '~~![A](asset:img)~~'],
+    ['words struck through with one tilde', '~![A](asset:img)~'],
+    ['a cell of a table', '| File |\n| - |\n| ![A](asset:img) |'],
+    ['a footnote', 'Words[^1]\n\n[^1]: ![A](asset:img)'],
   ])('reports a block written inside %s', (_where, en) => {
     const { index, issues } = issuesWith({ en });
     expect(issues).toEqual([
@@ -162,6 +169,8 @@ describe('files shown as blocks in an Information page', () => {
       'an item of a list in a list',
       '1. one\n   - ![A](asset:img)\n\n     more',
     ],
+    ['an item of a list of tasks', '- [ ] ![A](asset:img)'],
+    ['a paragraph beside words struck through', '~~old~~ ![A](asset:img)'],
   ])('accepts a block written in %s', (_where, en) => {
     expect(issuesWith({ en }).issues).toEqual([]);
   });
