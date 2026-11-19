@@ -2,7 +2,7 @@
 title: Texte dynamique
 navOrder: 6
 toc: true
-translatedFrom: 580440311d354f257251b7e4d7b4a7e76490b84d
+translatedFrom: 9abfcc7efeeff426104f580a293bf22d623eaf81
 ---
 
 <Definition>
@@ -20,7 +20,7 @@ Les questionnaires assistés par ordinateur adaptent depuis longtemps la formula
 
 Nommer le nœud dans la question supprime cette étape d’inférence. « Avez-vous visité l’université Northwestern ou y avez-vous étudié ? » identifie son référent sans ambiguïté, tandis que « Avez-vous visité cette université ou y avez-vous étudié ? » ne le fait qu’en combinaison avec la disposition visuelle de l’interface. La différence est la plus marquée lorsque les nœuds se ressemblent, lorsque la personne participante a cité de nombreux alters et lorsque c’est la personne qui mène l’entretien qui lit la question à voix haute.
 
-Le texte dynamique permet aussi à une question ultérieure de s’appuyer sur une question antérieure. Une question peut rappeler la date que la personne participante a donnée pour un événement de sa vie, s’adresser à elle par le nom qu’elle a fourni ou être formulée différemment selon la réponse qu’elle a donnée à une question précédente.
+Le texte dynamique permet aussi à une question ultérieure de s’appuyer sur une question antérieure. Une question peut rappeler la date que la personne participante a donnée pour un événement de sa vie, s’adresser à elle par le nom qu’elle a fourni ou être formulée différemment selon la réponse qu’elle a donnée à une question précédente. Un texte peut aussi contenir de la [logique](#logic), qui choisit entre plusieurs formulations selon des règles portant sur la personne participante, un nœud ou un lien.
 
 Network Canvas remplit le texte dynamique à partir de données déjà enregistrées dans l’entretien. Insérer une valeur dans une question n’enregistre pas cette valeur une seconde fois et ne l’envoie nulle part ailleurs.
 
@@ -34,7 +34,7 @@ Le texte dynamique nécessite le [schéma 9](/fr/get-started/protocol-schema-inf
 
 Le texte dynamique modifie le stimulus que reçoit chaque personne participante. Deux personnes participantes qui répondent à la « même » question d’un interpréteur de noms lisent des mots différents, car chaque question nomme un alter différent. Pour la plupart des instruments de réseau, c’est l’effet recherché : le construit mesuré est la relation de la personne participante avec un alter précis, et nommer cet alter rend la question plus précise. Le texte dynamique appelle néanmoins trois précautions.
 
-- **Présentez la question modèle, et non la formulation affichée.** Lorsque vous décrivez un instrument dans une publication ou dans une demande auprès d’un comité d’éthique, donnez la question telle qu’elle est rédigée dans le protocole, en signalant l’élément dynamique, et indiquez quel attribut l’a fourni.
+- **Présentez la question modèle, et non la formulation affichée.** Lorsque vous décrivez un instrument dans une publication ou dans une demande auprès d’un comité d’éthique, donnez la question telle qu’elle est rédigée dans le protocole, en signalant l’élément dynamique, et indiquez quel attribut l’a fourni. Lorsqu’un texte contient de la [logique](#logic), présentez chacune de ses formulations, avec les règles ou la réponse qui la sélectionne.
 - **Précisez la formulation utilisée lorsque l’information manque.** N’importe quel attribut peut être absent au moment où une question s’affiche (voir [Lorsque l’information manque](#when-information-is-missing)). La formulation de remplacement fait partie de l’instrument et doit être relue avec le même soin que la formulation principale.
 - **Menez l’étude pilote avec des données réalistes.** Les noms longs, les noms qui sont aussi des mots courants et les réponses inattendues peuvent produire des questions qui se lisent mal. Les entretiens cognitifs et les sessions d’étude pilote (voir [Mener une étude pilote](/fr/get-started/planning-a-study/piloting-your-study)) doivent couvrir l’éventail des valeurs que les personnes participantes sont susceptibles de fournir.
 
@@ -53,9 +53,11 @@ Les types d’attributs suivants peuvent être insérés : texte, nombre, scala
 
 Les valeurs disponibles pour un texte donné dépendent de l’endroit où ce texte apparaît. Voir [Où utiliser le texte dynamique](#where-piped-text-can-be-used).
 
+Un texte peut aussi changer de formulation sans afficher de valeur, grâce à la logique. Voir [Logique](#logic).
+
 ## Insérer du texte dynamique dans Architect {#inserting-piped-text-in-architect}
 
-Chaque champ de texte qui accepte le texte dynamique comporte dans sa barre d’outils un bouton en forme de seringue, intitulé **Insérer du texte rempli automatiquement à partir des métadonnées de l’entretien ou d’un attribut de réseau**. Pour insérer une valeur :
+Chaque champ de texte qui accepte le texte dynamique comporte deux boutons à cet effet dans sa barre d’outils. Le bouton seringue, intitulé **Insérer du texte dynamique à partir des métadonnées de l’entretien ou d’un attribut de réseau**, insère des valeurs. Le bouton situé à côté, intitulé **Insérer de la logique**, insère de la [logique](#logic). Le menu du bouton seringue ne contient que des valeurs, tout comme le menu qui s’ouvre lorsque vous saisissez `{`. Pour insérer une valeur :
 
 1. Placez le curseur à l’endroit du texte où la valeur doit apparaître.
 2. Cliquez sur le bouton en forme de seringue, ou saisissez `{`.
@@ -70,7 +72,7 @@ Le menu regroupe les valeurs sous trois intitulés, dans cet ordre :
 - **Attributs d’ego** : les attributs de la personne participante.
 - **Attributs de l’entretien** : la date du jour.
 
-Sous chaque valeur, le menu indique de quel type d’attribut il s’agit.
+Sous chaque valeur, le menu indique de quel type d’attribut il s’agit. Un attribut booléen dont les réponses n’ont pas de libellés figure dans la liste mais ne peut pas être choisi, car le texte n’aurait rien à afficher pour sa réponse. Son entrée affiche **Ajoutez d’abord des libellés pour ses réponses oui et non** ou, pour un attribut renseigné au moyen d’un Toggle, **Un Toggle n’a pas de libellés pour ses réponses. Utilisez plutôt une formulation différente pour chaque réponse.** Voir [Formulation différente pour chaque réponse](#different-wording-for-each-answer).
 
 Pour saisir une accolade littérale, appuyez sur Échap après avoir saisi `{`. Le menu se ferme et l’accolade reste dans le texte.
 
@@ -118,9 +120,69 @@ Une étape « Arbre généalogique » attribue ses libellés aux nœuds à sa 
 
 Le libellé est la manière habituelle d’identifier un nœud dans une question, comme dans « Jim et Alice sont-ils amis ? ». Un attribut précis est préférable lorsque le texte a besoin de cette réponse en particulier, comme un surnom, même si le libellé affiche autre chose.
 
+## Logique {#logic}
+
+La logique est un groupe de formulations alternatives, dont la personne participante ne voit qu’une seule. Elle s’insère avec le bouton **Insérer de la logique**, situé à côté du bouton seringue dans la barre d’outils de chaque champ de texte qui accepte le texte dynamique. Le menu de ce bouton propose :
+
+- **Si … sinon** et **Sauf si … sinon**, qui choisissent une formulation selon des règles que vous définissez. Voir [Blocs « Si »](#if-blocks).
+- Chaque attribut catégoriel, ordinal ou booléen que le texte peut afficher, avec la mention **Formulation différente pour chaque réponse**. Voir [Formulation différente pour chaque réponse](#different-wording-for-each-answer).
+- Chaque attribut de type nombre ou scalaire que le texte peut afficher, avec la mention **Formulation adaptée au nombre**. Voir [Formulation qui s’accorde avec un nombre](#wording-that-agrees-with-a-number).
+- Dans les questions et les indications du formulaire d’une étape « Arbre généalogique », **Personne participante ou autre personne**, avec la mention **Formulation différente pour la personne participante et pour toute autre personne**. Voir [Formulation pour la personne participante ou pour une autre personne](#wording-for-the-participant-or-someone-else).
+
+Les attributs figurent sous les mêmes intitulés que dans le menu du bouton seringue. Vous pouvez filtrer le menu en tapant du texte, mais il ne s’ouvre pas lorsque vous saisissez `{`.
+
+Dans l’éditeur, la logique apparaît sous la forme d’une pastille, tout comme une valeur. Elle a sa propre couleur et sa propre icône à la place de la seringue, afin qu’on puisse la distinguer d’une valeur. Sélectionner la pastille ouvre la logique sur place, avec une ligne pour chacune de ses formulations. Un élément de logique qui vient d’être inséré est ouvert d’emblée. Lorsque la logique est repliée, la pastille montre aussi un aperçu de ce que disent ses formulations.
+
+Une formulation peut être laissée vide, de sorte que rien ne s’affiche dans ce cas, et elle peut contenir des valeurs et d’autres éléments de logique.
+
+La même logique peut être utilisée dans le libellé propre à un type de nœud. Voir [Libellés dynamiques](/fr/design-protocols/key-concepts/node-labelling#dynamic-labels).
+
+### Blocs « Si » {#if-blocks}
+
+Un bloc « Si » affiche une formulation lorsque des règles que vous définissez sont satisfaites, et une autre sinon. Pour en insérer un :
+
+1. Placez le curseur à l’endroit du texte où la formulation doit apparaître.
+2. Cliquez sur **Insérer de la logique**.
+3. Choisissez **Si … sinon**, que le menu décrit ainsi : **Une formulation lorsque les règles que vous définissez sont satisfaites, une autre sinon**. Pour attribuer la première formulation au cas où les règles ne sont pas satisfaites, choisissez plutôt **Sauf si … sinon**.
+4. Une boîte de dialogue intitulée **Quand ce texte doit-il être affiché ?** s’ouvre. Définissez les règles (voir [Règles](#rules)), puis choisissez **Enregistrer les règles**.
+
+Le bloc « Si » est inséré avec deux lignes. La première porte le libellé **Si :** suivi de ses règles, ou **Sauf si :** suivi de ses règles, et contient la formulation de ce cas. La seconde, **Sinon**, contient la formulation affichée lorsqu’aucune autre ligne ne s’applique. Rédigez la formulation de chaque ligne à côté de son libellé.
+
+Un bloc « Si » ouvert comporte les commandes suivantes :
+
+- **Modifier les règles**, sur chaque ligne qui a des règles, rouvre l’éditeur de règles de cette ligne.
+- **Ajouter « Sinon, si »** demande un autre ensemble de règles, puis ajoute une ligne portant le libellé **Sinon, si :** suivi de ces règles. L’entretien examine les lignes de haut en bas et affiche la formulation de la première ligne qui s’applique.
+- **Supprimer ce cas**, sur chaque ligne lorsque le bloc compte plus d’une ligne avec des règles, supprime cette ligne avec ses règles et sa formulation. Lorsqu’il ne reste qu’une ligne avec des règles, elle ne peut être supprimée qu’en retirant du texte le bloc « Si » tout entier.
+
+Par exemple, une question d’une étape « Formulaire par alter » pourrait dépendre de l’âge enregistré pour chaque personne :
+
+| Ligne                         | Texte rédigé                            |
+| ----------------------------- | --------------------------------------- |
+| Si : l’âge est inférieur à 18 | Quelle école fréquente cette personne ? |
+| Sinon                         | Où cette personne travaille-t-elle ?    |
+
+L’entretien réévalue un bloc « Si » chaque fois que changent les réponses ou les liens que testent ses règles : la formulation reste ainsi à jour au fil de l’entretien.
+
+### Règles {#rules}
+
+Les règles se définissent dans le même éditeur de règles que celui des [filtres et de la logique de saut](/fr/design-protocols/key-concepts/skip-logic). Ce qu’une règle peut tester dépend de ce avec quoi le texte est affiché :
+
+- **Un attribut de la personne participante.** C’est possible dans chaque texte qui accepte des valeurs dynamiques.
+- **Un attribut du nœud** que concerne le texte, dans un texte affiché avec un nœud.
+- **Les liens de ce nœud** : le fait que le nœud ait ou non un lien d’un type donné, un attribut de l’un de ses liens, ou le nombre de liens qu’il possède, d’un type donné ou tous types confondus. Ce nombre peut être comparé à un nombre que vous indiquez, ou à celui des autres nœuds du même type, avec **Est le plus élevé parmi les nœuds de son type** et **Est le plus faible parmi les nœuds de son type**. Tous les nœuds à égalité pour le nombre le plus élevé, ou pour le plus faible, satisfont la règle. Aucun nœud ne la satisfait lorsque tous les nœuds du type ont le même nombre de liens.
+- **Un attribut du lien** sur lequel porte un formulaire, dans les questions et les indications d’une étape « Formulaire par lien entre alters ».
+
+Un texte affiché sans nœud ni lien, comme le texte d’une étape « Information » ou la consigne d’une étape « Générateur de noms (avec formulaires) », ne peut utiliser que des règles portant sur la personne participante. Voir [Où utiliser le texte dynamique](#where-piped-text-can-be-used) pour savoir avec quoi chaque texte est affiché.
+
+Lorsque le texte est affiché avec deux nœuds, comme c’est le cas pour une paire dans une étape « Recensement des dyades », la boîte de dialogue comporte un réglage **Nœud pour lequel vérifier les règles**, qui propose **Le premier nœud de la paire** et **Le second nœud de la paire**. Les règles sur le nœud et les règles sur ses liens sont vérifiées pour le nœud choisi dans ce réglage.
+
+Lorsqu’un bloc « Si » a plusieurs règles, **Correspondance des règles** détermine si **Toutes les règles doivent être satisfaites** ou si **Au moins une règle doit être satisfaite**.
+
+Les règles d’un bloc « Si » appartiennent à l’étape et ne font pas partie du texte. Elles sont donc les mêmes dans toutes les langues du protocole.
+
 ## Formulation différente pour chaque réponse {#different-wording-for-each-answer}
 
-Un attribut catégoriel, ordinal ou booléen apparaît deux fois dans le menu. La seconde entrée porte la mention **Formulation différente pour chaque réponse**. La choisir donne au texte une version pour chaque réponse, au lieu d’afficher la réponse elle-même. Une question peut ainsi adapter sa formulation à une réponse antérieure.
+Chaque attribut catégoriel, ordinal ou booléen figure dans le menu **Insérer de la logique**, avec la mention **Formulation différente pour chaque réponse**. Le choisir donne au texte une version pour chaque réponse, au lieu d’afficher la réponse elle-même. Une question peut ainsi adapter sa formulation à une réponse antérieure.
 
 Les versions sont les suivantes :
 
@@ -141,7 +203,7 @@ Une réponse catégorielle peut comporter plusieurs options. Le texte utilise al
 
 ## Formulation qui s’accorde avec un nombre {#wording-that-agrees-with-a-number}
 
-Un attribut de type nombre ou scalaire apparaît lui aussi deux fois dans le menu. La seconde entrée porte la mention **Formulation adaptée au nombre**. Elle est destinée aux textes dont les mots qui entourent le nombre changent avec celui-ci, comme « 1 child » et « 3 children » en anglais.
+Chaque attribut de type nombre ou scalaire figure lui aussi dans le menu **Insérer de la logique**, avec la mention **Formulation adaptée au nombre**. Cette entrée est destinée aux textes dont les mots qui entourent le nombre changent avec celui-ci, comme « 1 child » et « 3 children » en anglais.
 
 Elle insère les versions **Si connu** et **Si inconnu**, comme pour toute valeur. Dans **Si connu**, il y a une version pour chaque forme du nombre grammatical que distingue la langue, chacune nommée avec des exemples des nombres qui l’utilisent. L’anglais en a deux :
 
@@ -154,6 +216,17 @@ Chacune de ces versions commence par le nombre, suivi des mots qui l’accompagn
 
 D’autres langues distinguent un nombre différent de formes : le chinois en a une, le polonais et le russe en ont plus de deux. Lorsqu’un texte est rédigé dans une autre langue, Architect fournit les versions de cette langue.
 
+## Formulation pour la personne participante ou pour une autre personne {#wording-for-the-participant-or-someone-else}
+
+Le formulaire d’une étape « Arbre généalogique » pose les mêmes questions sur la personne participante et sur chacun de ses proches. Dans les questions et les indications de ce formulaire, le menu **Insérer de la logique** propose **Personne participante ou autre personne**, avec la mention **Formulation différente pour la personne participante et pour toute autre personne**. Cet élément insère deux versions :
+
+| Version                              | Texte rédigé            |
+| ------------------------------------ | ----------------------- |
+| À propos de la personne participante | Quel est votre prénom ? |
+| À propos d’une autre personne        | Quel est son prénom ?   |
+
+Cet élément sert seulement à choisir entre les deux versions et ne s’affiche jamais lui-même. On sait toujours si une question porte sur la personne participante : cet élément n’a donc pas de version **Si inconnu**.
+
 ## Comment les personnes participantes voient le texte dynamique {#how-participants-see-piped-text}
 
 L’entretien présente chaque valeur dans la langue de la personne participante :
@@ -162,6 +235,7 @@ L’entretien présente chaque valeur dans la langue de la personne participante
 - Un nombre s’écrit comme la langue de la personne participante écrit les nombres.
 - Une réponse à une question catégorielle, ordinale ou booléenne s’affiche avec le libellé de l’option, dans la langue de la personne participante. Un libellé sans traduction dans cette langue s’affiche comme s’affiche toujours le [texte non traduit](/fr/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see). Une réponse comportant plusieurs options s’affiche sous forme de liste, par exemple « chats, chiens et poissons ». Une réponse par oui ou non ne peut s’afficher par son libellé que si ses deux réponses ont des libellés ; sinon, utilisez **Formulation différente pour chaque réponse**.
 - Un texte s’affiche exactement tel qu’il a été saisi.
+- La logique ne s’affiche jamais elle-même. La personne participante ne voit que la formulation du cas qui s’applique.
 
 Chaque valeur est teintée de la couleur principale de l’entretien, ce qui distingue l’information insérée de la formulation fixe de la question. Les lecteurs d’écran lisent la valeur comme une partie de la phrase.
 
@@ -205,7 +279,9 @@ Lorsqu’un protocole est proposé dans plusieurs langues (voir [Traduire votre 
 
 Chaque traduction est vérifiée séparément, selon les mêmes règles que le texte de la langue par défaut : chaque valeur qu’elle affiche doit être une valeur que l’étape utilise et qui peut être affichée là où le texte apparaît, une valeur susceptible de manquer a besoin d’une version pour le cas où elle manque, et le texte ne peut pas être vide dans toutes les versions.
 
-Dans le tableau des traductions, une cellule affiche les valeurs, et chaque ensemble de versions, sous forme de pastilles. Lorsque vous modifiez une cellule, sélectionner une pastille ouvre ses versions, comme dans l’éditeur d’étape, et le bouton en forme de seringue propose les valeurs que l’étape utilise déjà. Une valeur que l’étape n’utilise pas encore doit d’abord être ajoutée dans l’éditeur d’étape.
+Dans le tableau des traductions, une cellule affiche les valeurs, et chaque ensemble de versions, sous forme de pastilles. Lorsque vous modifiez une cellule, sélectionner une pastille ouvre ses versions, comme dans l’éditeur d’étape. Le bouton seringue propose les valeurs que l’étape utilise déjà, et le bouton **Insérer de la logique** propose, pour ces mêmes valeurs, une formulation différente pour chaque réponse ou une formulation adaptée au nombre. Une valeur que l’étape n’utilise pas encore doit d’abord être ajoutée dans l’éditeur d’étape.
+
+Dans le tableau des traductions, il n’est pas possible d’insérer un bloc « Si » ni de modifier ses règles : ses lignes affichent leurs règles, sans **Modifier les règles**, **Ajouter « Sinon, si »** ni **Supprimer ce cas**. Pour ajouter un bloc « Si » à une traduction, ou pour modifier ses règles, ouvrez l’étape et choisissez la langue dans le menu des langues du champ de texte (voir [Traduire dans l’éditeur d’étape](/fr/design-protocols/translating-your-protocol#translating-within-the-stage-editor)). Comme les règles appartiennent à l’étape, toute modification de ces règles s’applique à toutes les langues. Seule la formulation de chaque ligne se traduit.
 
 Les valeurs elles-mêmes ne sont pas traduites. Les dates et les nombres suivent la langue de la personne participante, et les réponses s’affichent avec les libellés de leurs options dans cette langue.
 
@@ -223,6 +299,7 @@ La validation du protocole vérifie chaque texte qui contient des valeurs dynami
 
 - [Consignes](/fr/design-protocols/key-concepts/prompts) : les questions qui peuvent contenir du texte dynamique
 - [Formulaires](/fr/design-protocols/key-concepts/forms) : les champs de formulaire dont les questions et les indications peuvent faire référence à des réponses antérieures
-- [Libellés des nœuds](/fr/design-protocols/key-concepts/node-labelling) : comment l’entretien choisit le texte affiché sur un nœud
+- [Libellés des nœuds](/fr/design-protocols/key-concepts/node-labelling) : comment l’entretien choisit le texte affiché sur un nœud, et comment un [libellé dynamique](/fr/design-protocols/key-concepts/node-labelling#dynamic-labels) utilise les mêmes valeurs et la même logique
+- [Logique de saut](/fr/design-protocols/key-concepts/skip-logic) : l’éditeur de règles dans lequel se définissent les règles d’un bloc « Si »
 - [Variables](/fr/design-protocols/key-concepts/variables) : les types d’attributs qui peuvent être insérés comme texte dynamique
 - [Traduire votre protocole](/fr/design-protocols/translating-your-protocol) : rédiger un protocole dans plusieurs langues

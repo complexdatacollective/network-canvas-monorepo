@@ -2,7 +2,7 @@
 title: Texto dinámico
 navOrder: 6
 toc: true
-translatedFrom: 580440311d354f257251b7e4d7b4a7e76490b84d
+translatedFrom: 9abfcc7efeeff426104f580a293bf22d623eaf81
 ---
 
 <Definition>
@@ -18,7 +18,7 @@ Los instrumentos de encuesta asistida por ordenador llevan mucho tiempo adaptand
 
 Nombrar el nodo en la pregunta elimina ese paso inferencial. «¿Has visitado la Universidad Northwestern o has estudiado allí?» identifica su referente sin ambigüedad, mientras que «¿Has visitado esta universidad o has estudiado allí?» solo lo hace junto con la organización visual de la pantalla. La diferencia es mayor cuando los nodos se parecen entre sí, cuando la persona participante ha nombrado a muchos álteres y cuando la entrevista la administra una persona entrevistadora que lee la pregunta en voz alta.
 
-El texto dinámico también permite que una pregunta posterior se apoye en una anterior. Una pregunta puede recordar la fecha que la persona participante dio para un acontecimiento vital, dirigirse a ella por el nombre que proporcionó o formularse de otra manera según cómo respondió a una pregunta anterior.
+El texto dinámico también permite que una pregunta posterior se apoye en una anterior. Una pregunta puede recordar la fecha que la persona participante dio para un acontecimiento vital, dirigirse a ella por el nombre que proporcionó o formularse de otra manera según cómo respondió a una pregunta anterior. Un texto también puede contener [lógica](#logic), que elige entre redacciones alternativas según reglas sobre la persona participante, un nodo o un vínculo.
 
 Network Canvas completa el texto dinámico con datos ya registrados en la entrevista. Insertar un valor en una pregunta no almacena ese valor una segunda vez ni lo envía a ningún otro lugar.
 
@@ -32,7 +32,7 @@ El texto dinámico requiere la [versión 9 del esquema de protocolo](/es/get-sta
 
 El texto dinámico cambia el estímulo que recibe cada participante. Dos participantes que responden a la «misma» pregunta de un intérprete de nombres leen palabras distintas, porque cada pregunta nombra a un álter distinto. En la mayoría de los instrumentos de redes, este es el efecto buscado: el constructo que se mide es la relación de la persona participante con un álter concreto, y nombrar a ese álter hace que la pregunta sea más precisa. Aun así, conviene tomar tres precauciones.
 
-- **Describe la plantilla, no la redacción resultante.** Al describir un instrumento en una publicación o en una solicitud al comité de ética, presenta la pregunta tal como está escrita en el protocolo, con el elemento dinámico señalado, e indica qué atributo lo proporcionó.
+- **Describe la plantilla, no la redacción resultante.** Al describir un instrumento en una publicación o en una solicitud al comité de ética, presenta la pregunta tal como está escrita en el protocolo, con el elemento dinámico señalado, e indica qué atributo lo proporcionó. Cuando un texto contiene [lógica](#logic), indica cada una de sus redacciones, junto con las reglas o la respuesta que la selecciona.
 - **Especifica la redacción que se usa cuando falta información.** Cualquier atributo puede faltar cuando se muestra una pregunta (consulta [Cuando falta información](#when-information-is-missing)). La redacción alternativa forma parte del instrumento y debe revisarse con el mismo cuidado que la redacción principal.
 - **Haz el estudio piloto con datos realistas.** Los nombres largos, los nombres que también son palabras comunes y las respuestas inesperadas pueden dar lugar a preguntas que se leen mal. Las entrevistas cognitivas y las sesiones piloto (consulta [Realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study)) deben incluir toda la gama de valores que es probable que proporcionen quienes participan.
 
@@ -51,9 +51,11 @@ Se pueden insertar los siguientes tipos de atributo: texto, número, escalar, fe
 
 Los valores disponibles para un texto dependen de dónde aparece ese texto. Consulta [Dónde se puede usar el texto dinámico](#where-piped-text-can-be-used).
 
+Un texto también puede cambiar su redacción sin mostrar ningún valor, mediante lógica. Consulta [Lógica](#logic).
+
 ## Insertar texto dinámico en Architect {#inserting-piped-text-in-architect}
 
-Todos los campos de texto que admiten texto dinámico tienen en su barra de herramientas un botón con forma de jeringa, con la etiqueta **Insertar texto dinámico a partir de los metadatos de la entrevista o de un atributo de red**. Para insertar un valor:
+Todos los campos de texto que admiten texto dinámico tienen en su barra de herramientas dos botones para ello. El botón de la jeringa, con la etiqueta **Insertar texto dinámico a partir de los metadatos de la entrevista o de un atributo de red**, inserta valores. El botón que hay a su lado, con la etiqueta **Insertar lógica**, inserta [lógica](#logic). El menú del botón de la jeringa solo contiene valores, igual que el menú que se abre al escribir `{`. Para insertar un valor:
 
 1. Coloca el cursor en el punto del texto donde debe aparecer el valor.
 2. Haz clic en el botón de la jeringa o escribe `{`.
@@ -68,7 +70,7 @@ El menú agrupa los valores bajo tres encabezados, en este orden:
 - **Atributos del ego**: los atributos de la persona participante.
 - **Atributos de la entrevista**: la fecha de hoy.
 
-Debajo de cada valor, el menú indica qué tipo de atributo es.
+Debajo de cada valor, el menú indica qué tipo de atributo es. Un atributo booleano cuyas respuestas no tienen etiquetas aparece en la lista, pero no se puede elegir, porque el texto no tendría nada que mostrar para su respuesta. Su entrada dice **Añade primero etiquetas para sus respuestas «Sí» y «No»** o, si el atributo se responde con un interruptor, **Un interruptor no tiene etiquetas para sus respuestas. En su lugar, usa una redacción distinta para cada respuesta.** Consulta [Redacción distinta para cada respuesta](#different-wording-for-each-answer).
 
 Para escribir una llave literal, pulsa Esc después de escribir `{`. El menú se cierra y la llave permanece en el texto.
 
@@ -116,9 +118,69 @@ Una etapa «Genealogía familiar» etiqueta sus nodos a su manera, y las pregunt
 
 La etiqueta es la forma habitual de identificar un nodo en una pregunta, como en «¿Hay amistad entre Jim y Alice?». Es preferible usar un atributo concreto cuando el texto necesita esa respuesta en particular, como un apodo, aunque la etiqueta muestre otra cosa.
 
+## Lógica {#logic}
+
+La lógica es un grupo de redacciones alternativas, de las que la persona participante ve una. Se inserta con el botón **Insertar lógica**, que está junto al botón de la jeringa en la barra de herramientas de todos los campos de texto que admiten texto dinámico. Su menú incluye:
+
+- **Si … en caso contrario** y **Si no se cumple … en caso contrario**, que eligen una redacción según las reglas que definas. Consulta [Bloques «Si»](#if-blocks).
+- Cada atributo categórico, ordinal o booleano que el texto puede mostrar, marcado como **Redacción distinta para cada respuesta**. Consulta [Redacción distinta para cada respuesta](#different-wording-for-each-answer).
+- Cada atributo de número o escalar que el texto puede mostrar, marcado como **Redacción que se ajusta al número**. Consulta [Redacción que concuerda con un número](#wording-that-agrees-with-a-number).
+- En las preguntas y los textos de ayuda del formulario de una etapa «Genealogía familiar», **Participante u otra persona**, marcado como **Redacción distinta para la persona participante y para las demás personas**. Consulta [Redacción para la persona participante o para otra persona](#wording-for-the-participant-or-someone-else).
+
+Los atributos aparecen bajo los mismos encabezados que en el menú del botón de la jeringa. El menú se puede filtrar escribiendo, pero no se abre al escribir `{`.
+
+En el editor, la lógica aparece como una píldora, igual que un valor. Tiene su propio color y su propio icono en lugar de la jeringa, para que se pueda distinguir de un valor. Al seleccionar la píldora, la lógica se abre en su sitio, con una fila para cada una de sus redacciones. Un elemento de lógica recién insertado aparece desplegado. Mientras está plegado, la píldora también muestra una vista previa de lo que dicen sus redacciones.
+
+Una redacción se puede dejar vacía, para que en ese caso no se muestre nada, y puede contener valores y más lógica.
+
+La misma lógica se puede usar en la etiqueta propia de un tipo de nodo. Consulta [Etiquetas dinámicas](/es/design-protocols/key-concepts/node-labelling#dynamic-labels).
+
+### Bloques «Si» {#if-blocks}
+
+Un bloque «Si» muestra una redacción cuando se cumplen las reglas que definas y otra en caso contrario. Para insertar uno:
+
+1. Coloca el cursor en el punto del texto donde debe aparecer la redacción.
+2. Haz clic en **Insertar lógica**.
+3. Elige **Si … en caso contrario**, que el menú describe como **Una redacción cuando se cumplen las reglas que definas y otra en caso contrario**. Para dar la primera redacción al caso en que las reglas no se cumplen, elige en su lugar **Si no se cumple … en caso contrario**.
+4. Se abre un cuadro de diálogo titulado **¿Cuándo debe mostrarse este texto?** Define las reglas (consulta [Reglas](#rules)) y elige **Guardar reglas**.
+
+El bloque «Si» se inserta con dos filas. La primera tiene la etiqueta **Si:** seguida de sus reglas, o **Si no se cumple:** seguida de sus reglas, y contiene la redacción para ese caso. La segunda, **En caso contrario**, contiene la redacción que se muestra cuando no se aplica ninguna otra fila. Escribe la redacción de cada fila junto a su etiqueta.
+
+Un bloque «Si» abierto tiene estos controles:
+
+- **Editar reglas**, en cada fila que tiene reglas, vuelve a abrir el editor de reglas de esa fila.
+- **Añadir «En caso contrario, si»** pide otro conjunto de reglas y después añade una fila con la etiqueta **En caso contrario, si:** seguida de esas reglas. La entrevista comprueba las filas de arriba abajo y muestra la redacción de la primera fila que se aplica.
+- **Quitar este caso**, en cada fila cuando el bloque tiene más de una fila con reglas, quita esa fila junto con sus reglas y su redacción. Cuando solo queda una fila con reglas, esa fila solo se puede quitar eliminando del texto todo el bloque «Si».
+
+Por ejemplo, una pregunta de una etapa «Formulario por álter» podría depender de la edad registrada para cada persona:
+
+| Fila                        | Texto escrito                            |
+| --------------------------- | ---------------------------------------- |
+| Si: la edad es menor que 18 | ¿A qué centro educativo va esta persona? |
+| En caso contrario           | ¿Dónde trabaja esta persona?             |
+
+La entrevista vuelve a evaluar un bloque «Si» cada vez que cambian las respuestas o los vínculos que sus reglas comprueban, de modo que la redacción se mantiene al día a medida que avanza la entrevista.
+
+### Reglas {#rules}
+
+Las reglas se definen en el mismo editor de reglas que usan los [filtros y la lógica de salto](/es/design-protocols/key-concepts/skip-logic). Lo que puede comprobar una regla depende de con qué se muestra el texto:
+
+- **Un atributo de la persona participante.** Está disponible en todos los textos que admiten valores dinámicos.
+- **Un atributo del nodo** al que se refiere el texto, en los textos que se muestran con un nodo.
+- **Los vínculos de ese nodo**: si el nodo tiene un vínculo de un tipo determinado, un atributo de uno de sus vínculos, o el número de vínculos que tiene, de un tipo o de cualquier tipo. El número se puede comparar con un número que indiques, o con los demás nodos del mismo tipo, mediante **Es el más alto entre los nodos de su tipo** y **Es el más bajo entre los nodos de su tipo**. Todos los nodos que empatan en el valor más alto, o en el más bajo, cumplen la regla. Ningún nodo la cumple cuando todos los nodos del tipo tienen el mismo número de vínculos.
+- **Un atributo del vínculo** sobre el que pregunta un formulario, en las preguntas y los textos de ayuda de una etapa «Formulario de vínculos por álter».
+
+Un texto que no se muestra con ningún nodo ni vínculo, como el texto de una etapa «Información» o la pregunta de una etapa «Generador de nombres», solo puede usar reglas sobre la persona participante. Consulta [Dónde se puede usar el texto dinámico](#where-piped-text-can-be-used) para saber con qué se muestra cada texto.
+
+Cuando el texto se muestra con dos nodos, como ocurre con un par en una etapa «Censo de díadas», el cuadro de diálogo tiene un ajuste **Aplicar las reglas a**, que ofrece **El primer nodo del par** y **El segundo nodo del par**. Las reglas sobre el nodo y sobre sus vínculos se aplican al nodo que se elija ahí.
+
+Cuando un bloque «Si» tiene más de una regla, **Cumplimiento de reglas** define si **Deben cumplirse todas las reglas** o si **Basta con que se cumpla alguna regla**.
+
+Las reglas de un bloque «Si» pertenecen a la etapa y no forman parte del texto. Por eso son las mismas en todos los idiomas del protocolo.
+
 ## Redacción distinta para cada respuesta {#different-wording-for-each-answer}
 
-Un atributo categórico, ordinal o booleano aparece dos veces en el menú. La segunda entrada está marcada como **Redacción distinta para cada respuesta**. Al elegirla, el texto tiene una versión para cada respuesta, en lugar de mostrar la propia respuesta. Así, una pregunta puede adaptar su planteamiento a una respuesta anterior.
+Cada atributo categórico, ordinal o booleano aparece en el menú **Insertar lógica**, marcado como **Redacción distinta para cada respuesta**. Al elegirlo, el texto tiene una versión para cada respuesta, en lugar de mostrar la propia respuesta. Así, una pregunta puede adaptar su planteamiento a una respuesta anterior.
 
 Las versiones son:
 
@@ -139,7 +201,7 @@ Una respuesta categórica puede incluir varias opciones. En ese caso, el texto u
 
 ## Redacción que concuerda con un número {#wording-that-agrees-with-a-number}
 
-Un atributo de número o escalar también aparece dos veces en el menú. La segunda entrada está marcada como **Redacción que se ajusta al número**. Está pensada para textos cuyas palabras cambian según el número, como «1 child» y «3 children» en inglés.
+Cada atributo de número o escalar también aparece en el menú **Insertar lógica**, marcado como **Redacción que se ajusta al número**. Esta opción está pensada para textos en los que las palabras que acompañan al número cambian según su valor, como «1 child» y «3 children» en inglés.
 
 Esta entrada inserta las versiones **Si se conoce** y **Si no se conoce**, igual que con cualquier valor. Dentro de **Si se conoce** hay una versión para cada forma de número gramatical que distingue el idioma, y el nombre de cada una incluye ejemplos de los números que la usan. El inglés tiene dos:
 
@@ -152,6 +214,17 @@ Cada una de estas versiones empieza con el número, seguido de las palabras que 
 
 Otros idiomas distinguen una cantidad distinta de formas: el chino tiene una, y el polaco y el ruso tienen más de dos. Cuando el texto está escrito en otro idioma, Architect ofrece las versiones de ese idioma.
 
+## Redacción para la persona participante o para otra persona {#wording-for-the-participant-or-someone-else}
+
+El formulario de una etapa «Genealogía familiar» plantea las mismas preguntas sobre la persona participante y sobre cada uno de sus familiares. En las preguntas y los textos de ayuda de ese formulario, el menú **Insertar lógica** incluye la opción **Participante u otra persona**, marcada como **Redacción distinta para la persona participante y para las demás personas**. Esta opción inserta dos versiones:
+
+| Versión                       | Texto escrito                |
+| ----------------------------- | ---------------------------- |
+| Sobre la persona participante | ¿Cómo te llamas?             |
+| Sobre otra persona            | ¿Cómo se llama esta persona? |
+
+Esta lógica solo elige entre las dos versiones; la lógica en sí nunca se muestra. Siempre se sabe si una pregunta se refiere a la persona participante, así que esta lógica no tiene versión **Si no se conoce**.
+
 ## Cómo ven el texto dinámico quienes participan {#how-participants-see-piped-text}
 
 La entrevista presenta cada valor en el idioma de la persona participante:
@@ -160,6 +233,7 @@ La entrevista presenta cada valor en el idioma de la persona participante:
 - Un número se escribe como se escriben los números en el idioma de la persona participante.
 - Una respuesta a una pregunta categórica, ordinal o booleana se muestra con la etiqueta de la opción, en el idioma de la persona participante. Una etiqueta sin traducción a ese idioma se muestra igual que se muestra siempre el [texto sin traducir](/es/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see). Una respuesta con varias opciones se muestra como una lista, como «gatos, perros y peces». Una respuesta de sí o no solo se puede mostrar así cuando sus dos respuestas tienen etiquetas; de lo contrario, usa **Redacción distinta para cada respuesta**.
 - Un valor de texto se muestra exactamente como se introdujo.
+- La lógica en sí nunca se muestra a la persona participante, que solo ve la redacción del caso que se aplica.
 
 Cada valor se resalta con un tono del color principal de la entrevista, lo que distingue la información insertada de la redacción fija de la pregunta. Los lectores de pantalla leen el valor como parte de la frase.
 
@@ -203,7 +277,9 @@ Cuando un protocolo se ofrece en más de un idioma (consulta [Traducir tu protoc
 
 Cada traducción se comprueba por separado, con las mismas reglas que el texto del idioma predeterminado: cada valor que muestra debe ser uno que la etapa use y que se pueda mostrar donde aparece el texto, un valor que puede faltar necesita una versión para cuando falte, y el texto no puede estar vacío en todas las versiones.
 
-En la tabla de traducciones, una celda muestra como píldoras los valores y cada conjunto de versiones. Cuando editas una celda, seleccionar una píldora abre sus versiones, igual que en el editor de etapas, y el botón de la jeringa ofrece los valores que la etapa ya usa. Un valor que la etapa todavía no usa debe añadirse primero en el editor de etapas.
+En la tabla de traducciones, una celda muestra como píldoras los valores y cada conjunto de versiones. Cuando editas una celda, seleccionar una píldora abre sus versiones, igual que en el editor de etapas. El botón de la jeringa ofrece los valores que la etapa ya usa, y el botón **Insertar lógica** ofrece, para esos mismos valores, una redacción distinta para cada respuesta o una redacción que se ajusta al número. Un valor que la etapa todavía no usa debe añadirse primero en el editor de etapas.
+
+En la tabla de traducciones no se puede insertar un bloque «Si» ni cambiar sus reglas: sus filas muestran las reglas, pero sin **Editar reglas**, **Añadir «En caso contrario, si»** ni **Quitar este caso**. Para añadir un bloque «Si» a una traducción, o para cambiar sus reglas, abre la etapa y elige el idioma en el menú de idioma del campo de texto (consulta [Traducir en el editor de etapas](/es/design-protocols/translating-your-protocol#translating-within-the-stage-editor)). Como las reglas pertenecen a la etapa, cualquier cambio en ellas se aplica a todos los idiomas. Solo se traduce la redacción de cada fila.
 
 Los valores en sí no se traducen. Las fechas y los números siguen el idioma de la persona participante, y las respuestas se muestran con las etiquetas de sus opciones en ese idioma.
 
@@ -221,6 +297,7 @@ La validación del protocolo comprueba todos los textos que contienen valores di
 
 - [Preguntas](/es/design-protocols/key-concepts/prompts): las preguntas que pueden contener texto dinámico
 - [Formularios](/es/design-protocols/key-concepts/forms): campos de formulario cuyas preguntas y textos de ayuda pueden hacer referencia a respuestas anteriores
-- [Etiquetado de nodos](/es/design-protocols/key-concepts/node-labelling): cómo elige la entrevista el texto que se muestra en un nodo
+- [Etiquetado de nodos](/es/design-protocols/key-concepts/node-labelling): cómo elige la entrevista el texto que se muestra en un nodo, y cómo una [etiqueta dinámica](/es/design-protocols/key-concepts/node-labelling#dynamic-labels) usa los mismos valores y la misma lógica
+- [Lógica de salto](/es/design-protocols/key-concepts/skip-logic): el editor de reglas en el que se definen las reglas de un bloque «Si»
 - [Variables](/es/design-protocols/key-concepts/variables): los tipos de atributo que se pueden insertar como texto dinámico
 - [Traducir tu protocolo](/es/design-protocols/translating-your-protocol): escribir un protocolo en más de un idioma
