@@ -56,7 +56,7 @@ Choose the **node type** this stage places on the canvas, such as _Person_. Ever
 
 Changing the node type later clears this stage's other settings, because they depend on the node type.
 
-<!-- include: stage-filter -->
+<!-- include: filter-network -->
 
 ## Write the prompts
 

@@ -62,7 +62,7 @@ If you create a new node type here, remember to also add a name generator interf
 
 Changing the node type later clears this stage's other configuration.
 
-<!-- include: stage-filter -->
+<!-- include: filter-network -->
 
 ## Build the form
 

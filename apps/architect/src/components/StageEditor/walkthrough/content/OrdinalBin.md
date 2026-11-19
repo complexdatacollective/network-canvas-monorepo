@@ -58,7 +58,7 @@ Choose the **node type** this stage sorts, such as _Person_. Every node of that 
 
 Changing the node type later clears this stage's other settings, because they depend on the node type.
 
-<!-- include: stage-filter -->
+<!-- include: filter-network -->
 
 ## Write the prompts
 

@@ -58,7 +58,7 @@ Changing the node type later clears this stage's other settings, including the m
 
 > Do: Consider switching on **Filter network** to narrow down nodes to only those that fall within the selectable map areas. An earlier stage, such as a [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) or [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), can capture the attribute to filter on, so participants are only asked about relevant nodes.
 
-<!-- include: stage-filter -->
+<!-- include: filter-network -->
 
 ## Add a Mapbox API key
 

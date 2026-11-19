@@ -62,7 +62,7 @@ Choose the **node type** that this stage will use. Every node of this type alrea
 
 Changing the node type later clears this stage's other settings, because they depend on the node type.
 
-<!-- include: stage-filter -->
+<!-- include: filter-network -->
 
 ## Write the prompts
 

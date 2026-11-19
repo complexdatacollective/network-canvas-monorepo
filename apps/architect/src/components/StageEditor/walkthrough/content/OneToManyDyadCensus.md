@@ -56,7 +56,7 @@ Choose the **node type** whose alters are asked about, such as _Person_. Each no
 
 Changing the node type later clears this stage's other settings, because they depend on the node type.
 
-<!-- include: stage-filter -->
+<!-- include: filter-network -->
 
 ## Write the prompts
 

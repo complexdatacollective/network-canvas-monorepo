@@ -61,15 +61,7 @@ Choose the **edge type** this stage uses. The form is shown once for every edge 
 
 Changing the edge type later clears this stage's other configuration, because they depend on the edge type.
 
-## Show the form for only some edges
-
-<!-- section: filter-network -->
-
-Switch on **Filter network** to narrow the network this stage works with. Filtering happens _before_ the available edges for this stage are calculated. If filtering removes the source or target node, the edge is also removed.
-
-Without a filter, the form is shown for every edge of the chosen type.
-
-Read more about [network filtering](https://documentation.networkcanvas.com/design-protocols/key-concepts/network-filtering).
+<!-- include: filter-network -->
 
 ## Build the form
 

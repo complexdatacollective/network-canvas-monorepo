@@ -62,7 +62,7 @@ Choose the **node type** whose alters are paired up, such as _Person_. The parti
 
 Changing the node type later clears this stage's other settings, because they depend on the node type.
 
-<!-- include: stage-filter -->
+<!-- include: filter-network -->
 
 ## Write the prompts
 

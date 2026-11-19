@@ -56,7 +56,7 @@ Choose the **node type** this stage shows on the canvas, such as _Person_. Each 
 
 Changing the node type later clears this stage's other settings, because they depend on the node type.
 
-<!-- include: stage-filter -->
+<!-- include: filter-network -->
 
 ## Build the presets
 
