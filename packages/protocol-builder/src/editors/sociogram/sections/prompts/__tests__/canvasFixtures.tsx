@@ -106,7 +106,11 @@ export const collectInAForm = (
     form: {
       fields: [
         ...fields,
-        { variable: variableId, prompt: { 'en-US': 'Is this so?' } },
+        {
+          id: 'field-added',
+          variable: variableId,
+          prompt: { 'en-US': 'Is this so?' },
+        },
       ],
     },
   };

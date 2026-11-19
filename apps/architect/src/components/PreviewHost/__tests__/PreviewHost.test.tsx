@@ -226,10 +226,12 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         form: {
           fields: [
             {
+              id: 'field-1',
               variable: asEntityAttributeReference('screening'),
               prompt: { en: 'Are you eligible?' },
             },
             {
+              id: 'field-2',
               variable: asEntityAttributeReference('consent'),
               prompt: { en: 'Do you consent?' },
             },
@@ -277,6 +279,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
           title: { en: 'About this person' },
           fields: [
             {
+              id: 'field-1',
               variable: asEntityAttributeReference('name'),
               prompt: { en: 'What is their name?' },
             },

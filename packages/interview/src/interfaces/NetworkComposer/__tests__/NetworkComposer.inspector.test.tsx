@@ -114,6 +114,7 @@ const PROTOTYPE_VAR = '__proto__';
 const nodeForm = {
   fields: [
     {
+      id: 'field-1',
       variable: NODE_NAME_VAR,
       component: 'Text',
       label: { en: 'Full name' },
@@ -124,6 +125,7 @@ const nodeForm = {
 const edgeForm = {
   fields: [
     {
+      id: 'field-1',
       variable: EDGE_STRENGTH_VAR,
       component: 'Text',
       label: { en: 'Strength' },
@@ -411,6 +413,7 @@ describe('NetworkComposer inspector — node', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: PROTOTYPE_VAR,
             component: 'Text',
             label: { en: 'Prototype value' },
@@ -602,7 +605,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     nodeForm: {
       fields: [
         ...nodeForm.fields,
-        { variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
+        { id: 'field-2', variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
       ],
     },
   };
@@ -612,7 +615,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     nodeForm: {
       fields: [
         ...twoQuestionStage.nodeForm.fields,
-        { variable: GROUP_VAR, prompt: { en: 'Team' } },
+        { id: 'field-2', variable: GROUP_VAR, prompt: { en: 'Team' } },
       ],
     },
   };

@@ -57,7 +57,13 @@ const nameGeneratorWith = (configured: SectionDoc[]) => ({
     subject: { entity: 'node', type: 'person' },
     form: {
       title: en('Add a person'),
-      fields: [{ variable: 'name', prompt: en("What is this person's name?") }],
+      fields: [
+        {
+          id: 'field-1',
+          variable: 'name',
+          prompt: en("What is this person's name?"),
+        },
+      ],
     },
     prompts: [{ id: 'prompt-1', text: en('Who are the people you know?') }],
     panels: configured,
@@ -511,7 +517,13 @@ describe('the side panels a name generator shows', () => {
           label: en('Name Generator'),
           form: {
             title: en('Add a person'),
-            fields: [{ variable: 'name', prompt: en('What is their name?') }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'name',
+                prompt: en('What is their name?'),
+              },
+            ],
           },
           prompts: [
             { id: 'prompt-1', text: en('Who are the people you know?') },

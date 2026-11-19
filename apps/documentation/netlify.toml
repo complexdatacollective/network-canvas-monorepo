@@ -12,6 +12,15 @@ edge_functions = "apps/documentation/netlify/edge-functions"
 [functions]
 deno_import_map = "apps/documentation/netlify/import-map.json"
 
+# Production deploys run `netlify deploy --no-build` from CI, which bundles
+# edge functions only when this file declares one: a route declared in the
+# function's own source is read by Netlify's builds (previews, the dev site)
+# but never reaches production. So the route lives here, not in locale.ts.
+# Addresses with a file extension are files, never pages.
+[[edge_functions]]
+function = "locale"
+pattern = "^/[^.]*$"
+
 # Renamed page slugs (keep old URLs working — may be embedded in apps/documents)
 [[redirects]]
 from = "/en/design-protocols/building-a-protocol"

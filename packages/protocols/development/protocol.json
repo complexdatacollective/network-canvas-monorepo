@@ -47,6 +47,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "3377af3f-3c79-41da-9b0b-6570fb519b93",
             "prompt": {
               "en": "What is your name?",
@@ -54,6 +55,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "b4956387-cada-412f-9e97-fe352c3cc44e",
             "prompt": {
               "en": "Tell us about **yourself** maybe",
@@ -61,6 +63,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "f3eb5f0b-84ad-43f0-8db5-9f83cd3a56de",
             "prompt": {
               "en": "What is your age?",
@@ -68,6 +71,7 @@
             }
           },
           {
+            "id": "field-4",
             "variable": "683ad529-66c6-4c84-8e31-a31452d6b5e9",
             "prompt": {
               "en": "How much do you like likert scales?",
@@ -75,6 +79,7 @@
             }
           },
           {
+            "id": "field-5",
             "variable": "f3537457-41a2-4fbf-a1f8-9235b3c1edc6",
             "prompt": {
               "en": "Which of these things do you like?",
@@ -82,6 +87,7 @@
             }
           },
           {
+            "id": "field-6",
             "variable": "7c647977-f2d1-426f-b0c5-6d44c795c554",
             "prompt": {
               "en": "Which of these other things do you like?",
@@ -89,6 +95,7 @@
             }
           },
           {
+            "id": "field-7",
             "variable": "67fefac9-561f-454a-8f78-81bd9470efaa",
             "prompt": {
               "en": "Is the switch below not turned on?",
@@ -96,6 +103,7 @@
             }
           },
           {
+            "id": "field-8",
             "variable": "300a798f-d11b-4195-91ee-3221bc586c0a",
             "prompt": {
               "en": "Do you like scales",
@@ -103,6 +111,7 @@
             }
           },
           {
+            "id": "field-9",
             "variable": "03c54247-aa12-497a-b8f8-c4cb69048455",
             "prompt": {
               "en": "Pick somewhere on the line",
@@ -110,6 +119,7 @@
             }
           },
           {
+            "id": "field-10",
             "variable": "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1",
             "prompt": {
               "en": "What is your date of birth?",
@@ -117,6 +127,7 @@
             }
           },
           {
+            "id": "field-11",
             "variable": "9c47f32e-b72f-4b1b-93a2-e29766dc3012",
             "prompt": {
               "en": "Pick your *favourite* day in the last 60 days",
@@ -124,6 +135,7 @@
             }
           },
           {
+            "id": "field-12",
             "variable": "cc7d7fdb-c6e8-4c67-a3f3-e76c56511c41",
             "prompt": {
               "en": "Pick your favourite day that is _after_ than the day above",
@@ -253,6 +265,7 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "name_variable",
             "prompt": {
               "en": "What is this person's name?",
@@ -260,6 +273,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
             "prompt": {
               "en": "What is this person's *nickname*?",
@@ -267,6 +281,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
             "prompt": {
               "en": "What is this person's age?",
@@ -373,6 +388,7 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "name_variable",
             "prompt": {
               "en": "What is this person's name?",
@@ -380,6 +396,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
             "prompt": {
               "en": "What is this person's nickname?",
@@ -387,6 +404,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
             "prompt": {
               "en": "What is this person's age?",
@@ -778,6 +796,7 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "2377af3f-3c79-41da-9b0b-6570fb519b93",
             "prompt": {
               "en": "What is this person's _name_?",
@@ -785,6 +804,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "e3eb5f0b-84ad-43f0-8db5-9f83cd3a56de",
             "prompt": {
               "en": "What is this person's _age_?",
@@ -792,6 +812,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "583ad529-66c6-4c84-8e31-a31452d6b5e9",
             "prompt": {
               "en": "How much do you like **likert scales**?",
@@ -799,6 +820,7 @@
             }
           },
           {
+            "id": "field-4",
             "variable": "e3537457-41a2-4fbf-a1f8-9235b3c1edc6",
             "prompt": {
               "en": "Which of *these things* do you like?",
@@ -806,6 +828,7 @@
             }
           },
           {
+            "id": "field-5",
             "variable": "6c647977-f2d1-426f-b0c5-6d44c795c554",
             "prompt": {
               "en": "Which of these **other** things do you like?",
@@ -813,6 +836,7 @@
             }
           },
           {
+            "id": "field-6",
             "variable": "57fefac9-561f-454a-8f78-81bd9470efaa",
             "prompt": {
               "en": "Is the switch below not turned _on_?",
@@ -820,6 +844,7 @@
             }
           },
           {
+            "id": "field-7",
             "variable": "683ad529-66c6-4c84-8e31-a31452dsf74k",
             "prompt": {
               "en": "This is a variable whose **value** you must choose!",
@@ -827,6 +852,7 @@
             }
           },
           {
+            "id": "field-8",
             "variable": "e4e0df51-4b53-4e16-9249-8587537370e9",
             "prompt": {
               "en": "Do you like **likert scales**?",
@@ -834,6 +860,7 @@
             }
           },
           {
+            "id": "field-9",
             "variable": "720224a3-e2d3-4729-968a-29d3f3e4fca6",
             "prompt": {
               "en": "How _far away_ is the moon?",
@@ -1248,6 +1275,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "246c4d84-ebd7-41a6-8c1a-ef83938227ba",
             "prompt": {
               "en": "What is this person's life story?",
@@ -1255,6 +1283,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "9b56bc6d-6b20-4e38-9aab-4057e78e1130",
             "prompt": {
               "en": "Choose a date",
@@ -1262,6 +1291,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "490db003-3289-4969-b426-919cefb4cdf0",
             "prompt": {
               "en": "Do you want to do another likert?",
@@ -1325,6 +1355,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "e343a91f-628d-4175-870c-957beffa0002",
             "prompt": {
               "en": "Two item categorical variable",
@@ -1332,6 +1363,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "e343a91f-628d-4175-870c-957beffa0003",
             "prompt": {
               "en": "_Three_ item categorical variable",
@@ -1339,6 +1371,7 @@
             }
           },
           {
+            "id": "field-3",
             "variable": "e343a91f-628d-4175-870c-957beffa0004",
             "prompt": {
               "en": "Four item categorical variable",
@@ -1407,6 +1440,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "d343a91f-628d-4175-870c-957beffa0002",
             "prompt": {
               "en": "Two item categorical variable",

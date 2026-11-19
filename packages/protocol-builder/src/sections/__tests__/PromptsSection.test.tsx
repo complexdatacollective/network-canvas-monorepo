@@ -140,7 +140,7 @@ describe('the prompt list a stage owns', () => {
           subject: { entity: 'node', type: 'person' },
           form: {
             title: en('Add a person'),
-            fields: [{ variable: 'name', prompt: en('Name?') }],
+            fields: [{ id: 'field-1', variable: 'name', prompt: en('Name?') }],
           },
           prompts: [
             { id: 'prompt-a', text: en('First question') },
@@ -616,7 +616,7 @@ describe('what a family says about its own prompt', () => {
           subject: { entity: 'node', type: 'person' },
           form: {
             title: en('Add a person'),
-            fields: [{ variable: 'name', prompt: en('Name?') }],
+            fields: [{ id: 'field-1', variable: 'name', prompt: en('Name?') }],
           },
           prompts: [
             {

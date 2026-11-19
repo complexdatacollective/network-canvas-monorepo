@@ -6584,14 +6584,14 @@ describe('Migration V7 to V8', () => {
         migrateAndParse(alterFormTestProtocol())?.filter(
           (field) => field.variable === NAME,
         ),
-      ).toEqual([{ variable: NAME, prompt: en('sdfsdf') }]);
+      ).toEqual([{ id: 'field-1', variable: NAME, prompt: en('sdfsdf') }]);
     });
 
     it('leaves every other field untouched and in order', () => {
       expect(migrateAndParse(alterFormTestProtocol())).toEqual([
-        { variable: NAME, prompt: en('sdfsdf') },
-        { variable: SCALE, prompt: en('sadasd') },
-        { variable: CATEGORICAL, prompt: en('asd') },
+        { id: 'field-1', variable: NAME, prompt: en('sdfsdf') },
+        { id: 'field-2', variable: SCALE, prompt: en('sadasd') },
+        { id: 'field-3', variable: CATEGORICAL, prompt: en('asd') },
       ]);
     });
 
@@ -6604,8 +6604,8 @@ describe('Migration V7 to V8', () => {
         { variable: NAME, prompt: 'third\n' },
       ];
       expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: en('first') },
-        { variable: SCALE, prompt: en('sadasd') },
+        { id: 'field-1', variable: NAME, prompt: en('first') },
+        { id: 'field-2', variable: SCALE, prompt: en('sadasd') },
       ]);
     });
 
@@ -6632,8 +6632,8 @@ describe('Migration V7 to V8', () => {
         id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
       } as unknown as (typeof protocol.stages)[1];
       expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: en('Their name?') },
-        { variable: SCALE, prompt: en('How close?') },
+        { id: 'field-1', variable: NAME, prompt: en('Their name?') },
+        { id: 'field-2', variable: SCALE, prompt: en('How close?') },
       ]);
     });
 

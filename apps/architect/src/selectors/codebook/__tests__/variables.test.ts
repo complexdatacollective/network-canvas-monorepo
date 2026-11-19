@@ -17,12 +17,15 @@ import { getIsUsed } from '../isUsed';
  * variable only the unsaved stage names" says so the way the editor does.
  */
 const openStageDraft = (fields: Record<string, unknown>) => {
-  publishStageDraft(
-    { id: 'stage-1', type: 'Information', ...fields } as unknown as Stage,
-    {},
-    fields,
-    true,
-  );
+  publishStageDraft({
+    stage: {
+      id: 'stage-1',
+      type: 'Information',
+      ...fields,
+    } as unknown as Stage,
+    unsaved: true,
+    editing: true,
+  });
 };
 
 const variable1 = '1234-1234-1234-1';
@@ -118,8 +121,8 @@ describe('getIsUsed', () => {
               subject: { entity: 'node', type: 'person' },
               form: {
                 fields: [
-                  { variable: variable1, prompt: 'prompt 1' },
-                  { variable: variable2, prompt: 'prompt 2' },
+                  { id: 'field-1', variable: variable1, prompt: 'prompt 1' },
+                  { id: 'field-2', variable: variable2, prompt: 'prompt 2' },
                 ],
               },
             },

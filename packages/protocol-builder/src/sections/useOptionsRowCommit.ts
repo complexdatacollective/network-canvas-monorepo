@@ -43,8 +43,9 @@ export type OptionsRowCommit = Readonly<{
  * (`AttributeValueFields`) and commit it here, which is what Architect did
  * from one shared gate of its own (`sections/useVariableOptionsCommit.ts`, run
  * as the row dialog's `onBeforeSave`). The list belongs to the codebook
- * attribute, so the write takes that section's own lock; the draft key is the
- * dialog's working state and never reaches the prompt.
+ * attribute, so it is a codebook change, kept with the stage's draft once the
+ * row is saved and written with the stage (see `StagedCodebookStore`); the
+ * draft key is the dialog's working state and never reaches the prompt.
  *
  * A list nobody edited is not written at all, and that is what `expand` is
  * for. The control is SEEDED from the codebook, so the row carries the

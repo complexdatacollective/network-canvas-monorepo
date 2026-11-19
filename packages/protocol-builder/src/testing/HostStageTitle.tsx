@@ -1,6 +1,4 @@
 import StageNameField from '../fields/StageNameField.tsx';
-import { useAutoStageName } from '../naming/useAutoStageName.ts';
-import { useStandingStageNameProposal } from '../naming/useStandingStageNameProposal.ts';
 
 /**
  * The stage's name, as the least a host can draw and still be a host: no
@@ -12,8 +10,5 @@ import { useStandingStageNameProposal } from '../naming/useStandingStageNameProp
  * `header` instead.
  */
 export default function HostStageTitle() {
-  const { onBlur } = useAutoStageName();
-  const { isStanding } = useStandingStageNameProposal();
-
-  return <StageNameField onBlur={onBlur} selectOnFocus={isStanding} />;
+  return <StageNameField proposeName />;
 }

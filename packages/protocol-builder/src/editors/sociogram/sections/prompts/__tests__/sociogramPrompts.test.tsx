@@ -870,12 +870,12 @@ describe('a prompt opened and cancelled untouched', () => {
  *
  * A position attribute is finished the moment it is named — there is no list
  * of values and no control a participant answers it through — so the create
- * row writes it and the window closes on the new pill. No second dialog, and
+ * row holds it and the window closes on the new pill. No second dialog, and
  * no sibling button: looking for the attribute and finding it does not exist
  * are one act, in one control.
  */
 describe('creating an attribute a prompt needs without leaving the stage', () => {
-  it('binds the prompt to the attribute the codebook now holds', async () => {
+  it('binds the prompt to the attribute the stage now holds', async () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
@@ -885,23 +885,11 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
       'second_canvas',
     );
 
-    await waitFor(() => {
-      const person = harness.hostCodebook().node?.person;
-      expect(
-        Object.values(person?.variables ?? {}).some(
-          (variable) => variable.name === 'second_canvas',
-        ),
-      ).toBe(true);
-    });
-
     // Created and BOUND: the picker holds the new attribute, so the prompt the
     // researcher was writing is the one the attribute was created for. The
     // picker shows the researcher's NAME for it, and the prompt stores the id,
     // so both are read — the field for what is on screen, and the saved stage
     // for the reference that survives the dialog.
-    const created = Object.entries(
-      harness.hostCodebook().node?.person?.variables ?? {},
-    ).find(([, variable]) => variable.name === 'second_canvas')?.[0];
     await waitFor(() =>
       expect(
         within(attributeField('Layout attribute')).getByText('second_canvas'),
@@ -912,7 +900,25 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
+
+    // Saving the prompt made the attribute the stage's: the editor has it, and
+    // the protocol does not until the stage is saved.
+    const created = Object.entries(
+      harness.editorCodebook().node?.person?.variables ?? {},
+    ).find(([, variable]) => variable.name === 'second_canvas')?.[0];
+    expect(created).toBeDefined();
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        (variable) => variable.name === 'second_canvas',
+      ),
+    ).toBe(false);
+
     const saved = await harness.submit();
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        (variable) => variable.name === 'second_canvas',
+      ),
+    ).toBe(true);
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.layout).toEqual({
       layoutVariable: created,
     });
@@ -922,8 +928,8 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
    * The other slot a sociogram prompt fills, and the same act: deciding to
    * mark these people and inventing the flag to mark them with is one thought.
    *
-   * A boolean is finished by a name too, so this one is written straight to the
-   * codebook as well — and it is written as the flag the tap will set rather
+   * A boolean is finished by a name too, so this one is held with the stage as
+   * well — and it is made as the flag the tap will set rather
    * than as whatever kind of answer happened to be handy, which is the only
    * thing the slot decides on the researcher's behalf.
    */
@@ -940,14 +946,6 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
       'spoke_to_recently',
     );
 
-    const created = await waitFor(() => {
-      const entry = Object.entries(
-        harness.hostCodebook().node?.person?.variables ?? {},
-      ).find(([, variable]) => variable.name === 'spoke_to_recently');
-      if (entry === undefined) throw new Error('the flag was not created');
-      return entry;
-    });
-    expect(created[1].type).toBe('boolean');
     await waitFor(() =>
       expect(
         within(attributeField('Boolean attribute')).getByText(
@@ -960,7 +958,18 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
+    const created = Object.entries(
+      harness.editorCodebook().node?.person?.variables ?? {},
+    ).find(([, variable]) => variable.name === 'spoke_to_recently');
+    if (created === undefined) throw new Error('the flag was not created');
+    expect(created[1].type).toBe('boolean');
+    expect(harness.hostCodebook().node?.person?.variables).not.toHaveProperty(
+      created[0],
+    );
     const saved = await harness.submit();
+    expect(harness.hostCodebook().node?.person?.variables).toHaveProperty(
+      created[0],
+    );
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.highlight).toEqual({
       allowHighlighting: true,
       variable: created[0],

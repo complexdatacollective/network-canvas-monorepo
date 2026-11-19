@@ -34,8 +34,8 @@ const egoFormStage = {
   label: 'About you',
   form: {
     fields: [
-      { variable: 'a', prompt: 'A' },
-      { variable: 'b', prompt: 'B' },
+      { id: 'field-1', variable: 'a', prompt: 'A' },
+      { id: 'field-2', variable: 'b', prompt: 'B' },
     ],
   },
 } as unknown as Stage;
@@ -247,7 +247,9 @@ describe('generateNetwork constraint conformance', () => {
           type: 'AlterForm',
           label: 'Alter form',
           subject: { entity: 'node', type: 'person' },
-          form: { fields: [{ variable: 'high', prompt: 'High' }] },
+          form: {
+            fields: [{ id: 'field-1', variable: 'high', prompt: 'High' }],
+          },
         } as unknown as Stage,
       ],
     });
@@ -283,7 +285,9 @@ describe('generateNetwork constraint conformance', () => {
           type: 'AlterForm',
           label: 'Alter form',
           subject: { entity: 'node', type: 'person' },
-          form: { fields: [{ variable: 'band', prompt: 'Band' }] },
+          form: {
+            fields: [{ id: 'field-1', variable: 'band', prompt: 'Band' }],
+          },
         } as unknown as Stage,
       ],
     });
@@ -614,7 +618,9 @@ describe('generateNetwork constraint conformance', () => {
           type: 'AlterEdgeForm',
           label: 'Alter edge form',
           subject: { entity: 'edge', type: 'knows' },
-          form: { fields: [{ variable: 'until', prompt: 'Until' }] },
+          form: {
+            fields: [{ id: 'field-1', variable: 'until', prompt: 'Until' }],
+          },
         } as unknown as Stage,
       ],
     });

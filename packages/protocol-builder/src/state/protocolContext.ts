@@ -10,6 +10,11 @@ import {
 } from '../protocol-context.ts';
 import { useProtocolBuilderContext } from './context.ts';
 import type { CachedSection } from './hooks.ts';
+import {
+  overlaySections,
+  useStagedCodebook,
+  type StagedCodebook,
+} from './stagedCodebook.ts';
 
 const NO_SECTIONS: readonly ProtocolSectionId[] = Object.freeze([]);
 
@@ -132,7 +137,52 @@ function reading(
   return derived;
 }
 
+/**
+ * The readings made with a stage editor's codebook changes laid over them,
+ * by the reading and the changes they were made from: the same changes over
+ * the same reading are the same derivation, for the reason `READINGS` keeps
+ * one per set of revisions.
+ */
+const OVERLAID = new WeakMap<
+  ProtocolDerivation,
+  WeakMap<StagedCodebook, ProtocolDerivation>
+>();
+
+/**
+ * A reading with the open stage editor's codebook changes laid over it (see
+ * `StagedCodebookStore`), so everything inside the editor sees the codebook
+ * the researcher has made — a type they invented, the rules they set — before
+ * any of it is saved.
+ */
+function overlaid(
+  derivation: ProtocolDerivation,
+  staged: StagedCodebook,
+): ProtocolDerivation {
+  if (Object.keys(staged).length === 0) return derivation;
+  const known = OVERLAID.get(derivation)?.get(staged);
+  if (known !== undefined) return known;
+  const sections = overlaySections(staged, derivation.sections);
+  const derived = new ProtocolDerivation({
+    sections,
+    context: protocolContextFromSections(sections),
+    reading:
+      derivation.reading.status === 'read'
+        ? { status: 'read', sections }
+        : derivation.reading,
+  });
+  const byChanges =
+    OVERLAID.get(derivation) ??
+    new WeakMap<StagedCodebook, ProtocolDerivation>();
+  byChanges.set(staged, derived);
+  OVERLAID.set(derivation, byChanges);
+  return derived;
+}
+
 function useReading(): ProtocolDerivation {
+  return overlaid(useProtocolReadingOf(), useStagedCodebook());
+}
+
+function useProtocolReadingOf(): ProtocolDerivation {
   const { protocolId, adapter } = useProtocolBuilderContext();
   const { data: list, isError: listFailed } = useQuery(
     adapter.rpcQuery('ListSections', { protocolId }),

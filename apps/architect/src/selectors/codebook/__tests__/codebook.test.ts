@@ -49,12 +49,15 @@ describe('codebook selectors', () => {
       const subject = { type: 'bar', entity: 'node' as const };
       const state = testState as unknown as RootState;
       const publish = (fields: Record<string, unknown>) => {
-        publishStageDraft(
-          { id: 'stage-1', type: 'Information', ...fields } as unknown as Stage,
-          {},
-          fields,
-          true,
-        );
+        publishStageDraft({
+          stage: {
+            id: 'stage-1',
+            type: 'Information',
+            ...fields,
+          } as unknown as Stage,
+          unsaved: true,
+          editing: true,
+        });
       };
 
       afterEach(() => {

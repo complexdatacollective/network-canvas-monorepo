@@ -15,7 +15,6 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { type Stage, VariableTypes } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
 import { documentWithUpdatedVariable } from '../../../codebook/editing.ts';
 import { useCodebookSectionWrite } from '../../../codebook/writes.ts';
 import { READ_ONLY_MESSAGE } from '../../../form/readOnlyRefusal.ts';
@@ -122,8 +121,8 @@ const encryptedVariableIds = (document: SectionDoc): readonly string[] => {
  * A plain `Section` rather than the package's `BuilderSection`, because
  * `encrypted` is a property of a CODEBOOK attribute and not a stage field:
  * there are no form values under this panel for a capability's own discard to
- * throw away, and the write it makes is immediate and outside the stage's
- * save.
+ * throw away; the change it makes is kept with the stage's draft as a codebook
+ * change (see `StagedCodebookStore`).
  */
 function NodeTypeAttributes({
   view,
@@ -201,13 +200,14 @@ function NodeTypeAttributes({
  * `encrypted` is a property of a CODEBOOK attribute, not of this stage: it
  * decides how the interview stores that attribute wherever it is collected,
  * and it outlives any stage that happens to switch it on. So a change here is
- * a codebook edit, taken under the codebook section's own lock and committed
- * at once — not part of this stage's save, and unaffected by cancelling it.
- * The section is composed into this editor because this is where a researcher
- * goes looking for it.
+ * a codebook edit — but one made while editing this stage, and so part of
+ * that edit like every codebook change made inside a stage editor: kept with
+ * the stage's draft, saved with the stage, and undone by cancelling it (see
+ * `StagedCodebookStore`). The section is composed into this editor because
+ * this is where a researcher goes looking for it.
  *
  * Nothing here is mirrored locally. The list, the checkboxes and their state
- * are read from the authoritative codebook every render, so a type or an
+ * are read from the codebook as the editor shows it every render, so a type or an
  * attribute a collaborator changes — including one that stops being text —
  * is reflected here without this section issuing anything of its own. Each
  * type's switch is the one thing a component underneath holds state for, and
@@ -217,7 +217,7 @@ function NodeTypeAttributes({
  * Each type is a switch of its own, and switching one off un-encrypts every
  * attribute of that type at once, as Architect's does: saying "this type is
  * not protected after all" is otherwise a study's worth of clicks, one box at
- * a time, each its own codebook write. The loss is real, so it is confirmed
+ * a time, each its own codebook change. The loss is real, so it is confirmed
  * first.
  */
 export default function EncryptedAttributesSection() {
@@ -240,7 +240,6 @@ export default function EncryptedAttributesSection() {
   const [failure, setFailure] = useState<
     Readonly<{ message: string; held: boolean }> | undefined
   >(undefined);
-  const [busy, setBusy] = useState(false);
   const { confirm } = useDialog();
   /**
    * Whether this researcher may still write, at the moment a decision is acted
@@ -287,11 +286,6 @@ export default function EncryptedAttributesSection() {
    * under a gesture in progress takes the panel away mid-edit, and a
    * researcher who opened a type that protects nothing yet must keep the empty
    * panel they opened.
-   *
-   * A collaborator's move that arrives while one of this section's own writes
-   * is in flight is DEFERRED, never dropped: it re-seeds on the render that
-   * write's settling causes, so a type nobody in this session touched still
-   * ends up saying what the codebook says.
    */
   const [switchGenerations, setSwitchGenerations] = useState<
     ReadonlyMap<string, number>
@@ -310,8 +304,6 @@ export default function EncryptedAttributesSection() {
   const [askedProtection, setAskedProtection] = useState<
     ReadonlyMap<string, boolean>
   >(() => new Map());
-  /** How many writes of this section's own are waiting or in flight. */
-  const [pending, setPending] = useState(0);
 
   // Adjusted during render rather than in an effect: a collaborator's change
   // is the codebook moving under the editor, and showing the switch it
@@ -323,13 +315,6 @@ export default function EncryptedAttributesSection() {
     const seen = seenNow.get(view.typeId);
     if (seen === view.hasEncrypted) continue;
     const ours = askedNow.get(view.typeId) === view.hasEncrypted;
-    // A move this section did not make, arriving while a write of its own is
-    // in flight, has NOT been seeded: recording it as seen here is what would
-    // lose it for the session, because the render that follows the write
-    // settling could no longer tell this type from one already seeded. Left
-    // unseen, the same move re-seeds on that render instead — which is the
-    // only reason the switch can be deferred rather than dropped.
-    if (seen !== undefined && !ours && pending > 0) continue;
     seenNow = new Map(seenNow).set(view.typeId, view.hasEncrypted);
     if (askedNow.has(view.typeId)) {
       const withoutAsked = new Map(askedNow);
@@ -372,46 +357,39 @@ export default function EncryptedAttributesSection() {
       variableId;
 
     setFailure(undefined);
-    setBusy(true);
-    setPending((count) => count + 1);
-    try {
-      const outcome = await writeCodebookSection(subject, (authoritative) => {
-        const next = documentWithUpdatedVariable({
-          subject,
-          authoritativeDocument: authoritative,
-          variableId,
-          // Switching encryption off REMOVES the property rather than storing
-          // `false`: absence is how the protocol schema spells "not
-          // encrypted", and a stored `false` would go on saying something
-          // about an attribute nobody is protecting.
-          draft: encrypted ? { encrypted: true } : {},
-          replaceProperties: ['encrypted'],
-        });
-        // Read off the document being written rather than predicted from the
-        // checkbox: unticking the last TEXT attribute leaves the type
-        // protecting whatever a stranded flag elsewhere in it still protects.
-        markAsked(view.typeId, encryptedVariableIds(next).length > 0);
-        return next;
+    const outcome = await writeCodebookSection(subject, (authoritative) => {
+      const next = documentWithUpdatedVariable({
+        subject,
+        authoritativeDocument: authoritative,
+        variableId,
+        // Switching encryption off REMOVES the property rather than storing
+        // `false`: absence is how the protocol schema spells "not
+        // encrypted", and a stored `false` would go on saying something
+        // about an attribute nobody is protecting.
+        draft: encrypted ? { encrypted: true } : {},
+        replaceProperties: ['encrypted'],
       });
-      if (outcome.status !== 'applied') {
-        // Nothing landed, so the codebook has not moved and the marker would
-        // otherwise swallow the next change a collaborator makes.
-        clearAsked(view.typeId);
-        setFailure({
-          message: outcome.message,
-          held: outcome.refusal.kind === 'held',
-        });
-        return;
-      }
-      setAnnouncement(
-        encrypted
-          ? `${label} is now encrypted.`
-          : `${label} is no longer encrypted.`,
-      );
-    } finally {
-      setPending((count) => count - 1);
-      setBusy(false);
+      // Read off the document being written rather than predicted from the
+      // checkbox: unticking the last TEXT attribute leaves the type
+      // protecting whatever a stranded flag elsewhere in it still protects.
+      markAsked(view.typeId, encryptedVariableIds(next).length > 0);
+      return next;
+    });
+    if (outcome.status !== 'applied') {
+      // Nothing landed, so the codebook has not moved and the marker would
+      // otherwise swallow the next change a collaborator makes.
+      clearAsked(view.typeId);
+      setFailure({
+        message: outcome.message,
+        held: outcome.refusal.kind === 'held',
+      });
+      return;
     }
+    setAnnouncement(
+      encrypted
+        ? `${label} is now encrypted.`
+        : `${label} is no longer encrypted.`,
+    );
   };
 
   /**
@@ -425,39 +403,32 @@ export default function EncryptedAttributesSection() {
   const clearType = async (view: NodeTypeView): Promise<boolean> => {
     const subject: CodebookSubject = { entity: 'node', type: view.typeId };
     setFailure(undefined);
-    setBusy(true);
-    setPending((count) => count + 1);
-    try {
-      const outcome = await writeCodebookSection(subject, (authoritative) => {
-        markAsked(view.typeId, false);
-        return encryptedVariableIds(authoritative).reduce(
-          (document, variableId) =>
-            documentWithUpdatedVariable({
-              subject,
-              authoritativeDocument: document,
-              variableId,
-              draft: {},
-              replaceProperties: ['encrypted'],
-            }),
-          authoritative,
-        );
-      });
-      if (outcome.status !== 'applied') {
-        clearAsked(view.typeId);
-        setFailure({
-          message: outcome.message,
-          held: outcome.refusal.kind === 'held',
-        });
-        return false;
-      }
-      setAnnouncement(
-        `No attribute of the ${view.name} type is encrypted any more.`,
+    const outcome = await writeCodebookSection(subject, (authoritative) => {
+      markAsked(view.typeId, false);
+      return encryptedVariableIds(authoritative).reduce(
+        (document, variableId) =>
+          documentWithUpdatedVariable({
+            subject,
+            authoritativeDocument: document,
+            variableId,
+            draft: {},
+            replaceProperties: ['encrypted'],
+          }),
+        authoritative,
       );
-      return true;
-    } finally {
-      setPending((count) => count - 1);
-      setBusy(false);
+    });
+    if (outcome.status !== 'applied') {
+      clearAsked(view.typeId);
+      setFailure({
+        message: outcome.message,
+        held: outcome.refusal.kind === 'held',
+      });
+      return false;
     }
+    setAnnouncement(
+      `No attribute of the ${view.name} type is encrypted any more.`,
+    );
+    return true;
   };
 
   /**
@@ -583,29 +554,11 @@ export default function EncryptedAttributesSection() {
           key={view.typeId}
           view={view}
           switchGeneration={switchGenerations.get(view.typeId) ?? 0}
-          disabled={readOnly || busy}
+          disabled={readOnly}
           onChange={(next) => handleChange(view, next)}
           onRequestOpenChange={(open) => requestOpenChange(view, open)}
         />
       ))}
-
-      {/* Every checkbox above is disabled while a codebook write is in flight,
-          so a tick made in that window reaches nothing. Saying the section is
-          saving is what keeps that from being silent: without it a researcher
-          ticks a second attribute, watches the box refuse to move, and is told
-          neither why nor that a change is already on its way. A live region
-          rather than an `aria-busy` one: `aria-busy` tells a screen reader to
-          hold an announcement back until it clears, and this sentence is only
-          ever on screen while it would not. */}
-      {busy && (
-        <Paragraph
-          render={<output aria-live="polite" className="block" />}
-          margin="none"
-          emphasis="muted"
-        >
-          {intl.formatMessage(codebookEditingMessages.saving)}
-        </Paragraph>
-      )}
 
       {/* Mounted with the section rather than with the message, so the first
           announcement updates a region that was already there. */}

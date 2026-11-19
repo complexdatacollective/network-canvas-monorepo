@@ -34,7 +34,9 @@ const alterFormStage = {
   type: 'AlterForm',
   label: { en: 'Alter form' },
   subject: { entity: 'node', type: 'person' },
-  form: { fields: [{ variable: 'category', prompt: { en: 'Answer' } }] },
+  form: {
+    fields: [{ id: 'field-1', variable: 'category', prompt: { en: 'Answer' } }],
+  },
 };
 
 const categoricalBinStage = {

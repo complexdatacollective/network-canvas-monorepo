@@ -234,7 +234,11 @@ describe('the name generator editor', () => {
       form: {
         title: { 'en-US': 'Add a person' },
         fields: [
-          { variable: 'name', prompt: { 'en-US': 'What is their name?' } },
+          {
+            id: expect.any(String),
+            variable: 'name',
+            prompt: { 'en-US': 'What is their name?' },
+          },
         ],
       },
       prompts: [

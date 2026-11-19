@@ -1604,9 +1604,10 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           (`sections/Form/FieldFields.tsx`): the rules the participant's answer
           has to satisfy, authored where the question is rather than behind a
           button. They belong to the codebook attribute, so a bound attribute's
-          rules commit under the codebook section's own lock; an attribute this
-          row is still inventing has no record to write to, and its rules ride
-          along with the create. */}
+          rules are a codebook change, kept with this row until it is saved and
+          then with the stage (see `StagedCodebookStore`); an attribute this row
+          is still inventing has no record to change, and its rules ride along
+          with the create. */}
       {inventing
         ? isCollectableType(newType) && (
             <DraftVariableValidationSection

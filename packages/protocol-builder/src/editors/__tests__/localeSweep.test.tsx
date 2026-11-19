@@ -50,7 +50,13 @@ const PANELLED_NAME_GENERATOR: SectionDoc = {
   subject: { entity: 'node', type: 'person' },
   form: {
     title: 'Add a person',
-    fields: [{ variable: 'name', prompt: "What is this person's name?" }],
+    fields: [
+      {
+        id: 'field-1',
+        variable: 'name',
+        prompt: "What is this person's name?",
+      },
+    ],
   },
   prompts: [
     {

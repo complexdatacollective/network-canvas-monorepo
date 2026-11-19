@@ -286,7 +286,11 @@ describe('Protocol Summary form text that shows values', () => {
             dynamicValues: { nick: { path: 'node.nick' } },
             form: {
               fields: [
-                { variable: 'age', prompt: { en: 'How old is {nick}?' } },
+                {
+                  id: 'field-1',
+                  variable: 'age',
+                  prompt: { en: 'How old is {nick}?' },
+                },
               ],
             },
           }}

@@ -38,7 +38,13 @@ const nameGeneratorWith = (panels: SectionDoc[]) => ({
     subject: { entity: 'node', type: 'person' },
     form: {
       title: { 'en-US': 'Add a person' },
-      fields: [{ variable: 'name', prompt: "What is this person's name?" }],
+      fields: [
+        {
+          id: 'field-1',
+          variable: 'name',
+          prompt: "What is this person's name?",
+        },
+      ],
     },
     prompts: [
       { id: 'prompt-1', text: { 'en-US': 'Who are the people you know?' } },

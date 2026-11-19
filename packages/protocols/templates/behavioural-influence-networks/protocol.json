@@ -238,6 +238,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "activity_minutes_week",
             "prompt": {
               "en": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level?"
@@ -247,24 +248,28 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "smoking_status",
             "prompt": {
               "en": "Which best describes your **cigarette smoking**?"
             }
           },
           {
+            "id": "field-3",
             "variable": "vaping_status",
             "prompt": {
               "en": "Which best describes your use of **e-cigarettes or vapes**?"
             }
           },
           {
+            "id": "field-4",
             "variable": "diet_quality",
             "prompt": {
               "en": "In general, how healthy would you say your **diet** is?"
             }
           },
           {
+            "id": "field-5",
             "variable": "alcohol_frequency",
             "prompt": {
               "en": "How often do you have a drink containing **alcohol**?"
@@ -283,6 +288,7 @@
         "title": { "en": "Add Person" },
         "fields": [
           {
+            "id": "field-1",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
@@ -348,6 +354,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "shared_domains",
             "prompt": {
               "en": "Which of these activities do you ever do **with {nodeLabel}**?"
@@ -355,28 +362,33 @@
             "hint": { "en": "Select all that apply." }
           },
           {
+            "id": "field-2",
             "variable": "relationship",
             "prompt": { "en": "What is your relationship to {nodeLabel}?" }
           },
           {
+            "id": "field-3",
             "variable": "alter_smokes",
             "prompt": {
               "en": "As far as you know, does {nodeLabel} **smoke**?"
             }
           },
           {
+            "id": "field-4",
             "variable": "alter_activity",
             "prompt": {
               "en": "How **physically active** would you say {nodeLabel} is?"
             }
           },
           {
+            "id": "field-5",
             "variable": "alter_diet",
             "prompt": {
               "en": "How **healthy** would you say {nodeLabel}'s diet is?"
             }
           },
           {
+            "id": "field-6",
             "variable": "alter_drinks",
             "prompt": {
               "en": "How often does {nodeLabel} **drink alcohol**, as far as you know?"

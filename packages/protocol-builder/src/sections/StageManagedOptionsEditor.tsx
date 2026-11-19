@@ -34,10 +34,11 @@ import { useProtocolContext } from '../state/protocolContext.ts';
  * codebook write: the editor is not given the stage-managed lock because the
  * researcher is editing from a stage that owns it.
  *
- * Written to the codebook straight away, under that section's lock, like every
- * other codebook edit made from inside a stage; whatever the stage keeps beside
- * the options stays in its unsaved draft until the stage is saved. A stage that
- * keeps something about each option chooses it on the option's own row
+ * Kept with the stage's draft when the attribute editor is saved, like every
+ * other codebook edit made from inside a stage (see `StagedCodebookStore`), so
+ * the options and whatever the stage keeps beside them are saved together with
+ * the stage, and cancelling the stage undoes both. A stage that keeps
+ * something about each option chooses it on the option's own row
  * (`editorOptions.optionRowChoice`) and is handed the result in `onSaved`, to
  * write into its draft.
  *

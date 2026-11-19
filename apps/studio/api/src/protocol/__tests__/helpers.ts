@@ -199,7 +199,13 @@ export function baseProtocol(): CurrentProtocol {
           subject: { entity: 'node', type: 'person' },
           form: {
             title: { en: 'Add person' },
-            fields: [{ variable: 'personName', prompt: { en: 'Enter name' } }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'personName',
+                prompt: { en: 'Enter name' },
+              },
+            ],
           },
           prompts: [{ id: 'prompt1', text: { en: 'Who do you know?' } }],
         },

@@ -336,7 +336,13 @@ describe('generateNetwork', () => {
     });
     const generator = makeNameGeneratorStage({
       form: {
-        fields: [{ variable: 'var-name', prompt: 'What is their name?' }],
+        fields: [
+          {
+            id: 'field-1',
+            variable: 'var-name',
+            prompt: 'What is their name?',
+          },
+        ],
       },
       behaviours: { minNodes: 3, maxNodes: 3 },
     });
@@ -1175,7 +1181,11 @@ describe('generateNetwork', () => {
     it('keeps roster values through the form field pass', () => {
       const stage = makeNameGeneratorStage({
         behaviours: { minNodes: 3, maxNodes: 3 },
-        form: { fields: [{ variable: 'var-name', prompt: 'Their name' }] },
+        form: {
+          fields: [
+            { id: 'field-1', variable: 'var-name', prompt: 'Their name' },
+          ],
+        },
       });
 
       const { network } = generateNetwork({
@@ -1374,7 +1384,11 @@ describe('generateNetwork', () => {
         id: 'stage-aef-draft',
         label: 'Alter Edge Form',
         type: 'AlterEdgeForm',
-        form: { fields: [{ variable: 'var-strength', prompt: 'Strength' }] },
+        form: {
+          fields: [
+            { id: 'field-1', variable: 'var-strength', prompt: 'Strength' },
+          ],
+        },
       } as unknown as Stage;
 
       const withoutDraft = generateNetwork({

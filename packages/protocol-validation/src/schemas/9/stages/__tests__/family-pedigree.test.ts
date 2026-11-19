@@ -158,7 +158,13 @@ describe('familyPedigreeStage', () => {
       familyPedigreeStage.safeParse({
         ...base,
         form: {
-          fields: [{ variable: 'age', prompt: localized('How old are they?') }],
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'age',
+              prompt: localized('How old are they?'),
+            },
+          ],
         },
       }).success,
     ).toBe(true);
@@ -588,7 +594,11 @@ describe('FamilyPedigree in a whole protocol', () => {
         withFinishStage(
           protocolWith({
             ...base,
-            form: { fields: [{ variable, prompt: localized('Tell us') }] },
+            form: {
+              fields: [
+                { id: 'field-1', variable, prompt: localized('Tell us') },
+              ],
+            },
           }),
         ),
       );
@@ -627,7 +637,9 @@ describe('FamilyPedigree in a whole protocol', () => {
           nominationPrompts: [
             { id: 'heart', text: localized('Who?'), attribute: 'hd' },
           ],
-          form: { fields: [{ variable, prompt: localized('Tell us') }] },
+          form: {
+            fields: [{ id: 'field-1', variable, prompt: localized('Tell us') }],
+          },
         }),
         ['stages', 0, 'form', 'fields', 0, 'variable'],
       );
@@ -737,7 +749,11 @@ describe('FamilyPedigree in a whole protocol', () => {
 
     it('refuses an additional person field, or another of the stage’s answers, on the same attribute', () => {
       const asField = withRelationship('rel', {
-        form: { fields: [{ variable: 'rel', prompt: localized('Who?') }] },
+        form: {
+          fields: [
+            { id: 'field-1', variable: 'rel', prompt: localized('Who?') },
+          ],
+        },
       });
       expect(
         issuesAt(asField, ['stages', 0, 'form', 'fields', 0, 'variable']),
@@ -809,7 +825,11 @@ describe('FamilyPedigree in a whole protocol', () => {
       ...base,
       form: {
         fields: [
-          { variable: 'isEgo', prompt: localized('Are you the participant?') },
+          {
+            id: 'field-1',
+            variable: 'isEgo',
+            prompt: localized('Are you the participant?'),
+          },
         ],
       },
     };

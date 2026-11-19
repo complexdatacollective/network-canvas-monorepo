@@ -343,15 +343,16 @@ const rowRefusal = (outcome: CodebookWriteOutcome, intl: IntlShape): string => {
 /**
  * Adds an attribute to the codebook from inside a stage editor.
  *
- * The write commits on its own, under the codebook section's own lock, before
- * the row that names the attribute is committed: an attribute exists in the
- * codebook the moment it is created, and cancelling the stage edit leaves it
- * there. That is what lets a row reference it at all.
+ * The attribute is kept with the stage's draft, as every codebook change made
+ * inside a stage editor is (see `StagedCodebookStore`), before the row that
+ * names it is committed: it exists in the codebook the editor shows the moment
+ * it is created, which is what lets a row reference it at all, and it reaches
+ * the protocol with the stage — or, if the stage is cancelled, never.
  *
- * Every refusal is answered rather than thrown: a section a collaborator is
- * holding, a name they have just taken, a type deleted underneath the stage
+ * Every refusal is answered rather than thrown: a name already taken, a type
+ * deleted underneath the stage, a stage that is not this editor's to change
  * are all things the researcher can act on, and all of them mean the same
- * thing to the caller — nothing was written, so do not commit the row.
+ * thing to the caller — nothing was kept, so do not commit the row.
  *
  * What each refusal READS like is this package's own words, never the host's.
  * See `refusalMessage`, which reads what the schema refused and says it where

@@ -4,6 +4,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -26,15 +27,17 @@ import {
 } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import {
   hasSuppliedWording,
-  type LocalizedString,
   type StageType,
 } from '@codaco/protocol-validation';
 
 import {
-  pendingWordingResets,
   sharedWordingFieldName,
+  sharedWordingResets,
 } from '../../form/sharedWordingDraft.ts';
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import {
+  type StageFormStoreApi,
+  useStageEditorForm,
+} from '../../form/stageEditorContext.ts';
 import { stageAnswerAt } from '../../form/stageFormHooks.ts';
 import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
 import { SHARED_WORDING_PATH } from '../../stageDocument.ts';
@@ -43,13 +46,9 @@ import { useLatest } from '../../state/useLatest.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import SharedStageWording from './SharedStageWording.tsx';
 import {
-  carryHandedOverWording,
-  sharedWordingChanges,
+  rewordsSharedWording,
   type SharedWordingGroup,
-  type SharedWordingWrites,
   useSharedStageWording,
-  useSharedWordingWrites,
-  useWriteSharedWording,
 } from './sharedWordingState.ts';
 import { stageWordingMessages as messages } from './stageWordingMessages.ts';
 import { useSuppliedStageWording } from './suppliedStageWording.ts';
@@ -60,13 +59,36 @@ const asFieldValue = (value: unknown): FieldValue =>
 
 const NO_PATHS: readonly string[] = Object.freeze([]);
 
-/** What the saved protocol shows for one shared entry the stage uses, if it shows it. */
-const heldIn =
-  (groups: readonly SharedWordingGroup[]) =>
-  (group: string, key: string): LocalizedString | undefined =>
-    groups
-      .find((candidate) => candidate.group === group)
-      ?.entries.find(([held]) => held === key)?.[1];
+/**
+ * Puts each reset whose field is on screen back in the form once the field
+ * has gone, and answers with how to stop waiting.
+ *
+ * A section switching off empties the fields it closes over as they go. The
+ * stage's own wording does not mind, as an emptied setting reads as Network
+ * Canvas's wording; but a shared word is no setting of the stage's, and its
+ * field emptied would read as wording the researcher deleted. So the shared
+ * words the section puts back are put back again as each field leaves.
+ */
+function keepThroughDiscard(
+  storeApi: StageFormStoreApi,
+  resets: readonly Readonly<{ name: string; value: FieldValue }>[],
+): () => void {
+  let waiting = resets.filter(({ name }) =>
+    storeApi.getState().fields.has(name),
+  );
+  if (waiting.length === 0) return () => undefined;
+  const unsubscribe = storeApi.subscribe(() => {
+    const { fields } = storeApi.getState();
+    const gone = waiting.filter(({ name }) => !fields.has(name));
+    if (gone.length === 0) return;
+    waiting = waiting.filter(({ name }) => fields.has(name));
+    if (waiting.length === 0) unsubscribe();
+    for (const { name, value } of gone) {
+      storeApi.getState().setFieldValue(name, value);
+    }
+  });
+  return unsubscribe;
+}
 
 type StageWordingSectionProps = Readonly<{
   stageType: StageType;
@@ -86,8 +108,9 @@ type StageWordingSectionProps = Readonly<{
  *
  * Optional. Switched off, the stage reads as Network Canvas words it in every
  * language, including one added later, so switching off puts that wording
- * back, the shared words with it (asking
- * first if the researcher changed any of it). It starts on when the stage or
+ * back, the shared words with it (asking first if the researcher changed any
+ * of it). Like every change made in the stage editor, putting it back is part
+ * of the stage's draft, saved with the stage and thrown away with it. It starts on when the stage or
  * the shared words already hold wording of the researcher's own, and whenever
  * the protocol has more than one language, so a translation still to be
  * written is in view.
@@ -103,51 +126,14 @@ export default function StageWordingSection({
 }: StageWordingSectionProps) {
   const intl = useAppIntl();
   const { confirm } = useDialog();
-  const {
-    storeApi,
-    committedFields,
-    applyOwnCommands,
-    reportRefusedWrite,
-    readOnly,
-  } = useStageEditorForm();
+  const { storeApi, committedFields, applyOwnCommands } = useStageEditorForm();
   const localization = useProtocolLocalization();
   const latestProtocol = useLatest(useProtocolContext());
   const supplied = useSuppliedStageWording(stageType);
   const shared = useSharedStageWording();
-  const writeShared = useWriteSharedWording();
-  const sharedWrites = useSharedWordingWrites(shared);
-
-  // A shared word held with the stage that the protocol comes to hold while
-  // the stage is open (a collaborator saved a stage that uses it) is no
-  // longer saved with this one. A change the researcher made to it is then
-  // written as a change to a held word is, once they are out of its field,
-  // as their own edit of a held word would be; one they did not make leaves
-  // the collaborator's wording standing (see `carryHandedOverWording`).
-  useEffect(() => {
-    if (readOnly || localization === undefined) return;
-    sharedWrites.release(storeApi);
-    const carry = async () => {
-      const outcome = await carryHandedOverWording({
-        storeApi,
-        writes: sharedWrites,
-        held: heldIn(shared),
-        localization,
-        intl,
-      });
-      if (outcome !== undefined && outcome.status !== 'applied') {
-        reportRefusedWrite(outcome.message);
-      }
-    };
-    void carry();
-  }, [
-    intl,
-    localization,
-    readOnly,
-    reportRefusedWrite,
-    shared,
-    sharedWrites,
-    storeApi,
-  ]);
+  // Ended with the section, so nothing is put in a form that has gone.
+  const stopKeeping = useRef<(() => void) | undefined>(undefined);
+  useEffect(() => () => stopKeeping.current?.(), []);
 
   const differsFromSupplied = useCallback(
     (read: (path: string) => unknown) =>
@@ -164,8 +150,7 @@ export default function StageWordingSection({
     differsFromSupplied((path) =>
       stageAnswerAt(storeApi.getState(), committedFields, path),
     ) ||
-    (localization !== undefined &&
-      sharedWordingChanges(shared, localization).length > 0);
+    (localization !== undefined && rewordsSharedWording(shared, localization));
   // Decided once, as the section mounts, but not before the protocol's
   // languages are read: the stage can open a moment before its settings.
   const [startOn, setStartOn] = useState(shouldStartOn);
@@ -181,53 +166,29 @@ export default function StageWordingSection({
     if (supplied === undefined || localization === undefined) return false;
     const liveValue = (path: string) =>
       stageAnswerAt(storeApi.getState(), committedFields, path);
-    // A shared word written as its field was left, by the same press that
-    // reached this switch, counts: decided from what it will hold, and not
-    // landing after the reset.
-    const sharedChanges = sharedWordingChanges(
-      await sharedWrites.settle(),
-      localization,
-    );
-    // Those held with the stage are put back in the form, with the stage's
-    // own wording, and are saved, as it is, with the stage: hidden by their
-    // setting or not, as a hidden stage setting is put back too.
-    const pendingChanges = pendingWordingResets(
+    // The shared words are put back in the form with the stage's own
+    // wording, and saved, as it is, with the stage: hidden by their setting
+    // or not, as a hidden stage setting is put back too, and whether or not
+    // the form has shown them yet.
+    const sharedResets = sharedWordingResets(
       storeApi,
       latestProtocol(),
+      shared,
       localization,
     );
-    const stayOn = () => {
-      sharedWrites.resume();
-      return false;
-    };
     if (
       differsFromSupplied(liveValue) ||
-      sharedChanges.length > 0 ||
-      pendingChanges.length > 0
+      sharedResets.some(({ changed }) => changed)
     ) {
       const confirmed = await confirm({
         title: intl.formatMessage(messages.switchOffTitle),
-        description: intl.formatMessage(
-          sharedChanges.length > 0
-            ? messages.switchOffSharedDescription
-            : messages.switchOffDescription,
-        ),
+        description: intl.formatMessage(messages.switchOffDescription),
         confirmLabel: intl.formatMessage(messages.switchOffConfirm),
         cancelLabel: intl.formatMessage(commonMessages.cancel),
         intent: 'warning',
         onConfirm: () => undefined,
       });
-      if (confirmed !== true) return stayOn();
-    }
-
-    // The shared words first, since they are written at once and can be
-    // refused: a section that stayed on over a refusal has lost nothing.
-    if (sharedChanges.length > 0) {
-      const outcome = await writeShared(sharedChanges);
-      if (outcome.status !== 'applied') {
-        reportRefusedWrite(outcome.message);
-        return stayOn();
-      }
+      if (confirmed !== true) return false;
     }
 
     const resets = paths.flatMap((path) => {
@@ -246,15 +207,17 @@ export default function StageWordingSection({
         value,
       })),
     );
-    if (refused) return stayOn();
+    if (refused) return false;
     const { fields, dormantValues } = storeApi.getState();
     for (const { path, value } of resets) {
       if (!fields.has(path) && !dormantValues.has(path)) continue;
       storeApi.getState().setFieldValue(path, asFieldValue(value));
     }
-    for (const { name, value } of pendingChanges) {
-      storeApi.getState().setFieldValue(name, asFieldValue(value));
+    for (const { name, value, changed } of sharedResets) {
+      if (changed) storeApi.getState().setFieldValue(name, value);
     }
+    stopKeeping.current?.();
+    stopKeeping.current = keepThroughDiscard(storeApi, sharedResets);
     return true;
   }, [
     applyOwnCommands,
@@ -265,11 +228,9 @@ export default function StageWordingSection({
     latestProtocol,
     localization,
     paths,
-    reportRefusedWrite,
-    sharedWrites,
+    shared,
     storeApi,
     supplied,
-    writeShared,
   ]);
 
   if (paths.length === 0 && shared.length === 0) return null;
@@ -293,9 +254,9 @@ export default function StageWordingSection({
       {shared.length === 0 ? (
         children
       ) : paths.length === 0 ? (
-        <SharedStageWording groups={shared} writes={sharedWrites} />
+        <SharedStageWording groups={shared} />
       ) : (
-        <WordingParts paths={paths} shared={shared} writes={sharedWrites}>
+        <WordingParts paths={paths} shared={shared}>
           {children}
         </WordingParts>
       )}
@@ -321,12 +282,10 @@ const refusesSetting = (issuePath: readonly PropertyKey[], path: string) =>
 function WordingParts({
   paths,
   shared,
-  writes,
   children,
 }: Readonly<{
   paths: readonly string[];
   shared: readonly SharedWordingGroup[];
-  writes: SharedWordingWrites;
   children: ReactNode;
 }>) {
   const intl = useAppIntl();
@@ -348,9 +307,9 @@ function WordingParts({
     paths.some((path) => refusesSetting(issue.path, path)),
   );
   const refused = fieldRefused || issueRefused;
-  // A shared word held with the stage is saved with it, so a save it refuses
-  // opens the shared part over the field that answers for it, as a refused
-  // setting opens the stage's own.
+  // A shared word is saved with the stage, so a save it refuses opens the
+  // shared part over the field that answers for it, as a refused setting
+  // opens the stage's own.
   const sharedFieldRefused = useSyncExternalStore(storeApi.subscribe, () =>
     shared.some(({ group, keys }) =>
       keys.some(
@@ -389,7 +348,7 @@ function WordingParts({
     {
       value: SHARED,
       title: messages.sharedHeading,
-      body: <SharedStageWording groups={shared} writes={writes} />,
+      body: <SharedStageWording groups={shared} />,
     },
   ];
 

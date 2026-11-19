@@ -116,7 +116,11 @@ const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const stageFields: SectionDoc = {
   label: { en: 'Details' },
   subject: { entity: 'node', type: 'person' },
-  form: { fields: [{ variable: 'age', prompt: { en: 'How old are they?' } }] },
+  form: {
+    fields: [
+      { id: 'field-1', variable: 'age', prompt: { en: 'How old are they?' } },
+    ],
+  },
 };
 
 const baseSections: Record<string, SectionDoc> = {

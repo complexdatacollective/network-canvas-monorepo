@@ -168,6 +168,7 @@ export const SwitchingLanguage: Story = {
           title: { 'en-US': 'About you' },
           fields: [
             {
+              id: 'field-1',
               variable: 'ego_name',
               prompt: {
                 'en-US': 'What is your name?',

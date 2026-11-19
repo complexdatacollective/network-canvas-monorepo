@@ -62,8 +62,12 @@ beforeAll(() => {
 
 const form: TitlelessForm = {
   fields: [
-    { variable: 'name' as never, prompt: { en: 'Person name' } },
-    { variable: 'met_on' as never, prompt: { en: 'When you met' } },
+    { id: 'field-1', variable: 'name' as never, prompt: { en: 'Person name' } },
+    {
+      id: 'field-2',
+      variable: 'met_on' as never,
+      prompt: { en: 'When you met' },
+    },
   ],
 };
 

@@ -4,23 +4,27 @@ import { FieldLabel } from '@codaco/fresco-ui/form/FieldLabel';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { EditingLanguageSwitcher } from '../localization/EditingLanguageSwitcher.tsx';
+import { useAutoStageName } from '../naming/useAutoStageName.ts';
 import { useStageNameField } from '../naming/useStageNameField.ts';
+import { useStandingStageNameProposal } from '../naming/useStandingStageNameProposal.ts';
 import StageNameInput from './StageNameInput.tsx';
 
 export type StageNameFieldProps = Readonly<{
   /** Put on the field's own element, beside the classes it always carries. */
   className?: string;
   /**
-   * `useAutoStageName().onBlur`, for a host that proposes names. Passed in
-   * rather than reached for: a host that has not opted into that policy must
-   * not get half of it by rendering this.
+   * Whether a stage being created is named, unasked, from what it collects
+   * (`useAutoStageName`), with a proposed name selected as the control gains
+   * focus so typing replaces it. Both halves of that policy or neither: a
+   * host that has not opted in must not get half of it by rendering this, so
+   * the opt-in is a prop it has to pass rather than something reached for.
    */
+  proposeName?: boolean;
+}>;
+
+type StageNameControlProps = Readonly<{
+  className: string | undefined;
   onBlur?: () => void;
-  /**
-   * `useStandingStageNameProposal().isStanding`, for a host that proposes
-   * names: a proposed name is selected as the control gains focus, so typing
-   * replaces it.
-   */
   selectOnFocus?: () => boolean;
 }>;
 
@@ -40,9 +44,39 @@ export type StageNameFieldProps = Readonly<{
  */
 export default function StageNameField({
   className,
+  proposeName = false,
+}: StageNameFieldProps) {
+  return proposeName ? (
+    <ProposingStageNameControl className={className} />
+  ) : (
+    <StageNameControl className={className} />
+  );
+}
+
+/**
+ * The control with the proposal policy beside it: `useAutoStageName` is the
+ * one writer of a proposed name, and belongs beside the one caller of
+ * `useStageNameField`.
+ */
+function ProposingStageNameControl({
+  className,
+}: Readonly<{ className: string | undefined }>) {
+  const { onBlur } = useAutoStageName();
+  const { isStanding } = useStandingStageNameProposal();
+  return (
+    <StageNameControl
+      className={className}
+      onBlur={onBlur}
+      selectOnFocus={isStanding}
+    />
+  );
+}
+
+function StageNameControl({
+  className,
   onBlur,
   selectOnFocus,
-}: StageNameFieldProps) {
+}: StageNameControlProps) {
   const { id, label, error, translations, containerProps, fieldProps } =
     useStageNameField();
   const elementIds = fieldElementIds(id);

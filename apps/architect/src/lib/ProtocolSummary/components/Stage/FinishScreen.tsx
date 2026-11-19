@@ -5,30 +5,23 @@ import {
   finishOutcomeWords,
   finishSessionMessages,
 } from '@codaco/protocol-builder/editors/finish-session/finishSessionMessages';
-import { stageWordingMessages } from '@codaco/protocol-builder/sections/supplied-wording/stageWordingMessages';
 import type {
   FinishMode,
   FinishOutcome,
   LocalizedString,
 } from '@codaco/protocol-validation';
 
-import MiniTable from '../MiniTable';
-import { SummaryMarkdown, SummaryText } from '../SummaryText';
+import { SummaryMarkdown } from '../SummaryText';
 import SectionFrame from './SectionFrame';
-
-/** The words a participant sees while finishing the interview. */
-type FinishingText = {
-  finishLabel?: LocalizedString;
-  finishConfirmation?: LocalizedString;
-  finishFailed?: LocalizedString;
-};
+import StageWording, { type SummaryStage } from './StageWording';
 
 type FinishScreenProps = {
   mode?: FinishMode;
   content?: LocalizedString | null;
   finishedContent?: LocalizedString | null;
   outcome?: FinishOutcome | null;
-  finishing?: FinishingText;
+  /** The stage, for the words a participant sees while finishing. */
+  stage: SummaryStage;
 };
 
 /**
@@ -43,22 +36,9 @@ const FinishScreen = ({
   content = null,
   finishedContent = null,
   outcome = null,
-  finishing = {},
+  stage,
 }: FinishScreenProps) => {
   const intl = useAppIntl();
-  const finishingRows = (
-    [
-      ['finishLabel', finishSessionMessages.finishLabelLabel],
-      ['finishConfirmation', finishSessionMessages.finishConfirmationLabel],
-      ['finishFailed', finishSessionMessages.finishFailedLabel],
-    ] as const
-  ).flatMap(([key, label]) => {
-    const value = finishing[key];
-    return value === undefined ||
-      (key === 'finishConfirmation' && mode !== 'confirmation')
-      ? []
-      : [[intl.formatMessage(label), <SummaryText key={key} value={value} />]];
-  });
   return (
     <>
       <SectionFrame title={intl.formatMessage(finishSessionMessages.modeLabel)}>
@@ -84,11 +64,12 @@ const FinishScreen = ({
           </div>
         </SectionFrame>
       )}
-      {finishingRows.length > 0 && (
-        <SectionFrame title={intl.formatMessage(stageWordingMessages.title)}>
-          <MiniTable rotated rows={finishingRows} />
-        </SectionFrame>
-      )}
+      <StageWording
+        stage={stage}
+        omits={(path) =>
+          path === 'finishConfirmation' && mode !== 'confirmation'
+        }
+      />
       {outcome && (
         <SectionFrame
           title={intl.formatMessage(finishSessionMessages.outcomeLabel)}

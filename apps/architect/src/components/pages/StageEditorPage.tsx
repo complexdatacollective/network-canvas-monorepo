@@ -14,14 +14,13 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import { DialogDraftRegistrarContext } from '@codaco/protocol-builder/form/dialogDraftRegistrar';
 import { SectionHeaderActionContext } from '@codaco/protocol-builder/form/sectionHeaderAction';
+import { declaredTranslationText } from '@codaco/protocol-builder/localization/localizedText';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
 import { isStageType } from '@codaco/protocol-builder/stage-types';
 import type { StageEditTarget } from '@codaco/protocol-builder/stageEdit';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { registerStageDialogDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
@@ -53,7 +52,6 @@ import {
   getStage,
   getStageIndex,
 } from '~/selectors/protocol';
-import { localizedText } from '~/utils/localizedText';
 const messages = defineMessages({
   stageNotFound: {
     id: 'architect.stageEditor.stageEditor.stageNotFound',
@@ -203,7 +201,7 @@ const StageEditorPage = () => {
 
   const target = useMemo<StageEditTarget | undefined>(() => {
     if (stageId !== null) {
-      return { sectionId: sectionId({ kind: 'stage', stageId }) };
+      return { stageId };
     }
     if (requestedType === null || !isStageType(requestedType)) return undefined;
     // No fields: the package seeds a new stage from the interface's own
@@ -294,8 +292,8 @@ const StageEditorPage = () => {
   const localization = useSelector(getLocalization);
   const draftLabel = useStageDraft((beacon) => beacon.stage?.label);
   const stageName =
-    localizedText(draftLabel, localization) ||
-    localizedText(stage?.label, localization) ||
+    declaredTranslationText(draftLabel, localization) ||
+    declaredTranslationText(stage?.label, localization) ||
     intl.formatMessage(messages.newStage);
 
   const renderChrome = useCallback(
@@ -416,34 +414,31 @@ const StageEditorPage = () => {
               package states nothing of its own.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
+              {/*
+                A row being written in one of the editor's dialogs is unsaved
+                work the stage's own draft knows nothing about, so Back and a
+                refresh ask about it too.
+              */}
               <ProtocolBuilder
                 adapter={client.adapter}
                 protocolId={activeProtocolId}
+                dialogDraftRegistrar={registerStageDialogDraft}
               >
-                {/*
-                  A row being written in one of the editor's dialogs is
-                  unsaved work the stage's own draft knows nothing about, so
-                  Back and a refresh ask about it too.
-                */}
-                <DialogDraftRegistrarContext.Provider
-                  value={registerStageDialogDraft}
+                <SectionHeaderActionContext
+                  value={renderSectionWalkthroughButton}
                 >
-                  <SectionHeaderActionContext
-                    value={renderSectionWalkthroughButton}
-                  >
-                    <EnclosingHeadingLevel level="h2">
-                      <StageEditor
-                        key={editorGeneration}
-                        target={target}
-                        formId={STAGE_FORM_ID}
-                        actions={renderChrome}
-                        header={renderHeader}
-                        onSaved={handleSaved}
-                        registry={architectStageEditors}
-                      />
-                    </EnclosingHeadingLevel>
-                  </SectionHeaderActionContext>
-                </DialogDraftRegistrarContext.Provider>
+                  <EnclosingHeadingLevel level="h2">
+                    <StageEditor
+                      key={editorGeneration}
+                      target={target}
+                      formId={STAGE_FORM_ID}
+                      actions={renderChrome}
+                      header={renderHeader}
+                      onSaved={handleSaved}
+                      registry={architectStageEditors}
+                    />
+                  </EnclosingHeadingLevel>
+                </SectionHeaderActionContext>
               </ProtocolBuilder>
             </div>
           </div>

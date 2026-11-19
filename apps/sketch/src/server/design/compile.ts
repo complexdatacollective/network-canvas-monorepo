@@ -686,6 +686,7 @@ export const compile = (
       ? ''
       : W.question.get(qk);
     return {
+      id: `field-${key(scope, attrId)}`,
       variable: key(scope, attrId),
       prompt: localized(pick(polished, a.question, a.label)),
     };
@@ -975,6 +976,7 @@ export const compile = (
                 ),
                 fields: [
                   {
+                    id: `field-${nameKey}`,
                     variable: nameKey,
                     prompt: localized(
                       pick(W.question.get(`${scope}/name`), n.nameQuestion),
@@ -1097,6 +1099,7 @@ export const compile = (
         const composerField = (sc: string, a: string) => {
           const f = field(sc, a);
           return {
+            id: f.id,
             variable: f.variable,
             component: variableFor(attrIn(sc, a)!, a, true).component,
             label: f.prompt,

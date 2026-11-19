@@ -4702,8 +4702,8 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
     background: { concentricCircles: 4 },
     nodeForm: {
       fields: [
-        { variable: 'boolA', component, label: localized('A?') },
-        { variable: 'boolB', component, label: localized('B?') },
+        { id: 'field-1', variable: 'boolA', component, label: localized('A?') },
+        { id: 'field-2', variable: 'boolB', component, label: localized('B?') },
       ],
     },
   });
@@ -4868,16 +4868,19 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
           nodeForm: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'boolA',
                 component: 'Boolean',
                 label: localized('A?'),
               },
               {
+                id: 'field-2',
                 variable: 'boolB',
                 component: 'Boolean',
                 label: localized('B?'),
               },
               {
+                id: 'field-3',
                 variable: 'boolC',
                 component: 'Boolean',
                 label: localized('C?'),

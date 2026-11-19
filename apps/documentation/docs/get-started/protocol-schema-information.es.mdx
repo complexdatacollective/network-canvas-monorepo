@@ -3,7 +3,7 @@ title: Información sobre el esquema de protocolo
 wip: false
 navOrder: 3
 date: 22nd October 2026
-translatedFrom: 17cf1326ef9549f86b15b8163626a37eac49b11d
+translatedFrom: 58bbf46afd2d8af202e740004f9985ef022e0b19
 ---
 
 ## Resumen {#summary}
@@ -142,6 +142,7 @@ Migrar un protocolo del esquema 8 al esquema 9 conserva todo su contenido, y los
 - asigna una etiqueta a cada tipo de vínculo que se dibuja en una vista predefinida de una etapa «Narrativa» y a cada tipo de vínculo que quienes participan pueden trazar en una etapa «Compositor de redes»; inicialmente, la etiqueta es el nombre del tipo de vínculo.
 - asigna una etiqueta a cada atributo destacado en una vista predefinida de una etapa «Narrativa»; inicialmente, la etiqueta es el nombre del atributo.
 - asigna una etiqueta a cada campo sin etiqueta de una etapa «Compositor de redes»; inicialmente, la etiqueta es el nombre del atributo.
+- asigna a cada campo de formulario un `id` propio, que lo identifica dentro de su formulario, como `field-1`. Los campos que ya tienen un `id` lo conservan. Architect asigna un `id` a cada campo que añade, así que todos los campos de un protocolo de esquema 9 tienen uno, y un protocolo con campos de formulario sin `id` no es un protocolo de esquema 9 válido.
 - no escribe en el protocolo nada de lo que aporta Network Canvas, ni la redacción de las etapas ni el texto de entrevista, de modo que cada etapa se lee como siempre hasta que cambies esa redacción (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
 - añade al final una etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen), porque todo protocolo del esquema 9 debe terminar con una. La pantalla que cierra la entrevista es ahora una etapa «Pantalla de finalización» al final de tu protocolo, así que puedes cambiar su texto de cierre y su texto de entrevista finalizada y traducirlos como el resto del protocolo. Cada participante confirma que ha terminado, como siempre. Su texto de cierre es inicialmente el texto que la entrevista ha mostrado siempre en ese lugar, y su texto de entrevista finalizada, «Interview Finished» y «Thank you for participating!», ambos registrados como inglés. Su resultado es **Completada**. El ID de la etapa es `finish`, o `finish-2` y así sucesivamente si otra etapa ya tiene ese ID.
 - traslada el panel de introducción de cada etapa «Formulario por álter», «Formulario de vínculos por álter», «Censo de díadas» o «Censo de fuerza de vínculos» a una etapa [«Información»](/es/design-protocols/interface-documentation/information) situada justo antes de la etapa de origen, con el título y el texto del panel. La nueva etapa tiene la misma lógica de salto, de modo que se omite siempre que se omite la etapa de origen, y la lógica de salto que tenía esa etapa como destino ahora lleva a la nueva etapa «Información». Una etapa «Formulario del ego» conserva su panel de introducción.

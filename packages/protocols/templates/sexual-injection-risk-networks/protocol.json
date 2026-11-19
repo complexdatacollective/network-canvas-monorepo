@@ -230,10 +230,12 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "ego_hiv_status",
             "prompt": { "en": "What is your current HIV status?" }
           },
           {
+            "id": "field-2",
             "variable": "on_prep",
             "prompt": {
               "en": "Are you currently taking PrEP to prevent HIV?"
@@ -241,6 +243,7 @@
             "hint": { "en": "PrEP stands for pre-exposure prophylaxis." }
           },
           {
+            "id": "field-3",
             "variable": "on_art",
             "prompt": {
               "en": "{egoHivStatus, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} positive {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
@@ -250,6 +253,7 @@
             }
           },
           {
+            "id": "field-4",
             "variable": "last_hiv_test",
             "prompt": {
               "en": "When did you most recently take an HIV test?"
@@ -257,6 +261,7 @@
             "hint": { "en": "An approximate month and year is fine." }
           },
           {
+            "id": "field-5",
             "variable": "injects_drugs",
             "prompt": {
               "en": "In the past 6 months, have you injected any drugs that were not prescribed to you?"
@@ -281,6 +286,7 @@
         "title": { "en": "Add Partner" },
         "fields": [
           {
+            "id": "field-1",
             "variable": "partner_label",
             "prompt": { "en": "Enter initials or a code for this person." },
             "hint": {
@@ -315,6 +321,7 @@
         "title": { "en": "Add Partner" },
         "fields": [
           {
+            "id": "field-1",
             "variable": "partner_label",
             "prompt": { "en": "Enter initials or a code for this person." },
             "hint": {
@@ -360,32 +367,38 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "partner_type",
             "prompt": {
               "en": "How would you describe your relationship with {nodeLabel}?"
             }
           },
           {
+            "id": "field-2",
             "variable": "partner_age",
             "prompt": { "en": "About how old is {nodeLabel}, in years?" }
           },
           {
+            "id": "field-3",
             "variable": "partner_gender",
             "prompt": { "en": "What is {nodeLabel}'s gender?" }
           },
           {
+            "id": "field-4",
             "variable": "partner_serostatus",
             "prompt": {
               "en": "As far as you know, what is {nodeLabel}'s HIV status?"
             }
           },
           {
+            "id": "field-5",
             "variable": "condom_use",
             "prompt": {
               "en": "When you had sex with {nodeLabel}, how often did you use a condom?"
             }
           },
           {
+            "id": "field-6",
             "variable": "shared_injection_equipment",
             "prompt": {
               "en": "Did you ever share injection equipment with {nodeLabel}?"
@@ -395,6 +408,7 @@
             }
           },
           {
+            "id": "field-7",
             "variable": "partnership_start",
             "prompt": {
               "en": "When did your sexual or injection relationship with {nodeLabel} begin?"
@@ -402,6 +416,7 @@
             "hint": { "en": "An approximate month and year is fine." }
           },
           {
+            "id": "field-8",
             "variable": "partnership_end",
             "prompt": { "en": "When did it end?" },
             "hint": {

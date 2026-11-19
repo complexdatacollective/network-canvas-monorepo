@@ -45,7 +45,7 @@ const egoForm = {
   label: 'About you',
   form: {
     title: 'About you',
-    fields: [{ variable: 'name', prompt: 'Your name' }],
+    fields: [{ id: 'field-1', variable: 'name', prompt: 'Your name' }],
   },
 } as unknown as Stage;
 
@@ -2437,7 +2437,7 @@ describe('a codebook scope no stage names', () => {
       type: 'AlterForm',
       label: 'Alter form',
       subject: { entity: 'node', type: 'artefact' },
-      form: { fields: [{ variable: 'code', prompt: 'Code' }] },
+      form: { fields: [{ id: 'field-1', variable: 'code', prompt: 'Code' }] },
     } as unknown as Stage;
   }
 
@@ -2578,7 +2578,7 @@ describe('a codebook scope no stage names', () => {
       type: 'AlterForm',
       label: 'Ego-subject stage',
       subject: { entity: 'ego' },
-      form: { fields: [{ variable: 'code', prompt: 'Code' }] },
+      form: { fields: [{ id: 'field-1', variable: 'code', prompt: 'Code' }] },
     } as unknown as Stage;
 
     const conflicts = analyseFeasibility(
@@ -2871,7 +2871,7 @@ describe('a text length beyond what a generated value can hold', () => {
       type: 'AlterEdgeForm',
       label: 'About this tie',
       subject: { entity: 'edge', type: 'kin' },
-      form: { fields: [{ variable: 'bio', prompt: 'Bio' }] },
+      form: { fields: [{ id: 'field-1', variable: 'bio', prompt: 'Bio' }] },
     } as unknown as Stage;
 
     const codebook = {

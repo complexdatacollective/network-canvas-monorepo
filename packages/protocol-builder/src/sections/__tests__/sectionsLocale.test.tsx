@@ -729,7 +729,13 @@ describe('the form-fields row dialog, read in Spanish', () => {
           ...loadFixtureStage('alter-form-1').fields,
           label: en('Dónde se sitúa cada persona'),
           form: {
-            fields: [{ variable: 'layout', prompt: en('¿Dónde se sitúa?') }],
+            fields: [
+              {
+                id: 'field-1',
+                variable: 'layout',
+                prompt: en('¿Dónde se sitúa?'),
+              },
+            ],
           },
         },
       },
@@ -942,10 +948,12 @@ describe('a form a Spanish researcher cannot save', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'relationship_to_ego',
                 prompt: en('¿De qué os conocéis?'),
               },
               {
+                id: 'field-2',
                 variable: 'relationship_to_ego',
                 prompt: en('¿Y de qué más?'),
               },

@@ -1,6 +1,9 @@
-import { isEqual } from 'es-toolkit/compat';
 import { useSyncExternalStore } from 'react';
 
+import {
+  NOTHING_STAGED,
+  type StagedCodebook,
+} from '@codaco/protocol-builder/state/stagedCodebook';
 import type { InterfaceTextUpdate, Stage } from '@codaco/protocol-validation';
 
 /**
@@ -32,15 +35,9 @@ type StageDraftBeacon = Readonly<{
    */
   editing: boolean;
   /**
-   * Whether it holds anything the protocol does not.
-   *
-   * A deep comparison against the document the editor opened on, so undoing an
-   * edit by hand reports clean again. Codebook edits are NOT part of it: they
-   * commit immediately under their own lock and survive this editor being
-   * cancelled, so they are not this draft's to lose. Neither are the shared
-   * words the protocol already holds, for the same reason; but wording the
-   * researcher gave a shared entry the protocol does not hold yet is saved
-   * only with the stage, so it is.
+   * Whether it holds anything the protocol does not: protocol-builder's
+   * answer (`StageDraft.unsaved`), which the codebook changes and the shared
+   * words changed in the editor are part of.
    */
   dirty: boolean;
   /**
@@ -49,16 +46,21 @@ type StageDraftBeacon = Readonly<{
    */
   stage: Stage | undefined;
   /**
-   * The shared words the stage brings in that the protocol does not hold yet,
-   * as a save would write them with it (`pendingSharedWording`): part of the
-   * protocol the researcher is looking at, for the same readers.
+   * The shared words a save would write with the stage
+   * (`pendingSharedWording`): the researcher's changes to them, and those the
+   * stage is the first to use. Part of the protocol the researcher is looking
+   * at, for the same readers.
    */
   interfaceText: readonly InterfaceTextUpdate[];
+  /**
+   * The codebook changes made in the editor, which a save writes with the
+   * stage (see `StagedCodebookStore`): part of the protocol the researcher is
+   * looking at, for the same readers.
+   */
+  codebook: StagedCodebook;
 }>;
 
 const NO_WORDS: readonly InterfaceTextUpdate[] = Object.freeze([]);
-
-const NO_PENDING_WORDS = Object.freeze({ words: NO_WORDS, reworded: false });
 
 const CLOSED: StageDraftBeacon = Object.freeze({
   open: false,
@@ -66,6 +68,7 @@ const CLOSED: StageDraftBeacon = Object.freeze({
   dirty: false,
   stage: undefined,
   interfaceText: NO_WORDS,
+  codebook: NOTHING_STAGED,
 });
 
 let current: StageDraftBeacon = CLOSED;
@@ -88,6 +91,15 @@ function announce(next: StageDraftBeacon): void {
   for (const listener of notifying) listener();
 }
 
+/** What the editor says about its draft: see `StageDraft`. */
+type PublishedDraft = Readonly<{
+  stage: Stage;
+  unsaved: boolean;
+  editing: boolean;
+  interfaceText?: readonly InterfaceTextUpdate[];
+  codebook?: StagedCodebook;
+}>;
+
 /**
  * Said by the editor on every change to its form.
  *
@@ -96,24 +108,20 @@ function announce(next: StageDraftBeacon): void {
  * one keystroke behind the screen — which is what every caller of the mirror
  * this replaces had to flush before asking.
  */
-export function publishStageDraft(
-  stage: Stage,
-  committed: Readonly<Record<string, unknown>>,
-  draft: Readonly<Record<string, unknown>>,
-  editing: boolean,
-  /** The shared words held with the stage, when it holds any. */
-  interfaceText: Readonly<{
-    words: readonly InterfaceTextUpdate[];
-    /** Whether any of them is the researcher's rather than Network Canvas's. */
-    reworded: boolean;
-  }> = NO_PENDING_WORDS,
-): void {
+export function publishStageDraft({
+  stage,
+  unsaved,
+  editing,
+  interfaceText = NO_WORDS,
+  codebook = NOTHING_STAGED,
+}: PublishedDraft): void {
   announce({
     open: true,
     editing,
-    dirty: interfaceText.reworded || !isEqual(prune(draft), prune(committed)),
+    dirty: unsaved,
     stage,
-    interfaceText: interfaceText.words,
+    interfaceText,
+    codebook,
   });
 }
 
@@ -132,35 +140,4 @@ export function closeStageDraft(): void {
  */
 export function useStageDraft<T>(select: (beacon: StageDraftBeacon) => T): T {
   return useSyncExternalStore(subscribeToStageDraft, () => select(current));
-}
-
-/**
- * What a document is compared as, on both sides.
- *
- * A field that is mounted and empty and a field that is not mounted at all are
- * the same thing to a researcher, and the form says the first as an absent
- * value and the second by not being there — so both sides drop absent values
- * and the empty containers that leaves behind. Clearing a field that had a
- * committed value still reads as dirty: the key survives on the committed side
- * only.
- */
-function prune(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(prune);
-  if (value === null || typeof value !== 'object') return value;
-
-  const result: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (entry === undefined) continue;
-    const pruned = prune(entry);
-    if (
-      pruned !== null &&
-      typeof pruned === 'object' &&
-      !Array.isArray(pruned) &&
-      Object.keys(pruned).length === 0
-    ) {
-      continue;
-    }
-    result[key] = pruned;
-  }
-  return result;
 }

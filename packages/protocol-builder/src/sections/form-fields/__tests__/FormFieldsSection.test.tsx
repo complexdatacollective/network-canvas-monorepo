@@ -11,7 +11,7 @@ import { useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   buildVariableRoleMap,
@@ -199,7 +199,9 @@ const COLLECTS_A_POSITION = {
     ...loadFixtureStage('alter-form-1').fields,
     label: en('Where everyone sits'),
     form: {
-      fields: [{ variable: 'layout', prompt: en('Where do they sit?') }],
+      fields: [
+        { id: 'field-1', variable: 'layout', prompt: en('Where do they sit?') },
+      ],
     },
   },
 } as const;
@@ -216,12 +218,25 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
-/** The person type exactly as the protocol holds it right now. */
+/**
+ * The person type as the EDITOR shows it right now: the protocol's, with the
+ * stage's own unsaved codebook changes laid over it. Everything a researcher
+ * changes inside a stage editor is part of that stage's draft, so this is where
+ * an edit is seen before the stage is saved.
+ */
 const personDocument = (harness: ReturnType<typeof renderStageEditor>) =>
-  asRecord(harness.hostCodebook().node?.person);
+  asRecord(harness.editorCodebook().node?.person);
 
 const personVariables = (harness: ReturnType<typeof renderStageEditor>) =>
   asRecord(personDocument(harness).variables);
+
+/**
+ * The person type's attributes as the PROTOCOL holds them: what a stage save
+ * has written, and what a collaborator's change is made from.
+ */
+const protocolPersonVariables = (
+  harness: ReturnType<typeof renderStageEditor>,
+) => asRecord(asRecord(harness.hostCodebook().node?.person).variables);
 
 /** The attribute the protocol holds under this researcher-facing name. */
 const savedAttribute = (
@@ -268,11 +283,13 @@ describe('the fields a form collects', () => {
 
     const fields = fieldsOf(await harness.submit());
     expect(fields[0]).toEqual({
+      id: 'field-1',
       variable: 'relationship_to_ego',
       prompt: en('How do you know this person?'),
     });
     // The field the researcher did not touch is still exactly as it was.
     expect(fields[1]).toEqual({
+      id: 'field-2',
       variable: 'flagged',
       prompt: en('Does this person have this attribute?'),
     });
@@ -313,7 +330,11 @@ describe('the fields a form collects', () => {
           ...loadFixtureStage('alter-form-1').fields,
           form: {
             fields: [
-              { variable: 'relationship_to_ego', prompt: { en: '   ' } },
+              {
+                id: 'field-1',
+                variable: 'relationship_to_ego',
+                prompt: { en: '   ' },
+              },
             ],
           },
         },
@@ -429,10 +450,15 @@ describe('the fields a form collects', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'relationship_to_ego',
                 prompt: en('How do you know them?'),
               },
-              { variable: 'relationship_to_ego', prompt: en('And how else?') },
+              {
+                id: 'field-2',
+                variable: 'relationship_to_ego',
+                prompt: en('And how else?'),
+              },
             ],
           },
         },
@@ -595,6 +621,7 @@ describe('the fields a form collects', () => {
       'relationship_to_ego',
     ]);
     expect(fields[1]).toEqual({
+      id: 'field-1',
       variable: 'relationship_to_ego',
       prompt: en("What is this person's relationship to you?"),
     });
@@ -672,21 +699,52 @@ describe('the fields a form collects', () => {
 
     const created = inventedNickname(harness);
     expect(created?.[1]).toMatchObject({ name: 'nickname', type: 'text' });
+    // The stage's draft holds it; the protocol does not until the stage is
+    // saved.
+    expect(
+      protocolPersonVariables(harness)[created?.[0] ?? ''],
+    ).toBeUndefined();
 
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
       prompt: en('What do people call them?'),
     });
+    // Saved in the same revision as the field that names it.
+    expect(protocolPersonVariables(harness)[created?.[0] ?? '']).toMatchObject({
+      name: 'nickname',
+      type: 'text',
+    });
+  });
+
+  /**
+   * Cancelling the stage drops the attribute the stage was holding: the
+   * protocol never hears of it.
+   */
+  it('discards the attribute a field invents when the stage is cancelled', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await inventNickname(harness);
+    expect(inventedNickname(harness)).toBeDefined();
+
+    await harness.cancel();
+    expect(
+      Object.values(protocolPersonVariables(harness)).some(
+        (variable) => asRecord(variable).name === 'nickname',
+      ),
+    ).toBe(false);
   });
 
   /**
    * The same invention, from a stage the researcher is still CREATING.
    *
-   * The codebook write takes the codebook section's own lock and knows nothing
-   * about the stage, so it lands whether or not the interview holds one yet —
-   * and the row that names it is committed with the stage the create finally
-   * writes.
+   * The codebook change is part of the stage's draft and knows nothing about
+   * whether the interview holds the stage yet — so it is made whether or not
+   * it does, and the create that finally writes the stage writes it in the
+   * same revision as the row that names it.
    */
   it('creates the attribute a field invents while the stage itself is being created', async () => {
     const harness = renderStageEditor({
@@ -714,6 +772,10 @@ describe('the fields a form collects', () => {
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
       prompt: en('What do people call them?'),
+    });
+    expect(protocolPersonVariables(harness)[created?.[0] ?? '']).toMatchObject({
+      name: 'nickname',
+      type: 'text',
     });
   });
 
@@ -785,7 +847,11 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
     expect(fieldsOf(await harness.submit())).toEqual([
-      { variable: 'relationship_to_ego', prompt: en('Where do they sit?') },
+      {
+        id: 'field-1',
+        variable: 'relationship_to_ego',
+        prompt: en('Where do they sit?'),
+      },
     ]);
   });
 });
@@ -852,8 +918,14 @@ describe('a spectator and the fields a form collects', () => {
  * researcher did nor what they can do next. So the words on the field are the
  * authored ones, exactly as they are in the codebook's own editors.
  */
-describe('a codebook write a field needs, refused', () => {
-  it('names the colleague who is holding the type', async () => {
+describe('a codebook change a field needs, refused', () => {
+  /**
+   * Nothing is locked while the stage is edited: the codebook changes a field
+   * makes are the stage's own draft. A colleague holding the type is met when
+   * the stage is SAVED, which is refused naming them — and the draft, the
+   * attribute included, is kept so the save can be asked for again.
+   */
+  it('refuses the stage save naming the colleague who is holding the type, and keeps the draft', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       heldSections: [
@@ -865,16 +937,24 @@ describe('a codebook write a field needs, refused', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await addInventedNickname(harness);
+    await inventNickname(harness);
+    // The attribute is created in the draft at once, the colleague
+    // notwithstanding: there is nothing to refuse until the stage is saved.
+    expect(inventedNickname(harness)).toBeDefined();
 
-    // On the picker, which is the control the invented attribute was named
-    // from and the only one on this surface that is about its existence.
+    expect(await harness.submit()).toBeNull();
     expect(
-      await within(attributePicker(dialog)).findByText(
+      await screen.findByText(
         'Priya Raman is currently editing a section needed for this change.',
       ),
     ).toBeInTheDocument();
-    expect(inventedNickname(harness)).toBeUndefined();
+    // Kept, and still the stage's alone: the protocol holds nothing of it.
+    expect(inventedNickname(harness)).toBeDefined();
+    expect(
+      Object.values(
+        asRecord(asRecord(harness.hostCodebook().node?.person).variables),
+      ).some((variable) => asRecord(variable).name === 'nickname'),
+    ).toBe(false);
   });
 
   /**
@@ -951,11 +1031,11 @@ describe('a codebook write a field needs, refused', () => {
   });
 
   /**
-   * The other codebook write a field makes: recording the control an EXISTING
-   * attribute is collected with. It is refused the same ways and reads the
-   * same, on the control that caused it.
+   * The other codebook change a field makes: recording the control an EXISTING
+   * attribute is collected with. It is held in the draft like the first, and
+   * refused the same way — by the stage save, naming the holder.
    */
-  it('names the colleague who is holding the type when a control is chosen', async () => {
+  it('refuses the stage save naming the colleague who is holding the type when a control is chosen', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       heldSections: [
@@ -969,7 +1049,7 @@ describe('a codebook write a field needs, refused', () => {
 
     const dialog = await openField(harness, 'Create new form field');
     // An attribute the codebook records no control for, so settling one here
-    // is a codebook write rather than a repeat of what it already says.
+    // is a codebook change rather than a repeat of what it already says.
     await chooseAttributeById(harness.user, attributePicker(dialog), 'age');
     await dialog.findByRole('combobox', { name: 'Input control' });
     await harness.user.type(
@@ -977,12 +1057,20 @@ describe('a codebook write a field needs, refused', () => {
       'How old are they?',
     );
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    // Held: the row is saved, and nothing has been asked of the colleague's
+    // section yet.
+    expect(Object.keys(harness.stagedCodebook())).not.toHaveLength(0);
 
+    expect(await harness.submit()).toBeNull();
     expect(
-      await dialog.findByText(
+      await screen.findByText(
         'Priya Raman is currently editing a section needed for this change.',
       ),
     ).toBeInTheDocument();
+    expect(Object.keys(harness.stagedCodebook())).not.toHaveLength(0);
   });
 });
 
@@ -1003,7 +1091,13 @@ const STAMPING_NAME_GENERATOR = {
     subject: { entity: 'node', type: 'person' },
     form: {
       title: en('Add a person'),
-      fields: [{ variable: 'name', prompt: en("What is this person's name?") }],
+      fields: [
+        {
+          id: 'field-1',
+          variable: 'name',
+          prompt: en("What is this person's name?"),
+        },
+      ],
     },
     prompts: [
       {
@@ -1583,7 +1677,7 @@ const collectNotesInATextArea = (
       person: {
         ...personDocument(harness),
         variables: {
-          ...personVariables(harness),
+          ...protocolPersonVariables(harness),
           notes: {
             name: 'notes',
             type: 'text',
@@ -1631,7 +1725,7 @@ const seedContactSetting = (
       person: {
         ...personDocument(harness),
         variables: {
-          ...personVariables(harness),
+          ...protocolPersonVariables(harness),
           [SEEDED_CONTACT_SETTING]: {
             name: 'contact_setting',
             type: 'categorical',
@@ -1678,7 +1772,7 @@ const seedDateAttribute = (
       person: {
         ...personDocument(harness),
         variables: {
-          ...personVariables(harness),
+          ...protocolPersonVariables(harness),
           [SEEDED_MET_ON]: {
             name: 'met_on',
             type: 'datetime',
@@ -1835,6 +1929,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     );
 
     expect(fieldsOf(await harness.submit())[0]).toEqual({
+      id: 'field-1',
       variable: 'relationship_to_ego',
       prompt: en('How do you know them?'),
     });
@@ -1941,7 +2036,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
         person: {
           ...personDocument(harness),
           variables: {
-            ...personVariables(harness),
+            ...protocolPersonVariables(harness),
             [SEEDED_CONTACT_SETTING]: {
               name: 'contact_setting',
               type: 'categorical',
@@ -1981,10 +2076,11 @@ describe('the codebook an attribute a form field collects lives in', () => {
   });
 
   /**
-   * A write the codebook section will not take leaves the row open with the
-   * reason on the list the researcher typed, which is the thing to correct.
+   * Values typed into the row are the stage's draft once the row is saved; a
+   * colleague holding the type stops the STAGE save, naming them, and nothing
+   * is lost: the values stay in the draft for the next attempt.
    */
-  it('keeps the row open when the values cannot be written', async () => {
+  it('keeps the values in the draft when the stage save is refused for the type being held', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       heldSections: [
@@ -2010,17 +2106,26 @@ describe('the codebook an attribute a form field collects lives in', () => {
       'Where do you usually meet?',
     );
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(asRecord(personVariables(harness)[variableId]).options).toHaveLength(
+      3,
+    );
 
-    // Said where the values were typed, with the row still holding them.
+    expect(await harness.submit()).toBeNull();
     expect(
-      await dialog.findByText(
+      await screen.findByText(
         'Priya Raman is currently editing a section needed for this change.',
       ),
     ).toBeInTheDocument();
-    expect(dialog.getByRole('button', { name: 'Edit option 3' })).toBeVisible();
+    // Kept in the draft, and out of the protocol.
     expect(asRecord(personVariables(harness)[variableId]).options).toHaveLength(
-      2,
+      3,
     );
+    expect(
+      asRecord(protocolPersonVariables(harness)[variableId]).options,
+    ).toHaveLength(2);
   });
 
   /**
@@ -2097,15 +2202,14 @@ describe('the codebook an attribute a form field collects lives in', () => {
   });
 
   /**
-   * And a save from that editor writes the attribute it was opened on, not the
-   * codebook as this tab last saw it.
+   * And a stage save writes the attribute the editor changed, not the codebook
+   * as this tab last saw it.
    *
-   * The editor assembles the whole section — every attribute of the type, as
-   * of the render the researcher pressed Save in — while the write takes the
-   * section's lock only afterwards. A collaborator who wrote in between is in
-   * the document the lock hands back and not in this editor's copy, so
-   * submitting that copy whole deletes their attribute with nothing on either
-   * screen to say it happened.
+   * The stage holds the whole section as of the render the researcher edited
+   * in, while the save takes the section's lock only afterwards. A
+   * collaborator who wrote in between is in the document the lock hands back
+   * and not in the held copy, so submitting that copy whole would delete their
+   * attribute with nothing on either screen to say it happened.
    */
   it('keeps an attribute a collaborator added while the values editor was open', async () => {
     const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
@@ -2162,23 +2266,34 @@ describe('the codebook an attribute a form field collects lives in', () => {
         asRecord(personVariables(harness)[variableId]).options,
       ).toHaveLength(3),
     );
+    // The researcher's change is the stage's draft until the stage is saved,
+    // and the save merges it over the codebook AS IT STANDS THEN. A
+    // collaborator who wrote in between is not in the draft, and must not be
+    // deleted by it.
+    expect(
+      protocolPersonVariables(harness)[COLLABORATORS_ATTRIBUTE],
+    ).toBeUndefined();
+    expect(await harness.submit()).not.toBeNull();
     // The researcher's own change landed, and the collaborator's is still
     // there beside it.
     expect(
-      asRecord(personVariables(harness)[COLLABORATORS_ATTRIBUTE]).name,
+      asRecord(protocolPersonVariables(harness)[variableId]).options,
+    ).toHaveLength(3);
+    expect(
+      asRecord(protocolPersonVariables(harness)[COLLABORATORS_ATTRIBUTE]).name,
     ).toBe('metThrough');
   });
 
   /**
-   * And a save from one of those editors writes the properties that editor
-   * set, not the whole attribute as it read it.
+   * And a stage save writes the properties the editor set, not the whole
+   * attribute as it read it.
    *
-   * An attribute is one record written through three surfaces — its values,
-   * its input control, its rules — and each of them assembles the record it
-   * submits before the write takes the section's lock. So a rules save
-   * carrying the whole record puts back the name the attribute had when the
-   * rules editor last rendered, undoing a rename a collaborator made in
-   * between from a surface that offers no name field at all.
+   * An attribute is one record changed through three surfaces — its values,
+   * its input control, its rules — and the stage holds what each of them set
+   * before the save takes the section's lock. So a save carrying the whole
+   * record would put back the name the attribute had when the rules editor
+   * last rendered, undoing a rename a collaborator made in between from a
+   * surface that offers no name field at all.
    */
   it('keeps a rename a collaborator made while the rules editor was open', async () => {
     const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
@@ -2230,11 +2345,25 @@ describe('the codebook an attribute a form field collects lives in', () => {
         ).required,
       ).toBe(true),
     );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // The rename arrives while the stage is saving: the draft is the
+    // researcher's rule alone, laid over whatever the attribute is by then.
+    expect(await harness.submit()).not.toBeNull();
     // The rules the researcher set are there, and the attribute is still
     // called what the collaborator renamed it to.
-    expect(asRecord(personVariables(harness).relationship_to_ego).name).toBe(
-      COLLABORATORS_RENAME,
-    );
+    expect(
+      asRecord(
+        asRecord(protocolPersonVariables(harness).relationship_to_ego)
+          .validation,
+      ).required,
+    ).toBe(true);
+    expect(
+      asRecord(protocolPersonVariables(harness).relationship_to_ego).name,
+    ).toBe(COLLABORATORS_RENAME);
   });
 
   /**
@@ -2741,9 +2870,9 @@ describe('a control the collaborator changed under an open row', () => {
         person: {
           ...personDocument(harness),
           variables: {
-            ...personVariables(harness),
+            ...protocolPersonVariables(harness),
             relationship_to_ego: {
-              ...asRecord(personVariables(harness).relationship_to_ego),
+              ...asRecord(protocolPersonVariables(harness).relationship_to_ego),
               component,
             },
           },
@@ -2880,7 +3009,7 @@ describe('an attribute id that collides with the create option', () => {
         person: {
           ...personDocument(harness),
           variables: {
-            ...personVariables(harness),
+            ...protocolPersonVariables(harness),
             [COLLIDING_ID]: {
               name: 'nickname',
               type: 'text',
@@ -2983,7 +3112,8 @@ describe('an attribute that stops being collectable under an open row', () => {
     harness: ReturnType<typeof renderStageEditor>,
     variableId: string,
   ) => {
-    const { [variableId]: _removed, ...variables } = personVariables(harness);
+    const { [variableId]: _removed, ...variables } =
+      protocolPersonVariables(harness);
     harness.receiveCodebookUpdate({
       node: { person: { ...personDocument(harness), variables } },
     });
@@ -3035,7 +3165,7 @@ describe('an attribute that stops being collectable under an open row', () => {
         person: {
           ...personDocument(harness),
           variables: {
-            ...personVariables(harness),
+            ...protocolPersonVariables(harness),
             relationship_to_ego: {
               name: 'relationship_to_ego',
               type: 'layout',
@@ -3078,10 +3208,12 @@ describe('an attribute that stops being collectable under an open row', () => {
 
     expect(fieldsOf(await harness.submit())).toEqual([
       {
+        id: 'field-1',
         variable: 'name',
         prompt: en("What is this person's relationship to you?"),
       },
       {
+        id: 'field-2',
         variable: 'flagged',
         prompt: en('Does this person have this attribute?'),
       },
@@ -3109,6 +3241,7 @@ describe('a form whose list holds something that is not a field', () => {
       form: {
         fields: [
           {
+            id: 'field-1',
             variable: 'relationship_to_ego',
             prompt: en('How do you know them?'),
           },
@@ -3198,12 +3331,14 @@ describe('a stored field the schema refuses for its own shape', () => {
 
   /** A field of the fixture's own form, plus a key no form field has. */
   const CARRIES_AN_UNKNOWN_KEY = {
+    id: 'field-2',
     variable: 'flagged',
     prompt: en('Does this person have this attribute?'),
     notAThing: 'left behind by a half-applied migration',
   };
 
   const RELATIONSHIP = {
+    id: 'field-1',
     variable: 'relationship_to_ego',
     prompt: en('What is this person’s relationship to you?'),
   };
@@ -4085,7 +4220,8 @@ describe('inventing an attribute whose control takes settings', () => {
 
 describe('a row whose attribute is deleted', () => {
   const deleteFlagged = (harness: ReturnType<typeof renderStageEditor>) => {
-    const { flagged: _removed, ...variables } = personVariables(harness);
+    const { flagged: _removed, ...variables } =
+      protocolPersonVariables(harness);
     harness.receiveCodebookUpdate({
       node: { person: { ...personDocument(harness), variables } },
     });
@@ -4116,91 +4252,6 @@ describe('a row whose attribute is deleted', () => {
         'This attribute is no longer in the codebook, so these changes cannot be saved.',
       ),
     ).toBeNull();
-  });
-});
-
-/**
- * A dismissal while a nested codebook editor's save is in flight.
- *
- * The write outlives the dialog: the handler awaiting it stays alive, so a
- * refusal is never shown to anybody and a success still runs `onComplete` —
- * silently binding the row to an attribute the researcher watched no editor
- * finish. `SubjectSection`'s create dialog already withholds every way out
- * until the codebook answers, and these three are the same act.
- */
-describe('dismissing a codebook editor while its save is in flight', () => {
-  /**
-   * Holds every codebook write open at the host, and hands back the release.
-   *
-   * A codebook edit takes the section's own lock before it writes anything, so
-   * a lock the host has not answered yet holds the whole round trip — which is
-   * the only way to put anything in the window between the press and the
-   * answer. Held at the store rather than at the client, which is a proxy and
-   * has no property to replace.
-   *
-   * Only the codebook's own sections: the stage's acquire runs through the
-   * same method, and a stage whose acquire is never answered is an editor
-   * nobody may write to, which has no codebook dialog to open in the first
-   * place.
-   */
-  const holdCodebookWrites = (
-    harness: ReturnType<typeof renderStageEditor>,
-  ) => {
-    const { store } = harness.host;
-    const acquire = store.acquire.bind(store);
-    let release: () => void = () => undefined;
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const delayed = async (...args: Parameters<typeof acquire>) => {
-      const [id] = args;
-      if (!parseSectionId(id).kind.startsWith('codebook')) {
-        return acquire(...args);
-      }
-      await held;
-      return acquire(...args);
-    };
-    vi.spyOn(store, 'acquire').mockImplementation(
-      delayed as unknown as typeof acquire,
-    );
-    return () => {
-      release();
-    };
-  };
-
-  /**
-   * The nested validation section has no dialog of its own to escape, so what
-   * a held write must not do is take the rule off the screen: the switch the
-   * researcher moved stays where they left it, and the write lands when the
-   * host finally answers.
-   */
-  it('keeps a rule on screen while its write is still with the host', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-    const release = holdCodebookWrites(harness);
-
-    const dialog = await openField(harness, 'Edit field');
-    await harness.user.click(
-      dialog.getByRole('switch', { name: 'Validation' }),
-    );
-    await harness.user.click(
-      await dialog.findByRole('switch', { name: 'Required answer' }),
-    );
-
-    expect(
-      dialog.getByRole('switch', { name: 'Required answer' }),
-    ).toBeChecked();
-
-    release();
-    await waitFor(() =>
-      expect(
-        asRecord(
-          asRecord(personVariables(harness).relationship_to_ego).validation,
-        ).required,
-      ).toBe(true),
-    );
   });
 });
 
@@ -4480,7 +4531,7 @@ describe('the live preview beside a form field’s settings', () => {
         person: {
           ...personDocument(harness),
           variables: {
-            ...personVariables(harness),
+            ...protocolPersonVariables(harness),
             [FOLLOW_UP]: {
               name: 'follow_up',
               type: 'boolean',

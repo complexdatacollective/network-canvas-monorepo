@@ -1,4 +1,3 @@
-import { isEqual } from 'es-toolkit';
 import { createElement, useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
@@ -11,19 +10,12 @@ import {
 } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import { suppliedInterfaceText } from '@codaco/interview/supplied-wording';
+import { useStageDraftStore } from '@codaco/protocol-builder/form/stageDraftStore';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
-import { useProtocolLocalization } from '@codaco/protocol-builder/localization/ProtocolLocalization';
-import { useStandingStageNameProposal } from '@codaco/protocol-builder/naming/useStandingStageNameProposal';
 import type {
   StageProblemsStore,
   StageSectionsStore,
 } from '@codaco/protocol-builder/stage-editor-contract';
-import {
-  stageDocument,
-  stageFieldsOf,
-} from '@codaco/protocol-builder/stageDocument';
-import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
 import { type Stage, validateProtocol } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
@@ -239,61 +231,25 @@ function OpenStageRegistration() {
  * something nobody is looking at.
  */
 function StageDraftPublisher() {
-  const { liveDraft, pendingSharedWording, storeApi, identity } =
-    useStageEditorForm();
-  const { committedFields, access } = useStageEdit();
-  const localization = useProtocolLocalization();
-  const { withoutProposal } = useStandingStageNameProposal();
-  const editing = access === 'editing';
+  const draftStore = useStageDraftStore();
 
   useEffect(() => {
-    if (committedFields === undefined) return undefined;
+    if (draftStore === undefined) return undefined;
     const publish = () => {
-      const draft = liveDraft();
-      const words = pendingSharedWording();
-      publishStageDraft(
-        // As it would be saved, holding only the researcher's own wording.
+      const { stage, ...draft } = draftStore.getSnapshot();
+      publishStageDraft({
+        ...draft,
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the draft is a plain record that may not satisfy the stage schema mid-edit; every reader validates the protocol built from it (validateProtocol) before relying on it
-        stageDocument(identity, draft) as unknown as Stage,
-        committedFields,
-        // Compared without a name the editor proposed and nobody has touched:
-        // that is not work the researcher would lose by leaving. The shared
-        // words held beside the stage are weighed on their own below.
-        withoutProposal(stageFieldsOf(draft), committedFields),
-        editing,
-        {
-          words,
-          // Network Canvas's wording for an entry the stage brings in is what
-          // the protocol would gain anyway; only the researcher's is theirs
-          // to lose.
-          reworded:
-            localization !== undefined &&
-            words.some(
-              ({ group, key, value }) =>
-                !isEqual(
-                  value,
-                  suppliedInterfaceText(group, key, localization),
-                ),
-            ),
-        },
-      );
+        stage: stage as unknown as Stage,
+      });
     };
     publish();
-    const unsubscribe = storeApi.subscribe(publish);
+    const unsubscribe = draftStore.subscribe(publish);
     return () => {
       unsubscribe();
       closeStageDraft();
     };
-  }, [
-    committedFields,
-    editing,
-    identity,
-    liveDraft,
-    localization,
-    pendingSharedWording,
-    storeApi,
-    withoutProposal,
-  ]);
+  }, [draftStore]);
 
   return null;
 }
@@ -312,7 +268,7 @@ function StageEditorActions({
   const protocol = useSelector(getProtocol);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
   const respectSkipLogic = useSelector(getPreviewRespectSkipLogic);
-  const { identity } = useStageEdit();
+  const { identity } = useStageEditorForm();
   // The toolbar offers the walkthrough while it is closed, and a ring to
   // restore it while it is minimised; its open panel needs neither.
   const walkthroughPanelOpen = useWalkthroughState(
@@ -325,7 +281,7 @@ function StageEditorActions({
   const [isStageValid, setIsStageValid] = useState(false);
 
   const stagePreviewProtocol = useCallback(() => {
-    const { stage, interfaceText } = readStageDraft();
+    const { stage, interfaceText, codebook } = readStageDraft();
     if (protocol === null || stage === undefined) return undefined;
     return buildProtocolWithStage(
       protocol,
@@ -333,6 +289,7 @@ function StageEditorActions({
       stageId,
       insertAtIndex,
       interfaceText,
+      codebook,
     );
   }, [insertAtIndex, protocol, stageId]);
 

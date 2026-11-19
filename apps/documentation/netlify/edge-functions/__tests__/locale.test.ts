@@ -1,15 +1,32 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
+import { parse } from 'smol-toml';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { siteLocalePreferenceCookie } from '@codaco/shared-consts';
 
-import localeRedirect, { config, detectLocale } from '../locale';
+import localeRedirect, { detectLocale } from '../locale';
 
 type EdgeImportMap = { imports: Record<string, string> };
 
 const edgeImportMapPath = resolve(process.cwd(), 'netlify/import-map.json');
+
+type EdgeFunctionDeclaration = { function?: string; pattern?: string };
+
+// The edge function's declaration in netlify.toml. Production deploys run
+// `netlify deploy --no-build`, which bundles only edge functions declared
+// there, so a route declared only in the function's source never ships.
+const localeDeclaration = (
+  (
+    parse(readFileSync(resolve(process.cwd(), 'netlify.toml'), 'utf8')) as {
+      edge_functions?: EdgeFunctionDeclaration[];
+    }
+  ).edge_functions ?? []
+).find((declaration) => declaration.function === 'locale');
+
+const runsFor = (path: string) =>
+  new RegExp(localeDeclaration?.pattern ?? '(?!)').test(path);
 
 const origin = 'https://documentation.networkcanvas.com';
 
@@ -43,13 +60,20 @@ const request = (
 ) => new Request(url, { headers });
 
 describe('documentation locale edge function', () => {
+  it('is declared in netlify.toml, so production deploys bundle it', () => {
+    expect(localeDeclaration?.pattern).toEqual(expect.any(String));
+    expect(
+      existsSync(resolve(process.cwd(), 'netlify/edge-functions/locale.ts')),
+    ).toBe(true);
+  });
+
   it.each([
     '/',
     '/design-protocols/interface-documentation/network-composer',
     '/asd/get-started',
     '/en/get-started/',
   ])('runs for the page address %s', (path) => {
-    expect(new RegExp(String(config.pattern)).test(path)).toBe(true);
+    expect(runsFor(path)).toBe(true);
   });
 
   it.each([
@@ -58,7 +82,7 @@ describe('documentation locale edge function', () => {
     '/sitemap.xml',
     '/protocols/sample.netcanvas',
   ])('never runs for the file %s', (path) => {
-    expect(new RegExp(String(config.pattern)).test(path)).toBe(false);
+    expect(runsFor(path)).toBe(false);
   });
 
   it.each([

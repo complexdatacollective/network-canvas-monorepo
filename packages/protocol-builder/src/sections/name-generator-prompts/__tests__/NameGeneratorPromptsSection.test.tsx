@@ -332,10 +332,10 @@ describe("a name generator's prompts", () => {
    * attribute row, so a researcher who has to leave the prompt, open the
    * codebook and come back has been sent away by this builder alone.
    *
-   * The attribute is committed to the codebook as it is created, under the
-   * codebook's own lock, so it is in the protocol before the stage that
-   * references it is saved — and stays there whatever this stage edit does
-   * next.
+   * The attribute is held with the prompt's dialog as it is created, joins
+   * the stage's draft when the prompt is saved, and reaches the protocol in
+   * the same revision as the stage that references it — so a stage that is
+   * never saved leaves no attribute behind either.
    */
   it('creates the boolean attribute a stamp needs, and selects it', async () => {
     const harness = renderStageEditor({
@@ -363,32 +363,40 @@ describe("a name generator's prompts", () => {
       within(stampPicker(dialog)).getByText('nominated_early'),
     ).toBeInTheDocument();
 
-    // A stamp is written straight onto the node, so it has to be a boolean
-    // the interview can set — the type is the section's, not the researcher's.
-    // Read from the protocol rather than from the picker: the attribute is
-    // already committed, and nothing this stage saves later can add it. The id
-    // it was filed under is the codebook's to choose, so the stamp below is
-    // compared against whatever the codebook says it is.
-    const variables = harness.hostCodebook().node?.person?.variables ?? {};
-    const [created] =
-      Object.entries(variables).find(
-        ([, variable]) => variable.name === 'nominated_early',
-      ) ?? [];
-    if (created === undefined) {
-      throw new Error('nominated_early was not added to the codebook');
-    }
-    expect(variables[created]).toMatchObject({
-      name: 'nominated_early',
-      type: 'boolean',
-    });
-
     await harness.user.click(dialog.getByRole('radio', { name: 'True' }));
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
+    // A stamp is written straight onto the node, so it has to be a boolean
+    // the interview can set — the type is the section's, not the researcher's.
+    // Read from what the editor holds once the prompt is saved: the attribute
+    // joined the stage's draft with it, and is not in the protocol until the
+    // stage is. The id it was filed under is the codebook's to choose, so the
+    // stamp below is compared against whatever the codebook says it is.
+    const variables = harness.editorCodebook().node?.person?.variables ?? {};
+    const [created] =
+      Object.entries(variables).find(
+        ([, variable]) => variable.name === 'nominated_early',
+      ) ?? [];
+    if (created === undefined) {
+      throw new Error('nominated_early was not added to the stage draft');
+    }
+    expect(variables[created]).toMatchObject({
+      name: 'nominated_early',
+      type: 'boolean',
+    });
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('nominated_early');
+
     const request = await harness.submit();
+    expect(
+      harness.hostCodebook().node?.person?.variables?.[created],
+    ).toMatchObject({ name: 'nominated_early', type: 'boolean' });
     const rows = request?.stageDocument.prompts;
     expect(Array.isArray(rows) && rows[0]).toMatchObject({
       additionalAttributes: [{ variable: created, value: true }],
@@ -450,18 +458,15 @@ describe("a name generator's prompts", () => {
   });
 
   /**
-   * The other refusal — the host's, not the schema's — reaches the same place.
+   * The other refusal — the host's, not the schema's — comes with the save.
    *
-   * A name the codebook would take can still be refused because a colleague is
-   * holding the section it would be written into, and that answer arrives
-   * after the researcher has pressed the create row. It is said in the window,
-   * on the name it is about, and nowhere else: this section is behind a modal
-   * while the window is up, so a sentence left here is one nobody reads until
-   * they have given up on the name it was written about — and it would still
-   * be standing there after they recovered by choosing an attribute that
-   * already exists.
+   * A colleague holding the section the attribute would be written into cannot
+   * stop it being invented: nothing is locked while it is only held in the
+   * stage's draft, so the window closes on it as for anyone. What the stage
+   * SAVE has to lock is refused, naming the holder, and the attribute stays
+   * held for the retry.
    */
-  it('says a held section inside the window, and nowhere behind it', async () => {
+  it('keeps an attribute a colleague’s hold would refuse, and says so when the stage is saved', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: prompts,
@@ -484,21 +489,28 @@ describe("a name generator's prompts", () => {
         name: 'Create new attribute called “nominatedEarly”.',
       }),
     );
+    await expectWindowClosed(window);
+    await harness.user.click(dialog.getByRole('radio', { name: 'True' }));
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
 
-    expect(await within(window).findByRole('alert')).toHaveTextContent(
+    expect(await harness.submit()).toBeNull();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       'Priya Raman is currently editing a section needed for this change.',
     );
-    expect(searchBox(window)).toHaveValue('nominatedEarly');
-
-    // And once the researcher gives up on the name, the sentence goes with the
-    // window rather than being left standing on the section behind it.
-    await harness.user.keyboard('{Escape}');
-    await expectWindowClosed(window);
     expect(
-      dialog.queryByText(
-        'Priya Raman is currently editing a section needed for this change.',
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
       ),
-    ).toBeNull();
+    ).not.toContain('nominatedEarly');
+    expect(
+      Object.values(harness.editorCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).toContain('nominatedEarly');
   });
 });
 

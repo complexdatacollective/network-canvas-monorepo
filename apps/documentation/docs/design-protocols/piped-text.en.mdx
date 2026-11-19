@@ -17,7 +17,7 @@ Computer-assisted survey instruments have long tailored question wording to the 
 
 Naming the node in the question removes that inferential step. "Did you visit Northwestern University or study there?" identifies its referent unambiguously, while "Did you visit this university, or study there?" does so only in combination with the visual layout of the interface. The difference is greatest when nodes resemble one another, when the participant has named many alters, and when the interview is administered by an interviewer who reads the question aloud.
 
-Piped text also allows a later question to build on an earlier one. A question can recall the date the participant gave for a life event, address the participant by the name they provided, or be phrased differently according to how the participant answered a previous question.
+Piped text also allows a later question to build on an earlier one. A question can recall the date the participant gave for a life event, address the participant by the name they provided, or be phrased differently according to how the participant answered a previous question. Text can also hold [logic](#logic), which chooses between alternative wordings according to rules about the participant, a node or an edge.
 
 Network Canvas fills piped text from data already recorded in the interview. Inserting a value into a question does not store that value a second time, and does not send it anywhere else.
 
@@ -31,7 +31,7 @@ Piped text requires [schema 9](/en/get-started/protocol-schema-information#schem
 
 Piping changes the stimulus each participant receives. Two participants answering the "same" name interpreter question read different words, because each question names a different alter. For most network instruments this is the intended effect: the construct being measured is the participant's relationship with a specific alter, and naming that alter makes the question more precise. It nevertheless calls for three precautions.
 
-- **Report the template, not the realized wording.** When describing an instrument in a publication or an ethics application, give the question as written in the protocol, with the piped element marked, and state which attribute supplied it.
+- **Report the template, not the realized wording.** When describing an instrument in a publication or an ethics application, give the question as written in the protocol, with the piped element marked, and state which attribute supplied it. Where a text holds [logic](#logic), report each of its wordings, together with the rules or the answer that selects it.
 - **Specify the wording used when information is missing.** Any attribute can be absent when a question is shown (see [When information is missing](#when-information-is-missing)). The alternative wording is part of the instrument and should be reviewed with the same care as the primary wording.
 - **Pilot with realistic data.** Long names, names that are also common words, and unexpected answers can produce questions that read poorly. Cognitive interviews and pilot sessions (see [Piloting Your Study](/en/get-started/planning-a-study/piloting-your-study)) should include the range of values that participants are likely to provide.
 
@@ -50,9 +50,11 @@ The following kinds of attribute can be piped: text, number, scalar, date, boole
 
 The values available to a given text depend on where the text appears. See [Where piped text can be used](#where-piped-text-can-be-used).
 
+Text can also change its wording without showing a value, by means of logic. See [Logic](#logic).
+
 ## Inserting piped text in Architect
 
-Every text field that accepts piped text has a syringe button in its toolbar, labeled **Inject piped text from interview metadata or a network attribute**. To insert a value:
+Every text field that accepts piped text has two buttons for it in its toolbar. The syringe button, labeled **Inject piped text from interview metadata or a network attribute**, inserts values. The button beside it, labeled **Insert logic**, inserts [logic](#logic). The syringe button's menu contains values only, and so does the menu that opens when `{` is typed. To insert a value:
 
 1. Place the cursor in the text where the value should appear.
 2. Click the syringe button, or type `{`.
@@ -67,7 +69,7 @@ The menu groups values under three headings, in this order:
 - **Ego Attributes**: the participant's attributes.
 - **Interview Attributes**: today's date.
 
-Beneath each value, the menu states what kind of attribute it is.
+Beneath each value, the menu states what kind of attribute it is. A boolean attribute whose answers have no labels is listed but cannot be chosen, because the text would have nothing to show for its answer. Its entry reads **Add labels for its yes and no answers first**, or, for an attribute answered with a Toggle, **A Toggle has no labels for its answers. Use different wording for each answer instead.** See [Different wording for each answer](#different-wording-for-each-answer).
 
 To type a literal brace, press Escape after typing `{`. The menu closes and the brace remains in the text.
 
@@ -115,9 +117,69 @@ A Family Pedigree stage labels its nodes in its own way, and its form's question
 
 The label is the usual way to identify a node in a question, as in "Are Jim and Alice friends?". A specific attribute is preferable when the text needs that particular answer, such as a nickname, even where the label shows something else.
 
+## Logic
+
+Logic is a group of alternative wordings, of which the participant sees one. It is inserted with the **Insert logic** button, which is beside the syringe button in the toolbar of every text field that accepts piped text. Its menu lists:
+
+- **If … else** and **If not … else**, which choose a wording according to rules that you set. See [If blocks](#if-blocks).
+- Each categorical, ordinal and boolean attribute that the text can show, marked **Different wording for each answer**. See [Different wording for each answer](#different-wording-for-each-answer).
+- Each number and scalar attribute that the text can show, marked **Wording that fits the number**. See [Wording that agrees with a number](#wording-that-agrees-with-a-number).
+- In the questions and hints of a Family Pedigree's form, **Participant or someone else**, marked **Different wording for the participant and everyone else**. See [Wording for the participant or someone else](#wording-for-the-participant-or-someone-else).
+
+Attributes appear under the same headings as in the syringe button's menu. The menu can be filtered by typing, but it does not open when `{` is typed.
+
+In the editor, logic appears as a pill, as a value does. It has its own color and its own icon in place of the syringe, so that it can be told apart from a value. Selecting the pill opens the logic in place, with one row for each of its wordings. A newly inserted piece of logic starts open. While it is folded, the pill also shows a preview of what its wordings say.
+
+A wording may be left empty, so that nothing is shown in that case, and it may contain values and further logic.
+
+The same logic can be used in a node type's own label. See [Dynamic labels](/en/design-protocols/key-concepts/node-labelling#dynamic-labels).
+
+### If blocks
+
+An If block shows one wording when rules that you set are met, and another otherwise. To insert one:
+
+1. Place the cursor in the text where the wording should appear.
+2. Click **Insert logic**.
+3. Choose **If … else**, described in the menu as **One wording when rules you set are met, another otherwise**. To give the first wording to the case in which the rules are not met, choose **If not … else** instead.
+4. A dialog titled **When should this text be shown?** opens. Set the rules (see [Rules](#rules)), then choose **Save rules**.
+
+The If block is inserted with two rows. The first is labeled **If:** followed by its rules, or **If not:** followed by its rules, and holds the wording for that case. The second, **Otherwise**, holds the wording shown when no other row applies. Write the wording for each row beside its label.
+
+An open If block has these controls:
+
+- **Edit rules**, on each row that has rules, reopens the rule builder for that row.
+- **Add else if** asks for another set of rules, then adds a row labeled **Else if:** followed by those rules. The interview tests the rows from the top, and shows the wording of the first row that applies.
+- **Remove this case**, on each row when the block has more than one row with rules, removes that row together with its rules and its wording. When only one row with rules remains, it can be removed only by deleting the whole If block from the text.
+
+For example, a Per Alter Form question could depend on the age recorded for each person:
+
+| Row                     | Text written                         |
+| ----------------------- | ------------------------------------ |
+| If: age is less than 18 | Which school does this person go to? |
+| Otherwise               | Where does this person work?         |
+
+The interview works out an If block again whenever the answers or edges that its rules test change, so the wording stays current as the interview goes on.
+
+### Rules
+
+Rules are set in the same rule builder that [filters and skip logic](/en/design-protocols/key-concepts/skip-logic) use. What a rule can test depends on what the text is shown with:
+
+- **An attribute of the participant.** This is available in every text that accepts piped values.
+- **An attribute of the node** that the text concerns, in text that is shown with a node.
+- **The edges of that node**: whether the node has an edge of a given type, an attribute of one of its edges, or the number of edges that it has, of one type or of any type. The number can be compared with a number that you give, or with the other nodes of the same type, using **Is the highest among nodes of its type** and **Is the lowest among nodes of its type**. Nodes that tie for the highest, or for the lowest, all match. No node matches when every node of the type has the same number of edges.
+- **An attribute of the edge** that a form asks about, in a Per Alter Edge Form's questions and hints.
+
+Text that is shown with no node or edge, such as an Information stage's text or a Name Generator's prompt, can use only rules about the participant. See [Where piped text can be used](#where-piped-text-can-be-used) for what each text is shown with.
+
+Where the text is shown with two nodes, as with a pair on a Dyad Census, the dialog has a **Check rules against** setting, which offers **The first node of the pair** and **The second node of the pair**. Node rules and edge rules are checked against the node chosen there.
+
+When an If has more than one rule, **Rule Matching** sets whether **All rules must match** or **Any rule can match**.
+
+The rules of an If block belong to the stage and are not part of the text. They are therefore the same in every language of the protocol.
+
 ## Different wording for each answer
 
-A categorical, ordinal or boolean attribute appears twice in the menu. The second entry is marked **Different wording for each answer**. Choosing it gives the text one version for each answer, in place of displaying the answer itself. This allows a question to adapt its framing to an earlier response.
+Each categorical, ordinal and boolean attribute is listed in the **Insert logic** menu, marked **Different wording for each answer**. Choosing it gives the text one version for each answer, in place of displaying the answer itself. This allows a question to adapt its framing to an earlier response.
 
 The versions are:
 
@@ -138,7 +200,7 @@ A categorical answer can include several options. The text then uses the version
 
 ## Wording that agrees with a number
 
-A number or scalar attribute also appears twice in the menu. The second entry is marked **Wording that fits the number**. It is intended for text whose surrounding words change with the number, as in "1 child" and "3 children".
+Each number and scalar attribute is also listed in the **Insert logic** menu, marked **Wording that fits the number**. It is intended for text whose surrounding words change with the number, as in "1 child" and "3 children".
 
 It inserts **If known** and **If not known** versions, as for any value. Within **If known** there is one version for each grammatical number form the language distinguishes, each named with examples of the numbers that use it. English has two:
 
@@ -151,6 +213,17 @@ Each of these versions begins with the number, followed by the words that accomp
 
 Other languages distinguish a different number of forms: Chinese has one, and Polish and Russian have more than two. When text is written in another language, Architect provides that language's versions.
 
+## Wording for the participant or someone else
+
+A Family Pedigree's form asks the same questions about the participant and about each of their relatives. In the questions and hints of that form, the **Insert logic** menu lists **Participant or someone else**, marked **Different wording for the participant and everyone else**. It inserts two versions:
+
+| Version               | Text written              |
+| --------------------- | ------------------------- |
+| About the participant | What is your first name?  |
+| About someone else    | What is their first name? |
+
+It only chooses between the two versions and is never shown itself. Whether a question is about the participant is always known, so it has no **If not known** version.
+
 ## How participants see piped text
 
 The interview presents each value in the participant's language:
@@ -159,6 +232,7 @@ The interview presents each value in the participant's language:
 - A number is written as the participant's language writes numbers.
 - An answer to a categorical, ordinal or boolean question is shown by the option's label, in the participant's language. A label without a translation in that language is shown in the way [untranslated text](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see) always is. An answer with several options is shown as a list, such as "cats, dogs and fish". A yes-or-no answer can be shown in this way only when both of its answers have labels; otherwise, use **Different wording for each answer**.
 - Text is shown exactly as it was entered.
+- Logic is never shown itself. The participant sees only the wording of the case that applies.
 
 Each value is tinted with the interview's primary color, which distinguishes inserted information from the fixed wording of the question. Screen readers read the value as part of the sentence.
 
@@ -202,7 +276,9 @@ When a protocol is offered in more than one language (see [Translating Your Prot
 
 Each translation is checked on its own, by the same rules as the default language's text: every value it shows must be one the stage uses and can show where the text appears, a value that can be missing needs a version for when it is missing, and the text can't be blank in every version.
 
-In the translation table, a cell shows values, and each set of versions, as pills. When editing a cell, selecting a pill opens its versions, as in the stage editor, and the syringe button offers the values that the stage already uses. A value that the stage does not yet use must first be added in the stage editor.
+In the translation table, a cell shows values, and each set of versions, as pills. When editing a cell, selecting a pill opens its versions, as in the stage editor. The syringe button offers the values that the stage already uses, and the **Insert logic** button offers wording for each answer, or wording that fits a number, for those same values. A value that the stage does not yet use must first be added in the stage editor.
+
+An If block cannot be inserted in the translation table, and its rules cannot be changed there: its rows show their rules, without **Edit rules**, **Add else if** or **Remove this case**. To add an If block to a translation, or to change its rules, open the stage and choose the language in the text field's language menu (see [Translating within the stage editor](/en/design-protocols/translating-your-protocol#translating-within-the-stage-editor)). Because the rules belong to the stage, changing them changes them for every language. Only the wording of each row is translated.
 
 The values themselves are not translated. Dates and numbers follow the participant's language, and answers are shown with their options' labels in that language.
 
@@ -220,6 +296,7 @@ Protocol validation checks every text that contains piped values. Each of the fo
 
 - [Prompts](/en/design-protocols/key-concepts/prompts): the questions that can contain piped text
 - [Forms](/en/design-protocols/key-concepts/forms): form fields whose questions and hints can refer to earlier answers
-- [Node Labeling](/en/design-protocols/key-concepts/node-labelling): how the interview chooses the text shown on a node
+- [Node Labeling](/en/design-protocols/key-concepts/node-labelling): how the interview chooses the text shown on a node, and how a [dynamic label](/en/design-protocols/key-concepts/node-labelling#dynamic-labels) uses the same values and logic
+- [Skip Logic](/en/design-protocols/key-concepts/skip-logic): the rule builder that an If block's rules are set in
 - [Variables](/en/design-protocols/key-concepts/variables): the kinds of attribute that can be piped
 - [Translating Your Protocol](/en/design-protocols/translating-your-protocol): writing a protocol in more than one language

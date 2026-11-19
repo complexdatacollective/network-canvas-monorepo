@@ -8,7 +8,11 @@ import {
   localized,
   localizedOptions,
 } from '../../../utils/test-utils.ts';
-import { FormSchema, TitlelessFormSchema } from '../common/index.ts';
+import {
+  FormFieldArraySchema,
+  FormSchema,
+  TitlelessFormSchema,
+} from '../common/index.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
@@ -21,10 +25,17 @@ import {
   GENDER_IDENTITY_TERMS,
 } from './pedigreeGenderFixtures.ts';
 
-const field = (variable: string, prompt: string) => ({
-  variable,
-  prompt: localized(prompt),
-});
+// Every field gets an id of its own, so a test about repeated variables is not
+// also about repeated ids.
+let fieldCount = 0;
+const field = (variable: string, prompt: string) => {
+  fieldCount += 1;
+  return {
+    id: `field-${fieldCount}`,
+    variable,
+    prompt: localized(prompt),
+  };
+};
 
 const pedigreeStage = (form?: ReturnType<typeof field>[]) => ({
   id: 'fp1',
@@ -235,6 +246,81 @@ describe('form field variable uniqueness', () => {
         code: 'custom',
         message: 'Form fields contain duplicate attribute "name"',
       },
+    ]);
+  });
+});
+
+describe('form field id uniqueness', () => {
+  const fieldWithId = (id: string, variable: string) => ({
+    ...field(variable, `${variable}?`),
+    id,
+  });
+
+  it('accepts a form whose fields each have a different id', () => {
+    expect(
+      TitlelessFormSchema.safeParse({
+        fields: [fieldWithId('a', 'name'), fieldWithId('b', 'age')],
+      }).success,
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      'FormSchema',
+      (fields: unknown[]) =>
+        FormSchema.safeParse({ title: localized('Add'), fields }),
+    ],
+    [
+      'TitlelessFormSchema',
+      (fields: unknown[]) => TitlelessFormSchema.safeParse({ fields }),
+    ],
+    [
+      'FormFieldArraySchema',
+      (fields: unknown[]) => FormFieldArraySchema.safeParse(fields),
+    ],
+  ])('rejects the second field of a %s sharing an id', (_name, parse) => {
+    const result = parse([
+      fieldWithId('same', 'name'),
+      fieldWithId('other', 'age'),
+      fieldWithId('same', 'category'),
+    ]);
+    expect(result.success).toBe(false);
+    const issues = result.error?.issues ?? [];
+    expect(issues.map(({ message }) => message)).toContain(
+      'Form fields contain duplicate id "same"',
+    );
+    // On the repeat, never the first occurrence, and on its own `id`.
+    expect(issues.map(({ path }) => path.slice(-2))).toContainEqual([2, 'id']);
+    expect(issues.map(({ path }) => path.slice(-2))).not.toContainEqual([
+      0,
+      'id',
+    ]);
+  });
+
+  it('allows two forms to use the same id', () => {
+    const a = TitlelessFormSchema.safeParse({
+      fields: [fieldWithId('x', 'name')],
+    });
+    const b = TitlelessFormSchema.safeParse({
+      fields: [fieldWithId('x', 'age')],
+    });
+    expect(a.success && b.success).toBe(true);
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['empty', ''],
+    ['not text', 7],
+  ])('rejects a field whose id is %s', (_name, id) => {
+    const { id: _id, ...rest } = fieldWithId('a', 'name');
+    const result = TitlelessFormSchema.safeParse({
+      fields: [id === undefined ? rest : { ...rest, id }],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map(({ path }) => path)).toContainEqual([
+      'fields',
+      0,
+      'id',
     ]);
   });
 });

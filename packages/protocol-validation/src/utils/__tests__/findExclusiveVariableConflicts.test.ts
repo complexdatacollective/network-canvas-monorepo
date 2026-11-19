@@ -188,6 +188,7 @@ describe('findExclusiveVariableConflicts', () => {
         form: {
           fields: [
             {
+              id: 'field-1',
               variable: 'isEgo',
               prompt: localized('Are you the participant?'),
             },
@@ -420,7 +421,11 @@ describe('findStageManagedOptionBindings', () => {
         subject: { entity: 'node', type: 'family_member' },
         form: {
           fields: [
-            { variable: 'genderIdentity', prompt: localized('Gender?') },
+            {
+              id: 'field-1',
+              variable: 'genderIdentity',
+              prompt: localized('Gender?'),
+            },
           ],
         },
         prompts: [{ id: 'p1', text: localized('Name people') }],

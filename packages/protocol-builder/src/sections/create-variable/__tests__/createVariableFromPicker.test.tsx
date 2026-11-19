@@ -139,13 +139,20 @@ describe('a slot whose attribute needs more than a name', () => {
     // Both windows go: the attribute exists, so there is nothing left to ask.
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    const variables = harness.hostCodebook().node?.person?.variables ?? {};
+    // Part of the stage's draft: the editor shows it, the protocol does not
+    // hold it until the stage is saved.
+    const variables = harness.editorCodebook().node?.person?.variables ?? {};
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('closeness');
     const created = Object.values(variables).find(
       (variable) => variable.name === 'closeness',
     );
     expect(created).toMatchObject({ name: 'closeness', type: 'ordinal' });
 
-    // And the slot took it. The codebook holding the attribute is only half of
+    // And the slot took it. The draft holding the attribute is only half of
     // what the create row promised — the other half is that the control the
     // researcher started from now names it, under the id the codebook filed it
     // under rather than under its name.

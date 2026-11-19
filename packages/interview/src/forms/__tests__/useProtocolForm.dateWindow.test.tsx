@@ -33,7 +33,11 @@ const NODE_TYPE = 'person';
 const VAR = 'born_on';
 
 const fields: FormField[] = [
-  { variable: asEntityAttributeReference(VAR), prompt: { en: 'Born on' } },
+  {
+    id: 'field-L36',
+    variable: asEntityAttributeReference(VAR),
+    prompt: { en: 'Born on' },
+  },
 ];
 
 function makeWrapper(

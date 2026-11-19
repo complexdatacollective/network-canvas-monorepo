@@ -453,6 +453,10 @@ function setAtPath(
   if (last !== undefined) container[last] = value;
 }
 
+// A form field's stable id. The variable is unique within one form, so an id
+// built from it is too, and stays the same however many fields came before.
+const formFieldId = (variableId: string): string => `field-${variableId}`;
+
 export class SyntheticInterview {
   private seed: number;
   private idCounter = 0;
@@ -1454,6 +1458,7 @@ export class SyntheticInterview {
     // The strict form schemas reject a field-level `component`; the runtime
     // resolves the control from the codebook variable's own component.
     return {
+      id: formFieldId(variableId),
       variable: variableId,
       prompt,
       ...(input.hint !== undefined ? { hint: input.hint } : {}),
@@ -1481,6 +1486,7 @@ export class SyntheticInterview {
 
     // See resolveFormField: field-level `component` is schema-rejected.
     return {
+      id: formFieldId(variableId),
       variable: variableId,
       prompt,
       ...(input.hint !== undefined ? { hint: input.hint } : {}),
@@ -1506,6 +1512,7 @@ export class SyntheticInterview {
     const nodeType = this.nodeTypes.get(nodeTypeId);
     const variable = nodeType?.variables.get(variableId);
     return {
+      id: formFieldId(variableId),
       variable: variableId,
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
@@ -1533,6 +1540,7 @@ export class SyntheticInterview {
     const edgeType = this.edgeTypes.get(edgeTypeId);
     const variable = edgeType?.variables.get(variableId);
     return {
+      id: formFieldId(variableId),
       variable: variableId,
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
@@ -1556,6 +1564,7 @@ export class SyntheticInterview {
       variableId = ref.id;
     }
     return {
+      id: formFieldId(variableId),
       variable: variableId,
       prompt: input.prompt ?? 'Enter a value',
       ...(input.hint !== undefined ? { hint: input.hint } : {}),

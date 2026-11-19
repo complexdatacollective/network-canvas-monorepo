@@ -56,6 +56,7 @@ const codebook: Codebook = {
 };
 
 const nameField: FormField = {
+  id: 'field-name',
   variable: asEntityAttributeReference('var-name'),
   prompt: { en: 'Name' },
 };

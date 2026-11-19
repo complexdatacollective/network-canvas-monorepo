@@ -5,6 +5,11 @@ import {
   withInterfaceText,
 } from '@codaco/interview/supplied-wording';
 import {
+  codebookWithStaged,
+  NOTHING_STAGED,
+  type StagedCodebook,
+} from '@codaco/protocol-builder/state/stagedCodebook';
+import {
   type CurrentProtocol,
   type InterfaceTextUpdate,
   type Stage,
@@ -29,9 +34,11 @@ import prune from '~/utils/prune';
  * The result holds the interface text the saved protocol will
  * (`withInterfaceText`): the researcher's own wording for the entries it
  * shows. `interfaceText` is the shared wording the stage editor holds with the
- * stage for entries the open stage brings into use (`pendingSharedWording`),
- * which a save writes with the stage, so the preview shows the researcher's
- * wording for them rather than Network Canvas's.
+ * stage (`pendingSharedWording`), which a save writes with the stage, so the
+ * preview shows the wording the researcher has changed or brought into use
+ * rather than what the protocol held before. `codebook` is the codebook
+ * changes the editor holds with the stage (see `StagedCodebookStore`), laid
+ * over the protocol's codebook for the same reason.
  */
 export function buildProtocolWithStage(
   protocol: CurrentProtocol,
@@ -39,6 +46,7 @@ export function buildProtocolWithStage(
   stageId: string | null,
   insertAtIndex?: number,
   interfaceText: readonly InterfaceTextUpdate[] = [],
+  codebook: StagedCodebook = NOTHING_STAGED,
 ): CurrentProtocol {
   const prunedStage = prune(stage);
 
@@ -49,6 +57,7 @@ export function buildProtocolWithStage(
 
   return withInterfaceText({
     ...protocol,
+    codebook: codebookWithStaged(protocol.codebook, codebook),
     ...(interfaceText.length === 0
       ? {}
       : {

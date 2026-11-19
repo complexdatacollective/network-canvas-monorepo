@@ -47,6 +47,18 @@ function ageValidation(
   return age.validation;
 }
 
+// `ageValidation` throws until the attribute is in the protocol, which with
+// the stage's draft is only once the stage has been saved; a poll waits on
+// this instead.
+function ageValidationOrNothing(
+  protocol: CurrentProtocol,
+): Record<string, unknown> | undefined {
+  const age = Object.values(protocol.codebook.ego?.variables ?? {}).find(
+    (variable) => variable.name === 'age',
+  );
+  return age && age.type === 'number' ? age.validation : undefined;
+}
+
 /**
  * An EgoForm carrying one number field on a new `age` attribute, left open.
  *
@@ -141,14 +153,10 @@ test('the field editor blocks an inverted min/max validation pair', async ({
   // rule could not satisfy this.
   await expect(minValue).toHaveAccessibleDescription(invertedBounds);
   await expect(maxValue).toHaveAccessibleDescription(invertedBounds);
-  // The pair being refused is what keeps it out of the codebook: the section
-  // writes each answerable change as it is made and simply does not write one
-  // the attribute cannot carry, so the refusal is the record staying as it was
-  // while both ends are on screen.
+  // The refused pair stays on screen for correction; what the attribute can
+  // carry is asserted once the stage is saved, below — the rules are part of
+  // the stage's draft until then.
   await expect(maxValue).toHaveValue('2');
-  expect(
-    ageValidation(await readProtocolJson(architectPage)),
-  ).not.toMatchObject({ maxValue: 2 });
 
   // Correcting the value clears the complaint and lets the write through.
   await maxValue.fill('20');
@@ -164,7 +172,14 @@ test('the field editor blocks an inverted min/max validation pair', async ({
   // Confirm the corrected pair (not the rejected 10/2 pair) is what actually
   // persisted, proving the gate didn't just block the UI but let the fixed
   // rule through end-to-end.
-  expect(ageValidation(await readProtocolJson(architectPage))).toMatchObject({
+  expect(
+    ageValidation(
+      await readProtocolJson(architectPage, (protocol) => {
+        const validation = ageValidationOrNothing(protocol);
+        return validation?.maxValue === 20;
+      }),
+    ),
+  ).toMatchObject({
     minValue: 10,
     maxValue: 20,
   });
@@ -182,7 +197,7 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
   await gotoProtocol(architectPage);
 
   const editor = await egoFormWithAgeField(architectPage);
-  const { rules } = await openAgeRules(editor);
+  const { fieldDialog, rules } = await openAgeRules(editor);
 
   const minValue = rules.getByRole('spinbutton', {
     name: 'Minimum value',
@@ -212,15 +227,25 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
   await expect(minValue).toHaveValue('100');
   await expect(maxValue).toHaveValue('50');
 
-  // What the codebook holds, rule by rule. The section commits each answerable
-  // change as the researcher makes it rather than at a submit, so the minimum
-  // landed as it was entered — and switching the maximum ON gave it the
-  // minimum's own value, which is a pair the attribute can carry. The 50 that
-  // contradicts it never reached the record: that is the failure #1383 was
-  // filed for said the other way round — not an editor that closed and a save
-  // that succeeded with the offending rule gone without a word, but a rule
-  // that never landed while the pair it would make is on screen saying why.
-  const validation = ageValidation(await readProtocolJson(architectPage));
+  // What the protocol holds once the stage is saved, rule by rule. The rules
+  // are the stage's draft until then, so the field dialog is saved and the
+  // stage with it. The minimum landed as it was entered — and switching the
+  // maximum ON gave it the minimum's own value, which is a pair the attribute
+  // can carry. The 50 that contradicts it never reached the record: that is
+  // the failure #1383 was filed for said the other way round — not an editor
+  // that closed and a save that succeeded with the offending rule gone
+  // without a word, but a rule that never landed while the pair it would make
+  // is on screen saying why.
+  await fieldDialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await fieldDialog.waitFor({ state: 'detached' });
+  await editor.save();
+
+  const validation = ageValidation(
+    await readProtocolJson(
+      architectPage,
+      (protocol) => ageValidationOrNothing(protocol)?.minValue === 100,
+    ),
+  );
   expect(validation?.minValue).toBe(100);
   expect(validation?.maxValue).not.toBe(50);
   expect(validation?.maxValue).toBeGreaterThanOrEqual(100);

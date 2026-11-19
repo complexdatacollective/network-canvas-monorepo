@@ -103,6 +103,7 @@ describe('networkComposerStage schema', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'age',
             component: ComponentTypes.Number,
             label: localized('Age?'),
@@ -117,6 +118,7 @@ describe('networkComposerStage schema', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'closeness',
                 component: ComponentTypes.VisualAnalogScale,
                 label: localized('How close?'),
@@ -185,6 +187,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'age',
             label: localized('How old are they?'),
             component: ComponentTypes.Number,
@@ -242,6 +245,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'age',
             label: { en: '' },
             component: ComponentTypes.Number,
@@ -276,6 +280,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'age',
             label: localized('age'),
             component: 'NotAControl',
@@ -294,6 +299,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'age',
             component: ComponentTypes.Number,
             prompt: localized('Age?'),
@@ -322,6 +328,7 @@ describe('ComposerFormFieldSchema', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'closeness',
                 component: ComponentTypes.VisualAnalogScale,
                 parameters: {
@@ -348,6 +355,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'birth_date',
             label: localized('birth_date'),
             component: ComponentTypes.DatePicker,
@@ -377,6 +385,7 @@ describe('ComposerFormFieldSchema', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
@@ -407,6 +416,7 @@ describe('ComposerFormFieldSchema', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
@@ -431,6 +441,7 @@ describe('ComposerFormFieldSchema', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
@@ -450,6 +461,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'birth_year',
             label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
@@ -465,6 +477,7 @@ describe('ComposerFormFieldSchema', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
@@ -484,6 +497,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'closeness',
             label: localized('closeness'),
             component: ComponentTypes.VisualAnalogScale,
@@ -512,12 +526,14 @@ describe('ComposerFormSchema duplicate variables', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'birth_year',
             label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year', min: '1990', max: '1990' },
           },
           {
+            id: 'field-2',
             variable: 'birth_year',
             label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
@@ -545,11 +561,13 @@ describe('ComposerFormSchema duplicate variables', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.DatePicker,
               },
               {
+                id: 'field-2',
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.DatePicker,
@@ -579,6 +597,7 @@ describe('ComposerFormSchema duplicate variables', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'note',
             label: localized('note'),
             component: ComponentTypes.Text,
@@ -593,6 +612,7 @@ describe('ComposerFormSchema duplicate variables', () => {
           form: {
             fields: [
               {
+                id: 'field-1',
                 variable: 'note',
                 label: localized('note'),
                 component: ComponentTypes.Text,
@@ -611,11 +631,13 @@ describe('ComposerFormSchema duplicate variables', () => {
       nodeForm: {
         fields: [
           {
+            id: 'field-1',
             variable: 'age',
             label: localized('age'),
             component: ComponentTypes.Number,
           },
           {
+            id: 'field-2',
             variable: 'name',
             label: localized('name'),
             component: ComponentTypes.Text,

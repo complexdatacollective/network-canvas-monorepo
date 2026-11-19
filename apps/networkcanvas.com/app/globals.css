@@ -75,6 +75,13 @@
  * holds its items twice and travels half its own width towards the start
  * edge: to the left, or to the right in a right-to-left language, where the
  * strip overflows the other way.
+ *
+ * It moves in steps, thirty a second, rather than on every screen refresh.
+ * The strip sits over a blurred backdrop and behind an edge mask, both of
+ * which the browser has to redo for every frame the strip moves in; at about
+ * a pixel a step the motion still reads as continuous, for a quarter of the
+ * frames a 120Hz display would otherwise be asked for. The page background's
+ * signals step at the same rate (NetworkWeaveBackground in @codaco/art).
  */
 @keyframes marquee-x {
   from {
@@ -86,5 +93,5 @@
 }
 
 @utility animate-marquee {
-  animation: marquee-x 56s linear infinite;
+  animation: marquee-x 56s steps(1680) infinite;
 }

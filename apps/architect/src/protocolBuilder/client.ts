@@ -1,23 +1,39 @@
-import type { ManagedRuntime } from 'effect';
+import { Redacted, type Layer } from 'effect';
 
-import { makeRpcAdapter } from '@codaco/effect-query/adapter';
-import type { RpcAdapter } from '@codaco/effect-query/types';
-import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract';
+import {
+  HostCaller,
+  type HostSession,
+} from '@codaco/protocol-builder-core/contract/session';
+import {
+  fixedHostSession,
+  makeInProcessHost,
+  type InProcessHost,
+} from '@codaco/protocol-builder/host/inProcess';
 
 import type { ArchitectStore } from './architectStore.ts';
+import { ArchitectHandlers } from './handlers.ts';
 import { ResourceBridge } from './resourceBridge.ts';
-import { ArchitectHostClient, makeArchitectHostRuntime } from './runtime.ts';
 
-export type ArchitectClient = Readonly<{
-  adapter: RpcAdapter<ProtocolBuilderRpcs>;
-  runtime: ManagedRuntime.ManagedRuntime<ArchitectHostClient, never>;
-  /**
-   * Changes the label a lock holder in another tab is reported under. The
-   * handlers read it when they report one, so a change of language needs no
-   * new client.
-   */
-  setOtherTabName: (name: string) => void;
-}>;
+const ARCHITECT_CONNECTION = 'architect-local';
+
+export const ArchitectHostSession: Layer.Layer<HostSession> = fixedHostSession(
+  HostCaller.of({
+    connectionId: ARCHITECT_CONNECTION,
+    clientSessionId: ARCHITECT_CONNECTION,
+    userId: ARCHITECT_CONNECTION,
+    displayName: Redacted.make('This device'),
+  }),
+);
+
+export type ArchitectClient = InProcessHost &
+  Readonly<{
+    /**
+     * Changes the label a lock holder in another tab is reported under. The
+     * handlers read it when they report one, so a change of language needs no
+     * new client.
+     */
+    setOtherTabName: (name: string) => void;
+  }>;
 
 export function createArchitectClient(
   store: ArchitectStore,
@@ -25,13 +41,12 @@ export function createArchitectClient(
 ): ArchitectClient {
   let currentOtherTabName = otherTabName;
   const resources = new ResourceBridge(store);
-  const runtime = makeArchitectHostRuntime(
-    store,
-    () => currentOtherTabName,
-    resources,
+  const { adapter, runtime } = makeInProcessHost(
+    ArchitectHandlers(store, () => currentOtherTabName, resources),
+    ArchitectHostSession,
   );
   return {
-    adapter: makeRpcAdapter({ runtime, client: ArchitectHostClient }),
+    adapter,
     runtime,
     setOtherTabName: (name) => {
       currentOtherTabName = name;

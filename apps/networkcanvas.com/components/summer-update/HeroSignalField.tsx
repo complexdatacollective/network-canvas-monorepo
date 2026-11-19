@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+import { EARLY_FRAME_ALLOWANCE } from '~/components/ui/frameLoop';
 
 const TARGET_SELECTOR = '[data-homepage-weave-target]';
 const COLOR_PROPERTIES = [
@@ -458,9 +459,14 @@ export function HeroSignalField() {
     let targetPointer = { x: 0, y: 0 };
     let scrollProgress = 0;
 
+    // The field never draws faster than 60 frames a second: it fills the
+    // hero with a shader, and a 120Hz display would otherwise have it drawn
+    // twice as often for motion this slow. Touch devices get half that. The
+    // allowance keeps a frame that arrives a little early from being skipped.
     const rendersAtLowerFrameRate =
       window.matchMedia('(pointer: coarse)').matches;
-    const minimumFrameInterval = rendersAtLowerFrameRate ? 1000 / 30 : 0;
+    const minimumFrameInterval =
+      1000 / (rendersAtLowerFrameRate ? 30 : 60) - EARLY_FRAME_ALLOWANCE;
     let lastDrawTimestamp = 0;
 
     const resize = () => {

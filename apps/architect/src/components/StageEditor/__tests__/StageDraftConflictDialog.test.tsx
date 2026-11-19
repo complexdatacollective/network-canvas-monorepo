@@ -96,12 +96,7 @@ type TestStore = ReturnType<typeof createTestStore>;
 // A stage editor that has been typed into: what the researcher would lose,
 // published exactly as the editor's own chrome publishes it.
 const openDirtyStageDraft = () => {
-  publishStageDraft(
-    editedStage,
-    { label: { en: 'A' } },
-    { label: { en: 'A, edited' } },
-    true,
-  );
+  publishStageDraft({ stage: editedStage, unsaved: true, editing: true });
 };
 
 const renderDialog = (store: TestStore) =>
@@ -276,16 +271,12 @@ describe('StageDraftConflictDialog', () => {
   // of what the rescue copy keeps, even when nothing else was changed.
   it('downloads a copy carrying the shared wording held with the stage', async () => {
     const reworded = { en: 'Go back a step' };
-    publishStageDraft(
-      editedStage,
-      { label: { en: 'A' } },
-      { label: { en: 'A' } },
-      true,
-      {
-        words: [{ group: 'navigation', key: 'back', value: reworded }],
-        reworded: true,
-      },
-    );
+    publishStageDraft({
+      stage: editedStage,
+      interfaceText: [{ group: 'navigation', key: 'back', value: reworded }],
+      unsaved: true,
+      editing: true,
+    });
     expect(readStageDraft().dirty).toBe(true);
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock

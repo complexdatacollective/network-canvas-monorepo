@@ -29,20 +29,15 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Resolve the pinned Playwright version
+    - name: Resolve the pinned Playwright version and the cache key
       id: pw
       shell: bash
       # The same lockfile-derived pin the Docker image tag is built from: the
       # browser build is fixed by the resolved @playwright/test version either
       # way, so the native lanes are no less deterministic about the browsers.
-      run: |
-        version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
-          | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
-        if [ -z "$version" ]; then
-          echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
-          exit 1
-        fi
-        echo "version=$version" >> "$GITHUB_OUTPUT"
+      # The key also names the runner's OS release and architecture; see
+      # cache-key.sh for why.
+      run: bash "$GITHUB_ACTION_PATH/cache-key.sh"
     # Restore-only, from the one union key `warm-playwright-cache` writes on
     # pushes to main. A PR-scoped copy is readable by exactly one pull request,
     # and on 2026-09-10 fourteen of those copies held 5.17 GB, 53% of the
@@ -52,12 +47,13 @@ runs:
     # but never writes a competing copy of its own. The trade: a job that needs
     # fewer than all three browsers still restores the full union, a few
     # hundred MB and one to three seconds, in exchange for never holding a
-    # second key against the ceiling.
+    # second key against the ceiling. A runner on a platform main has not
+    # warmed yet misses, and the install step below downloads the browsers.
     - if: inputs.restore-cache == 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+        key: ${{ steps.pw.outputs.cache-key }}
     # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
     # postinstall browser download never runs. With the cache restored the
     # browser download is a no-op, but `--with-deps` still runs apt, which is

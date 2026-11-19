@@ -369,6 +369,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "ego-var-9009-1",
             "prompt": {
               "en": "What is your name?",
@@ -376,6 +377,7 @@
             }
           },
           {
+            "id": "field-2",
             "variable": "ego-var-9009-2",
             "prompt": {
               "en": "Do you agree to take part?",
@@ -489,6 +491,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "hours",
             "prompt": {
               "en": "How many hours a week do you spend with {nodeLabel}?",

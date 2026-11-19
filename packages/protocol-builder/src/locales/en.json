@@ -5480,8 +5480,8 @@
     "description": "Note under the symbols choice while it draws symbols from gender identity but the gender identity options, or the kinship words chosen for them, have changed since. A small Update symbols action follows it."
   },
   "protocolBuilder.pedigree.symbolsHint": {
-    "defaultMessage": "A person’s symbol comes from the shape of the person type in the codebook. Choosing an option changes that shape straight away, not when you save this stage, and changes how people of this type are drawn throughout the interview.",
-    "description": "Guidance under the symbols choice. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is written to the codebook at once, so it is not undone by cancelling the stage, and it applies on every stage that draws this node type."
+    "defaultMessage": "A person’s symbol comes from the shape of the person type in the codebook. Choosing an option changes that shape when you save this stage, and changes how people of this type are drawn throughout the interview.",
+    "description": "Guidance under the symbols choice. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is saved to the codebook with the stage, so cancelling the stage undoes it, and once saved it applies on every stage that draws this node type."
   },
   "protocolBuilder.pedigree.symbolsLabel": {
     "defaultMessage": "Symbols",
@@ -8011,6 +8011,10 @@
     "defaultMessage": "Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.",
     "description": "Shown above a stage editor’s fields when the save was refused because somebody the host would not name is editing another part of the protocol the save has to write. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
   },
+  "protocolBuilder.stageEdit.codebookClash": {
+    "defaultMessage": "A change you made to the codebook while editing this stage no longer fits the protocol, so nothing was saved. Somebody else may have changed the same type while you were working. Your changes are still here: check the types and attributes you changed, then save again.",
+    "description": "Shown above a stage editor’s fields when the save was refused because a codebook change made in this stage editor (a node, edge or ego type, or one of its attributes) clashes with the protocol as it now stands, for example two attributes of one type with the same name. Nothing was lost. A stage is one step of an interview; the codebook lists the types and attributes an interview collects."
+  },
   "protocolBuilder.stageEdit.invalidShape": {
     "defaultMessage": "This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.",
     "description": "Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview."
@@ -8047,21 +8051,13 @@
     "defaultMessage": "Optionally edit the wording for interface elements used by this stage type. Default wording is provided for built-in languages.",
     "description": "Explains the stage editor section titled “Customize built-in wording”. Interface elements are the buttons, hints and messages the participant sees on the stage. Built-in languages are the languages Network Canvas itself supplies this wording in; for other languages the researcher writes it."
   },
-  "protocolBuilder.stageWording.savedWithStage": {
-    "defaultMessage": "Changes to this are saved when you save the stage.",
-    "description": "Shown under one of the words every stage of the same type shares, in a stage’s wording section, when the protocol does not use that word until the stage being edited is saved, for example the message shown when a map search finds nothing, which a map stage needs only once its search is turned on. Unlike the other shared words, which are saved as soon as the researcher leaves the field, a change to this one is saved together with the stage, and discarded if the stage is not saved. \"this\" is the word above the note."
-  },
   "protocolBuilder.stageWording.sharedHeading": {
     "defaultMessage": "Shared by every stage of this kind",
     "description": "Heading of the part of a stage’s “Customize built-in wording” section holding the words every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage, opened and closed by clicking it. The protocol holds them once, for all those stages."
   },
-  "protocolBuilder.stageWording.sharedNote": {
-    "defaultMessage": "These words appear on every stage of this kind. Changes to them are saved straight away.",
-    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, so changing one changes it on all those stages, and the change is saved as soon as the researcher leaves the field rather than when they save the stage."
-  },
   "protocolBuilder.stageWording.sharedNoteNoneHeld": {
     "defaultMessage": "These words appear on every stage of this kind.",
-    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the drawing tools of every Narrative stage, shown when the protocol uses none of them yet because the stage being edited is the first to need them. The protocol holds them once, so changing one changes it on all those stages. Each of them says beside itself when a change to it is saved."
+    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the drawing tools of every Narrative stage. The protocol holds them once, so a change to one, saved with the stage being edited, changes it on all those stages."
   },
   "protocolBuilder.stageWording.specificHeading": {
     "defaultMessage": "Specific to this stage",
@@ -8074,10 +8070,6 @@
   "protocolBuilder.stageWording.switchOffDescription": {
     "defaultMessage": "The wording you changed in this section goes back to Network Canvas’s wording, in every language.",
     "description": "Body of the dialog asking a researcher to confirm switching off a stage’s Wording section. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages."
-  },
-  "protocolBuilder.stageWording.switchOffSharedDescription": {
-    "defaultMessage": "The wording you changed in this section goes back to Network Canvas’s wording, in every language. That includes the wording shared by every stage of this kind, which changes on all of those stages straight away.",
-    "description": "Body of the dialog asking a researcher to confirm switching off a stage’s “Customize built-in wording” section when they changed some of the words every stage of the same type shares. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages; the shared words change on every such stage, and at once rather than when the stage is saved."
   },
   "protocolBuilder.stageWording.switchOffTitle": {
     "defaultMessage": "Use Network Canvas’s wording?",

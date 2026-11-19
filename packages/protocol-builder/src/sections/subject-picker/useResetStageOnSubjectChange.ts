@@ -18,7 +18,10 @@ import {
   useClearStageValue,
 } from '../../form/stageFormHooks.ts';
 import { getInterfaceTemplate } from '../../interfaces/templates.ts';
-import type { StageFormDraft } from '../../stageDocument.ts';
+import {
+  holdsStagedCodebook,
+  type StageFormDraft,
+} from '../../stageDocument.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
 import {
   SUBJECT_INDEPENDENT_FIELDS,
@@ -81,7 +84,9 @@ const heldStageKeys = (
   ...Object.keys(committedFields),
   ...[...storeApi.getState().dormantValues.keys()]
     .map(parkedStageKey)
-    .filter((key) => key !== undefined),
+    .filter(
+      (key): key is string => key !== undefined && !holdsStagedCodebook(key),
+    ),
 ];
 
 const survivesTheReset = (

@@ -662,6 +662,7 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "09306238-68e4-498c-8c12-923eb2eec760",
             "prompt": {
               "en": "Do you consent to participate in this study in accordance with the terms above?"
@@ -707,54 +708,63 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "4ab18994-a252-47cb-ba19-20b6ffc0e927",
             "prompt": {
               "en": "What is your first name?"
             }
           },
           {
+            "id": "field-2",
             "variable": "3b5197a9-d024-421c-8663-1e06e0587999",
             "prompt": {
               "en": "What is your last name?"
             }
           },
           {
+            "id": "field-3",
             "variable": "198bdb95-9556-4775-9c82-22531a382aa5",
             "prompt": {
               "en": "What is your date of birth?"
             }
           },
           {
+            "id": "field-4",
             "variable": "92326a8e-f5a1-4918-8717-a4d6917a9264",
             "prompt": {
               "en": "Which of the following languages do you speak fluently?"
             }
           },
           {
+            "id": "field-5",
             "variable": "aa418971-ce17-4f0f-8060-438197298a82",
             "prompt": {
               "en": "Overall, how satisfied are you with existing social network analysis software?"
             }
           },
           {
+            "id": "field-6",
             "variable": "d2ac00d6-337a-4ce4-87de-028eccd81617",
             "prompt": {
               "en": "How satisfied are you with the level of support you receive?"
             }
           },
           {
+            "id": "field-7",
             "variable": "3609188b-dfbe-482a-995c-d71387e22054",
             "prompt": {
               "en": "Thinking back to your last medical procedure, how much pain do you feel you experienced?"
             }
           },
           {
+            "id": "field-8",
             "variable": "835ea5b5-1fbf-472d-ad3a-df74ec1d6870",
             "prompt": {
               "en": "How would you prefer to be contacted about your next interview?"
             }
           },
           {
+            "id": "field-9",
             "variable": "5a77b483-8120-4a64-aff1-c8c5d4ac33d1",
             "prompt": {
               "en": "Is there any other information you would like to provide at this time?"
@@ -905,18 +915,21 @@
         },
         "fields": [
           {
+            "id": "field-1",
             "variable": "45a62b9c-42ec-4735-bf1a-4074a2001d2c",
             "prompt": {
               "en": "What is the name of this clinic or health care provider?"
             }
           },
           {
+            "id": "field-2",
             "variable": "1d1460f2-8c11-4f66-8647-83801116aebf",
             "prompt": {
               "en": "When was your visit?"
             }
           },
           {
+            "id": "field-3",
             "variable": "37fb19da-3ec0-4427-bb4b-3b59003a7e60",
             "prompt": {
               "en": "In your own words, what was the purpose of your visit?"
@@ -1091,12 +1104,14 @@
       "form": {
         "fields": [
           {
+            "id": "field-1",
             "variable": "95c5bb4d-5ac2-4ddd-8dd9-fca518f15748",
             "prompt": {
               "en": "Did you visit {nodeLabel} or study there?"
             }
           },
           {
+            "id": "field-2",
             "variable": "d91ca102-954d-4da1-b8b8-d9490c7bca44",
             "prompt": {
               "en": "Overall, how would you describe your experience at {nodeLabel}?"

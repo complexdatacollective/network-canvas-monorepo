@@ -4,7 +4,6 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
-import { beforeCall } from '../../../testing/host/beforeCall.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 
@@ -80,34 +79,6 @@ export const collaboratorSets = (
       },
     },
   });
-};
-
-/**
- * A host that holds every write open until the test releases it.
- *
- * "A write of this section's own is in flight" is a state with rules of its
- * own — every box disabled, and a collaborator's move on another type deferred
- * rather than dropped — and a test can only stand in it if it decides when the
- * host answers. `inner` is the adapter the rest of the fixture would have
- * used, so a protocol seeded as already protecting something can be gated too.
- */
-export const heldWrites = (
-  inner: (host: InMemoryHost) => ProtocolBuilderAdapter = (host) =>
-    host.adapter,
-): Readonly<{
-  release: () => void;
-  adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
-}> => {
-  const gate = Promise.withResolvers<void>();
-  return {
-    release: () => {
-      gate.resolve();
-    },
-    adapter: (host: InMemoryHost) =>
-      beforeCall(inner(host), (tag) =>
-        tag === 'Submit' ? gate.promise : undefined,
-      ),
-  };
 };
 
 /**

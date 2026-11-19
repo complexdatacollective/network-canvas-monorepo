@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { isEqual } from 'es-toolkit/compat';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { expect } from 'vitest';
 
 import { commonCatalogLoaders } from '@codaco/app-i18n/common';
@@ -60,6 +60,12 @@ import {
 } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
 import type { ProtocolBuilderAdapter } from '../state/context.ts';
+import {
+  overlaySections,
+  useStagedCodebookStore,
+  type StagedCodebook,
+  type StagedCodebookStore,
+} from '../state/stagedCodebook.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -271,6 +277,15 @@ export type StageEditorHarness = RenderResult &
      * or that nothing did.
      */
     hostCodebook(): Readonly<Codebook>;
+    /**
+     * The codebook as the EDITOR shows it: the protocol's, with the codebook
+     * changes the stage is holding laid over it (see `StagedCodebookStore`).
+     * What a control inside the editor did to the codebook is here at once,
+     * and reaches `hostCodebook` only when the stage is saved.
+     */
+    editorCodebook(): Readonly<Codebook>;
+    /** The codebook changes the stage is holding, by section id. */
+    stagedCodebook(): StagedCodebook;
     /**
      * The top-level stage keys the mounted sections have a field for.
      *
@@ -886,6 +901,23 @@ export function renderStageEditor<T extends StageType = StageType>(
           store.sectionIds().map((id) => [id, store.read(id).document]),
         ),
       ).codebook,
+    editorCodebook: () => {
+      const staged = sectionsProbe.readStagedCodebook();
+      if (staged === undefined) {
+        throw new Error(
+          'renderStageEditor: editorCodebook() needs the stage form, which this harness has not rendered (or was rendered without action chrome).',
+        );
+      }
+      return protocolContextFromSections(
+        overlaySections(
+          staged.read(),
+          Object.fromEntries(
+            store.sectionIds().map((id) => [id, store.read(id).document]),
+          ),
+        ),
+      ).codebook;
+    },
+    stagedCodebook: () => sectionsProbe.readStagedCodebook()?.read() ?? {},
     ownedKeys: () => readOwnedKeys(view.container),
     roundTrip: async ({ unowned = [] } = {}) => {
       // Before the save, because it is a question about what is on screen and
@@ -1400,18 +1432,43 @@ function createSectionsProbe(): Readonly<{
   wrap: (inner: StageEditorActions) => StageEditorActions;
   read: () => readonly StageSection[];
   readProblems: () => readonly string[];
+  readStagedCodebook: () => StagedCodebookStore | undefined;
 }> {
   let published: StageSectionsStore | undefined;
   let publishedProblems: StageProblemsStore | undefined;
+  let stagedCodebook: StagedCodebookStore | undefined;
+  const reportStagedCodebook = (store: StagedCodebookStore | undefined) => {
+    stagedCodebook = store;
+  };
   return {
     wrap: (inner) => (context) => {
       published = context.sections;
       publishedProblems = context.problems;
-      return inner(context);
+      return (
+        <>
+          <StagedCodebookProbe report={reportStagedCodebook} />
+          {inner(context)}
+        </>
+      );
     },
     read: () => published?.getSnapshot() ?? [],
     readProblems: () => publishedProblems?.getSnapshot() ?? [],
+    readStagedCodebook: () => stagedCodebook,
   };
+}
+
+/**
+ * Hands the stage form's codebook store out of the action slot, which the
+ * shell renders inside it, for `editorCodebook`.
+ */
+function StagedCodebookProbe({
+  report,
+}: Readonly<{ report: (store: StagedCodebookStore | undefined) => void }>) {
+  const store = useStagedCodebookStore();
+  useEffect(() => {
+    report(store);
+  }, [report, store]);
+  return null;
 }
 
 function refusalOnScreen(root: Element | Document): boolean {

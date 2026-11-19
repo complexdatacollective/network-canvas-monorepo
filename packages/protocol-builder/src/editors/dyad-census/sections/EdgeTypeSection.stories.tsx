@@ -56,7 +56,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Says what a census question records between the two people it asked about, and — where the researcher has only just thought of it — invents the connection type to record. The types are the protocol’s own edge types, subscribed to rather than passed in, so one a collaborator adds or deletes appears or disappears while the question is open. Creating one writes the CODEBOOK, under that section’s own lock and on its own, and the question is then pointed at what the host made: a question naming a type that does not exist yet is not one the protocol would accept, so the two cannot be saved as one edit.',
+          'Says what a census question records between the two people it asked about, and — where the researcher has only just thought of it — invents the connection type to record. The types are the protocol’s own edge types, subscribed to rather than passed in, so one a collaborator adds or deletes appears or disappears while the question is open. A type created here is kept with the stage’s draft, like every codebook change made inside a stage editor, and the question is pointed at it at once: saving the stage writes the type and the question together, and cancelling the stage takes both away.',
       },
     },
   },

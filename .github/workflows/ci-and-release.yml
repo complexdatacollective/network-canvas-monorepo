@@ -574,25 +574,21 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      - name: Resolve the pinned Playwright version
+      - name: Resolve the pinned Playwright version and the cache key
         id: pw
-        # The same lockfile-derived pin the Docker image tag is built from:
-        # the browser build is fixed by the resolved @playwright/test version
-        # either way, so this lane is no less deterministic about Chromium.
-        run: |
-          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
-          if [ -z "$version" ]; then
-            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+        # The script every consumer's restore runs, so this job writes the
+        # key they read. The key names the runner's OS release and
+        # architecture as well as the Playwright version; see the script.
+        run: bash .github/actions/playwright-browsers/cache-key.sh
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           # No browser-set suffix: this is the one union key every consumer
-          # job restores, whatever subset of browsers it installs.
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+          # job on this platform restores, whatever subset of browsers it
+          # installs. A consumer on another platform (a self-hosted runner,
+          # or the other image while `ubuntu-latest` moves between two)
+          # misses and downloads its own browsers.
+          key: ${{ steps.pw.outputs.cache-key }}
       - name: Install every browser the consumer jobs need
         # `actions/cache` (not `/restore`) is deliberate here: it restores if
         # this key already has an entry and saves at job end only on a miss,
