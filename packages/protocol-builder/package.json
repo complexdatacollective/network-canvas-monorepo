@@ -31,7 +31,7 @@
     "./fields/StageNameField": "./src/fields/StageNameField.tsx",
     "./fields/variableNameRules": "./src/fields/variableNameRules.ts",
     "./form/dialogDraftRegistrar": "./src/form/dialogDraftRegistrar.ts",
-    "./form/sharedWordingDraft": "./src/form/sharedWordingDraft.ts",
+    "./form/stageDraftStore": "./src/form/stageDraftStore.ts",
     "./form/stageEditorContext": "./src/form/stageEditorContext.ts",
     "./form/stageSections": "./src/form/stageSections.ts",
     "./interfaces/StageTypeImage": "./src/interfaces/StageTypeImage.tsx",
