@@ -43,9 +43,16 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
 1. **Every object is a Zod `strictObject`** — unknown/extra keys fail. Do not add keys that
    aren't defined for that object. No comment keys.
 2. **Valid JSON only** — no comments, no trailing commas.
-3. **IDs must be unique** in their scope: `stages[].id` (across all stages); `prompts[].id`
-   (within a stage); `presets[].id`, `items[].id`, `panels[].id`, filter `rules[].id`.
-   Use short readable slugs (`"ng-support"`, `"p1"`) or UUIDs.
+3. **Object ids are UUIDs, unique across the whole protocol.** These objects need an `id`:
+   stages, prompts, panels, Information `items`, form `fields`, filter `rules`, roster sort
+   rules (`sortOptions.sortOrder`), `additionalAttributes` rows, roster card and sort properties
+   (`cardOptions.additionalProperties`, `sortOptions.sortableProperties`), Narrative `presets`
+   and the rows of their `edges.display` and `highlight` lists, FamilyPedigree diseases and
+   NetworkComposer edge settings. Each id must be a UUID (for example
+   `"3f2c8a91-6b4d-4e2f-9a17-5c0d8e6b2a43"`), and no two of these objects anywhere in the
+   protocol may share one, even when they are of different kinds or on different stages.
+   Generate a fresh one for each object (`crypto.randomUUID()`, or `uuidgen`). Find a finish
+   stage by its `type` (`"FinishSession"`), never by its id.
 4. **Variable record-keys must match `^[A-Za-z0-9._:-]+$`** — i.e. letters, digits, `. _ - :`
    only. **NO SPACES** in a key. Use snake_case: `alter_age`, `close_feeling`. A variable's
    `name` is what researchers see in exports: it may use letters from any language, digits,
@@ -247,14 +254,14 @@ Required keys per stage type used by these templates:
 
 - **Information**: `items: [{ "id", "type":"text", "content":"…" }]` (use `text` items; `title?`).
 - **EgoForm**: `introductionPanel:{title,text?}` (REQUIRED; shown above the questions, and `text` may be left out for a title-only panel) + `form:{fields:[{id,variable(ego key), prompt}]}` (no `title`). No other stage has an `introductionPanel` in schema 9: to explain another stage to the participant, put an **Information** stage just before it (give it the same `skipLogic` so the two are skipped together).
-- **NameGenerator**: `subject`(node) + `form:{fields:[{id,variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
+- **NameGenerator**: `subject`(node) + `form:{fields:[{id,variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?:[{id,variable,value}]}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
 - **NameGeneratorQuickAdd**: `subject`(node) + `quickAdd:"<a text node-variable key>"` + `prompts:[{id,text}]` (≥1). (No `form`.)
 - **AlterForm**: `subject`(node) + `form:{fields:[{id,variable(node key),prompt}]}` + `filter?`.
 - **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `form:{fields:[{id,variable(edge key),prompt}]}`.
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
 - **Sociogram**: `subject`(node) + `prompts:[{id,text, layout:{layoutVariable:"<layout node key>"}, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.
-- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:[{type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
+- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:[{id, type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{id, variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
 - **DyadCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>"}]` (≥1).
 - **TieStrengthCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>", edgeVariable:"<ordinal edge key>", negativeLabel:"…"}]` (≥1).
 - **Geospatial**: `subject`(node) + `prompts:[{id,text, variable:"<location node key>"}]` (≥1) + `mapOptions` (all REQUIRED):
@@ -277,7 +284,7 @@ Required keys per stage type used by these templates:
   chosen language, normally first:
   ```jsonc
   {
-    "id": "language-chooser",
+    "id": "02cabc1c-467a-5870-ab97-abd472fb3fed",
     "type": "LanguageChooser",
     "label": { "en-US": "Language", "es": "Idioma" },
     "title": { "en-US": "Choose a language", "es": "Elige un idioma" }
@@ -294,7 +301,7 @@ Required keys per stage type used by these templates:
   `"finish"` goes to the first finish stage after the stage that owns the rule, which is this one.
   ```jsonc
   {
-    "id": "finish",
+    "id": "3bd853b4-3534-519b-9681-73e8d9d338fb",
     "type": "FinishSession",
     "label": { "en-US": "Finish Interview" },
     "title": { "en-US": "Finish Interview" },
@@ -338,13 +345,13 @@ removal, e.g.:
 
 ```jsonc
 {
-  "id": "information-researcher-notes",
+  "id": "9835d7d2-8c69-5651-a594-de77a870b0e0",
   "type": "Information",
   "label": { "en-US": "Template notes (delete before fielding)" },
   "title": { "en-US": "Template notes" },
   "items": [
     {
-      "id": "researcher-notes",
+      "id": "efe313bb-8e5d-5a1d-8de5-7209b88c24a5",
       "type": "text",
       "size": "LARGE",
       "content": {
