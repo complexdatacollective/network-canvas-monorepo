@@ -33,8 +33,7 @@ several, such as a separate ending for participants who are not eligible.
   `findTimelineStructureProblems` reports the same problems for a list of
   stages without validating the stages themselves.
 - The v8 to v9 migration appends a finish stage in `confirmation` mode, with
-  id `finish` (or the next free `finish-2`, `finish-3`, …), outcome
-  `completed`, and the text the interview has always shown there, in English under the protocol's default
+  a UUID id, outcome `completed`, and the text the interview has always shown there, in English under the protocol's default
   language. Its notes say so. A recorded interview that was on the old
   finish screen resumes on the new finish stage. Run again over a document
   already in schema 9 form, it keeps a finish stage the document already ends
