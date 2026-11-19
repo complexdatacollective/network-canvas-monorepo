@@ -1,5 +1,4 @@
 ---
-'@codaco/protocol-builder': patch
 '@codaco/architect': patch
 ---
 

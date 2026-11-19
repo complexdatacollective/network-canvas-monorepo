@@ -100,7 +100,13 @@ export default function Practices({
                 {heading}
               </span>
             </div>
-            <ul className="m-0 flex list-none flex-col gap-1.5 p-0 ps-8">
+            {/* The practices are English walkthrough content; the heading
+                above them is the interface's own words. */}
+            <ul
+              lang="en"
+              dir="ltr"
+              className="m-0 flex list-none flex-col gap-1.5 p-0 ps-8"
+            >
               {group.items.map((text, index) => (
                 <li key={index} className="relative text-sm">
                   <span

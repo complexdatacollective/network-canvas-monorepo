@@ -7,7 +7,7 @@
   - The "# " heading is the walkthrough's title, shown at the top of the panel.
   - Each "## " heading starts a step. Everything under it, up to the next
     "## ", is that step's body (ordinary markdown: paragraphs, lists, links,
-    **bold**, images, > quotes).
+    **bold**, images).
   - Directives are HTML comments on their own line inside a step, e.g.
     "section: prompts" wrapped in an HTML comment:
       section: <key>     highlight and scroll to the editor section with this
@@ -66,8 +66,6 @@ The form contains questions the participant answers about themselves. Each field
 For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
 
 Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
-
-<!-- include: built-in-wording -->
 
 <!-- include: skip-logic -->
 

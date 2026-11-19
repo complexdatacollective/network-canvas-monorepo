@@ -86,6 +86,11 @@ export function openWalkthrough(
   returnFocusTo = launcher;
   focusPending = true;
   if (state.open && state.stage === stage) {
+    // Restored at another step (a section's button while minimised), the
+    // panel goes beside that step's section, not back to where it was left.
+    if (state.collapsed && step !== undefined && step !== state.step) {
+      position = undefined;
+    }
     set({
       ...state,
       ...(step === undefined ? {} : { step }),

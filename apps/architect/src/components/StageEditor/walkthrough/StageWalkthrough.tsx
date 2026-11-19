@@ -283,7 +283,12 @@ function WalkthroughCard({
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 flex-col">
                 <Eyebrow>{intl.formatMessage(messages.walkthrough)}</Eyebrow>
-                <span className="font-heading truncate text-sm font-bold">
+                {/* Walkthrough content is English in every interface language. */}
+                <span
+                  lang="en"
+                  dir="ltr"
+                  className="font-heading text-match-parent truncate text-sm font-bold"
+                >
                   {title}
                 </span>
               </div>
@@ -334,7 +339,12 @@ function WalkthroughCard({
                 variant="text"
                 size="sm"
                 disabled={onBack === undefined}
-                onClick={onBack}
+                onClick={() => {
+                  // Back disables itself on the first step, and a disabled
+                  // button drops focus to the page: hand it to Next first.
+                  if (index === 1) nextRef.current?.focus();
+                  onBack?.();
+                }}
               >
                 {intl.formatMessage(messages.back)}
               </Button>
@@ -407,10 +417,13 @@ function StepBody({
         </div>
       )}
       <div className="flex flex-col gap-3">
+        {/* Walkthrough content is English in every interface language. */}
         <Heading
           id={isPresent ? headingId : undefined}
           level="h4"
           margin="none"
+          lang="en"
+          dir="ltr"
         >
           {step.title}
         </Heading>
@@ -425,7 +438,10 @@ function StepBody({
 function Block({ block }: Readonly<{ block: WalkthroughBlock }>) {
   if (block.kind === 'practices') return <Practices items={block.items} />;
   return (
-    <RenderMarkdown allowedElements={MARKDOWN_TAGS} render={<div />}>
+    <RenderMarkdown
+      allowedElements={MARKDOWN_TAGS}
+      render={<div lang="en" dir="ltr" />}
+    >
       {block.text}
     </RenderMarkdown>
   );

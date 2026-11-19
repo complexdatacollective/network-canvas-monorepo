@@ -18,6 +18,8 @@ const srcDir = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 /** Attributes whose text a sighted person also sees, so it is translated. */
 const SHOWN_AS_WELL: Record<string, string> = {
+  'components/StageEditor/walkthrough/StageWalkthrough.tsx: messages.collapse':
+    'the same text is the button tooltip',
   'components/Home/LibraryPanel.tsx: messages.clearAllLocallySavedProtocols':
     'the button has the same text as a visible tooltip',
   'components/Localization/LanguageList.tsx: messages.editTranslations':

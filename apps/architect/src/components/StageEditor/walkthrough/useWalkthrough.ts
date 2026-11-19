@@ -6,7 +6,7 @@ import {
   type Walkthrough,
 } from './parseWalkthrough';
 
-/** Each stage type's walkthrough once loaded; `null` if it could not be. */
+/** Each stage type's walkthrough once loaded; `null` if it has none. */
 const loaded = new Map<string, Walkthrough | null>();
 const loading = new Set<string>();
 const listeners = new Set<() => void>();
@@ -22,11 +22,13 @@ function request(type: string) {
   if (loaded.has(type) || loading.has(type) || !hasWalkthrough(type)) return;
   loading.add(type);
   void loadWalkthrough(type)
-    // A walkthrough that fails to load is not offered; the content tests are
-    // what keep that from happening.
+    // A walkthrough that fails to load (a content chunk gone after a deploy,
+    // say) is not offered, and is not remembered either, so the next editor
+    // that asks for it tries again. The content tests keep a broken file from
+    // shipping.
     .then(
       (walkthrough) => loaded.set(type, walkthrough ?? null),
-      () => loaded.set(type, null),
+      () => undefined,
     )
     .finally(() => {
       loading.delete(type);

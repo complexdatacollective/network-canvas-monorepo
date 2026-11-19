@@ -397,12 +397,6 @@
         padding: 0 0.2em;
         border-radius: 3px;
       }
-      .preview blockquote {
-        margin: 0 0 0.6rem;
-        padding-inline-start: 0.7rem;
-        border-inline-start: 3px solid var(--line);
-        color: var(--muted);
-      }
       .preview .practices {
         display: grid;
         gap: 0.4rem;
@@ -557,8 +551,11 @@
             if (lines.every((line) => /^\s*\d+\. /.test(line))) {
               return `<ol>${lines.map((line) => `<li>${inline(line.replace(/^\s*\d+\. /, ''))}</li>`).join('')}</ol>`;
             }
+            // The panel has no quotes: a quote shows as a plain paragraph
+            // there, so it does here too. ("> Do:" and "> Avoid:" lines are
+            // practices, handled before this.)
             if (lines.every((line) => line.startsWith('>'))) {
-              return `<blockquote>${inline(lines.map((line) => line.replace(/^>\s?/, '')).join(' '))}</blockquote>`;
+              return `<p>${inline(lines.map((line) => line.replace(/^>\s?/, '')).join(' '))}</p>`;
             }
             return `<p>${inline(chunk)}</p>`;
           })

@@ -3475,10 +3475,6 @@
     "defaultMessage": "Resume walkthrough · {index} of {total}",
     "description": "Small heading in the tooltip of the minimized walkthrough in the stage editor toolbar, above the title of the step the researcher was on."
   },
-  "architect.stageEditor.walkthrough.resumeLabel": {
-    "defaultMessage": "Resume walkthrough, step {index} of {total}: {title}",
-    "description": "Accessible name of the minimized walkthrough button in the stage editor toolbar. It opens the walkthrough again at the step named."
-  },
   "architect.stageEditor.walkthrough.sectionWalkthrough": {
     "defaultMessage": "Walk me through {section}",
     "description": "Accessible name and tooltip of the info button beside the title of a section of the stage being edited. It opens the step-by-step guide to the stage at the step about that section. section is the section’s title, such as “Prompts”."

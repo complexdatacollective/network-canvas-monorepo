@@ -40,12 +40,6 @@ const messages = defineMessages({
     description:
       'Small heading in the tooltip of the minimized walkthrough in the stage editor toolbar, above the title of the step the researcher was on.',
   },
-  resumeLabel: {
-    id: 'architect.stageEditor.walkthrough.resumeLabel',
-    defaultMessage: 'Resume walkthrough, step {index} of {total}: {title}',
-    description:
-      'Accessible name of the minimized walkthrough button in the stage editor toolbar. It opens the walkthrough again at the step named.',
-  },
 });
 
 /**
@@ -78,7 +72,12 @@ export const WalkthroughToolbarControl = defineToolbarChild(
       if (takeWalkthroughFocus()) ref.current?.focus({ preventScroll: true });
     }, []);
 
-    if (!open || steps === undefined) {
+    // Offered only once its steps have loaded: a control that opened a
+    // walkthrough still loading, or one that failed to, would open a panel
+    // that never appears and hide itself.
+    if (steps === undefined || steps.length === 0) return null;
+
+    if (!open) {
       return (
         <ToolbarButton
           ref={mergedRef}
@@ -98,7 +97,10 @@ export const WalkthroughToolbarControl = defineToolbarChild(
     return (
       <ToolbarIconButton
         ref={mergedRef}
-        aria-label={intl.formatMessage(messages.resumeLabel, values)}
+        // Read only by a screen reader, so English, like the step title it
+        // names: screen-reader text stays out of the catalogs.
+        lang="en"
+        aria-label={`Resume walkthrough, step ${values.index} of ${values.total}: ${title}`}
         icon={
           <ProgressRing
             value={(index + 1) / steps.length}

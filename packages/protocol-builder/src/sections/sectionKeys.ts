@@ -66,7 +66,6 @@ export const SECTION_KEYS = [
   'roster-source',
   'side-panels',
   'skip-logic',
-  'stage-languages',
   'task-explanation',
 ] as const;
 
