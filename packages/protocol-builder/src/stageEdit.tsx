@@ -18,6 +18,7 @@ import type {
 } from '@codaco/protocol-validation';
 import {
   isCodebookSectionId,
+  sectionId as toSectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
@@ -54,11 +55,11 @@ import {
 } from './state/stagedCodebookSave.ts';
 
 /**
- * Which stage an editor is open on: one the protocol already holds, or one it
- * does not hold yet.
+ * Which stage an editor is open on: one the protocol already holds — named by
+ * its section, or by the stage's own id — or one it does not hold yet.
  */
 export type StageEditTarget =
-  | Readonly<{ sectionId: ProtocolSectionId }>
+  | ExistingStageTarget
   | Readonly<{
       stageType: StageType;
       /** Where the stage lands in the stage order, counting from zero. */
@@ -66,6 +67,18 @@ export type StageEditTarget =
       /** Fields on top of the interface's own template. */
       fields?: StageFormDraft;
     }>;
+
+type ExistingStageTarget =
+  | Readonly<{ sectionId: ProtocolSectionId }>
+  | Readonly<{ stageId: string }>;
+
+/** The section an existing stage's target names, however the host named it. */
+export const existingStageSectionId = (
+  target: ExistingStageTarget,
+): ProtocolSectionId =>
+  'sectionId' in target
+    ? target.sectionId
+    : toSectionId({ kind: 'stage', stageId: target.stageId });
 
 export type StageSaveOutcome =
   | Readonly<{ status: 'saved'; sectionId: ProtocolSectionId }>
@@ -152,7 +165,7 @@ export function StageEditSession({
     </CreatingStage>
   ) : (
     <EditingStage
-      sectionId={target.sectionId}
+      sectionId={existingStageSectionId(target)}
       formId={formId}
       onSaved={onSaved}
     >

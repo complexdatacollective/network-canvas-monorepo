@@ -28,13 +28,14 @@ export type AutoStageName = Readonly<{
  * Names a stage being created, unasked, from what it collects.
  *
  * OPT-IN, which is the point of the separate hook: writing a name nobody asked
- * for is an authoring product's decision. What stays in the package either way
- * is the protocol semantics — a name a PERSON chose is never written over.
+ * for is an authoring product's decision, which a host makes with
+ * `StageNameField`'s `proposeName`. What stays in the package either way is
+ * the protocol semantics — a name a PERSON chose is never written over.
  *
  * Only a stage being CREATED. Filling in a name an existing stage never had
  * would be this editor writing into somebody's protocol unasked.
  *
- * Call it beside the one caller of `useStageNameField`: two callers would be
+ * Called beside the one caller of `useStageNameField`: two callers would be
  * two writers of one policy.
  */
 export function useAutoStageName(): AutoStageName {

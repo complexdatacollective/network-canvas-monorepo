@@ -6,7 +6,6 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { DialogDraftRegistrarContext } from '../../../form/dialogDraftRegistrar.ts';
 import { ProtocolBuilder } from '../../../ProtocolBuilder.tsx';
 import { createResourceHost } from '../../../resources/components/__tests__/resourceHost.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
@@ -57,10 +56,12 @@ const open = async (host: InMemoryHost) => {
   const user = userEvent.setup();
   render(
     <DialogProvider>
-      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
-        <DialogDraftRegistrarContext.Provider value={registerDraft}>
-          <AddAttribute />
-        </DialogDraftRegistrarContext.Provider>
+      <ProtocolBuilder
+        adapter={host.adapter}
+        protocolId={host.protocolId}
+        dialogDraftRegistrar={registerDraft}
+      >
+        <AddAttribute />
       </ProtocolBuilder>
     </DialogProvider>,
   );

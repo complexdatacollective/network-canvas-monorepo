@@ -4,7 +4,6 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useAutoStageName } from '../naming/useAutoStageName.ts';
 import { chooseEditingLanguage } from '../testing/chooseEditingLanguage.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
@@ -26,13 +25,11 @@ const PROPOSED_NAME = 'Person Sociogram';
 
 /**
  * The stage's title, as a host draws one: `StageNameField` is the whole of the
- * field, `useAutoStageName` the authoring policy Architect opts into, and what
- * is left is where the title sits — which here is nothing at all.
+ * field, `proposeName` the authoring policy Architect opts into, and what is
+ * left is where the title sits — which here is nothing at all.
  */
 function StageName() {
-  const { onBlur } = useAutoStageName();
-
-  return <StageNameField className="mb-2" onBlur={onBlur} />;
+  return <StageNameField className="mb-2" proposeName />;
 }
 
 /** A stage nobody has named, which is where a stage being created starts. */
