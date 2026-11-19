@@ -38,32 +38,20 @@
 
 <!-- scene: name-generator-intro -->
 
-In the Name Generator (using quick add), the add button opens a text box. The participant types a short label, usually a name, and presses Enter to add the alter. This is the quickest way to name many alters.
-
-The form and quick-add name generators have the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds an alter, and optionally one or two **side panels**.
-
-If you also want to ask a few questions about each alter as it is named, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms). If you already have a list of the alters participants might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
+In the Name Generator (using quick add), the add button opens a text box. The participant types a short label, usually a name, and presses Enter to add the alter. The text box remains open so that multiple alters can be added consecutively. This is the quickest way to name many alters.
 
 Read the full [Name Generator using Quick Add documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add).
 
-## When to use it
-
-Use this stage when you want participants to name alters quickly, without collecting anything else about them at the same time.
-
-> Do: Use this Interface when you want to elicit nodes quickly without the burden of collecting other attribute data at the same time.
-
-> Avoid: Adding additional attributes on this stage that could more accurately be collected elsewhere.
-
 <!-- include: node-type -->
 
-## Choose what quick add records
+## Specify the attribute
 
 <!-- section: quick-add -->
 <!-- field: quickAdd -->
 
 Whatever the participant types into the box is saved to one text **attribute**. Select an attribute the node type already has, or create a new one. The attribute picker lists only text attributes.
 
-> Do: Use an attribute called `name` unless you have a good reason to use another. Keep in mind that Network Canvas will label nodes using this variable throughout the interview.
+> Do: Use an attribute called `name` unless you have a good reason to use another. By default, Network Canvas will label nodes using this variable throughout the interview.
 
 Read more about [node labeling](https://documentation.networkcanvas.com/design-protocols/key-concepts/node-labelling).
 
@@ -71,9 +59,9 @@ Read more about [node labeling](https://documentation.networkcanvas.com/design-p
 
 <!-- section: quick-add -->
 
-The **Validation** section under the picker holds the rules for what the participant types. A new attribute created here starts out required, because it is the only thing recorded for each alter.
+The **Validation** section under the picker configures rules for what the quick add attribute.
 
-These rules belong to the attribute in the codebook, so a change applies wherever a value for this attribute is typed in, not only on this stage.
+These rules belong to the attribute in the codebook, so a change applies wherever a value for this attribute is set, not only on this stage.
 
 Read more about [field validation](https://documentation.networkcanvas.com/design-protocols/key-concepts/field-validation).
 
@@ -82,9 +70,9 @@ Read more about [field validation](https://documentation.networkcanvas.com/desig
 <!-- section: prompts -->
 <!-- scene: name-generator-prompts -->
 
-The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Who have you discussed important matters with in the last six months?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
+The prompt you choose is critical for name generation, and determines the kind of network that will result from your interview. It is displayed at the top of the screen. Multiple prompts can be used, and the participant moves between them by using the Next and Back buttons.
 
-Each prompt can also set **additional attributes** on every alter added in response to it, such as `discuss_matters` set to true, so your data shows which prompt each alter was added for.
+Each prompt can also set **additional attributes** for every alter added in response to it. This feature allows you to track alters nominated in response to a specific prompt, such as setting `discuss_matters` to true.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 

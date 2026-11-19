@@ -129,16 +129,7 @@ Each connection type gets its own list of **editable attributes**, below the lis
 
 <!-- include: built-in-wording -->
 
-## Choose the background
-
-<!-- section: background -->
-<!-- scene: sociogram-background -->
-
-The background sits behind the whole canvas. **Concentric Circles** draws rings, and you choose how many. **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.
-
-> Do: Customize the background to orient placement, for example using rings to suggest closeness. Position is stored as raw coordinates, so treat any spatial meaning as a cue for discussion rather than a measurement.
-
-Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/design-protocols/responsive-svg-backgrounds).
+<!-- include: background -->
 
 <!-- include: skip-logic -->
 

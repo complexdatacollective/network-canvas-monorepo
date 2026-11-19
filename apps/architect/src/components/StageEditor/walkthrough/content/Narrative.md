@@ -36,9 +36,7 @@
 
 <!-- scene: narrative-intro -->
 
-The Narrative shows the participant's network back to them for discussion, replaying an arrangement they made earlier. The interviewer or participant switches between **presets**, each a different view of the same network. A preset sets which edges are drawn, which nodes are grouped, and which nodes are highlighted. The Narrative does not create nodes or collect data.
-
-Its companion, the [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram), is where participants lay out the network this stage shows.
+The Narrative interface is designed to show the participant's network back to them for discussion. The interviewer or participant switches between **presets**, with each preset representing a different view of the network. A preset sets which edges are drawn, which nodes are grouped, and which nodes are highlighted. A Narrative stage does not create data.
 
 Read the full [Narrative documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative).
 
@@ -56,21 +54,13 @@ This stage collects no data, so plan separately how you will capture the discuss
 
 <!-- section: presets -->
 
-A preset is one view of the network. The participant sees the first preset when the stage opens, and steps through the others in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset, and you can add presets once you have chosen a node type.
-
-Each preset draws nodes where its **Layout attribute** puts them, so reuse the layout attribute participants filled in on an earlier [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram). A node with no position saved in that attribute is not shown. A preset can also group nodes by a categorical attribute, which can't be created in the preset, so define it first.
+A preset is a customised view of the network designed to promote a specific kind of discussion. The participant sees the first preset when the stage opens, and steps through the others in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset.
 
 > Do: Give each preset a single focus that maps to one question, and label it accordingly, for example a _Support_ preset that highlights who provides support, or a _Groups_ preset that shows how the network divides into communities.
 
 > Avoid: Crowding a single preset with every group, edge type and attribute at once. A dense view is hard to read and hard to discuss; separate concerns into distinct presets and switch between them.
 
-## Choose the background
-
-<!-- section: background -->
-
-The background sits behind the whole stage. **Concentric Circles** draws rings, and you choose how many. **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.
-
-Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/design-protocols/responsive-svg-backgrounds).
+<!-- include: background -->
 
 ## Arrange nodes automatically
 

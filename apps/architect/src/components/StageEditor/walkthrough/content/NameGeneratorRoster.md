@@ -38,25 +38,9 @@
 
 <!-- scene: roster-intro -->
 
-In the Name Generator for Roster Data, the participant does not type anything. Instead, the alters already exist in a **roster**: a data file you import, such as the members of a class or team. The screen is split in two, with a panel of **cards** on one side, one for each entry in the roster, and the participant's network on the other. The participant drags a card across to add that alter, and can drag the alter back to remove it.
-
-If participants should name alters you can't list in advance, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms) or the [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add).
+In the Name Generator for Roster Data, the participant does not type anything. Instead, the alters already exist in a **roster**: a data file you import. The screen is split in two, with a panel of **cards** on one side (one for each entry in the roster), and the participant's network on the other. The participant drags a card across to add that alter, and can drag the alter back to remove it.
 
 Read the full [Name Generator for Roster Data documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
-
-## When to use it
-
-Use this stage when participants will nominate from a known set of alters, such as a class, a team or an organization.
-
-> Do: Make sure the roster file has a `name` attribute, so cards and nodes are labeled correctly. See [node labeling](https://documentation.networkcanvas.com/design-protocols/key-concepts/node-labelling).
-
-> Do: Configure the display and sorting options of the cards, to help participants find entries in the roster.
-
-> Avoid: Avoid using this interface with a large roster (>100 nodes) on devices with a software keyboard, particularly where they also have a small (< 9") screen. The software keyboard will cover a substantial area of the screen, and make the process of searching and nominating more tedious.
-
-> Avoid: Making every attribute searchable on a large roster. It slows search down and makes results less accurate, so test your search thoroughly.
-
-> Avoid: Needless sort options. They confuse participants and can cause display problems on small screens; aim for no more than three.
 
 <!-- include: node-type -->
 
@@ -65,9 +49,7 @@ Use this stage when participants will nominate from a known set of alters, such 
 <!-- section: roster-source -->
 <!-- field: dataSource -->
 
-The roster is the network data file that supplies this stage's alters. Choose the file first, because the later roster settings, such as what the cards show and what can be searched, are chosen from its columns. Once you choose a file, the editor lists the attributes its entries have.
-
-The file is stored inside the protocol. Large rosters are slower to load and search, so test yours on the devices you will use in the field.
+The roster is the network data file that supplies this stage's alters. The file is stored inside the protocol. Large rosters are slower to load and search, so test yours on the devices you will use in the field.
 
 Read more about [preparing a roster file](https://documentation.networkcanvas.com/design-protocols/tutorials/working-with-rosters#how-to-create-a-roster).
 
@@ -75,11 +57,11 @@ Read more about [preparing a roster file](https://documentation.networkcanvas.co
 
 <!-- section: prompts -->
 
-The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Which of your classmates do you spend time with outside school?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
+The prompt you choose is critical for name generation, and determines the kind of network that will result from your interview. It is displayed at the top of the screen. Multiple prompts can be used, and the participant moves between them by using the Next and Back buttons.
 
-Each prompt can also set **additional attributes** on every alter added in response to it, such as `discuss_matters` set to true, so your data shows which prompt each alter was added for.
+Each prompt can also set **additional attributes** for every alter added in response to it. This feature allows you to track alters nominated in response to a specific prompt, such as setting `discuss_matters` to true.
 
-Each roster entry can be added only once, so an alter added on the first prompt is no longer in the list on the second.
+**Note:** Each roster entry can be added to the interview network only once, so an alter added on the first prompt is no longer in the list on the second.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
@@ -88,33 +70,27 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 <!-- section: roster-panel -->
 <!-- field: panelTitle -->
 
-The title is shown above the cards, so participants know what the list is. A new stage starts with the title _Available to add_. Change it to say what the list holds, for example _Your classmates_.
+The title is shown above the cards, so participants know what the list is. A new stage starts with the title _Available to add_. Change it to say what the list represents. For example: _Your classmates_.
 
-## Choose what each card shows
+## Choose how each card appears
 
 <!-- section: card-display -->
 <!-- scene: roster-card-display -->
 
-Every card is titled with the entry's name from the data file. Switch on **Card display** to list more of the entry's attributes under its name, such as class or department. Each attribute is shown with a label.
-
-Show whatever participants need to tell entries with similar names apart.
+Every card is titled with the entry's `name` from the data file. Switch on **Card display** to shown more of the entry's attributes under its name. Each attribute is shown with a label.
 
 Read more about [formatting the display of the roster](https://documentation.networkcanvas.com/design-protocols/tutorials/working-with-rosters#formatting-the-display-of-the-roster).
 
 ## Set the starting order
 
 <!-- section: roster-sorting -->
+<!-- scene: roster-sort -->
 
 Switch on **Roster sorting** and add a **Sort rule** to choose the order the cards first appear in, such as by surname. Without a sort rule, the cards keep their order from the data file.
 
-## Let participants sort
-
-<!-- section: roster-sorting -->
-<!-- scene: roster-sort -->
-
 Each of the **Sortable properties** becomes a button above the cards, with the label you give it. Participants use these buttons to re-sort the list themselves.
 
-## Let participants search
+## Configure search
 
 <!-- section: roster-search -->
 <!-- scene: roster-search -->
@@ -122,10 +98,6 @@ Each of the **Sortable properties** becomes a button above the cards, with the l
 Switch on **Roster search** to put a search box above the cards. Under **Searchable attributes**, choose which attributes a search looks in. While this section is switched off, there is no search box and participants find entries by scrolling.
 
 Each attribute you add makes searching a long roster slower and can make matches less accurate, so choose only the attributes participants are likely to search by.
-
-## Choose how closely searches match
-
-<!-- section: roster-search -->
 
 **Search accuracy** sets how close what the participant types must be to an entry to count as a match, from **Exact** to **Low accuracy**. Low accuracy forgives typos and spelling mistakes. Higher accuracy narrows the results when a roster has many similar names.
 
