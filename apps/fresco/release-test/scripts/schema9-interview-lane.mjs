@@ -170,6 +170,15 @@ const checks = [];
 const result = { ok: false, checks };
 let browser;
 
+/**
+ * The id of the imported protocol's finish stage that records `outcome`,
+ * found by type and outcome: the fixture's stage ids are UUIDs.
+ */
+const finishStageIdFor = (outcome) =>
+  psql(
+    `select coalesce(string_agg(stage->>'id', ','), '') from "Protocol", jsonb_array_elements(stages::jsonb) as stage where id = ${sqlText(result.protocolId)} and stage->>'type' = 'FinishSession' and stage->>'outcome' = ${sqlText(outcome)};`,
+  );
+
 /** Inserted dynamic values: the text of each value, without its sr-only twin. */
 const insertedValues = (locator) =>
   locator.locator('[data-dynamic-value] bdi').allTextContents();
@@ -577,13 +586,17 @@ try {
       const row = psql(
         `select coalesce("finishStageId", '') || '|' || coalesce("finishOutcome"::text, '') || '|' || ("finishTime" is not null) || '|' || (select count(*) from jsonb_array_elements(network::jsonb->'nodes') n where n->>'type' = 'node-type-9009-17') from "Interview" where id = ${sqlText(result.interviewId)};`,
       );
+      const finishStageId = finishStageIdFor('completed');
       // The pedigree was the last thing answered before finishing; finishing
       // waits for the latest answers to be saved, so all three relatives are
       // in the stored network by the time the interview is finished.
       return {
         pass:
-          at === STEP.finish && finished && row === 'finish|completed|true|3',
-        detail: `finish stage at step ${at}; finished text shown: ${finished}; stored stage|outcome|finished|relatives = ${row}`,
+          at === STEP.finish &&
+          finished &&
+          finishStageId !== '' &&
+          row === `${finishStageId}|completed|true|3`,
+        detail: `finish stage at step ${at}; finished text shown: ${finished}; stored stage|outcome|finished|relatives = ${row} (the protocol's "completed" finish stage: ${finishStageId || 'none'})`,
       };
     }),
   );
@@ -790,10 +803,15 @@ try {
         .isVisible()
         .catch(() => false);
       await declinePage.close();
+      const declinedStageId = finishStageIdFor('terminated');
       return {
         // Finished, too: a finish time is what marks an interview complete.
-        pass: shown && row === 'finish-declined|terminated|true' && !back,
-        detail: `declining consent showed the second finish stage: ${shown}; stored stage|outcome|finished = ${row}; a way back offered: ${back}`,
+        pass:
+          shown &&
+          declinedStageId !== '' &&
+          row === `${declinedStageId}|terminated|true` &&
+          !back,
+        detail: `declining consent showed the second finish stage: ${shown}; stored stage|outcome|finished = ${row} (the protocol's "terminated" finish stage: ${declinedStageId || 'none'}); a way back offered: ${back}`,
       };
     }),
   );
