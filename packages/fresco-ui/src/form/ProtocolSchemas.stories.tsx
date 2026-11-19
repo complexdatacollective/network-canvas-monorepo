@@ -9,6 +9,8 @@ import { z } from 'zod/mini';
 import {
   asEntityAttributeReference,
   type AdditionalAttributes,
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 
 import { IconButton, MotionButton, Button } from '../Button';
@@ -65,6 +67,7 @@ const NameGeneratorPromptSchema = z.object({
   additionalAttributes: z.optional(
     z.array(
       z.object({
+        id: z.string(),
         variable: z.string(),
         value: z.boolean(),
       }),
@@ -111,12 +114,9 @@ function NameGeneratorPromptItem({
         {item.additionalAttributes && item.additionalAttributes.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {item.additionalAttributes.map(
-              (
-                attr: { variable: string; value: boolean },
-                attributeIndex: number,
-              ) => (
+              (attr: { id: string; variable: string; value: boolean }) => (
                 <span
-                  key={`${attr.variable}-${attributeIndex}`}
+                  key={attr.id}
                   className={cx(
                     'rounded p-2 text-xs',
                     attr.value
@@ -179,6 +179,7 @@ function NameGeneratorPromptEditor({
       additionalAttributes: z.optional(
         z.array(
           z.object({
+            id: z.string(),
             variable: z.string(),
             value: z.boolean(),
           }),
@@ -250,10 +251,15 @@ function NameGeneratorPromptEditor({
             component={ArrayField<AdditionalAttribute>}
             addButtonLabel="Add Attribute"
             emptyStateMessage="No additional attributes configured"
-            itemTemplate={() => ({ variable: undefined, value: undefined })}
+            itemTemplate={() => ({
+              id: createProtocolObjectId(),
+              variable: undefined,
+              value: undefined,
+            })}
             itemComponent={AdditionalAttributeItem}
             confirmDelete={false}
             initialValue={item?.additionalAttributes?.map((attr) => ({
+              id: ProtocolObjectIdSchema.parse(attr.id),
               variable: asEntityAttributeReference(attr.variable),
               value: attr.value,
             }))}
@@ -266,8 +272,6 @@ function NameGeneratorPromptEditor({
 
 // ============================================================================
 // Additional Attributes (from nameGeneratorPromptSchema)
-// Note: AdditionalAttribute does NOT have an 'id' property per the schema.
-// ArrayField uses internal IDs via WeakMap for tracking.
 // ============================================================================
 
 type AdditionalAttribute = AdditionalAttributes[number];
@@ -296,6 +300,7 @@ function AdditionalAttributeItem({
   const handleSave = () => {
     if (variable && value !== undefined && onChange) {
       onChange({
+        id: item.id ?? createProtocolObjectId(),
         variable,
         value,
       });
@@ -447,7 +452,13 @@ const samplePrompts: NameGeneratorPrompt[] = [
         },
       ],
     },
-    additionalAttributes: [{ variable: 'closeness', value: true }],
+    additionalAttributes: [
+      {
+        id: '0b8c7d2e-4f1a-4c3b-9e5d-6a7f8b9c0d1e',
+        variable: 'closeness',
+        value: true,
+      },
+    ],
   },
 ];
 
