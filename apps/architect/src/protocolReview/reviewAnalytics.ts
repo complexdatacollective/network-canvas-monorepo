@@ -90,7 +90,8 @@ export const captureReviewDecision = (payload: DecisionPayload) => {
  * Feedback goes to two PostHog surveys of type API, which Architect answers
  * with its own controls. Unlike the events above, these carry the review's id
  * (only for a review that was shared, so it matches the copy the service
- * keeps) and whatever the researcher writes. The ids are the surveys' and
+ * keeps), the text of each problem of a shared review, so a rating can be
+ * read without that copy, and whatever the researcher writes. The ids are the surveys' and
  * their questions' in PostHog; each answer is sent as the English choice text
  * the survey holds, so the two must change together.
  */
@@ -119,7 +120,10 @@ const REASON_CHOICES: Record<FeedbackReason, string> = {
 type FindingFeedbackPayload = {
   reviewId: string;
   provider: ReviewProvider | undefined;
-  finding: Pick<Finding, 'id' | 'severity' | 'category'>;
+  finding: Pick<
+    Finding,
+    'id' | 'severity' | 'category' | 'title' | 'explanation'
+  >;
   feedback: FindingFeedback;
 };
 
@@ -150,6 +154,8 @@ export const captureFindingFeedback = ({
     }),
     review_id: reviewId,
     finding_id: finding.id,
+    finding_title: finding.title,
+    finding_explanation: finding.explanation,
     outcome: feedback.outcome,
     severity: finding.severity,
     category: finding.category,

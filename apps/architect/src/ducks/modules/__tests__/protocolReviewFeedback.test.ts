@@ -212,6 +212,8 @@ describe('feedback on a shared review', () => {
         $survey_completed: false,
         review_id: RESULT.reviewId,
         finding_id: 'title',
+        finding_title: FINDINGS[1]?.title,
+        finding_explanation: FINDINGS[1]?.explanation,
         outcome: 'fixed',
         severity: 'suggestion',
         category: 'burden',
