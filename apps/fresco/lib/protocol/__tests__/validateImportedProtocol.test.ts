@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
+  createProtocolObjectId,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
 
@@ -60,7 +61,12 @@ describe('validateImportedProtocol', () => {
       schemaVersion: 9,
       localization,
       codebook: { node: {}, edge: {}, ego: {} },
-      stages: [createDefaultFinishSessionStage({ id: 'finish', localization })],
+      stages: [
+        createDefaultFinishSessionStage({
+          id: createProtocolObjectId(),
+          localization,
+        }),
+      ],
       assetManifest: {},
     };
   };
@@ -74,8 +80,8 @@ describe('validateImportedProtocol', () => {
     expect((await validateImportedProtocol(protocol)).success).toBe(true);
   });
 
-  it('refuses one in a language Network Canvas has no wording in, naming each text it lacks', async () => {
-    const result = await validateImportedProtocol(handWritten('sw'));
+  const validationIssues = async (protocol: unknown) => {
+    const result = await validateImportedProtocol(protocol);
     if (result.success || result.error !== 'validation-failed') {
       throw new Error('Expected the protocol to fail validation');
     }
@@ -89,8 +95,38 @@ describe('validateImportedProtocol', () => {
     if (!(error instanceof ProtocolValidationError)) {
       throw new Error('Expected the validator’s issues');
     }
-    expect(error.issues.map(({ path }) => path.join('.'))).toContain(
+    return error.issues;
+  };
+
+  it('refuses one in a language Network Canvas has no wording in, naming each text it lacks', async () => {
+    const issues = await validationIssues(handWritten('sw'));
+    expect(issues.map(({ path }) => path.join('.'))).toContain(
       'interfaceText.navigation.back.sw',
     );
+  });
+
+  // Import stores a schema 9 protocol as it is, so ids that would be repaired
+  // by the migration into schema 9 are refused here instead.
+  it('refuses a protocol whose stages share an id, at both stages', async () => {
+    const protocol = withInterfaceText(handWritten('en'));
+    const [finish] = protocol.stages;
+    const issues = await validationIssues({
+      ...protocol,
+      stages: [finish, finish],
+    });
+    expect(
+      issues
+        .filter(({ params }) => params?.rule === 'duplicateObjectId')
+        .map(({ path }) => path.join('.')),
+    ).toEqual(['stages.0.id', 'stages.1.id']);
+  });
+
+  it('refuses a protocol with a stage id that is not a UUID', async () => {
+    const protocol = withInterfaceText(handWritten('en'));
+    const issues = await validationIssues({
+      ...protocol,
+      stages: protocol.stages.map((stage) => ({ ...stage, id: 'finish' })),
+    });
+    expect(issues.map(({ path }) => path.join('.'))).toContain('stages.0.id');
   });
 });
