@@ -15,6 +15,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import NodeForm from './NodeForm';
 
 const customIconOptions = ['add-a-person', 'add-a-place'];
@@ -363,22 +364,22 @@ const basicForm: TForm = {
   title: { en: 'Add Person to Your Network' },
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: asEntityAttributeReference('name'),
       prompt: { en: 'What is their name?' },
     },
     {
-      id: 'field-2',
+      id: testId('field-2'),
       variable: asEntityAttributeReference('age'),
       prompt: { en: 'How old are they?' },
     },
     {
-      id: 'field-3',
+      id: testId('field-3'),
       variable: asEntityAttributeReference('gender'),
       prompt: { en: 'What is their gender?' },
     },
     {
-      id: 'field-4',
+      id: testId('field-4'),
       variable: asEntityAttributeReference('occupation'),
       prompt: { en: 'What do they do for work?' },
     },
@@ -390,17 +391,17 @@ const validatedForm: TForm = {
   title: { en: 'Add Person (with validation)' },
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: asEntityAttributeReference('name'),
       prompt: { en: 'Name (required)' },
     },
     {
-      id: 'field-2',
+      id: testId('field-2'),
       variable: asEntityAttributeReference('age'),
       prompt: { en: 'Age (18-100)' },
     },
     {
-      id: 'field-3',
+      id: testId('field-3'),
       variable: asEntityAttributeReference('favoriteColors'),
       prompt: { en: 'Select at least 2 favorite colors' },
     },
@@ -496,7 +497,7 @@ export const SingleFieldForm: Story = {
       title: { en: 'Add Name Only' },
       fields: [
         {
-          id: 'field-1',
+          id: testId('field-1'),
           variable: asEntityAttributeReference('name'),
           prompt: { en: "Enter the person's name" },
         },
@@ -511,37 +512,37 @@ const comprehensiveForm: TForm = {
   title: { en: 'Complete Profile' },
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: asEntityAttributeReference('name'),
       prompt: { en: 'What is their name?' },
     },
     {
-      id: 'field-2',
+      id: testId('field-2'),
       variable: asEntityAttributeReference('age'),
       prompt: { en: 'How old are they?' },
     },
     {
-      id: 'field-3',
+      id: testId('field-3'),
       variable: asEntityAttributeReference('gender'),
       prompt: { en: 'What is their gender?' },
     },
     {
-      id: 'field-4',
+      id: testId('field-4'),
       variable: asEntityAttributeReference('occupation'),
       prompt: { en: 'What do they do for work?' },
     },
     {
-      id: 'field-5',
+      id: testId('field-5'),
       variable: asEntityAttributeReference('favoriteColors'),
       prompt: { en: 'What are their favorite colors?' },
     },
     {
-      id: 'field-6',
+      id: testId('field-6'),
       variable: asEntityAttributeReference('isEmployed'),
       prompt: { en: 'Are they currently employed?' },
     },
     {
-      id: 'field-7',
+      id: testId('field-7'),
       variable: asEntityAttributeReference('bio'),
       prompt: { en: 'Tell us a bit about them' },
     },
@@ -584,7 +585,7 @@ export const WithUniqueValidation: Story = {
       title: { en: 'Add Unique Person' },
       fields: [
         {
-          id: 'field-1',
+          id: testId('field-1'),
           variable: asEntityAttributeReference('name'),
           prompt: {
             en: 'Enter a unique name (Alice Smith and Bob Johnson already exist)',
@@ -609,12 +610,12 @@ const checkboxGroupForm: TForm = {
   title: { en: 'Select Your Skills' },
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: asEntityAttributeReference('name'),
       prompt: { en: 'Your name' },
     },
     {
-      id: 'field-2',
+      id: testId('field-2'),
       variable: asEntityAttributeReference('skills'),
       prompt: { en: 'Select your programming skills (1-4 required)' },
     },
@@ -665,12 +666,12 @@ const toggleButtonGroupForm: TForm = {
   title: { en: 'Communication Preferences' },
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: asEntityAttributeReference('name'),
       prompt: { en: 'Your name' },
     },
     {
-      id: 'field-2',
+      id: testId('field-2'),
       variable: asEntityAttributeReference('communicationPreference'),
       prompt: { en: 'How would you prefer to be contacted?' },
     },

@@ -24,6 +24,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import BinSelectAnnouncer from '../../../components/BinSelectAnnouncer';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
@@ -118,8 +119,8 @@ beforeEach(() => {
 });
 
 const NODE_TYPE = 'person';
-const STAGE_ID = 'ordinal-bin-stage';
-const PROMPT_ID = 'prompt-1';
+const STAGE_ID = testId('ordinal-bin-stage');
+const PROMPT_ID = testId('prompt-1');
 
 const person = (id: string, name: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
@@ -179,7 +180,11 @@ const buildStage = (
       color: 'ord-color-seq-1',
       ...(sortByName && {
         bucketSortOrder: [
-          { property: asEntityAttributeReference('name'), direction: 'asc' },
+          {
+            id: testId('sort-name'),
+            property: asEntityAttributeReference('name'),
+            direction: 'asc',
+          },
         ],
       }),
     },

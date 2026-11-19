@@ -26,6 +26,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
@@ -127,8 +128,8 @@ const CATEGORY_VARIABLE = 'category';
 const OTHER_VARIABLE = 'otherReason';
 const NOTE_VARIABLE = 'existingNote';
 const COLLIDING_SIBLING_VARIABLE = 'otherVariable';
-const STAGE_ID = 'categorical-bin-stage';
-const PROMPT_ID = 'prompt-1';
+const STAGE_ID = testId('categorical-bin-stage');
+const PROMPT_ID = testId('prompt-1');
 const OTHER_PROMPT_TEXT = 'Please specify the other category';
 const RESERVED_NOTE_VALUE = 'reserved-value';
 // Only one categorical option is configured, so the bins array is

@@ -18,6 +18,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
@@ -81,13 +82,13 @@ type Stages = Parameters<typeof createEncryptionStore>[1];
 
 const quickAddStages: Stages = [
   {
-    id: 'quick-add',
+    id: testId('quick-add'),
     type: 'NameGeneratorQuickAdd',
     addNamePlaceholder: { en: 'Type a name, then press Enter' },
     label: { en: 'Quick add' },
     subject: { entity: 'node', type: NODE_TYPE },
     quickAdd: asEntityAttributeReference('name'),
-    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
+    prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
   },
 ];
 

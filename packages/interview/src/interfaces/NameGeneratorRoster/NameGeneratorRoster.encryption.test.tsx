@@ -18,6 +18,7 @@ import {
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -103,7 +104,7 @@ afterEach(() => {
 });
 
 const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
-  id: 'roster-stage',
+  id: testId('roster-stage'),
   type: 'NameGeneratorRoster',
   allAddedNotice: { en: 'There is nothing left to add from this list.' },
   unnamedLabel: { en: 'Unnamed {count}' },
@@ -111,7 +112,7 @@ const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
   label: { en: 'Roster' },
   subject: { entity: 'node', type: NODE_TYPE },
   dataSource: 'roster-data',
-  prompts: [{ id: 'prompt-1', text: { en: 'Who do you know?' } }],
+  prompts: [{ id: testId('prompt-1'), text: { en: 'Who do you know?' } }],
 };
 
 const PASSPHRASE = 'roster passphrase';

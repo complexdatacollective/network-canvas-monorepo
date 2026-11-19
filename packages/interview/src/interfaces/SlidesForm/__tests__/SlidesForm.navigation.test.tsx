@@ -20,6 +20,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
@@ -66,7 +67,11 @@ beforeAll(() => {
 
 const form: TitlelessForm = {
   fields: [
-    { id: 'field-1', variable: 'name' as never, prompt: { en: 'Person name' } },
+    {
+      id: testId('field-1'),
+      variable: 'name' as never,
+      prompt: { en: 'Person name' },
+    },
   ],
 };
 
@@ -811,7 +816,7 @@ describe('SlidesForm moving on from a complete form', () => {
   const closenessForm: TitlelessForm = {
     fields: [
       {
-        id: 'field-1',
+        id: testId('field-1'),
         variable: 'closeness' as never,
         prompt: { en: 'How close?' },
       },

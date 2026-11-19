@@ -24,6 +24,7 @@ import {
 } from '@codaco/shared-consts';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
@@ -40,13 +41,13 @@ const EDGE_TYPE = 'friendship';
 const EDGE_VAR = 'strength';
 
 const stage: StageProps<'TieStrengthCensus'>['stage'] = {
-  id: 'tsc1',
+  id: testId('tsc1'),
   type: 'TieStrengthCensus',
   label: { en: 'Tie Strength' },
   subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
     {
-      id: 'p1',
+      id: testId('p1'),
       text: { en: 'How strong is the tie?' },
       createEdge: EDGE_TYPE,
       edgeVariable: asEntityAttributeReference(EDGE_VAR),

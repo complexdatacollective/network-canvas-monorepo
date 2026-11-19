@@ -23,6 +23,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
@@ -74,8 +75,8 @@ vi.mock('../../../Anonymisation/useDecryptedNodes', async (importOriginal) => {
 const NODE_TYPE = 'person';
 const TARGET_VARIABLE = 'name';
 const SIBLING_VARIABLE = 'alias';
-const STAGE_ID = 'quick-add-stage';
-const PROMPT_ID = 'prompt-1';
+const STAGE_ID = testId('quick-add-stage');
+const PROMPT_ID = testId('prompt-1');
 const PASSPHRASE = 'quick add passphrase';
 
 function buildCodebook(
@@ -134,6 +135,7 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
           : {
               additionalAttributes: [
                 {
+                  id: testId('sibling-attribute'),
                   variable: asEntityAttributeReference(SIBLING_VARIABLE),
                   value: fixedSiblingValue,
                 },

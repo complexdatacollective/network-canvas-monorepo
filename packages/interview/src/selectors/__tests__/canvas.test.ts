@@ -11,6 +11,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import type { ProtocolPayload } from '../../contract/types';
 import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
@@ -47,14 +48,14 @@ describe('Sociogram placement selectors', () => {
       },
       stages: [
         {
-          id: 'sociogram',
+          id: testId('sociogram'),
           type: 'Sociogram',
           label: { en: 'Sociogram' },
           background: { concentricCircles: 4 },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: 'prompt',
+              id: testId('prompt'),
               text: { en: 'Arrange people' },
               layout: { layoutVariable },
             },

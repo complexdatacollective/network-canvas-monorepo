@@ -4,6 +4,8 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { testId } from '../../../__tests__/testIds';
+
 vi.mock('../../../hooks/useAssetUrl', () => ({
   useAssetUrl: vi.fn(),
 }));
@@ -73,7 +75,7 @@ const defaultBackground: TestBackground = {
 };
 
 const stage = {
-  id: 'nc1',
+  id: testId('nc1'),
   type: 'NetworkComposer' as const,
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
@@ -81,7 +83,7 @@ const stage = {
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
   edges: [
     {
-      id: 'edge-config',
+      id: testId('edge-config'),
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
       label: { en: 'Knows' },
     },

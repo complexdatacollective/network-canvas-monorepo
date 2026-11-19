@@ -4,6 +4,7 @@ import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
+import { testId } from '../__tests__/testIds';
 import StoryInterviewShell from '../storybook-support/StoryInterviewShell';
 import { TEXT_SCALE_OPTIONS } from './Navigation';
 
@@ -69,7 +70,7 @@ function buildRawPayload(stageCount: number): string {
         rules: [
           {
             type: 'node',
-            id: 'skip-rule',
+            id: testId('skip-rule'),
             options: { type: 'never-existing-type', operator: 'EXISTS' },
           },
         ],

@@ -22,6 +22,7 @@ import type { InterviewPayload, SyncHandler } from '../contract/types';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
 import { withInterfaceText } from '../wording/suppliedWording';
+import { testId } from './testIds';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -156,7 +157,7 @@ function makePayload(id = 'locale-session') {
       assets: [],
       stages: [
         {
-          id: 'authored-screen',
+          id: testId('authored-screen'),
           type: 'Information',
           label: { en: 'Literal screen label' },
           title: titles,

@@ -10,6 +10,7 @@ import {
   type NcEdge,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import protocol from '../../../store/modules/protocol';
@@ -29,19 +30,19 @@ const EDGE_TYPE = 'friendship';
 const NAME_VAR = 'name';
 
 const stage = {
-  id: 'otm1',
+  id: testId('otm1'),
   type: 'OneToManyDyadCensus',
   label: { en: 'One to Many' },
   subject: { entity: 'node', type: NODE_TYPE },
   behaviours: { removeAfterConsideration: false },
   prompts: [
     {
-      id: 'p1',
+      id: testId('p1'),
       text: { en: 'Prompt one' },
       createEdge: EDGE_TYPE,
     },
     {
-      id: 'p2',
+      id: testId('p2'),
       text: { en: 'Prompt two' },
       createEdge: EDGE_TYPE,
     },

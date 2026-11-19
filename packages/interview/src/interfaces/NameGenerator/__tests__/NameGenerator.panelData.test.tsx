@@ -13,6 +13,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
@@ -71,7 +72,7 @@ const variables: Record<string, Variable> = {
 // The stage's own form asks only for a value that is not encrypted, so the
 // encrypted name can only arrive through the panel's external data.
 const stage: StageProps<'NameGenerator'>['stage'] = {
-  id: 'ng1',
+  id: testId('ng1'),
   type: 'NameGenerator',
   label: { en: 'Name Generator' },
   subject: { entity: 'node', type: NODE_TYPE },
@@ -79,16 +80,20 @@ const stage: StageProps<'NameGenerator'>['stage'] = {
     title: { en: 'Add a person' },
     fields: [
       {
-        id: 'field-1',
+        id: testId('field-1'),
         variable: asEntityAttributeReference(NICKNAME_VAR),
         prompt: { en: 'Nickname' },
       },
     ],
   },
   panels: [
-    { id: 'panel-1', title: { en: 'Roster' }, dataSource: 'roster-asset' },
+    {
+      id: testId('panel-1'),
+      title: { en: 'Roster' },
+      dataSource: 'roster-asset',
+    },
   ],
-  prompts: [{ id: 'p1', text: { en: 'Name the people you know' } }],
+  prompts: [{ id: testId('p1'), text: { en: 'Name the people you know' } }],
 };
 
 const externalNode: NcNode = {

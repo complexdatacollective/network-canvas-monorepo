@@ -10,6 +10,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../../__tests__/testIds';
 import type { usePassphrase } from '../../../Anonymisation/usePassphrase';
 
 type Passphrase = ReturnType<typeof usePassphrase>;
@@ -95,7 +96,7 @@ import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocaliz
 import NodePanel from '../NodePanel';
 
 const externalPanelConfig: PanelType = {
-  id: 'panel-1',
+  id: testId('panel-1'),
   title: { en: 'External Panel' },
   dataSource: 'asset-1',
 };

@@ -21,6 +21,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
@@ -242,7 +243,7 @@ type SourceFraming = StageProps<'FamilyPedigree'>['stage']['framing'];
 
 function makeNarrativeStage(): NarrativeStage {
   return {
-    id: 'np-1',
+    id: testId('np-1'),
     type: 'NarrativePedigree',
     label: { en: 'Disease Pedigree' },
     sourceStageId: SOURCE_STAGE_ID,
@@ -250,14 +251,14 @@ function makeNarrativeStage(): NarrativeStage {
     ...narrativePedigreeWords(),
     diseases: [
       {
-        id: 'da',
+        id: testId('da'),
         label: { en: 'Disease A' },
         color: 'node-color-seq-1',
         attribute: asEntityAttributeReference(DISEASE_A_VAR),
         inheritancePattern: 'autosomalDominant',
       },
       {
-        id: 'db',
+        id: testId('db'),
         label: { en: 'Disease B' },
         color: 'node-color-seq-5',
         attribute: asEntityAttributeReference(DISEASE_B_VAR),
@@ -981,7 +982,7 @@ const cousinEdges: NcEdge[] = [
 function renderCousinView(showAtRiskStatuses = true) {
   return renderView({
     narrativeStage: {
-      id: 'np-cousin',
+      id: testId('np-cousin'),
       type: 'NarrativePedigree',
       label: { en: 'Cousin Union Disease Pedigree' },
       sourceStageId: SOURCE_STAGE_ID,
@@ -989,7 +990,7 @@ function renderCousinView(showAtRiskStatuses = true) {
       ...narrativePedigreeWords(),
       diseases: [
         {
-          id: 'ar',
+          id: testId('ar'),
           label: { en: 'AR Disease' },
           color: 'node-color-seq-1',
           attribute: asEntityAttributeReference(AR_DISEASE_VAR),
@@ -1153,7 +1154,7 @@ describe('NarrativePedigreeView — sex assigned at birth', () => {
         ...makeNarrativeStage(),
         diseases: [
           {
-            id: 'xl',
+            id: testId('xl'),
             label: { en: 'X-linked' },
             color: 'node-color-seq-2',
             attribute: asEntityAttributeReference(DISEASE_A_VAR),

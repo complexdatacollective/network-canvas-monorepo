@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { NcNode } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -107,7 +108,7 @@ function renderStage({
   validation?: AnonymisationStage['validation'];
 } = {}) {
   const stage: AnonymisationStage = {
-    id: 'anonymisation',
+    id: testId('anonymisation'),
     type: 'Anonymisation',
     label: { en: 'Protect your answers' },
     explanationText: {
@@ -118,7 +119,7 @@ function renderStage({
   const store = createEncryptionStore(nodes, [
     stage,
     {
-      id: 'next-screen',
+      id: testId('next-screen'),
       type: 'Information',
       label: { en: 'Next screen' },
       title: { en: 'Next screen' },

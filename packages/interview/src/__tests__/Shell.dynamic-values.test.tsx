@@ -15,6 +15,7 @@ import {
 
 import type { InterviewPayload } from '../contract/types';
 import Shell from '../Shell';
+import { testId } from './testIds';
 
 vi.mock('../interfaces', async () => {
   const { default: Information } =
@@ -63,7 +64,7 @@ const GREETING = {
 };
 
 const information = {
-  id: 'welcome',
+  id: testId('welcome'),
   type: 'Information' as const,
   label: { en: 'Welcome' },
   title: GREETING,
@@ -73,7 +74,7 @@ const information = {
   },
   items: [
     {
-      id: 'body',
+      id: testId('body'),
       type: 'text' as const,
       content: {
         en: 'Thanks for **joining**{name, select, missing {.} other {, {name}.}} [Your page]({name, select, missing {https://example.com} other {https://example.com/{name}}}): {nickname, select, missing {none} other {{nickname}}}',
@@ -83,7 +84,7 @@ const information = {
 };
 
 const finishStage = {
-  id: 'finish',
+  id: testId('finish'),
   type: 'FinishSession' as const,
   mode: 'confirmation' as const,
   label: { en: 'Finish' },
@@ -268,7 +269,7 @@ describe('dynamic values in a stage’s text', () => {
     const payload = makePayload({ name: 'Ada' });
     payload.protocol.stages = [
       {
-        id: 'about-you',
+        id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
         dynamicValues: { name: { path: 'ego.name' } },
@@ -276,12 +277,12 @@ describe('dynamic values in a stage’s text', () => {
         form: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'name',
               prompt: { en: 'What is your name?' },
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'age',
               prompt: {
                 en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
@@ -325,7 +326,7 @@ describe('dynamic values in a stage’s text', () => {
     const payload = makePayload({ name: 'Ada' });
     payload.protocol.stages = [
       {
-        id: 'about-you',
+        id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
         dynamicValues: { name: { path: 'ego.name' } },
@@ -333,7 +334,7 @@ describe('dynamic values in a stage’s text', () => {
         form: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'age',
               prompt: {
                 en: '**How old are you**{name, select, missing {?} other {, {name}?}}',
@@ -364,7 +365,7 @@ describe('dynamic values in a stage’s text', () => {
     const payload = makePayload({ name: 'Ada' });
     payload.protocol.stages = [
       {
-        id: 'about-you',
+        id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
         dynamicValues: { name: { path: 'ego.name' } },
@@ -372,19 +373,19 @@ describe('dynamic values in a stage’s text', () => {
         form: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'name',
               prompt: { en: 'What is your name?' },
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'age',
               prompt: {
                 en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
               },
             },
             {
-              id: 'field-3',
+              id: testId('field-3'),
               variable: 'guess',
               prompt: { en: 'Guess an age' },
             },

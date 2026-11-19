@@ -16,6 +16,7 @@ import {
   entityAttributesProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
@@ -34,7 +35,7 @@ const VAR = 'born_on';
 
 const fields: FormField[] = [
   {
-    id: 'field-L36',
+    id: testId('field-L36'),
     variable: asEntityAttributeReference(VAR),
     prompt: { en: 'Born on' },
   },

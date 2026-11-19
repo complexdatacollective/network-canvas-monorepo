@@ -13,6 +13,7 @@ import type { InterviewPayload, SyncHandler } from '../contract/types';
 import Shell from '../Shell';
 import { deleteNode, updateStageMetadata } from '../store/modules/session';
 import type { store as createStore } from '../store/store';
+import { testId } from './testIds';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -56,7 +57,7 @@ const payload = {
     assets: [],
     stages: [
       {
-        id: 'only-stage',
+        id: testId('only-stage'),
         type: 'Information',
         label: { en: 'Only stage' },
         title: { en: 'Only stage' },

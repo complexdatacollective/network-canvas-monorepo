@@ -13,6 +13,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
@@ -35,7 +36,11 @@ const variables: Record<string, Variable> = {
 };
 
 const byName = [
-  { property: asEntityAttributeReference('name'), direction: 'asc' as const },
+  {
+    id: testId('sort-name'),
+    property: asEntityAttributeReference('name'),
+    direction: 'asc' as const,
+  },
 ];
 
 const inGroup = (node: NcNode): NcNode => ({
@@ -54,13 +59,13 @@ async function unlockedStore(nodes: NcNode[]) {
     nodes,
     [
       {
-        id: 'categorical-bin',
+        id: testId('categorical-bin'),
         type: 'CategoricalBin',
         label: { en: 'Categorise' },
         subject: { entity: 'node', type: NODE_TYPE },
         prompts: [
           {
-            id: 'prompt-1',
+            id: testId('prompt-1'),
             text: { en: 'Which group?' },
             variable: asEntityAttributeReference('group'),
             bucketSortOrder: byName,

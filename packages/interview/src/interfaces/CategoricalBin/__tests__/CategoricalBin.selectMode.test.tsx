@@ -24,6 +24,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
@@ -103,8 +104,8 @@ beforeEach(() => {
 });
 
 const NODE_TYPE = 'person';
-const STAGE_ID = 'categorical-bin-stage';
-const PROMPT_ID = 'prompt-1';
+const STAGE_ID = testId('categorical-bin-stage');
+const PROMPT_ID = testId('prompt-1');
 const OTHER_BIN_INDEX = 2;
 
 const person = (

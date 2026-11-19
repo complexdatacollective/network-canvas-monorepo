@@ -11,6 +11,7 @@ import type {
   LocalizedString,
 } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testIds';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../../contract/context';
 import type { ResolvedAsset } from '../../../contract/types';
@@ -96,7 +97,7 @@ const makeStage = (
   items: Item[],
   title: LocalizedString = { en: 'Information' },
 ): InformationStage => ({
-  id: 'info-1',
+  id: testId('info-1'),
   type: 'Information',
   label: { en: 'Info' },
   title,
@@ -106,7 +107,7 @@ const makeStage = (
 describe('Information asset fallbacks', () => {
   it('renders a visible placeholder for an asset id absent from the manifest', () => {
     const stage = makeStage([
-      { id: 'i1', type: 'asset', content: 'missing-asset' },
+      { id: testId('i1'), type: 'asset', content: 'missing-asset' },
     ]);
 
     renderInformation(stage, []);
@@ -115,7 +116,9 @@ describe('Information asset fallbacks', () => {
   });
 
   it('renders a visible placeholder for a network/geojson/apikey asset', async () => {
-    const stage = makeStage([{ id: 'i1', type: 'asset', content: 'net-1' }]);
+    const stage = makeStage([
+      { id: testId('i1'), type: 'asset', content: 'net-1' },
+    ]);
     const assets: ResolvedAsset[] = [
       { assetId: 'net-1', name: 'Classmates', type: 'network' },
     ];
@@ -128,7 +131,9 @@ describe('Information asset fallbacks', () => {
   });
 
   it('does NOT render the fallback for a valid image item', async () => {
-    const stage = makeStage([{ id: 'i1', type: 'asset', content: 'img-1' }]);
+    const stage = makeStage([
+      { id: testId('i1'), type: 'asset', content: 'img-1' },
+    ]);
     const assets: ResolvedAsset[] = [
       { assetId: 'img-1', name: 'Photo', type: 'image', source: 'photo.png' },
     ];
@@ -142,7 +147,9 @@ describe('Information asset fallbacks', () => {
 
 describe('Information media MIME type derives from source', () => {
   it('audio <source> type derives from source when name lacks an extension', async () => {
-    const stage = makeStage([{ id: 'i1', type: 'asset', content: 'aud-1' }]);
+    const stage = makeStage([
+      { id: testId('i1'), type: 'asset', content: 'aud-1' },
+    ]);
     const assets: ResolvedAsset[] = [
       {
         assetId: 'aud-1',
@@ -162,7 +169,9 @@ describe('Information media MIME type derives from source', () => {
   });
 
   it('video <source> type derives from source (.mov -> video/mp4)', async () => {
-    const stage = makeStage([{ id: 'i1', type: 'asset', content: 'vid-1' }]);
+    const stage = makeStage([
+      { id: testId('i1'), type: 'asset', content: 'vid-1' },
+    ]);
     const assets: ResolvedAsset[] = [
       {
         assetId: 'vid-1',
@@ -198,7 +207,7 @@ describe('what a participant who cannot see a media item is told', () => {
   it('describes an image with the researcher’s words', async () => {
     const stage = makeStage([
       {
-        id: 'i1',
+        id: testId('i1'),
         type: 'asset',
         content: 'img-1',
         description: { en: 'Two people talking at a kitchen table.' },
@@ -218,7 +227,7 @@ describe('what a participant who cannot see a media item is told', () => {
   it('names an audio player with the researcher’s words', async () => {
     const stage = makeStage([
       {
-        id: 'i1',
+        id: testId('i1'),
         type: 'asset',
         content: 'aud-1',
         description: { en: 'A researcher explaining what happens next.' },
@@ -242,7 +251,7 @@ describe('what a participant who cannot see a media item is told', () => {
   it('names a video player with the researcher’s words', async () => {
     const stage = makeStage([
       {
-        id: 'i1',
+        id: testId('i1'),
         type: 'asset',
         content: 'vid-1',
         description: {
@@ -266,7 +275,9 @@ describe('what a participant who cannot see a media item is told', () => {
   });
 
   it('names an undescribed video player as a video, not after the file', async () => {
-    const stage = makeStage([{ id: 'i1', type: 'asset', content: 'vid-1' }]);
+    const stage = makeStage([
+      { id: testId('i1'), type: 'asset', content: 'vid-1' },
+    ]);
 
     renderInformation(stage, [
       {
@@ -281,7 +292,9 @@ describe('what a participant who cannot see a media item is told', () => {
   });
 
   it('names an undescribed audio player as audio, not after the file', async () => {
-    const stage = makeStage([{ id: 'i1', type: 'asset', content: 'aud-1' }]);
+    const stage = makeStage([
+      { id: testId('i1'), type: 'asset', content: 'aud-1' },
+    ]);
 
     renderInformation(stage, [
       {
@@ -315,7 +328,12 @@ describe('a media item described with nothing but whitespace', () => {
 
   it('names a video player as a video', async () => {
     const stage = makeStage([
-      { id: 'i1', type: 'asset', content: 'vid-1', description: { en: blank } },
+      {
+        id: testId('i1'),
+        type: 'asset',
+        content: 'vid-1',
+        description: { en: blank },
+      },
     ]);
 
     renderInformation(stage, [
@@ -332,7 +350,12 @@ describe('a media item described with nothing but whitespace', () => {
 
   it('names an audio player as audio', async () => {
     const stage = makeStage([
-      { id: 'i1', type: 'asset', content: 'aud-1', description: { en: blank } },
+      {
+        id: testId('i1'),
+        type: 'asset',
+        content: 'aud-1',
+        description: { en: blank },
+      },
     ]);
 
     renderInformation(stage, [
@@ -356,7 +379,12 @@ describe('a media item described with nothing but whitespace', () => {
    */
   it('leaves a picture decorative rather than alt-texting the blank', async () => {
     const stage = makeStage([
-      { id: 'i1', type: 'asset', content: 'img-1', description: { en: blank } },
+      {
+        id: testId('i1'),
+        type: 'asset',
+        content: 'img-1',
+        description: { en: blank },
+      },
     ]);
 
     renderInformation(stage, [
@@ -399,7 +427,7 @@ describe('protocol text in the interview language', () => {
     renderInformation(
       makeStage([
         {
-          id: 'i1',
+          id: testId('i1'),
           type: 'text',
           content: { en: "Press '{'Next'}' when you are **ready**." },
         },
@@ -422,7 +450,7 @@ describe('protocol text in the interview language', () => {
       makeStage(
         [
           {
-            id: 'i1',
+            id: testId('i1'),
             type: 'text',
             content: { en: '## Section\n\nSome **context**.' },
           },
@@ -445,7 +473,11 @@ describe('protocol text in the interview language', () => {
   it('leaves a text item’s language to the interview’s boundary', () => {
     renderInformation(
       makeStage([
-        { id: 'i1', type: 'text', content: { en: 'Some **context**.' } },
+        {
+          id: testId('i1'),
+          type: 'text',
+          content: { en: 'Some **context**.' },
+        },
       ]),
       [],
       { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
@@ -460,7 +492,7 @@ describe('protocol text in the interview language', () => {
     renderInformation(
       makeStage([
         {
-          id: 'i1',
+          id: testId('i1'),
           type: 'asset',
           content: 'img-1',
           description: { en: 'Two people talking at a kitchen table.' },

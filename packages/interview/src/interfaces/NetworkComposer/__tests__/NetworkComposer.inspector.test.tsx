@@ -17,6 +17,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
@@ -114,7 +115,7 @@ const PROTOTYPE_VAR = '__proto__';
 const nodeForm = {
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: NODE_NAME_VAR,
       component: 'Text',
       label: { en: 'Full name' },
@@ -125,7 +126,7 @@ const nodeForm = {
 const edgeForm = {
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: EDGE_STRENGTH_VAR,
       component: 'Text',
       label: { en: 'Strength' },
@@ -134,7 +135,7 @@ const edgeForm = {
 };
 
 const stage = {
-  id: 'nc1',
+  id: testId('nc1'),
   type: 'NetworkComposer' as const,
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
@@ -413,7 +414,7 @@ describe('NetworkComposer inspector — node', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: PROTOTYPE_VAR,
             component: 'Text',
             label: { en: 'Prototype value' },
@@ -605,7 +606,11 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     nodeForm: {
       fields: [
         ...nodeForm.fields,
-        { id: 'field-2', variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
+        {
+          id: testId('field-2'),
+          variable: NICKNAME_VAR,
+          prompt: { en: 'Nickname' },
+        },
       ],
     },
   };
@@ -615,7 +620,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     nodeForm: {
       fields: [
         ...twoQuestionStage.nodeForm.fields,
-        { id: 'field-2', variable: GROUP_VAR, prompt: { en: 'Team' } },
+        { id: testId('field-2'), variable: GROUP_VAR, prompt: { en: 'Team' } },
       ],
     },
   };
