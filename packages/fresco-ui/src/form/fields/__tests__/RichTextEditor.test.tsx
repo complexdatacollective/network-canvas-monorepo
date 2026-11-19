@@ -11,6 +11,7 @@ import type { JSONContent } from '@tiptap/react';
 import { type ComponentProps, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { withMod } from '../../../testing/modKey';
 import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
 import { tokenPillClasses } from '../../../TokenPill';
 import { EnclosingHeadingLevel } from '../../../typography/EnclosingHeadingLevel';
@@ -1924,13 +1925,13 @@ describe('undo and redo of values and versions', () => {
     // The caret is back in the text the value went into.
     await waitFor(() => expect(editor).toHaveFocus());
 
-    await user.keyboard('{Control>}z{/Control}');
+    await user.keyboard(withMod('z'));
     await waitFor(() =>
       expect(editor.querySelector('[data-token="name"]')).toBeNull(),
     );
     expect(editor).toHaveTextContent(/^Hello$/);
 
-    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await user.keyboard(withMod('{Shift>}z{/Shift}'));
     await waitFor(() =>
       expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
     );
@@ -2012,7 +2013,7 @@ describe('undo and redo of values and versions', () => {
       ).toBeInTheDocument();
 
       await user.click(editor);
-      await user.keyboard('{Control>}z{/Control}');
+      await user.keyboard(withMod('z'));
       await user.click(pill);
       expect(
         await screen.findByRole('textbox', { name: afterUndo }),
@@ -2070,7 +2071,7 @@ describe('undo and redo of values and versions', () => {
     // Undone in the line around it.
     await user.keyboard('{Escape}');
     await waitFor(() => expect(editor).toHaveFocus());
-    await user.keyboard('{Control>}z{/Control}');
+    await user.keyboard(withMod('z'));
     await waitFor(() => expect(version.textContent).toBe(''));
 
     // Redone from inside the version: its edits are the line's.
@@ -2081,11 +2082,11 @@ describe('undo and redo of values and versions', () => {
       name: 'If not known',
     });
     await user.click(reopened);
-    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await user.keyboard(withMod('{Shift>}z{/Shift}'));
     await waitFor(() => expect(reopened.textContent).toBe(' friend'));
 
     // And undone from inside it again.
-    await user.keyboard('{Control>}z{/Control}');
+    await user.keyboard(withMod('z'));
     await waitFor(() => expect(reopened.textContent).toBe(''));
     const reported = onChange.mock.lastCall?.[0] as JSONContent;
     const versions = reported.content?.[0]?.content?.[1]?.attrs?.versions as {
