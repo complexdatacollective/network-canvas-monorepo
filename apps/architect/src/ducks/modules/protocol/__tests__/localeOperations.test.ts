@@ -19,6 +19,8 @@ import {
   suppliedOptionLabel,
   suppliedOptionLabels,
   validateProtocol,
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 
 import {
@@ -34,6 +36,16 @@ import {
   setTranslation,
   withoutLocale,
 } from '../localeOperations';
+
+const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'da94e169-2dcf-49da-869f-39ba817f1b46',
+);
+const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'f9e2f826-c19e-4369-8727-e6db2d470999',
+);
+const FAMILY_PEDIGREE_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'b5d4c50b-95b7-43cc-8a2e-7d1b0f19fcde',
+);
 
 const NODE_TYPE = 'person';
 const VARIABLE = 'closeness';
@@ -85,14 +97,14 @@ const protocolIn = (
     },
     stages: [
       {
-        id: 'welcome',
+        id: WELCOME_STAGE_ID,
         type: 'Information',
         label: text.stage,
         title: text.title,
         items: [],
       },
       {
-        id: 'finish',
+        id: FINISH_STAGE_ID,
         type: 'FinishSession',
         mode: 'confirmation',
         label: text.stage,
@@ -155,7 +167,7 @@ const withSuppliedFinish = (): CurrentProtocol => {
     stages: [
       ...protocol.stages.slice(0, -1),
       createDefaultFinishSessionStage({
-        id: 'finish',
+        id: FINISH_STAGE_ID,
         localization: protocol.localization,
       }),
     ],
@@ -215,7 +227,7 @@ const withPedigree = (
     },
     stages: [
       {
-        id: 'familyPedigree',
+        id: FAMILY_PEDIGREE_STAGE_ID,
         type: 'FamilyPedigree',
         wording: familyPedigreeWordingIn(),
         label: { en: 'Family' },
@@ -880,13 +892,15 @@ describe('a roster stage’s supplied panel title', () => {
       ...monolingual(),
       stages: [
         {
-          id: 'roster',
+          id: createProtocolObjectId(),
           type: 'NameGeneratorRoster',
           label: { en: 'Services' },
           subject: { entity: 'node', type: 'person' },
           dataSource: 'roster',
           ...(panelTitle === undefined ? {} : { panelTitle }),
-          prompts: [{ id: 'p1', text: { en: 'Which services?' } }],
+          prompts: [
+            { id: createProtocolObjectId(), text: { en: 'Which services?' } },
+          ],
         },
       ],
     }) as unknown as CurrentProtocol;

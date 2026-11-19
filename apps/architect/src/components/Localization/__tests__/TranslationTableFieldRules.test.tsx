@@ -13,6 +13,7 @@ import {
   type CurrentProtocol,
   STAGE_LABEL_MAX_LENGTH,
   validateProtocol,
+  createProtocolObjectId,
 } from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -45,7 +46,7 @@ const bilingual = (): CurrentProtocol => {
     { ...condition, label: { en: 'Cancer', es: 'Diabetes' } },
     {
       ...condition,
-      id: 'second',
+      id: createProtocolObjectId(),
       attribute: asEntityAttributeReference('had_testing'),
       color: 'node-color-seq-2',
       label: { en: 'Heart disease' },

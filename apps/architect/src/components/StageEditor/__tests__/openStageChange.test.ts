@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { makeProtocol } from '~/protocolReview/__tests__/fixtures';
+import {
+  type CurrentProtocol,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
+import {
+  makeProtocol,
+  WELCOME_STAGE_ID,
+  NAMES_STAGE_ID,
+} from '~/protocolReview/__tests__/fixtures';
 
 import {
   carryIntoOpenStage,
@@ -9,15 +16,33 @@ import {
   stageChangeRewrite,
 } from '../openStageChange';
 
+const P1 = ProtocolObjectIdSchema.parse('0c1d2e3f-4a5b-4c6d-8e7f-000000000001');
+const P2 = ProtocolObjectIdSchema.parse('0c1d2e3f-4a5b-4c6d-8e7f-000000000002');
+const P3 = ProtocolObjectIdSchema.parse('0c1d2e3f-4a5b-4c6d-8e7f-000000000003');
+const MINE = ProtocolObjectIdSchema.parse(
+  '0c1d2e3f-4a5b-4c6d-8e7f-000000000004',
+);
+const FIELD_A = ProtocolObjectIdSchema.parse(
+  '0c1d2e3f-4a5b-4c6d-8e7f-00000000000a',
+);
+const FIELD_B = ProtocolObjectIdSchema.parse(
+  '0c1d2e3f-4a5b-4c6d-8e7f-00000000000b',
+);
+
 describe('stageChangeRewrite', () => {
   const stored = () => ({
     label: { en: 'Names' },
     behaviours: { minNodes: 1 },
     prompts: [
-      { id: 'p1', text: { en: 'Name people' } },
-      { id: 'p2', text: { en: 'Name more' } },
+      { id: P1, text: { en: 'Name people' } },
+      { id: P2, text: { en: 'Name more' } },
     ],
-    form: { fields: [{ variable: 'a' }, { variable: 'b' }] },
+    form: {
+      fields: [
+        { id: FIELD_A, variable: 'a' },
+        { id: FIELD_B, variable: 'b' },
+      ],
+    },
   });
 
   it('writes what the change wrote and keeps what the draft holds everywhere else', () => {
@@ -25,24 +50,24 @@ describe('stageChangeRewrite', () => {
     const after = {
       ...stored(),
       prompts: [
-        { id: 'p1', text: { en: 'Name everyone' } },
-        { id: 'p2', text: { en: 'Name more' } },
+        { id: P1, text: { en: 'Name everyone' } },
+        { id: P2, text: { en: 'Name more' } },
       ],
     };
     const draft = {
       ...stored(),
       label: { en: 'Unsaved label' },
       prompts: [
-        { id: 'p1', text: { en: 'Name people' } },
-        { id: 'p2', text: { en: 'Unsaved prompt' } },
+        { id: P1, text: { en: 'Name people' } },
+        { id: P2, text: { en: 'Unsaved prompt' } },
       ],
       onlyInDraft: true,
     };
     expect(stageChangeRewrite(before, after)(draft)).toEqual({
       ...draft,
       prompts: [
-        { id: 'p1', text: { en: 'Name everyone' } },
-        { id: 'p2', text: { en: 'Unsaved prompt' } },
+        { id: P1, text: { en: 'Name everyone' } },
+        { id: P2, text: { en: 'Unsaved prompt' } },
       ],
     });
   });
@@ -76,22 +101,22 @@ describe('stageChangeRewrite', () => {
     const after = {
       ...stored(),
       prompts: [
-        { id: 'p3', text: { en: 'New first' } },
-        { id: 'p2', text: { en: 'Name more' } },
+        { id: P3, text: { en: 'New first' } },
+        { id: P2, text: { en: 'Name more' } },
       ],
     };
     const draft = {
       ...stored(),
       prompts: [
-        { id: 'p1', text: { en: 'Name people' } },
-        { id: 'p2', text: { en: 'Unsaved prompt' } },
-        { id: 'mine', text: { en: 'Added in the draft' } },
+        { id: P1, text: { en: 'Name people' } },
+        { id: P2, text: { en: 'Unsaved prompt' } },
+        { id: MINE, text: { en: 'Added in the draft' } },
       ],
     };
     expect(stageChangeRewrite(before, after)(draft).prompts).toEqual([
-      { id: 'p3', text: { en: 'New first' } },
-      { id: 'p2', text: { en: 'Unsaved prompt' } },
-      { id: 'mine', text: { en: 'Added in the draft' } },
+      { id: P3, text: { en: 'New first' } },
+      { id: P2, text: { en: 'Unsaved prompt' } },
+      { id: MINE, text: { en: 'Added in the draft' } },
     ]);
   });
 
@@ -100,60 +125,82 @@ describe('stageChangeRewrite', () => {
     const after = {
       ...stored(),
       prompts: [
-        { id: 'p2', text: { en: 'Name more' } },
-        { id: 'p1', text: { en: 'Name people' } },
+        { id: P2, text: { en: 'Name more' } },
+        { id: P1, text: { en: 'Name people' } },
       ],
     };
     const draft = {
       ...stored(),
-      prompts: [{ id: 'p2', text: { en: 'Name more' } }],
+      prompts: [{ id: P2, text: { en: 'Name more' } }],
     };
     expect(stageChangeRewrite(before, after)(draft).prompts).toEqual([
-      { id: 'p2', text: { en: 'Name more' } },
+      { id: P2, text: { en: 'Name more' } },
     ]);
   });
 
-  it('keeps an unsaved edit to one field when the change edits another, matching fields by attribute', () => {
+  it('keeps an unsaved edit to one field when the change edits another, matching fields by id', () => {
     const before = {
       form: {
         fields: [
-          { variable: 'a', prompt: 'A?' },
-          { variable: 'b', prompt: 'B?' },
+          { id: FIELD_A, variable: 'a', prompt: 'A?' },
+          { id: FIELD_B, variable: 'b', prompt: 'B?' },
         ],
       },
     };
     const after = {
       form: {
         fields: [
-          { variable: 'a', prompt: 'A, now?' },
-          { variable: 'b', prompt: 'B?' },
+          { id: FIELD_A, variable: 'a', prompt: 'A, now?' },
+          { id: FIELD_B, variable: 'b', prompt: 'B?' },
         ],
       },
     };
     const draft = {
       form: {
         fields: [
-          { variable: 'a', prompt: 'A?' },
-          { variable: 'b', prompt: 'B, edited' },
+          { id: FIELD_A, variable: 'a', prompt: 'A?' },
+          { id: FIELD_B, variable: 'b', prompt: 'B, edited' },
         ],
       },
     };
     expect(stageChangeRewrite(before, after)(draft).form).toEqual({
       fields: [
-        { variable: 'a', prompt: 'A, now?' },
-        { variable: 'b', prompt: 'B, edited' },
+        { id: FIELD_A, variable: 'a', prompt: 'A, now?' },
+        { id: FIELD_B, variable: 'b', prompt: 'B, edited' },
       ],
     });
   });
 
-  it('keeps an unsaved edit to one member of a list nothing identifies, by position', () => {
+  it('matches answer options by the value they stand for', () => {
+    const before = {
+      options: [
+        { label: 'Yes', value: 1 },
+        { label: 'No', value: 0 },
+      ],
+    };
+    const after = {
+      options: [
+        { label: 'Yes, always', value: 1 },
+        { label: 'No', value: 0 },
+      ],
+    };
+    const draft = {
+      options: [
+        { label: 'Yes', value: 1 },
+        { label: 'No, never', value: 0 },
+      ],
+    };
+    expect(stageChangeRewrite(before, after)(draft).options).toEqual([
+      { label: 'Yes, always', value: 1 },
+      { label: 'No, never', value: 0 },
+    ]);
+  });
+
+  it('does not match members of a list nothing identifies by their position', () => {
     const before = { items: [{ text: 'one' }, { text: 'two' }] };
     const after = { items: [{ text: 'ONE' }, { text: 'two' }] };
     const draft = { items: [{ text: 'one' }, { text: 'two, edited' }] };
-    expect(stageChangeRewrite(before, after)(draft).items).toEqual([
-      { text: 'ONE' },
-      { text: 'two, edited' },
-    ]);
+    expect(stageChangeRewrite(before, after)(draft).items).toEqual(draft.items);
   });
 
   it('merges a list of plain values as a set, keeping what the draft added', () => {
@@ -180,15 +227,18 @@ describe('stageChangeRewrite', () => {
     );
   });
 
-  it('takes a list whose members have no ids as the change left it', () => {
+  it('removes a field the change removed, keeping the rest of the form as the draft holds it', () => {
     const before = stored();
-    const after = { ...stored(), form: { fields: [{ variable: 'a' }] } };
+    const after = {
+      ...stored(),
+      form: { fields: [{ id: FIELD_A, variable: 'a' }] },
+    };
     const draft = {
       ...stored(),
-      form: { fields: [{ variable: 'a' }, { variable: 'b' }], title: 'Kept' },
+      form: { ...stored().form, title: 'Kept' },
     };
     expect(stageChangeRewrite(before, after)(draft).form).toEqual({
-      fields: [{ variable: 'a' }],
+      fields: [{ id: FIELD_A, variable: 'a' }],
       title: 'Kept',
     });
   });
@@ -211,11 +261,11 @@ describe('carryIntoOpenStage', () => {
 
   it('hands the open stage the change to it, and nothing for a change elsewhere', () => {
     const carry = vi.fn();
-    unregister = registerOpenStage('welcome', carry);
+    unregister = registerOpenStage(WELCOME_STAGE_ID, carry);
     const protocol = makeProtocol();
-    carryIntoOpenStage(protocol, retitled(protocol, 'names'));
+    carryIntoOpenStage(protocol, retitled(protocol, NAMES_STAGE_ID));
     expect(carry).not.toHaveBeenCalled();
-    carryIntoOpenStage(protocol, retitled(protocol, 'welcome'));
+    carryIntoOpenStage(protocol, retitled(protocol, WELCOME_STAGE_ID));
     expect(carry).toHaveBeenCalledTimes(1);
     const rewrite = carry.mock.calls[0]?.[0] as (
       fields: Record<string, unknown>,
@@ -229,17 +279,17 @@ describe('carryIntoOpenStage', () => {
   it('carries nothing with no editor open, or for a stage the change removed', () => {
     const protocol = makeProtocol();
     expect(() =>
-      carryIntoOpenStage(protocol, retitled(protocol, 'welcome')),
+      carryIntoOpenStage(protocol, retitled(protocol, WELCOME_STAGE_ID)),
     ).not.toThrow();
     const carry = vi.fn();
-    unregister = registerOpenStage('welcome', carry);
+    unregister = registerOpenStage(WELCOME_STAGE_ID, carry);
     carryIntoOpenStage(protocol, {
       ...protocol,
-      stages: protocol.stages.filter((stage) => stage.id !== 'welcome'),
+      stages: protocol.stages.filter((stage) => stage.id !== WELCOME_STAGE_ID),
     });
     expect(carry).not.toHaveBeenCalled();
     unregister();
-    carryIntoOpenStage(protocol, retitled(protocol, 'welcome'));
+    carryIntoOpenStage(protocol, retitled(protocol, WELCOME_STAGE_ID));
     expect(carry).not.toHaveBeenCalled();
   });
 });

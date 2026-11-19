@@ -4,7 +4,25 @@ import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
+
+const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'd79c37ba-397e-4855-8435-f3226c3a2b50',
+);
+export const NAMES_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '4dc69897-321e-4d88-881f-8460d3e9c98d',
+);
+const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '99529bff-5002-47c2-805f-b1c7b8696179',
+);
+export const NAMES_PROMPT_ID = ProtocolObjectIdSchema.parse(
+  'dd0c58cf-1bb6-462d-81e7-8f30533abaff',
+);
+export const SECOND_NAMES_PROMPT_ID = ProtocolObjectIdSchema.parse(
+  '3a1517d7-8e78-4bc1-8ed7-5410fbca77d9',
+);
 
 // The fixtures of the Automated Protocol Review specs: a small protocol whose
 // real stage and prompt ids the mocked findings address, and a stand-in for
@@ -46,28 +64,35 @@ export const reviewProtocol = (): CurrentProtocol =>
     },
     stages: [
       {
-        id: 'welcome',
+        id: WELCOME_STAGE_ID,
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
         title: { en: 'Hello', fr: 'Bonjour' },
         items: [
-          { id: 'intro', type: 'text', content: { en: 'Hi', fr: 'Salut' } },
+          {
+            id: createProtocolObjectId(),
+            type: 'text',
+            content: { en: 'Hi', fr: 'Salut' },
+          },
         ],
       },
       {
-        id: 'names',
+        id: NAMES_STAGE_ID,
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Names', fr: 'Noms' },
         subject: { entity: 'node', type: 'person' },
         quickAdd: asEntityAttributeReference('name_var'),
         prompts: [
-          { id: 'p1', text: { en: 'Name people', fr: 'Nommez' } },
-          { id: 'p2', text: { en: 'Name more', fr: 'Nommez plus' } },
+          { id: NAMES_PROMPT_ID, text: { en: 'Name people', fr: 'Nommez' } },
+          {
+            id: SECOND_NAMES_PROMPT_ID,
+            text: { en: 'Name more', fr: 'Nommez plus' },
+          },
         ],
         addNamePlaceholder: { en: 'Type a name', fr: 'Tapez un nom' },
       },
       {
-        id: 'finish',
+        id: FINISH_STAGE_ID,
         type: 'FinishSession',
         mode: 'confirmation',
         outcome: 'completed',
@@ -151,13 +176,18 @@ export const FINDINGS: MockFinding[] = [
     category: 'wording',
     title: 'The first prompt is vague',
     explanation: 'Participants may not know how many people to name.',
-    stageId: 'names',
+    stageId: NAMES_STAGE_ID,
     codebookEntity: null,
     codebookTypeId: null,
     fix: {
       summary: 'Ask participants to name everyone they know.',
       changes: ['Stage 2 · Names: reword the first prompt'],
-      operations: [set('/stages/names/prompts/p1/text/en', NEW_P1_TEXT)],
+      operations: [
+        set(
+          `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
+          NEW_P1_TEXT,
+        ),
+      ],
     },
   },
   {
@@ -166,7 +196,7 @@ export const FINDINGS: MockFinding[] = [
     category: 'burden',
     title: 'The second prompt has no limit on how many to name',
     explanation: 'Open-ended naming is tiring and makes interviews long.',
-    stageId: 'names',
+    stageId: NAMES_STAGE_ID,
     codebookEntity: null,
     codebookTypeId: null,
     fix: {
@@ -176,11 +206,14 @@ export const FINDINGS: MockFinding[] = [
         'Stage 2 · Names: require at least two names',
       ],
       operations: [
-        set('/stages/names/prompts/p2/text/en', NEW_P2_TEXT),
-        set('/stages/names/behaviours', { minNodes: 2 }),
+        set(
+          `/stages/${NAMES_STAGE_ID}/prompts/${SECOND_NAMES_PROMPT_ID}/text/en`,
+          NEW_P2_TEXT,
+        ),
+        set(`/stages/${NAMES_STAGE_ID}/behaviours`, { minNodes: 2 }),
         // A minimum is shown with a notice, and the schema refuses a stage that
         // has one without the other, so a valid fix sets both.
-        set('/stages/names/minNodesNotice', MIN_NODES_NOTICE),
+        set(`/stages/${NAMES_STAGE_ID}/minNodesNotice`, MIN_NODES_NOTICE),
       ],
     },
   },
@@ -190,7 +223,7 @@ export const FINDINGS: MockFinding[] = [
     category: 'structure',
     title: 'The closing stage repeats the welcome',
     explanation: 'Participants see the same words at the start and the end.',
-    stageId: 'finish',
+    stageId: FINISH_STAGE_ID,
     codebookEntity: null,
     codebookTypeId: null,
     fix: {

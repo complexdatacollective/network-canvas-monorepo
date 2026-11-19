@@ -7,10 +7,17 @@ import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 
 import { interfaceTextShownBy } from '@codaco/interview/supplied-wording';
-import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
 
 import DefaultLanguageTextAlert from '../DefaultLanguageTextAlert';
 import { translationTableHref } from '../Localization/translationTableLinks';
+
+const END_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '7e5d4c3b-2a19-4f08-9e7d-6c5b4a392817',
+);
 
 const japanese = { defaultLocale: 'ja', locales: ['ja'] };
 
@@ -36,7 +43,10 @@ const newJapaneseProtocol = withJapaneseInterfaceText({
   localization: japanese,
   codebook: { node: {}, edge: {}, ego: {} },
   stages: [
-    createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+    createDefaultFinishSessionStage({
+      id: END_STAGE_ID,
+      localization: japanese,
+    }),
   ],
 });
 
@@ -107,9 +117,9 @@ describe('<DefaultLanguageTextAlert />', () => {
     const { location } = renderAlert(newJapaneseProtocol);
 
     const link = screen.getByRole('link', EDIT_LINK);
-    expect(link).toHaveAttribute('href', '/protocol/stage/end');
+    expect(link).toHaveAttribute('href', `/protocol/stage/${END_STAGE_ID}`);
     fireEvent.click(link);
-    expect(location.history?.at(-1)).toBe('/protocol/stage/end');
+    expect(location.history?.at(-1)).toBe(`/protocol/stage/${END_STAGE_ID}`);
   });
 
   it('renders nothing once the closing and finished text are written', () => {

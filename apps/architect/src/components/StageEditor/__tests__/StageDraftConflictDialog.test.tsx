@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
@@ -26,12 +27,16 @@ import {
 } from '../stageDraftBeacon';
 import StageDraftConflictDialog from '../StageDraftConflictDialog';
 
+const STAGE_ID = ProtocolObjectIdSchema.parse(
+  'a73a4e1d-9259-4000-885a-f554fbb9b48b',
+);
+
 const { mockSetLocation } = vi.hoisted(() => ({
   mockSetLocation: vi.fn(),
 }));
 
 vi.mock('wouter', () => ({
-  useLocation: () => ['/protocol/stage/stage-1', mockSetLocation],
+  useLocation: () => [`/protocol/stage/${STAGE_ID}`, mockSetLocation],
 }));
 
 const downloadActiveProtocol = vi.hoisted(() => vi.fn());
@@ -63,7 +68,7 @@ const protocol: CurrentProtocol = {
   localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [
     {
-      id: 'stage-1',
+      id: STAGE_ID,
       type: 'Information',
       label: { en: 'A' },
       title: { en: 'A' },
@@ -74,7 +79,7 @@ const protocol: CurrentProtocol = {
 };
 
 const editedStage: Stage = {
-  id: 'stage-1',
+  id: STAGE_ID,
   type: 'Information',
   label: { en: 'A, edited' },
   title: { en: 'A' },
@@ -102,7 +107,7 @@ const openDirtyStageDraft = () => {
 const renderDialog = (store: TestStore) =>
   render(
     <Provider store={store}>
-      <StageDraftConflictDialog stageId="stage-1" />
+      <StageDraftConflictDialog stageId={STAGE_ID} />
     </Provider>,
   );
 
@@ -119,7 +124,7 @@ const renderBothReclaimDialogs = (store: TestStore, nestedDirty: boolean) =>
   render(
     <Provider store={store}>
       <NestedEditor dirty={nestedDirty} />
-      <StageDraftConflictDialog stageId="stage-1" />
+      <StageDraftConflictDialog stageId={STAGE_ID} />
       <NestedDraftReclaimDialog />
     </Provider>,
   );
@@ -379,7 +384,7 @@ describe('StageDraftConflictDialog', () => {
 
     view.rerender(
       <Provider store={store}>
-        <StageDraftConflictDialog stageId="stage-1" />
+        <StageDraftConflictDialog stageId={STAGE_ID} />
         <NestedDraftReclaimDialog />
       </Provider>,
     );

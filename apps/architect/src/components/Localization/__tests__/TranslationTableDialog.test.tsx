@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import LocalizationPage from '~/components/pages/LocalizationPage';
@@ -20,12 +21,16 @@ const bilingual: CurrentProtocol = {
   codebook: { node: {}, edge: {}, ego: {} },
   stages: [
     {
-      id: 'welcome',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
       title: { en: 'Hello' },
       items: [
-        { id: 'intro', type: 'text', content: { en: 'Read **this** first' } },
+        {
+          id: createProtocolObjectId(),
+          type: 'text',
+          content: { en: 'Read **this** first' },
+        },
       ],
     },
   ],

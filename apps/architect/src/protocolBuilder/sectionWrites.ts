@@ -5,6 +5,7 @@ import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import type { StageCodebookSection } from '@codaco/protocol-builder-core/contract/schemas';
 import { STAGE_ORDER_SECTION } from '@codaco/protocol-builder/host/protocolSections';
 import {
+  createProtocolObjectId,
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
   isFinishSessionStage,
@@ -456,7 +457,7 @@ export async function createSection(
   codebook?: readonly CommittedCodebookSection[],
 ): Promise<SectionCreation> {
   if (kind === 'stage') {
-    const stageId = uuid();
+    const stageId = createProtocolObjectId();
     const target = sectionId({ kind, stageId });
     const parsed = stageSchema.safeParse({ ...document, id: stageId });
     if (!parsed.success)

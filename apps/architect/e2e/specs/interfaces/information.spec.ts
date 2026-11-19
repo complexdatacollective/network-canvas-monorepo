@@ -1,5 +1,9 @@
 import type { Page } from '@playwright/test';
 
+import {
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
@@ -8,6 +12,13 @@ import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 import { Timeline } from '../../pageobjects/timeline.js';
+
+const IMAGE_ITEM_ID = ProtocolObjectIdSchema.parse(
+  '643982f4-731e-45b5-8919-07e282f0ded9',
+);
+const TEXT_ITEM_ID = ProtocolObjectIdSchema.parse(
+  '9bc638d0-4d03-4130-8af0-b26f3a3b3f95',
+);
 
 test('creates a valid Information stage from scratch', async ({
   architectPage,
@@ -73,14 +84,14 @@ const INFORMATION_WITH_IMAGE_ITEM = (): CurrentProtocol => ({
   },
   stages: [
     {
-      id: 'info-1',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'About This Study' },
       title: { en: 'Welcome' },
       items: [
-        { id: 'item-image', type: 'asset', content: 'photo-asset' },
+        { id: IMAGE_ITEM_ID, type: 'asset', content: 'photo-asset' },
         {
-          id: 'item-text',
+          id: TEXT_ITEM_ID,
           type: 'text',
           content: { en: 'Original text body' },
         },
@@ -192,12 +203,12 @@ test('never turns an image item into its own asset id as participant text', asyn
   );
   expect(informationItems(stage)).toEqual([
     {
-      id: 'item-image',
+      id: IMAGE_ITEM_ID,
       type: 'text',
       content: { en: 'Prose the researcher actually typed' },
     },
     {
-      id: 'item-text',
+      id: TEXT_ITEM_ID,
       type: 'text',
       content: { en: 'Original text body' },
     },
@@ -294,10 +305,10 @@ test('drops a text draft left behind by a switch to Image', async ({
     architectPage,
     0,
     (saved) =>
-      informationItemContent(saved, 'item-text') !== 'Original text body',
+      informationItemContent(saved, TEXT_ITEM_ID) !== 'Original text body',
   );
   expect(informationItems(stage)).toEqual([
-    { id: 'item-image', type: 'asset', content: 'photo-asset' },
-    { id: 'item-text', type: 'asset', content: 'photo-asset' },
+    { id: IMAGE_ITEM_ID, type: 'asset', content: 'photo-asset' },
+    { id: TEXT_ITEM_ID, type: 'asset', content: 'photo-asset' },
   ]);
 });

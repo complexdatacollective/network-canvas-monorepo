@@ -1,6 +1,9 @@
 import { type Locator, type Page } from '@playwright/test';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
@@ -737,7 +740,7 @@ function protocolWithStages(): CurrentProtocol {
     ...emptyProtocol(),
     stages: [
       ...[1, 2, 3].map((index) => ({
-        id: `info-${index}`,
+        id: createProtocolObjectId(),
         label: { en: `Information ${index}` },
         type: 'Information' as const,
         title: { en: `Information ${index}` },

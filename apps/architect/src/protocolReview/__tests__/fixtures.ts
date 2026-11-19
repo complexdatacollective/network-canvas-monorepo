@@ -6,6 +6,7 @@ import type {
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import type { StudyContext } from '@codaco/shared-consts';
 
@@ -15,6 +16,22 @@ export const STUDY_CONTEXT: StudyContext = {
   administration: 'face_to_face',
   researchQuestions: ['Who do older adults turn to for advice?'],
 };
+
+export const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e01',
+);
+export const INTRO_ITEM_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e02',
+);
+export const NAMES_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e03',
+);
+export const NAMES_PROMPT_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e04',
+);
+export const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e05',
+);
 
 /**
  * A small, valid schema 9 protocol in two languages: an Information stage, a
@@ -54,25 +71,31 @@ export const makeProtocol = (
     },
     stages: [
       {
-        id: 'welcome',
+        id: WELCOME_STAGE_ID,
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
         title: { en: 'Hello', fr: 'Bonjour' },
         items: [
-          { id: 'intro', type: 'text', content: { en: 'Hi', fr: 'Salut' } },
+          {
+            id: INTRO_ITEM_ID,
+            type: 'text',
+            content: { en: 'Hi', fr: 'Salut' },
+          },
         ],
       },
       {
-        id: 'names',
+        id: NAMES_STAGE_ID,
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Names', fr: 'Noms' },
         subject: { entity: 'node', type: 'person' },
         quickAdd: asEntityAttributeReference('name_var'),
-        prompts: [{ id: 'p1', text: { en: 'Name people', fr: 'Nommez' } }],
+        prompts: [
+          { id: NAMES_PROMPT_ID, text: { en: 'Name people', fr: 'Nommez' } },
+        ],
         addNamePlaceholder: { en: 'Type a name', fr: 'Tapez un nom' },
       },
       {
-        id: 'finish',
+        id: FINISH_STAGE_ID,
         type: 'FinishSession',
         mode: 'confirmation',
         outcome: 'completed',

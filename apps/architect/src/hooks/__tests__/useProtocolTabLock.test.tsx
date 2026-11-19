@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import {
@@ -24,6 +25,10 @@ import protocolValidation from '~/ducks/modules/protocolValidation';
 import type { ProtocolTabLock } from '~/utils/protocolTabLock';
 
 import { useProtocolTabLock } from '../useProtocolTabLock';
+
+const STAGE_ID = ProtocolObjectIdSchema.parse(
+  'e2ee57d6-f8eb-49c4-8695-edf44a1ee806',
+);
 
 const { mockLocation, mockBrowserNavigate } = vi.hoisted(() => ({
   mockLocation: vi.fn<() => string>(() => '/protocol'),
@@ -97,7 +102,7 @@ const savedProtocol: CurrentProtocol = {
 };
 
 const stage: Stage = {
-  id: 'stage-1',
+  id: STAGE_ID,
   type: 'Information',
   label: { en: 'A' },
   title: { en: 'A' },
@@ -317,8 +322,8 @@ describe('useProtocolTabLock', () => {
   // work the demotion banner told them to close the other tab to keep.
   it('does not discard an in-progress stage draft when the other tab closes', async () => {
     const fake = makeFakeLock();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
+    window.history.replaceState(null, '', `/protocol/stage/${STAGE_ID}`);
     const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
     act(() => {
       store.dispatch(setActiveProtocolId('p1'));
@@ -349,8 +354,8 @@ describe('useProtocolTabLock', () => {
   // replacement — over what the other tab saved.
   it('does not re-enable saving while the draft conflict is unresolved', async () => {
     const fake = makeFakeLock();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
+    window.history.replaceState(null, '', `/protocol/stage/${STAGE_ID}`);
     const { store } = renderTabLock(fake.factory);
     act(() => {
       store.dispatch(setActiveProtocolId('p1'));
@@ -381,8 +386,8 @@ describe('useProtocolTabLock', () => {
   // with no other tab to blame.
   it('finishes the reclaim once the draft that blocked it is gone', async () => {
     const fake = makeFakeLock();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
+    window.history.replaceState(null, '', `/protocol/stage/${STAGE_ID}`);
     const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
     act(() => {
       store.dispatch(setActiveProtocolId('p1'));
@@ -419,8 +424,8 @@ describe('useProtocolTabLock', () => {
   // is gone. Close it and return to the stage list instead.
   it('closes a pristine stage editor rather than reloading underneath it', async () => {
     const fake = makeFakeLock();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
+    window.history.replaceState(null, '', `/protocol/stage/${STAGE_ID}`);
     const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
     act(() => {
       store.dispatch(setActiveProtocolId('p1'));
@@ -455,8 +460,8 @@ describe('useProtocolTabLock', () => {
   // (StageEditorPage) once this tab owns the protocol again.
   it('reclaims in place under a stage editor that was only ever read-only', async () => {
     const fake = makeFakeLock();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
+    window.history.replaceState(null, '', `/protocol/stage/${STAGE_ID}`);
     const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
     act(() => {
       store.dispatch(setActiveProtocolId('p1'));
@@ -485,8 +490,8 @@ describe('useProtocolTabLock', () => {
   // to blame and a banner describing changes that no longer exist.
   it('finishes the reclaim once the draft is undone back to clean', async () => {
     const fake = makeFakeLock();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
+    window.history.replaceState(null, '', `/protocol/stage/${STAGE_ID}`);
     const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
     act(() => {
       store.dispatch(setActiveProtocolId('p1'));
@@ -593,8 +598,8 @@ describe('useProtocolTabLock', () => {
   // over it holds work of its own that the navigation would take.
   it('does not close a pristine stage editor out from under a dirty nested editor', async () => {
     const fake = makeFakeLock();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
+    window.history.replaceState(null, '', `/protocol/stage/${STAGE_ID}`);
     const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
     act(() => {
       store.dispatch(setActiveProtocolId('p1'));

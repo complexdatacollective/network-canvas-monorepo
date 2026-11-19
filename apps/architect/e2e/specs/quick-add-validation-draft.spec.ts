@@ -3,6 +3,7 @@ import {
   asEntityAttributeReference,
   type CurrentProtocol,
   type Variable,
+  createProtocolObjectId,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -67,12 +68,17 @@ const quickAddProtocol = (): CurrentProtocol => {
     },
     stages: [
       {
-        id: 'names',
+        id: createProtocolObjectId(),
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Quickly Add Friends' },
         subject: { entity: 'node', type: 'person' },
         quickAdd: asEntityAttributeReference('name_var'),
-        prompts: [{ id: 'p1', text: { en: 'Name someone you know' } }],
+        prompts: [
+          {
+            id: createProtocolObjectId(),
+            text: { en: 'Name someone you know' },
+          },
+        ],
       },
       ...base.stages,
     ],

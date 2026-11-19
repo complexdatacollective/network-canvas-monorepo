@@ -26,9 +26,19 @@ vi.mock('~/utils/assetUtils', async (importOriginal) => ({
     Promise.resolve({ persisted: true }),
 }));
 
+/** The id of the first stage of `type` in the all-interfaces protocol. */
+const fixtureStageId = (type: string): string => {
+  const stage = allInterfaces.stages.find(
+    (candidate) => candidate.type === type,
+  );
+  if (stage === undefined) throw new Error(`No ${type} stage in the fixture`);
+  return stage.id;
+};
+const INFORMATION_STAGE_ID = fixtureStageId('Information');
+
 const PROTOCOL_ID = 'library-row-1';
 const EDIT = 'edit-1';
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({ kind: 'stage', stageId: INFORMATION_STAGE_ID });
 
 /** The language the all-interfaces protocol is written in. */
 const FIXTURE_LANGUAGE = 'en-US';
@@ -42,7 +52,7 @@ const openStore = (): ArchitectStore => {
 
 const stageLabel = (store: ArchitectStore): string | undefined =>
   getProtocol(store.getState())?.stages.find(
-    (stage) => stage.id === 'information-1',
+    (stage) => stage.id === INFORMATION_STAGE_ID,
   )?.label[FIXTURE_LANGUAGE];
 
 describe('useArchitectClient', () => {
