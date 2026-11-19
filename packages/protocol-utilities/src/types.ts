@@ -16,6 +16,7 @@ import type {
   OrdinalColorReference,
   PedigreeCompletenessScope,
   PedigreeGenderWords,
+  ProtocolObjectId,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -325,7 +326,7 @@ export type ItemInput =
   | (AssetItemInput & { size?: Extract<Item, { type: 'asset' }>['size'] });
 
 export type StageEntry = {
-  id: string;
+  id: ProtocolObjectId;
   type: StageType;
   label: TextInput;
   interviewScript?: string;

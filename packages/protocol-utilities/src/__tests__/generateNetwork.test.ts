@@ -17,6 +17,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../generateNetwork.ts';
+import { testId } from './testId.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
@@ -205,7 +206,7 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
 
 function makeInformationStage(id: string, skipLogic?: SkipLogic): Stage {
   return {
-    id,
+    id: testId(id),
     label: en(id),
     type: 'Information',
     title: en(id),
@@ -216,10 +217,10 @@ function makeInformationStage(id: string, skipLogic?: SkipLogic): Stage {
 
 function makeTypedNameGeneratorStage(id: string, nodeType: string): Stage {
   return makeNameGeneratorStage({
-    id,
+    id: testId(id),
     label: id,
     subject: { entity: 'node', type: nodeType },
-    prompts: [{ id: `${id}-prompt`, text: id }],
+    prompts: [{ id: testId(`${id}-prompt`), text: id }],
     behaviours: { minNodes: 2, maxNodes: 2 },
   });
 }
@@ -233,7 +234,7 @@ function makeHiddenSkipLogic(
     filter: {
       rules: [
         {
-          id: `${action.toLowerCase()}-consent-rule`,
+          id: testId(`${action.toLowerCase()}-consent-rule`),
           type: 'ego',
           options: {
             attribute: asEntityAttributeReference('consent'),
@@ -242,7 +243,10 @@ function makeHiddenSkipLogic(
         },
       ],
     },
-    destination,
+    destination:
+      destination?.type === 'stage'
+        ? { ...destination, stageId: testId(destination.stageId) }
+        : destination,
   };
 }
 
@@ -1519,7 +1523,7 @@ describe('generateNetwork', () => {
 
     it('rests a completed interview on its finish stage, not one past it', () => {
       const finish = {
-        id: 'finish',
+        id: testId('finish'),
         type: 'FinishSession' as const,
         mode: 'confirmation' as const,
         label: en('Finish'),
@@ -1555,7 +1559,7 @@ describe('generateNetwork', () => {
         outcome: 'completed' | 'ineligible',
       ): Stage =>
         ({
-          id,
+          id: testId(id),
           type: 'FinishSession',
           mode: 'automatic',
           label: en(id),
@@ -1627,7 +1631,7 @@ describe('generateNetwork', () => {
         });
 
         expect(droppedOut).toBe(false);
-        expect(stages[currentStep]?.id).toBe('end-completed');
+        expect(stages[currentStep]?.id).toBe(testId('end-completed'));
       });
 
       it('ends at a later finish stage a skip destination names', () => {
@@ -1648,7 +1652,7 @@ describe('generateNetwork', () => {
           respectSkipLogicAndFiltering: true,
         });
 
-        expect(stages[currentStep]?.id).toBe('end-ineligible');
+        expect(stages[currentStep]?.id).toBe(testId('end-ineligible'));
         expect(network.nodes).toHaveLength(0);
       });
     });

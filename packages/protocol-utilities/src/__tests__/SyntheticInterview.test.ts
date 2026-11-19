@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  type Filter,
+  collectProtocolObjectIds,
+  isProtocolObjectId,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
@@ -25,6 +26,9 @@ import {
   DEFAULT_SYNTHETIC_SEED,
   SyntheticInterview,
 } from '../SyntheticInterview.ts';
+import type { FilterInput } from '../types.ts';
+
+const anObjectId = expect.toSatisfy(isProtocolObjectId);
 
 /**
  * Validates a built protocol against the current schema. The builder emits the
@@ -424,7 +428,11 @@ describe('SyntheticInterview', () => {
       expect(nodeVariableType(preset.layoutVariable)).toBe('layout');
       expect(nodeVariableType(preset.groupVariable)).toBe('categorical');
       expect(preset.highlight).toEqual([
-        { variable: expect.any(String), label: { 'en-US': 'Highlighted' } },
+        {
+          id: anObjectId,
+          variable: expect.any(String),
+          label: { 'en-US': 'Highlighted' },
+        },
       ]);
       expect(nodeVariableType(preset.highlight[0]!.variable)).toBe('boolean');
     });
@@ -447,6 +455,7 @@ describe('SyntheticInterview', () => {
         expect.objectContaining({
           highlight: [
             {
+              id: anObjectId,
               variable: close.id,
               label: { 'en-US': escapeMessageText("Friend's {nickname}") },
             },
@@ -469,7 +478,7 @@ describe('SyntheticInterview', () => {
         edges: { display: { type: string; label: Record<string, string> }[] };
       }[];
       expect(presets[0]!.edges.display).toEqual([
-        { type: et.id, label: { 'en-US': 'Friendship' } },
+        { id: anObjectId, type: et.id, label: { 'en-US': 'Friendship' } },
       ]);
     });
 
@@ -1581,7 +1590,7 @@ describe('SyntheticInterview', () => {
 });
 
 describe('e2e-matrix builder extensions', () => {
-  const filter: Filter = {
+  const filter: FilterInput = {
     join: 'AND',
     rules: [
       {
@@ -1590,6 +1599,12 @@ describe('e2e-matrix builder extensions', () => {
         options: { type: 'person', operator: 'EXISTS' },
       },
     ],
+  };
+
+  // The filter as emitted: each rule given its own id.
+  const emittedFilter = {
+    ...filter,
+    rules: filter.rules.map((rule) => ({ ...rule, id: anObjectId })),
   };
 
   it('emits skipLogic and stage-level filter on stage configs', () => {
@@ -1601,8 +1616,8 @@ describe('e2e-matrix builder extensions', () => {
       filter,
     });
     const stage = synth.getProtocol().stages[0] as Record<string, unknown>;
-    expect(stage.skipLogic).toEqual({ action: 'SKIP', filter });
-    expect(stage.filter).toEqual(filter);
+    expect(stage.skipLogic).toEqual({ action: 'SKIP', filter: emittedFilter });
+    expect(stage.filter).toEqual(emittedFilter);
   });
 
   it('emits skipLogic destinations (stage and finish) on stage configs', () => {
@@ -1623,12 +1638,12 @@ describe('e2e-matrix builder extensions', () => {
     const stages = synth.getProtocol().stages;
     expect(stages[0]?.skipLogic).toEqual({
       action: 'SKIP',
-      filter,
+      filter: emittedFilter,
       destination: { type: 'stage', stageId: target.id },
     });
     expect(stages[1]?.skipLogic).toEqual({
       action: 'SKIP',
-      filter,
+      filter: emittedFilter,
       destination: { type: 'finish' },
     });
   });
@@ -1643,7 +1658,7 @@ describe('e2e-matrix builder extensions', () => {
     const stage = synth.getProtocol().stages[0] as {
       panels: { filter?: unknown }[];
     };
-    expect(stage.panels[0]?.filter).toEqual(filter);
+    expect(stage.panels[0]?.filter).toEqual(emittedFilter);
   });
 
   it('passes hint/showValidationHints/parameters through form fields', () => {
@@ -1691,7 +1706,7 @@ describe('e2e-matrix builder extensions', () => {
       prompts: { sortOrder?: unknown }[];
     };
     expect(stage.prompts[0]?.sortOrder).toEqual([
-      { property: 'name', direction: 'asc' },
+      { id: anObjectId, property: 'name', direction: 'asc' },
     ]);
   });
 
@@ -1729,7 +1744,7 @@ describe('e2e-matrix builder extensions', () => {
       prompts: { additionalAttributes?: unknown }[];
     };
     expect(stage.prompts[0]?.additionalAttributes).toEqual([
-      { variable: closeTie.id, value: true },
+      { id: anObjectId, variable: closeTie.id, value: true },
     ]);
   });
 
@@ -1840,7 +1855,8 @@ describe('addInformationStage items', () => {
       items: { id: string; type: string }[];
       interviewScript?: string;
     };
-    expect(stage.items.map((i) => i.id)).toEqual(['item-a', 'item-b']);
+    expect(stage.items.map((i) => i.type)).toEqual(['text', 'asset']);
+    expect(stage.items.every((i) => isProtocolObjectId(i.id))).toBe(true);
     expect(stage.interviewScript).toBe('Internal note.');
   });
 });
@@ -3238,7 +3254,7 @@ describe('FinishSession stage', () => {
     const { stages } = expectValid(synth);
     expect(stages).toHaveLength(2);
     expect(stages[1]).toEqual({
-      id: 'finish',
+      id: anObjectId,
       type: 'FinishSession',
       mode: 'confirmation',
       label: { en: 'Finish Interview', es: 'Finalizar entrevista' },
@@ -3391,5 +3407,112 @@ describe('SyntheticInterview interface text', () => {
     synth.setInterfaceText('buttons', 'pauseLayout', 'Hold still');
 
     expect(synth.getProtocol().interfaceText).toBeUndefined();
+  });
+});
+
+describe('protocol object ids', () => {
+  const sharedFilter: FilterInput = {
+    rules: [
+      {
+        id: 'shared-rule',
+        type: 'ego',
+        options: { attribute: 'consent', operator: 'EXISTS' },
+      },
+    ],
+  };
+
+  // One of each object kind the builder gives an id, with a filter and row
+  // lists reused in several places.
+  const build = (seed?: number) => {
+    const si = new SyntheticInterview(seed);
+    const person = si.addNodeType({ name: 'Person' });
+    const close = person.addVariable({ type: 'boolean', name: 'close' });
+    const friendship = si.addEdgeType({ name: 'Friendship' });
+    const sort = [{ property: 'name', direction: 'asc' as const }];
+
+    for (let index = 0; index < 2; index += 1) {
+      const ng = si.addStage('NameGenerator', {
+        subject: { entity: 'node', type: person.id },
+        skipLogic: { action: 'SKIP', filter: sharedFilter },
+        filter: sharedFilter,
+      });
+      ng.addPrompt({
+        additionalAttributes: [{ variable: close.id, value: true }],
+      });
+      ng.addPanel({ filter: sharedFilter });
+      ng.addFormField({ component: 'Text' });
+    }
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: person.id },
+    }).addPrompt({ sortOrder: sort });
+    si.addStage('Narrative', {
+      subject: { entity: 'node', type: person.id },
+    }).addPreset({
+      highlight: [close.id],
+      edges: { display: [friendship.id] },
+      filter: sharedFilter,
+    });
+    si.addStage('NameGeneratorRoster', {
+      dataSource: 'externalData',
+      cardOptions: {
+        additionalProperties: [{ label: 'Name', variable: 'name' }],
+      },
+      sortOptions: {
+        sortOrder: sort,
+        sortableProperties: [{ variable: 'name', label: 'Name' }],
+      },
+    });
+    si.addStage('FamilyPedigree', {
+      nominationPrompts: [{ text: 'Who has the condition?' }],
+    });
+    si.addStage('NarrativePedigree', {
+      diseases: [
+        {
+          id: 'disease-1',
+          label: 'Condition',
+          color: 'node-color-seq-1',
+          attribute: close.id,
+          inheritancePattern: 'autosomal-dominant',
+        },
+      ],
+    });
+    si.addStage('NetworkComposer').addEdgeType({
+      form: { fields: [{ component: 'Text', label: 'Note' }] },
+    });
+    si.addInformationStage({ text: 'Thanks' });
+    return si.getProtocol();
+  };
+
+  it('gives every marked object a UUID that no other object in the protocol holds', () => {
+    const located = collectProtocolObjectIds(build());
+    expect(located.every(({ id }) => isProtocolObjectId(id))).toBe(true);
+    expect(new Set(located.map(({ id }) => id)).size).toBe(located.length);
+    expect(new Set(located.map(({ kind }) => kind))).toEqual(
+      new Set([
+        'stage',
+        'prompt',
+        'panel',
+        'formField',
+        'rule',
+        'sortRule',
+        'additionalAttribute',
+        'rosterCardProperty',
+        'rosterSortableProperty',
+        'narrativePreset',
+        'narrativePresetEdge',
+        'narrativePresetHighlight',
+        'disease',
+        'composerEdge',
+        'informationItem',
+      ]),
+    );
+  });
+
+  it('gives the same ids for the same seed and calls, and others for another seed', () => {
+    const ids = (seed?: number) =>
+      collectProtocolObjectIds(build(seed)).map(({ id }) => id);
+    expect(ids()).toEqual(ids());
+    const other = new Set(ids(7));
+    expect(ids().some((id) => other.has(id))).toBe(false);
   });
 });

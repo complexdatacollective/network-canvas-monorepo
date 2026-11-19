@@ -1,4 +1,5 @@
 import { invariant } from 'es-toolkit';
+import { v5 } from 'uuid';
 
 import {
   type ComponentType,
@@ -22,6 +23,8 @@ import {
   hasSuppliedWording,
   type MessageArguments,
   messageText,
+  type ProtocolObjectId,
+  ProtocolObjectIdSchema,
   stageWithoutUnshownWording,
   suppliedStageSettingPaths,
   type Stage,
@@ -199,7 +202,7 @@ type EdgeTypeHandle = {
 };
 
 type StageHandleBase = {
-  id: string;
+  id: ProtocolObjectId;
   stageEntry: StageEntry;
 };
 
@@ -453,9 +456,48 @@ function setAtPath(
   if (last !== undefined) container[last] = value;
 }
 
-// A form field's stable id. The variable is unique within one form, so an id
-// built from it is too, and stays the same however many fields came before.
+// A form field's label within its form. The variable is unique within one
+// form, so the label is too, and stays the same however many fields came
+// before. `getProtocol` turns it into the field's id.
 const formFieldId = (variableId: string): string => `field-${variableId}`;
+
+// The namespace of the UUID v5 ids a SyntheticInterview gives the objects of
+// its protocol. Each id is derived from the seed and the object's place in
+// the build, so the same seed and the same calls give the same ids.
+const SYNTHETIC_OBJECT_ID_NAMESPACE = '2093416d-2251-4bf9-8c45-6771fe7c1b65';
+
+const syntheticObjectId = (name: string): ProtocolObjectId =>
+  ProtocolObjectIdSchema.parse(v5(name, SYNTHETIC_OBJECT_ID_NAMESPACE));
+
+/**
+ * The id of a row. Any id a caller gave the row is a label, combined with the
+ * row's place (`scope`) in the protocol, so a filter or a row list reused in
+ * several places still gives each object its own id. An unlabelled row is
+ * named by its position.
+ */
+const rowObjectId = (
+  scope: string,
+  label: string | undefined,
+  index: number,
+): ProtocolObjectId => syntheticObjectId(`${scope}/${label ?? `#${index}`}`);
+
+const withRowIds = <Row extends object>(
+  rows: readonly Row[],
+  scope: string,
+): (Row & { id: ProtocolObjectId })[] =>
+  rows.map((row, index) => ({
+    ...row,
+    id: rowObjectId(
+      scope,
+      'id' in row && typeof row.id === 'string' ? row.id : undefined,
+      index,
+    ),
+  }));
+
+const withFilterRuleIds = <F extends { rules: readonly object[] }>(
+  filter: F,
+  scope: string,
+) => ({ ...filter, rules: withRowIds(filter.rules, `${scope}/rules`) });
 
 export class SyntheticInterview {
   private seed: number;
@@ -483,6 +525,10 @@ export class SyntheticInterview {
   private nextId(prefix: string): string {
     this.idCounter++;
     return `${prefix}-${this.seed}-${this.idCounter}`;
+  }
+
+  private nextObjectId(prefix: string): ProtocolObjectId {
+    return syntheticObjectId(this.nextId(prefix));
   }
 
   // --- Manual codebook API ---
@@ -675,7 +721,7 @@ export class SyntheticInterview {
     type: T,
     opts?: AddStageInput,
   ): StageHandleMap[T] {
-    const stageId = this.nextId('stage');
+    const stageId = this.nextObjectId('stage');
 
     // Resolve subject based on stage type
     let subject = opts?.subject;
@@ -1076,7 +1122,7 @@ export class SyntheticInterview {
     skipLogic?: SkipLogicInput;
     items?: ItemInput[];
   }): InformationHandle {
-    const stageId = this.nextId('stage');
+    const stageId = this.nextObjectId('stage');
     const title = opts?.title ?? 'Information';
     const text = opts?.text ?? '';
 
@@ -1090,7 +1136,7 @@ export class SyntheticInterview {
       items:
         opts?.items ??
         (text
-          ? [{ id: this.nextId('item'), type: 'text', content: text }]
+          ? [{ id: this.nextObjectId('item'), type: 'text', content: text }]
           : []),
       prompts: [],
       presets: [],
@@ -1115,7 +1161,7 @@ export class SyntheticInterview {
     outcome?: FinishOutcome;
     interviewScript?: string;
   }): FinishSessionHandle {
-    const stageId = this.nextId('stage');
+    const stageId = this.nextObjectId('stage');
     const entry: StageEntry = {
       id: stageId,
       type: 'FinishSession',
@@ -1168,7 +1214,7 @@ export class SyntheticInterview {
         },
         addPanel: (opts?: AddPanelOpts) => {
           entry.panels.push({
-            id: this.nextId('panel'),
+            id: this.nextObjectId('panel'),
             title: opts?.title ?? 'Panel',
             dataSource: opts?.dataSource ?? 'existing',
             ...(opts?.filter ? { filter: opts.filter } : {}),
@@ -1183,7 +1229,7 @@ export class SyntheticInterview {
         },
         addPanel: (opts?: AddPanelOpts) => {
           entry.panels.push({
-            id: this.nextId('panel'),
+            id: this.nextObjectId('panel'),
             title: opts?.title ?? 'Panel',
             dataSource: opts?.dataSource ?? 'existing',
             ...(opts?.filter ? { filter: opts.filter } : {}),
@@ -1364,7 +1410,7 @@ export class SyntheticInterview {
         addEdgeType: (opts?: AddNetworkComposerEdgeInput) => {
           const edgeTypeId = opts?.type ?? this.addEdgeType().id;
           const edgeEntry: NetworkComposerEdgeEntry = {
-            id: this.nextId('composer-edge'),
+            id: this.nextObjectId('composer-edge'),
             subject: { entity: 'edge', type: edgeTypeId },
             label:
               opts?.label ?? this.edgeTypes.get(edgeTypeId)?.name ?? edgeTypeId,
@@ -1579,7 +1625,7 @@ export class SyntheticInterview {
     entry: StageEntry,
   ): NameGeneratorPromptEntry {
     return {
-      id: this.nextId('prompt'),
+      id: this.nextObjectId('prompt'),
       text: opts?.text ?? this.valueGen.generatePromptText(entry.type),
       ...(opts?.additionalAttributes
         ? { additionalAttributes: opts.additionalAttributes }
@@ -1591,7 +1637,7 @@ export class SyntheticInterview {
     opts: AddPromptInput | undefined,
     entry: StageEntry,
   ): SociogramPromptEntry {
-    const promptId = this.nextId('prompt');
+    const promptId = this.nextObjectId('prompt');
     const nodeTypeId = entry.subject!.type;
 
     // Resolve layout variable
@@ -1661,7 +1707,7 @@ export class SyntheticInterview {
     opts: AddPresetInput | undefined,
     entry: StageEntry,
   ): PresetEntry {
-    const presetId = this.nextId('preset');
+    const presetId = this.nextObjectId('preset');
     const nodeTypeId = entry.subject!.type;
 
     // Resolve layout variable
@@ -1730,7 +1776,7 @@ export class SyntheticInterview {
   private resolveDyadCensusPrompt(
     opts: AddDyadCensusPromptInput | undefined,
   ): DyadCensusPromptEntry {
-    const promptId = this.nextId('prompt');
+    const promptId = this.nextObjectId('prompt');
 
     let createEdge: string;
     if (typeof opts?.createEdge === 'string') {
@@ -1754,7 +1800,7 @@ export class SyntheticInterview {
     opts: AddOneToManyDyadCensusPromptInput | undefined,
     _entry: StageEntry,
   ): OneToManyDyadCensusPromptEntry {
-    const promptId = this.nextId('prompt');
+    const promptId = this.nextObjectId('prompt');
 
     // Resolve edge type
     let createEdge: string;
@@ -1788,7 +1834,7 @@ export class SyntheticInterview {
     opts: AddOrdinalBinPromptInput | undefined,
     entry: StageEntry,
   ): OrdinalBinPromptEntry {
-    const promptId = this.nextId('prompt');
+    const promptId = this.nextObjectId('prompt');
     const nodeTypeId = entry.subject!.type;
 
     // Resolve variable: use provided or auto-create an ordinal variable
@@ -1820,7 +1866,7 @@ export class SyntheticInterview {
     opts: AddCategoricalBinPromptInput | undefined,
     entry: StageEntry,
   ): CategoricalBinPromptEntry {
-    const promptId = this.nextId('prompt');
+    const promptId = this.nextObjectId('prompt');
     const nodeTypeId = entry.subject!.type;
 
     // Resolve variable: use provided or auto-create a categorical variable
@@ -1859,7 +1905,7 @@ export class SyntheticInterview {
     opts: AddTieStrengthCensusPromptInput | undefined,
     _entry: StageEntry,
   ): TieStrengthCensusPromptEntry {
-    const promptId = this.nextId('prompt');
+    const promptId = this.nextObjectId('prompt');
 
     // Resolve edge type
     let createEdge: string;
@@ -1899,7 +1945,7 @@ export class SyntheticInterview {
     opts: AddGeospatialPromptInput | undefined,
     entry: StageEntry,
   ): GeospatialPromptEntry {
-    const promptId = this.nextId('prompt');
+    const promptId = this.nextObjectId('prompt');
     const nodeTypeId = entry.subject?.type;
 
     // Resolve the variable to store the location selection
@@ -1974,7 +2020,9 @@ export class SyntheticInterview {
     // resolve two nodes' relative-date windows against different anchors.
     const today = todayYmd();
     const ctx = this.generationContext(today);
-    const stagesById = new Map(this.stages.map((stage) => [stage.id, stage]));
+    const stagesById = new Map<string, StageEntry>(
+      this.stages.map((stage) => [stage.id, stage]),
+    );
 
     const explicitOf = (nodeEntry: NodeEntry): Record<string, VariableValue> =>
       this.explicitValuesOf(
@@ -2747,6 +2795,27 @@ export class SyntheticInterview {
       ...prompt,
       text: this.localized(prompt.text),
     };
+    if ('additionalAttributes' in prompt && prompt.additionalAttributes) {
+      built.additionalAttributes = withRowIds(
+        prompt.additionalAttributes,
+        `${prompt.id}/additionalAttributes`,
+      );
+    }
+    if ('sortOrder' in prompt && prompt.sortOrder) {
+      built.sortOrder = withRowIds(prompt.sortOrder, `${prompt.id}/sortOrder`);
+    }
+    if ('bucketSortOrder' in prompt && prompt.bucketSortOrder) {
+      built.bucketSortOrder = withRowIds(
+        prompt.bucketSortOrder,
+        `${prompt.id}/bucketSortOrder`,
+      );
+    }
+    if ('binSortOrder' in prompt && prompt.binSortOrder) {
+      built.binSortOrder = withRowIds(
+        prompt.binSortOrder,
+        `${prompt.id}/binSortOrder`,
+      );
+    }
     if ('otherVariablePrompt' in prompt && prompt.otherVariablePrompt) {
       built.otherVariablePrompt = this.localized(prompt.otherVariablePrompt);
     }
@@ -2759,7 +2828,9 @@ export class SyntheticInterview {
     return built;
   }
 
-  private buildItem(item: ItemInput): Record<string, unknown> {
+  private buildItem(
+    item: ItemInput & { id: ProtocolObjectId },
+  ): Record<string, unknown> {
     if (item.type === 'text') {
       return { ...item, content: this.localized(item.content) };
     }
@@ -2769,7 +2840,7 @@ export class SyntheticInterview {
   }
 
   private buildComposerField(
-    field: NetworkComposerFormFieldEntry,
+    field: NetworkComposerFormFieldEntry & { id: ProtocolObjectId },
   ): Record<string, unknown> {
     return {
       ...field,
@@ -2839,9 +2910,7 @@ export class SyntheticInterview {
    * valid whatever languages it declares.
    */
   private defaultFinishStage(): Record<string, unknown> {
-    const taken = new Set(this.stages.map((stage) => stage.id));
-    let id = 'finish';
-    for (let suffix = 2; taken.has(id); suffix += 1) id = `finish-${suffix}`;
+    const id = syntheticObjectId(`protocol-${this.seed}/default-finish-stage`);
     const fields = defaultFinishSessionFields(this.localization);
     const { defaultLocale } = this.localization;
     for (const field of ['label', 'content', 'finishedContent'] as const) {
@@ -2896,11 +2965,17 @@ export class SyntheticInterview {
     }
 
     if (stage.skipLogic) {
-      config.skipLogic = stage.skipLogic;
+      config.skipLogic = {
+        ...stage.skipLogic,
+        filter: withFilterRuleIds(
+          stage.skipLogic.filter,
+          `${stage.id}/skipLogic/filter`,
+        ),
+      };
     }
 
     if (stage.filter) {
-      config.filter = stage.filter;
+      config.filter = withFilterRuleIds(stage.filter, `${stage.id}/filter`);
     }
 
     if (stage.dynamicValues) {
@@ -2908,7 +2983,12 @@ export class SyntheticInterview {
     }
 
     if (stage.conditions) {
-      config.conditions = stage.conditions;
+      config.conditions = Object.fromEntries(
+        Object.entries(stage.conditions).map(([key, condition]) => [
+          key,
+          withFilterRuleIds(condition, `${stage.id}/conditions/${key}`),
+        ]),
+      );
     }
 
     if (stage.subject) {
@@ -2916,7 +2996,10 @@ export class SyntheticInterview {
     }
 
     if (stage.form) {
-      const fields = stage.form.fields.map((field) => ({
+      const fields = withRowIds(
+        stage.form.fields,
+        `${stage.id}/form/fields`,
+      ).map((field) => ({
         ...field,
         prompt: this.localized(field.prompt),
         ...(field.hint !== undefined
@@ -2951,18 +3034,28 @@ export class SyntheticInterview {
       config.presets = stage.presets.map((preset) => ({
         ...preset,
         label: this.localized(preset.label),
+        ...(preset.filter && {
+          filter: withFilterRuleIds(preset.filter, `${preset.id}/filter`),
+        }),
         ...(preset.edges && {
           edges: {
-            display: preset.edges.display.map((edge) => ({
+            display: withRowIds(
+              preset.edges.display,
+              `${preset.id}/edges/display`,
+            ).map((edge) => ({
               ...edge,
               label: this.localized(edge.label),
             })),
           },
         }),
-        highlight: preset.highlight?.map((highlight) => ({
-          ...highlight,
-          label: this.localized(highlight.label),
-        })),
+        highlight:
+          preset.highlight &&
+          withRowIds(preset.highlight, `${preset.id}/highlight`).map(
+            (highlight) => ({
+              ...highlight,
+              label: this.localized(highlight.label),
+            }),
+          ),
       }));
     }
 
@@ -2970,6 +3063,9 @@ export class SyntheticInterview {
       config.panels = stage.panels.map((panel) => ({
         ...panel,
         title: this.localized(panel.title),
+        ...(panel.filter && {
+          filter: withFilterRuleIds(panel.filter, `${panel.id}/filter`),
+        }),
       }));
     }
 
@@ -3002,7 +3098,9 @@ export class SyntheticInterview {
     }
 
     if (stage.items) {
-      config.items = stage.items.map((item) => this.buildItem(item));
+      config.items = withRowIds(stage.items, `${stage.id}/items`).map((item) =>
+        this.buildItem(item),
+      );
     }
 
     // NameGeneratorQuickAdd
@@ -3021,7 +3119,10 @@ export class SyntheticInterview {
       const properties = stage.cardOptions.additionalProperties;
       config.cardOptions = properties
         ? {
-            additionalProperties: properties.map((property) => ({
+            additionalProperties: withRowIds(
+              properties,
+              `${stage.id}/cardOptions/additionalProperties`,
+            ).map((property) => ({
               ...property,
               label: this.localized(property.label),
             })),
@@ -3030,13 +3131,17 @@ export class SyntheticInterview {
     }
     if (stage.sortOptions) {
       config.sortOptions = {
-        sortOrder: stage.sortOptions.sortOrder,
-        sortableProperties: stage.sortOptions.sortableProperties.map(
-          (property) => ({
-            ...property,
-            label: this.localized(property.label),
-          }),
+        sortOrder: withRowIds(
+          stage.sortOptions.sortOrder,
+          `${stage.id}/sortOptions/sortOrder`,
         ),
+        sortableProperties: withRowIds(
+          stage.sortOptions.sortableProperties,
+          `${stage.id}/sortOptions/sortableProperties`,
+        ).map((property) => ({
+          ...property,
+          label: this.localized(property.label),
+        })),
       };
     }
     if (stage.searchOptions) {
@@ -3095,7 +3200,10 @@ export class SyntheticInterview {
       }
       if (stage.framing) config.framing = stage.framing;
       if (stage.nominationPrompts) {
-        config.nominationPrompts = stage.nominationPrompts.map((prompt) => ({
+        config.nominationPrompts = withRowIds(
+          stage.nominationPrompts,
+          `${stage.id}/nominationPrompts`,
+        ).map((prompt) => ({
           ...prompt,
           text: this.localized(prompt.text),
         }));
@@ -3113,7 +3221,10 @@ export class SyntheticInterview {
         config.sourceStageId = stage.narrativePedigreeSourceStageId;
       }
       if (stage.narrativePedigreeDiseases) {
-        config.diseases = stage.narrativePedigreeDiseases.map((disease) => ({
+        config.diseases = withRowIds(
+          stage.narrativePedigreeDiseases,
+          `${stage.id}/diseases`,
+        ).map((disease) => ({
           ...disease,
           label: this.localized(disease.label),
         }));
@@ -3127,9 +3238,10 @@ export class SyntheticInterview {
       if (stage.layoutVariable) config.layoutVariable = stage.layoutVariable;
       if (stage.nodeForm) {
         config.nodeForm = {
-          fields: stage.nodeForm.fields.map((field) =>
-            this.buildComposerField(field),
-          ),
+          fields: withRowIds(
+            stage.nodeForm.fields,
+            `${stage.id}/nodeForm/fields`,
+          ).map((field) => this.buildComposerField(field)),
         };
       }
       if (stage.convexHullVariable)
@@ -3141,9 +3253,10 @@ export class SyntheticInterview {
           ...(edge.form
             ? {
                 form: {
-                  fields: edge.form.fields.map((field) =>
-                    this.buildComposerField(field),
-                  ),
+                  fields: withRowIds(
+                    edge.form.fields,
+                    `${edge.id}/form/fields`,
+                  ).map((field) => this.buildComposerField(field)),
                 },
               }
             : {}),
