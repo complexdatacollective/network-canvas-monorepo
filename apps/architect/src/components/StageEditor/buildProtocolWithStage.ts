@@ -4,10 +4,9 @@ import {
   interfaceTextWithUpdates,
   withInterfaceText,
 } from '@codaco/interview/supplied-wording';
-import { protocolSections } from '@codaco/protocol-builder/host/protocolSections';
 import {
+  codebookWithStaged,
   NOTHING_STAGED,
-  overlaySections,
   type StagedCodebook,
 } from '@codaco/protocol-builder/state/stagedCodebook';
 import {
@@ -15,11 +14,6 @@ import {
   type InterfaceTextUpdate,
   type Stage,
 } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
-import {
-  isCodebookSectionId,
-  parseSectionId,
-} from '@codaco/studio-sync/taxonomy';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
 import prune from '~/utils/prune';
 
@@ -63,7 +57,7 @@ export function buildProtocolWithStage(
 
   return withInterfaceText({
     ...protocol,
-    codebook: codebookWithChanges(protocol, codebook),
+    codebook: codebookWithStaged(protocol.codebook, codebook),
     ...(interfaceText.length === 0
       ? {}
       : {
@@ -81,37 +75,4 @@ export function buildProtocolWithStage(
           ...protocol.stages.slice(insertAt),
         ],
   });
-}
-
-/**
- * The protocol's codebook with the stage editor's codebook changes laid over
- * it, section by section, as a save would leave it.
- */
-function codebookWithChanges(
-  protocol: CurrentProtocol,
-  changes: StagedCodebook,
-): CurrentProtocol['codebook'] {
-  if (Object.keys(changes).length === 0) return protocol.codebook;
-  const sections = overlaySections(
-    changes,
-    Object.fromEntries(
-      [...protocolSections(protocol)].filter(([id]) => isCodebookSectionId(id)),
-    ),
-  );
-  const node: Record<string, SectionDoc> = {};
-  const edge: Record<string, SectionDoc> = {};
-  let ego: SectionDoc | undefined;
-  for (const [id, document] of Object.entries(sections)) {
-    const ref = parseSectionId(id);
-    if (ref.kind === 'codebookNode') node[ref.typeId] = document;
-    else if (ref.kind === 'codebookEdge') edge[ref.typeId] = document;
-    else if (ref.kind === 'codebookEgo') ego = document;
-  }
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the protocol's codebook with sections replaced by documents the editor built; every reader validates the protocol built from it (validateProtocol) before relying on it
-  return {
-    ...protocol.codebook,
-    node,
-    edge,
-    ego,
-  } as CurrentProtocol['codebook'];
 }
