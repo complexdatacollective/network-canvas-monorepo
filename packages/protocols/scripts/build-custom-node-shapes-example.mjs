@@ -7,6 +7,8 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { v5 } from 'uuid';
+
 import {
   parseNodeShapeSvg,
   serializeNodeShapeSvg,
@@ -37,6 +39,11 @@ const kinds = [
 ];
 
 const en = (text) => ({ en: text });
+
+// The namespace of the example's protocol object ids. It must never change:
+// a different namespace gives every rebuild of the example different ids.
+const ID_NAMESPACE = '7e2dcd4e-cd48-4335-b1a0-fc083f6e175f';
+const objectId = (name) => v5(name, ID_NAMESPACE);
 
 const assetManifest = {};
 
@@ -104,9 +111,9 @@ function nodeType({ key, name, color, customShapes }) {
   };
 }
 
-function nameGenerator({ id, type, label, prompt }) {
+function nameGenerator({ name, type, label, prompt }) {
   return {
-    id,
+    id: objectId(name),
     type: 'NameGenerator',
     label: en(label),
     subject: { entity: 'node', type },
@@ -114,31 +121,31 @@ function nameGenerator({ id, type, label, prompt }) {
       title: en('Add to my world'),
       fields: [
         {
-          id: `field-${type}_name`,
+          id: objectId(`${name}/field-${type}_name`),
           variable: `${type}_name`,
           prompt: en('What do you call them or it?'),
         },
         {
-          id: `field-${type}_type`,
+          id: objectId(`${name}/field-${type}_type`),
           variable: `${type}_type`,
           prompt: en('What kind of thing is it?'),
         },
       ],
     },
-    prompts: [{ id: `${id}-prompt`, text: en(prompt) }],
+    prompts: [{ id: objectId(`${name}/prompt`), text: en(prompt) }],
   };
 }
 
-function sociogram({ id, type, edge, label }) {
+function sociogram({ name, type, edge, label }) {
   return {
-    id,
+    id: objectId(name),
     type: 'Sociogram',
     label: en(label),
     subject: { entity: 'node', type },
     background: { concentricCircles: 3, skewedTowardCenter: true },
     prompts: [
       {
-        id: `${id}-prompt`,
+        id: objectId(`${name}/prompt`),
         text: en(
           'Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**.',
         ),
@@ -206,13 +213,13 @@ async function buildProtocol() {
     assetManifest,
     stages: [
       {
-        id: 'welcome',
+        id: objectId('welcome'),
         type: 'Information',
         label: en('Welcome'),
         title: en('My world'),
         items: [
           {
-            id: 'welcome-text',
+            id: objectId('welcome/text'),
             type: 'text',
             content: en(
               'We are going to make a picture of **your world**: the people, places, animals and things that matter to you.\n\nThere are no right or wrong answers. You can skip anything you do not want to talk about.',
@@ -221,26 +228,26 @@ async function buildProtocol() {
         ],
       },
       nameGenerator({
-        id: 'name-illustrated',
+        name: 'name-illustrated',
         type: 'world_illustrated',
         label: 'Who and what is in your world?',
         prompt:
           'Who and what is **important to you**? Add each one, and choose what kind of thing it is.',
       }),
       sociogram({
-        id: 'map-illustrated',
+        name: 'map-illustrated',
         type: 'world_illustrated',
         edge: 'goes_with',
         label: 'Make your map',
       }),
       {
-        id: 'accented-introduction',
+        id: objectId('accented-introduction'),
         type: 'Information',
         label: en('Node-coloured shapes'),
         title: en('The same shapes in the node colour'),
         items: [
           {
-            id: 'accented-introduction-text',
+            id: objectId('accented-introduction/text'),
             type: 'text',
             content: en(
               "_For researchers._ The next two screens repeat the task with a second node type. The main parts of its shapes are drawn in the node type's own colour (`var(--node-color)` and `var(--node-color-dark)`), and the details keep colours of their own. Change the node type's colour in Architect and every shape follows.",
@@ -249,19 +256,19 @@ async function buildProtocol() {
         ],
       },
       nameGenerator({
-        id: 'name-accented',
+        name: 'name-accented',
         type: 'world_accented',
         label: 'Add some more',
         prompt:
           'Add a few more things from your world, and choose what kind of thing each one is.',
       }),
       sociogram({
-        id: 'map-accented',
+        name: 'map-accented',
         type: 'world_accented',
         edge: 'goes_with_accented',
         label: 'Make another map',
       }),
-      finish,
+      { ...finish, id: objectId('finish') },
     ],
     interfaceText: template.interfaceText,
   };

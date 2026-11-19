@@ -494,7 +494,7 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "46fc5f14-b9ae-5c31-ac39-67430461e652",
       "type": "Information",
       "label": {
         "en": "Template notes (delete before fielding)"
@@ -504,7 +504,7 @@
       },
       "items": [
         {
-          "id": "researcher-notes",
+          "id": "364928ba-02b8-5411-86b9-46c31508e9ab",
           "type": "text",
           "content": {
             "en": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; family relationships are the family edges the pedigree records, and `tie_type` describes non-family contacts in analysis. The people named in the **People in your life** stage are marked `non_kin`; everyone the pedigree adds, including relatives the participant did not describe and parents the interface adds automatically, is not. The beyond-family stages and the family health-communication roles are filtered on that attribute rather than on any pedigree answer, so the pedigree can leave gender identity switched off.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
@@ -513,7 +513,7 @@
       ]
     },
     {
-      "id": "information-intro",
+      "id": "26e4299a-7c2b-5c20-99ef-487a1df48ee6",
       "type": "EgoForm",
       "label": {
         "en": "Welcome and consent"
@@ -529,7 +529,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "727917e3-e0d2-5bff-a7bc-19e2c01b0c33",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?"
@@ -539,7 +539,7 @@
       }
     },
     {
-      "id": "ego-form-background",
+      "id": "cc153ac8-ff58-512b-bc51-92d3d88cc215",
       "type": "EgoForm",
       "label": {
         "en": "About you"
@@ -561,7 +561,7 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "52981a5b-09e2-5bae-9968-728562698acf"
         }
       },
       "introductionPanel": {
@@ -575,14 +575,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "7dd0a5a1-83b4-56bb-abf5-0bff96e4fc0f",
             "variable": "ego_age",
             "prompt": {
               "en": "How old are you?"
             }
           },
           {
-            "id": "field-2",
+            "id": "6528ef79-06ee-5aab-9e99-b74b37ecd55d",
             "variable": "ego_education",
             "prompt": {
               "en": "What is the highest level of education you have completed?"
@@ -592,7 +592,7 @@
       }
     },
     {
-      "id": "family-pedigree",
+      "id": "1f971fa1-4450-56c1-a1c7-3bd89e414a32",
       "wording": {
         "alsoParentOfLabel": {
           "en": "Are they also the parent of…"
@@ -888,14 +888,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "27b7efbb-fd25-5a14-8be1-11ec41ba1dd3",
             "variable": "living_status",
             "prompt": {
               "en": "{isParticipant, select, participant {Are you living or deceased?} other {Is {nodeLabel} living or deceased?}}"
             }
           },
           {
-            "id": "field-2",
+            "id": "130a76d8-352a-5458-a960-5faac4d8a1a5",
             "variable": "birth_year",
             "prompt": {
               "en": "{isParticipant, select, participant {What year were you born?} other {What year was {nodeLabel} born?}}"
@@ -908,14 +908,14 @@
       },
       "nominationPrompts": [
         {
-          "id": "nom-condition",
+          "id": "e128abea-7a2d-5979-9984-c211d72b6fbd",
           "text": {
             "en": "Who in your family has had **this condition**?"
           },
           "attribute": "has_condition"
         },
         {
-          "id": "nom-testing",
+          "id": "299062cf-1ec1-5af1-8635-d13150921956",
           "text": {
             "en": "Who has had **genetic testing** for it?"
           },
@@ -924,7 +924,7 @@
       ]
     },
     {
-      "id": "information-beyond-family",
+      "id": "71e5002a-7150-5cdd-b619-6a55b19393f0",
       "type": "Information",
       "label": {
         "en": "Beyond the family"
@@ -934,7 +934,7 @@
       },
       "items": [
         {
-          "id": "beyond-text",
+          "id": "e2276d09-6645-54c8-ba28-46818d31377f",
           "type": "text",
           "content": {
             "en": "You have mapped the people who belong in your family story. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
@@ -943,7 +943,7 @@
       ]
     },
     {
-      "id": "ng-non-kin",
+      "id": "d525e0e3-ac7a-535f-85e1-f4b875e3a2c9",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en": "People in your life"
@@ -956,7 +956,7 @@
       "quickAdd": "name",
       "panels": [
         {
-          "id": "already-mentioned",
+          "id": "b48b9fb2-8912-5d0b-a26e-c41f0f5b612b",
           "title": {
             "en": "People you added earlier"
           },
@@ -990,48 +990,52 @@
       ],
       "prompts": [
         {
-          "id": "p-friends",
+          "id": "23cbc5a1-7c61-50f2-8126-479ffaab72b5",
           "text": {
             "en": "Who are the **friends** who matter most to you?"
           },
           "additionalAttributes": [
             {
+              "id": "0e30d8c2-33fe-5fb4-8163-d3f123964be5",
               "variable": "non_kin",
               "value": true
             }
           ]
         },
         {
-          "id": "p-work",
+          "id": "c6f1237e-62db-5de7-9a0d-788a5b64f70e",
           "text": {
             "en": "Who are the people you know through **work or study**?"
           },
           "additionalAttributes": [
             {
+              "id": "6a58edf6-b44c-5d2f-9328-ca7fc8d9e0d0",
               "variable": "non_kin",
               "value": true
             }
           ]
         },
         {
-          "id": "p-groups",
+          "id": "e8460561-40b3-5472-a8e0-efd2b1421fed",
           "text": {
             "en": "Who do you know through **groups you belong to** — a faith community, a team, a club, or a community you are part of online?"
           },
           "additionalAttributes": [
             {
+              "id": "27a2df6c-ab15-5eb1-a250-6037f7c1e9de",
               "variable": "non_kin",
               "value": true
             }
           ]
         },
         {
-          "id": "p-care",
+          "id": "d8b9babc-78ea-5b6d-b645-9f45c2477d5d",
           "text": {
             "en": "Who is involved in looking after your **health**?"
           },
           "additionalAttributes": [
             {
+              "id": "5ea7ea02-cb96-57b6-b6ac-42b415f44771",
               "variable": "non_kin",
               "value": true
             }
@@ -1043,7 +1047,7 @@
       }
     },
     {
-      "id": "bin-tie-type",
+      "id": "345038c0-98cf-5c97-b41a-f87267e177f6",
       "dynamicValues": {
         "nodeLabel": {
           "path": "node.$label"
@@ -1059,7 +1063,7 @@
       },
       "prompts": [
         {
-          "id": "p-tie-type",
+          "id": "6762f858-680e-58b2-b2c6-31e8033b63df",
           "text": {
             "en": "Sort the people you have just named by **how you know them**."
           },
@@ -1077,7 +1081,7 @@
         "join": "AND",
         "rules": [
           {
-            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d40",
+            "id": "13686464-a4c1-59f4-b864-a785db03dabe",
             "type": "node",
             "options": {
               "type": "person",
@@ -1100,7 +1104,7 @@
       }
     },
     {
-      "id": "bin-closeness",
+      "id": "7d02e5db-7ef2-5143-b5a2-498477591173",
       "type": "OrdinalBin",
       "label": {
         "en": "How close you feel"
@@ -1112,7 +1116,7 @@
       },
       "prompts": [
         {
-          "id": "p-closeness",
+          "id": "305a839e-6da4-56e6-8ccc-47a99d6c48b8",
           "text": {
             "en": "Sort each person by **how close you feel** to them now."
           },
@@ -1136,7 +1140,7 @@
       }
     },
     {
-      "id": "bin-contact-frequency",
+      "id": "6eef4adb-5945-5157-8699-0a7cf1f27cec",
       "type": "OrdinalBin",
       "label": {
         "en": "How often you are in contact"
@@ -1148,7 +1152,7 @@
       },
       "prompts": [
         {
-          "id": "p-contact-frequency",
+          "id": "96256760-992d-5b81-8513-b8110344fbce",
           "text": {
             "en": "Thinking about the past 12 months, sort each person by **how often you have been in contact** — in person, by phone, or online."
           },
@@ -1183,7 +1187,7 @@
       }
     },
     {
-      "id": "socio-exchanges",
+      "id": "8da19c98-4b25-576b-8a59-f5a86fd277aa",
       "type": "Sociogram",
       "label": {
         "en": "Exchanges of support"
@@ -1202,7 +1206,7 @@
       },
       "prompts": [
         {
-          "id": "p-ties",
+          "id": "c471379a-3b92-50dd-9f89-67fc1889c5c5",
           "text": {
             "en": "Connect any of these people who **know one another**."
           },
@@ -1215,7 +1219,7 @@
           }
         },
         {
-          "id": "p-information",
+          "id": "6ceeaaea-65ec-519b-aa57-f430a8dbbdc4",
           "text": {
             "en": "Who do you **share health or genetic information** with?"
           },
@@ -1231,7 +1235,7 @@
           }
         },
         {
-          "id": "p-tangible",
+          "id": "0f9b0974-cdb5-524b-aef5-8b56f4952927",
           "text": {
             "en": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?"
           },
@@ -1247,7 +1251,7 @@
           }
         },
         {
-          "id": "p-emotional",
+          "id": "3449d339-d70e-5e52-bf28-4d438bf52ad0",
           "text": {
             "en": "Who do you **share your feelings** with about all of this?"
           },
@@ -1263,7 +1267,7 @@
           }
         },
         {
-          "id": "p-spiritual",
+          "id": "3b2ae83b-faa8-53a1-95e9-341b1802e91f",
           "text": {
             "en": "Who do you share a **spiritual or religious connection** with?"
           },
@@ -1295,7 +1299,7 @@
       }
     },
     {
-      "id": "socio-roles",
+      "id": "db9c4410-1ec0-5d82-a225-89494d02beb3",
       "type": "Sociogram",
       "label": {
         "en": "Talking about the condition"
@@ -1313,7 +1317,7 @@
       },
       "prompts": [
         {
-          "id": "p-gatherer",
+          "id": "ba904edc-da2e-5212-b0a0-99adbb51f6e8",
           "text": {
             "en": "Who in your family **looks for information** about this condition — reads about it, asks questions, or keeps track of what is known?"
           },
@@ -1329,7 +1333,7 @@
           }
         },
         {
-          "id": "p-disseminator",
+          "id": "612421c7-70a1-5bc0-804f-a1b73074d4ea",
           "text": {
             "en": "Who in your family **helps people talk** about it and passes news on?"
           },
@@ -1345,7 +1349,7 @@
           }
         },
         {
-          "id": "p-blocker",
+          "id": "7a07dd97-d91d-5b11-bd10-7b0f708999f9",
           "text": {
             "en": "Who in your family finds it **hard to talk** about it, or would rather not know?"
           },
@@ -1388,7 +1392,7 @@
       }
     },
     {
-      "id": "narrative-cegrm",
+      "id": "b2b39ff2-d6d7-5d51-8833-84450677794b",
       "attributesHeading": {
         "en": "Attributes"
       },
@@ -1415,7 +1419,7 @@
       },
       "presets": [
         {
-          "id": "preset-everyone",
+          "id": "6a44a2a7-00ba-554a-ad38-e146a6f7925a",
           "label": {
             "en": "Everyone on your map"
           },
@@ -1437,6 +1441,7 @@
           "edges": {
             "display": [
               {
+                "id": "51500dcc-0a89-53ea-888a-ed12f8cfae72",
                 "type": "knows",
                 "label": {
                   "en": "Knows"
@@ -1446,7 +1451,7 @@
           }
         },
         {
-          "id": "preset-support",
+          "id": "89a74f0f-55ff-53fe-90b1-35ee12e2ae89",
           "label": {
             "en": "Forms of support"
           },
@@ -1454,7 +1459,7 @@
           "filter": {
             "rules": [
               {
-                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
+                "id": "26f38874-adf2-57a7-b9b5-b2b1b8ef9c14",
                 "type": "node",
                 "options": {
                   "type": "person",
@@ -1468,6 +1473,7 @@
           "edges": {
             "display": [
               {
+                "id": "7960c975-1775-517f-8e97-b0bc3620c258",
                 "type": "knows",
                 "label": {
                   "en": "Knows"
@@ -1477,24 +1483,28 @@
           },
           "highlight": [
             {
+              "id": "a44d3208-a1d8-5043-a5c1-a5ec73320357",
               "variable": "exch_information",
               "label": {
                 "en": "Shares health or genetic information"
               }
             },
             {
+              "id": "26af3d91-c059-5137-85ea-59720f763c03",
               "variable": "exch_tangible",
               "label": {
                 "en": "Gives practical help"
               }
             },
             {
+              "id": "31624d69-01ed-5043-bd18-15a01e0454d2",
               "variable": "exch_emotional",
               "label": {
                 "en": "Shares feelings"
               }
             },
             {
+              "id": "da4f572a-2ab0-5c08-a971-64d9af82d299",
               "variable": "exch_spiritual",
               "label": {
                 "en": "Spiritual or religious connection"
@@ -1503,7 +1513,7 @@
           ]
         },
         {
-          "id": "preset-roles",
+          "id": "43a8eb2d-c26e-562c-90c6-a728e6408b91",
           "label": {
             "en": "Family health communication"
           },
@@ -1511,7 +1521,7 @@
           "filter": {
             "rules": [
               {
-                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
+                "id": "046d132b-beb8-51f9-87ee-bcd41da749cb",
                 "type": "node",
                 "options": {
                   "type": "person",
@@ -1525,6 +1535,7 @@
           "edges": {
             "display": [
               {
+                "id": "4a8c997a-7b66-5d63-9071-cde7f7bd6fc4",
                 "type": "knows",
                 "label": {
                   "en": "Knows"
@@ -1534,18 +1545,21 @@
           },
           "highlight": [
             {
+              "id": "6b1354b4-f632-54c0-b288-8b7da43910a4",
               "variable": "role_gatherer",
               "label": {
                 "en": "Looks for information"
               }
             },
             {
+              "id": "2556ac10-4cdd-58f9-afab-5276c99a6e10",
               "variable": "role_disseminator",
               "label": {
                 "en": "Helps people talk about it"
               }
             },
             {
+              "id": "eb50e0f2-8aef-51e9-a3c9-e436afe7f51f",
               "variable": "role_blocker",
               "label": {
                 "en": "Finds it hard to talk about it"
@@ -1556,7 +1570,7 @@
       ]
     },
     {
-      "id": "narrative-pedigree",
+      "id": "12d95794-c88e-5940-b41a-ff7139adc617",
       "saveSnapshot": {
         "en": "Save snapshot"
       },
@@ -1576,11 +1590,11 @@
         "en": "How the condition runs in the family"
       },
       "interviewScript": "This view reports the family structure and the people the participant identified as having the condition. It does not establish a diagnosis.\n\nThe inheritance pattern deliberately defaults to unknown and possible at-risk statuses are switched off. Before fielding, select a clinically supported pattern if one applies. Only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure; the inference assumes full penetrance and may surface information a participant has not previously been told.",
-      "sourceStageId": "family-pedigree",
+      "sourceStageId": "1f971fa1-4450-56c1-a1c7-3bd89e414a32",
       "showAtRiskStatuses": false,
       "diseases": [
         {
-          "id": "condition",
+          "id": "7884d0b6-1c73-5787-8887-327a1a8475cd",
           "label": {
             "en": "This condition"
           },
@@ -1591,7 +1605,7 @@
       ]
     },
     {
-      "id": "information-close",
+      "id": "c1cbb23b-df6b-5b6e-ac6c-d8705081d2a9",
       "type": "Information",
       "label": {
         "en": "Closing"
@@ -1601,7 +1615,7 @@
       },
       "items": [
         {
-          "id": "close-text",
+          "id": "d9175668-24ab-597f-ad26-8bdc436fb2f8",
           "type": "text",
           "content": {
             "en": "Thank you for building this map with us.\n\nIf anything we have talked about today has left you wanting to speak to someone, please tell the interviewer before you leave. They can help you find the right support."
@@ -1610,7 +1624,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "e7e32b33-2b53-5306-ad42-1ba0ad8a0573",
       "finishLabel": {
         "en": "Finish"
       },
@@ -1634,7 +1648,7 @@
       "outcome": "completed"
     },
     {
-      "id": "finish-declined",
+      "id": "52981a5b-09e2-5bae-9968-728562698acf",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {

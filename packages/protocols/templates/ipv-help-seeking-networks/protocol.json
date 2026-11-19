@@ -448,7 +448,7 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "bfe7b91b-18fe-59c4-96dc-28246f511d6e",
       "label": {
         "en": "Template notes (delete before fielding)"
       },
@@ -458,7 +458,7 @@
       },
       "items": [
         {
-          "id": "researcher-notes",
+          "id": "6513ed68-f6f2-5b1c-bd2c-086c1aa31bd2",
           "type": "text",
           "content": {
             "en": "## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThe **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted is encrypted with it before it is saved. To change which attributes are encrypted, open that stage and use its **Encrypted attributes** section. Only text attributes on nodes can be encrypted.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\n### What encryption does and does not protect\n\nEncryption protects **saved and exported data**. CSV and GraphML exports replace every encrypted value with the word `ENCRYPTED` and leave out the encrypted value itself, so these answers cannot be recovered from an export by anyone, including your team. If a participant forgets their passphrase, their encrypted answers cannot be recovered at all.\n\nEncryption does **not** hide anything on screen. While the passphrase is in use, names and notes are shown as the participant types them and on later screens, so anyone who can see the screen, including the interviewer, can read them. The participant-facing text in this template says so; keep it accurate if you edit it.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names in your data; it does not protect a participant who is overheard or whose screen is seen during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
@@ -467,7 +467,7 @@
       ]
     },
     {
-      "id": "information-intro",
+      "id": "a71bf3f6-c9e0-58bd-bec3-33bb206b3849",
       "interviewScript": "Before starting, confirm that the participant is somewhere safe and private, and agree with them what you will both do if someone comes in — for example, switching to an agreed neutral topic. Do not continue if they cannot talk privately.",
       "label": {
         "en": "Welcome and consent"
@@ -484,7 +484,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "e42efd79-a3eb-5260-98a4-278affbc1d30",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?"
@@ -494,7 +494,7 @@
       }
     },
     {
-      "id": "anonymisation",
+      "id": "bafe8137-e019-52e7-afe5-219001d4c55b",
       "interviewScript": "Turn the device towards the participant, or look away, while they type their passphrase. Do not ask what it is or write it down.",
       "label": {
         "en": "Create your private passphrase"
@@ -516,7 +516,7 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "75f769d2-6538-5271-94cc-25680ab9b9d2"
         }
       },
       "type": "Anonymisation",
@@ -529,7 +529,7 @@
       }
     },
     {
-      "id": "ego-form-background",
+      "id": "6b146710-cc8b-589f-ab36-52eae4a48c94",
       "label": {
         "en": "About you"
       },
@@ -545,21 +545,21 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "3abf0ee9-ed32-52b6-bba7-8d3c697310f2",
             "variable": "ego_age",
             "prompt": {
               "en": "How old are you, in years?"
             }
           },
           {
-            "id": "field-2",
+            "id": "2ac9f221-6ad4-52d9-b985-b42fe0b59ab3",
             "variable": "relationship_status",
             "prompt": {
               "en": "Which of these best describes your relationship with the person who harmed you **now**?"
             }
           },
           {
-            "id": "field-3",
+            "id": "27fd32d4-8e4a-55d6-bd42-c49b55f0ea8c",
             "variable": "children_in_home",
             "prompt": {
               "en": "Do any children live with you?"
@@ -569,7 +569,7 @@
       }
     },
     {
-      "id": "ng-people",
+      "id": "f3265860-9473-5ff4-8fd5-655d4b571afc",
       "interviewScript": "Names and notes on this screen are saved encrypted with the participant's passphrase, but they are shown on screen as they are typed. Remind the participant they can use a nickname or initials, and offer to look away while they type. The same person can be added under more than one question by dragging them from the 'Already mentioned' panel.",
       "label": {
         "en": "People you could turn to"
@@ -581,7 +581,7 @@
         },
         "fields": [
           {
-            "id": "field-1",
+            "id": "599ec40c-9a29-5293-8a8f-8c62dad69e90",
             "variable": "person_name",
             "prompt": {
               "en": "What is this person's name, nickname, or initials?"
@@ -591,7 +591,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "73b1d75f-6667-5b79-8050-f84f784db064",
             "variable": "private_note",
             "prompt": {
               "en": "Is there anything you want to remember about this person?"
@@ -608,7 +608,7 @@
       },
       "panels": [
         {
-          "id": "ng-people-existing",
+          "id": "d633f05c-2cb9-532c-9392-1cf4f03d1f34",
           "title": {
             "en": "Already mentioned"
           },
@@ -617,36 +617,39 @@
       ],
       "prompts": [
         {
-          "id": "ng-people-confidant",
+          "id": "b2ccee43-25cc-56b2-b797-f6489c4e7c37",
           "text": {
             "en": "Who are the people you could **talk to** about what has been happening in your relationship — whether or not you have told them yet?"
           },
           "additionalAttributes": [
             {
+              "id": "d94295b6-da1b-5594-977e-1349e3373392",
               "variable": "support_confidant",
               "value": true
             }
           ]
         },
         {
-          "id": "ng-people-practical",
+          "id": "d1f09173-ebb6-5e0d-bc90-9292cf5848cd",
           "text": {
             "en": "Who could help you in **practical ways** if you needed it — for example a place to stay, money, a lift, or looking after children or pets?"
           },
           "additionalAttributes": [
             {
+              "id": "345c5bc9-8e1b-5663-86ff-4693013ad95a",
               "variable": "support_practical",
               "value": true
             }
           ]
         },
         {
-          "id": "ng-people-unhelpful",
+          "id": "2ffe1c88-cc94-557a-99ed-ab7b71d85139",
           "text": {
             "en": "Is there anyone who has **reacted badly**, made things harder for you, or who you would **avoid telling**?"
           },
           "additionalAttributes": [
             {
+              "id": "45106e19-570c-5d33-90fc-5cc7f681d69a",
               "variable": "unhelpful",
               "value": true
             }
@@ -658,7 +661,7 @@
       }
     },
     {
-      "id": "ng-services",
+      "id": "547e63aa-0d41-58d7-8874-5d3d4c7afbb7",
       "interviewScript": "Service names are not encrypted. If the participant mentions a person who works at a service (for example, a named advocate), record the service here, not the person's name.",
       "label": {
         "en": "Services"
@@ -670,7 +673,7 @@
         },
         "fields": [
           {
-            "id": "field-1",
+            "id": "cb44ca23-e250-503c-bb02-db120ea543e7",
             "variable": "service_name",
             "prompt": {
               "en": "What is the name of this service or organisation?"
@@ -680,7 +683,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "ebb092a4-4dc8-54f5-9cda-6efc44a00e93",
             "variable": "service_type",
             "prompt": {
               "en": "What kind of service is it?"
@@ -694,24 +697,26 @@
       },
       "prompts": [
         {
-          "id": "ng-services-contacted",
+          "id": "9e99e66a-fc6c-5149-a57c-83b7d68840c6",
           "text": {
             "en": "Which **services or organisations** have you contacted for help with what has been happening — for example a helpline, a shelter, the police, a doctor, or a legal advocate?"
           },
           "additionalAttributes": [
             {
+              "id": "08e269b0-46e6-5728-8910-95c568830b53",
               "variable": "service_contacted",
               "value": true
             }
           ]
         },
         {
-          "id": "ng-services-known",
+          "id": "cc832fa3-9099-5c57-a399-c643bcdfa6c9",
           "text": {
             "en": "Are there any other services you **know about** but have **not contacted**?"
           },
           "additionalAttributes": [
             {
+              "id": "903f8b27-bf9d-5921-a375-a671b5dfc4e9",
               "variable": "service_contacted",
               "value": false
             }
@@ -723,7 +728,7 @@
       }
     },
     {
-      "id": "alter-form-people-introduction",
+      "id": "f961a8f6-0304-543b-9678-235b84d51fd9",
       "type": "Information",
       "label": {
         "en": "Tell us a little about each person"
@@ -733,7 +738,7 @@
       },
       "items": [
         {
-          "id": "introduction-text",
+          "id": "84476260-a303-587e-842f-9f1aabfcafe2",
           "type": "text",
           "content": {
             "en": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
@@ -742,7 +747,7 @@
       ]
     },
     {
-      "id": "alter-form-people",
+      "id": "12c5edce-2616-533f-be0d-4be4b7ef3360",
       "dynamicValues": {
         "nodeLabel": {
           "path": "node.$label"
@@ -759,21 +764,21 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "bb705bbf-bd0c-5782-b003-708be221d4b0",
             "variable": "relationship",
             "prompt": {
               "en": "How do you know {nodeLabel}?"
             }
           },
           {
-            "id": "field-2",
+            "id": "47761e20-9fe9-5742-8586-9f044c8d58ac",
             "variable": "contact_frequency",
             "prompt": {
               "en": "How often are you usually in touch with {nodeLabel}?"
             }
           },
           {
-            "id": "field-3",
+            "id": "64e4270a-e011-5290-a295-0018fda07ee9",
             "variable": "knows_about_abuse",
             "prompt": {
               "en": "Does {nodeLabel} **know** about what has been happening in your relationship?"
@@ -786,7 +791,7 @@
       }
     },
     {
-      "id": "alter-form-services-introduction",
+      "id": "4f24d18b-64fd-5029-aa2b-d10f058b9f45",
       "type": "Information",
       "label": {
         "en": "Services you contacted"
@@ -796,7 +801,7 @@
       },
       "items": [
         {
-          "id": "introduction-text",
+          "id": "61a9f76c-36aa-528c-afd8-3c34d84f004c",
           "type": "text",
           "content": {
             "en": "For each service you contacted, please tell us how helpful it was."
@@ -805,7 +810,7 @@
       ]
     },
     {
-      "id": "alter-form-services",
+      "id": "543b9c9a-c9d2-5c45-acf5-e3f420bbfed0",
       "dynamicValues": {
         "nodeLabel": {
           "path": "node.$label"
@@ -837,7 +842,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "62a51a89-6369-57ee-b1b6-f7dea2d23128",
             "variable": "service_helpful",
             "prompt": {
               "en": "Overall, how helpful was {nodeLabel}?"
@@ -847,7 +852,7 @@
       }
     },
     {
-      "id": "ordinal-bin-safe-to-tell",
+      "id": "9ccac491-ee70-5ee1-a610-314c0d8320c8",
       "label": {
         "en": "How safe it would feel to tell each person"
       },
@@ -858,7 +863,7 @@
       },
       "prompts": [
         {
-          "id": "bin-safe-to-tell",
+          "id": "606f642d-77d5-50e7-8c4d-d35ed7c5a794",
           "text": {
             "en": "Drag each person into the band that best describes **how safe it would feel** to talk to them about what has been happening."
           },
@@ -868,7 +873,7 @@
       ]
     },
     {
-      "id": "categorical-bin-reaction",
+      "id": "b5d26dd7-99f0-52f2-bb2b-e6f31a5c6f63",
       "dynamicValues": {
         "nodeLabel": {
           "path": "node.$label"
@@ -900,7 +905,7 @@
       },
       "prompts": [
         {
-          "id": "bin-reaction",
+          "id": "e59e1b93-f25e-545d-83de-cb01c968c0d6",
           "text": {
             "en": "These are the people who know about what has been happening. Drag each person into the box that best describes **how they reacted** when they found out."
           },
@@ -916,7 +921,7 @@
       ]
     },
     {
-      "id": "sociogram-network",
+      "id": "efea833d-1d16-5e25-95a9-87b833f5fc39",
       "interviewScript": "The second prompt identifies supporters who are close to the person who harmed the participant. Researchers use this to see whether help might reach that person. Do not ask the participant to name the person who harmed them.",
       "label": {
         "en": "Who knows whom"
@@ -935,7 +940,7 @@
       },
       "prompts": [
         {
-          "id": "sociogram-knows",
+          "id": "58ea759c-a97f-52d8-9f9e-e5096230c108",
           "text": {
             "en": "The people you mentioned are arranged for you below. Draw a line between any **two people who know each other**."
           },
@@ -948,7 +953,7 @@
           }
         },
         {
-          "id": "sociogram-close-to-partner",
+          "id": "b08ede12-fff0-5506-9942-8eae8cf38bce",
           "text": {
             "en": "Now tap anyone who is **close to, or regularly in touch with, the person who harmed you**."
           },
@@ -966,7 +971,7 @@
       ]
     },
     {
-      "id": "information-support",
+      "id": "4244e65d-aa8d-5a6a-9fa8-0e622cc11a2c",
       "label": {
         "en": "Thank you and support services"
       },
@@ -976,7 +981,7 @@
       },
       "items": [
         {
-          "id": "support-thanks",
+          "id": "1715325a-db13-59c3-9d31-5935a310ee69",
           "type": "text",
           "content": {
             "en": "## Thank you for sharing\n\nTalking about these experiences takes courage, and we are grateful for your time.\n\nThe names and notes you entered are encrypted with your passphrase. If you return to this interview, you will need the same passphrase to see them.\n\n### If you would like support\n\n- **Talk to the interviewer now** if you would like to take a moment or talk about how you are feeling.\n- **If you are in immediate danger, contact your local emergency services.**\n- _The researcher will insert local and national domestic violence helplines for your study site here._\n\nYou do not have to face this alone."
@@ -985,7 +990,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "eba7da20-cf98-5723-97fc-95c84ace8efc",
       "label": {
         "en": "Finish Interview"
       },
@@ -1009,7 +1014,7 @@
       "outcome": "completed"
     },
     {
-      "id": "finish-declined",
+      "id": "75f769d2-6538-5271-94cc-25680ab9b9d2",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {

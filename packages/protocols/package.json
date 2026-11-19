@@ -30,6 +30,9 @@
   "scripts": {
     "build:custom-node-shapes-example": "node scripts/build-custom-node-shapes-example.mjs"
   },
+  "devDependencies": {
+    "uuid": "catalog:"
+  },
   "engines": {
     "node": ">=20.0.0"
   }

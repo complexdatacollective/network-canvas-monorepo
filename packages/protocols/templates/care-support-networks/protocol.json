@@ -301,13 +301,13 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "ea8a39be-184f-51c1-8f74-45a1dfb7399d",
       "type": "Information",
       "label": { "en": "Template notes (delete before fielding)" },
       "title": { "en": "Template notes" },
       "items": [
         {
-          "id": "researcher-notes",
+          "id": "4e957076-28ee-5169-b9fd-3a29ded2de15",
           "type": "text",
           "content": {
             "en": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Clinical safety:** the EPDS is a screening tool, not a diagnostic instrument. Item 10 screens for thoughts of self-harm, so before fielding put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line and referral details — for any participant who endorses item 10 or otherwise shows distress.\n\nThe instruments this template draws on:\n\n- [Cox JL, Holden JM, Sagovsky R (1987). Detection of postnatal depression: the 10-item Edinburgh Postnatal Depression Scale (EPDS). *Br J Psychiatry* 150:782–786.](https://pubmed.ncbi.nlm.nih.gov/3651732/)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
@@ -316,13 +316,13 @@
       ]
     },
     {
-      "id": "information-intro",
+      "id": "e0703299-eb1a-5276-9d68-baf83cdd8976",
       "type": "Information",
       "label": { "en": "Welcome" },
       "title": { "en": "About this study" },
       "items": [
         {
-          "id": "intro-welcome",
+          "id": "72e74855-a412-5e29-8fd1-64e646cc8853",
           "type": "text",
           "content": {
             "en": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people who support you** during this period, and the kinds of help they provide. There are no right or wrong answers — we are interested in your own experience."
@@ -331,7 +331,7 @@
       ]
     },
     {
-      "id": "ego-care-context",
+      "id": "01ae1cfa-e722-5a37-ac9a-0d1f9f2a87c8",
       "type": "EgoForm",
       "label": { "en": "About you and your care episode" },
       "interviewScript": "Clinical safety: EPDS item 10 screens for thoughts of self-harm. Before fielding this protocol, put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line / referral details — for any participant who endorses item 10 or otherwise shows distress. The software records responses but does not act on them.",
@@ -344,14 +344,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "376886b4-91e4-5667-9215-c50ef3e8f7ae",
             "variable": "care_stage",
             "prompt": {
               "en": "Where are you in your care journey at the moment?"
             }
           },
           {
-            "id": "field-2",
+            "id": "a2396e10-ec8e-5e67-b99c-c2c236c1c815",
             "variable": "weeks_since_birth",
             "prompt": {
               "en": "If your baby has already been born, how many weeks ago was that?"
@@ -359,77 +359,77 @@
             "hint": { "en": "Leave blank if you are still pregnant." }
           },
           {
-            "id": "field-3",
+            "id": "6444a239-627e-5b63-88e4-b21722693332",
             "variable": "living_situation",
             "prompt": {
               "en": "Which best describes who you live with right now?"
             }
           },
           {
-            "id": "field-4",
+            "id": "2c70ccef-167a-5399-9b6f-c6b1c86e8580",
             "variable": "epds_1",
             "prompt": {
               "en": "In the past 7 days: I have been able to laugh and see the funny side of things."
             }
           },
           {
-            "id": "field-5",
+            "id": "5efdc491-e382-50b5-b66f-35b18df716ac",
             "variable": "epds_2",
             "prompt": {
               "en": "In the past 7 days: I have looked forward with enjoyment to things."
             }
           },
           {
-            "id": "field-6",
+            "id": "4ca1f0e7-f4c7-5438-a89d-931238fff221",
             "variable": "epds_3",
             "prompt": {
               "en": "In the past 7 days: I have blamed myself unnecessarily when things went wrong."
             }
           },
           {
-            "id": "field-7",
+            "id": "5b786fe2-e8a2-5282-aed2-44bd26487a8c",
             "variable": "epds_4",
             "prompt": {
               "en": "In the past 7 days: I have been anxious or worried for no good reason."
             }
           },
           {
-            "id": "field-8",
+            "id": "18f03e8e-24e3-5f3e-b207-55f925c7a69a",
             "variable": "epds_5",
             "prompt": {
               "en": "In the past 7 days: I have felt scared or panicky for no very good reason."
             }
           },
           {
-            "id": "field-9",
+            "id": "ee24859b-a979-50dc-aa6c-809bbb5b878a",
             "variable": "epds_6",
             "prompt": {
               "en": "In the past 7 days: Things have been getting on top of me."
             }
           },
           {
-            "id": "field-10",
+            "id": "63f06349-fd26-5a9b-8c84-16aa1d13a509",
             "variable": "epds_7",
             "prompt": {
               "en": "In the past 7 days: I have been so unhappy that I have had difficulty sleeping."
             }
           },
           {
-            "id": "field-11",
+            "id": "3521f3fb-6966-55e4-8cf9-8f316a2aaeb9",
             "variable": "epds_8",
             "prompt": {
               "en": "In the past 7 days: I have felt sad or miserable."
             }
           },
           {
-            "id": "field-12",
+            "id": "9b2b86ff-2711-5daf-84a0-f0ee1160beb9",
             "variable": "epds_9",
             "prompt": {
               "en": "In the past 7 days: I have been so unhappy that I have been crying."
             }
           },
           {
-            "id": "field-13",
+            "id": "ecfdb264-5a3f-5805-a630-24d202968df7",
             "variable": "epds_10",
             "prompt": {
               "en": "In the past 7 days: The thought of harming myself has occurred to me."
@@ -439,7 +439,7 @@
       }
     },
     {
-      "id": "ng-support-functions",
+      "id": "74f0c369-3d21-5171-847b-4c8c992cee2a",
       "dynamicValues": {
         "careStage": {
           "path": "ego.care_stage",
@@ -451,7 +451,7 @@
       "interviewScript": "Use these prompts in turn. The same person can be named under more than one prompt. Functions that no one is named for are meaningful: they may indicate a support gap to explore with the participant.",
       "panels": [
         {
-          "id": "ng-support-functions-existing",
+          "id": "329b6c5c-7380-54d5-928e-f72ae221912e",
           "title": { "en": "Already mentioned" },
           "dataSource": "existing"
         }
@@ -461,7 +461,7 @@
         "title": { "en": "Add Supporter" },
         "fields": [
           {
-            "id": "field-1",
+            "id": "f45cf4ea-13d3-56f6-a332-6a33ff2323a5",
             "variable": "supporter_name",
             "prompt": { "en": "What is this person's name or initials?" },
             "hint": { "en": "Use whatever helps you remember who they are." }
@@ -470,25 +470,25 @@
       },
       "prompts": [
         {
-          "id": "p-emotional",
+          "id": "8b16941a-d37d-580c-a171-be203b720879",
           "text": {
             "en": "Who gives you **emotional support** — the people you can talk to, who listen and make you feel cared for?"
           }
         },
         {
-          "id": "p-informational",
+          "id": "62530ff9-cccf-5162-b1de-8d6fc4d40755",
           "text": {
             "en": "Who do you turn to for **information or advice** about {careStage, select, missing {your pregnancy or the baby} pregnant {your pregnancy} postpartum {the baby} other {your pregnancy or the baby}}?"
           }
         },
         {
-          "id": "p-practical",
+          "id": "51196c1c-f355-5e0d-9241-bb866ce9ecd8",
           "text": {
             "en": "Who helps you with **practical tasks or childcare** — things like meals, errands, housework, or {careStage, select, missing {looking after the baby} pregnant {getting ready for the baby} postpartum {looking after the baby} other {looking after the baby}}?"
           }
         },
         {
-          "id": "p-financial",
+          "id": "f820f0b1-35e5-58f0-a40e-57765207bc70",
           "text": {
             "en": "Who provides **financial help** — money, or paying for things you need for yourself or the baby?"
           }
@@ -496,13 +496,13 @@
       ]
     },
     {
-      "id": "bin-formal-informal",
+      "id": "baa96b78-4e4a-516c-af46-3879c26a5df8",
       "type": "CategoricalBin",
       "label": { "en": "Formal or informal sources" },
       "subject": { "entity": "node", "type": "supporter" },
       "prompts": [
         {
-          "id": "p-formal-informal",
+          "id": "3f61dac4-27e8-5d0f-8a25-5ccc5120ff98",
           "text": {
             "en": "For each person, is their support **informal** (family, friends, other parents) or **formal / professional** (a clinician, doula, home-visiting nurse, or community health worker)?"
           },
@@ -511,13 +511,13 @@
       ]
     },
     {
-      "id": "alter-support-detail-introduction",
+      "id": "9c6478f2-585d-5c2d-900d-62852371f1ae",
       "type": "Information",
       "label": { "en": "A little more about each person" },
       "title": { "en": "A little more about each person" },
       "items": [
         {
-          "id": "introduction-text",
+          "id": "dd3ce16a-9989-5e06-ba2d-d38d04cf5101",
           "type": "text",
           "content": {
             "en": "For each person you named, we'll ask a few short questions about where they are, how often you're in contact, and the kinds of support they give you."
@@ -526,7 +526,7 @@
       ]
     },
     {
-      "id": "alter-support-detail",
+      "id": "556d2d5b-34d1-5aaa-b1dd-82fb906ff1f8",
       "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en": "About each supporter" },
@@ -534,26 +534,26 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "fdfa96db-c2b9-573a-9652-a627f25a12fe",
             "variable": "relationship",
             "prompt": { "en": "What is {nodeLabel}'s relationship to you?" }
           },
           {
-            "id": "field-2",
+            "id": "72419354-c30b-5672-aedd-56a90fc7fb3e",
             "variable": "proximity",
             "prompt": {
               "en": "Where is {nodeLabel}, relative to you, most of the time?"
             }
           },
           {
-            "id": "field-3",
+            "id": "c439a4cd-6369-555f-aac9-b1ab684b8f70",
             "variable": "contact_frequency",
             "prompt": {
               "en": "How often are you in contact with {nodeLabel} at the moment?"
             }
           },
           {
-            "id": "field-4",
+            "id": "334ddeb3-4244-5f64-806f-61e207a8487e",
             "variable": "support_functions",
             "prompt": {
               "en": "Which kinds of support does {nodeLabel} give you?"
@@ -564,7 +564,7 @@
       }
     },
     {
-      "id": "bin-reliance",
+      "id": "67d1023d-b549-57d7-a996-3cca4770bf57",
       "dynamicValues": {
         "careStage": {
           "path": "ego.care_stage",
@@ -576,7 +576,7 @@
       "subject": { "entity": "node", "type": "supporter" },
       "prompts": [
         {
-          "id": "p-reliance",
+          "id": "bcb8bf48-524a-5df1-81dd-21ffff003575",
           "text": {
             "en": "Thinking about {careStage, select, missing {your care and the baby} pregnant {your pregnancy} postpartum {your care and the baby} other {your care and the baby}}, **how much do you rely on each person** for support overall? Drag each person into the band that fits best."
           },
@@ -586,7 +586,7 @@
       ]
     },
     {
-      "id": "narrative-support-map",
+      "id": "792ae959-4ecb-5ce5-9d4b-f648e3563acc",
       "groupsHeading": { "en": "Groups" },
       "type": "Narrative",
       "label": { "en": "Your support map" },
@@ -598,7 +598,7 @@
       },
       "presets": [
         {
-          "id": "preset-by-source",
+          "id": "aa7cbf0f-c1cd-55c4-9696-56d96be740e2",
           "label": { "en": "Support map by source (formal vs informal)" },
           "layoutVariable": "layout",
           "groupVariable": "formal_informal",
@@ -608,7 +608,7 @@
       "background": { "concentricCircles": 3, "skewedTowardCenter": true }
     },
     {
-      "id": "finish",
+      "id": "18500d28-cce3-5f00-8a1c-22c43d5e1097",
       "finishLabel": { "en": "Finish" },
       "finishConfirmation": {
         "en": "Are you sure you want to finish the interview?"

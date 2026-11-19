@@ -403,7 +403,7 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "3119f64a-0be4-5512-9b4e-e6cf4c665859",
       "type": "Information",
       "label": {
         "en": "Template notes (delete before fielding)"
@@ -413,7 +413,7 @@
       },
       "items": [
         {
-          "id": "researcher-notes",
+          "id": "de5ec394-9811-526f-bddb-f4587fa66614",
           "type": "text",
           "content": {
             "en": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis is an **interviewer\\-led narrative interview**. It is not a questionnaire a participant can work through alone. In this interview, the participant tells the story of a life change while you build their network on the Network Composer stage, and you then visualize and discuss that network on the Narrative stage.\n\n**Plan how you will capture the discussion.** The Narrative stage collects nothing, and free\\-draw annotations fade rather than being saved. You might, for example, use screen\\-recording and audio\\-recording software to keep a record of what is said and drawn.\n\n### Sources\n\n- [Herz A, Peters L, Truschkat I (2015). How to do Qualitative Structural Analysis. _Forum Qualitative Sozialforschung_ 16(1)](https://www.qualitative-research.net/index.php/fqs/article/view/2092). — the interview procedure this template reproduces.\n- [Ryan L, Mulholland J, Agoston A (2014). Talking Ties. _Sociological Research Online_ 19(2).](https://doi.org/10.5153/sro.3404)\n- [Hollstein B, Töpfer T, Pfeffer J (2020). Collecting egocentric network data with visual tools. _Network Science_ 8(2):223–250.](https://doi.org/10.1017/nws.2020.4)"
@@ -422,7 +422,7 @@
       ]
     },
     {
-      "id": "ego-consent",
+      "id": "ded8db8b-3e13-5b27-9af4-f6be4c9d2fa0",
       "type": "EgoForm",
       "label": {
         "en": "Welcome and consent"
@@ -438,7 +438,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "94ebe3fd-1c58-5ff6-9146-811cb5eb0116",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?"
@@ -448,7 +448,7 @@
       }
     },
     {
-      "id": "ego-transition",
+      "id": "14499150-b419-56f9-b160-63ea966c3be4",
       "type": "EgoForm",
       "label": {
         "en": "The change we'll be talking about"
@@ -470,7 +470,7 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "6f67464e-ac00-594e-9306-d200752c44b6"
         }
       },
       "interviewScript": "",
@@ -485,14 +485,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "2e6ef52c-6f97-5ce7-afce-4f02216bd547",
             "variable": "transition_type",
             "prompt": {
               "en": "What kind of change?"
             }
           },
           {
-            "id": "field-2",
+            "id": "a3cf9bae-ddad-5d32-ac84-a90518404e82",
             "variable": "transition_when",
             "prompt": {
               "en": "When did it happen?"
@@ -502,7 +502,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "c2dc2e1f-9f3a-51a4-b33e-030a04cd8b7b",
             "variable": "transition_summary",
             "prompt": {
               "en": "In a few sentences, what happened?"
@@ -512,7 +512,7 @@
       }
     },
     {
-      "id": "composer-network",
+      "id": "4cc555c0-9c09-5b10-a5f3-0cf71b79f2ed",
       "dynamicValues": {
         "transitionWhen": {
           "path": "ego.transition_when"
@@ -540,7 +540,7 @@
       "nodeForm": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "a975ddb9-c2a7-5171-a1b2-497137f8284b",
             "variable": "knew_before",
             "component": "Toggle",
             "label": {
@@ -548,7 +548,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "bf8eeb47-b506-53c4-b048-45b29b0c7c92",
             "variable": "arrived_with_change",
             "component": "Toggle",
             "label": {
@@ -556,7 +556,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "46a368e2-c43b-50d8-93f4-da0ed44b2120",
             "variable": "helped_through",
             "component": "Toggle",
             "label": {
@@ -564,7 +564,7 @@
             }
           },
           {
-            "id": "field-4",
+            "id": "0a138a79-5a0a-5806-9cec-16a58e338a47",
             "variable": "made_it_harder",
             "component": "Toggle",
             "label": {
@@ -572,7 +572,7 @@
             }
           },
           {
-            "id": "field-5",
+            "id": "2375b97d-78ef-5093-948a-01a695974107",
             "variable": "lost_touch",
             "component": "Toggle",
             "label": {
@@ -580,7 +580,7 @@
             }
           },
           {
-            "id": "field-6",
+            "id": "56fd82d1-926f-5747-8c6d-253413114263",
             "variable": "closeness_before",
             "component": "LikertScale",
             "label": {
@@ -588,7 +588,7 @@
             }
           },
           {
-            "id": "field-7",
+            "id": "33dd4243-d9b9-548e-bb57-677d139a4fa3",
             "variable": "closeness_now",
             "component": "LikertScale",
             "label": {
@@ -596,7 +596,7 @@
             }
           },
           {
-            "id": "field-8",
+            "id": "79225392-a3c9-5ed8-87e2-9ab842f14f24",
             "variable": "how_we_met",
             "component": "TextArea",
             "label": {
@@ -610,7 +610,7 @@
       },
       "edges": [
         {
-          "id": "composer-edge-knows",
+          "id": "5094ac69-0cbc-5185-a5d2-544c05afb2bc",
           "subject": {
             "entity": "edge",
             "type": "knows"
@@ -620,7 +620,7 @@
           }
         },
         {
-          "id": "composer-edge-close",
+          "id": "640fc487-a3b6-5e21-a2b5-f931c8d3e0f8",
           "subject": {
             "entity": "edge",
             "type": "close"
@@ -632,7 +632,7 @@
       ]
     },
     {
-      "id": "narrative-review",
+      "id": "3f6fac4d-04f0-52d1-8a18-cbece93bfc43",
       "attributesHeading": {
         "en": "Attributes"
       },
@@ -662,7 +662,7 @@
       },
       "presets": [
         {
-          "id": "preset-circles",
+          "id": "3f870d50-d825-5da4-90b7-b61dae4aee2a",
           "label": {
             "en": "The circles of your life"
           },
@@ -670,19 +670,21 @@
           "groupVariable": "social_circle"
         },
         {
-          "id": "preset-before-since",
+          "id": "0d2ef46d-d28a-589e-a391-912967a94cee",
           "label": {
             "en": "Before and since"
           },
           "layoutVariable": "layout",
           "highlight": [
             {
+              "id": "797ae0e8-41f4-51ad-b637-bdf47ae09eeb",
               "variable": "knew_before",
               "label": {
                 "en": "Knew them before the change"
               }
             },
             {
+              "id": "9922f3d0-878f-5ecd-92b9-2efa5f0436f1",
               "variable": "arrived_with_change",
               "label": {
                 "en": "New since the change"
@@ -691,19 +693,21 @@
           ]
         },
         {
-          "id": "preset-help-and-strain",
+          "id": "f617bdac-dda8-5168-b778-3b2892c4c60e",
           "label": {
             "en": "Who helped, and who didn't"
           },
           "layoutVariable": "layout",
           "highlight": [
             {
+              "id": "e5715d6e-06f6-5574-804f-abe17db7b57d",
               "variable": "helped_through",
               "label": {
                 "en": "Helped you through it"
               }
             },
             {
+              "id": "c3401db0-2f03-53b5-8c1f-48d6a3965ef1",
               "variable": "made_it_harder",
               "label": {
                 "en": "Made things harder"
@@ -712,7 +716,7 @@
           ]
         },
         {
-          "id": "preset-fell-away",
+          "id": "71b81337-c2fd-5c41-930f-ee134d7f3b83",
           "label": {
             "en": "Who fell away"
           },
@@ -721,6 +725,7 @@
           "edges": {
             "display": [
               {
+                "id": "2b90079a-9c31-5dca-a7b2-2e010398b9c1",
                 "type": "knows",
                 "label": {
                   "en": "Knows"
@@ -730,6 +735,7 @@
           },
           "highlight": [
             {
+              "id": "15649fab-cb7c-5234-92ac-6934fa92124d",
               "variable": "lost_touch",
               "label": {
                 "en": "Lost touch since the change"
@@ -738,7 +744,7 @@
           ]
         },
         {
-          "id": "preset-close-to-whom",
+          "id": "18c7cba0-23ef-5695-86bc-6001e86d93e1",
           "label": {
             "en": "Who is close to whom"
           },
@@ -746,6 +752,7 @@
           "edges": {
             "display": [
               {
+                "id": "cd3da0e8-d8c6-55a7-96ef-7719ae4e59b8",
                 "type": "close",
                 "label": {
                   "en": "Close"
@@ -757,7 +764,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "d519df8c-380d-5f94-933f-73b2072abe71",
       "finishLabel": {
         "en": "Finish"
       },
@@ -781,7 +788,7 @@
       "outcome": "completed"
     },
     {
-      "id": "finish-declined",
+      "id": "6f67464e-ac00-594e-9306-d200752c44b6",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {

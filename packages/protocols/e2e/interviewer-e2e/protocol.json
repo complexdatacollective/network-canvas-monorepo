@@ -71,7 +71,7 @@
   },
   "stages": [
     {
-      "id": "stage-info",
+      "id": "f62aed0d-b6a3-5c12-9864-f28ea9b3cca6",
       "type": "Information",
       "label": {
         "en-US": "Welcome"
@@ -81,7 +81,7 @@
       },
       "items": [
         {
-          "id": "item-1",
+          "id": "8b69fc6a-ef58-52e4-ab5e-7254ed51e446",
           "type": "text",
           "content": {
             "en-US": "# Welcome\n\nThanks for taking part."
@@ -90,7 +90,7 @@
       ]
     },
     {
-      "id": "stage-ego",
+      "id": "f11f8918-b324-55c7-80ca-4f473bceb34f",
       "type": "EgoForm",
       "label": {
         "en-US": "About you"
@@ -106,7 +106,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "6c796996-4804-5e39-a916-76c2f4b9125f",
             "variable": "ego_name",
             "prompt": {
               "en-US": "What is your name?"
@@ -116,7 +116,7 @@
       }
     },
     {
-      "id": "stage-ng",
+      "id": "6b2105ff-d414-53ab-9060-71b2228196bb",
       "minNodesNotice": {
         "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
       },
@@ -138,7 +138,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "e830a268-23c3-547e-9a9a-a8d02e81a06d",
           "text": {
             "en-US": "Who are the people you know?"
           }
@@ -149,7 +149,7 @@
       }
     },
     {
-      "id": "stage-socio",
+      "id": "1710422d-2b59-5d80-8c4d-9b6520529c46",
       "type": "Sociogram",
       "label": {
         "en-US": "Connect people"
@@ -164,7 +164,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "309d8350-43f5-5b9f-b3d5-d98252e52da5",
           "text": {
             "en-US": "Drag to place; link people who know each other."
           },
@@ -179,7 +179,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "2db7ec32-a68e-55c7-b5fb-87a72220bd8a",
       "finishLabel": {
         "en-US": "Finish"
       },

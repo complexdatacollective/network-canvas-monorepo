@@ -593,7 +593,7 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "bbf17e23-f6f5-57fb-acd2-49c5efb463fe",
       "type": "Information",
       "label": {
         "en": "Template notes (delete before deploying)",
@@ -607,7 +607,7 @@
       },
       "items": [
         {
-          "id": "researcher-notes",
+          "id": "c93f6a41-2724-5c48-9cfa-cf934c5751fd",
           "type": "text",
           "content": {
             "en": "## For researchers\n\n_Delete this screen before you field the study._\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n**Map setup:** this template ships with Network Canvas's shared Mapbox testing token and a bundled world-countries GeoJSON, so the Geospatial stage renders out of the box while you evaluate it in Architect and Interviewer on networkcanvas.com. The testing token is rate-limited, for evaluation only, and works only on Network Canvas hosts: on Fresco or any other deployment of your own, the map will not load with it. Before you field this study anywhere, replace it with your own Mapbox access token in Architect (see the warning on the protocol timeline).\n\n**Languages:** this template is written in English, Hungarian and Spanish, and the Language screen after this one lets participants choose between them. To field it in fewer languages, remove the others on the Languages page, and if only one is left, delete the Language screen too. To add a language, add it on the Languages page and translate each text in the translation table.\n\nThe instruments and studies this template draws on:\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)",
@@ -618,7 +618,7 @@
       ]
     },
     {
-      "id": "language-chooser",
+      "id": "adda8d1b-e10c-5fdd-85b3-17a7ea69661c",
       "type": "LanguageChooser",
       "label": {
         "en": "Language",
@@ -632,7 +632,7 @@
       }
     },
     {
-      "id": "information-intro",
+      "id": "119d6fac-a86e-5d29-8cec-f45706c7dfab",
       "type": "EgoForm",
       "label": {
         "en": "Welcome and consent",
@@ -654,7 +654,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "94cc9b4c-5d3d-530c-8490-0056da51c225",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?",
@@ -666,7 +666,7 @@
       }
     },
     {
-      "id": "ego-form-background",
+      "id": "fd4859da-00a0-539b-9859-e7d38390c7fd",
       "dynamicValues": {
         "arrivalYear": {
           "path": "ego.arrival_year"
@@ -695,7 +695,7 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "5d0e9c0e-8c90-5c99-bebf-5d1400004ce2"
         }
       },
       "introductionPanel": {
@@ -713,7 +713,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "de11a30d-3e53-5265-a468-452d79476c60",
             "variable": "birth_country",
             "prompt": {
               "en": "Were you born in the country where you live now, or in another country?",
@@ -722,7 +722,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "8154d3ea-3ebb-5d5a-9728-493f74cee9cf",
             "variable": "arrival_year",
             "prompt": {
               "en": "In what year did you first come to live in this country?",
@@ -736,7 +736,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "c1f9ece0-86c1-55ba-b5ba-22e29b7a1546",
             "variable": "years_since_migration",
             "hint": {
               "en": "{arrivalYear, select, missing {} other {You said you first came to live here in {arrivalYear}.}}",
@@ -750,7 +750,7 @@
             }
           },
           {
-            "id": "field-4",
+            "id": "d1064d2e-be33-5381-a6f4-a8ee6b3a1a3f",
             "variable": "residency_status",
             "prompt": {
               "en": "Which of the following best describes your current residency or legal status?",
@@ -759,7 +759,7 @@
             }
           },
           {
-            "id": "field-5",
+            "id": "1ff55b2d-7cda-52d2-a1be-45191643e366",
             "variable": "language_proficiency",
             "prompt": {
               "en": "How well do you feel you can speak the main language of this country?",
@@ -768,7 +768,7 @@
             }
           },
           {
-            "id": "field-6",
+            "id": "f79f9e85-3494-5d04-a5e3-d9efe1870348",
             "variable": "acculturative_stress",
             "prompt": {
               "en": "How much do you agree with the following: \"Because of where I come from, I often feel out of place or that I do not fully belong here.\"",
@@ -780,7 +780,7 @@
       }
     },
     {
-      "id": "name-generator-host",
+      "id": "1fda36d6-ee95-5ab5-88cc-6de8800548bf",
       "maxNodesNotice": {
         "en": "You have completed this task. Click the next arrow to continue.",
         "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar.",
@@ -794,7 +794,7 @@
       },
       "panels": [
         {
-          "id": "name-generator-host-existing",
+          "id": "24ffa7e1-ca7e-5125-800a-bfa0b3bcc2a6",
           "title": {
             "en": "Already mentioned",
             "es": "Personas ya mencionadas",
@@ -815,7 +815,7 @@
         },
         "fields": [
           {
-            "id": "field-1",
+            "id": "5271c094-313e-5391-ae26-0ef4c0e271dc",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's name or a nickname you will recognise?",
@@ -831,7 +831,7 @@
       },
       "prompts": [
         {
-          "id": "host-discuss",
+          "id": "b852b0dd-0db6-5684-bfa9-6831113b5d37",
           "text": {
             "en": "Thinking about the **place where you live now**, who are the people here that you feel **closest to**, or who are most important to you? These might be family, friends, neighbours, or people from work, study, or your community.",
             "es": "Pensando en el **lugar donde vive ahora**, ¿quiénes son las personas que están aquí y de las que se siente **más cerca**, o que son más importantes para usted? Pueden ser familiares, amistades, vecinos o personas del trabajo, de los estudios o de su comunidad.",
@@ -839,7 +839,7 @@
           }
         },
         {
-          "id": "host-support",
+          "id": "d11a3857-c7d2-574c-87f4-7a118a18bf4b",
           "text": {
             "en": "Still thinking about people **here in this country**, who do you turn to for help — for example, someone to **talk to about something personal**, or who could **help you with a practical problem**?",
             "es": "Pensando todavía en las personas que están **aquí, en este país**, ¿a quiénes acude cuando necesita ayuda? Por ejemplo, a alguien con quien **hablar de algo personal** o que pueda **ayudarle con un problema práctico**.",
@@ -849,7 +849,7 @@
       ]
     },
     {
-      "id": "name-generator-transnational",
+      "id": "c7c259c8-eccd-51ce-9dc6-39b2f2a3b4d5",
       "maxNodesNotice": {
         "en": "You have completed this task. Click the next arrow to continue.",
         "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar.",
@@ -863,7 +863,7 @@
       },
       "panels": [
         {
-          "id": "name-generator-transnational-existing",
+          "id": "e7eb4ef0-cffc-54d6-87a2-8f1e8b97509d",
           "title": {
             "en": "Already mentioned",
             "es": "Personas ya mencionadas",
@@ -884,7 +884,7 @@
         },
         "fields": [
           {
-            "id": "field-1",
+            "id": "f58cf829-7d11-53d1-9c77-8f3b635e0764",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's name or a nickname you will recognise?",
@@ -900,7 +900,7 @@
       },
       "prompts": [
         {
-          "id": "transnational-origin",
+          "id": "3c035e52-8a27-5fcc-93e9-1bf9e59beb39",
           "text": {
             "en": "Now think about people who live in **your country of origin**. Who are the people there who are **still important in your life** — people you stay in touch with, rely on, or feel close to?",
             "es": "Ahora piense en las personas que viven en **su país de origen**. ¿Cuáles de ellas **siguen siendo importantes en su vida**: personas con las que mantiene el contacto, con las que cuenta o de las que se siente cerca?",
@@ -908,7 +908,7 @@
           }
         },
         {
-          "id": "transnational-elsewhere",
+          "id": "dd97592f-dcbf-59c2-b284-bf8470daa388",
           "text": {
             "en": "Are there other people important to you who live **somewhere else abroad** (not in this country and not in your country of origin)? If so, please add them here.",
             "es": "¿Hay otras personas importantes para usted que vivan **en otros países** (ni en este país ni en su país de origen)? Si es así, por favor, añádalas aquí.",
@@ -918,7 +918,7 @@
       ]
     },
     {
-      "id": "alter-attributes-introduction",
+      "id": "ca6ab1da-b90d-575d-b196-43d7cd53e17e",
       "type": "Information",
       "label": {
         "en": "About each person you named",
@@ -932,7 +932,7 @@
       },
       "items": [
         {
-          "id": "introduction-text",
+          "id": "f4bbf8ca-e035-5d31-93cc-8fd1280ffc85",
           "type": "text",
           "content": {
             "en": "For each person you named, we will ask a few short questions about your relationship with them, where they are from, and the kinds of support they give you.",
@@ -943,7 +943,7 @@
       ]
     },
     {
-      "id": "alter-attributes",
+      "id": "9c3fd5ec-ba04-58e8-8f86-b9c630380eec",
       "dynamicValues": {
         "nodeLabel": {
           "path": "node.$label"
@@ -962,7 +962,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "a9a36b2f-e144-537c-90c4-c4bb4f28bfb1",
             "variable": "relationship",
             "prompt": {
               "en": "How would you best categorize {nodeLabel}?",
@@ -971,7 +971,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "0c627062-fc61-5bc7-8b63-b7415eac322e",
             "variable": "shared_language",
             "prompt": {
               "en": "Which language do you mainly speak together?",
@@ -980,7 +980,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "fe41da66-1e29-51f5-877e-784dbb3ad53e",
             "variable": "co_ethnic",
             "prompt": {
               "en": "Would you say {nodeLabel} is from the **same ethnic or cultural background** as you?",
@@ -989,7 +989,7 @@
             }
           },
           {
-            "id": "field-4",
+            "id": "d11b5d9b-a2c1-59b7-b62f-bf785373f818",
             "variable": "support_type",
             "prompt": {
               "en": "What kinds of **support** does {nodeLabel} give you?",
@@ -1006,7 +1006,7 @@
       }
     },
     {
-      "id": "ordinal-bin-closeness",
+      "id": "88b51990-ce32-5f70-b67c-41ef79b566a5",
       "type": "OrdinalBin",
       "label": {
         "en": "How close you feel to each person",
@@ -1019,7 +1019,7 @@
       },
       "prompts": [
         {
-          "id": "bin-closeness",
+          "id": "422cfbc6-ce2a-5d79-a219-2c82d6f45e49",
           "text": {
             "en": "Sort each person by **how close you feel** to them.",
             "es": "Clasifique a cada persona según **lo cerca que se siente** de ella.",
@@ -1031,7 +1031,7 @@
       ]
     },
     {
-      "id": "geospatial-map",
+      "id": "de083ac9-ef8b-5aed-90eb-1b4da3236522",
       "dynamicValues": {
         "nodeLabel": {
           "path": "node.$label"
@@ -1066,7 +1066,7 @@
       },
       "prompts": [
         {
-          "id": "geo-location",
+          "id": "2745203b-e40f-5d7c-ade3-40d99f8d2279",
           "text": {
             "en": "Please select the **country where {nodeLabel} currently lives** on the map. This helps us see how your network of important people is spread across the world.",
             "es": "Por favor, seleccione en el mapa el **país donde vive actualmente {nodeLabel}**. Esto nos ayuda a ver cómo se distribuye por el mundo la red de personas importantes para usted.",
@@ -1077,7 +1077,7 @@
       ]
     },
     {
-      "id": "categorical-bin-support",
+      "id": "f9e874b0-0214-5c5f-9e34-d03b6318ed90",
       "type": "CategoricalBin",
       "label": {
         "en": "Where each person is from, and how you met",
@@ -1090,7 +1090,7 @@
       },
       "prompts": [
         {
-          "id": "bin-origin-country",
+          "id": "7ba25f47-ccd2-5b42-b609-ae6a4aed63c9",
           "text": {
             "en": "Sort each person by **where they are from**, in relation to you.",
             "es": "Clasifique a cada persona según **de dónde es**, en relación con usted.",
@@ -1099,7 +1099,7 @@
           "variable": "origin_country"
         },
         {
-          "id": "bin-how-met",
+          "id": "156d1d0d-bcae-53f6-ae74-2de660dd6477",
           "text": {
             "en": "Now sort the same people by **how or where you first met them**.",
             "es": "Ahora clasifique a esas mismas personas según **cómo o dónde las conoció**.",
@@ -1110,7 +1110,7 @@
       ]
     },
     {
-      "id": "sociogram-ties",
+      "id": "c9395a26-8af2-55a6-98c9-b319e20ebeb8",
       "type": "Sociogram",
       "label": {
         "en": "How these people know each other",
@@ -1129,7 +1129,7 @@
       },
       "prompts": [
         {
-          "id": "socio-knows",
+          "id": "f3081ab3-e08f-5c46-b710-267798862720",
           "text": {
             "en": "The people you mentioned are arranged for you automatically below. Please draw a line between any **two people who know each other** — that is, who would recognise one another and have at least a little contact, independently of you.",
             "es": "Las personas que ha mencionado aparecen abajo, ya colocadas automáticamente. Por favor, dibuje una línea entre cada **par de personas que se conozcan entre sí**, es decir, que se reconozcan mutuamente y tengan al menos algo de contacto, no solo a través de usted.",
@@ -1146,7 +1146,7 @@
       ]
     },
     {
-      "id": "narrative-review",
+      "id": "55ec0a3b-e1b7-5db8-bc7a-93fb709b88e1",
       "attributesHeading": {
         "en": "Attributes",
         "es": "Atributos",
@@ -1179,7 +1179,7 @@
       },
       "presets": [
         {
-          "id": "preset-origin",
+          "id": "5b03962c-91c2-58ae-a3a0-b4612adcf043",
           "label": {
             "en": "Where people are from",
             "es": "De dónde son las personas",
@@ -1190,6 +1190,7 @@
           "edges": {
             "display": [
               {
+                "id": "be97b4a0-f46a-5f6b-8491-90b6dd364df4",
                 "type": "knows",
                 "label": {
                   "en": "Knows",
@@ -1201,6 +1202,7 @@
           },
           "highlight": [
             {
+              "id": "f385b8a3-2fa4-51d5-99e9-6e5f6a2f3306",
               "variable": "co_ethnic",
               "label": {
                 "en": "Same ethnic or cultural background",
@@ -1211,7 +1213,7 @@
           ]
         },
         {
-          "id": "preset-support",
+          "id": "5e1d548d-c17c-586b-a9a3-d350933e3c8d",
           "label": {
             "en": "Support across the network",
             "es": "Apoyo en toda la red",
@@ -1222,6 +1224,7 @@
           "edges": {
             "display": [
               {
+                "id": "422be180-dfd3-5375-9417-6113fb99e4c2",
                 "type": "knows",
                 "label": {
                   "en": "Knows",
@@ -1239,7 +1242,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "ac22de0f-10b9-50ff-92c8-0d014b5edae5",
       "finishLabel": {
         "en": "Finish",
         "es": "Finalizar",
@@ -1275,7 +1278,7 @@
       "outcome": "completed"
     },
     {
-      "id": "finish-declined",
+      "id": "5d0e9c0e-8c90-5c99-bebf-5d1400004ce2",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
