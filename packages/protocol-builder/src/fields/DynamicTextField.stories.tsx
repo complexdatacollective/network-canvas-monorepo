@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { withMod } from '@codaco/fresco-ui/testing/modKey';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
@@ -14,6 +15,7 @@ const TITLE_FIELD = 'title';
 const TITLE_LABEL = 'Page heading';
 const INSERT_LABEL =
   'Inject piped text from interview metadata or a network attribute';
+const UNREADABLE = 'Welcome, {name';
 
 const title = (
   <Field<typeof DynamicTextField>
@@ -116,6 +118,47 @@ export const UndoingAValue: Story = {
     await waitFor(() =>
       expect(editor.querySelector('[data-versions-element]')).not.toBeNull(),
     );
+  },
+};
+
+/**
+ * A heading stored in words this field cannot read, as an imported or
+ * hand-written protocol can hold. It is shown as it is rather than opened in
+ * the editor, which would rewrite it, and the stage is not saved with it.
+ */
+export const AnUnreadableText: Story = {
+  args: {
+    seedEdit: (host) => {
+      const stage = sectionId({ kind: 'stage', stageId: 'information-1' });
+      const { document } = host.store.read(stage);
+      host.store.applyAsCollaborator(stage, {
+        ...document,
+        [TITLE_FIELD]: { 'en-US': UNREADABLE },
+      });
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByText(
+        'This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.',
+      ),
+    ).toBeVisible();
+    await expect(canvas.getByText(UNREADABLE)).toBeVisible();
+    await expect(
+      canvas.queryByRole('textbox', { name: TITLE_LABEL }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
+    await expect(
+      await canvas.findByText(/Text is not valid message syntax/),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('status', { name: 'Save status' }),
+    ).toHaveTextContent('Nothing saved yet.');
+    await expect(canvas.getByText(UNREADABLE)).toBeVisible();
   },
 };
 

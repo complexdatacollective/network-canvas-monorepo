@@ -248,18 +248,20 @@ describe('useProtocolForm dynamic values', () => {
 });
 
 describe('useProtocolForm dynamic values on an edge form', () => {
-  it('names both nodes the edge joins by their labels', () => {
-    const edgeStage = {
-      id: 'edges',
-      type: 'AlterEdgeForm',
-      label: { en: 'Ties' },
-      subject: { entity: 'edge', type: 'knows' },
-      dynamicValues: {
-        from: { path: 'edge.from.$label' },
-        to: { path: 'edge.to.$label' },
-      },
-      form: { fields: [] },
-    } as unknown as Stage;
+  const edgeStage = {
+    id: 'edges',
+    type: 'AlterEdgeForm',
+    label: { en: 'Ties' },
+    subject: { entity: 'edge', type: 'knows' },
+    dynamicValues: {
+      from: { path: 'edge.from.$label' },
+      to: { path: 'edge.to.$label' },
+      closeness: { path: 'edge.closeness' },
+    },
+    form: { fields: [] },
+  } as unknown as Stage;
+
+  function renderEdgeForm(prompt: string, edgeAttributes: object = {}) {
     const store = configureStore({
       reducer: { session, protocol, ui },
       preloadedState: {
@@ -285,7 +287,7 @@ describe('useProtocolForm dynamic values on an edge form', () => {
                 type: 'knows',
                 from: 'n1',
                 to: 'n2',
-                [entityAttributesProperty]: {},
+                [entityAttributesProperty]: edgeAttributes,
               },
             ],
             ego: { [entityAttributesProperty]: {} },
@@ -310,6 +312,11 @@ describe('useProtocolForm dynamic values on an edge form', () => {
                 name: 'knows',
                 variables: {
                   note: { name: 'note', type: 'text', component: 'Text' },
+                  closeness: {
+                    name: 'closeness',
+                    type: 'text',
+                    component: 'Text',
+                  },
                 },
               },
             },
@@ -327,7 +334,7 @@ describe('useProtocolForm dynamic values on an edge form', () => {
           {
             id: 'field-1',
             variable: asEntityAttributeReference('note'),
-            prompt: { en: 'How did {from} meet {to}?' },
+            prompt: { en: prompt },
           },
         ],
         subject: { entity: 'edge', type: 'knows' },
@@ -349,6 +356,10 @@ describe('useProtocolForm dynamic values on an edge form', () => {
         </Provider>
       </TestProtocolLocalization>,
     );
+  }
+
+  it('names both nodes the edge joins by their labels', () => {
+    renderEdgeForm('How did {from} meet {to}?');
 
     // The second node has no name, so it is unnamed.
     expect(
@@ -357,5 +368,19 @@ describe('useProtocolForm dynamic values on an edge form', () => {
     expect(
       screen.getByText('Unnamed', { selector: 'bdi' }),
     ).toBeInTheDocument();
+  });
+
+  it('shows an attribute of the edge the form is about', () => {
+    renderEdgeForm(
+      '{closeness, select, missing {How close?} other {Closeness: {closeness}}}',
+      { closeness: 'EDGE_SENTINEL' },
+    );
+
+    const value = screen.getByText('EDGE_SENTINEL', { selector: 'bdi' });
+    expect(value.closest('[data-dynamic-value]')).not.toBeNull();
+    expect(value.closest('label')).toHaveTextContent(
+      /^Closeness: EDGE_SENTINEL/,
+    );
+    expect(screen.queryByText('How close?')).toBeNull();
   });
 });

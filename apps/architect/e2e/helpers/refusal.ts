@@ -1,4 +1,20 @@
-import { expect, type Locator } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
+
+/**
+ * Gives a write the app should have refused time to reach IndexedDB before a
+ * caller asserts it did not.
+ *
+ * Only for a refusal that has no write of its own to wait behind, such as a
+ * stage editor that will not save (`settleAfterRefusal`, in read-store.ts,
+ * covers the guards that sit before a store write). Pair it with an assertion
+ * that the refusal was observed, so a save that never ran cannot pass.
+ */
+export async function allowErroneousWriteToLand(
+  page: Page,
+  ms = 1_000,
+): Promise<void> {
+  await page.waitForTimeout(ms);
+}
 
 /**
  * Observe a refusal and acknowledge it.

@@ -154,14 +154,33 @@ type NestedEditing = Readonly<{
 export const NestedEditingContext = createContext<NestedEditing | null>(null);
 
 /**
- * The labels of the versions a version's editor sits inside, outermost first:
- * what a nested row's editor names itself by besides its own label, so that
- * it says which case it is the wording for.
+ * One version a piece of text is in: the `meta` of the set of versions it
+ * belongs to, as its consumer gave it, and the version's `key`.
  */
-const VersionPathContext = createContext<readonly string[]>([]);
+export type RichTextVersionPlace = Readonly<{ meta: unknown; key: string }>;
+
+type VersionPathEntry = RichTextVersionPlace & Readonly<{ label: string }>;
+
+/**
+ * The versions a version's editor sits inside, outermost first: what a nested
+ * row's editor names itself by besides its own label, so that it says which
+ * case it is the wording for, and where its text is, for the insert menu.
+ */
+const VersionPathContext = createContext<readonly VersionPathEntry[]>([]);
 
 /** Each version's editor by its element, for stepping between rows. */
 const versionEditorsByElement = new WeakMap<HTMLElement, Editor>();
+
+/** Each version's editor's place, outermost version first. */
+const versionPlaces = new WeakMap<Editor, readonly RichTextVersionPlace[]>();
+
+/**
+ * The versions the text `editor` edits is in, outermost first; empty for the
+ * field's own line.
+ */
+export const versionPlaceOf = (
+  editor: Editor,
+): readonly RichTextVersionPlace[] => versionPlaces.get(editor) ?? [];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -450,11 +469,14 @@ const versionEditorClasses = cx(
  */
 function VersionEditor({
   version,
+  meta,
   onChange,
   onEscape,
   onAction,
 }: {
   version: RichTextVersion;
+  /** The `meta` of the set of versions this one belongs to. */
+  meta: unknown;
   onChange: (content: JSONContent[]) => void;
   onEscape: () => void;
   /** Reports `edit` or `remove`, where the version offers them. */
@@ -473,13 +495,14 @@ function VersionEditor({
     onEscapeRef.current = onEscape;
   });
   const intl = useAppIntl();
-  const parentLabels = useContext(VersionPathContext);
+  const parentPath = useContext(VersionPathContext);
+  const path = useMemo(
+    () => [...parentPath, { meta, key: version.key, label: version.label }],
+    [parentPath, meta, version.key, version.label],
+  );
   // Which case this row is wording for, from the outermost down: a row inside
   // another version names both, so it is not mistaken for its namesakes.
-  const labels = useMemo(
-    () => [...parentLabels, version.label],
-    [parentLabels, version.label],
-  );
+  const labels = path.map(({ label }) => label);
   const accessibleName =
     labels.length === 1
       ? version.label
@@ -594,6 +617,17 @@ function VersionEditor({
     };
   }, [editor]);
 
+  useEffect(() => {
+    if (!editor) return undefined;
+    versionPlaces.set(
+      editor,
+      path.map(({ meta: placeMeta, key }) => ({ meta: placeMeta, key })),
+    );
+    return () => {
+      versionPlaces.delete(editor);
+    };
+  }, [editor, path]);
+
   // A row that is only another set of versions listed open is a frame for
   // its rows, not a place to type: Tab goes on to them.
   const holdsOpenVersions = useEditorState({
@@ -622,7 +656,7 @@ function VersionEditor({
     <span className={versionClasses}>
       <span
         className={cx(
-          parentLabels.length > 0
+          parentPath.length > 0
             ? nestedVersionLabelClasses
             : versionLabelClasses,
           'flex flex-col items-start gap-1',
@@ -667,7 +701,7 @@ function VersionEditor({
           </span>
         )}
       </span>
-      <VersionPathContext.Provider value={labels}>
+      <VersionPathContext.Provider value={path}>
         <EditorContent
           editor={editor}
           // A frame for rows draws none of the row's own box: the rows in it
@@ -678,7 +712,7 @@ function VersionEditor({
               'bg-transparent focus-within:outline-0 [&_.tiptap]:p-0',
             // Rows inside a version take what room there is: each level of
             // nesting has already used some of it.
-            parentLabels.length > 0 && 'min-w-0',
+            parentPath.length > 0 && 'min-w-0',
           )}
         />
       </VersionPathContext.Provider>
@@ -918,6 +952,7 @@ function VersionsView({
           <VersionEditor
             key={version.key}
             version={version}
+            meta={node.attrs.meta}
             // A permanently open element has nothing to fold back to: Escape
             // hands the caret back to the line, with the element selected.
             onEscape={alwaysOpen ? selectSelf : foldToPill}

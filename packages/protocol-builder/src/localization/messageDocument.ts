@@ -225,7 +225,7 @@ const isRichTextVersion = (value: unknown): value is RichTextVersion =>
   Array.isArray(value.content) &&
   value.content.every((node) => typeof node === 'object' && node !== null);
 
-const isSwitchMeta = (value: unknown): value is SwitchMeta =>
+export const isSwitchMeta = (value: unknown): value is SwitchMeta =>
   typeof value === 'object' &&
   value !== null &&
   'argument' in value &&

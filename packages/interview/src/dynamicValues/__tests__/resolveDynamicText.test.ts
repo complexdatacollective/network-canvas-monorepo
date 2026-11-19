@@ -140,6 +140,57 @@ describe('resolveDynamicText', () => {
     );
   });
 
+  describe('in a language other than English', () => {
+    const LOCALIZED: Record<string, Variable> = {
+      languages: {
+        name: 'languages',
+        type: 'categorical',
+        options: [
+          {
+            label: { en: 'English', es: 'Inglés', de: 'Englisch' },
+            value: 'en',
+          },
+          {
+            label: { en: 'French', es: '**Francés**', de: 'Französisch' },
+            value: 'fr',
+          },
+          {
+            label: { en: 'Spanish', es: 'Español', de: 'Spanisch' },
+            value: 'es',
+          },
+        ],
+      },
+    } as Record<string, Variable>;
+
+    // Chooses the label in the interview's language and reads it as the text
+    // its markdown shows, as the protocol localization provider does.
+    const resolveIn = (locale: string, languages: string[]) =>
+      resolveDynamicText(
+        '{languages, select, missing {?} other {{languages}}}',
+        locale,
+        sources({ languages }, { variablesFor: () => LOCALIZED }),
+        {
+          ...formatters(locale),
+          resolveLabel: (label: LocalizedString) =>
+            getMarkdownLabelText(label[locale] ?? label.en ?? ''),
+        },
+      );
+
+    it('lists the answers with the language’s conjunction and option labels', () => {
+      expect(resolveIn('es', ['en', 'fr', 'es'])?.text).toBe(
+        'Inglés, Francés y Español',
+      );
+      expect(resolveIn('de', ['en', 'fr'])?.text).toBe(
+        'Englisch und Französisch',
+      );
+      expect(resolveIn('en', ['en', 'fr'])?.text).toBe('English and French');
+    });
+
+    it('shows a single answer as its translated label alone', () => {
+      expect(resolveIn('de', ['es'])?.text).toBe('Spanisch');
+    });
+  });
+
   it('chooses a plural by the language, and writes # as the number', () => {
     const message =
       '{age, select, missing {?} other {{age, plural, one {# year} other {# years}}}}';

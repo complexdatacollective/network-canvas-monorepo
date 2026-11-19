@@ -6,6 +6,7 @@ import {
   collectLocalizedStringFields,
   type CurrentProtocol,
   type DynamicValueSite,
+  dynamicValueNamesIn,
   findLabelCollisions,
   findVariableRoleConflicts,
   type LocaleTag,
@@ -356,8 +357,8 @@ export type TranslationRow = {
   arguments?: MessageArguments;
   /**
    * Where text that can show values the interview fills in sits, when it can
-   * and its stage binds any: with nothing bound, it is plain or formatted
-   * text like any other.
+   * and either its stage binds any or the text itself names one: with nothing
+   * bound and nothing named, it is plain or formatted text like any other.
    */
   dynamicValues?: DynamicValueSite;
   /**
@@ -399,6 +400,15 @@ const stageBindsValues = (
 };
 
 /**
+ * Whether the text names a value in any language. Imported text can name one
+ * its stage does not bind, which the table must show and refuse.
+ */
+const namesValues = (value: LocalizedString) =>
+  Object.values(value).some(
+    (message) => dynamicValueNamesIn(message).length > 0,
+  );
+
+/**
  * Every participant-facing string grouped by the stage or codebook entry that
  * holds it: the stages in protocol order, then the codebook, then the
  * protocol's own texts, then the words the interview itself shows.
@@ -426,10 +436,10 @@ export const getTranslationGroups = createSelector(
         ...(supplied === undefined ? {} : { supplied }),
         schema: hit.schema,
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
-        ...(hit.dynamicValues === undefined ||
-        !stageBindsValues(protocol, hit.path)
-          ? {}
-          : { dynamicValues: hit.dynamicValues }),
+        ...(hit.dynamicValues !== undefined &&
+        (stageBindsValues(protocol, hit.path) || namesValues(hit.value))
+          ? { dynamicValues: hit.dynamicValues }
+          : {}),
       });
     }
     return [...groups]

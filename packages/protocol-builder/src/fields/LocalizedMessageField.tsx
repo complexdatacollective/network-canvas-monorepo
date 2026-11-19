@@ -24,6 +24,7 @@ import {
   type MissingPlacement,
   pluralCountExamples,
   printMessageStructure,
+  requiredArgumentsOf,
 } from '@codaco/protocol-validation';
 
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
@@ -31,6 +32,7 @@ import { asLocalizedString } from '../localization/localizedText.ts';
 import {
   countTokenId,
   documentToMessageNodes,
+  isSwitchMeta,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
   MessageDocumentProblem,
@@ -474,6 +476,27 @@ export function LocalizedMessageVersions({
     argumentLabels,
   );
 
+  const variants = messageVariants(message, declaration, locale);
+  // Whether the version being edited requires `argument` and does not show
+  // it: some version of the message for the cases the caret is in.
+  const missingIn =
+    (argument: string): RichTextInsertMenuItem['required'] =>
+    (place) => {
+      const cases = place.flatMap(({ meta, key }) =>
+        isSwitchMeta(meta) ? [{ argument: meta.argument, key }] : [],
+      );
+      return variants.some(
+        (variant) =>
+          cases.every((each) => variant.when[each.argument] === each.key) &&
+          requiredArgumentsOf(variant, declaration, locale).includes(
+            argument,
+          ) &&
+          !variant.parts.some(
+            (part) => typeof part !== 'string' && part.argument === argument,
+          ),
+      );
+    };
+
   const items: RichTextInsertMenuItem[] = Object.entries(declaration).map(
     ([argument, declared]): RichTextInsertMenuItem => {
       const label = valueLabel(argument);
@@ -481,6 +504,7 @@ export function LocalizedMessageVersions({
         return {
           id: `value:${argument}`,
           label,
+          required: missingIn(argument),
           content: inlineContent(
             [{ kind: 'argument', name: argument }],
             FORMAT,
@@ -492,6 +516,7 @@ export function LocalizedMessageVersions({
         return {
           id: `number:${argument}`,
           label,
+          required: missingIn(argument),
           description: numbers.menuDescription(),
           content: inlineContent(
             [

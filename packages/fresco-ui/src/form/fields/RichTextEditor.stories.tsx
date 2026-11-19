@@ -778,6 +778,294 @@ export const WithTokensInTheText: Story = {
   },
 };
 
+const plainLine: JSONContent = {
+  type: 'doc',
+  content: [
+    { type: 'paragraph', content: [{ type: 'text', text: 'Ask about ' }] },
+  ],
+};
+
+const oneTokenLine: JSONContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Add ' },
+        { type: 'token', attrs: { id: 'name' } },
+        { type: 'text', text: ' parents' },
+      ],
+    },
+  ],
+};
+
+function TokenEditor({
+  label,
+  tokens,
+  initial,
+}: {
+  label: string;
+  tokens: RichTextEditorToken[];
+  initial: JSONContent;
+}) {
+  const [value, setValue] = useState<JSONContent | undefined>(initial);
+  return (
+    <div className="flex w-[480px] flex-col gap-2">
+      <RichTextEditorField
+        id={label}
+        name={label}
+        aria-label={label}
+        singleLine
+        toolbarOptions={{ bold: false, italic: false }}
+        tokens={tokens}
+        changeMode="input"
+        value={value}
+        onChange={setValue}
+      />
+      <pre data-testid={`${label} value`} className="text-xs">
+        {JSON.stringify(value)}
+      </pre>
+    </div>
+  );
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const childrenOf = (node: unknown): readonly unknown[] =>
+  isRecord(node) && Array.isArray(node.content) ? node.content : [];
+
+/** The paragraph's parts in order: a run of words, or `{id}` for a token. */
+const partsOf = (canvasElement: HTMLElement, label: string): string[] => {
+  const value: unknown = JSON.parse(
+    within(canvasElement).getByTestId(`${label} value`).textContent || 'null',
+  );
+  const paragraph = childrenOf(value)[0];
+  return childrenOf(paragraph).map((node) => {
+    if (!isRecord(node)) return '';
+    if (node.type !== 'token') {
+      return typeof node.text === 'string' ? node.text : '';
+    }
+    return `{${isRecord(node.attrs) ? String(node.attrs.id) : ''}}`;
+  });
+};
+
+/**
+ * A pill is one thing to the keyboard. The arrow keys go past it in one
+ * step once it is selected, Backspace takes all of it, and undo puts it
+ * back.
+ */
+export const TokensFromTheKeyboard: Story = {
+  render: () => (
+    <TokenEditor
+      label="Question"
+      tokens={[{ id: 'name', label: 'Name' }]}
+      initial={oneTokenLine}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    const doc = canvasElement.ownerDocument;
+    const pill = (): HTMLElement => {
+      const found = editor.querySelector('[data-token="name"]');
+      if (!(found instanceof HTMLElement)) throw new Error('No pill');
+      return found;
+    };
+    await userEvent.click(editor);
+
+    // user-event cannot move a caret through a contenteditable, so the
+    // caret is placed directly and each key reaches ProseMirror's own
+    // keydown handling, which is what keeps a pill whole.
+    const press = (key: string, keyCode: number) => {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, 'keyCode', { value: keyCode });
+      editor.dispatchEvent(event);
+    };
+    const caret = () => {
+      const selection = doc.getSelection();
+      if (selection === null || selection.rangeCount === 0) {
+        throw new Error('No caret');
+      }
+      return selection.getRangeAt(0);
+    };
+    /** -1 before the pill, 1 after it, with no text between; 0 otherwise. */
+    const besidePill = () => {
+      const at = caret();
+      if (!at.collapsed) return 0;
+      const before = doc.createRange();
+      before.setStartBefore(pill());
+      before.collapse(true);
+      const after = doc.createRange();
+      after.setStartAfter(pill());
+      after.collapse(true);
+      const between = doc.createRange();
+      if (before.comparePoint(at.startContainer, at.startOffset) <= 0) {
+        between.setStart(at.startContainer, at.startOffset);
+        between.setEndBefore(pill());
+        return between.toString() === '' ? -1 : 0;
+      }
+      if (after.comparePoint(at.startContainer, at.startOffset) >= 0) {
+        between.setStartAfter(pill());
+        between.setEnd(at.startContainer, at.startOffset);
+        return between.toString() === '' ? 1 : 0;
+      }
+      return 0;
+    };
+
+    const after = doc.createRange();
+    after.setStartAfter(pill());
+    after.collapse(true);
+    doc.getSelection()?.removeAllRanges();
+    doc.getSelection()?.addRange(after);
+    await waitFor(() => expect(besidePill()).toBe(1));
+
+    // One step selects the pill whole; the next leaves it, before it.
+    press('ArrowLeft', 37);
+    await waitFor(() => expect(pill()).toHaveClass('ProseMirror-selectednode'));
+    press('ArrowLeft', 37);
+    await waitFor(() => expect(besidePill()).toBe(-1));
+    await expect(pill()).not.toHaveClass('ProseMirror-selectednode');
+
+    // And the same forward, to just after it.
+    press('ArrowRight', 39);
+    await waitFor(() => expect(pill()).toHaveClass('ProseMirror-selectednode'));
+    press('ArrowRight', 39);
+    await waitFor(() => expect(besidePill()).toBe(1));
+
+    // One Backspace takes the whole pill, and nothing else.
+    press('Backspace', 8);
+    await waitFor(() =>
+      expect(partsOf(canvasElement, 'Question')).toEqual(['Add  parents']),
+    );
+
+    await userEvent.keyboard(withMod('z'));
+    await waitFor(() =>
+      expect(partsOf(canvasElement, 'Question')).toEqual([
+        'Add ',
+        '{name}',
+        ' parents',
+      ]),
+    );
+  },
+};
+
+/** A point just past the last character of `element`'s text. */
+const endOf = (element: HTMLElement) => {
+  const walker = element.ownerDocument.createTreeWalker(
+    element,
+    NodeFilter.SHOW_TEXT,
+  );
+  let last: Text | null = null;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node instanceof Text && node.data !== '') last = node;
+  }
+  if (last === null) throw new Error('No text to drop after');
+  const range = element.ownerDocument.createRange();
+  range.setStart(last, last.data.length);
+  const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
+  return { clientX: rect.right - 1, clientY: rect.top + rect.height / 2 };
+};
+
+const dragPill = (pill: HTMLElement, onto: HTMLElement) => {
+  const dataTransfer = new DataTransfer();
+  pill.dispatchEvent(
+    new DragEvent('dragstart', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer,
+    }),
+  );
+  onto.dispatchEvent(
+    new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer,
+      ...endOf(onto),
+    }),
+  );
+  pill.dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+  return dataTransfer;
+};
+
+/**
+ * A pill can be dragged to another place in the text, and it arrives whole.
+ * Dropped into a field that does not offer it, it becomes what pasting it
+ * there makes: its words, with no placeholder.
+ */
+export const DraggingATokenPill: Story = {
+  render: () => (
+    <div className="flex flex-col gap-6">
+      <TokenEditor
+        label="Question"
+        tokens={[{ id: 'name', label: 'Name' }]}
+        initial={oneTokenLine}
+      />
+      <TokenEditor
+        label="Dropped into"
+        tokens={[{ id: 'age', label: 'Age' }]}
+        initial={plainLine}
+      />
+      <TokenEditor
+        label="Pasted into"
+        tokens={[{ id: 'age', label: 'Age' }]}
+        initial={plainLine}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+
+    const pill = (): HTMLElement => {
+      const found = editor.querySelector('[data-token="name"]');
+      if (!(found instanceof HTMLElement)) throw new Error('No pill');
+      return found;
+    };
+    await waitFor(() => expect(pill().draggable).toBe(true));
+
+    dragPill(pill(), editor);
+    await waitFor(() =>
+      expect(partsOf(canvasElement, 'Question')).toEqual([
+        'Add  parents',
+        '{name}',
+      ]),
+    );
+
+    const dropTarget = canvas.getByRole('textbox', { name: 'Dropped into' });
+    const pasteTarget = canvas.getByRole('textbox', { name: 'Pasted into' });
+    const dragged = dragPill(pill(), dropTarget);
+
+    const clipboardData = new DataTransfer();
+    clipboardData.setData('text/html', dragged.getData('text/html'));
+    clipboardData.setData('text/plain', dragged.getData('text/plain'));
+    await userEvent.click(pasteTarget);
+    const end = pasteTarget.ownerDocument.createRange();
+    end.selectNodeContents(pasteTarget);
+    end.collapse(false);
+    pasteTarget.ownerDocument.getSelection()?.removeAllRanges();
+    pasteTarget.ownerDocument.getSelection()?.addRange(end);
+    pasteTarget.dispatchEvent(
+      new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      }),
+    );
+
+    await waitFor(() => {
+      const dropped = partsOf(canvasElement, 'Dropped into');
+      expect(dropped.some((part) => part.startsWith('{'))).toBe(false);
+      expect(dropped.join('')).toContain('Name');
+      expect(dropped).toEqual(partsOf(canvasElement, 'Pasted into'));
+    });
+  },
+};
+
 /**
  * Text that is only read shows its placeholders as the same pills the editor
  * shows. `TokenizedText` takes the text as parts, each a run of words or a
@@ -869,9 +1157,11 @@ const insertMenu: RichTextInsertMenu = {
 function EditorWithValue({
   initial,
   openWholeMessageVersions = false,
+  menuFor = () => insertMenu,
 }: {
   initial: JSONContent | undefined;
   openWholeMessageVersions?: boolean;
+  menuFor?: (value: JSONContent | undefined) => RichTextInsertMenu;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -885,7 +1175,7 @@ function EditorWithValue({
         tokens={offeredTokens}
         versions
         openWholeMessageVersions={openWholeMessageVersions}
-        insertMenu={insertMenu}
+        insertMenu={menuFor(value)}
         changeMode="input"
         value={value}
         onChange={setValue}
@@ -1280,6 +1570,60 @@ export const InsertMenuWithAnUnavailableItem: Story = {
     await waitFor(() =>
       expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
     );
+  },
+};
+
+const containsToken = (content: JSONContent | undefined, id: string): boolean =>
+  content !== undefined &&
+  ((content.type === 'token' && content.attrs?.id === id) ||
+    (content.content ?? []).some((child) => containsToken(child, id)));
+
+/**
+ * An item can be `required`: the consumer says, for the version being
+ * edited, whether the text must include it and does not yet. The item is
+ * marked "Required in this text" in the menu, and the menu's button carries a
+ * dot and says that something the text requires is not in it yet. Both marks
+ * go once the item is in the text.
+ */
+export const InsertMenuWithARequiredItem: Story = {
+  render: () => (
+    <EditorWithValue
+      initial={undefined}
+      menuFor={(value) => ({
+        ...insertMenu,
+        items: insertMenu.items.map((item) =>
+          item.id === 'age'
+            ? { ...item, required: () => !containsToken(value, 'age') }
+            : item,
+        ),
+      })}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    await userEvent.click(editor);
+
+    const button = canvas.getByRole('button', { name: INSERT_LABEL });
+    await expect(button).toHaveAccessibleDescription(
+      'Something this text requires is not in it yet',
+    );
+    await userEvent.click(button);
+    const age = await body.findByRole('option', {
+      name: 'Age, Number, Required in this text',
+    });
+    await expect(age).toHaveAttribute('data-required', 'true');
+    await expect(
+      body.getByRole('option', { name: /^Name/ }),
+    ).not.toHaveAttribute('data-required');
+
+    await userEvent.click(age);
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
+    );
+    await waitFor(() => expect(button).not.toHaveAttribute('data-missing'));
+    await expect(button).not.toHaveAccessibleDescription();
   },
 };
 
