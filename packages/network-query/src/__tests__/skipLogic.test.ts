@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  createProtocolObjectId,
   type SkipLogic,
 } from '@codaco/protocol-validation';
 import {
@@ -32,7 +33,7 @@ const nonMatchingNetwork: NcNetwork = {
 const filter: SkipLogic['filter'] = {
   rules: [
     {
-      id: 'agrees-rule',
+      id: createProtocolObjectId(),
       type: 'ego',
       options: {
         attribute: asEntityAttributeReference('agrees'),
