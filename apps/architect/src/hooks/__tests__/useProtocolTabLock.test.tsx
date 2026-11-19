@@ -108,12 +108,7 @@ const editedStage: Stage = { ...stage, label: { en: 'A, edited' } };
 
 /** What the stage editor's chrome publishes while it is open and untouched. */
 const openPristineStageDraft = () => {
-  publishStageDraft(
-    stage,
-    { label: { en: 'A' } },
-    { label: { en: 'A' } },
-    true,
-  );
+  publishStageDraft({ stage, unsaved: false, editing: true });
 };
 
 const createTestStore = () =>
@@ -140,12 +135,7 @@ const makeRefresh = () =>
 // A stage editor with a real edit in it, exactly as its own chrome publishes
 // one: the document on screen, against the document it opened on.
 const openDirtyStageDraft = () => {
-  publishStageDraft(
-    editedStage,
-    { label: { en: 'A' } },
-    { label: { en: 'A, edited' } },
-    true,
-  );
+  publishStageDraft({ stage: editedStage, unsaved: true, editing: true });
 };
 
 // A nested editor — a new-variable window, an entity-type dialog, an array-row
@@ -476,12 +466,7 @@ describe('useProtocolTabLock', () => {
       fake.fireExclusivity(false);
     });
     act(() => {
-      publishStageDraft(
-        stage,
-        { label: { en: 'A' } },
-        { label: { en: 'A' } },
-        false,
-      );
+      publishStageDraft({ stage, unsaved: false, editing: false });
     });
 
     await act(async () => {
