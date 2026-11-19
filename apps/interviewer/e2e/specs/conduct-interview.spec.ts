@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
+
 import type { Page } from '@playwright/test';
+import JSZip from 'jszip';
 
 import { DB_NAME } from '../../src/lib/db/storageNames.js';
 import { expect, test } from '../fixtures/test.js';
@@ -121,6 +124,23 @@ function readStoredNodeCount(
       }),
     { id: sessionId, dbName: DB_NAME },
   );
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+// The id of the finish stage in the protocol archive the test imports, found
+// by its type: stage ids are UUIDs the fixture's build assigns.
+async function finishStageIdOf(archivePath: string): Promise<string> {
+  const zip = await JSZip.loadAsync(readFileSync(archivePath));
+  const source = await zip.file('protocol.json')?.async('string');
+  const protocol: unknown = JSON.parse(source ?? 'null');
+  const stages: unknown[] =
+    isRecord(protocol) && Array.isArray(protocol.stages) ? protocol.stages : [];
+  const finish = stages.find(
+    (stage) => isRecord(stage) && stage.type === 'FinishSession',
+  );
+  return isRecord(finish) && typeof finish.id === 'string' ? finish.id : '';
 }
 
 type StoredFinish = {
@@ -246,11 +266,13 @@ test.describe('conducting an interview', () => {
       ).toHaveCount(0);
       await expect(page).toHaveURL(new RegExp(`/interview/${sessionId}$`));
       // The finish is stored with the stage it happened at and its outcome.
+      const finishStageId = await finishStageIdOf(LEAN_E2E_PROTOCOL_PATH);
+      expect(finishStageId).not.toBe('');
       await expect
         .poll(() => readStoredFinish(page, sessionId))
         .toEqual({
           finishedAt: expect.any(String),
-          finishStageId: 'finish',
+          finishStageId,
           finishOutcome: 'completed',
         });
       await capture('interview-complete');
