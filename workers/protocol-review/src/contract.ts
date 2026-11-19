@@ -24,9 +24,6 @@ export const REVIEW_PATH = '/review';
 /** `GET` which providers can run a review now: a `ProviderStatus`. */
 export const PROVIDERS_PATH = '/providers';
 
-/** `POST` a `FeedbackRequest` about a review that was shared; answered `204`. */
-export const FEEDBACK_PATH = '/feedback';
-
 /**
  * Whose model writes the review. The researcher chooses one for each review.
  * Each has its own budget, so one running out leaves the other available.
@@ -80,16 +77,6 @@ export const REVIEW_LIMITS = {
    * is kept from a review that was not shared.
    */
   sharedReviewRetentionDays: 90,
-  /** Times one installation of Architect may send feedback in an hour. */
-  feedbackPerInstallationPerHour: 60,
-  /** Times one network address may send feedback in an hour. */
-  feedbackPerAddressPerHour: 600,
-  /** The largest feedback body the service reads, in bytes. */
-  maxFeedbackBytes: 16_000,
-  /** The most problems one review's feedback may speak of. */
-  maxFeedbackFindings: 50,
-  /** The longest comment on a review, in characters. */
-  maxFeedbackCommentLength: 2_000,
 } as const;
 
 export const ReviewRequestSchema = z.strictObject({
@@ -314,115 +301,3 @@ export const ReviewEventSchema = z.discriminatedUnion('type', [
 ]);
 
 export type ReviewEvent = z.infer<typeof ReviewEventSchema>;
-
-/**
- * What became of a problem, as far as the researcher's protocol shows:
- *
- * - `undecided`: nothing yet;
- * - `fixed`: Architect made the suggested fix, as it was written;
- * - `fixed_edited`: Architect made it after the researcher changed its text
- *   or numbers;
- * - `mine`: the researcher kept it to fix themselves;
- * - `done`: the researcher fixed it themselves;
- * - `dismissed`: the researcher put it away.
- */
-export const FEEDBACK_OUTCOMES = [
-  'undecided',
-  'fixed',
-  'fixed_edited',
-  'mine',
-  'done',
-  'dismissed',
-] as const;
-
-export type FeedbackOutcome = (typeof FEEDBACK_OUTCOMES)[number];
-
-/** Whether the researcher found a problem worth being told about. */
-export const FEEDBACK_RATINGS = ['useful', 'not_useful'] as const;
-
-export type FeedbackRating = (typeof FEEDBACK_RATINGS)[number];
-
-/** Why a problem was not useful, when the researcher said. */
-export const FEEDBACK_REASONS = [
-  'wrong',
-  'not_relevant',
-  'fix_would_not_work',
-] as const;
-
-export type FeedbackReason = (typeof FEEDBACK_REASONS)[number];
-
-export const FindingFeedbackSchema = z.strictObject({
-  /** The finding's `id` in the review. */
-  id: z.string().min(1).max(64),
-  outcome: z.enum(FEEDBACK_OUTCOMES),
-  /** Null until the researcher rates the problem. */
-  rating: z.enum(FEEDBACK_RATINGS).nullable(),
-  /** Only ever with `not_useful`, and null unless the researcher gave one. */
-  reason: z.enum(FEEDBACK_REASONS).nullable(),
-});
-
-export type FindingFeedback = z.infer<typeof FindingFeedbackSchema>;
-
-/**
- * How one shared review was received, as it stands when sent. Architect sends
- * the whole of it each time something in it changes, and the service keeps
- * the latest in place of the one before.
- *
- * The service keeps feedback only for a review it holds a shared copy of, and
- * only until that copy expires.
- */
-export const FeedbackRequestSchema = z
-  .strictObject({
-    /** As in `ReviewRequest`: counted against the hourly limit, never kept. */
-    installationId: z.uuid(),
-    /** The `reviewId` the review's result carried. */
-    reviewId: z.uuid(),
-    findings: z
-      .array(FindingFeedbackSchema)
-      .max(REVIEW_LIMITS.maxFeedbackFindings),
-    /** What the researcher wrote about the review as a whole; null when nothing. */
-    comment: z
-      .string()
-      .min(1)
-      .max(REVIEW_LIMITS.maxFeedbackCommentLength)
-      .nullable(),
-  })
-  .refine(
-    ({ findings }) =>
-      findings.every(
-        ({ rating, reason }) => reason === null || rating === 'not_useful',
-      ),
-    { error: 'A reason is given only for a problem that was not useful.' },
-  );
-
-export type FeedbackRequest = z.infer<typeof FeedbackRequestSchema>;
-
-/**
- * Why feedback was not kept, as a fixed code.
- *
- * | code                  | status | meaning                                                    |
- * | --------------------- | ------ | ---------------------------------------------------------- |
- * | `forbidden_origin`    | 403    | The request did not come from Architect.                   |
- * | `invalid_request`     | 400    | The body is not a `FeedbackRequest`.                       |
- * | `too_large`           | 413    | The body is over `REVIEW_LIMITS.maxFeedbackBytes`.         |
- * | `hourly_limit`        | 429    | This installation or address has sent too often; `retryAt`. |
- * | `unknown_review`      | 404    | The service holds no shared copy of that review.           |
- * | `service_unavailable` | 503    | The feedback could not be kept.                            |
- */
-export const FEEDBACK_ERROR_CODES = [
-  'forbidden_origin',
-  'invalid_request',
-  'too_large',
-  'hourly_limit',
-  'unknown_review',
-  'service_unavailable',
-] as const;
-
-export type FeedbackErrorCode = (typeof FEEDBACK_ERROR_CODES)[number];
-
-/** The JSON body of every answer to feedback that was not kept. */
-export const FeedbackErrorSchema = z.strictObject({
-  error: z.enum(FEEDBACK_ERROR_CODES),
-  /** When trying again can succeed (ISO 8601); null when nobody can say. */
-  retryAt: z.iso.datetime().nullable(),
-});

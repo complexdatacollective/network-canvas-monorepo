@@ -4,13 +4,10 @@ import { createAnthropicModel } from './anthropic-model.ts';
 import { LIMITER_INSTANCE_NAME } from './constants.ts';
 import type { ProviderAvailability } from './contract.ts';
 import {
-  type AdmitFeedbackRequest,
-  type AdmitFeedbackResult,
   type AdmitRequest,
   type AdmitResult,
   type AvailabilityRequest,
   admit,
-  admitFeedback,
   availability,
   type LimiterStore,
   type SettleRequest,
@@ -54,10 +51,6 @@ export class ReviewLimiter extends DurableObject<Env> {
     return admit(this.store, request);
   }
 
-  admitFeedback(request: AdmitFeedbackRequest): AdmitFeedbackResult {
-    return admitFeedback(this.store, request);
-  }
-
   settle(request: SettleRequest): void {
     settle(this.store, request);
   }
@@ -82,8 +75,6 @@ export default {
         availability: async (availabilityRequest) =>
           limiter.availability(availabilityRequest),
         admit: async (admitRequest) => limiter.admit(admitRequest),
-        admitFeedback: async (admitRequest) =>
-          limiter.admitFeedback(admitRequest),
         settle: async (settleRequest) => {
           await limiter.settle(settleRequest);
         },
@@ -95,16 +86,6 @@ export default {
       sharedReviews: {
         put: async (key, value, options) => {
           await env.SHARED_REVIEWS.put(key, value, options);
-        },
-        // A listing carries each key's expiry and none of its value, so a
-        // review is never read to learn when it expires.
-        expiration: async (key) => {
-          const listed = await env.SHARED_REVIEWS.list({
-            prefix: key,
-            limit: 1,
-          });
-          const entry = listed.keys.find(({ name }) => name === key);
-          return entry?.expiration ?? null;
         },
       },
       notify: createPostHogNotifier((input, init) => fetch(input, init)),

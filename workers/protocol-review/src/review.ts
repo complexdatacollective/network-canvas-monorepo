@@ -6,7 +6,6 @@ import {
   PROVIDER_MODELS,
 } from './constants.ts';
 import {
-  FEEDBACK_PATH,
   type ProviderAvailability,
   PROVIDERS_PATH,
   type ProviderStatus,
@@ -19,11 +18,8 @@ import {
   ReviewRequestSchema,
 } from './contract.ts';
 import { allowedOrigin, corsHeaders, preflightHeaders } from './cors.ts';
-import { feedback, sharedReviewKey } from './feedback.ts';
 import { normaliseFindings, REVIEW_OUTPUT_SCHEMA } from './findings.ts';
 import type {
-  AdmitFeedbackRequest,
-  AdmitFeedbackResult,
   AdmitRequest,
   AdmitResult,
   AvailabilityRequest,
@@ -49,27 +45,15 @@ type ReviewLimiter = {
     request: AvailabilityRequest,
   ) => Promise<ProviderAvailability[]>;
   admit: (request: AdmitRequest) => Promise<AdmitResult>;
-  admitFeedback: (
-    request: AdmitFeedbackRequest,
-  ) => Promise<AdmitFeedbackResult>;
   settle: (request: SettleRequest) => Promise<void>;
 };
 
 type SharedReviewStore = {
-  /**
-   * Keeps `value` for `expirationTtl` seconds from now, or until
-   * `expiration`, in seconds since the epoch.
-   */
   put: (
     key: string,
     value: string,
-    options: { expirationTtl: number } | { expiration: number },
+    options: { expirationTtl: number },
   ) => Promise<void>;
-  /**
-   * When what is kept under `key` expires, in seconds since the epoch; null
-   * when nothing is kept there.
-   */
-  expiration: (key: string) => Promise<number | null>;
 };
 
 export type ReviewDependencies = {
@@ -148,11 +132,7 @@ export const handleRequest = async (
   const cors = corsHeaders(origin);
 
   const { pathname } = new URL(request.url);
-  if (
-    pathname !== REVIEW_PATH &&
-    pathname !== PROVIDERS_PATH &&
-    pathname !== FEEDBACK_PATH
-  ) {
+  if (pathname !== REVIEW_PATH && pathname !== PROVIDERS_PATH) {
     return new Response(null, { status: 404, headers: cors });
   }
   if (request.method === 'OPTIONS') {
@@ -176,7 +156,6 @@ export const handleRequest = async (
       headers: { ...cors, Allow: 'POST, OPTIONS' },
     });
   }
-  if (pathname === FEEDBACK_PATH) return feedback(request, cors, deps);
 
   const body = await readBodyWithLimit(request, REVIEW_LIMITS.maxRequestBytes);
   if (!body.ok) {
@@ -500,7 +479,7 @@ const share = async (
 ): Promise<void> => {
   try {
     await deps.sharedReviews.put(
-      sharedReviewKey(reviewId),
+      `review:${reviewId}`,
       JSON.stringify({
         receivedAt: new Date(receivedAt).toISOString(),
         provider: request.provider,
