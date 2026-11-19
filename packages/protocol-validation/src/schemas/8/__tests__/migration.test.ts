@@ -2813,7 +2813,7 @@ describe('Migration V7 to V8', () => {
       const stage = parsed.stages[0];
       expect(stage && 'prompts' in stage && stage.prompts[0]).toHaveProperty(
         'additionalAttributes',
-        [{ variable: 'closeFriend', value: true }],
+        [{ id: expect.any(String), variable: 'closeFriend', value: true }],
       );
     });
   });
@@ -6568,7 +6568,10 @@ describe('Migration V7 to V8', () => {
       // just before its stage, which moves the stage on.
       const { id } = (protocol as Protocol<7>).stages[1] ?? {};
       const stage = parsed.data?.stages.find((s) => s.id === id);
-      return stage && 'form' in stage ? stage.form?.fields : undefined;
+      // The schema 9 migration mints each field's id.
+      return stage && 'form' in stage
+        ? stage.form?.fields.map(({ id: _id, ...field }) => field)
+        : undefined;
     };
 
     it('migrates the real protocol to a valid V8 document', () => {
@@ -6584,14 +6587,14 @@ describe('Migration V7 to V8', () => {
         migrateAndParse(alterFormTestProtocol())?.filter(
           (field) => field.variable === NAME,
         ),
-      ).toEqual([{ id: 'field-1', variable: NAME, prompt: en('sdfsdf') }]);
+      ).toEqual([{ variable: NAME, prompt: en('sdfsdf') }]);
     });
 
     it('leaves every other field untouched and in order', () => {
       expect(migrateAndParse(alterFormTestProtocol())).toEqual([
-        { id: 'field-1', variable: NAME, prompt: en('sdfsdf') },
-        { id: 'field-2', variable: SCALE, prompt: en('sadasd') },
-        { id: 'field-3', variable: CATEGORICAL, prompt: en('asd') },
+        { variable: NAME, prompt: en('sdfsdf') },
+        { variable: SCALE, prompt: en('sadasd') },
+        { variable: CATEGORICAL, prompt: en('asd') },
       ]);
     });
 
@@ -6604,8 +6607,8 @@ describe('Migration V7 to V8', () => {
         { variable: NAME, prompt: 'third\n' },
       ];
       expect(migrateAndParse(protocol)).toEqual([
-        { id: 'field-1', variable: NAME, prompt: en('first') },
-        { id: 'field-2', variable: SCALE, prompt: en('sadasd') },
+        { variable: NAME, prompt: en('first') },
+        { variable: SCALE, prompt: en('sadasd') },
       ]);
     });
 
@@ -6632,8 +6635,8 @@ describe('Migration V7 to V8', () => {
         id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
       } as unknown as (typeof protocol.stages)[1];
       expect(migrateAndParse(protocol)).toEqual([
-        { id: 'field-1', variable: NAME, prompt: en('Their name?') },
-        { id: 'field-2', variable: SCALE, prompt: en('How close?') },
+        { variable: NAME, prompt: en('Their name?') },
+        { variable: SCALE, prompt: en('How close?') },
       ]);
     });
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { interfaceTextFor } from '../../../__tests__/suppliedWording.ts';
+import { testId, withTestIds } from '../../../__tests__/testIds.ts';
 import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
@@ -20,9 +21,14 @@ import { completeProtocol } from './complete-localized-protocol.ts';
 type Protocol = ReturnType<typeof completeProtocol>;
 type Stage = Record<string, unknown>;
 
+// A stage by the readable id the fixture gives it, before or after
+// `withTestIds` makes that id a UUID.
+const isStage = (stage: Stage, id: string) =>
+  stage.id === id || stage.id === testId(id);
+
 const stageIn = (protocol: Protocol, id: string): Stage => {
-  const stage = (protocol.stages as Stage[]).find(
-    (candidate) => candidate.id === id,
+  const stage = (protocol.stages as Stage[]).find((candidate) =>
+    isStage(candidate, id),
   );
   if (stage === undefined) throw new Error(`No stage "${id}"`);
   return stage;
@@ -32,7 +38,7 @@ const stageIn = (protocol: Protocol, id: string): Stage => {
 const editing = (id: string, edit: (stage: Stage) => void) => {
   const protocol = completeProtocol();
   edit(stageIn(protocol, id));
-  return protocol;
+  return withTestIds(protocol);
 };
 
 const issuesOf = (protocol: unknown) => {
@@ -46,14 +52,14 @@ const issuesOf = (protocol: unknown) => {
 };
 
 const stageIndex = (protocol: Protocol, id: string) =>
-  (protocol.stages as Stage[]).findIndex((stage) => stage.id === id);
+  (protocol.stages as Stage[]).findIndex((stage) => isStage(stage, id));
 
 const guarded = (name: string) =>
   `{${name}, select, missing {Tell us about them.} other {Tell us about {${name}}.}}`;
 
 describe('dynamic values in stage text', () => {
   it('accepts the complete protocol, which binds nothing', () => {
-    expect(issuesOf(completeProtocol())).toEqual([]);
+    expect(issuesOf(withTestIds(completeProtocol()))).toEqual([]);
   });
 
   it('accepts an ego value guarded by a missing version on an Information screen', () => {

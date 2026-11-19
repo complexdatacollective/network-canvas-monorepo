@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { testId } from '../../../__tests__/testIds.ts';
 import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
@@ -125,7 +126,7 @@ describe('a fallback language a protocol needs and does not name', () => {
     localization,
     stages: [
       createDefaultFinishSessionStage({
-        id: 'end',
+        id: testId('end'),
         localization: { ...localization, locales: [...localization.locales] },
       }),
     ],

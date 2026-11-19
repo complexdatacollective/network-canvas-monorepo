@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { assetSchema } from '../assets/index.ts';
 import { CodebookSchema } from '../codebook/codebook.ts';
@@ -22,7 +23,7 @@ import { sociogramStage } from '../stages/sociogram.ts';
 
 describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
   const baseStage = {
-    id: 'soc1',
+    id: testId('soc1'),
     label: localized('Sociogram'),
     type: 'Sociogram' as const,
     subject: { entity: 'node' as const, type: 'person' },
@@ -34,7 +35,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Connect'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
@@ -49,7 +50,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Highlight'),
           layout: { layoutVariable: 'pos' },
           highlight: { allowHighlighting: true, variable: 'isClose' },
@@ -64,7 +65,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Both'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
@@ -86,7 +87,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Create only'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
@@ -102,7 +103,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Highlight'),
           layout: { layoutVariable: 'pos' },
           highlight: { allowHighlighting: true },
@@ -123,7 +124,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Edges'),
           layout: { layoutVariable: 'pos' },
           edges: {},
@@ -144,7 +145,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Edges'),
           layout: { layoutVariable: 'pos' },
           edges: { display: [] },
@@ -162,14 +163,14 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
 
   it('rejects a background with an empty-string image', () => {
     const result = sociogramStage.safeParse({
-      id: 'soc1',
+      id: testId('soc1'),
       label: localized('Sociogram'),
       type: 'Sociogram' as const,
       subject: { entity: 'node' as const, type: 'person' },
       background: { image: '' },
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Position'),
           layout: { layoutVariable: 'pos' },
         },
@@ -183,12 +184,14 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
 
 describe('Geospatial targetFeatureProperty (#674)', () => {
   const baseStage = {
-    id: 'geo1',
+    id: testId('geo1'),
     label: localized('Geospatial'),
     type: 'Geospatial' as const,
     outsideAreasLabel: localized('Outside Selectable Areas'),
     subject: { entity: 'node' as const, type: 'person' },
-    prompts: [{ id: 'p1', text: localized('Pick a place'), variable: 'home' }],
+    prompts: [
+      { id: testId('p1'), text: localized('Pick a place'), variable: 'home' },
+    ],
   };
 
   const baseMapOptions = {
@@ -243,7 +246,7 @@ describe('apikey asset value (#674)', () => {
 
 describe('Information size and items (#676)', () => {
   const baseStage = {
-    id: 'info1',
+    id: testId('info1'),
     label: localized('Information'),
     type: 'Information' as const,
     title: localized('Information'),
@@ -252,7 +255,9 @@ describe('Information size and items (#676)', () => {
   it('accepts an asset item with an uppercase size enum value', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'asset', content: 'img-1', size: 'LARGE' }],
+      items: [
+        { id: testId('i1'), type: 'asset', content: 'img-1', size: 'LARGE' },
+      ],
     });
     expect(result.success).toBe(true);
   });
@@ -260,7 +265,9 @@ describe('Information size and items (#676)', () => {
   it('rejects a lowercase size value', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'asset', content: 'img-1', size: 'large' }],
+      items: [
+        { id: testId('i1'), type: 'asset', content: 'img-1', size: 'large' },
+      ],
     });
     expect(parseIssues(result)).toEqual([
       { path: 'items.0.size', code: 'invalid_value' },
@@ -270,7 +277,9 @@ describe('Information size and items (#676)', () => {
   it('rejects an unsupported size value', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'asset', content: 'img-1', size: 'XL' }],
+      items: [
+        { id: testId('i1'), type: 'asset', content: 'img-1', size: 'XL' },
+      ],
     });
     expect(parseIssues(result)).toEqual([
       { path: 'items.0.size', code: 'invalid_value' },
@@ -282,7 +291,7 @@ describe('Information size and items (#676)', () => {
       ...baseStage,
       items: [
         {
-          id: 'i1',
+          id: testId('i1'),
           type: 'text',
           content: localized('Some text'),
           size: 'SMALL',
@@ -297,14 +306,16 @@ describe('Information size and items (#676)', () => {
   it('accepts a text item with no size', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'text', content: localized('Some text') }],
+      items: [
+        { id: testId('i1'), type: 'text', content: localized('Some text') },
+      ],
     });
     expect(result.success).toBe(true);
   });
 
   it('accepts an Information stage with many items (no upper bound)', () => {
     const items = Array.from({ length: 50 }, (_, i) => ({
-      id: `i${i}`,
+      id: testId(`i${i}`),
       type: 'text' as const,
       content: localized(`Paragraph ${i}`),
     }));
@@ -315,7 +326,7 @@ describe('Information size and items (#676)', () => {
 
 describe('Information item content non-empty', () => {
   const baseStage = {
-    id: 'info1',
+    id: testId('info1'),
     label: localized('Information'),
     type: 'Information' as const,
     title: localized('Information'),
@@ -324,7 +335,7 @@ describe('Information item content non-empty', () => {
   it('rejects a text item with empty content', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'text', content: localized('') }],
+      items: [{ id: testId('i1'), type: 'text', content: localized('') }],
     });
     expect(parseIssues(result)).toEqual([
       { path: 'items.0.content.en', code: 'too_small' },
@@ -334,7 +345,7 @@ describe('Information item content non-empty', () => {
   it('rejects an asset item with empty content', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'asset', content: '' }],
+      items: [{ id: testId('i1'), type: 'asset', content: '' }],
     });
     expect(parseIssues(result)).toEqual([
       { path: 'items.0.content', code: 'too_small' },
@@ -345,8 +356,8 @@ describe('Information item content non-empty', () => {
     const result = informationStage.safeParse({
       ...baseStage,
       items: [
-        { id: 'i1', type: 'text', content: localized('Some text') },
-        { id: 'i2', type: 'asset', content: 'img-1' },
+        { id: testId('i1'), type: 'text', content: localized('Some text') },
+        { id: testId('i2'), type: 'asset', content: 'img-1' },
       ],
     });
     expect(result.success).toBe(true);
@@ -355,7 +366,7 @@ describe('Information item content non-empty', () => {
 
 describe('Anonymisation explanationText non-empty', () => {
   const baseStage = {
-    id: 'anon1',
+    id: testId('anon1'),
     label: localized('Anonymisation'),
     type: 'Anonymisation' as const,
     explanationText: localized(
@@ -399,7 +410,7 @@ describe('Anonymisation explanationText non-empty', () => {
 
 describe('Narrative preset label non-empty', () => {
   const baseStage = {
-    id: 'narr1',
+    id: testId('narr1'),
     label: localized('Narrative'),
     type: 'Narrative' as const,
     subject: { entity: 'node' as const, type: 'person' },
@@ -410,7 +421,11 @@ describe('Narrative preset label non-empty', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
       presets: [
-        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+        {
+          id: testId('preset1'),
+          label: localized('Overview'),
+          layoutVariable: 'pos',
+        },
       ],
     });
     expect(result.success).toBe(true);
@@ -419,7 +434,9 @@ describe('Narrative preset label non-empty', () => {
   it('rejects a preset with an empty label', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
-      presets: [{ id: 'preset1', label: localized(''), layoutVariable: 'pos' }],
+      presets: [
+        { id: testId('preset1'), label: localized(''), layoutVariable: 'pos' },
+      ],
     });
     expect(parseIssues(result)).toEqual([
       { path: 'presets.0.label.en', code: 'too_small' },
@@ -431,7 +448,11 @@ describe('Narrative preset label non-empty', () => {
       ...baseStage,
       background: { image: 'background-image' },
       presets: [
-        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+        {
+          id: testId('preset1'),
+          label: localized('Overview'),
+          layoutVariable: 'pos',
+        },
       ],
     });
     expect(result.success).toBe(true);
@@ -442,7 +463,11 @@ describe('Narrative preset label non-empty', () => {
       ...baseStage,
       background: { image: 'background-image', concentricCircles: 4 },
       presets: [
-        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+        {
+          id: testId('preset1'),
+          label: localized('Overview'),
+          layoutVariable: 'pos',
+        },
       ],
     });
     expect(parseIssues(result)).toEqual([
@@ -458,7 +483,7 @@ describe('Narrative preset label non-empty', () => {
 
 describe('Side panel title and dataSource non-empty', () => {
   const basePanel = {
-    id: 'panel1',
+    id: testId('panel1'),
     dataSource: 'existing' as const,
     title: localized('Previous alters'),
   };
@@ -499,7 +524,7 @@ describe('Side panel title and dataSource non-empty', () => {
 
 describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
   const baseStage = {
-    id: 'ngr1',
+    id: testId('ngr1'),
     label: localized('Roster'),
     type: 'NameGeneratorRoster' as const,
     allAddedNotice: localized('There is nothing left to add from this list.'),
@@ -507,7 +532,7 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
     subject: { entity: 'node' as const, type: 'person' },
     dataSource: 'roster-asset',
     panelTitle: localized('Available to add'),
-    prompts: [{ id: 'p1', text: localized('Pick someone') }],
+    prompts: [{ id: testId('p1'), text: localized('Pick someone') }],
   };
 
   it('accepts a non-empty dataSource', () => {
@@ -668,7 +693,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
 describe('Empty-rules filter (#669)', () => {
   const rule = {
     type: 'node' as const,
-    id: 'r1',
+    id: testId('r1'),
     options: {
       type: 'person',
       attribute: 'age',
@@ -685,7 +710,7 @@ describe('Empty-rules filter (#669)', () => {
   it('accepts a multiple-rule filter with two rules', () => {
     const result = FilterSchema.safeParse({
       join: 'AND',
-      rules: [rule, { ...rule, id: 'r2' }],
+      rules: [rule, { ...rule, id: testId('r2') }],
     });
     expect(result.success).toBe(true);
   });

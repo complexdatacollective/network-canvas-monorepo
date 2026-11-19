@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { escapeMessageText } from '../../../localization/messageSyntax.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { VersionedProtocolSchema } from '../../index.ts';
@@ -316,7 +317,7 @@ describe('line breaks', () => {
 
 describe('Information stage title', () => {
   const stage = (title: unknown) => ({
-    id: 'welcome',
+    id: testId('welcome'),
     type: 'Information',
     label: { en: 'Welcome' },
     title,
@@ -351,7 +352,7 @@ describe('Information stage title', () => {
         ...stage({ en: 'Information', fr: 'Informa-\ntions' }),
         items: [
           {
-            id: 'item',
+            id: testId('item'),
             type: 'text',
             content: {
               en: '## Welcome\n\nHello',

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import {
   createBaseProtocol,
   localized,
@@ -25,6 +26,27 @@ import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
 } from './pedigreeGenderFixtures.ts';
+
+type ParseResult = {
+  readonly error?: {
+    readonly issues: readonly {
+      readonly path: readonly PropertyKey[];
+      readonly params?: unknown;
+    }[];
+  };
+};
+
+/** The paths at which a parse refused `id` as used more than once. */
+const duplicateIdPaths = (result: ParseResult, id: string) =>
+  (result.error?.issues ?? [])
+    .filter(
+      ({ params }) =>
+        typeof params === 'object' &&
+        params !== null &&
+        Reflect.get(params, 'rule') === 'duplicateObjectId' &&
+        Reflect.get(params, 'id') === id,
+    )
+    .map(({ path }) => path);
 
 /**
  * Comprehensive tests for Protocol Schema V8 superrefine validation behavior
@@ -431,13 +453,26 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
   describe('Duplicate ID Validation', () => {
     it('rejects protocols with duplicate stage IDs', () => {
+      const [stage] = baseValidProtocol.stages;
+      if (stage?.form === undefined) throw new Error('No form stage');
       const protocolWithDuplicateStageIds = {
         ...baseValidProtocol,
         stages: [
-          baseValidProtocol.stages[0],
+          stage,
           {
-            ...baseValidProtocol.stages[0],
-            label: localized('Duplicate Stage'), // Different label, same ID
+            ...stage,
+            label: localized('Duplicate Stage'),
+            form: {
+              ...stage.form,
+              fields: stage.form.fields.map((field) => ({
+                ...field,
+                id: testId('copy-field'),
+              })),
+            },
+            prompts: stage.prompts.map((prompt) => ({
+              ...prompt,
+              id: testId('copy-prompt'),
+            })),
           },
         ],
       };
@@ -446,13 +481,14 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         withFinishStage(protocolWithDuplicateStageIds),
       );
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues).toHaveLength(1);
-        expect(result.error.issues[0]?.message).toBe(
-          'Stages contain duplicate ID "nameGenerator1"',
-        );
-        expect(result.error.issues[0]?.path).toEqual(['stages']);
-      }
+      expect(result.error?.issues).toHaveLength(2);
+      expect(duplicateIdPaths(result, stage.id)).toEqual([
+        ['stages', 0, 'id'],
+        ['stages', 1, 'id'],
+      ]);
+      expect(result.error?.issues[0]?.message).toBe(
+        `The id "${stage.id}" is also used at stages.1.id. Every id in a protocol must be unique.`,
+      );
     });
 
     it('rejects protocols with duplicate prompt IDs within a stage', () => {
@@ -462,8 +498,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             ...baseValidProtocol.stages[0],
             prompts: [
-              { id: 'prompt1', text: localized('First prompt') },
-              { id: 'prompt1', text: localized('Duplicate ID prompt') },
+              { id: testId('prompt1'), text: localized('First prompt') },
+              { id: testId('prompt1'), text: localized('Duplicate ID prompt') },
             ],
           },
         ],
@@ -473,12 +509,10 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         withFinishStage(protocolWithDuplicatePromptIds),
       );
       expect(result.success).toBe(false);
-      if (!result.success) {
-        const duplicateError = result.error.issues.find((issue) =>
-          issue.message.includes('Prompts contain duplicate ID "prompt1"'),
-        );
-        expect(duplicateError).toBeDefined();
-      }
+      expect(duplicateIdPaths(result, testId('prompt1'))).toEqual([
+        ['stages', 0, 'prompts', 0, 'id'],
+        ['stages', 0, 'prompts', 1, 'id'],
+      ]);
     });
   });
 
@@ -1133,7 +1167,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       'rejects additionalAttributes that target %s attribute',
       (_label, variable) => {
         const result = ProtocolSchemaV9.safeParse(
-          nameGeneratorWith([{ variable, value: true }]),
+          withFinishStage(nameGeneratorWith([{ variable, value: true }])),
         );
         expect(result.success).toBe(false);
         if (!result.success) {
@@ -1438,13 +1472,10 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         withFinishStage(invalidProtocol),
       );
       expect(result.success).toBe(false);
-      if (!result.success) {
-        const duplicateError = result.error.issues.find((issue) =>
-          issue.message.includes('Rules contain duplicate ID "duplicateId"'),
-        );
-        expect(duplicateError).toBeDefined();
-        expect(duplicateError?.path).toEqual(['stages', 0, 'filter', 'rules']);
-      }
+      expect(duplicateIdPaths(result, testId('duplicateId'))).toEqual([
+        ['stages', 0, 'filter', 'rules', 0, 'id'],
+        ['stages', 0, 'filter', 'rules', 1, 'id'],
+      ]);
     });
 
     it('validates ego filter rules without entity type in skipLogic', () => {
@@ -2031,21 +2062,10 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         withFinishStage(invalidProtocol),
       );
       expect(result.success).toBe(false);
-      if (!result.success) {
-        const duplicateNestedError = result.error.issues.find((issue) =>
-          issue.message.includes(
-            'Rules contain duplicate ID "duplicateNestedId"',
-          ),
-        );
-        expect(duplicateNestedError).toBeDefined();
-        expect(duplicateNestedError?.path).toEqual([
-          'stages',
-          0,
-          'skipLogic',
-          'filter',
-          'rules',
-        ]);
-      }
+      expect(duplicateIdPaths(result, testId('duplicateNestedId'))).toEqual([
+        ['stages', 0, 'skipLogic', 'filter', 'rules', 0, 'id'],
+        ['stages', 0, 'skipLogic', 'filter', 'rules', 1, 'id'],
+      ]);
     });
   });
 

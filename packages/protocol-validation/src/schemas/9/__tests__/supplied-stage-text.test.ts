@@ -8,6 +8,7 @@ import {
   suppliedStageText,
   withoutSuppliedWording,
 } from '../../../__tests__/suppliedWording.ts';
+import { withTestIds } from '../../../__tests__/testIds.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import {
@@ -18,6 +19,8 @@ import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 const english = { defaultLocale: 'en', locales: ['en'] };
+
+const validProtocol = () => withTestIds(completeProtocol());
 
 /** The roster's panel title, of the settings the roster is supplied. */
 const panelTitleOnly = (text: { path: readonly string[] }) =>
@@ -84,7 +87,7 @@ describe('migrating a roster stage to schema 9', () => {
   // Schema 8 had no heading to hold. None is written in: the interview shows
   // Network Canvas's for a roster that does not hold one.
   it('writes no heading into a schema 8 roster', () => {
-    const document = asSchema8Protocol(completeProtocol());
+    const document = asSchema8Protocol(validProtocol());
     delete rosterOf(document)!.panelTitle;
     const migrated = migrateProtocol(document, 9);
     expect(rosterOf(migrated)).not.toHaveProperty('panelTitle');
@@ -98,7 +101,7 @@ describe('migrating a roster stage to schema 9', () => {
   // the stage holds. The tool that next stores the protocol removes a copy.
   it('writes no heading on a roster already in schema 9 form, and keeps the one it holds', () => {
     const document = {
-      ...completeProtocol(),
+      ...validProtocol(),
       schemaVersion: 8,
       localization: { defaultLocale: 'en', locales: ['en', 'de'] },
     };
@@ -277,7 +280,7 @@ describe('a stage as a protocol stores it', () => {
 
   it('undoes what an editor filled in, for every stage of a protocol', () => {
     const localization = { defaultLocale: 'en', locales: ['en', 'es', 'hu'] };
-    for (const stage of completeProtocol().stages) {
+    for (const stage of validProtocol().stages) {
       const stored = stageWithoutSuppliedText(stage);
       const edited = stageWithSuppliedText(stored, localization);
       expect(stageWithoutSuppliedText(edited), stage.type).toEqual(stored);
@@ -576,7 +579,7 @@ describe('a stage that omits the wording Network Canvas supplies', () => {
     return copy;
   };
 
-  const stages = completeProtocol().stages;
+  const stages = validProtocol().stages;
   const heldAt = (document: unknown, path: readonly string[]) =>
     path.reduce<unknown>(
       (current, key) =>
@@ -592,7 +595,7 @@ describe('a stage that omits the wording Network Canvas supplies', () => {
   ];
 
   it('starts from a protocol that is valid with all of it held', () => {
-    expect(ProtocolSchemaV9.safeParse(completeProtocol()).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(validProtocol()).success).toBe(true);
   });
 
   // The whole protocol is validated once for each setting, which for the
@@ -620,7 +623,7 @@ describe('a stage that omits the wording Network Canvas supplies', () => {
             `the fixture's ${key}`,
           ).toBe(true);
           const result = ProtocolSchemaV9.safeParse(
-            without(completeProtocol(), ['stages', index, ...path]),
+            without(validProtocol(), ['stages', index, ...path]),
           );
           expect(
             result.success,
@@ -632,7 +635,7 @@ describe('a stage that omits the wording Network Canvas supplies', () => {
   );
 
   it('is accepted when it omits all of it at once', () => {
-    let protocol: unknown = completeProtocol();
+    let protocol: unknown = validProtocol();
     stages.forEach((stage, index) => {
       for (const path of suppliedStageSettingPaths(stage.type)) {
         protocol = without(protocol, ['stages', index, ...path]);
@@ -643,7 +646,7 @@ describe('a stage that omits the wording Network Canvas supplies', () => {
   });
 
   it('is accepted by a protocol with no interface text at all', () => {
-    const { interfaceText: _held, ...protocol } = completeProtocol();
+    const { interfaceText: _held, ...protocol } = validProtocol();
     expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
   });
 });

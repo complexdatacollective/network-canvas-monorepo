@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { testId } from '../../../__tests__/testIds.ts';
+import { DUPLICATE_OBJECT_ID } from '../../../utils/protocolObjectIds.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { FormFieldSchema } from '../common/forms.ts';
 import {
   ComposerFormFieldSchema,
-  ComposerFormSchema,
+  networkComposerStage,
 } from '../stages/network-composer.ts';
 
 /**
@@ -16,7 +18,7 @@ import {
 describe('form field id retention', () => {
   it('FormFieldSchema accepts a stable id', () => {
     const result = FormFieldSchema.safeParse({
-      id: 'a-stable-uuid',
+      id: testId('a-stable-uuid'),
       variable: 'personName',
       prompt: localized('What is their name?'),
     });
@@ -33,7 +35,7 @@ describe('form field id retention', () => {
 
   it('ComposerFormFieldSchema accepts a stable id', () => {
     const result = ComposerFormFieldSchema.safeParse({
-      id: 'a-stable-uuid',
+      id: testId('a-stable-uuid'),
       variable: 'personName',
       label: localized('Name?'),
       component: 'Text',
@@ -55,22 +57,40 @@ describe('form field id retention', () => {
     ).toBe(false);
   });
 
-  it('ComposerFormSchema refuses two fields with one id', () => {
+  it('a Network Composer stage refuses two node form fields with one id', () => {
     const field = (id: string, variable: string) => ({
       id,
       variable,
       label: localized('Label'),
       component: 'Text',
     });
-    const result = ComposerFormSchema.safeParse({
-      fields: [field('same', 'a'), field('other', 'b'), field('same', 'c')],
+    const result = networkComposerStage.safeParse({
+      id: testId('nc1'),
+      label: localized('Build the network'),
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      layoutVariable: 'layoutPosition',
+      background: { concentricCircles: 4 },
+      nodeForm: {
+        fields: [
+          field(testId('same'), 'a'),
+          field(testId('other'), 'b'),
+          field(testId('same'), 'c'),
+        ],
+      },
     });
 
     expect(result.success).toBe(false);
-    expect(result.error?.issues.map(({ path }) => path)).toContainEqual([
-      'fields',
-      2,
-      'id',
+    const duplicatePaths = result.error?.issues
+      .filter(
+        (issue) =>
+          issue.code === 'custom' && issue.params?.rule === DUPLICATE_OBJECT_ID,
+      )
+      .map(({ path }) => path);
+    expect(duplicatePaths).toEqual([
+      ['nodeForm', 'fields', 0, 'id'],
+      ['nodeForm', 'fields', 2, 'id'],
     ]);
   });
 });

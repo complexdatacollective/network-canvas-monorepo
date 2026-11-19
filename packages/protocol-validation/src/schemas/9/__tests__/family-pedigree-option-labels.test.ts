@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { withTestIds } from '../../../__tests__/testIds.ts';
 import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
 import {
   SUPPLIED_PEDIGREE_OPTION_LABELS,
@@ -267,7 +268,7 @@ describe('supplied Family Pedigree option labels', () => {
 
 describe('a Family Pedigree answer label', () => {
   const withSexLabel = (label: Record<string, string>) => {
-    const protocol = completeProtocol();
+    const protocol = withTestIds(completeProtocol());
     const sex = protocol.codebook.node.relative.variables.sex;
     return {
       ...protocol,

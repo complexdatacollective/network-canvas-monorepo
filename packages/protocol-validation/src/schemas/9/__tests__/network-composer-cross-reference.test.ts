@@ -32,7 +32,7 @@ const baseStage = {
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: 'edge-field-1',
             // `closeness` is an ordinal variable, so its control must be one
             // ordinal can render (thirteenth-wave Finding 3); this fixture
             // previously paired it with a VisualAnalogScale.
@@ -177,7 +177,7 @@ describe('NetworkComposer cross-reference validation', () => {
               form: {
                 fields: [
                   {
-                    id: 'field-1',
+                    id: 'edge-field-1',
                     variable: 'age',
                     component: ComponentTypes.Number,
                     label: localized('x'),
@@ -298,7 +298,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
               form: {
                 fields: [
                   {
-                    id: 'field-1',
+                    id: 'edge-field-1',
                     variable: 'edge_event_a',
                     label: localized('edge_event_a'),
                     component: ComponentTypes.DatePicker,
@@ -870,7 +870,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
                 form: {
                   fields: [
                     {
-                      id: 'field-1',
+                      id: 'edge-field-1',
                       variable: 'duration',
                       label: localized('duration'),
                       component: ComponentTypes.RadioGroup,

@@ -274,10 +274,10 @@ describe('migrationV7toV8 stage positions', () => {
       9,
       { name: 'Forms' },
     );
-    expect(protocol.stages.map((stage) => stage.id)).toEqual([
-      'first',
-      'last',
-      'finish',
+    expect(protocol.stages.map((stage) => [stage.type, stage.label])).toEqual([
+      ['Information', { en: 'first' }],
+      ['Information', { en: 'last' }],
+      ['FinishSession', expect.anything()],
     ]);
 
     const result = migrateSession(

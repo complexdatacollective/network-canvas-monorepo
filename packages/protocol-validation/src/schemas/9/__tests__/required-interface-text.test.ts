@@ -8,6 +8,7 @@ import {
   interfaceTextShownBy,
   withInterfaceText,
 } from '../../../__tests__/suppliedWording.ts';
+import { testId, withTestIds } from '../../../__tests__/testIds.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
@@ -104,7 +105,7 @@ describe('the interface text a protocol may hold', () => {
       );
     }
 
-    const quickAdd: Document = completeProtocol();
+    const quickAdd: Document = withTestIds(completeProtocol());
     expect(quickAdd.interfaceText?.quickAdd).toBeDefined();
     delete quickAdd.interfaceText?.quickAdd;
     expect((await validateProtocol(quickAdd)).error?.issues).toBe(undefined);
@@ -146,7 +147,10 @@ describe('the interface text a protocol may hold', () => {
       codebook: { node: {}, edge: {}, ego: {} },
       localization: swahili,
       stages: [
-        createDefaultFinishSessionStage({ id: 'end', localization: swahili }),
+        createDefaultFinishSessionStage({
+          id: testId('end'),
+          localization: swahili,
+        }),
       ],
     };
     const used = interfaceTextShownBy(protocol);
@@ -236,7 +240,10 @@ describe('the interface text a protocol may hold', () => {
       codebook: { node: {}, edge: {}, ego: {} },
       localization: japanese,
       stages: [
-        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+        createDefaultFinishSessionStage({
+          id: testId('end'),
+          localization: japanese,
+        }),
       ],
     };
     const protocol = {

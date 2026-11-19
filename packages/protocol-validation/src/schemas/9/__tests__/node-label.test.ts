@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { testId, withTestIds } from '../../../__tests__/testIds.ts';
 import { collectLocalizedStringsFromSchema } from '../../../utils/collectLocalizedStrings.ts';
 import { ConditionSchema } from '../conditions.ts';
 import {
@@ -63,7 +64,7 @@ describe('condition paths', () => {
 describe('ConditionSchema', () => {
   const nodeRule = (id: string) => ({
     type: 'node',
-    id,
+    id: testId(id),
     options: { type: 'place', attribute: 'nameVar', operator: 'EXISTS' },
   });
 
@@ -75,10 +76,10 @@ describe('ConditionSchema', () => {
         rules: [
           {
             type: 'edge',
-            id: 'a',
+            id: testId('a'),
             options: { type: 'near', count: 'GREATER_THAN', value: 2 },
           },
-          { type: 'edge', id: 'b', options: { count: 'MOST' } },
+          { type: 'edge', id: testId('b'), options: { count: 'MOST' } },
         ],
       }).success,
     ).toBe(true);
@@ -92,7 +93,7 @@ describe('ConditionSchema', () => {
     expect(
       ConditionSchema.safeParse({
         about: 'node',
-        rules: [{ type: 'edge', id: 'a', options }],
+        rules: [{ type: 'edge', id: testId('a'), options }],
       }).success,
     ).toBe(false);
   });
@@ -127,7 +128,7 @@ describe('NodeLabelSchema', () => {
           rules: [
             {
               type: 'edge',
-              id: 'r1',
+              id: testId('r1'),
               options: { count: 'GREATER_THAN', value: 0 },
             },
           ],
@@ -146,7 +147,7 @@ describe('NodeLabelSchema', () => {
           rules: [
             {
               type: 'node',
-              id: 'r1',
+              id: testId('r1'),
               options: { type: 'place', operator: 'EXISTS' },
             },
           ],
@@ -163,7 +164,7 @@ describe('findNodeLabelProblems', () => {
     rules: [
       {
         type: 'node',
-        id: 'r1',
+        id: testId('r1'),
         options: { type: 'place', attribute: 'nameVar', operator: 'EXISTS' },
       },
     ],
@@ -247,7 +248,7 @@ describe('a protocol whose text chooses its wording by conditions', () => {
     Reflect.get(variable, 'encrypted') !== true;
 
   const fixture = () => {
-    const protocol: Draft = completeProtocol();
+    const protocol: Draft = withTestIds(completeProtocol());
     const nodeTypes: Record<string, { variables?: Record<string, unknown> }> =
       protocol.codebook.node;
     const nodeType = Object.keys(nodeTypes).find((id) =>
@@ -301,7 +302,7 @@ describe('a protocol whose text chooses its wording by conditions', () => {
         [
           {
             type: 'node',
-            id: 'r1',
+            id: testId('r1'),
             options: {
               type: nodeType,
               attribute: textVariable,
@@ -310,17 +311,17 @@ describe('a protocol whose text chooses its wording by conditions', () => {
           },
           {
             type: 'edge',
-            id: 'r2',
+            id: testId('r2'),
             options: { type: edgeType, operator: 'EXISTS' },
           },
           {
             type: 'edge',
-            id: 'r3',
+            id: testId('r3'),
             options: { type: edgeType, count: 'MOST' },
           },
           {
             type: 'edge',
-            id: 'r4',
+            id: testId('r4'),
             options: { count: 'GREATER_THAN_OR_EQUAL', value: 2 },
           },
         ],
@@ -337,15 +338,19 @@ describe('a protocol whose text chooses its wording by conditions', () => {
         [
           {
             type: 'node',
-            id: 'r1',
+            id: testId('r1'),
             options: { type: 'someOtherType', operator: 'EXISTS' },
           },
           {
             type: 'ego',
-            id: 'r2',
+            id: testId('r2'),
             options: { attribute: egoVariable, operator: 'EXISTS' },
           },
-          { type: 'edge', id: 'r3', options: { type: 'gone', count: 'MOST' } },
+          {
+            type: 'edge',
+            id: testId('r3'),
+            options: { type: 'gone', count: 'MOST' },
+          },
         ],
         'OR',
       ),
@@ -368,7 +373,7 @@ describe('a protocol whose text chooses its wording by conditions', () => {
         rules: [
           {
             type: 'ego',
-            id: 'r1',
+            id: testId('r1'),
             options: { attribute: egoVariable, operator: 'EXISTS' },
           },
         ],
@@ -379,7 +384,7 @@ describe('a protocol whose text chooses its wording by conditions', () => {
     stage.conditions = {
       linked: {
         about: 'node',
-        rules: [{ type: 'edge', id: 'r1', options: { count: 'MOST' } }],
+        rules: [{ type: 'edge', id: testId('r1'), options: { count: 'MOST' } }],
       },
     };
     expect(issuePathsOf(protocol)).toContain(
