@@ -37,6 +37,7 @@ import {
   dormantFieldsOf,
   mountedPathsOf,
 } from './documentFromSubmission.ts';
+import { useStagedCodebookCheckpoint } from './useStagedCodebookCheckpoint.ts';
 
 /**
  * What a form-level check — or a save the host could not take — reports.
@@ -309,6 +310,7 @@ function DialogFormBody({
 }: DialogFormProps) {
   const intl = useAppIntl();
   const storeApi = useContext(FormStoreContext);
+  const keepCodebookChanges = useStagedCodebookCheckpoint(open);
   const { isSubmitting } = useFormMeta();
 
   /**
@@ -416,10 +418,18 @@ function DialogFormBody({
         })
       : { ...document, ...values };
 
+    // Inside a stage editor, the codebook changes made in this dialog stay
+    // with the stage if the dialog is saved, and are taken back if it is
+    // closed any other way (see `useStagedCodebookCheckpoint`). They are kept
+    // from the moment the save is asked for, because the caller's save may
+    // close the dialog itself before this resumes, and are handed back to the
+    // dialog only if the save is refused.
+    keepCodebookChanges(true);
     let refused: void | DialogFormErrors;
     try {
       refused = await onSubmit(values, edited);
     } catch (failure) {
+      keepCodebookChanges(false);
       const reason = failureMessage(failure);
       // Nothing to report of its own: hand it back to Fresco's own catch,
       // which renders the generic message. The dialog stays open either way,
@@ -428,7 +438,10 @@ function DialogFormBody({
       return { success: false, formErrors: [reason], fieldErrors: {} };
     }
 
-    if (hasErrors(refused)) return refusal(refused);
+    if (hasErrors(refused)) {
+      keepCodebookChanges(false);
+      return refusal(refused);
+    }
 
     onClose();
     return { success: true };

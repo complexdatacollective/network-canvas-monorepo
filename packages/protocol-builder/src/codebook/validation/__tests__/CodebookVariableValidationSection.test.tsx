@@ -1,11 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import {
-  sectionId,
-  type ProtocolSectionId,
-} from '@codaco/studio-sync/taxonomy';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import {
@@ -17,7 +13,6 @@ import CodebookVariableValidationSection from '../CodebookVariableValidationSect
 const EGO: CodebookSubject = { entity: 'ego' };
 const EGO_SECTION = sectionId({ kind: 'codebookEgo' });
 const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 /**
  * The section over one attribute, inside a stage editor.
@@ -41,64 +36,6 @@ const open = (
       />
     ),
   });
-
-/**
- * The section with the codebook's answer to its FIRST write held back, and the
- * release that lets it through.
- *
- * Every claim about two edits that overlap needs them to overlap: a suite fast
- * enough to settle the first write before the second is made proves nothing
- * about a researcher who clicks twice.
- */
-const openWithHeldWrite = (
-  subject: CodebookSubject,
-  variableId: string,
-): Readonly<{ harness: StageEditorHarness; release: () => void }> => {
-  const first = Promise.withResolvers<void>();
-  let held = true;
-  const harness = renderStageEditor({
-    stageId: 'ego-form-1',
-    adapter: (host) =>
-      host.adapterWith({
-        Submit: (input) =>
-          Effect.flatMap(
-            Effect.promise(async () => {
-              if (held) {
-                held = false;
-                await first.promise;
-              }
-            }),
-            () => host.handle.Submit(input),
-          ),
-      }),
-    sections: (
-      <CodebookVariableValidationSection
-        subject={subject}
-        variableId={variableId}
-      />
-    ),
-  });
-  return {
-    harness,
-    release: () => {
-      first.resolve();
-    },
-  };
-};
-
-/**
- * Where the protocol has got to, which is what says a write has landed.
- *
- * A reversal ends on the rules it started from, so nothing about the codebook's
- * own contents can tell a test that the write taking the rule back off has been
- * made — only that it has not been made YET. The protocol's revision counts
- * every change it takes, and two are expected: the rule, and the taking of it
- * back.
- */
-const changesTaken = (
-  harness: StageEditorHarness,
-  section: ProtocolSectionId = EGO_SECTION,
-): bigint => harness.host.store.read(section).revision.sequence;
 
 const COMPONENTS: Readonly<Record<string, string>> = {
   text: 'Text',
@@ -148,6 +85,25 @@ const egoValidation = (
     'validation',
   );
 
+/** The rules the EDITOR shows for an ego attribute: the protocol's plus the stage's held changes. */
+const egoEditorValidation = (
+  harness: StageEditorHarness,
+  variableId: string,
+): unknown =>
+  Reflect.get(
+    harness.editorCodebook().ego?.variables?.[variableId] ?? {},
+    'validation',
+  );
+
+const personEditorValidation = (
+  harness: StageEditorHarness,
+  variableId: string,
+): unknown =>
+  Reflect.get(
+    harness.editorCodebook().node?.person?.variables?.[variableId] ?? {},
+    'validation',
+  );
+
 const personValidation = (
   harness: StageEditorHarness,
   variableId: string,
@@ -181,7 +137,12 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('writes a rule to the attribute it was asked about', async () => {
+  /**
+   * The rules belong to the codebook, but changing them here is part of the
+   * researcher's edit of the stage: the editor shows them at once, the protocol
+   * only holds them once the stage is saved.
+   */
+  it('keeps a rule for the attribute it was asked about with the stage, and saves it with the stage', async () => {
     const harness = open(EGO, 'ego_name');
 
     await harness.user.click(
@@ -191,9 +152,31 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
-    await waitFor(() =>
-      expect(egoValidation(harness, 'ego_name')).toEqual({ required: true }),
+    expect(egoEditorValidation(harness, 'ego_name')).toEqual({
+      required: true,
+    });
+    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+
+    expect(await harness.submit()).not.toBeNull();
+    expect(egoValidation(harness, 'ego_name')).toEqual({ required: true });
+  });
+
+  it('discards a rule with the stage when the stage is cancelled', async () => {
+    const harness = open(EGO, 'ego_name');
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
     );
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Required answer' }),
+    );
+    expect(egoEditorValidation(harness, 'ego_name')).toEqual({
+      required: true,
+    });
+
+    await harness.cancel();
+
+    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
   });
 
   /**
@@ -218,7 +201,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
    * the codebook, so nothing about a COLLABORATOR changing the kind of answer
    * takes it away. Left where it was it is a rule the new kind's rows do not
    * draw and the schema will not accept, so every later change is refused over
-   * a row nobody can see and the section silently stops writing anything.
+   * a row nobody can see and the section silently stops keeping anything.
    */
   it('drops a half-set rule the new kind of answer has no room for', async () => {
     const harness = open(PERSON, 'story');
@@ -234,12 +217,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
         name: 'Less than another attribute',
       }),
     );
-    expect(
-      Reflect.get(
-        harness.hostCodebook().node?.person?.variables?.story ?? {},
-        'validation',
-      ),
-    ).toBeUndefined();
+    expect(personEditorValidation(harness, 'story')).toBeUndefined();
 
     harness.receiveCodebookUpdate(personHolding('boolean'));
     await waitFor(() =>
@@ -255,12 +233,9 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     );
 
     await waitFor(() =>
-      expect(
-        Reflect.get(
-          harness.hostCodebook().node?.person?.variables?.story ?? {},
-          'validation',
-        ),
-      ).toEqual({ required: true }),
+      expect(personEditorValidation(harness, 'story')).toEqual({
+        required: true,
+      }),
     );
   });
 
@@ -294,7 +269,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
  *
  * Written straight into the store and deliberately outside `act`, so the
  * channel has not turned and this section is still rendering the rules it read
- * when it opened — which is the state a write started now has to survive.
+ * when it opened — which is the state a stage save has to survive.
  */
 const collaboratorRules = (
   harness: StageEditorHarness,
@@ -309,13 +284,13 @@ const collaboratorRules = (
   });
 };
 
-describe('rules written while the codebook is moving', () => {
+describe('rules changed while a collaborator is changing the same codebook', () => {
   /**
-   * The map on screen was read before the lock was taken, so writing it whole
-   * deletes whatever a collaborator added in between. The edit is the KEY the
-   * researcher touched, laid over the rules the lock hands back.
+   * The researcher's edit is the KEY they touched. A collaborator's rule on
+   * the same attribute, added after this editor opened, is kept when the stage
+   * is saved rather than deleted by a map written whole.
    */
-  it('keeps a rule a collaborator added while the write was taking the lock', async () => {
+  it('keeps a rule a collaborator added, when the stage is saved', async () => {
     const harness = open(EGO, 'ego_name');
 
     await harness.user.click(
@@ -325,21 +300,19 @@ describe('rules written while the codebook is moving', () => {
     collaboratorRules(harness, { minLength: 3 });
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
-    await waitFor(() =>
-      expect(egoValidation(harness, 'ego_name')).toEqual({
-        minLength: 3,
-        required: true,
-      }),
-    );
+    expect(await harness.submit()).not.toBeNull();
+    expect(egoValidation(harness, 'ego_name')).toEqual({
+      minLength: 3,
+      required: true,
+    });
   });
 
   /**
-   * The rebased map is what the codebook now holds, so it is what the screen
-   * has to show — and what the NEXT edit is diffed against. A screen left on
-   * the map the researcher clicked would carry the collaborator's rule as a
-   * removal the moment they touched another rule, deleting it.
+   * The editor shows the rules it holds over the protocol's current ones, so
+   * the rule the collaborator added reaches the screen and the NEXT edit is
+   * made against it rather than deleting it.
    */
-  it('brings the rebased rule to the screen, so the next edit keeps it', async () => {
+  it('brings the collaborator’s rule to the screen, so the next edit keeps it', async () => {
     const harness = open(EGO, 'ego_name');
 
     await harness.user.click(
@@ -357,159 +330,34 @@ describe('rules written while the codebook is moving', () => {
 
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
-    await waitFor(() =>
-      expect(egoValidation(harness, 'ego_name')).toEqual({ minLength: 3 }),
-    );
+    expect(await harness.submit()).not.toBeNull();
+    expect(egoValidation(harness, 'ego_name')).toEqual({ minLength: 3 });
   });
 
   /**
-   * Rebasing can make a map nothing can satisfy, and the researcher never saw
-   * the rule it contradicts. Refused with the sentence the row would have said
-   * had they been looking at it, and nothing is written.
+   * A rule switched on and straight back off is two edits to the stage's
+   * draft; the draft ends where the protocol started, so there is nothing to
+   * save for it.
    */
-  it('refuses an edit the collaborator’s rules leave no answer for', async () => {
+  it('holds nothing when a rule is switched on and straight back off', async () => {
     const harness = open(EGO, 'ego_name');
-    harness.receiveCodebookUpdate({
-      ego: {
-        variables: {
-          ego_name: {
-            name: 'ego_name',
-            type: 'text',
-            validation: { maxLength: 9 },
-          },
-        },
-      },
-    });
-
-    // On screen, so the rule the researcher switches on is seeded from the
-    // maximum they can see — nine — rather than from the collaborator's two.
-    expect(
-      await screen.findByRole('switch', { name: 'Maximum text length' }),
-    ).toBeChecked();
-    collaboratorRules(harness, { maxLength: 2 });
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Minimum text length' }),
-    );
-
-    // Re-queried rather than held: the collaborator's rule arrives on the
-    // channel while this is settling, and the panel it is drawn in is re-seeded
-    // from the codebook when it does.
-    await waitFor(() =>
-      expect(screen.getByText(/leave no permitted answer/)).toBeInTheDocument(),
-    );
-    expect(egoValidation(harness, 'ego_name')).toEqual({ maxLength: 2 });
-  });
-
-  /**
-   * Two edits made before the first has come back are two writes over one
-   * section, each laying its map over the document the host held when IT
-   * asked. Left to race, the first edit's write reads a document without the
-   * second's rule in it and settles last, so the protocol ends up holding the
-   * older map and the second edit is silently gone. They are written one after
-   * the other instead, each rebased when its turn comes.
-   *
-   * The first write is held open, because that is the whole of the claim: a
-   * suite fast enough to settle the first write before the second is made
-   * proves nothing about two that overlap.
-   */
-  it('lands both of two edits made before the first came back', async () => {
-    const { harness, release } = openWithHeldWrite(EGO, 'ego_name');
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     await screen.findByRole('switch', { name: 'Required answer' });
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Minimum text length' }),
-    );
-    release();
-
-    await waitFor(() =>
-      expect(egoValidation(harness, 'ego_name')).toEqual({
-        required: true,
-        minLength: 1,
-      }),
-    );
-  });
-
-  /**
-   * A rule switched on and straight back off is two edits, and the codebook has
-   * heard about neither: the second is a change from the map the first is about
-   * to leave, not from the one the codebook last confirmed. Read against the
-   * confirmed map it is no change at all — so nothing takes the rule back off,
-   * the first write lands it, and the researcher is left with a rule they
-   * turned off and a box that ticks itself over it.
-   */
-  it('takes a rule back off when it is switched off before its own write came back', async () => {
-    const { harness, release } = openWithHeldWrite(EGO, 'ego_name');
-
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Validation' }),
-    );
-    await screen.findByRole('switch', { name: 'Required answer' });
-    const before = changesTaken(harness);
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
-    fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
-    release();
 
-    await waitFor(() => expect(changesTaken(harness)).toBe(before + 2n));
-    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+    expect(egoEditorValidation(harness, 'ego_name')).toBeUndefined();
     expect(
       screen.getByRole('switch', { name: 'Required answer' }),
     ).not.toBeChecked();
+    expect(await harness.submit()).not.toBeNull();
+    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
   });
 
-  /**
-   * The same reversal made of a number rather than of a rule: the stepper takes
-   * the minimum up and the researcher puts it straight back, before the raise
-   * has been acknowledged.
-   */
-  it('puts a number back when it is reverted before its own write came back', async () => {
-    const { harness, release } = openWithHeldWrite(PERSON, 'story');
-    const numbers = personHolding('number');
-    harness.receiveCodebookUpdate({
-      node: {
-        person: {
-          ...numbers.node.person,
-          variables: {
-            ...numbers.node.person.variables,
-            story: {
-              ...numbers.node.person.variables.story,
-              validation: { minValue: 4 },
-            },
-          },
-        },
-      },
-    });
-
-    expect(
-      await screen.findByRole('spinbutton', { name: 'Minimum value' }),
-    ).toHaveValue(4);
-    const before = changesTaken(harness, PERSON_SECTION);
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Increase Minimum value' }),
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Decrease Minimum value' }),
-    );
-    release();
-
-    await waitFor(() =>
-      expect(changesTaken(harness, PERSON_SECTION)).toBe(before + 2n),
-    );
-    expect(personValidation(harness, 'story')).toEqual({ minValue: 4 });
-    expect(
-      screen.getByRole('spinbutton', { name: 'Minimum value' }),
-    ).toHaveValue(4);
-  });
-
-  /**
-   * The switch read the codebook's answer to the last write, which an addition
-   * still in flight has not reached yet — so it closed over a rule the
-   * protocol was about to hold.
-   */
-  it('clears a rule still in flight when the section is switched off', async () => {
+  it('clears a rule just switched on when the section is switched off', async () => {
     const harness = open(EGO, 'ego_name');
 
     await harness.user.click(
@@ -520,10 +368,61 @@ describe('rules written while the codebook is moving', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
 
     await waitFor(() =>
-      expect(egoValidation(harness, 'ego_name')).toBeUndefined(),
+      expect(egoEditorValidation(harness, 'ego_name')).toBeUndefined(),
     );
-    await harness.opened();
+    expect(await harness.submit()).not.toBeNull();
     expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+  });
+
+  /**
+   * Nothing is locked while the researcher edits, so a colleague holding the
+   * codebook is not met until the stage is saved. The save is refused naming
+   * them, the rule stays in the draft, and saving again once they are done
+   * lands it.
+   */
+  it('refuses the stage save naming the colleague holding the codebook, keeps the rule, and saves once they are done', async () => {
+    const harness = open(EGO, 'ego_name');
+    await harness.opened();
+    const robin = harness.host.asCollaborator({
+      sessionId: 'session-2',
+      userId: 'user-2',
+      displayName: 'Robin',
+    });
+    await robin.rpcCall('AcquireLock', {
+      protocolId: harness.host.protocolId,
+      sectionId: EGO_SECTION,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Required answer' }),
+    );
+    // No refusal while editing.
+    expect(
+      screen.queryByText(
+        'Robin is currently editing a section needed for this change.',
+      ),
+    ).not.toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'Robin is currently editing a section needed for this change.',
+      ),
+    ).toBeInTheDocument();
+    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+    expect(egoEditorValidation(harness, 'ego_name')).toEqual({
+      required: true,
+    });
+
+    await robin.rpcCall('ReleaseLock', {
+      protocolId: harness.host.protocolId,
+      sectionId: EGO_SECTION,
+    });
+    expect(await harness.submit()).not.toBeNull();
+    expect(egoValidation(harness, 'ego_name')).toEqual({ required: true });
   });
 });
 
@@ -596,9 +495,9 @@ describe('the switch, while a collaborator is changing the same attribute', () =
   });
 
   /**
-   * A rule the researcher is taking off is the codebook moving because THEY
-   * moved it, and re-seeding the switch on that would close the panel under
-   * the gesture that is still in progress.
+   * A rule the researcher is taking off is the codebook (as the editor shows
+   * it) moving because THEY moved it, and re-seeding the switch on that would
+   * close the panel under the gesture that is still in progress.
    */
   it('stays open when the researcher takes the last rule off', async () => {
     const harness = open(EGO, 'ego_name');
@@ -619,7 +518,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
     );
 
     await waitFor(() =>
-      expect(egoValidation(harness, 'ego_name')).toBeUndefined(),
+      expect(egoEditorValidation(harness, 'ego_name')).toBeUndefined(),
     );
     expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
     expect(
@@ -628,128 +527,32 @@ describe('the switch, while a collaborator is changing the same attribute', () =
   });
 });
 
-describe('a refusal the researcher has moved on from', () => {
-  /**
-   * A refusal describes the map that was refused. An edit that leaves the map
-   * half-set is never written, so nothing else would take the sentence down,
-   * and it stands over rules it is no longer about.
-   */
-  it('is taken down by the next edit, written or not', async () => {
-    const harness = open(EGO, 'ego_name');
-    await harness.opened();
-    await harness.host
-      .asCollaborator({
-        sessionId: 'session-2',
-        userId: 'user-2',
-        displayName: 'Robin',
-      })
-      .rpcCall('AcquireLock', {
-        protocolId: harness.host.protocolId,
-        sectionId: EGO_SECTION,
-      });
-
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Validation' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Required answer' }),
-    );
-    expect(
-      await screen.findByText(
-        'Robin is currently editing a section needed for this change.',
-      ),
-    ).toBeInTheDocument();
-
-    // Back to the rules the codebook holds, so nothing is written — and
-    // nothing else takes down the sentence the refused edit left behind.
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Required answer' }),
-    );
-
-    await waitFor(() =>
-      expect(
-        screen.queryByText(
-          'Robin is currently editing a section needed for this change.',
-        ),
-      ).not.toBeInTheDocument(),
-    );
-  });
-});
-
 /**
- * Only SOME of the maps the researcher can see are written: one refused for
- * the lock, and one held back as half-set, both leave the screen ahead of the
- * codebook. The next edit that does write has to carry them, or the rules on
- * screen are dropped from the write, rebased away, and then wiped off the
- * screen by the re-seed with nothing said about any of it.
+ * Only SOME of the maps the researcher can see are kept: a half-set one stays
+ * on screen ahead of the draft. The next edit that is kept has to carry it, or
+ * the rules on screen are dropped and then wiped off the screen by the re-seed
+ * with nothing said about any of it.
  */
-describe('a rule on screen that the codebook has not taken yet', () => {
-  it('is written by the next edit after a collaborator’s lock refused it', async () => {
-    const harness = open(EGO, 'ego_name');
-    await harness.opened();
-    const robin = harness.host.asCollaborator({
-      sessionId: 'session-2',
-      userId: 'user-2',
-      displayName: 'Robin',
-    });
-    await robin.rpcCall('AcquireLock', {
-      protocolId: harness.host.protocolId,
-      sectionId: EGO_SECTION,
-    });
-
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Validation' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Required answer' }),
-    );
-    expect(
-      await screen.findByText(
-        'Robin is currently editing a section needed for this change.',
-      ),
-    ).toBeInTheDocument();
-    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
-
-    await robin.rpcCall('ReleaseLock', {
-      protocolId: harness.host.protocolId,
-      sectionId: EGO_SECTION,
-    });
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Minimum text length' }),
-    );
-
-    await waitFor(() =>
-      expect(egoValidation(harness, 'ego_name')).toEqual({
-        required: true,
-        minLength: 1,
-      }),
-    );
-    // And still on screen, because the codebook now holds it: a rule the write
-    // left behind is unticked by the re-seed a moment later, silently.
-    expect(
-      screen.getByRole('switch', { name: 'Required answer' }),
-    ).toBeChecked();
-  });
-
-  it('is written by the edit that finishes it, without a collaborator at all', async () => {
+describe('a rule on screen that the stage draft has not taken yet', () => {
+  it('is kept by the edit that finishes it', async () => {
     const harness = open(PERSON, 'story');
     harness.receiveCodebookUpdate(personHolding('number'));
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
     );
-    // Switched on with no target yet, so it is held on screen and not written.
+    // Switched on with no target yet, so it is held on screen and not kept.
     await harness.user.click(
       await screen.findByRole('switch', {
         name: 'Less than another attribute',
       }),
     );
-    // Still unanswerable with the comparison open, so this is not written
+    // Still unanswerable with the comparison open, so this is not kept
     // either — and it is the edit the map on screen is now ahead by.
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
-    expect(personValidation(harness, 'story')).toBeUndefined();
+    expect(personEditorValidation(harness, 'story')).toBeUndefined();
 
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Less than another attribute' }),
@@ -757,7 +560,7 @@ describe('a rule on screen that the codebook has not taken yet', () => {
     );
 
     await waitFor(() =>
-      expect(personValidation(harness, 'story')).toEqual({
+      expect(personEditorValidation(harness, 'story')).toEqual({
         lessThanVariable: 'retelling',
         required: true,
       }),
@@ -766,81 +569,9 @@ describe('a rule on screen that the codebook has not taken yet', () => {
 });
 
 /**
- * The codebook moving because THIS section moved it is not news to the
- * researcher, and the switch is not re-seeded for it. A write that was refused
- * moved nothing, so the map it asked for is not an echo to wait for — and a
- * collaborator who then makes that very change is not this section's own work.
- */
-describe('the marker a refused write leaves behind', () => {
-  it('does not make a collaborator’s identical change read as ours', async () => {
-    let drop = true;
-    const harness = renderStageEditor({
-      stageId: 'ego-form-1',
-      adapter: (host) =>
-        host.adapterWith({
-          Submit: (input) => {
-            if (drop) {
-              drop = false;
-              return Effect.die(new Error('the connection dropped'));
-            }
-            return host.handle.Submit(input);
-          },
-        }),
-      sections: (
-        <CodebookVariableValidationSection
-          subject={EGO}
-          variableId="ego_name"
-        />
-      ),
-    });
-    harness.receiveCodebookUpdate({
-      ego: {
-        variables: {
-          ego_name: {
-            name: 'ego_name',
-            type: 'text',
-            validation: { required: true },
-          },
-        },
-      },
-    });
-    await waitFor(() =>
-      expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked(),
-    );
-
-    // Refused, so the rules are still there and the panel stays open over
-    // them — but the section has asked for an empty map.
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Validation' }),
-    );
-    await waitFor(() =>
-      expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked(),
-    );
-    expect(egoValidation(harness, 'ego_name')).toEqual({ required: true });
-
-    harness.receiveCodebookUpdate({
-      ego: {
-        variables: {
-          ego_name: {
-            name: 'ego_name',
-            type: 'text',
-          },
-        },
-      },
-    });
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Validation' }),
-      ).not.toBeChecked(),
-    );
-  });
-});
-
-/**
  * A host may rule a rule out of its stage, but a rule the codebook already
  * holds can still be taken off — and must stay so while the codebook holds
- * it, or a removal a collaborator's lock refused could never be retried.
+ * it.
  */
 describe('a rule the mounting stage rules out', () => {
   const REASON = 'The stage always records one.';
@@ -886,53 +617,31 @@ describe('a rule the mounting stage rules out', () => {
     expect(required).toHaveAttribute('aria-disabled', 'true');
     expect(required).toHaveAccessibleDescription(REASON);
     await harness.user.click(required);
-    expect(personValidation(harness, 'story')).toBeUndefined();
+    expect(personEditorValidation(harness, 'story')).toBeUndefined();
   });
 
-  it('can be taken off again after a collaborator’s lock refused it', async () => {
+  it('can be taken off, and put back on, while the codebook holds it', async () => {
     const harness = openRulingOut();
     harness.receiveCodebookUpdate(holdingRequired());
     await harness.opened();
-    const robin = harness.host.asCollaborator({
-      sessionId: 'session-2',
-      userId: 'user-2',
-      displayName: 'Robin',
-    });
-    await robin.rpcCall('AcquireLock', {
-      protocolId: harness.host.protocolId,
-      sectionId: PERSON_SECTION,
-    });
 
     // On, and explained: the reason belongs beneath the rule while it stands.
     const standing = await screen.findByRole('switch', {
       name: 'Required answer',
     });
     expect(standing).toHaveAccessibleDescription(REASON);
+    expect(standing).not.toHaveAttribute('aria-disabled');
     await harness.user.click(standing);
-    expect(
-      await screen.findByText(
-        'Robin is currently editing a section needed for this change.',
-      ),
-    ).toBeInTheDocument();
-    expect(personValidation(harness, 'story')).toEqual({ required: true });
-    const refused = screen.getByRole('switch', { name: 'Required answer' });
-    expect(refused).not.toHaveAttribute('aria-disabled');
-    expect(refused).toHaveAccessibleDescription(REASON);
+    expect(personEditorValidation(harness, 'story')).toBeUndefined();
 
-    await robin.rpcCall('ReleaseLock', {
-      protocolId: harness.host.protocolId,
-      sectionId: PERSON_SECTION,
+    // Off in the editor, still held by the protocol until the stage is saved.
+    const taken = await screen.findByRole('switch', {
+      name: 'Required answer',
     });
-    // Back on over the saved rule, then off again: the removal retried.
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Required answer' }),
-    );
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Required answer' }),
-    );
+    expect(taken).not.toBeChecked();
+    expect(personValidation(harness, 'story')).toEqual({ required: true });
 
-    await waitFor(() =>
-      expect(personValidation(harness, 'story')).toBeUndefined(),
-    );
+    expect(await harness.submit()).not.toBeNull();
+    expect(personValidation(harness, 'story')).toBeUndefined();
   });
 });

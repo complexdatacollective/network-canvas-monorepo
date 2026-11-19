@@ -1,5 +1,5 @@
 import { isEqual } from 'es-toolkit';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
 import {
   formatMessageError,
@@ -72,12 +72,14 @@ export type CodebookVariableValidationSectionProps = Readonly<{
  * cannot use, and sending the researcher to the codebook surface to set them
  * loses the thread they were on.
  *
- * The rules belong to the codebook rather than to the stage, so every
- * committable change is written straight to the codebook variable under the
- * section's own lock: cancelling the stage edit does not undo one, and saving
- * the stage submits none. A map that is half-set or contradictory is not
- * written at all — the rule row states what is wrong with it and the
- * researcher corrects it, rather than the rule being silently dropped.
+ * The rules belong to the codebook rather than to the stage, but changing them
+ * here is part of the researcher's edit of the stage: every committable change
+ * is kept with the stage's draft (see `StagedCodebookStore`), so the stage has
+ * unsaved work, saving it writes the rules with it, and cancelling it — or the
+ * dialog this section sits in — throws them away. A map that is half-set or
+ * contradictory is not kept at all — the rule row states what is wrong with it
+ * and the researcher corrects it, rather than the rule being silently
+ * dropped.
  */
 export default function CodebookVariableValidationSection({
   subject,
@@ -144,53 +146,8 @@ const typeOf = (variable: unknown): string => {
   return typeof type === 'string' ? type : '';
 };
 
-/** What a refused write says, and in which register it says it. */
+/** What a refused change says, and in which register it says it. */
 type Refusal = Readonly<{ message: string; held: boolean }>;
-
-/**
- * What one write asks of the rules, said as keys rather than as a whole map.
- *
- * A map computed when the researcher clicked is a map that does not know about
- * a rule a COLLABORATOR added while the write was taking the lock, and writing
- * it whole deletes theirs. So a write travels as keys — each set to a value, or
- * taken off — and those are laid over the rules the authoritative document
- * holds at the moment the lock is granted. Switching the section off is the one
- * edit that is about the whole map, and says so.
- */
-type RuleChange =
-  | Readonly<{ kind: 'keys'; set: ValidationMap; removed: readonly string[] }>
-  | Readonly<{ kind: 'clear' }>;
-
-/** Every key two maps differ over, read from the one before and the one after. */
-const ruleChangeBetween = (
-  before: Readonly<ValidationMap>,
-  after: Readonly<ValidationMap>,
-): RuleChange => {
-  const set: ValidationMap = {};
-  for (const [ruleKey, value] of Object.entries(after)) {
-    if (!Object.hasOwn(before, ruleKey) || !isEqual(before[ruleKey], value)) {
-      set[ruleKey] = value;
-    }
-  }
-  return {
-    kind: 'keys',
-    set,
-    removed: Object.keys(before).filter(
-      (ruleKey) => !Object.hasOwn(after, ruleKey),
-    ),
-  };
-};
-
-/** The edit laid over the rules the codebook holds now. */
-const rulesAfter = (
-  authoritative: Readonly<ValidationMap>,
-  change: RuleChange,
-): ValidationMap => {
-  if (change.kind === 'clear') return {};
-  const next: ValidationMap = { ...authoritative, ...change.set };
-  for (const ruleKey of change.removed) delete next[ruleKey];
-  return next;
-};
 
 function VariableValidationSection({
   subject,
@@ -218,13 +175,14 @@ function VariableValidationSection({
   const variableType = typeOf(variable);
 
   /**
-   * The rule map on screen, which is the codebook's plus whatever the
-   * researcher has switched on and not finished answering.
+   * The rule map on screen, which is the codebook's (as the stage editor shows
+   * it) plus whatever the researcher has switched on and not finished
+   * answering.
    *
    * Held here rather than read straight from the codebook because an
-   * incomplete rule is deliberately not written: a `minLength` switched on
-   * with no number yet has to stay on screen to be corrected, and a value read
-   * back from the protocol would take it away again on the next render.
+   * incomplete rule is deliberately not kept: a `minLength` switched on with
+   * no number yet has to stay on screen to be corrected, and a value read back
+   * from the codebook would take it away again on the next render.
    */
   const [draft, setDraft] = useState<ValidationMap>(committed);
   const [refusal, setRefusal] = useState<Refusal | undefined>(undefined);
@@ -233,58 +191,24 @@ function VariableValidationSection({
    *
    * `Section` takes `defaultOpen` as an initial value and ignores later ones,
    * which is right for a panel the researcher opened — an ordinary re-render
-   * must not reopen one they closed. It is wrong for a change a COLLABORATOR
-   * made: a rule they added would sit behind a switch saying there are none,
-   * and rules they cleared would leave the switch on over nothing. So the
-   * panel is re-seeded, and only for changes this section did not make.
+   * must not reopen one they closed. It is wrong for a change made somewhere
+   * else (a collaborator's, arriving in the protocol): a rule they added would
+   * sit behind a switch saying there are none, and rules they cleared would
+   * leave the switch on over nothing. So the panel is re-seeded, and only for
+   * changes this section did not make.
    */
   const [switchGeneration, setSwitchGeneration] = useState(0);
   /**
-   * The rules this section's last write asked for.
+   * The rules this section last asked the codebook for.
    *
-   * The codebook moving because this section wrote to it is not news to the
+   * The codebook moving because this section changed it is not news to the
    * researcher, and re-seeding the switch on it would close the panel the
    * moment they took the last rule off — mid-edit, over a section they still
    * have open.
    */
   const [asked, setAsked] = useState<ValidationMap | undefined>(undefined);
-  /**
-   * One write at a time, in the order the edits were made.
-   *
-   * Every committable edit writes, and the controls stay live while it is in
-   * flight: typing a number and clicking its stepper commits twice, and two
-   * writes over one section take the same lock — whichever releases first
-   * leaves the other's submit refused, with a valid edit silently unapplied.
-   * So an edit waits for the one before it, and is rebased on the document the
-   * lock hands back when its turn comes.
-   */
-  const writes = useRef<Promise<unknown>>(Promise.resolve());
-  /** How many edits are waiting or in flight, which the switch has to know. */
-  const pending = useRef(0);
-  /**
-   * The same count, as state: the render that adopts a collaborator's change
-   * has to know whether an edit of this section's own is still settling, and a
-   * ref cannot be read while rendering. `pending` stays for the handlers,
-   * which must see an edit made a moment ago before any render has run.
-   */
-  const [writing, setWriting] = useState(0);
-  /**
-   * The rules the writes already asked for will leave in the codebook.
-   *
-   * Read only while one of them is still waiting, which is the whole of its
-   * use: an edit made before the codebook has answered the one before it is a
-   * change FROM what that one is about to leave, not from what the codebook
-   * confirmed last. Diffed against the confirmed map instead, a rule switched
-   * on and straight back off — or a number changed and put back — is no
-   * difference at all, and the reversal is dropped while the write it reverses
-   * goes on to land, against the researcher's final choice.
-   */
-  const queued = useRef<ValidationMap>({});
-  /** What an edit made now is a change from. */
-  const rulesBefore = (): Readonly<ValidationMap> =>
-    pending.current > 0 ? queued.current : committed;
-  // Adjusted during render rather than in an effect: a change a collaborator
-  // made is the codebook moving under the editor, and showing the rules it
+  // Adjusted during render rather than in an effect: a change made elsewhere
+  // is the codebook moving under the editor, and showing the rules it
   // replaced for a frame first is showing the researcher something untrue.
   const [seen, setSeen] = useState(committed);
   /**
@@ -295,7 +219,7 @@ function VariableValidationSection({
    * than in the codebook — so nothing about the change would take it away. Left
    * where it was, it is a rule the new kind's editor does not draw and the
    * schema will not accept: every later change the researcher makes is refused
-   * by `ruleMapIssue` over a row nobody can see, and the section stops writing
+   * by `ruleMapIssue` over a row nobody can see, and the section stops keeping
    * anything without saying why. So the draft follows the kind, by the same
    * reading of which rules survive one that the codebook's own type control
    * and a form-field row use.
@@ -307,11 +231,7 @@ function VariableValidationSection({
     setSeen(committed);
     setSeenType(variableType);
     setDraft(committed);
-    // Not while this researcher's own edits are still settling: re-seeding the
-    // switch under a gesture in progress takes the panel away mid-edit.
-    if (!ours && writing === 0) {
-      setSwitchGeneration((generation) => generation + 1);
-    }
+    if (!ours) setSwitchGeneration((generation) => generation + 1);
   } else if (seenType !== variableType) {
     setSeenType(variableType);
     setDraft((held) => rulesSurvivingTypeChange(held, variableType).kept);
@@ -333,105 +253,52 @@ function VariableValidationSection({
       stageRendering,
     );
 
-  /** Runs one write after every write asked for before it. */
-  const enqueue = (work: () => Promise<boolean>): Promise<boolean> => {
-    pending.current += 1;
-    setWriting((count) => count + 1);
-    const settled = writes.current.then(work).finally(() => {
-      pending.current -= 1;
-      setWriting((count) => count - 1);
+  /**
+   * Gives the attribute these rules: kept with the stage's draft, and saved
+   * with it (see `useCodebookSectionWrite`). Whole, because the map on screen
+   * is the attribute's as the editor shows it; what a collaborator changes
+   * meanwhile is kept when the stage is saved, rule by rule (`mergeEdit`).
+   */
+  const commit = async (next: ValidationMap): Promise<boolean> => {
+    setRefusal(undefined);
+    setAsked(next);
+    const outcome = await write(subject, (document) =>
+      documentWithUpdatedVariable({
+        subject,
+        authoritativeDocument: document,
+        variableId,
+        // An empty map REMOVES the key rather than storing `{}`: absence is
+        // how the protocol schema spells "no rules", and a stored empty
+        // object would go on saying something about an attribute nothing
+        // constrains.
+        draft: Object.keys(next).length === 0 ? {} : { validation: next },
+        replaceProperties: ['validation'],
+      }),
+    );
+    if (outcome.status === 'applied') return true;
+    // The marker says the codebook moved because THIS section moved it, and a
+    // refused change moved nothing.
+    setAsked((standing) => (standing === next ? undefined : standing));
+    setRefusal({
+      message: outcome.message,
+      held: outcome.refusal.kind === 'held',
     });
-    // The chain must survive a rejection, or one failed write drops every
-    // edit made after it.
-    writes.current = settled.catch(() => undefined);
-    return settled;
+    return false;
   };
 
-  const commit = (change: RuleChange): Promise<boolean> =>
-    enqueue(async () => {
-      setRefusal(undefined);
-      /**
-       * What the rebased map is refused for, when it is.
-       *
-       * Raised inside the callback, where the rules the codebook actually
-       * holds are known, and stated out here: a throw is answered with the
-       * last-resort sentence, and this refusal has words of its own — the same
-       * ones the row would have said had the researcher been looking at the
-       * collaborator's rule when they made the edit.
-       */
-      let rebasedIssue: string | undefined;
-      /** The map handed to the host, for the marker a refusal has to undo. */
-      let askedFor: ValidationMap | undefined;
-      const outcome = await write(subject, (authoritativeDocument) => {
-        const next = rulesAfter(
-          validationOf(
-            propertyOf(
-              propertyOf(authoritativeDocument, 'variables'),
-              variableId,
-            ),
-          ),
-          change,
-        );
-        rebasedIssue = ruleMapRefusal(next);
-        if (rebasedIssue !== undefined) throw new Error(rebasedIssue);
-        askedFor = next;
-        setAsked(next);
-        return documentWithUpdatedVariable({
-          subject,
-          authoritativeDocument,
-          variableId,
-          // An empty map REMOVES the key rather than storing `{}`: absence is
-          // how the protocol schema spells "no rules", and a stored empty
-          // object would go on saying something about an attribute nothing
-          // constrains.
-          draft: Object.keys(next).length === 0 ? {} : { validation: next },
-          replaceProperties: ['validation'],
-        });
-      });
-      if (outcome.status !== 'applied') {
-        // The marker says the codebook moved because THIS section moved it, and
-        // a refused write moved nothing. Left standing, a collaborator who
-        // later makes the very change that was refused is taken for this
-        // section's own echo, and the panel is not re-seeded over their rules.
-        if (askedFor !== undefined) {
-          setAsked((standing) =>
-            standing === askedFor ? undefined : standing,
-          );
-        }
-        setRefusal({
-          message: rebasedIssue ?? outcome.message,
-          held: rebasedIssue === undefined && outcome.refusal.kind === 'held',
-        });
-        return false;
-      }
-      return true;
-    });
-
   const handleChange = (next: ValidationMap) => {
-    // Cleared for every edit, not only for one that writes: a refusal is about
-    // the map that was refused, and an edit that reverts it or leaves it
+    // Cleared for every edit, not only for one that is kept: a refusal is
+    // about the map that was refused, and an edit that reverts it or leaves it
     // half-set is a map the standing sentence no longer describes.
     setRefusal(undefined);
-    // Against the map the writes so far will LEAVE — the codebook's confirmed
-    // one when none are waiting — and not against the one on screen: only some
-    // drafts are written, a map refused for the lock and a half-set map
-    // deliberately held back both leave the screen ahead of the codebook, and a
-    // write carrying only the last gesture's keys would rebase onto a document
-    // that never received the earlier ones, dropping rules the researcher can
-    // see and then wiping them off the screen with nothing said. Every
-    // difference the codebook has not been asked for travels, and is still laid
-    // over the authoritative map rather than replacing it.
-    const before = rulesBefore();
-    const change = ruleChangeBetween(before, next);
     setDraft(next);
-    if (isEqual(next, before)) return;
-    // Written only while the whole map is answerable. Architect's section has
-    // no submit to refuse a half-set or contradictory map with either, so the
-    // map simply does not reach the codebook and the row that is wrong says
-    // what is wrong with it.
+    if (isEqual(next, committed)) return;
+    // Kept only while the whole map is answerable. Architect's section has no
+    // submit to refuse a half-set or contradictory map with either, so the map
+    // simply does not reach the codebook and the row that is wrong says what
+    // is wrong with it.
     if (ruleMapRefusal(next) !== undefined) return;
-    queued.current = next;
-    void commit(change);
+    void commit(next);
   };
 
   return (
@@ -446,20 +313,16 @@ function VariableValidationSection({
         if (open) return true;
         // Cleared silently, as Architect clears it: the rules are the
         // attribute's own and the switch is the whole of the gesture. A
-        // refused write has removed nothing, so the panel stays open over the
+        // refused change has removed nothing, so the panel stays open over the
         // rules the codebook still holds and the switch stays where the
         // researcher left it.
-        //
-        // Decided from the rules ON SCREEN and the writes still in flight, not
-        // from the codebook's answer to the last one: an addition that has not
-        // come back yet leaves `committed` empty, and a switch that read it
-        // would close over a rule the protocol is about to hold.
-        if (Object.keys(draft).length === 0 && pending.current === 0) {
+        if (Object.keys(committed).length === 0) {
           setDraft({});
           return true;
         }
-        queued.current = {};
-        return await commit({ kind: 'clear' });
+        const cleared = await commit({});
+        if (cleared) setDraft({});
+        return cleared;
       }}
     >
       {refusal !== undefined && (
@@ -486,9 +349,9 @@ function VariableValidationSection({
           : {
               unavailableRules,
               // A rule the codebook holds has to stay switchable, whatever the
-              // switch on screen says: a removal refused for a collaborator's
-              // lock leaves the switch off over a rule still saved, and judged
-              // from the draft it would lock there and never be retried.
+              // switch on screen says: a removal that was refused leaves the
+              // switch off over a rule still held, and judged from the draft
+              // it would lock there and never be retried.
               savedRules: Object.keys(committed),
             })}
       />

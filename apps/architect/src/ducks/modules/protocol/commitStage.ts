@@ -1,6 +1,18 @@
 import { createAction } from '@reduxjs/toolkit';
 
-import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import type {
+  CurrentProtocol,
+  EdgeDefinition,
+  EgoDefinition,
+  NodeDefinition,
+  Stage,
+} from '@codaco/protocol-validation';
+
+/** One codebook section a stage's save leaves, whole. */
+export type CommittedCodebookSection =
+  | Readonly<{ entity: 'node'; type: string; definition: NodeDefinition }>
+  | Readonly<{ entity: 'edge'; type: string; definition: EdgeDefinition }>
+  | Readonly<{ entity: 'ego'; definition: EgoDefinition }>;
 
 export type CommitStagePayload = {
   /** The stage being edited, or `null` when the editor is creating one. */
@@ -16,6 +28,12 @@ export type CommitStagePayload = {
    * its words are one undo step.
    */
   interfaceText?: CurrentProtocol['interfaceText'];
+  /**
+   * The codebook sections the stage's editor changed, each written whole (a
+   * type or the ego section the codebook lacks is created), in the same
+   * action so the stage and the codebook it relies on are one undo step.
+   */
+  codebook?: readonly CommittedCodebookSection[];
 };
 
 /**

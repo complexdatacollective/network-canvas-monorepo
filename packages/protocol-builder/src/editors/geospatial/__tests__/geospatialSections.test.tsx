@@ -745,9 +745,10 @@ describe('the places a geospatial stage asks about', () => {
 
   /**
    * A location attribute created here is a real part of the protocol, made
-   * through the codebook's own write — not something this prompt invented for
-   * itself and wrote into the stage. It is also BOUND to the prompt that asked
-   * for it, or the researcher has to go and find it themselves.
+   * through the codebook — not something this prompt invented for itself and
+   * wrote into the stage: it is held with the stage and written to the
+   * codebook when the stage is saved. It is also BOUND to the prompt that
+   * asked for it, or the researcher has to go and find it themselves.
    */
   it('creates a location attribute through the codebook, and binds it', async () => {
     const harness = openEditor();
@@ -763,19 +764,6 @@ describe('the places a geospatial stage asks about', () => {
       'born',
     );
 
-    await waitFor(() => {
-      const person = harness.hostCodebook().node?.person;
-      expect(
-        Object.values(person?.variables ?? {}).some(
-          (variable) =>
-            variable.name === 'born' && variable.type === 'location',
-        ),
-      ).toBe(true);
-    });
-
-    const created = Object.entries(
-      harness.hostCodebook().node?.person?.variables ?? {},
-    ).find(([, variable]) => variable.name === 'born')?.[0];
     // The picker shows the researcher's NAME for the attribute, and the prompt
     // stores its id, so both are read: the field for what is on screen, and the
     // saved stage for the reference that outlives the dialog.
@@ -789,7 +777,27 @@ describe('the places a geospatial stage asks about', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
+
+    // Adding the prompt made the attribute the stage's: the editor holds it,
+    // as a location, and the protocol does not until the stage is saved.
+    const isBorn = (variable: { name: string; type: string }) =>
+      variable.name === 'born' && variable.type === 'location';
+    const created = Object.entries(
+      harness.editorCodebook().node?.person?.variables ?? {},
+    ).find(([, variable]) => isBorn(variable))?.[0];
+    expect(created).toBeDefined();
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        isBorn,
+      ),
+    ).toBe(false);
+
     const request = await harness.submit();
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        isBorn,
+      ),
+    ).toBe(true);
     const prompts = request?.stageDocument.prompts;
     expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
       text: { 'en-US': 'Where were you born?' },

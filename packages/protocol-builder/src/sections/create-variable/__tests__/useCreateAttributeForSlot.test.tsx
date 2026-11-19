@@ -1,10 +1,9 @@
 import { act, waitFor, within } from '@testing-library/react';
 import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import Section from '@codaco/fresco-ui/Section';
-import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import VariablePickerField, {
   type CreateOptionOutcome,
@@ -148,42 +147,15 @@ function UntilTheFormIsReadOnly({
 }
 
 /**
- * Holds every codebook write open at the host, and hands back the release.
- *
- * A codebook write takes the section's own lock before it writes anything, so
- * a lock the host has not answered yet holds the whole round trip — which is
- * the only way to put anything in the window between the press and the answer.
- * Only the codebook's own sections: the stage's acquire and its save run
- * through the same method, and holding those would leave no stage to act on.
+ * The attribute as the EDITOR holds it: a create made inside a stage editor is
+ * part of that stage's draft, so the protocol does not hold it until the stage
+ * is saved.
  */
-const holdCodebookWrites = (harness: ReturnType<typeof renderStageEditor>) => {
-  const { store } = harness.host;
-  const acquire = store.acquire.bind(store);
-  let release: () => void = () => undefined;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const delayed = async (...args: Parameters<typeof acquire>) => {
-    const [id] = args;
-    if (!parseSectionId(id).kind.startsWith('codebook')) {
-      return acquire(...args);
-    }
-    await held;
-    return acquire(...args);
-  };
-  vi.spyOn(store, 'acquire').mockImplementation(
-    delayed as unknown as typeof acquire,
-  );
-  return () => {
-    release();
-  };
-};
-
 const createdAttribute = (
   harness: ReturnType<typeof renderStageEditor>,
   name: string,
 ) =>
-  Object.entries(harness.hostCodebook().node?.person?.variables ?? {}).find(
+  Object.entries(harness.editorCodebook().node?.person?.variables ?? {}).find(
     ([, variable]) => variable.name === name,
   );
 
@@ -217,6 +189,21 @@ describe('a slot whose attribute a name finishes', () => {
     expect(
       within(attributeField(LABEL)).getByText('is_participant'),
     ).toBeInTheDocument();
+    // Kept in the stage's draft rather than written to the protocol...
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        (variable) => variable.name === 'is_participant',
+      ),
+    ).toBe(false);
+    // ...so cancelling the stage drops it. (Saving it with the stage is
+    // proved where a whole stage is mounted: this slot's `highlight` key is no
+    // part of a name generator, so this form cannot be saved.)
+    await harness.cancel();
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        (variable) => variable.name === 'is_participant',
+      ),
+    ).toBe(false);
   });
 
   /**
@@ -240,23 +227,23 @@ describe('a slot whose attribute a name finishes', () => {
       ),
     });
     await harness.opened();
-    const release = holdCodebookWrites(harness);
-
     const createOption = capture.createOption();
     expect(createOption).toBeDefined();
     const pending = createOption?.('is_participant');
 
+    // Between the press and the answer: the create is asked, and the form
+    // stops being writable before the continuation that would fill the slot
+    // runs (it resumes on a later microtask than this synchronous act).
     act(() => {
       capture.stopWriting();
     });
 
-    release();
     let outcome: CreateOptionOutcome | undefined;
     await act(async () => {
       outcome = await pending;
     });
 
-    // The codebook holds it: the write landed and nothing undoes it.
+    // The draft holds it: the create landed and nothing undoes it.
     await waitFor(() =>
       expect(createdAttribute(harness, 'is_participant')).toBeDefined(),
     );

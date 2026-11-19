@@ -1,14 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { COLOR_SEQUENCE_HUE_NAMES } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { newEntityDraft } from '../../../codebook/components/CodebookEntityEditorDialog.tsx';
-import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
-import { beforeCall } from '../../../testing/host/beforeCall.ts';
-import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   TestPromptEditor,
@@ -54,12 +51,19 @@ const draftString = (draft: unknown, ...keys: readonly string[]): string => {
 /**
  * The type names the PROTOCOL holds.
  *
- * A codebook edit commits under its own lock the moment it is made, so this is
- * the only place that can say one happened — and the only place that can say
- * none did.
+ * A codebook edit made inside a stage editor is part of that stage's draft, so
+ * this says what has been SAVED: the place to prove that a type reached the
+ * protocol only with the stage, or that nothing did.
  */
 const nodeTypeNames = (harness: Harness): string[] =>
   Object.values(harness.hostCodebook().node ?? {}).map(({ name }) => name);
+
+/**
+ * The type names the editor offers: the protocol's, with the types the stage
+ * is holding laid over them.
+ */
+const editorNodeTypeNames = (harness: Harness): string[] =>
+  Object.values(harness.editorCodebook().node ?? {}).map(({ name }) => name);
 
 const edgeTypeNames = (harness: Harness): string[] =>
   Object.values(harness.hostCodebook().edge ?? {}).map(({ name }) => name);
@@ -353,7 +357,7 @@ describe('creating the type a stage needs without leaving it', () => {
     );
   });
 
-  it('puts the new type in the codebook and selects it here', async () => {
+  it('holds the new type with the stage and selects it here', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: nodeSubjectAndPrompts,
@@ -362,9 +366,12 @@ describe('creating the type a stage needs without leaving it', () => {
     await createNodeTypeNamed(harness, 'Place');
     await useTheCreatedType(harness);
 
-    // The type is in the protocol itself: a create commits under its own lock
-    // rather than waiting for the stage to be saved.
-    await waitFor(() => expect(nodeTypeNames(harness)).toContain('Place'));
+    // The type is part of the stage's draft: the editor offers it at once, and
+    // the protocol learns of it when the stage is saved.
+    await waitFor(() =>
+      expect(editorNodeTypeNames(harness)).toContain('Place'),
+    );
+    expect(nodeTypeNames(harness)).not.toContain('Place');
     // …and the stage now points at it, with the previous type's prompts gone.
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
     await waitFor(() =>
@@ -379,8 +386,8 @@ describe('creating the type a stage needs without leaving it', () => {
    * researcher exactly what picking a different type in the list costs — the
    * prompts, the form, the panels and the filter — so it is the same question,
    * asked at the same moment. The type is created either way: the codebook
-   * edit has already been committed by the time this is asked, and nothing
-   * about it is undone by an answer about the stage.
+   * edit has already joined the stage's draft by the time this is asked, and
+   * nothing about it is undone by an answer about the stage.
    */
   it('asks before it moves a configured stage to the new type', async () => {
     const harness = renderStageEditor({
@@ -392,7 +399,7 @@ describe('creating the type a stage needs without leaving it', () => {
 
     expect(await screen.findByText('Change node type?')).toBeInTheDocument();
     // The type exists, and the stage has not moved.
-    expect(nodeTypeNames(harness)).toContain('Place');
+    expect(editorNodeTypeNames(harness)).toContain('Place');
     expect(pickedTypeBehindTheQuestion()).toBe('person');
     expect(
       screen.getByText('Who are the people you know?'),
@@ -423,9 +430,9 @@ describe('creating the type a stage needs without leaving it', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
-    // The new type is in the codebook and offered here — declining is about
-    // this stage, not about the type.
-    expect(nodeTypeNames(harness)).toContain('Place');
+    // The new type is held and offered here — declining is about this stage's
+    // choice, not about the type.
+    expect(editorNodeTypeNames(harness)).toContain('Place');
     expect(screen.getByRole('radio', { name: 'Place' })).not.toBeChecked();
     expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
     expect(
@@ -460,9 +467,9 @@ describe('creating the type a stage needs without leaving it', () => {
 
   /**
    * The reason a researcher needs a new type is usually the work they have
-   * just done, so the create has to survive an unsaved stage — WITHOUT saving
-   * it. The prompt stays theirs to finish and save; the codebook change goes
-   * to the host on its own.
+   * just done, so the create has to work on an unsaved stage — WITHOUT saving
+   * it. The prompt stays theirs to finish and save; the type is held beside it
+   * and goes to the host with whatever they eventually save.
    */
   it('works after the stage has been edited, and leaves that edit unsaved', async () => {
     const harness = renderStageEditor({
@@ -484,19 +491,21 @@ describe('creating the type a stage needs without leaving it', () => {
     await useTheCreatedType(harness);
 
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
-    expect(nodeTypeNames(harness)).toContain('Place');
-    // The stage the protocol holds is exactly what it was: the create wrote
-    // the codebook and claimed nothing about the stage, so the prompt the
-    // researcher wrote was never saved for them.
+    expect(editorNodeTypeNames(harness)).toContain('Place');
+    // The stage the protocol holds is exactly what it was, and so is its
+    // codebook: nothing was saved, so the prompt the researcher wrote was
+    // never saved for them and neither was the type.
     expect(harness.protocolSections()[NAME_GENERATOR]?.prompts).toHaveLength(1);
+    expect(nodeTypeNames(harness)).not.toContain('Place');
   });
 
   /**
    * The whole point of the rule. Changing the subject throws the old type's
    * configuration away, which is precisely when a researcher discovers they
    * need a type that does not exist — and precisely when the stage cannot be
-   * saved. A create that folded the stage into its own write would be refused
-   * here, in the protocol schema's words, for a stage nobody asked to save.
+   * saved. Making the type is only a change to the draft, so it is not judged
+   * until the researcher asks to save, and an unfinished stage does not get in
+   * its way.
    */
   it('creates a type while the stage is too incomplete to save', async () => {
     const harness = renderStageEditor({
@@ -515,7 +524,7 @@ describe('creating the type a stage needs without leaving it', () => {
     await createNodeTypeNamed(harness, 'Place');
 
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
-    expect(nodeTypeNames(harness)).toContain('Place');
+    expect(editorNodeTypeNames(harness)).toContain('Place');
     // Nothing was said about the entity that could not be saved.
     expect(
       screen.queryByText('Could not save this entity'),
@@ -542,7 +551,7 @@ describe('creating the type a stage needs without leaving it', () => {
     expect(
       await screen.findByText('A type named "person" already exists.'),
     ).toBeInTheDocument();
-    expect(nodeTypeNames(harness)).toEqual(['person', 'family member']);
+    expect(editorNodeTypeNames(harness)).toEqual(['person', 'family member']);
   });
 
   it('is not offered to a spectator', async () => {
@@ -620,114 +629,6 @@ describe('a codebook that changes while the editor is open', () => {
 });
 
 /**
- * A dismissal while the create is in flight.
- *
- * The request outlives the dialog: the handler awaiting it is still alive, and
- * a success arriving after the dialog has gone still selects the new type on
- * the stage — which throws away everything that described the old one. The
- * researcher sees the configuration of a stage they had closed a dialog on
- * disappear, for a type they never saw arrive.
- */
-describe('dismissing the create dialog while it is submitting', () => {
-  /**
-   * Holds the create on its way to the host, and hands back the release.
-   *
-   * Between the editor and the host rather than inside it: an in-memory host
-   * answers in a microtask, so a request that is still in flight is something
-   * only the transport can be. The call goes on to the real host when the
-   * release comes, and what the editor is finally told is the host's own
-   * answer.
-   */
-  const gateTheCreate = (): Readonly<{
-    adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
-    release: () => void;
-  }> => {
-    let open: () => void = () => undefined;
-    const held = new Promise<void>((resolve) => {
-      open = resolve;
-    });
-    return {
-      adapter: ({ adapter }) =>
-        beforeCall(adapter, (tag) => (tag === 'Create' ? held : undefined)),
-      release: () => {
-        open();
-      },
-    };
-  };
-
-  const startTheCreate = async (harness: Harness) => {
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new node type' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Node type name' }),
-      'Place',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save entity' }),
-    );
-  };
-
-  it('refuses every way out until the request has answered', async () => {
-    const gate = gateTheCreate();
-    const harness = renderStageEditor({
-      stageId: 'name-generator-1',
-      sections: nodeSubjectAndPrompts,
-      adapter: gate.adapter,
-    });
-    await startTheCreate(harness);
-
-    // Escape, a press outside and the close button are the three routes the
-    // researcher has left — Cancel disables itself — and all of them reach the
-    // dialog through `closeDialog`.
-    await harness.user.keyboard('{Escape}');
-    await harness.user.click(document.body);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    // …and the one that is a visible control is not offered at all, rather
-    // than offered and inert.
-    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
-
-    gate.release();
-    await waitFor(() => expect(nodeTypeNames(harness)).toContain('Place'));
-    await useTheCreatedType(harness);
-    expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
-  });
-
-  /**
-   * And the way out comes back. A refusal that outlived the request would
-   * leave the researcher shut inside a dialog with nothing left to wait for.
-   */
-  it('can be dismissed again once the request has failed', async () => {
-    const harness = renderStageEditor({
-      stageId: 'name-generator-1',
-      sections: nodeSubjectAndPrompts,
-    });
-    // The one refusal a create can meet: it takes no lock and the protocol is
-    // right here, so what is left is the host declining the section it is
-    // handed.
-    vi.spyOn(harness.host.store, 'create').mockReturnValue({
-      status: 'invalidShape',
-      sectionId: sectionId({ kind: 'codebookNode', typeId: 'place' }),
-      issues: [{ path: ['name'], message: 'A node type needs a name.' }],
-    });
-
-    await startTheCreate(harness);
-    await screen.findByText(
-      'This change is not something the codebook can hold, so nothing was saved. Check what you entered and try again.',
-    );
-    expect(nodeTypeNames(harness)).toEqual(['person', 'family member']);
-
-    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Discard changes' }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-  });
-});
-
-/**
  * Node and edge types share one namespace: the editor validates a new name
  * against both codebook maps.
  *
@@ -761,7 +662,7 @@ describe('naming a new type', () => {
     expect(
       await screen.findByText('A type named "knows" already exists.'),
     ).toBeInTheDocument();
-    expect(nodeTypeNames(harness)).toEqual(['person', 'family member']);
+    expect(editorNodeTypeNames(harness)).toEqual(['person', 'family member']);
   });
 
   it('refuses an edge name a node type already uses, whatever the case', async () => {

@@ -1,6 +1,10 @@
 import { isEqual } from 'es-toolkit/compat';
 import { useSyncExternalStore } from 'react';
 
+import {
+  NOTHING_STAGED,
+  type StagedCodebook,
+} from '@codaco/protocol-builder/state/stagedCodebook';
 import type { InterfaceTextUpdate, Stage } from '@codaco/protocol-validation';
 
 /**
@@ -35,12 +39,11 @@ type StageDraftBeacon = Readonly<{
    * Whether it holds anything the protocol does not.
    *
    * A deep comparison against the document the editor opened on, so undoing an
-   * edit by hand reports clean again. Codebook edits are NOT part of it: they
-   * commit immediately under their own lock and survive this editor being
-   * cancelled, so they are not this draft's to lose. Neither are the shared
-   * words the protocol already holds, for the same reason; but wording the
-   * researcher gave a shared entry the protocol does not hold yet is saved
-   * only with the stage, so it is.
+   * edit by hand reports clean again. The codebook changes and the shared
+   * words changed in the editor are part of it: they are kept with the stage
+   * and saved only with it, so leaving loses them (an edit undone by hand
+   * stops being one). Network Canvas's wording for a shared entry the stage
+   * is the first to use is not: the protocol gains it anyway.
    */
   dirty: boolean;
   /**
@@ -49,11 +52,18 @@ type StageDraftBeacon = Readonly<{
    */
   stage: Stage | undefined;
   /**
-   * The shared words the stage brings in that the protocol does not hold yet,
-   * as a save would write them with it (`pendingSharedWording`): part of the
-   * protocol the researcher is looking at, for the same readers.
+   * The shared words a save would write with the stage
+   * (`pendingSharedWording`): the researcher's changes to them, and those the
+   * stage is the first to use. Part of the protocol the researcher is looking
+   * at, for the same readers.
    */
   interfaceText: readonly InterfaceTextUpdate[];
+  /**
+   * The codebook changes made in the editor, which a save writes with the
+   * stage (see `StagedCodebookStore`): part of the protocol the researcher is
+   * looking at, for the same readers.
+   */
+  codebook: StagedCodebook;
 }>;
 
 const NO_WORDS: readonly InterfaceTextUpdate[] = Object.freeze([]);
@@ -66,6 +76,7 @@ const CLOSED: StageDraftBeacon = Object.freeze({
   dirty: false,
   stage: undefined,
   interfaceText: NO_WORDS,
+  codebook: NOTHING_STAGED,
 });
 
 let current: StageDraftBeacon = CLOSED;
@@ -101,19 +112,28 @@ export function publishStageDraft(
   committed: Readonly<Record<string, unknown>>,
   draft: Readonly<Record<string, unknown>>,
   editing: boolean,
-  /** The shared words held with the stage, when it holds any. */
+  /** The shared words a save would write with the stage, when there are any. */
   interfaceText: Readonly<{
     words: readonly InterfaceTextUpdate[];
-    /** Whether any of them is the researcher's rather than Network Canvas's. */
+    /**
+     * Whether any of them is the researcher's change rather than Network
+     * Canvas's wording for an entry the stage is the first to use.
+     */
     reworded: boolean;
   }> = NO_PENDING_WORDS,
+  /** The codebook changes held with the stage. */
+  codebook: StagedCodebook = NOTHING_STAGED,
 ): void {
   announce({
     open: true,
     editing,
-    dirty: interfaceText.reworded || !isEqual(prune(draft), prune(committed)),
+    dirty:
+      interfaceText.reworded ||
+      Object.keys(codebook).length > 0 ||
+      !isEqual(prune(draft), prune(committed)),
     stage,
     interfaceText: interfaceText.words,
+    codebook,
   });
 }
 

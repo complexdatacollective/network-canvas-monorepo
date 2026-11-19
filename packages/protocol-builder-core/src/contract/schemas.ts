@@ -2,6 +2,7 @@ import { Schema } from 'effect';
 
 import { isSafeAssetSource } from '@codaco/protocol-validation';
 import {
+  isCodebookSectionId,
   parseSectionId,
   sectionId,
   type ProtocolSectionId,
@@ -360,6 +361,52 @@ const StageInterfaceTextSchema = Schema.NonEmptyArray(
   InterfaceTextUpdateSchema,
 );
 
+/** A section of the codebook: one node type, one edge type, or the ego's. */
+export const CodebookSectionIdSchema = SectionIdSchema.check(
+  Schema.makeFilter((id) => isCodebookSectionId(id), {
+    message: 'not a codebook section id',
+  }),
+);
+
+/** One codebook section as a stage's write leaves it, whole. */
+const StageCodebookSectionSchema = Schema.Struct({
+  sectionId: CodebookSectionIdSchema,
+  document: SectionDocumentSchema,
+});
+
+/**
+ * The codebook changes made while a stage was being edited, written with it.
+ *
+ * A stage editor changes the codebook as well as the stage: it invents the
+ * attributes and types its questions name, sets the rules, options and
+ * controls of the attributes it asks about, and so on. Those changes are part
+ * of the researcher's edit of the stage — made in it, kept with it until it is
+ * saved, and thrown away with it when it is cancelled — so they reach the
+ * protocol only with the stage, in the stage's own revision: the stage and the
+ * codebook it relies on are one change, or neither is made.
+ *
+ * Each entry is a codebook section as the write leaves it, whole, and a
+ * section the protocol does not hold yet is created by it (a type the
+ * researcher invented in the editor, or the ego's first attribute). Taken on
+ * the terms the shared words are: an editor holding one of the sections
+ * refuses the write — a holder that is the writer itself is no obstacle, which
+ * is how a client keeps collaborators out between reading a section and
+ * writing it — and a section the codebook cannot hold refuses it as
+ * `InvalidShape` of that section. Non-empty when present, and naming each
+ * section once.
+ */
+const StageCodebookSchema = Schema.NonEmptyArray(
+  StageCodebookSectionSchema,
+).check(
+  Schema.makeFilter(
+    (sections) =>
+      new Set(sections.map(({ sectionId: id }) => id)).size === sections.length,
+    { message: 'a codebook section is named more than once' },
+  ),
+);
+
+export type StageCodebookSection = typeof StageCodebookSectionSchema.Type;
+
 export const SubmitInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   requestId: RequestIdSchema,
@@ -374,6 +421,8 @@ export const SubmitInputSchema = Schema.Struct({
   promote: Schema.optionalKey(ResourcePromotionRequestSchema),
   /** For a stage: the shared words it brings in (`StageInterfaceTextSchema`). */
   interfaceText: Schema.optionalKey(StageInterfaceTextSchema),
+  /** For a stage: the codebook changes made with it (`StageCodebookSchema`). */
+  codebook: Schema.optionalKey(StageCodebookSchema),
 });
 
 export const SubmitResultSchema = Schema.Struct({
@@ -408,6 +457,11 @@ export const CreateInputSchema = Schema.Struct({
    * (`StageInterfaceTextSchema`).
    */
   interfaceText: Schema.optionalKey(StageInterfaceTextSchema),
+  /**
+   * For a stage: the codebook changes made with it, written in the same
+   * revision (`StageCodebookSchema`).
+   */
+  codebook: Schema.optionalKey(StageCodebookSchema),
 });
 
 export const CreateResultSchema = Schema.Struct({

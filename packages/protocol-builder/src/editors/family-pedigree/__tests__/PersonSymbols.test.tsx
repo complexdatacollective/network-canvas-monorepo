@@ -79,8 +79,13 @@ const personType = (harness: StageEditorHarness): SectionDoc => {
   return section;
 };
 
+/** The symbols as the EDITOR shows them: the protocol's, plus the stage's held changes. */
 const shapeOf = (harness: StageEditorHarness): unknown =>
-  personType(harness).shape;
+  harness.editorCodebook().node?.family_member?.shape;
+
+/** The symbols as the PROTOCOL holds them, which move only when the stage is saved. */
+const savedShapeOf = (harness: StageEditorHarness): unknown =>
+  harness.hostCodebook().node?.family_member?.shape;
 
 /** The person type's shape, changed from outside the editor. */
 const receiveShape = (harness: StageEditorHarness, shape: unknown): void => {
@@ -177,15 +182,34 @@ describe('the pedigree symbols choice', () => {
     );
   });
 
-  it('writes only the codebook: the stage saves as it would have', async () => {
+  /**
+   * The symbols belong to the person type's codebook entry, so choosing them
+   * leaves the stage's own fields alone — but the choice is made while editing
+   * the stage, so it is the stage's draft: the protocol holds it only once the
+   * stage is saved, and cancelling the stage discards it.
+   */
+  it('keeps the choice with the stage: the stage document is as it would have been, and the protocol holds the symbols once the stage is saved', async () => {
     const harness = await openFixture();
     const before = await harness.submit();
 
     await choose(harness, OPTION.sex);
     await waitFor(() => expect(shapeOf(harness)).toEqual(SEX_SYMBOLS));
+    expect(savedShapeOf(harness)).not.toEqual(SEX_SYMBOLS);
 
     const after = await harness.submit();
     expect(after?.stageDocument).toEqual(before?.stageDocument);
+    expect(savedShapeOf(harness)).toEqual(SEX_SYMBOLS);
+  });
+
+  it('discards the choice when the stage is cancelled', async () => {
+    const harness = await openFixture();
+
+    await choose(harness, OPTION.sex);
+    await waitFor(() => expect(shapeOf(harness)).toEqual(SEX_SYMBOLS));
+
+    await harness.cancel();
+
+    expect(savedShapeOf(harness)).not.toEqual(SEX_SYMBOLS);
   });
 
   it('offers gender identity only while the stage asks about it', async () => {

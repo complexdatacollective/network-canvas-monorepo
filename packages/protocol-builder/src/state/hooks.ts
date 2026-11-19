@@ -21,7 +21,7 @@ import type {
   InterfaceTextUpdate,
   NodeShapeReference,
 } from '@codaco/protocol-validation';
-import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
   sectionId,
@@ -40,7 +40,15 @@ import {
   useProtocolBuilderContext,
   type LockState,
 } from './context.ts';
+import { useProtocolSections } from './protocolContext.ts';
 import { useKeptRequestId } from './requestKey.ts';
+import { useStagedCodebook } from './stagedCodebook.ts';
+import {
+  readSavedCodebook,
+  codebookPayload,
+  stageAskHash,
+  type CodebookSave,
+} from './stagedCodebookSave.ts';
 
 export type SectionAtRevision = Readonly<{
   document: SectionDoc;
@@ -119,7 +127,7 @@ export function useEntityTypes(
     (candidate) => parseSectionId(candidate).kind === kind,
   );
 
-  return useQueries({
+  const stored = useQueries({
     queries: ids.map((id) => ({
       ...adapter.rpcQuery('GetSection', { protocolId, sectionId: id }),
       select: (section: CachedSection): EntityTypeSummary =>
@@ -130,6 +138,38 @@ export function useEntityTypes(
         result.data === undefined ? [] : [result.data],
       ),
   });
+
+  // With the open stage editor's codebook changes over them: a type the
+  // researcher invented in the editor is one its pickers offer, and a type
+  // they renamed is offered by its new name.
+  const sections = useProtocolSections();
+  const staged = useStagedCodebook();
+  return useMemo(() => {
+    const changed = Object.keys(staged)
+      .map((key) => sectionId(parseSectionId(key)))
+      .filter((id) => parseSectionId(id).kind === kind);
+    if (changed.length === 0) return stored;
+    const summaries: EntityTypeSummary[] = [];
+    for (const summary of stored) {
+      const id = sectionId({ kind, typeId: summary.id });
+      if (!changed.includes(id)) {
+        summaries.push(summary);
+        continue;
+      }
+      const document = sections[id];
+      if (document !== undefined) {
+        summaries.push(entityTypeSummary(id, document));
+      }
+    }
+    for (const id of changed) {
+      if (ids.includes(id)) continue;
+      const document = sections[id];
+      if (document !== undefined) {
+        summaries.push(entityTypeSummary(id, document));
+      }
+    }
+    return summaries;
+  }, [ids, kind, sections, staged, stored]);
 }
 
 export type StageSummary = Readonly<{
@@ -257,7 +297,12 @@ export type SubmitResult =
     }>
   | Readonly<{ status: 'notLockHolder'; holder?: Presence }>
   | Readonly<{ status: 'sectionsLocked'; blocked: readonly SectionHolder[] }>
-  | Readonly<{ status: 'invalidShape'; issues: readonly SectionIssue[] }>
+  | Readonly<{
+      status: 'invalidShape';
+      /** The section the host could not hold: the stage, or one it carried. */
+      sectionId: ProtocolSectionId;
+      issues: readonly SectionIssue[];
+    }>
   | Readonly<{ status: 'promotionFailed'; failure: ResourceFailure }>
   /**
    * No answer came: the host may or may not have written the section, and the
@@ -285,12 +330,14 @@ export type SectionMutation = Readonly<{
   holder: Presence | undefined;
   /**
    * Writes the section whole, with the staged files it names and, for a
-   * stage, the shared words it brings in (the contract's `interfaceText`).
+   * stage, the shared words it brings in (the contract's `interfaceText`) and
+   * the codebook sections changed with it (the contract's `codebook`).
    */
   submit(
     document: SectionDoc,
     promote?: ResourcePromotion,
     interfaceText?: readonly InterfaceTextUpdate[],
+    codebook?: CodebookSave,
   ): Promise<SubmitResult>;
   release(): void;
 }>;
@@ -437,6 +484,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       document: SectionDoc,
       promote?: ResourcePromotion,
       interfaceText?: readonly InterfaceTextUpdate[],
+      codebook?: CodebookSave,
     ): Promise<SubmitResult> => {
       if (section === undefined) {
         throw new Error(`section ${id} was submitted before it was read`);
@@ -448,14 +496,14 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       // answered with the revision that one wrote.
       // The words travel with the document, so a save of the same stage with
       // different words is a different ask.
+      // So do the codebook changes made with it.
       const words =
         interfaceText === undefined || interfaceText.length === 0
           ? undefined
           : nonEmpty(interfaceText);
+      const changes = codebookPayload(codebook);
       const requestId = saveKey.forAsk(
-        words === undefined
-          ? contentHash(document)
-          : contentHash({ document, interfaceText: words }),
+        stageAskHash(document, words, codebook?.staged),
       );
       const submitted = await attempt(adapter, 'Submit', {
         protocolId,
@@ -465,10 +513,12 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         revision: section.revision,
         ...(promote === undefined ? {} : { promote }),
         ...(words === undefined ? {} : { interfaceText: words }),
+        ...(changes === undefined ? {} : { codebook: changes }),
       });
       if (submitted.answered) saveKey.settled(requestId);
       if (submitted.isSuccess) {
         const { data } = submitted;
+        await readSavedCodebook(queryClient, adapter, protocolId, codebook);
         return {
           status: 'written',
           revision: data.revision,
@@ -512,7 +562,11 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         case 'SectionsLocked':
           return { status: 'sectionsLocked', blocked: refusal.blocked };
         case 'InvalidShape':
-          return { status: 'invalidShape', issues: refusal.issues };
+          return {
+            status: 'invalidShape',
+            sectionId: refusal.sectionId,
+            issues: refusal.issues,
+          };
         case 'PromotionFailed':
           return { status: 'promotionFailed', failure: refusal.failure };
         case 'ProtocolNotFound':
