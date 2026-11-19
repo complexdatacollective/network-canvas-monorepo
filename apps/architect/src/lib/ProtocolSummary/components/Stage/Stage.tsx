@@ -15,6 +15,7 @@ import {
   type LocalizedString,
   type Panel,
   stageDynamicValueContext,
+  suppliedStageSettingApplies,
 } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
@@ -31,7 +32,6 @@ import {
 } from '../SummaryText';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
-import CanvasWording from './CanvasWording';
 import ComposerEdges from './ComposerEdges';
 import DataSource from './DataSource';
 import FamilyPedigree, {
@@ -58,7 +58,7 @@ import RosterPanel from './RosterPanel';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
-import StageWording, { type StageWordingKey } from './StageWording';
+import StageWording from './StageWording';
 const messages = defineMessages({
   networkFiltering: {
     id: 'architect.protocolSummary.stage.stage.networkFiltering',
@@ -99,8 +99,31 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
+ * Canvas stage types whose built-in wording the summary prints after
+ * everything else the stage holds, and only the settings the stage's
+ * choices make apply (a heading no preset uses is never shown).
+ */
+const WORDING_AFTER_CANVAS: ReadonlySet<string> = new Set([
+  'Narrative',
+  'NarrativePedigree',
+]);
+
+/**
+ * Stage types whose built-in wording another section prints: a Family
+ * Pedigree's in its own sections, a Finish stage's among its screens, and a
+ * Language Chooser's heading as the stage's page heading.
+ */
+const WORDING_PRINTED_ELSEWHERE: ReadonlySet<string> = new Set([
+  'FamilyPedigree',
+  'FinishSession',
+  'LanguageChooser',
+]);
+
+/**
  * The settings of a stage the summary prints. Every stage type holds its own
  * subset, so each is optional; the summary prints those the stage holds.
+ * Its built-in wording settings are not listed: `StageWording` reads each by
+ * the path the stage editor's rules give it.
  */
 export type StageConfiguration = {
   subject?: { type: string; entity: string };
@@ -129,9 +152,6 @@ export type StageConfiguration = {
   finishedContent?: LocalizedString;
   mode?: FinishMode;
   outcome?: FinishOutcome;
-  finishLabel?: LocalizedString;
-  finishConfirmation?: LocalizedString;
-  finishFailed?: LocalizedString;
   edgeType?: { type: string; entity: string };
   relationshipTypeVariable?: string;
   relationshipToEgoVariable?: string;
@@ -172,7 +192,7 @@ export type StageConfiguration = {
   };
   edges?: { subject: { type: string }; label: LocalizedString }[];
   dynamicValues?: DynamicValues;
-} & Partial<Record<StageWordingKey, LocalizedString>>;
+} & Readonly<Record<string, unknown>>;
 
 type StageProps = {
   configuration: StageConfiguration;
@@ -231,9 +251,6 @@ const StageContent = ({
     finishedContent,
     mode: finishMode,
     outcome,
-    finishLabel,
-    finishConfirmation,
-    finishFailed,
     // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
     edgeType,
     relationshipTypeVariable,
@@ -255,7 +272,7 @@ const StageContent = ({
     // Geospatial
     mapOptions,
   } = configuration;
-  const finishing = { finishLabel, finishConfirmation, finishFailed };
+  const stage = { ...configuration, type };
   const pedigreePrompt =
     type === 'FamilyPedigree' ? (configuration.prompt ?? null) : null;
   // The words the participant sees, which the summary prints beside the rest.
@@ -394,7 +411,8 @@ const StageContent = ({
       <Prompts prompts={prompts ?? null} />
       <Form form={form ?? null} />
       <Behaviours behaviours={behaviours ?? null} />
-      <StageWording type={type} configuration={configuration} />
+      {!WORDING_AFTER_CANVAS.has(type) &&
+        !WORDING_PRINTED_ELSEWHERE.has(type) && <StageWording stage={stage} />}
       <Presets presets={presets ?? null} />
       {type === 'NetworkComposer' && (
         <ComposerEdges edges={configuration.edges ?? null} />
@@ -433,10 +451,15 @@ const StageContent = ({
           content={content ?? null}
           finishedContent={finishedContent ?? null}
           outcome={outcome ?? null}
-          finishing={finishing}
+          stage={stage}
         />
       )}
-      <CanvasWording type={type} configuration={configuration} />
+      {WORDING_AFTER_CANVAS.has(type) && (
+        <StageWording
+          stage={stage}
+          omits={(path) => !suppliedStageSettingApplies(stage, path.split('.'))}
+        />
+      )}
       <InterviewScript interviewScript={interviewScript ?? null} />
     </div>
   );

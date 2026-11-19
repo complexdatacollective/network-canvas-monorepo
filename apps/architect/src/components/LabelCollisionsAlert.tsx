@@ -5,6 +5,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import { declaredTranslationText } from '@codaco/protocol-builder/localization/localizedText';
 import type {
   CurrentProtocol,
   LabelCollision,
@@ -13,7 +14,6 @@ import { codebookHref } from '~/components/Codebook/codebookLinks';
 import { useAppSelector } from '~/ducks/hooks';
 import { getLabelCollisions } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
-import { resolveLocalizedText } from '~/utils/localizedText';
 
 import { translationTableHref } from './Localization/translationTableLinks';
 import { useLanguageName } from './Localization/useLanguageName';
@@ -100,10 +100,10 @@ const LabelCollisionsAlert = () => {
   if (protocol === null || collisions.length === 0) return null;
 
   const stageName = (stageIndex: number) =>
-    resolveLocalizedText(
+    declaredTranslationText(
       protocol.stages[stageIndex]?.label,
       protocol.localization,
-    )?.text ?? '';
+    );
 
   return (
     <Alert variant="warning">

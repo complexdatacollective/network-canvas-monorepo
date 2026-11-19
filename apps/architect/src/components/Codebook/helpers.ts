@@ -6,6 +6,7 @@ import {
 const defaultIntl = createAppIntl({ locale: 'en' });
 import { createSelector } from '@reduxjs/toolkit';
 
+import { declaredTranslationText } from '@codaco/protocol-builder/localization/localizedText';
 import {
   type ColorReference,
   type EdgeDefinition,
@@ -25,7 +26,6 @@ import {
   utils,
 } from '~/selectors/indexes';
 import { getCodebook, getProtocol } from '~/selectors/protocol';
-import { localizedText } from '~/utils/localizedText';
 const extraMessages = defineMessages({
   ego: {
     id: 'architect.codebook.entity.ego',
@@ -74,7 +74,7 @@ const getStageMetaByIndex = createSelector(
   (protocol): StageMeta[] => {
     if (!protocol) return [];
     return protocol.stages.map(({ label, id }: Stage) => ({
-      label: localizedText(label, protocol.localization),
+      label: declaredTranslationText(label, protocol.localization),
       id,
     }));
   },
