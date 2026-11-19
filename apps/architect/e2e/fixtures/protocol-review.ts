@@ -293,8 +293,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * Stands in for the review service on `context`, answering the CORS
  * preflight, each `GET /providers` with `providers`, and each `POST /review`
  * with `reply` (both read afresh for every request, so a spec can change them
- * as it goes), and taking each `POST /feedback`. Every body the app sent is
- * recorded, and nothing is sent anywhere real.
+ * as it goes). Every body the app sent is recorded, and nothing is sent
+ * anywhere real.
  */
 export async function mockReviewService(
   context: BrowserContext,
@@ -304,7 +304,6 @@ export async function mockReviewService(
   let reply = initial;
   let providers = initialProviders;
   const bodies: ReviewBody[] = [];
-  const feedback: Record<string, unknown>[] = [];
   let preflights = 0;
   let providerRequests = 0;
 
@@ -348,17 +347,7 @@ export async function mockReviewService(
       });
       return;
     }
-    const { pathname } = new URL(request.url());
     const parsed: unknown = JSON.parse(request.postData() ?? 'null');
-    if (pathname === '/feedback') {
-      if (!isRecord(parsed)) throw new Error('feedback body is not JSON');
-      feedback.push(parsed);
-      await route.fulfill({ status: 204, headers: cors });
-      return;
-    }
-    if (pathname !== '/review') {
-      throw new Error(`unexpected POST ${request.url()}`);
-    }
     if (!isRecord(parsed)) throw new Error('review request body is not JSON');
     // Keep the body as sent; the specs assert on its fields one by one.
     bodies.push(JSON.parse(JSON.stringify(parsed)) as ReviewBody);
@@ -398,8 +387,6 @@ export async function mockReviewService(
 
   return {
     bodies,
-    /** Every feedback body the app sent, oldest first. */
-    feedback,
     preflights: () => preflights,
     providerRequests: () => providerRequests,
     reply(next: ReviewReply) {

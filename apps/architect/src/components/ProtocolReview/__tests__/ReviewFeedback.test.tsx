@@ -4,12 +4,13 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { FeedbackRequest } from '@codaco/protocol-review-worker/contract';
+import { posthog } from '~/analytics';
 import { setActiveProtocolId } from '~/ducks/modules/app';
 import {
   cancelReview,
   checkFixAvailability,
   getProtocolReviewFindings,
+  sendFeedback,
   setShareReviews,
   startReview,
 } from '~/ducks/modules/protocolReview';
@@ -26,20 +27,19 @@ import {
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
 
-// Nothing here may reach a network: the review, the question of which
-// providers have budget left, and the feedback itself.
+// Nothing here may reach a network: the review, and the question of which
+// providers have budget left. Feedback goes to the mocked PostHog.
 const client = vi.hoisted(() => ({
   requestReview: vi.fn(),
   requestProviderStatus: vi.fn(),
-  sendReviewFeedback:
-    vi.fn<(options: { request: FeedbackRequest }) => Promise<'sent'>>(),
 }));
 vi.mock('~/protocolReview/reviewClient', async (importOriginal) => ({
   ...(await importOriginal<typeof import('~/protocolReview/reviewClient')>()),
   requestReview: client.requestReview,
   requestProviderStatus: client.requestProviderStatus,
-  sendReviewFeedback: client.sendReviewFeedback,
 }));
+
+const COMMENT = '$survey_response_d1404b0d-14be-4a2f-befe-577bd0afedee';
 
 /** Opens a protocol and completes a review of it, shared or not. */
 const reviewed = async (store: TestStore, share: boolean) => {
@@ -76,15 +76,23 @@ const ratingOf = (store: TestStore, id: string) => {
   return [finding?.rating, finding?.ratingReason];
 };
 
-const sentFeedback = (): FeedbackRequest[] =>
-  client.sendReviewFeedback.mock.calls.map(([options]) => options.request);
+/** Every `survey sent` event, in order. */
+const surveyEvents = () =>
+  vi
+    .mocked(posthog.capture)
+    .mock.calls.filter(([event]) => event === 'survey sent')
+    .map(([, properties]) => properties ?? {});
+
+/** The `survey sent` events carrying written feedback. */
+const sentComments = () =>
+  surveyEvents().filter((event) => !('finding_id' in event));
 
 let store: TestStore;
 
 beforeEach(() => {
   client.requestReview.mockReset();
   client.requestProviderStatus.mockReset().mockResolvedValue(null);
-  client.sendReviewFeedback.mockReset().mockResolvedValue('sent');
+  vi.mocked(posthog.capture).mockClear();
   store = makeStore();
   localStorage.clear();
 });
@@ -95,15 +103,10 @@ afterEach(() => {
 });
 
 describe('a review that was not shared', () => {
-  it('asks for no rating and no comment, and sends nothing', async () => {
+  it('asks for no rating and sends nothing about its problems', async () => {
     await reviewed(store, false);
     renderToolbar(store);
     const panel = await openPanel();
-    expect(
-      within(panel).queryByRole('button', {
-        name: 'Leave feedback on this review',
-      }),
-    ).not.toBeInTheDocument();
 
     await userEvent.click(
       within(panel).getByRole('button', { name: /The prompt is vague/ }),
@@ -117,7 +120,30 @@ describe('a review that was not shared', () => {
       }),
     ).not.toBeInTheDocument();
     await userEvent.click(problem.getByRole('button', { name: 'Dismiss' }));
-    expect(client.sendReviewFeedback).not.toHaveBeenCalled();
+    await store.dispatch(sendFeedback());
+    expect(surveyEvents()).toEqual([]);
+  });
+
+  it('still takes written feedback on the review', async () => {
+    await reviewed(store, false);
+    renderToolbar(store);
+    const panel = within(await openPanel());
+    await userEvent.click(
+      panel.getByRole('button', { name: 'Leave feedback on this review' }),
+    );
+    await userEvent.type(
+      await panel.findByRole('textbox', {
+        name: 'Leave feedback on this review',
+      }),
+      'Too many suggestions.',
+    );
+    await userEvent.click(panel.getByRole('button', { name: 'Send feedback' }));
+    await waitFor(() => expect(sentComments()).toHaveLength(1));
+    expect(sentComments()[0]).toMatchObject({
+      [COMMENT]: 'Too many suggestions.',
+      shared: false,
+    });
+    expect(sentComments()[0]).not.toHaveProperty('review_id');
   });
 });
 
@@ -180,19 +206,20 @@ describe('a review that was shared', () => {
       name: 'Leave feedback on this review',
     });
     expect(box).toHaveFocus();
-    expect(box).toHaveAccessibleDescription(/kept with the review you shared/);
+    expect(box).toHaveAccessibleDescription(/Leave out names/);
     const send = panel.getByRole('button', { name: 'Send feedback' });
     // Nothing typed, nothing to send.
     await userEvent.click(send);
-    expect(client.sendReviewFeedback).not.toHaveBeenCalled();
+    expect(sentComments()).toEqual([]);
 
     await userEvent.type(box, 'The second problem misread my skip logic.');
     await userEvent.click(send);
-    await waitFor(() => expect(sentFeedback()).toHaveLength(1));
-    expect(sentFeedback()[0]?.comment).toBe(
-      'The second problem misread my skip logic.',
-    );
-    expect(sentFeedback()[0]?.reviewId).toBe(RESULT.reviewId);
+    await waitFor(() => expect(sentComments()).toHaveLength(1));
+    expect(sentComments()[0]).toMatchObject({
+      [COMMENT]: 'The second problem misread my skip logic.',
+      review_id: RESULT.reviewId,
+      shared: true,
+    });
 
     const change = await panel.findByRole('button', {
       name: 'Change your feedback',
@@ -206,6 +233,6 @@ describe('a review that was shared', () => {
     ).toHaveValue('The second problem misread my skip logic.');
     await userEvent.click(panel.getByRole('button', { name: 'Cancel' }));
     expect(panel.queryByRole('textbox')).not.toBeInTheDocument();
-    expect(sentFeedback()).toHaveLength(1);
+    expect(sentComments()).toHaveLength(1);
   });
 });

@@ -25,7 +25,6 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
-  REVIEW_LIMITS,
   REVIEW_PROVIDER_NAMES,
   type ReviewErrorCode,
 } from '@codaco/protocol-review-worker/contract';
@@ -37,7 +36,6 @@ import {
   dismissReview,
   dismissReviewFailure,
   type FindingDisplayStatus,
-  getIsProtocolReviewShared,
   getProtocolReviewComment,
   getProtocolReviewCounts,
   getProtocolReviewFindings,
@@ -50,6 +48,7 @@ import {
   type ReviewRun,
   undoFix,
 } from '~/ducks/modules/protocolReview';
+import { FEEDBACK_COMMENT_MAX_LENGTH } from '~/protocolReview/reviewFeedback';
 import { isFixedAt, type ReviewPlace } from '~/protocolReview/reviewPlace';
 import { getProtocol } from '~/selectors/protocol';
 
@@ -327,7 +326,7 @@ const messages = defineMessages({
     id: 'architect.protocolReview.popover.commentOpen',
     defaultMessage: 'Leave feedback on this review',
     description:
-      'Button under the list of problems, shown when the review was shared with the Network Canvas team. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box.',
+      'Button under the list of problems. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box.',
   },
   commentChange: {
     id: 'architect.protocolReview.popover.commentChange',
@@ -338,7 +337,7 @@ const messages = defineMessages({
   commentHint: {
     id: 'architect.protocolReview.popover.commentHint',
     defaultMessage:
-      'Tell the Network Canvas team what you thought of this review. Your feedback is kept with the review you shared and deleted with it. Leave out names and anything else that could identify a person.',
+      'Tell the Network Canvas team what you thought of this review. Leave out names and anything else that could identify a person.',
     description:
       'Explanation above the box for written feedback about the review. "Network Canvas" is a product name and is not translated.',
   },
@@ -510,7 +509,6 @@ const ReviewPopoverContent = ({
   // The problem last shown, whose row takes focus when the list comes back.
   const returnTo = useRef<string | null>(null);
   const [dismissRefused, setDismissRefused] = useState(false);
-  const shared = useAppSelector(getIsProtocolReviewShared);
   const sentComment = useAppSelector(getProtocolReviewComment);
   // What is being typed, while the comment box is open.
   const [commentDraft, setCommentDraft] = useState<string | null>(null);
@@ -900,7 +898,7 @@ const ReviewPopoverContent = ({
         </div>
       )}
       {body}
-      {summary && !running && shared && (
+      {summary && !running && (
         <div className="border-outline flex flex-col gap-3 border-t px-6 py-4">
           {commentRefused && (
             <Alert variant="warning" density="compact" className="my-0">
@@ -942,7 +940,7 @@ const ReviewPopoverContent = ({
                 autoFocus
                 aria-labelledby={commentLabelId}
                 aria-describedby={commentHintId}
-                maxLength={REVIEW_LIMITS.maxFeedbackCommentLength}
+                maxLength={FEEDBACK_COMMENT_MAX_LENGTH}
                 className="[&>textarea]:field-sizing-content [&>textarea]:max-h-48 [&>textarea]:min-h-20"
                 value={commentDraft}
                 onChange={(next) => setCommentDraft(next ?? '')}

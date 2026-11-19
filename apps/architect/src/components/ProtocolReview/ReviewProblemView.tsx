@@ -20,11 +20,6 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
-import {
-  FEEDBACK_REASONS,
-  type FeedbackRating,
-  type FeedbackReason,
-} from '@codaco/protocol-review-worker/contract';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
@@ -37,6 +32,11 @@ import {
   undoFix,
 } from '~/ducks/modules/protocolReview';
 import type { FixTextEdit } from '~/protocolReview/describeFix';
+import {
+  FEEDBACK_REASONS,
+  type FeedbackRating,
+  type FeedbackReason,
+} from '~/protocolReview/reviewFeedback';
 import type { FindingDecision } from '~/protocolReview/reviewStore';
 
 import {

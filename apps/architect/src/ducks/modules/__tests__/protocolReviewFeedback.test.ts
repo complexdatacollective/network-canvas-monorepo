@@ -4,15 +4,11 @@ import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  FEEDBACK_PATH,
-  type FeedbackErrorCode,
-  type FeedbackRequest,
-  FeedbackRequestSchema,
   type Finding,
-  REVIEW_LIMITS,
   REVIEW_PATH,
   type ReviewResult,
 } from '@codaco/protocol-review-worker/contract';
+import { posthog } from '~/analytics';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { setActiveProtocolId } from '~/ducks/modules/app';
@@ -37,11 +33,17 @@ import {
   makeProtocol,
   op,
 } from '~/protocolReview/__tests__/fixtures';
-import { getReviewInstallationId } from '~/protocolReview/browserState';
+import { FEEDBACK_COMMENT_MAX_LENGTH } from '~/protocolReview/reviewFeedback';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import { readReviewRecord } from '~/protocolReview/reviewStore';
 
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
+
+const PROBLEM_SURVEY_ID = '01a1f560-e7a6-0000-197a-8a38fee548d1';
+const REVIEW_SURVEY_ID = '01a1f560-e8cb-0000-f278-9ef6ad9f3bb7';
+const RATING = '$survey_response_666eab72-38ca-41d0-96f1-e8a5160624c7';
+const REASON = '$survey_response_14e70b7d-7f2f-42b0-a4da-d51a2617fca6';
+const COMMENT = '$survey_response_d1404b0d-14be-4a2f-befe-577bd0afedee';
 
 const makeStore = () => {
   const created = configureStore({
@@ -75,49 +77,50 @@ const RESULT: ReviewResult = {
   quota: { limit: 5, remaining: 4, resetsAt: '2099-01-01T00:00:00.000Z' },
 };
 
-/**
- * The review service: answers a review with `RESULT`, and keeps every
- * feedback request it is sent, answering each as `feedbackAnswer` says.
- */
-const service = () => {
-  const feedback: FeedbackRequest[] = [];
-  const state: { feedbackAnswer: 'sent' | FeedbackErrorCode } = {
-    feedbackAnswer: 'sent',
-  };
-  const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
-    const { pathname } = new URL(
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input.url,
-    );
-    if (pathname === REVIEW_PATH) {
-      return new Response(
-        `data: ${JSON.stringify({ type: 'result', result: RESULT })}\n\n`,
-        { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
-      );
-    }
-    if (pathname !== FEEDBACK_PATH) throw new Error(`Unexpected ${pathname}`);
-    // Whatever Architect sends must be what the service accepts.
-    feedback.push(
-      FeedbackRequestSchema.parse(
-        JSON.parse(typeof init?.body === 'string' ? init.body : 'null'),
-      ),
-    );
-    return state.feedbackAnswer === 'sent'
-      ? new Response(null, { status: 204 })
-      : new Response(
-          JSON.stringify({ error: state.feedbackAnswer, retryAt: null }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } },
-        );
-  });
-  return { fetchImpl, feedback, state };
-};
+/** The review service: answers every review with `RESULT`. */
+const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+  const { pathname } = new URL(
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url,
+  );
+  if (pathname !== REVIEW_PATH) throw new Error(`Unexpected ${pathname}`);
+  return new Response(
+    `data: ${JSON.stringify({ type: 'result', result: RESULT })}\n\n`,
+    { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+  );
+});
+
+type SurveyEvent = Record<string, unknown>;
+
+/** Every `survey sent` event captured for `surveyId`, in order. */
+const surveyEvents = (surveyId: string): SurveyEvent[] =>
+  vi
+    .mocked(posthog.capture)
+    .mock.calls.filter(
+      ([event, properties]) =>
+        event === 'survey sent' && properties?.$survey_id === surveyId,
+    )
+    .map(([, properties]) => properties ?? {});
+
+const problemEvents = () => surveyEvents(PROBLEM_SURVEY_ID);
+const commentEvents = () => surveyEvents(REVIEW_SURVEY_ID);
+
+/** The last event sent about each problem, by finding id. */
+const latestByFinding = () =>
+  Object.fromEntries(
+    problemEvents().map((event) => [String(event.finding_id), event]),
+  );
+
+const outcomes = () =>
+  Object.fromEntries(
+    Object.entries(latestByFinding()).map(([id, event]) => [id, event.outcome]),
+  );
 
 let protocolCounter = 0;
 let store: Store;
-let server: ReturnType<typeof service>;
 
 /** Opens a protocol and completes a review of it, shared or not. */
 const reviewed = async (share: boolean) => {
@@ -133,21 +136,12 @@ const reviewed = async (share: boolean) => {
     status: 'completed',
   });
   await store.dispatch(checkFixAvailability());
+  vi.mocked(posthog.capture).mockClear();
   return id;
 };
 
-const lastFeedback = () => {
-  const last = server.feedback.at(-1);
-  if (!last) throw new Error('No feedback was sent');
-  return last;
-};
-
-const outcomes = (request: FeedbackRequest) =>
-  Object.fromEntries(request.findings.map(({ id, outcome }) => [id, outcome]));
-
 beforeEach(() => {
-  server = service();
-  vi.stubGlobal('fetch', server.fetchImpl);
+  vi.stubGlobal('fetch', fetchImpl);
   store = makeStore();
   localStorage.clear();
 });
@@ -158,12 +152,11 @@ afterEach(() => {
   store.dispatch(setActiveProtocolId(null));
   vi.useRealTimers();
   vi.unstubAllGlobals();
-  vi.restoreAllMocks();
 });
 
 describe('feedback on a review that was not shared', () => {
-  it('is never sent, and no rating or comment is kept', async () => {
-    const id = await reviewed(false);
+  it('sends nothing about its problems, and keeps no rating', async () => {
+    await reviewed(false);
     expect(getIsProtocolReviewShared(store.getState())).toBe(false);
 
     await store.dispatch(decideFinding('title', 'fix'));
@@ -172,12 +165,29 @@ describe('feedback on a review that was not shared', () => {
       ok: false,
       reason: 'no_review',
     });
-    expect(await store.dispatch(commentOnReview('Helpful'))).toBe(false);
     await store.dispatch(sendFeedback());
     await store.dispatch(dismissReview());
 
-    expect(server.feedback).toEqual([]);
-    expect((await readReviewRecord(id)).review).toBeNull();
+    expect(problemEvents()).toEqual([]);
+    expect(commentEvents()).toEqual([]);
+  });
+
+  it('sends written feedback, without the review id', async () => {
+    await reviewed(false);
+    expect(await store.dispatch(commentOnReview('Too many suggestions.'))).toBe(
+      true,
+    );
+    expect(commentEvents()).toEqual([
+      {
+        $survey_id: REVIEW_SURVEY_ID,
+        $survey_submission_id: RESULT.reviewId,
+        $survey_completed: true,
+        [COMMENT]: 'Too many suggestions.',
+        shared: false,
+        provider: 'anthropic',
+      },
+    ]);
+    expect(problemEvents()).toEqual([]);
   });
 });
 
@@ -186,65 +196,69 @@ describe('feedback on a shared review', () => {
     await reviewed(true);
     expect(getIsProtocolReviewShared(store.getState())).toBe(true);
     await store.dispatch(sendFeedback());
-    expect(server.feedback).toEqual([]);
+    expect(posthog.capture).not.toHaveBeenCalled();
   });
 
-  it('says what was done with each problem, once, and again only when that changes', async () => {
+  it('says what was done with each problem, and again only for a problem that changes', async () => {
     const id = await reviewed(true);
     await store.dispatch(decideFinding('title', 'fix'));
-    await store.dispatch(decideFinding('prompt', 'mine'));
     await store.dispatch(decideFinding('advice', 'dismissed'));
     await store.dispatch(sendFeedback());
 
-    expect(server.feedback).toHaveLength(1);
-    expect(lastFeedback()).toEqual({
-      installationId: getReviewInstallationId(),
-      reviewId: RESULT.reviewId,
-      findings: [
-        { id: 'prompt', outcome: 'mine', rating: null, reason: null },
-        { id: 'title', outcome: 'fixed', rating: null, reason: null },
-        { id: 'advice', outcome: 'dismissed', rating: null, reason: null },
-      ],
-      comment: null,
-    });
-    // What the service took is remembered beside the review.
-    expect((await readReviewRecord(id)).review?.feedbackSent).toBe(
-      JSON.stringify({
-        findings: lastFeedback().findings,
-        comment: null,
+    expect(problemEvents()).toEqual([
+      {
+        $survey_id: PROBLEM_SURVEY_ID,
+        $survey_submission_id: `${RESULT.reviewId}:title`,
+        $survey_completed: false,
+        review_id: RESULT.reviewId,
+        finding_id: 'title',
+        outcome: 'fixed',
+        severity: 'suggestion',
+        category: 'burden',
+        provider: 'anthropic',
+      },
+      expect.objectContaining({
+        $survey_submission_id: `${RESULT.reviewId}:advice`,
+        outcome: 'dismissed',
       }),
-    );
+    ]);
+    // What was sent is remembered beside the review.
+    expect((await readReviewRecord(id)).review?.feedbackSent).toEqual({
+      findings: {
+        prompt: { outcome: 'undecided', rating: null, reason: null },
+        title: { outcome: 'fixed', rating: null, reason: null },
+        advice: { outcome: 'dismissed', rating: null, reason: null },
+      },
+      comment: '',
+    });
 
     await store.dispatch(sendFeedback());
-    expect(server.feedback).toHaveLength(1);
+    expect(problemEvents()).toHaveLength(2);
 
-    await store.dispatch(decideFinding('prompt', 'done'));
+    await store.dispatch(decideFinding('advice', 'undecided'));
+    await store.dispatch(decideFinding('prompt', 'mine'));
     await store.dispatch(sendFeedback());
-    expect(server.feedback).toHaveLength(2);
-    expect(outcomes(lastFeedback())).toEqual({
-      prompt: 'done',
+    expect(problemEvents()).toHaveLength(4);
+    expect(outcomes()).toEqual({
+      prompt: 'mine',
       title: 'fixed',
-      advice: 'dismissed',
+      advice: 'undecided',
     });
   });
 
-  it('goes by itself a little after the last choice, as one request', async () => {
+  it('goes by itself a little after the last choice', async () => {
     await reviewed(true);
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     await store.dispatch(decideFinding('title', 'fix'));
     await vi.advanceTimersByTimeAsync(2000);
     await store.dispatch(decideFinding('advice', 'dismissed'));
     await vi.advanceTimersByTimeAsync(2000);
-    expect(server.feedback).toEqual([]);
+    expect(problemEvents()).toEqual([]);
 
     await vi.advanceTimersByTimeAsync(1000);
     vi.useRealTimers();
-    await vi.waitFor(() => expect(server.feedback).toHaveLength(1));
-    expect(outcomes(lastFeedback())).toEqual({
-      prompt: 'undecided',
-      title: 'fixed',
-      advice: 'dismissed',
-    });
+    await vi.waitFor(() => expect(problemEvents()).toHaveLength(2));
+    expect(outcomes()).toEqual({ title: 'fixed', advice: 'dismissed' });
   });
 
   it('tells a fix made as written from one the researcher edited first', async () => {
@@ -263,11 +277,7 @@ describe('feedback on a shared review', () => {
       ok: true,
     });
     await store.dispatch(sendFeedback());
-    expect(outcomes(lastFeedback())).toEqual({
-      prompt: 'fixed',
-      title: 'fixed_edited',
-      advice: 'undecided',
-    });
+    expect(outcomes()).toEqual({ prompt: 'fixed', title: 'fixed_edited' });
   });
 
   it('follows a fix that is undone, from the review or the toolbar', async () => {
@@ -275,17 +285,11 @@ describe('feedback on a shared review', () => {
     await store.dispatch(decideFinding('title', 'fix'));
     await store.dispatch(decideFinding('prompt', 'fix'));
     await store.dispatch(sendFeedback());
-    expect(outcomes(lastFeedback())).toMatchObject({
-      prompt: 'fixed',
-      title: 'fixed',
-    });
+    expect(outcomes()).toEqual({ prompt: 'fixed', title: 'fixed' });
 
     expect(await store.dispatch(undoFix('prompt'))).toEqual({ ok: true });
     await store.dispatch(sendFeedback());
-    expect(outcomes(lastFeedback())).toMatchObject({
-      prompt: 'undecided',
-      title: 'fixed',
-    });
+    expect(outcomes()).toEqual({ prompt: 'undecided', title: 'fixed' });
 
     // The app's own Undo takes the fix to the prompt back in (its undo was
     // the last change), then a second takes it out again with the title's.
@@ -293,33 +297,29 @@ describe('feedback on a shared review', () => {
     store.dispatch(timelineActions.undo());
     store.dispatch(timelineActions.undo());
     await store.dispatch(sendFeedback());
-    expect(outcomes(lastFeedback())).toMatchObject({
-      prompt: 'undecided',
-      title: 'undecided',
-    });
+    expect(outcomes()).toEqual({ prompt: 'undecided', title: 'undecided' });
   });
 
-  it('carries ratings, with a reason only for a problem that was not useful', async () => {
+  it('answers the survey with the rating, and a reason only for a problem that was not useful', async () => {
     await reviewed(true);
     await store.dispatch(rateFinding('prompt', 'useful', 'wrong'));
     await store.dispatch(rateFinding('title', 'not_useful', 'not_relevant'));
     await store.dispatch(rateFinding('advice', 'not_useful'));
     await store.dispatch(sendFeedback());
-    expect(lastFeedback().findings).toEqual([
-      { id: 'prompt', outcome: 'undecided', rating: 'useful', reason: null },
-      {
-        id: 'title',
-        outcome: 'undecided',
-        rating: 'not_useful',
-        reason: 'not_relevant',
-      },
-      {
-        id: 'advice',
-        outcome: 'undecided',
-        rating: 'not_useful',
-        reason: null,
-      },
-    ]);
+
+    const latest = latestByFinding();
+    expect(latest.prompt).toMatchObject({
+      $survey_completed: true,
+      [RATING]: 'Useful',
+    });
+    expect(latest.prompt).not.toHaveProperty(REASON);
+    expect(latest.title).toMatchObject({
+      $survey_completed: true,
+      [RATING]: 'Not useful',
+      [REASON]: 'It does not matter for my study',
+    });
+    expect(latest.advice).toMatchObject({ [RATING]: 'Not useful' });
+    expect(latest.advice).not.toHaveProperty(REASON);
     expect(
       getProtocolReviewFindings(store.getState()).map(
         ({ rating, ratingReason }) => [rating, ratingReason],
@@ -330,73 +330,45 @@ describe('feedback on a shared review', () => {
       ['not_useful', null],
     ]);
 
-    // A rating taken back is sent as none.
+    // A rating taken back leaves the response incomplete and unanswered.
     await store.dispatch(rateFinding('title', null));
     await store.dispatch(sendFeedback());
-    expect(lastFeedback().findings[1]).toMatchObject({
-      rating: null,
-      reason: null,
-    });
+    expect(problemEvents()).toHaveLength(4);
+    expect(latestByFinding().title).toMatchObject({ $survey_completed: false });
+    expect(latestByFinding().title).not.toHaveProperty(RATING);
   });
 
-  it('sends a comment as soon as it is made, trimmed and within the limit', async () => {
+  it('sends written feedback as soon as it is made, trimmed and within the limit', async () => {
     await reviewed(true);
-    const long = 'x'.repeat(REVIEW_LIMITS.maxFeedbackCommentLength + 50);
+    const long = 'x'.repeat(FEEDBACK_COMMENT_MAX_LENGTH + 50);
     expect(await store.dispatch(commentOnReview(`  ${long}  `))).toBe(true);
-    await vi.waitFor(() => expect(server.feedback).toHaveLength(1));
-    expect(lastFeedback().comment).toBe(
-      'x'.repeat(REVIEW_LIMITS.maxFeedbackCommentLength),
-    );
+    expect(commentEvents()).toEqual([
+      {
+        $survey_id: REVIEW_SURVEY_ID,
+        $survey_submission_id: RESULT.reviewId,
+        $survey_completed: true,
+        [COMMENT]: 'x'.repeat(FEEDBACK_COMMENT_MAX_LENGTH),
+        review_id: RESULT.reviewId,
+        shared: true,
+        provider: 'anthropic',
+      },
+    ]);
     expect(getProtocolReviewComment(store.getState())).toBe(
-      lastFeedback().comment,
+      'x'.repeat(FEEDBACK_COMMENT_MAX_LENGTH),
     );
 
     // Emptied, the comment sent before is taken back.
     await store.dispatch(commentOnReview('   '));
-    await vi.waitFor(() => expect(server.feedback).toHaveLength(2));
-    expect(lastFeedback().comment).toBeNull();
+    expect(commentEvents()).toHaveLength(2);
+    expect(commentEvents()[1]).toMatchObject({ $survey_completed: false });
+    expect(commentEvents()[1]).not.toHaveProperty(COMMENT);
   });
 
   it('is sent as the review is dismissed, when some is still waiting', async () => {
     await reviewed(true);
     await store.dispatch(decideFinding('advice', 'dismissed'));
-    expect(server.feedback).toEqual([]);
+    expect(problemEvents()).toEqual([]);
     expect(await store.dispatch(dismissReview())).toBe(true);
-    await vi.waitFor(() => expect(server.feedback).toHaveLength(1));
-    expect(outcomes(lastFeedback())).toMatchObject({ advice: 'dismissed' });
-  });
-
-  it('is sent again at the next change when the service did not take it', async () => {
-    const id = await reviewed(true);
-    server.state.feedbackAnswer = 'service_unavailable';
-    await store.dispatch(decideFinding('advice', 'dismissed'));
-    await store.dispatch(sendFeedback());
-    expect(server.feedback).toHaveLength(1);
-    expect((await readReviewRecord(id)).review?.feedbackSent).toBeUndefined();
-
-    server.state.feedbackAnswer = 'sent';
-    await store.dispatch(sendFeedback());
-    expect(server.feedback).toHaveLength(2);
-    expect(outcomes(lastFeedback())).toMatchObject({ advice: 'dismissed' });
-    expect((await readReviewRecord(id)).review?.feedbackSent).toBeDefined();
-  });
-
-  it('stops being asked for once the service holds no copy of the review', async () => {
-    const id = await reviewed(true);
-    server.state.feedbackAnswer = 'unknown_review';
-    await store.dispatch(decideFinding('advice', 'dismissed'));
-    await store.dispatch(sendFeedback());
-    // Just reviewed: the copy may not be readable yet, so nothing is concluded.
-    expect(getIsProtocolReviewShared(store.getState())).toBe(true);
-
-    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 6 * 60 * 1000);
-    await store.dispatch(sendFeedback());
-    expect(server.feedback).toHaveLength(2);
-    expect(getIsProtocolReviewShared(store.getState())).toBe(false);
-    expect((await readReviewRecord(id)).review?.shared).toBe(false);
-
-    await store.dispatch(decideFinding('title', 'dismissed'));
-    await store.dispatch(sendFeedback());
-    expect(server.feedback).toHaveLength(2);
+    expect(outcomes()).toEqual({ advice: 'dismissed' });
   });
 });

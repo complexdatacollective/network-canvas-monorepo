@@ -1,8 +1,6 @@
 import { Dexie, type EntityTable } from 'dexie';
 
 import type {
-  FeedbackRating,
-  FeedbackReason,
   Finding,
   ReviewProvider,
 } from '@codaco/protocol-review-worker/contract';
@@ -15,6 +13,11 @@ import type {
   TargetSnapshot,
   WrittenSnapshot,
 } from './fixEngine';
+import type {
+  FeedbackRating,
+  FeedbackReason,
+  ReviewFeedback,
+} from './reviewFeedback';
 
 /**
  * Each protocol's automated review and the researcher's choices about it,
@@ -100,19 +103,19 @@ export type StoredReview = {
   findings: StoredFinding[];
   /**
    * Whether the review was sent with sharing on, so the service holds a copy
-   * that feedback can be kept with. The protocol's `shareReviews` is the
-   * choice for the next review; this is what was done with this one. Absent
-   * from reviews saved before it existed, none of which get feedback.
+   * of it. The protocol's `shareReviews` is the choice for the next review;
+   * this is what was done with this one. Only a shared review's problems are
+   * reported and rated. Absent from reviews saved before it existed, which
+   * read as not shared.
    */
   shared?: boolean;
   /** What the researcher wrote about the review as a whole, as they sent it. */
   comment?: string;
   /**
-   * The feedback the service last took, as it was sent (`feedbackSnapshot`).
-   * Absent until some has been taken. Feedback is sent again whenever what
-   * would be sent now differs from this.
+   * The feedback last sent to PostHog. Absent until some has been sent. Each
+   * problem, and the comment, is sent again whenever it differs from this.
    */
-  feedbackSent?: string;
+  feedbackSent?: ReviewFeedback;
 };
 
 export type StoredReviewRecord = {

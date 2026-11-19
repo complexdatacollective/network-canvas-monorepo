@@ -702,30 +702,31 @@ test.describe('asking for a review', () => {
     );
     expect(service.bodies.map((body) => body.share)).toEqual([false, false]);
 
-    // A review that was not shared asks for no rating or comment, and what
-    // is done with its problems goes nowhere.
+    // A review that was not shared asks for no rating, but still takes
+    // written feedback.
     const popover = popoverOf(page);
     await expect(
       popover.getByRole('button', { name: 'Leave feedback on this review' }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     const title = 'Nothing answers the research question';
     const view = await openProblem(page, popover, title);
-    await expect(view.getByRole('button', { name: 'Useful' })).toHaveCount(0);
-    await view.getByRole('button', { name: 'Dismiss', exact: true }).click();
-    await expect(problemView(page, title)).toHaveCount(0);
-    // Longer than the wait before feedback on a shared review is sent.
-    await page.waitForTimeout(4_000);
-    expect(service.feedback).toEqual([]);
+    await expect(
+      view.getByRole('button', { name: 'Dismiss', exact: true }),
+    ).toBeVisible();
+    await expect(
+      view.getByRole('group', {
+        name: 'Was it useful to be told about this problem?',
+      }),
+    ).toHaveCount(0);
   });
 
-  test('a shared review sends back what was done with a problem, its rating and a comment', async ({
+  test('a shared review asks for a rating on each problem and takes written feedback', async ({
     architectPage: page,
     context,
     seed,
   }) => {
     const { service, popover } = await reviewedProtocol(page, seed, context);
     expect(onlyBody(service).share).toBe(true);
-    expect(service.feedback).toEqual([]);
 
     const title = 'Nothing answers the research question';
     const view = await openProblem(page, popover, title);
@@ -742,26 +743,6 @@ test.describe('asking for a review', () => {
       .click();
     await view.getByRole('button', { name: 'Dismiss', exact: true }).click();
     await expect(problemView(page, title)).toHaveCount(0);
-
-    // Sent by itself, a little after the last choice, as one request.
-    await expect.poll(() => service.feedback.length).toBe(1);
-    const [sent] = service.feedback;
-    expect(sent?.comment).toBeNull();
-    expect(sent?.findings).toHaveLength(FINDINGS.length);
-    expect(sent?.findings).toContainEqual(
-      expect.objectContaining({
-        outcome: 'dismissed',
-        rating: 'not_useful',
-        reason: 'wrong',
-      }),
-    );
-    // Nothing about the protocol or the study travels with it.
-    expect(Object.keys(sent ?? {}).toSorted()).toEqual([
-      'comment',
-      'findings',
-      'installationId',
-      'reviewId',
-    ]);
 
     // The panel moved on to the next problem; the comment is on the list.
     await page
@@ -781,10 +762,6 @@ test.describe('asking for a review', () => {
     await expect(
       list.getByRole('button', { name: 'Change your feedback' }),
     ).toBeFocused();
-    await expect.poll(() => service.feedback.length).toBe(2);
-    expect(service.feedback[1]?.comment).toBe(
-      'The last problem misread my research question.',
-    );
   });
 });
 

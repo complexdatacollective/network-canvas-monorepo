@@ -2492,12 +2492,12 @@
     "description": "Button under the list of problems, shown in place of \"Leave feedback on this review\" once the researcher has sent feedback. It opens what they wrote again for changing."
   },
   "architect.protocolReview.popover.commentHint": {
-    "defaultMessage": "Tell the Network Canvas team what you thought of this review. Your feedback is kept with the review you shared and deleted with it. Leave out names and anything else that could identify a person.",
+    "defaultMessage": "Tell the Network Canvas team what you thought of this review. Leave out names and anything else that could identify a person.",
     "description": "Explanation above the box for written feedback about the review. \"Network Canvas\" is a product name and is not translated."
   },
   "architect.protocolReview.popover.commentOpen": {
     "defaultMessage": "Leave feedback on this review",
-    "description": "Button under the list of problems, shown when the review was shared with the Network Canvas team. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box."
+    "description": "Button under the list of problems. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box."
   },
   "architect.protocolReview.popover.commentRefused": {
     "defaultMessage": "Your feedback could not be saved, because this protocol is open for editing in another tab. Leave feedback on the review in that tab.",
@@ -2932,7 +2932,7 @@
     "description": "Item in the list of what is sent for review, shown on the first step of the dialog. The next three steps are where the researcher describes their study."
   },
   "architect.protocolReview.wizard.sending.shareHint": {
-    "defaultMessage": "When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. The team also keeps, for the same time, what you do with each problem the review finds, any Useful or Not useful rating you give a problem, and any feedback you write about the review. We will use this information only for the purposes of improving this feature.",
+    "defaultMessage": "When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. The team also receives what you do with each problem the review finds, and any Useful or Not useful rating you give a problem. We will use this information only for the purposes of improving this feature.",
     "description": "Explanation under the share checkbox. {days} is how long a shared review is kept. \"What you do with each problem\" means whether the researcher has it fixed for them, fixes it themselves or dismisses it. \"Useful\" and \"Not useful\" are the names of two buttons that rate a problem, and must match their translations. \"Network Canvas\" is a product name and is not translated."
   },
   "architect.protocolReview.wizard.sending.shareLabel": {

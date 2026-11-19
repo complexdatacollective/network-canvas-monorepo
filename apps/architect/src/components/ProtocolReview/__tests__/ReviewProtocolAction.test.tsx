@@ -374,7 +374,7 @@ describe('the results', () => {
     );
   });
 
-  it('has two buttons under the list, and nothing about when, by whom or reviewing again', async () => {
+  it('has the feedback and review buttons under the list, and nothing about when, by whom or reviewing again', async () => {
     await reviewed(store);
     renderToolbar(store);
 
@@ -386,6 +386,7 @@ describe('the results', () => {
       .map(nameOf);
     expect(outsideTheList).toEqual([
       'Close',
+      'Leave feedback on this review',
       'Dismiss review',
       'Go through 4 problems',
     ]);
@@ -510,7 +511,7 @@ describe('the results', () => {
     );
   });
 
-  it('says plainly when a review found nothing, and leaves only Dismiss review', async () => {
+  it('says plainly when a review found nothing, and leaves only feedback and Dismiss review', async () => {
     await reviewed(store, { ...RESULT, findings: [] });
     renderToolbar(store);
     expect(reviewButton()).toHaveAccessibleName('Review protocol');
@@ -524,6 +525,7 @@ describe('the results', () => {
     ).toBeNull();
     expect(within(panel).getAllByRole('button').map(nameOf)).toEqual([
       'Close',
+      'Leave feedback on this review',
       'Dismiss review',
     ]);
   });
