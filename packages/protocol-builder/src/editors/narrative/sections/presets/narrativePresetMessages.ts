@@ -154,6 +154,50 @@ export const narrativePresetMessages = defineMessages({
     description:
       'Button beside the preset position-attribute picker that adds a layout attribute to the codebook without leaving the stage. Also the title of the dialog it opens.',
   },
+  presetFilterTitle: {
+    id: 'protocolBuilder.networkCanvas.presetFilterTitle',
+    defaultMessage: 'Preset filter',
+    description:
+      'Heading of the part of the dialog for one narrative preset that narrows which members of the network the preset shows. Each preset has a filter of its own, so two presets on one stage can show different parts of the network.',
+  },
+  presetFilterDescription: {
+    id: 'protocolBuilder.networkCanvas.presetFilterDescription',
+    defaultMessage:
+      'Filter the nodes and edges shown in this preset. A preset with no filter shows the whole network.',
+    description:
+      'Description of the preset-filter part of the dialog for one narrative preset. A node is one member of the network; an edge is a connection between two members.',
+  },
+  presetFilterRulesLabel: {
+    id: 'protocolBuilder.networkCanvas.presetFilterRulesLabel',
+    defaultMessage: 'Filter rules',
+    description:
+      'Label of the rule builder narrowing which members of the network one narrative preset shows.',
+  },
+  presetFilterRulesHint: {
+    id: 'protocolBuilder.networkCanvas.presetFilterRulesHint',
+    defaultMessage:
+      'Create one or more rules that must match in order for a node or edge to be shown in this preset.',
+    description: 'Guidance under one narrative preset’s filter rules.',
+  },
+  presetFilterClearTitle: {
+    id: 'protocolBuilder.networkCanvas.presetFilterClearTitle',
+    defaultMessage: 'This will clear this preset’s filter',
+    description:
+      'Title of the dialog asking a researcher to confirm switching off one narrative preset’s filter, which throws away every rule in it.',
+  },
+  presetFilterClearDescription: {
+    id: 'protocolBuilder.networkCanvas.presetFilterClearDescription',
+    defaultMessage:
+      'This will clear the filter, and delete any rules you have created for it. Do you want to continue?',
+    description:
+      'Body of the dialog confirming that switching one narrative preset’s filter off throws away every rule in it.',
+  },
+  presetFilterClearConfirm: {
+    id: 'protocolBuilder.networkCanvas.presetFilterClearConfirm',
+    defaultMessage: 'Clear filter',
+    description:
+      'Action that confirms switching one narrative preset’s filter off and discarding its rules.',
+  },
   presetGroupingTitle: {
     id: 'protocolBuilder.networkCanvas.presetGroupingTitle',
     defaultMessage: 'Node grouping',

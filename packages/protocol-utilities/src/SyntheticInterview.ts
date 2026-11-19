@@ -1723,6 +1723,7 @@ export class SyntheticInterview {
       edges,
       groupVariable,
       highlight,
+      ...(opts?.filter && { filter: opts.filter }),
     };
   }
 

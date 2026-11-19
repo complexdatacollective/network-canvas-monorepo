@@ -60,29 +60,29 @@ const protocol = {
           edges: {
             display: [{ type: 'friendship', label: localized('Friendship') }],
           },
+          filter: {
+            join: 'AND',
+            rules: [
+              {
+                type: 'node',
+                id: 'r1',
+                options: { type: 'clinic', operator: 'EXISTS' },
+              },
+              {
+                type: 'edge',
+                id: 'r2',
+                options: { type: 'referral', operator: 'NOT_EXISTS' },
+              },
+              // An ego rule references no codebook type, even with options.type set.
+              {
+                type: 'ego',
+                id: 'r3',
+                options: { type: 'ignored', operator: 'EXISTS' },
+              },
+            ],
+          },
         },
       ],
-      filter: {
-        join: 'AND',
-        rules: [
-          {
-            type: 'node',
-            id: 'r1',
-            options: { type: 'clinic', operator: 'EXISTS' },
-          },
-          {
-            type: 'edge',
-            id: 'r2',
-            options: { type: 'referral', operator: 'NOT_EXISTS' },
-          },
-          // An ego rule references no codebook type, even with options.type set.
-          {
-            type: 'ego',
-            id: 'r3',
-            options: { type: 'ignored', operator: 'EXISTS' },
-          },
-        ],
-      },
     },
     {
       id: 'ped',

@@ -14,15 +14,18 @@ import { narrativeWording } from './sections/wording/narrativeWording.tsx';
  * A narrative stage collects nothing: the network is already built, and the
  * researcher moves between saved pictures of it while the participant tells
  * its story. So the sections read in the order the decisions are made — which
- * people are on the canvas, the pictures that can be switched between, what
- * sits behind them, and what the participant may do to any of it.
+ * kind of people are on the canvas, the pictures that can be switched between,
+ * what sits behind them, and what the participant may do to any of it.
+ *
+ * The stage has no network filter of its own: each preset narrows the network
+ * for itself, so two pictures of one stage can show different people.
  *
  * Automatic layout is one of those last permissions rather than a section of
  * its own: it is a switch on the canvas the participant is looking at, beside
  * drawing and repositioning, which is where Architect put it.
  */
 export const narrativeStageEditor = defineStageEditor('Narrative', [
-  subjectPicker({ entity: 'node', filter: true }),
+  subjectPicker({ entity: 'node' }),
   narrativePresets(),
   background(),
   canvasPermissions(),
