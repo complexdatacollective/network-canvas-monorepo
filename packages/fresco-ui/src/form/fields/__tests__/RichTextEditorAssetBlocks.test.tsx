@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { JSONContent } from '@tiptap/react';
-import { type ComponentProps } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -454,6 +454,54 @@ describe('a block the value holds', () => {
       type: 'assetBlock',
       attrs: { assetId: 'a1', size: 'large' },
     });
+  });
+
+  // A view may draw a player, which reads its file when it is made: given
+  // another file, the view is made again rather than handed the new one.
+  it('makes its view again when the file changes, and keeps it when a setting does', async () => {
+    let made = 0;
+    function CountedView({ attributes, update }: RichTextAssetBlockViewProps) {
+      const [number] = useState(() => {
+        made += 1;
+        return made;
+      });
+      return (
+        <div data-testid="counted" data-made={number}>
+          {attributes.assetId}
+          <div {...assetBlockControlsProps}>
+            <button type="button" onClick={() => update({ size: 'small' })}>
+              Make small
+            </button>
+            <button type="button" onClick={() => update({ assetId: 'a2' })}>
+              Change file
+            </button>
+          </div>
+        </div>
+      );
+    }
+    const field = renderField({
+      assetBlocks: { View: CountedView },
+      value: doc(block({ assetId: 'a1' }), paragraph('After')),
+    });
+    await field.editor();
+    const first = screen.getByTestId('counted').getAttribute('data-made');
+
+    await field.user.click(screen.getByRole('button', { name: 'Make small' }));
+    await waitFor(() => {
+      expect(field.lastDocument()?.content?.[0]).toMatchObject({
+        attrs: { size: 'small' },
+      });
+    });
+    expect(screen.getByTestId('counted')).toHaveAttribute('data-made', first);
+
+    await field.user.click(screen.getByRole('button', { name: 'Change file' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('counted')).toHaveTextContent('a2');
+    });
+    expect(screen.getByTestId('counted')).not.toHaveAttribute(
+      'data-made',
+      first,
+    );
   });
 
   it('is deleted when the view removes it, leaving the text', async () => {

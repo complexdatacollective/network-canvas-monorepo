@@ -170,6 +170,9 @@ function AssetBlockView({
     >
       {blocks === null ? null : (
         <blocks.View
+          // A view belongs to its file: one given another file is made
+          // again, so that a player or a preview it draws is the new file's.
+          key={attributes.assetId}
           attributes={attributes}
           selected={selected}
           editable={editable}

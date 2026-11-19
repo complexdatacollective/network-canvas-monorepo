@@ -279,6 +279,21 @@ describe('assetBlocksInMessage', () => {
     expect(ids('# Hi\n\n![](asset:a)')).toEqual(['a']);
   });
 
+  // Markdown reads each of these addresses as `asset:a`, and the interview
+  // shows the file, so the text is read rather than searched for `asset:`.
+  it.each([
+    ['a backslash before the colon', '![Map](asset\\:a)'],
+    ['a numbered character for the colon', '![Map](asset&#58;a)'],
+    ['a named character for the colon', '![Map](asset&colon;a)'],
+    ['a numbered character in the scheme', '![Map](&#97;sset:a)'],
+    [
+      'a version, with the colon escaped',
+      '{k, select, other {![Map](asset\\:a)}}',
+    ],
+  ])('finds a block whose address is written with %s', (_how, message) => {
+    expect(ids(message)).toEqual(['a']);
+  });
+
   it('finds blocks inside every version of a select and a plural', () => {
     expect(
       ids(

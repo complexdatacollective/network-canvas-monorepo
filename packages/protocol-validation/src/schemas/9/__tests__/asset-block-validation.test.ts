@@ -61,6 +61,23 @@ describe('files shown as blocks in an Information page', () => {
     ]);
   });
 
+  it.each([
+    ['escaped', '![](asset\\:gone)'],
+    ['a numbered character', '![](asset&#58;gone)'],
+  ])(
+    'reports a missing file whose address is written with the colon %s',
+    (_how, block) => {
+      const { index, issues } = issuesWith({ en: `# T\n\n${block}` });
+      expect(issues).toEqual([
+        {
+          path: ['stages', index, 'content', 'en'],
+          message:
+            'This text shows the file "gone", which is not an asset in the manifest.',
+        },
+      ]);
+    },
+  );
+
   it('reports a file that is not an image, audio or video', () => {
     const { index, issues } = issuesWith({ en: '![](asset:roster)' });
     expect(issues).toEqual([

@@ -337,8 +337,9 @@ const levelTexts = (nodes: readonly MessageNode[]): string[] => {
 export const assetBlocksInMessage = (
   message: string,
 ): readonly AssetBlockInText[] => {
-  // The cheap test first: almost no text names a file.
-  if (!message.toLowerCase().includes(SCHEME)) return [];
+  // The text is always read. Looking for `asset:` in it first would save the
+  // reading for most text and miss a file named with the colon escaped
+  // (`asset\:id`, `asset&#58;id`), which markdown reads as the same address.
   const structure = messageStructure(message);
   const [own = '', ...versions] =
     'nodes' in structure ? levelTexts(structure.nodes) : [message];

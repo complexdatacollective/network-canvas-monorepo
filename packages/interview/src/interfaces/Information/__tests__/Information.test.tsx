@@ -558,6 +558,84 @@ describe('a block’s autoplay and loop settings', () => {
   });
 });
 
+// A page shown again in another language may name a different file in the
+// same place. A player reads its address when it is made, so one handed a new
+// address would go on playing the old recording.
+describe('a block whose file changes', () => {
+  const OTHER_AUDIO: ResolvedAsset = {
+    assetId: 'aud-2',
+    name: 'Clip, in French',
+    type: 'audio',
+    source: 'clip-fr.mp3',
+  };
+  const OTHER_VIDEO: ResolvedAsset = {
+    assetId: 'vid-2',
+    name: 'Intro, in French',
+    type: 'video',
+    source: 'intro-fr.mp4',
+  };
+
+  const stageElement = (stage: InformationStage) => (
+    <Information
+      stage={stage}
+      getNavigationHelpers={() => ({
+        moveForward: vi.fn(),
+        moveBackward: vi.fn(),
+      })}
+    />
+  );
+
+  const playing = async (player: string, assetId: string) => {
+    await waitFor(() =>
+      expect(query(`${player} source`)?.getAttribute('src')).toBe(
+        `blob://${assetId}`,
+      ),
+    );
+    return playerElement(player);
+  };
+
+  it.each([
+    ['an audio player', 'audio', AUDIO, OTHER_AUDIO],
+    ['a video player', 'video', VIDEO, OTHER_VIDEO],
+  ] as const)(
+    'makes %s again for the new file, even when both files are already loaded',
+    async (_what, player, first, second) => {
+      const { rerender } = renderInformation(
+        pageWith({ assetId: first.assetId }),
+        [first, second],
+      );
+      await playing(player, first.assetId);
+
+      // Once each file's address is known, the page is drawn with it at
+      // once, with no moment of loading in which the old player is removed.
+      rerender(stageElement(pageWith({ assetId: second.assetId })));
+      const other = await playing(player, second.assetId);
+
+      rerender(stageElement(pageWith({ assetId: first.assetId })));
+      const back = await playing(player, first.assetId);
+
+      expect(back).not.toBe(other);
+    },
+  );
+
+  it('keeps a player whose file is the same when its words change', async () => {
+    const { rerender } = renderInformation(
+      pageWith({ assetId: 'aud-1', description: 'In English' }),
+      [AUDIO],
+    );
+    const before = await playing('audio', 'aud-1');
+
+    rerender(
+      stageElement(pageWith({ assetId: 'aud-1', description: 'En français' })),
+    );
+
+    await waitFor(() =>
+      expect(query('audio')?.getAttribute('aria-label')).toBe('En français'),
+    );
+    expect(query('audio')).toBe(before);
+  });
+});
+
 describe('where a block sits among the text', () => {
   it('shows each block as an element of its own, among the paragraphs', async () => {
     renderInformation(

@@ -355,15 +355,14 @@ const edgeSpace = (text: string): [string, string, string] => {
   return [text.slice(0, start), text.slice(start, end), text.slice(end)];
 };
 
-// The cheap test first: almost no text names a file.
+// Asked of what markdown reads, never of how the text is spelled: an address
+// may be written with its colon escaped (`asset\:id`, `asset&#58;id`).
 const namesFile = (markdown: string): boolean =>
-  markdown.toLowerCase().includes('asset:') &&
   assetBlocksInMarkdown(markdown).length > 0;
 
 // Whether text declared to hold blocks names a file anywhere but in a
 // paragraph of its own text, which is the one place a block is written.
 const misplacesFile = (markdown: string): boolean =>
-  markdown.toLowerCase().includes('asset:') &&
   assetBlocksInMarkdown(markdown).some(({ problems }) =>
     problems.some(
       ({ kind }) => kind === 'notInParagraph' || kind === 'byReference',

@@ -361,7 +361,16 @@ function AssetBlockView({ block }: { block: AssetBlock }) {
 function AssetBlockImage({ url, alt }: { url: string; alt: string }) {
   const reading = readAssetBlockUrl(url);
   if (reading === undefined) return null;
-  return <AssetBlockView block={{ ...reading.block, description: alt }} />;
+  // A view belongs to its file. Text shown again in another language may
+  // name a different file in the same place, and a player handed a new
+  // address goes on playing the old one: it reads its source when it is
+  // made, and its loading and failure are the old file's too.
+  return (
+    <AssetBlockView
+      key={reading.block.assetId}
+      block={{ ...reading.block, description: alt }}
+    />
+  );
 }
 
 /**

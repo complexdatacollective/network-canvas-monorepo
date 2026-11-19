@@ -144,6 +144,8 @@ describe('a file written where the editor holds no block', () => {
     ['a link', '[![A](asset:one)](https://example.com)'],
     ['emphasis', '*![A](asset:one)*'],
     ['a reference', '![A][map]\n\n[map]: asset:one'],
+    ['a heading, its colon escaped', '# ![A](asset\\:one)'],
+    ['a heading, its colon a numbered character', '# ![A](asset&#58;one)'],
   ])('cannot be shown in %s', (_where, message) => {
     expect(problemOf(message)).toBe('misplacedFile');
   });
