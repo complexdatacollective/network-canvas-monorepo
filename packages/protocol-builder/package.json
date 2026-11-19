@@ -21,6 +21,7 @@
     "./editors/finish-session/finishSessionMessages": "./src/editors/finish-session/sections/finishSessionMessages.ts",
     "./editors/language-chooser/languageChooserWording": "./src/editors/language-chooser/sections/languageChooserWording.tsx",
     "./editors/narrative-pedigree/narrativePedigreeMessages": "./src/editors/narrative-pedigree/sections/narrativePedigreeMessages.ts",
+    "./editors/narrative/narrativePresetMessages": "./src/editors/narrative/sections/presets/narrativePresetMessages.ts",
     "./editors/network-composer/composerMessages": "./src/editors/network-composer/sections/composerMessages.ts",
     "./editors/one-to-many-dyad-census/removeAfterConsiderationMessages": "./src/editors/one-to-many-dyad-census/sections/removeAfterConsiderationMessages.ts",
     "./host/inProcess": "./src/host/inProcess.ts",

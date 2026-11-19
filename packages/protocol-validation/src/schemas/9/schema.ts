@@ -1605,6 +1605,22 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       );
     }
 
+    // 3g.i.b. Narrative presets[].filter rules — a preset's filter narrows
+    // the nodes and edges the preset shows, as a stage filter does.
+    if (stage.type === 'Narrative') {
+      stage.presets.forEach((preset, presetIndex) => {
+        if (preset.filter?.rules) {
+          validateFilterRules(
+            preset.filter.rules,
+            protocol.codebook,
+            ['stages', stageIndex, 'presets', presetIndex, 'filter', 'rules'],
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+            { allowEgoRules: false, readsInterview: true },
+          );
+        }
+      });
+    }
+
     // 3g.ii. skipLogic.filter rules — operator/value and ego-attribute
     // validation (ego rules allowed here, unlike a stage node/edge filter).
     if (stage.skipLogic?.filter?.rules) {

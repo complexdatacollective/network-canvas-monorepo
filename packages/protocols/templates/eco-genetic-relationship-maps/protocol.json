@@ -1402,6 +1402,20 @@
             "en": "Everyone on your map"
           },
           "layoutVariable": "layout",
+          "filter": {
+            "rules": [
+              {
+                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
+                "type": "node",
+                "options": {
+                  "type": "person",
+                  "attribute": "is_ego",
+                  "operator": "NOT",
+                  "value": true
+                }
+              }
+            ]
+          },
           "edges": {
             "display": [
               {
@@ -1419,6 +1433,20 @@
             "en": "Forms of support"
           },
           "layoutVariable": "layout",
+          "filter": {
+            "rules": [
+              {
+                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
+                "type": "node",
+                "options": {
+                  "type": "person",
+                  "attribute": "is_ego",
+                  "operator": "NOT",
+                  "value": true
+                }
+              }
+            ]
+          },
           "edges": {
             "display": [
               {
@@ -1462,6 +1490,20 @@
             "en": "Family health communication"
           },
           "layoutVariable": "layout",
+          "filter": {
+            "rules": [
+              {
+                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
+                "type": "node",
+                "options": {
+                  "type": "person",
+                  "attribute": "is_ego",
+                  "operator": "NOT",
+                  "value": true
+                }
+              }
+            ]
+          },
           "edges": {
             "display": [
               {
@@ -1493,21 +1535,7 @@
             }
           ]
         }
-      ],
-      "filter": {
-        "rules": [
-          {
-            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
-            "type": "node",
-            "options": {
-              "type": "person",
-              "attribute": "is_ego",
-              "operator": "NOT",
-              "value": true
-            }
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "narrative-pedigree",

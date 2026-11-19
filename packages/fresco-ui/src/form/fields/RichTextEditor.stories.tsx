@@ -5,6 +5,7 @@ import { action } from 'storybook/actions';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { z } from 'zod/mini';
 
+import { withMod } from '../../testing/modKey';
 import { TokenizedText } from '../../TokenPill';
 import Field from '../Field/Field';
 import Form from '../Form';
@@ -971,13 +972,13 @@ export const WithVersionsAndInsertMenu: Story = {
     await expect(missing.textContent).toBe('');
 
     // Undo takes the insertion back, and redo brings it again.
-    await userEvent.keyboard('{Control>}z{/Control}');
+    await userEvent.keyboard(withMod('z'));
     await waitFor(() =>
       expect(
         canvas.queryByRole('group', { name: 'Whether Name is known' }),
       ).toBeNull(),
     );
-    await userEvent.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await userEvent.keyboard(withMod('{Shift>}z{/Shift}'));
     const restored = await canvas.findByRole('group', {
       name: 'Whether Name is known',
     });
@@ -1026,7 +1027,7 @@ export const WithVersionsAndInsertMenu: Story = {
         canvas.queryByRole('group', { name: 'Whether Name is known' }),
       ).toBeNull(),
     );
-    await userEvent.keyboard('{Control>}z{/Control}');
+    await userEvent.keyboard(withMod('z'));
     await expect(
       await canvas.findByRole('group', { name: 'Whether Name is known' }),
     ).toBeInTheDocument();

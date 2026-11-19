@@ -130,6 +130,16 @@ const fixtureMaximal = (
   ...missingFromTheFixture,
 });
 
+/** The fixture narrative's presets, as plain objects to add a key to. */
+const narrativePresetsOfFixture = (): Record<string, unknown>[] => {
+  const presets = loadFixtureStage('narrative-1').fields.presets;
+  return Array.isArray(presets)
+    ? presets.flatMap((preset: unknown) =>
+        typeof preset === 'object' && preset !== null ? [{ ...preset }] : [],
+      )
+    : [];
+};
+
 /** The fixture's map options, as a plain object to add a key to. */
 const mapOptionsOfFixture = (): Record<string, unknown> => {
   const options = loadFixtureStage('geospatial-1').fields.mapOptions;
@@ -466,9 +476,13 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'Narrative',
     type: 'Narrative',
+    // A narrative has no filter of its own: each preset narrows the network
+    // for itself, so the first preset carries one.
     fields: fixtureMaximal('narrative-1', {
       ...EVERY_STAGE,
-      filter: nodeFilter,
+      presets: narrativePresetsOfFixture().map((preset, index) =>
+        index === 0 ? { ...preset, filter: nodeFilter } : preset,
+      ),
     }),
   },
   {

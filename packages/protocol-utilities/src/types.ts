@@ -260,6 +260,7 @@ export type PresetEntry = {
   };
   groupVariable?: string;
   highlight?: { variable: string; label: TextInput }[];
+  filter?: FilterInput;
 };
 
 type FormFieldEntry = {
@@ -740,6 +741,8 @@ export type AddPresetInput = {
   };
   groupVariable?: string | boolean;
   highlight?: string[] | boolean;
+  /** Which part of the network this preset shows; all of it when omitted. */
+  filter?: FilterInput;
 };
 
 export type NarrativeDiseaseEntry = {

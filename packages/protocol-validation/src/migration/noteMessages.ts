@@ -541,6 +541,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Finish Screen" is the name Architect gives the stage type that ends an interview, where the participant reads closing text and presses Finish; use the same name Architect uses for it.',
   },
+  schema9NarrativePresetFilters: {
+    id: 'protocolValidation.migrationNotes.schema9.narrativePresetFilters',
+    defaultMessage:
+      "A Narrative stage's filter now belongs to each of its presets, so each preset can show a different part of the network. A filter on an existing Narrative stage is copied to every preset of that stage, so the stage shows the same people as before.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Narrative" is the name Architect gives the interface; use the same name Architect uses for it. A preset is one saved way of looking at the network that the stage can switch between. A filter is a set of rules that decides which people and relationships are shown.',
+  },
   schema9RosterPanelTitle: {
     id: 'protocolValidation.migrationNotes.schema9.rosterPanelTitle',
     defaultMessage:
@@ -690,6 +697,7 @@ const migrationNoteSets: Record<
           migrationNoteMessages.schema9PedigreeWording,
         ],
       },
+      migrationNoteMessages.schema9NarrativePresetFilters,
       migrationNoteMessages.schema9RosterPanelTitle,
       migrationNoteMessages.schema9SingleLineText,
     ],

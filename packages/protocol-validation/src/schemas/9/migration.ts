@@ -763,6 +763,31 @@ const removeEncryptedAttributeComparisons = (protocol: unknown) => {
 };
 
 /**
+ * A schema 8 Narrative filtered the whole stage. Schema 9 lets each preset
+ * show a different part of the network, so the stage's filter is copied to
+ * every preset and the stage keeps none: each preset then shows what the
+ * stage showed. A stage with no preset keeps its filter where it is, for the
+ * schema to refuse.
+ */
+const moveNarrativeFiltersIntoPresets = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'Narrative') continue;
+    if (!Object.hasOwn(stage, 'filter')) continue;
+    const presets = Array.isArray(stage.presets)
+      ? stage.presets.filter(isRecord)
+      : [];
+    if (presets.length === 0) continue;
+    for (const preset of presets) {
+      if (stage.filter !== undefined && !Object.hasOwn(preset, 'filter')) {
+        preset.filter = structuredClone(stage.filter);
+      }
+    }
+    Reflect.deleteProperty(stage, 'filter');
+  }
+};
+
+/**
  * A schema 8 Narrative legend showed each highlighted attribute's name, so
  * each highlight keeps that name as its label. The attribute is looked up on
  * the stage subject's node type, and its id stands in for a missing or empty
@@ -1322,6 +1347,7 @@ const migrationV8toV9 = createMigration({
   - The old Family Pedigree could write each person's relationship to the participant as English text. The redesigned interface records it in a categorical attribute with fixed values that do not depend on language, which a text attribute cannot hold, so a converted stage records no relationship. To keep recording it, for example to filter later stages to the participant's parents, choose or create a categorical attribute for it in the Family Pedigree stage in Architect. The old attribute stays in the codebook with any answers already recorded, but is no longer filled in.
   - A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.
   - A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.
+- A Narrative stage's filter now belongs to each of its presets, so each preset can show a different part of the network. A filter on an existing Narrative stage is copied to every preset of that stage, so the stage shows the same people as before.
 - A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
   migrate: ({ experiments, ...doc }) => {
@@ -1346,6 +1372,8 @@ const migrationV8toV9 = createMigration({
     // After the pedigree conversion, which builds its form from schema 8's.
     addFormFieldIds(migrated);
     addLegendLabels(migrated);
+    // After the filters are rewritten above, which read each stage's own.
+    moveNarrativeFiltersIntoPresets(migrated);
     addComposerCaptions(migrated);
     moveIntroductionPanelsToInformationStages(migrated, localization);
     combineInformationContent(migrated, localization);

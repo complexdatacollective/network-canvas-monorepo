@@ -822,33 +822,51 @@ const imageBackground: ScenarioDefinition = {
   },
 };
 
-const filterDisplayScoping: ScenarioDefinition = {
-  id: 'filter-stage-level-display-scoping',
-  covers: ['filter'],
+const presetFilterDisplayScoping: ScenarioDefinition = {
+  id: 'preset-filter-display-scoping-per-preset',
+  covers: ['presets[].filter'],
   seedNetwork: true,
   build: () => {
     const { synth, person, nameVar, layoutVar } = buildBaseNarrative();
     const statusVar = person.addVariable({ type: 'text', name: 'status' });
+    const friendship = synth.addEdgeType({ name: 'Friendship' });
+    const onlyStatus = (status: string) => ({
+      join: 'AND' as const,
+      rules: [
+        {
+          type: 'node' as const,
+          id: `rule-status-${status}`,
+          options: {
+            type: person.id,
+            attribute: statusVar.id,
+            operator: 'EXACTLY' as const,
+            value: status,
+          },
+        },
+      ],
+    });
 
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', type: person.id },
-      filter: {
-        join: 'AND',
-        rules: [
-          {
-            type: 'node',
-            id: 'rule-status-active',
-            options: {
-              type: person.id,
-              attribute: statusVar.id,
-              operator: 'EXACTLY',
-              value: 'active',
-            },
-          },
-        ],
-      },
     });
-    stage.addPreset({ layoutVariable: layoutVar.id });
+    // Three views of one layout: each preset narrows the network for itself.
+    stage.addPreset({
+      label: 'Active',
+      layoutVariable: layoutVar.id,
+      edges: { display: [friendship.id] },
+      filter: onlyStatus('active'),
+    });
+    stage.addPreset({
+      label: 'Inactive',
+      layoutVariable: layoutVar.id,
+      edges: { display: [friendship.id] },
+      filter: onlyStatus('inactive'),
+    });
+    stage.addPreset({
+      label: 'Everyone',
+      layoutVariable: layoutVar.id,
+      edges: { display: [friendship.id] },
+    });
 
     const statuses = ['active', 'inactive', 'active', 'inactive', 'active'];
     statuses.forEach((status, i) => {
@@ -858,19 +876,52 @@ const filterDisplayScoping: ScenarioDefinition = {
         [statusVar.id]: status,
       });
     });
+    // One tie between two active people, one between two inactive people,
+    // and one across the two.
+    synth.addEdges(
+      [
+        [0, 2],
+        [1, 3],
+        [0, 1],
+      ],
+      friendship.id,
+    );
     return synth;
   },
   run: async ({ page }) => {
     const narrative = new NarrativeFixture(page);
+    const shown = async (labels: readonly string[]) => {
+      for (const i of [0, 1, 2, 3, 4]) {
+        const label = `Node${i}`;
+        await expect(narrative.getNode(label)).toHaveCount(
+          labels.includes(label) ? 1 : 0,
+        );
+      }
+    };
 
-    // Only the 3 'active' nodes pass the stage filter and render on the canvas.
-    await expect(narrative.getNode('Node0')).toBeVisible();
-    await expect(narrative.getNode('Node2')).toBeVisible();
-    await expect(narrative.getNode('Node4')).toBeVisible();
-    await expect(narrative.getNode('Node1')).toHaveCount(0);
-    await expect(narrative.getNode('Node3')).toHaveCount(0);
+    // The first preset shows only the people its own filter leaves, and only
+    // the ties between them.
+    await expect(narrative.getPresetLabelButton('Active')).toBeVisible();
+    await shown(['Node0', 'Node2', 'Node4']);
+    await expect(narrative.getEdgeLines()).toHaveCount(1);
 
-    // The filter is display-only: the underlying network still holds all 5.
+    // The second preset filters the same network differently.
+    await narrative.goToNextPreset();
+    await expect(narrative.getPresetLabelButton('Inactive')).toBeVisible();
+    await shown(['Node1', 'Node3']);
+    await expect(narrative.getEdgeLines()).toHaveCount(1);
+
+    // A preset with no filter shows the whole network.
+    await narrative.goToNextPreset();
+    await expect(narrative.getPresetLabelButton('Everyone')).toBeVisible();
+    await shown(['Node0', 'Node1', 'Node2', 'Node3', 'Node4']);
+    await expect(narrative.getEdgeLines()).toHaveCount(3);
+
+    // Going back applies the earlier preset's filter again.
+    await narrative.goToPreviousPreset();
+    await shown(['Node1', 'Node3']);
+
+    // A filter is display-only: the underlying network still holds all 5.
     const network = await page.evaluate(() => window.__test.getNetworkState());
     expect(network?.nodes).toHaveLength(5);
   },
@@ -967,7 +1018,7 @@ export const narrativeScenarios: InterfaceScenarios = {
     freeDrawAnnotate,
     concentricCirclesBackground,
     imageBackground,
-    filterDisplayScoping,
+    presetFilterDisplayScoping,
     subjectCodebookLookupAndScoping,
   ],
 };

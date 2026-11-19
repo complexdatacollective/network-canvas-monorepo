@@ -71,7 +71,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: narrativeStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
       'Visualization presets',
       'Background',
       'Narrative behaviors',

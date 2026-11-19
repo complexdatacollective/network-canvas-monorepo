@@ -43,8 +43,8 @@ describe('the exclusive-variant containers of a stage document', () => {
    * level down:
    *
    * - a filter rule is a choice of subject, discriminated on `type`, wherever
-   *   a filter appears: on the stage's skip logic, on a network filter, and on
-   *   each of a narrative's panels.
+   *   a filter appears: on the stage's skip logic, on a network filter, on
+   *   each of a name generator's panels, and on each of a narrative's presets.
    * - a content item — an Information stage's `items` — is text XOR an asset.
    * - a Network Composer form field — `nodeForm.fields.*` and
    *   `edges.*.form.fields.*` — is discriminated on `component`: a visual
@@ -60,6 +60,7 @@ describe('the exclusive-variant containers of a stage document', () => {
       ['filter', 'rules', '*'],
       ['nodeForm', 'fields', '*'],
       ['panels', '*', 'filter', 'rules', '*'],
+      ['presets', '*', 'filter', 'rules', '*'],
       ['prompts', '*', 'highlight'],
       ['skipLogic', 'destination'],
       ['skipLogic', 'filter', 'rules', '*'],
@@ -217,7 +218,8 @@ describe('the jointly constrained containers of a stage document', () => {
    *   only rule that reaches a categorical bin's prompt.
    * - `behaviours` is the name generators': a node-count window whose
    *   `maxNodes` falls below its `minNodes` can never be satisfied.
-   * - `filter`, `skipLogic.filter` and `panels.*.filter` are `FilterSchema`:
+   * - `filter`, `skipLogic.filter`, `panels.*.filter` and `presets.*.filter`
+   *   are `FilterSchema`:
    *   more than one rule has to say how the rules combine.
    *
    * The exclusive-variant containers are deliberately absent: the whole
@@ -228,6 +230,7 @@ describe('the jointly constrained containers of a stage document', () => {
       ['behaviours'],
       ['filter'],
       ['panels', '*', 'filter'],
+      ['presets', '*', 'filter'],
       ['prompts', '*'],
       ['skipLogic', 'filter'],
     ]);

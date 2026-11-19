@@ -204,6 +204,7 @@
     "./storybook-support/colorContrast": "./src/storybook-support/colorContrast.ts",
     "./styles.css": "./src/styles.css",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
+    "./testing/modKey": "./src/testing/modKey.ts",
     "./testing/withSafeTypingIntoRichText": "./src/testing/withSafeTypingIntoRichText.ts",
     "./typography/EnclosingHeadingLevel": "./src/typography/EnclosingHeadingLevel.tsx",
     "./typography/Eyebrow": "./src/typography/Eyebrow.tsx",
@@ -969,6 +970,10 @@
       "./styles/controlVariants": {
         "types": "./dist/styles/controlVariants.d.ts",
         "default": "./dist/styles/controlVariants.js"
+      },
+      "./testing/modKey": {
+        "types": "./dist/testing/modKey.d.ts",
+        "default": "./dist/testing/modKey.js"
       },
       "./testing/withSafeTypingIntoRichText": {
         "types": "./dist/testing/withSafeTypingIntoRichText.d.ts",
