@@ -17,9 +17,9 @@ import {
 } from 'vitest';
 
 import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
-import ArchitectField from '~/components/Form/ArchitectField';
 import { VARIABLE_TYPES } from '~/config/variables';
 import { architectCatalogSource } from '~/locales/catalogs';
 
@@ -44,12 +44,12 @@ function Harness() {
       <button onClick={() => setLocale('en-GB')}>British</button>
       <button onClick={() => setLocale(null)}>Automatic</button>
       <Form onSubmit={() => ({ success: true })}>
-        <ArchitectField
+        <Field
           name="name"
           label="Authored identifier"
           component={InputField}
           initialValue="Research_1"
-          validation={{ maxLength: 3 }}
+          maxLength={3}
         />
         <button type="submit">Validate</button>
       </Form>

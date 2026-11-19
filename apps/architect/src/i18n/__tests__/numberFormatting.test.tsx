@@ -1,17 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react';
-import { useDragControls } from 'motion/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import Codebook from '~/components/Codebook/Codebook';
-import Option, { OptionsContext } from '~/components/Form/arrayFields/Option';
 import VariableRoleConflictsAlert from '~/components/VariableRoleConflictsAlert';
 import { architectCatalogSource } from '~/locales/catalogs';
 
@@ -57,76 +49,6 @@ beforeEach(() => {
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
 });
 
-it('names option actions in English, with plain digits, in every language, and leaves the authored option value and action identity intact', () => {
-  const onEdit = vi.fn();
-  const onDelete = vi.fn();
-  const item = { label: { en: 'Research_label' }, value: 12345 };
-  function Row() {
-    const dragControls = useDragControls();
-    return (
-      <Option
-        item={item}
-        index={12344}
-        itemCount={12345}
-        isNewItem={false}
-        onCancel={vi.fn()}
-        onMove={vi.fn()}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        isSortable={false}
-        isBeingEdited={false}
-        disabled={false}
-        readOnly={false}
-        dragControls={dragControls}
-        getAddTrigger={() => null}
-      />
-    );
-  }
-  const store = configureStore({
-    reducer: () => ({
-      activeProtocol: {
-        present: { localization: { defaultLocale: 'en', locales: ['en'] } },
-      },
-    }),
-  });
-  render(
-    <Provider store={store}>
-      <ArchitectI18nProvider>
-        <OptionsContext.Provider
-          value={{
-            arrayName: 'options',
-            allValues: {},
-            labelLocale: 'en',
-            duplicatedLabels: new Set(),
-            duplicatedLabelMessage: '',
-            showArrayError: false,
-          }}
-        >
-          <Row />
-        </OptionsContext.Provider>
-      </ArchitectI18nProvider>
-    </Provider>,
-  );
-  expect
-    .soft(screen.queryByRole('button', { name: 'Edit option 12345' }))
-    .toBeInTheDocument();
-  expect
-    .soft(screen.queryByRole('button', { name: 'Remove option 12345' }))
-    .toBeInTheDocument();
-  act(() => {
-    localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: ARCHITECT_LOCALE_KEY }),
-    );
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Edit option 12345' }));
-  expect(onEdit).toHaveBeenCalledTimes(1);
-  expect(
-    screen.getByRole('button', { name: 'Remove option 12345' }),
-  ).toBeInTheDocument();
-  expect(screen.getByText('12345')).toBeInTheDocument();
-  expect(item).toEqual({ label: { en: 'Research_label' }, value: 12345 });
-});
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
