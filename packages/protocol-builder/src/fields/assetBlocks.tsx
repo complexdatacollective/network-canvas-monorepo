@@ -200,6 +200,14 @@ const isSizeChoice = (value: string): value is SizeChoice =>
   value === 'medium' ||
   value === 'large';
 
+// The direction text runs in where an element sits: what the nearest `dir`
+// says, or what the browser worked out where that says `auto`.
+const directionAt = (element: Element): 'ltr' | 'rtl' => {
+  const stated = element.closest('[dir]')?.getAttribute('dir');
+  if (stated === 'rtl' || stated === 'ltr') return stated;
+  return getComputedStyle(element).direction === 'rtl' ? 'rtl' : 'ltr';
+};
+
 function AssetBlockSettings({
   asset,
   attributes,
@@ -212,7 +220,14 @@ function AssetBlockSettings({
   'attributes' | 'update' | 'remove' | 'returnToText' | 'pick'
 > & { asset: KnownAsset | undefined }) {
   const intl = useAppIntl();
-  const direction = useAppDirection();
+  // The icons point where the file will sit, which is a matter of the text's
+  // direction and not the interface's: a page written in Arabic is edited
+  // from an English interface, and the other way about.
+  const appDirection = useAppDirection();
+  const [direction, setDirection] = useState(appDirection);
+  const readDirection = useCallback((element: HTMLDivElement | null) => {
+    if (element !== null) setDirection(directionAt(element));
+  }, []);
   const descriptionId = useId();
   const hintId = useId();
   const kind = asset?.kind;
@@ -222,6 +237,7 @@ function AssetBlockSettings({
   return (
     <div
       {...assetBlockControlsProps}
+      ref={readDirection}
       className="bg-surface-1 text-surface-1-contrast mt-2 flex flex-col gap-3 rounded-sm p-3"
       onKeyDown={(event) => {
         // Out of the controls and back to the block they belong to.

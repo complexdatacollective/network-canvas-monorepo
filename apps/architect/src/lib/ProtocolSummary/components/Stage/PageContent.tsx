@@ -1,4 +1,3 @@
-import { get } from 'es-toolkit/compat';
 import { type ComponentProps, useContext } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -131,10 +130,14 @@ const PageContentFile = ({
   const intl = useAppIntl();
   const { protocol } = useContext(SummaryContext);
   const block = readAssetBlockUrl(url)?.block;
+  // Looked up by the id as written: an id may hold a dot or a bracket, which
+  // a path would read as a way into the entry.
+  const manifest: Record<string, AssetData | undefined> =
+    protocol.assetManifest ?? {};
   const data =
-    block === undefined
-      ? undefined
-      : (get(protocol.assetManifest, block.assetId) as AssetData | undefined);
+    block !== undefined && Object.hasOwn(manifest, block.assetId)
+      ? manifest[block.assetId]
+      : undefined;
 
   if (
     block === undefined ||

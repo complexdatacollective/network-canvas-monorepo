@@ -165,7 +165,12 @@ function AssetBlockView({
           selected={selected}
           editable={editor.isEditable}
           update={updateAttributes}
-          remove={deleteNode}
+          remove={() => {
+            // Its controls go with the block, and focus that was in them
+            // would be left on nothing: it goes back to the text.
+            deleteNode();
+            editor.view.focus();
+          }}
           pick={blocks.pick}
           returnToText={() => {
             const position = getPos();

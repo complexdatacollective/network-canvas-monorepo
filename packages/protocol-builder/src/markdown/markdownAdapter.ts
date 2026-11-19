@@ -243,20 +243,37 @@ const assetBlockFromImage = (
 };
 
 // The line break markdown leaves between an image and the text beside it
-// belongs to neither once the image is a block of its own.
+// belongs to neither once the image is a block of its own, whether it was a
+// plain one (a space) or a hard one.
 const withoutEdgeSpace = (run: RichTextContent[]): RichTextContent[] => {
   const trimmed = [...run];
-  const first = trimmed[0];
-  if (first?.type === 'text') {
+  for (;;) {
+    const first = trimmed[0];
+    if (first?.type === 'hardBreak') {
+      trimmed.shift();
+      continue;
+    }
+    if (first?.type !== 'text') break;
     const text = (first.text ?? '').trimStart();
-    if (text === '') trimmed.shift();
-    else trimmed[0] = { ...first, text };
+    if (text !== '') {
+      trimmed[0] = { ...first, text };
+      break;
+    }
+    trimmed.shift();
   }
-  const last = trimmed.at(-1);
-  if (last?.type === 'text') {
+  for (;;) {
+    const last = trimmed.at(-1);
+    if (last?.type === 'hardBreak') {
+      trimmed.pop();
+      continue;
+    }
+    if (last?.type !== 'text') break;
     const text = (last.text ?? '').trimEnd();
-    if (text === '') trimmed.pop();
-    else trimmed[trimmed.length - 1] = { ...last, text };
+    if (text !== '') {
+      trimmed[trimmed.length - 1] = { ...last, text };
+      break;
+    }
+    trimmed.pop();
   }
   return trimmed;
 };
@@ -661,13 +678,26 @@ const serializeAssetBlock = (node: RichTextContent): string => {
   });
 };
 
+// A line break that ends a paragraph shows nothing, and markdown does not
+// keep one: written out, it came back gone, so the text changed the second
+// time it was saved. A paragraph that is only a break is a blank line the
+// researcher asked for, and is left alone.
+const withoutClosingBreaks = (
+  content: RichTextContent[] | undefined,
+): RichTextContent[] | undefined => {
+  if (content === undefined) return content;
+  let end = content.length;
+  while (end > 0 && content[end - 1]?.type === 'hardBreak') end -= 1;
+  return end === 0 || end === content.length ? content : content.slice(0, end);
+};
+
 const serializeBlock = (node: RichTextContent): string => {
   switch (node.type) {
     case 'doc':
       return serializeBlocks(node.content);
 
     case 'paragraph':
-      return serializeInline(node.content);
+      return serializeInline(withoutClosingBreaks(node.content));
 
     case 'heading': {
       const rawLevel = node.attrs?.level;

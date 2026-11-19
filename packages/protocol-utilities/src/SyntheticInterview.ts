@@ -13,6 +13,7 @@ import {
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   escapeMarkdownText,
+  headingMarkdown,
   escapeMessageText,
   type FinishMode,
   type FinishOutcome,
@@ -2792,7 +2793,9 @@ export class SyntheticInterview {
       const paragraphs = [
         heading === undefined || heading === ''
           ? undefined
-          : `# ${typeof title === 'string' ? escapeMessageText(escapeMarkdownText(heading)) : escapeMarkdownText(heading)}`,
+          : typeof title === 'string'
+            ? escapeMessageText(headingMarkdown(heading))
+            : headingMarkdown(heading),
         read(text, true),
         ...blocks.map((block) => {
           const described = read(block.description, true);

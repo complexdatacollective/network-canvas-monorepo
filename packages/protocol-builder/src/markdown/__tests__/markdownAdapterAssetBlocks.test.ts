@@ -327,3 +327,51 @@ describe('a block through markdown and back', () => {
     expect(roundTrip(once)).toBe(once);
   });
 });
+
+// Text written once must come back the same when it is written again: the
+// second writing is what a researcher's next edit saves.
+describe('a line break beside a block', () => {
+  const settles = (value: string) => {
+    const once = roundTrip(value);
+    expect(roundTrip(once)).toBe(once);
+    return once;
+  };
+
+  it.each([
+    ['before it', 'Text  \n![A](asset:a1)', 'Text\n\n![A](asset:a1)'],
+    ['after it', '![A](asset:a1)  \nText', '![A](asset:a1)\n\nText'],
+    [
+      'on both sides',
+      'One  \n![A](asset:a1)  \nTwo',
+      'One\n\n![A](asset:a1)\n\nTwo',
+    ],
+  ])(
+    'written %s belongs to neither, and is left out',
+    (_where, value, written) => {
+      expect(settles(value)).toBe(written);
+    },
+  );
+
+  it('typed at the end of the paragraph a block follows is left out', () => {
+    // What the editor holds after Shift+Enter and then inserting a file.
+    const document: RichTextContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Text' }, { type: 'hardBreak' }],
+        },
+        blockNode({ description: 'A' }),
+      ],
+    };
+    const written = write(document);
+    expect(written).toBe('Text\n\n![A](asset:a1)');
+    expect(roundTrip(written)).toBe(written);
+  });
+
+  it('inside a paragraph is kept', () => {
+    expect(settles('One  \nTwo\n\n![A](asset:a1)')).toBe(
+      'One  \nTwo\n\n![A](asset:a1)',
+    );
+  });
+});

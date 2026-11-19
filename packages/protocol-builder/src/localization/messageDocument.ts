@@ -10,6 +10,7 @@ import type {
   TokenPillVariant,
 } from '@codaco/fresco-ui/TokenPill';
 import {
+  assetBlocksInMarkdown,
   MISSING_CASE,
   type MessageNode,
   type MessageSwitch,
@@ -263,11 +264,16 @@ const withoutLineLead = (
 
 /**
  * Why a message cannot be shown in the editor as it is: a value inside a link
- * address, or a version of markdown text that runs over more than one line
+ * address, a version of markdown text that runs over more than one line
  * (paragraphs, a list, a heading), which a version's one-line editor would
- * run together and write back that way.
+ * run together and write back that way, or a file written where the editor
+ * holds no block (see protocol-validation's `AssetBlockPlacementProblem`),
+ * which it would write back as the file's description alone.
  */
-type MessageDocumentProblemKind = 'valueInLinkAddress' | 'linesInVersion';
+type MessageDocumentProblemKind =
+  | 'valueInLinkAddress'
+  | 'linesInVersion'
+  | 'misplacedFile';
 
 export class MessageDocumentProblem extends Error {
   readonly kind: MessageDocumentProblemKind;
@@ -349,6 +355,21 @@ const edgeSpace = (text: string): [string, string, string] => {
   return [text.slice(0, start), text.slice(start, end), text.slice(end)];
 };
 
+// The cheap test first: almost no text names a file.
+const namesFile = (markdown: string): boolean =>
+  markdown.toLowerCase().includes('asset:') &&
+  assetBlocksInMarkdown(markdown).length > 0;
+
+// Whether text declared to hold blocks names a file anywhere but in a
+// paragraph of its own text, which is the one place a block is written.
+const misplacesFile = (markdown: string): boolean =>
+  markdown.toLowerCase().includes('asset:') &&
+  assetBlocksInMarkdown(markdown).some(({ problems }) =>
+    problems.some(
+      ({ kind }) => kind === 'notInParagraph' || kind === 'byReference',
+    ),
+  );
+
 /**
  * A version's line from its markdown. Markdown drops the spaces at the ends
  * of a line, but a version's spaces are part of the sentence it sits in, so
@@ -366,6 +387,9 @@ const versionLine = (
   }
   if (markdown.includes('\n')) {
     throw new MessageDocumentProblem('linesInVersion');
+  }
+  if (format.assetBlocks === true && namesFile(markdown)) {
+    throw new MessageDocumentProblem('misplacedFile');
   }
   const [before, middle, after] = edgeSpace(markdown);
   const parsed = restoreMarkers(
@@ -462,6 +486,9 @@ export const messageToDocument = (
 
   const top = level(nodes, undefined);
   if (!format.markdown) return restoreMarkers(PLAIN_LINE(top.text), top.pieces);
+  if (format.assetBlocks === true && misplacesFile(top.text)) {
+    throw new MessageDocumentProblem('misplacedFile');
+  }
   return restoreMarkers(
     markdownToRichTextContent(
       top.text,

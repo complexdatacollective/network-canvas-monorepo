@@ -36,6 +36,17 @@ const escapeAngleBrackets = (value: string): string =>
     })
     .replaceAll('<', '&lt;');
 
+const TILDES = /~+/g;
+
+/**
+ * The interview reads markdown with GitHub's additions, where a tilde or two
+ * on either side of words strikes them through. That takes two runs of them,
+ * so a lone one (`~5 minutes`) means nothing and stays readable in the lists
+ * that show the stored source.
+ */
+const strikesThrough = (value: string): boolean =>
+  (value.match(TILDES)?.length ?? 0) > 1;
+
 /**
  * Plain text as markdown that renders it as written, the way Architect's rich
  * text editor stores what a researcher types: `*star*` stays two asterisks
@@ -52,7 +63,11 @@ export const escapeMarkdownText = (value: string): string =>
       (_all, indent: string, dashes: string) =>
         `${indent}${dashes.replaceAll('-', '\\-')}`,
     )
-    .replace(/(\s*)#+(\s)/g, '$1\\#$2')
+    // Each `#` of a run, so the run keeps its length: `## 2` is two signs.
+    .replace(/#+(?=\s)/g, (run) => run.replaceAll('#', '\\#'))
     .replace(/`/g, '\\`')
     .replace(/\[/g, '\\[')
-    .replace(/\]/g, '\\]');
+    .replace(/\]/g, '\\]')
+    .replace(TILDES, (run) =>
+      strikesThrough(value) ? run.replaceAll('~', '\\~') : run,
+    );

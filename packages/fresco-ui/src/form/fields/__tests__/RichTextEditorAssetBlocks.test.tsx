@@ -474,6 +474,25 @@ describe('a block the value holds', () => {
       paragraph('After'),
     ]);
   });
+
+  it('returns focus to the text when the view removes it from a control', async () => {
+    const field = renderField({
+      value: doc(
+        paragraph('Before'),
+        block({ assetId: 'a1' }),
+        paragraph('After'),
+      ),
+    });
+    const editor = await field.editor();
+
+    const remove = screen.getByRole('button', { name: 'Remove block' });
+    await field.user.click(remove);
+    await waitFor(() => {
+      expect(screen.queryByTestId('view')).toBeNull();
+    });
+
+    expect(editor).toHaveFocus();
+  });
 });
 
 describe('typing where a block is', () => {

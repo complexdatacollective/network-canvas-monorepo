@@ -31,7 +31,6 @@ const protocol = {
       label: { en: 'Welcome', fr: 'Bienvenue' },
       content: { en: WELCOME },
       dynamicValues: { name: { path: 'ego.firstName' } },
-      items: [],
     },
   ],
 } as unknown as CurrentProtocol;

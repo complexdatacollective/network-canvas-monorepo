@@ -116,3 +116,57 @@ describe('a message holding asset blocks', () => {
     ).not.toThrow();
   });
 });
+
+// A file anywhere but in a paragraph of the text's own would be written back
+// as its description, so the message is refused instead, as validation
+// reports it.
+describe('a file written where the editor holds no block', () => {
+  const problemOf = (message: string, format = WITH_BLOCKS) => {
+    try {
+      toDocument(message, format);
+    } catch (error) {
+      if (error instanceof MessageDocumentProblem) return error.kind;
+      throw error;
+    }
+    return undefined;
+  };
+
+  it.each([
+    [
+      'a version',
+      '{kind, select, a {![A](asset:one)} other {![B](asset:two)}}',
+    ],
+    [
+      'a sentence of a version',
+      '{kind, select, a {See ![A](asset:one) here} other {none}}',
+    ],
+    ['a heading', '# ![A](asset:one)'],
+    ['a link', '[![A](asset:one)](https://example.com)'],
+    ['emphasis', '*![A](asset:one)*'],
+    ['a reference', '![A][map]\n\n[map]: asset:one'],
+  ])('cannot be shown in %s', (_where, message) => {
+    expect(problemOf(message)).toBe('misplacedFile');
+  });
+
+  it.each([
+    ['a paragraph of its own', 'Before\n\n![A](asset:one)\n\nAfter'],
+    ['a sentence', 'See ![A](asset:one) here'],
+    ['an item of a list', '- one\n- ![A](asset:one)'],
+    [
+      'the words beside a choice of versions',
+      '{kind, select, a {One} other {Other}}\n\n![A](asset:one)',
+    ],
+  ])('is shown in %s', (_where, message) => {
+    expect(problemOf(message)).toBeUndefined();
+  });
+
+  it('is its description, as before, in text not declared to hold blocks', () => {
+    expect(
+      problemOf(
+        '{kind, select, a {![A](asset:one)} other {B}}',
+        WITHOUT_BLOCKS,
+      ),
+    ).toBeUndefined();
+    expect(problemOf('# ![A](asset:one)', WITHOUT_BLOCKS)).toBeUndefined();
+  });
+});

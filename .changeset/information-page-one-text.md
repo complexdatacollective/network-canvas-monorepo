@@ -36,8 +36,14 @@ and items into one text, in the order they were shown, so participants see the
 same page. An audio recording keeps playing once, at the start of its line, as
 it did before. A page heading that held only spaces is left out, as is an item
 whose file is no longer among the protocol's resources; a page that would then
-be empty shows the name of its stage as its heading. The migration notes
+be empty shows the name of its stage as its heading. A note written on a block
+of text, which participants never saw, is not kept. The migration notes
 describe this in English; the other languages follow.
+
+Two fixes to how typed text is stored as markdown, in every rich text field: a
+run of `#` before a space (`Section ## 2`) keeps all its signs, where it was
+cut to one; and tildes that would strike words through in an interview
+(`~~old~~`) are shown as typed, as they are in the editor.
 
 For developers: the schema 9 Information stage is `{ content }`, a localized
 markdown string declared with `assetBlocks: true`, in place of `title` and
@@ -46,7 +52,9 @@ a paragraph of its own whose address names an asset:
 `![description](asset:<assetId>?size=small|medium|large&align=start|end&autoplay=false&loop=false)`.
 `@codaco/protocol-validation` exports the grammar (`assetBlockMarkdown`,
 `readAssetBlockUrl`, `assetBlocksInMessage` and others), reports a block whose
-asset is missing or is not an image, audio or video, and counts each block as
+asset is missing or is not an image, audio or video, or that is written where
+none can be shown (inside a heading, a link, a `select` or `plural` version, or
+with a dynamic value in its description or address), and counts each block as
 an asset reference. `RichTextEditor` takes `assetBlocks` (a block view and an
 optional picker), and `RenderMarkdown` takes `blockImages`, which draws
 matching markdown images with a component of the caller's and never draws one

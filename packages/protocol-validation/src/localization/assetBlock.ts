@@ -125,6 +125,28 @@ type AssetBlockUrlReading = Readonly<{
   problems: readonly AssetBlockUrlProblem[];
 }>;
 
+/**
+ * Where a block is written that it cannot be shown. A block is a markdown
+ * image standing in a paragraph of the text, or of an item of a list in it:
+ * that is what the editor writes and holds, and what the interview draws.
+ * Anywhere else an image naming a file reads as a block to no one, so it is
+ * reported rather than left for one reader to draw and another to drop.
+ */
+export type AssetBlockPlacementProblem = Readonly<
+  /** Inside a heading, a link, emphasis, a quotation: not a paragraph's own. */
+  | { kind: 'notInParagraph' }
+  /** Named through a reference (`![alt][label]`, `[label]: asset:…`). */
+  | { kind: 'byReference' }
+  /** Inside one version of a `select` or `plural`, which is a line of words. */
+  | { kind: 'inVersion' }
+  /** With a value, or a choice of versions, in its description or address. */
+  | { kind: 'holdsValue' }
+>;
+
+export type AssetBlockProblem =
+  | AssetBlockUrlProblem
+  | AssetBlockPlacementProblem;
+
 const BOOLEANS: Readonly<Record<string, boolean>> = {
   true: true,
   false: false,
@@ -202,10 +224,25 @@ type MarkdownTreeNode = Readonly<{
   children?: readonly MarkdownTreeNode[];
 }>;
 
-/** A block found in text, with what is wrong with its address. */
-export type AssetBlockInText = AssetBlockUrlReading;
+/** A block found in text, with what is wrong with how it is written. */
+export type AssetBlockInText = Readonly<{
+  block: AssetBlock;
+  problems: readonly AssetBlockProblem[];
+}>;
 
-const blocksUnder = (node: MarkdownTreeNode): AssetBlockInText[] => {
+// A block found in markdown, with the image as written, for a message to
+// look for what stands in it that is not text.
+type Found = AssetBlockInText & Readonly<{ written: string }>;
+
+// What may stand between the text and a paragraph holding a block.
+const HOLDS_PARAGRAPHS: ReadonlySet<string> = new Set(['list', 'listItem']);
+
+const blocksUnder = (
+  node: MarkdownTreeNode,
+  // Where `node` sits: among the text's paragraphs (reached through nothing
+  // but lists), in one of those paragraphs, or anywhere else.
+  at: 'paragraphs' | 'paragraph' | 'elsewhere',
+): Found[] => {
   // A reference image (`![alt][map]`) takes its address from a definition
   // elsewhere in the text, so the definition names the file too.
   if (
@@ -218,28 +255,53 @@ const blocksUnder = (node: MarkdownTreeNode): AssetBlockInText[] => {
       typeof node.alt === 'string' && node.alt.trim() !== ''
         ? node.alt
         : undefined;
+    const placement: AssetBlockPlacementProblem[] =
+      node.type === 'definition'
+        ? [{ kind: 'byReference' }]
+        : at === 'paragraph'
+          ? []
+          : [{ kind: 'notInParagraph' }];
     return [
       {
         block: {
           ...reading.block,
           ...(description !== undefined && { description }),
         },
-        problems: reading.problems,
+        problems: [...reading.problems, ...placement],
+        written: `${node.alt ?? ''}${node.url}`,
       },
     ];
   }
-  return (node.children ?? []).flatMap(blocksUnder);
+  const within =
+    at !== 'paragraphs'
+      ? 'elsewhere'
+      : HOLDS_PARAGRAPHS.has(node.type)
+        ? 'paragraphs'
+        : node.type === 'paragraph'
+          ? 'paragraph'
+          : 'elsewhere';
+  return (node.children ?? []).flatMap((child) => blocksUnder(child, within));
 };
 
+const blocksInMarkdown = (markdown: string): Found[] =>
+  (
+    fromMarkdown(markdown).children satisfies readonly MarkdownTreeNode[]
+  ).flatMap((child) => blocksUnder(child, 'paragraphs'));
+
 /**
- * Every file markdown names as a block, in the order it names them. Found
+ * Every file markdown names as a block, in the order it names them, each
+ * with what is wrong with its address and with where it is written. Found
  * with a markdown parser rather than a pattern, so that an address inside a
  * code span or behind an escaped bracket is the text it reads as, not a
  * block.
  */
 export const assetBlocksInMarkdown = (
   markdown: string,
-): readonly AssetBlockInText[] => blocksUnder(fromMarkdown(markdown));
+): readonly AssetBlockInText[] =>
+  blocksInMarkdown(markdown).map(({ block, problems }) => ({
+    block,
+    problems,
+  }));
 
 // Stands where a message shows a value or chooses a version, so the text on
 // either side is not read as one run. A private-use character, which
@@ -267,8 +329,9 @@ const levelTexts = (nodes: readonly MessageNode[]): string[] => {
 /**
  * Every file a localized message names as a block: in its own text, and in
  * each version a `select` or `plural` chooses between, since any of them may
- * be the one a participant is shown. A message that cannot be read as ICU is
- * searched as it is written.
+ * be the one a participant is shown. One in a version is found so that it can
+ * be reported: a version is a line of words, and holds no block. A message
+ * that cannot be read as ICU is searched as it is written.
  */
 export const assetBlocksInMessage = (
   message: string,
@@ -276,6 +339,20 @@ export const assetBlocksInMessage = (
   // The cheap test first: almost no text names a file.
   if (!message.toLowerCase().includes(SCHEME)) return [];
   const structure = messageStructure(message);
-  const texts = 'nodes' in structure ? levelTexts(structure.nodes) : [message];
-  return texts.flatMap(assetBlocksInMarkdown);
+  const [own = '', ...versions] =
+    'nodes' in structure ? levelTexts(structure.nodes) : [message];
+  return [
+    ...blocksInMarkdown(own).map(({ block, problems, written }) => ({
+      block,
+      // What a value stands in cannot be read until the value is shown, so
+      // nothing else is said of it.
+      problems: written.includes(NOT_TEXT)
+        ? [{ kind: 'holdsValue' } as const]
+        : problems,
+    })),
+    ...versions.flatMap(blocksInMarkdown).map(({ block, problems }) => ({
+      block,
+      problems: [...problems, { kind: 'inVersion' } as const],
+    })),
+  ];
 };

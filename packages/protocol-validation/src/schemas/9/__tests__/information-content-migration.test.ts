@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { assetBlocksInMarkdown } from '../../../localization/assetBlock.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
@@ -140,6 +141,74 @@ describe('combineInformationContent', () => {
           items: [{ id: 'a', type: 'text' }, text('b', 'K')],
         }).content,
       ).toBe('# T\n\nK');
+    });
+  });
+
+  describe('a text item that leaves something open', () => {
+    // Schema 8 drew each item alone, so what one left open ended with it.
+    // Each case is what the item is closed with; without it the image below
+    // is read as part of the item, and is no block.
+    it.each([
+      ['an HTML comment', '<!-- note: check wording', '-->'],
+      ['a code block fenced with backticks', '```\ncode', '```'],
+      ['a code block with a longer fence', '````\ncode', '````'],
+      ['a code block fenced with tildes', '~~~\ncode', '~~~'],
+      ['a pre element', '<pre>\nkept as typed', '</pre>'],
+      ['a processing instruction', '<?php echo 1', '?>'],
+    ])(
+      'closes %s, so the items below it are still shown',
+      (_what, open, close) => {
+        const { content } = combined({
+          title: 'T',
+          items: [
+            text('a', open),
+            text('b', 'Welcome to the study.'),
+            asset('c', 'photo', { description: 'Map' }),
+          ],
+        });
+        expect(content).toBe(
+          `# T\n\n${open}\n${close}\n\nWelcome to the study.\n\n![Map](asset:photo)`,
+        );
+        expect(
+          assetBlocksInMarkdown(content as string).map(({ block }) => block),
+        ).toEqual([{ assetId: 'photo', description: 'Map' }]);
+      },
+    );
+
+    it('leaves an item that closes what it opens as it is', () => {
+      const closed = '```\ncode\n```\n\n<!-- note -->';
+      expect(
+        combined({
+          title: 'T',
+          items: [text('a', closed), asset('c', 'photo')],
+        }).content,
+      ).toBe(`# T\n\n${closed}\n\n![](asset:photo)`);
+    });
+
+    it('closes each language of an item already in schema 9 form', () => {
+      expect(
+        combined(
+          {
+            title: { en: 'T', fr: 'T' },
+            items: [
+              text('a', { en: '<!-- note', fr: 'Bonjour' }),
+              asset('c', 'photo'),
+            ],
+          },
+          { localization: EN_FR },
+        ).content,
+      ).toEqual({
+        en: '# T\n\n<!-- note\n-->\n\n![](asset:photo)',
+        fr: '# T\n\nBonjour\n\n![](asset:photo)',
+      });
+    });
+
+    it('drops the spaces an item opens with, which below a list would make it part of the last item', () => {
+      const { content } = combined({
+        title: 'T',
+        items: [text('a', '- one\n- two'), text('b', '\n  After the list.')],
+      });
+      expect(content).toBe('# T\n\n- one\n- two\n\nAfter the list.');
     });
   });
 

@@ -1,3 +1,5 @@
+import { fromMarkdown } from 'mdast-util-from-markdown';
+
 import {
   type AssetBlock,
   type AssetBlockSize,
@@ -105,17 +107,70 @@ const headingPart = (title: unknown): Part | undefined => {
       };
 };
 
+const BETWEEN_BLOCKS = '\n\n';
+
+// A word that is nothing but a word to markdown.
+const PROBE = 'probe';
+
+// Whether what is written after this markdown, a blank line on, is read
+// apart from it, as the next of the text's own blocks.
+const endsItself = (markdown: string): boolean => {
+  const last = fromMarkdown(`${markdown}${BETWEEN_BLOCKS}${PROBE}`).children.at(
+    -1,
+  );
+  if (last?.type !== 'paragraph' || last.children.length !== 1) return false;
+  const [only] = last.children;
+  return only?.type === 'text' && only.value === PROBE;
+};
+
+// What closes the block markdown ends in, where a blank line does not: a
+// fenced code block left open, or HTML that runs until its own end is
+// written (a comment, a `<pre>`).
+const closingOf = (markdown: string): string | undefined => {
+  const last = fromMarkdown(markdown).children.at(-1);
+  if (last?.type === 'code') {
+    const from = last.position?.start.offset;
+    if (from === undefined) return undefined;
+    return /^(`{3,}|~{3,})/.exec(markdown.slice(from))?.[1];
+  }
+  if (last?.type !== 'html') return undefined;
+  const html = last.value.trimStart();
+  if (html.startsWith('<!--')) return '-->';
+  if (html.startsWith('<?')) return '?>';
+  if (html.startsWith('<![CDATA[')) return ']]>';
+  if (/^<![a-z]/i.test(html)) return '>';
+  const element = /^<(pre|script|style|textarea)(?=[\s>]|$)/i.exec(html)?.[1];
+  return element === undefined ? undefined : `</${element}>`;
+};
+
+/**
+ * A text item as markdown that reads the same with the rest of the page
+ * written after it as it read alone. Schema 8 drew each item by itself, so
+ * what one left open ended with it; in one text it would run on over every
+ * item below, hiding their words and their files. It is closed here, where
+ * it ended. The spaces an item opened with meant nothing by themselves, and
+ * below a list would make it part of the list's last item, so they go.
+ */
+const selfContained = (markdown: string): string => {
+  const flush = markdown.replace(/^(?:[^\S\n]*\n)*[ ]{0,3}(?=\S)/, '');
+  if (endsItself(flush)) return flush;
+  const closing = closingOf(flush);
+  if (closing === undefined) return flush;
+  const closed = `${flush}\n${closing}`;
+  return endsItself(closed) ? closed : flush;
+};
+
 const textPart = (content: unknown): Part | undefined => {
   if (typeof content === 'string') {
     return isBlankText(content)
       ? undefined
-      : { kind: 'plain', markdown: content };
+      : { kind: 'plain', markdown: selfContained(content) };
   }
   if (!isRecord(content)) return undefined;
   const messages = shownMessages(content);
   return Object.keys(messages).length === 0
     ? undefined
-    : { kind: 'localized', messages };
+    : { kind: 'localized', messages: mapMessages(messages, selfContained) };
 };
 
 const SIZES: Readonly<Record<string, AssetBlockSize>> = {
@@ -183,8 +238,6 @@ const itemPart = (item: unknown, assetManifest: unknown): Part | undefined => {
   return undefined;
 };
 
-const BETWEEN_BLOCKS = '\n\n';
-
 /**
  * The parts as one text. Parts schema 8 wrote are joined as they are, for
  * the migration to record in the protocol's language with the rest of its
@@ -228,7 +281,9 @@ const joinParts = (
  * each a block of text or a file. The page is written out in the order it
  * was shown: the title as a heading, escaped to show as written; each text
  * item as it is, since it was markdown already; and each file as a block
- * naming it (see `AssetBlock`), with its description and size. An item
+ * naming it (see `AssetBlock`), with its description and size. A text item
+ * that left a code block or raw HTML open is closed where it ended (see
+ * `selfContained`), so the items below it are still shown. An item
  * naming a file that is not an image, an audio recording or a video among the
  * protocol's assets showed a notice that it was unavailable, and is left out.
  *

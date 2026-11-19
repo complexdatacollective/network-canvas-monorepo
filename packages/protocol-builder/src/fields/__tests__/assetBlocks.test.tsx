@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -31,9 +31,12 @@ const setup = ({
   kind = 'image',
   known,
   pick,
+  textDirection,
   ...props
 }: {
   kind?: RichTextAssetBlockKind;
+  /** The direction of the text the block sits in, where it states one. */
+  textDirection?: 'ltr' | 'rtl';
   /** `null`: the protocol holds no such file. */
   known?: Known | null;
   pick?: RichTextAssetBlockViewProps['pick'];
@@ -67,7 +70,15 @@ const setup = ({
     ...(pick !== undefined && { pick }),
     ...props,
   };
-  render(<View {...viewProps} />);
+  render(
+    textDirection === undefined ? (
+      <View {...viewProps} />
+    ) : (
+      <div dir={textDirection}>
+        <View {...viewProps} />
+      </div>
+    ),
+  );
   return { user, update, remove, returnToText };
 };
 
@@ -302,5 +313,33 @@ describe('the drawing of a block', () => {
     expect(
       screen.getByRole('button', { name: 'Remove from the text' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('the alignment icons', () => {
+  const iconOf = (name: string) =>
+    screen
+      .getByRole('button', { name })
+      .querySelector('svg')
+      ?.getAttribute('class');
+
+  const icons = (textDirection: 'ltr' | 'rtl') => {
+    setup({ textDirection, attributes: attributes({ size: 'small' }) });
+    const found = {
+      start: iconOf('Align to the start'),
+      end: iconOf('Align to the end'),
+    };
+    cleanup();
+    return found;
+  };
+
+  it('point where the file will sit in the direction the text runs, whatever the interface’s', () => {
+    const leftToRight = icons('ltr');
+    const rightToLeft = icons('rtl');
+
+    expect(leftToRight.start).toBeTruthy();
+    expect(leftToRight.start).not.toBe(leftToRight.end);
+    expect(rightToLeft.start).toBe(leftToRight.end);
+    expect(rightToLeft.end).toBe(leftToRight.start);
   });
 });

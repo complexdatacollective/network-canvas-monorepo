@@ -121,17 +121,88 @@ describe('files shown as blocks in an Information page', () => {
     ]);
   });
 
-  it('checks a block inside a version a message chooses between', () => {
+  it('reports a block inside a version a message chooses between, and still checks its file', () => {
     const { index, issues } = issuesWith({
       en: '{kind, select, a {![](asset:img)} other {![](asset:gone)}}',
     });
+    const path = ['stages', index, 'content', 'en'];
     // The unbound `kind` is the dynamic values' to report, not the file's.
-    expect(
-      issues
-        .filter(({ message }) => message.includes('"gone"'))
-        .map(({ path }) => path),
-    ).toEqual([['stages', index, 'content', 'en']]);
-    expect(issues.some(({ message }) => message.includes('"img"'))).toBe(false);
+    const ofFiles = issues.filter(({ message }) => message.includes('file'));
+    expect(ofFiles).toEqual([
+      { path, message: expect.stringContaining('inside one version') },
+      { path, message: expect.stringContaining('inside one version') },
+      {
+        path,
+        message:
+          'This text shows the file "gone", which is not an asset in the manifest.',
+      },
+    ]);
+  });
+
+  it.each([
+    ['a heading', '# ![A](asset:img)'],
+    ['a link', '[![A](asset:img)](https://example.com)'],
+    ['emphasis', '*![A](asset:img)*'],
+    ['a quotation', '> ![A](asset:img)'],
+  ])('reports a block written inside %s', (_where, en) => {
+    const { index, issues } = issuesWith({ en });
+    expect(issues).toEqual([
+      {
+        path: ['stages', index, 'content', 'en'],
+        message: expect.stringContaining('Write it in a paragraph'),
+      },
+    ]);
+  });
+
+  it.each([
+    ['a paragraph of its own', '# T\n\n![A](asset:img)'],
+    ['a sentence', '# T\n\nSee ![A](asset:img) here.'],
+    ['an item of a list', '- one\n- ![A](asset:img)'],
+    [
+      'an item of a list in a list',
+      '1. one\n   - ![A](asset:img)\n\n     more',
+    ],
+  ])('accepts a block written in %s', (_where, en) => {
+    expect(issuesWith({ en }).issues).toEqual([]);
+  });
+
+  it('reports a block named through a reference', () => {
+    const { index, issues } = issuesWith({
+      en: '# T\n\n![A][map]\n\n[map]: asset:img',
+    });
+    expect(issues).toEqual([
+      {
+        path: ['stages', index, 'content', 'en'],
+        message: expect.stringContaining('named through a reference'),
+      },
+    ]);
+  });
+
+  it.each([
+    ['its description', '# T\n\n![A {kind}](asset:img)'],
+    ['its settings', '# T\n\n![A](asset:img?size={kind})'],
+    ['the file it names', '# T\n\n![A](asset:{kind})'],
+    [
+      'a choice of versions in its description',
+      '# T\n\n![{kind, select, a {One} other {Other}}](asset:img)',
+    ],
+  ])('reports a value in %s, and nothing else about the file', (_where, en) => {
+    const { index, issues } = issuesWith({ en });
+    expect(issues.filter(({ message }) => message.includes('file'))).toEqual([
+      {
+        path: ['stages', index, 'content', 'en'],
+        message: expect.stringContaining('has a value in its description'),
+      },
+    ]);
+  });
+
+  it('accepts a value in the words beside a block', () => {
+    const { issues } = issuesWith({
+      en: '# {kind}\n\n![A](asset:img)\n\n{kind}',
+    });
+    expect(issues.filter(({ message }) => message.includes('file'))).toEqual(
+      [],
+    );
   });
 
   it('reports an issue for each block with a problem', () => {
