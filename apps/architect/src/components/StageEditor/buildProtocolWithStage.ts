@@ -4,6 +4,7 @@ import {
   interfaceTextWithUpdates,
   withInterfaceText,
 } from '@codaco/interview/supplied-wording';
+import { protocolSections } from '@codaco/protocol-builder/host/protocolSections';
 import {
   NOTHING_STAGED,
   overlaySections,
@@ -20,7 +21,6 @@ import {
   parseSectionId,
 } from '@codaco/studio-sync/taxonomy';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
-import { protocolSections } from '~/protocolBuilder/protocolSections';
 import prune from '~/utils/prune';
 
 /**
