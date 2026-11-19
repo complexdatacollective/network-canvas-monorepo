@@ -203,7 +203,9 @@ describe('ConnectedVariablePill', () => {
     const input = await startEditing('ego-subject');
     fireEvent.change(input, { target: { value: 'taken_var' } });
 
-    expect(await screen.findByText(/is already in use/)).toBeInTheDocument();
+    expect(
+      await screen.findByText('this type already has an attribute called that'),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('variable-name-field-error')).toBeInTheDocument();
     // Ego has no entity type; a `type` here resolves to the non-existent
     // `codebook.ego.<type>.variables` and silently finds nothing.
@@ -214,7 +216,9 @@ describe('ConnectedVariablePill', () => {
     const input = await startEditing('node-subject');
     fireEvent.change(input, { target: { value: 'taken_var' } });
 
-    expect(await screen.findByText(/is already in use/)).toBeInTheDocument();
+    expect(
+      await screen.findByText('this type already has an attribute called that'),
+    ).toBeInTheDocument();
     expect(subjectsSeen.at(-1)).toEqual({ entity: 'node', type: 'person' });
   });
 
@@ -222,7 +226,9 @@ describe('ConnectedVariablePill', () => {
     const input = await startEditing('ego-subject');
     fireEvent.change(input, { target: { value: 'subject_var' } });
 
-    expect(screen.queryByText(/is already in use/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('this type already has an attribute called that'),
+    ).not.toBeInTheDocument();
   });
 
   describe('names in any script', () => {
@@ -250,7 +256,7 @@ describe('ConnectedVariablePill', () => {
 
       expect(
         await screen.findByText(
-          'This can’t contain tabs, line breaks or other control characters',
+          'a name cannot contain line breaks, tabs or other control characters',
         ),
       ).toBeInTheDocument();
       expect(
@@ -275,7 +281,9 @@ describe('ConnectedVariablePill', () => {
       fireEvent.change(input, { target: { value: 'TAKEN_VAR ' } });
 
       expect(
-        await screen.findByText('"TAKEN_VAR" is already in use'),
+        await screen.findByText(
+          'this type already has an attribute called that',
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -299,7 +307,7 @@ describe('ConnectedVariablePill', () => {
       await expectRefused(
         'node-subject',
         'colour_red',
-        'Exported data already includes the column “colour_red” for the option “red” of the attribute “colour”, so an attribute can’t use this name.',
+        'The export already has a column called “colour_red” for option “red” of the attribute “colour”. Choose a different name.',
       );
     });
 
@@ -307,7 +315,7 @@ describe('ConnectedVariablePill', () => {
       await expectRefused(
         'node-subject',
         'pos_x',
-        'Exported data already includes the column “pos_x” for the position of the layout attribute “pos”, so an attribute can’t use this name.',
+        'The export already has a column called “pos_x” for the position of the layout attribute “pos”. Choose a different name.',
       );
     });
 
@@ -315,7 +323,7 @@ describe('ConnectedVariablePill', () => {
       await expectRefused(
         'node-shade',
         'warm',
-        'The option “dark” would be exported to the column “warm_dark”, which the attribute “warm_dark” already uses. Change the option’s value or the attribute’s name.',
+        'Option “dark” of “warm” would be exported to a column called “warm_dark”, but the attribute “warm_dark” already has a column called “warm_dark”. Change the option value or the attribute name.',
       );
     });
 
@@ -323,7 +331,7 @@ describe('ConnectedVariablePill', () => {
       await expectRefused(
         'node-canvas',
         'spot',
-        'A layout attribute is exported as one column for each coordinate, and the column “spot_x” is already used by the attribute “spot_x”. Choose a different name.',
+        'A layout attribute named “spot” would be exported to a column called “spot_x”, but the attribute “spot_x” already has a column called “spot_x”. Choose a different name.',
       );
     });
 
@@ -331,7 +339,7 @@ describe('ConnectedVariablePill', () => {
       await expectRefused(
         'node-subject',
         'networkCanvasEgoUUID',
-        'Exported data already includes a built-in column named “networkCanvasEgoUUID”, so an attribute can’t use this name.',
+        'The export already has a built-in column called “networkCanvasEgoUUID”, so an attribute cannot be named “networkCanvasEgoUUID”. Choose a different name.',
       );
     });
 
@@ -339,7 +347,7 @@ describe('ConnectedVariablePill', () => {
       await expectRefused(
         'node-subject',
         'colour red',
-        'In exported data, this name and the option “red” of the attribute “colour” would become the same column, “colour_red”. Choose a different name.',
+        'In the export, the name “colour red” and the column “colour_red” of the attribute “colour” would become the same column, “colour_red”. Choose a different name.',
       );
     });
 

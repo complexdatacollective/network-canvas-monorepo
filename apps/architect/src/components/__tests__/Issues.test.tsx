@@ -19,8 +19,6 @@ import FormStoreProvider, {
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
 import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-contract';
 
-import ArchitectField from '../Form/ArchitectField';
-import IssueAnchor from '../IssueAnchor';
 import { useIssuesToolbarControl } from '../Issues';
 
 type FormStoreApi = NonNullable<React.ContextType<typeof FormStoreContext>>;
@@ -170,7 +168,6 @@ describe('<Issues />', () => {
     // every message.
     const FIELD = 'title';
     const LABEL = 'Title';
-    const ANCHOR_ID = 'field_title';
     const MESSAGES = [
       'This field is required.',
       'Too long. Enter fewer than 50 characters.',
@@ -180,7 +177,7 @@ describe('<Issues />', () => {
       const view = renderStageForm({
         children: (
           <>
-            <IssueAnchor fieldName={FIELD} description={LABEL} />
+            <Field name={FIELD} label={LABEL} component={InputField} />
             <IssuesHarness />
           </>
         ),
@@ -268,26 +265,23 @@ describe('<Issues />', () => {
     });
 
     // Clicking a row closes the popover, so each row gets its own render.
-    it.each([0, 1])(
-      'scrolls to the field anchor from row %i',
-      async (index) => {
-        scrollTo.mockClear();
-        await renderTwoMessages();
+    it.each([0, 1])('scrolls to the field from row %i', async (index) => {
+      scrollTo.mockClear();
+      await renderTwoMessages();
 
-        const anchor = document.getElementById(ANCHOR_ID);
-        expect(anchor).not.toBeNull();
-        expect(rowParts().map((row) => row.href)).toEqual([
-          `#${ANCHOR_ID}`,
-          `#${ANCHOR_ID}`,
-        ]);
+      const [first, second] = rowParts().map((row) => row.href);
+      expect(first).toBeDefined();
+      expect(second).toBe(first);
+      expect(document.querySelector(first!)).not.toBeNull();
 
-        act(() => {
-          screen.getAllByTestId('issue')[index]!.querySelector('a')!.click();
-        });
+      act(() => {
+        screen.getAllByTestId('issue')[index]!.querySelector('a')!.click();
+      });
 
-        expect(scrollTo).toHaveBeenCalledExactlyOnceWith(anchor);
-      },
-    );
+      expect(scrollTo).toHaveBeenCalledExactlyOnceWith(
+        document.querySelector(`[data-field-name="${FIELD}"] input`),
+      );
+    });
   });
 });
 
@@ -295,8 +289,7 @@ describe('<Issues />', () => {
  * A field the way the stage editor actually renders one.
  *
  * Every field in the stage editor comes from `@codaco/protocol-builder`, which
- * builds on fresco-ui's `Field` and renders none of Architect's own
- * `IssueAnchor`s. A LIST is the shape that broke: the control fresco-ui names
+ * builds on fresco-ui's `Field`. A LIST is the shape that broke: the control fresco-ui names
  * is the list as a whole, and the only thing inside it a person can operate is
  * an add button that is named by its own words rather than by the field's
  * label. Stood in for here rather than mounting the real `ArrayField`, which
@@ -346,7 +339,8 @@ describe('a field the stage editor renders itself', () => {
 
   it('names the field the way the researcher does, not by its store key', async () => {
     // Before this, the panel could only name a field by reading a `data-name`
-    // off an `IssueAnchor`, or an `aria-labelledby` off the control. A list
+    // off an anchor Architect drew beside its own fields, or an
+    // `aria-labelledby` off the control. A list
     // has neither, so every row in the stage editor read out the store's
     // internal path: "prompts", "quickAdd", "subject".
     await renderListIssue();
@@ -356,8 +350,8 @@ describe('a field the stage editor renders itself', () => {
   });
 
   it('links to an element that is actually on the page', async () => {
-    // The row's `href` was composed as `#field_prompts` — an id only
-    // `IssueAnchor` ever renders, and nothing in the stage editor does. It was
+    // The row's `href` was composed as `#field_prompts` — an id only that
+    // anchor ever rendered, and nothing in the stage editor does. It was
     // announced as a link, offered to open in a new tab, and went nowhere.
     await renderListIssue();
 
@@ -451,7 +445,7 @@ describe('a field the stage editor renders itself', () => {
 
 /**
  * An issue row is a promise to take the researcher to the thing they have to
- * correct. Before this it only scrolled: the scroll target is an `sr-only`
+ * correct. Before this it only scrolled: the scroll target was an `sr-only`
  * anchor with no control in it, so Base UI's popover handed focus straight
  * back to the "Issues (n)" button, and a keyboard or screen-reader user was
  * left exactly where they started with the invalid control somewhere below.
@@ -464,19 +458,19 @@ describe('<Issues /> focus', () => {
     const view = renderStageForm({
       children: (
         <>
-          <ArchitectField
+          <Field
             name={TITLE}
             label="Title"
             component={InputField}
             initialValue=""
-            validation={{ required: true }}
+            required
           />
-          <ArchitectField
+          <Field
             name={TEXT}
             label="Content"
             component={InputField}
             initialValue=""
-            validation={{ required: true }}
+            required
           />
           <IssuesHarness />
         </>
@@ -562,33 +556,5 @@ describe('<Issues /> focus', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
 
     await waitFor(() => expect(document.activeElement).toBe(trigger));
-  });
-
-  it('falls back to the anchor when the errored field has no control on screen', async () => {
-    // A field inside a collapsed section is not mounted, so there is nothing
-    // to focus — the row must still scroll rather than doing nothing at all.
-    const view = renderStageForm({
-      children: (
-        <>
-          <IssueAnchor fieldName="prompts" description="Prompts" />
-          <IssuesHarness />
-        </>
-      ),
-    });
-    act(() => {
-      view
-        .getStoreApi()
-        .getState()
-        .setErrors({ formErrors: [], fieldErrors: { prompts: ['Required'] } });
-      view.reportRefusedSubmit();
-    });
-    await screen.findAllByTestId('issue');
-    scrollTo.mockClear();
-
-    clickRow(0);
-
-    expect(scrollTo).toHaveBeenCalledExactlyOnceWith(
-      document.getElementById('field_prompts'),
-    );
   });
 });

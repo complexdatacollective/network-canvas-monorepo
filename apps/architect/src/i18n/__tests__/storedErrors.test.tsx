@@ -13,10 +13,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import { ruleMapIssue } from '@codaco/protocol-builder/codebook/variableValidation';
-import ArchitectField from '~/components/Form/ArchitectField';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
 import { VARIABLE_TYPES } from '~/config/variables';
 import { rootReducer } from '~/ducks/modules/root';
@@ -69,7 +69,7 @@ it('keeps a submitted refusal, focus, and authored draft while translating its n
     const definition = formatConfig(VARIABLE_TYPES.number, intl);
     return (
       <Form onSubmit={submit}>
-        <ArchitectField
+        <Field
           name="answer"
           label={definition.label}
           hint={definition.label}

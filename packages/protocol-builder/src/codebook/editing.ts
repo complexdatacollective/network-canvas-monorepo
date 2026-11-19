@@ -167,7 +167,7 @@ const researcherIssue = (
  * the host handed the editor an id the codebook already holds. That is a
  * wiring defect to fix, not a refusal to translate.
  */
-export class DuplicateVariableIdError extends Error {
+class DuplicateVariableIdError extends Error {
   constructor(variableId: string) {
     super(`Attribute record id "${variableId}" already exists`);
   }

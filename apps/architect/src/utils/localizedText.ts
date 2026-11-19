@@ -54,19 +54,6 @@ export const localizedText = (
 ): string => resolveLocalizedText(value, localization, locale)?.text ?? '';
 
 /**
- * The plain text stored for exactly `locale`, without fallback: what an editor
- * for that translation shows.
- */
-export const translationText = (
-  value: LocalizedString | undefined,
-  locale: LocaleTag,
-): string => {
-  const message =
-    value && Object.hasOwn(value, locale) ? value[locale] : undefined;
-  return message === undefined ? '' : messageText(message);
-};
-
-/**
  * `value` with the translation for `locale` replaced by `text`, keeping every
  * other translation. Blank text — empty, or only characters that show
  * nothing — removes that translation, so the language reads as missing rather

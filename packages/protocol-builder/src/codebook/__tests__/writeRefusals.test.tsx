@@ -25,7 +25,6 @@ import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts
 import {
   useCodebookSectionWrite,
   useCreateCodebookEntity,
-  useDeleteCodebookEntity,
   useDeleteCodebookVariable,
   type CodebookWriteOutcome,
 } from '../writes.ts';
@@ -118,7 +117,6 @@ async function writesRefusing(refuse: (tag: ProtocolBuilderTag) => unknown) {
       rewrite: useCodebookSectionWrite(),
       createEntity: useCreateCodebookEntity(),
       deleteVariable: useDeleteCodebookVariable(),
-      deleteEntity: useDeleteCodebookEntity(),
     }),
     { wrapper },
   );
@@ -203,17 +201,6 @@ describe('a codebook write the host refuses', () => {
         { entity: 'node', type: 'person' },
         'name',
       );
-      expect(kindOf(outcome)).toBe(EXPECTED[name]);
-    },
-  );
-
-  it.each(cases(refactorRefusals))(
-    'answers a type deletion refused with %s in the researcher’s terms',
-    async (name, refusal) => {
-      const writes = await writesRefusing((tag) =>
-        tag === 'RefactorDeleteEntityType' ? refusal() : undefined,
-      );
-      const outcome = await writes.deleteEntity('node', 'person');
       expect(kindOf(outcome)).toBe(EXPECTED[name]);
     },
   );
