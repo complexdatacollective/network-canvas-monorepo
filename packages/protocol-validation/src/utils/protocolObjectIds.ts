@@ -61,26 +61,52 @@ export const groupDuplicateProtocolObjectIds = (
 const formatPath = (path: readonly (string | number)[]): string =>
   path.join('.');
 
+const MAX_LISTED_LOCATIONS = 5;
+
 /**
- * Adds one issue at every location of each repeated id. Each issue names the
- * other locations, so that whichever one a reader looks at, they can find the
- * rest.
+ * Where a repeated id's locations are reported from. A stage's own check runs
+ * whether the stage is parsed alone or inside a protocol, and cannot know
+ * which, so it names the other locations relative to the stage and says so.
+ * The protocol's check names them from the root of the protocol.
+ */
+type DuplicateScope = 'protocol' | 'stage';
+
+const otherLocations = (
+  paths: readonly (string | number)[][],
+  path: readonly (string | number)[],
+  scope: DuplicateScope,
+): string => {
+  // Only the first few paths are read, so the report for an id used n times
+  // stays linear in n instead of naming every other location at each one.
+  const listed = paths
+    .slice(0, MAX_LISTED_LOCATIONS + 1)
+    .filter((other) => other !== path)
+    .slice(0, MAX_LISTED_LOCATIONS);
+  const unlisted = paths.length - 1 - listed.length;
+  const named = listed.map(formatPath).join(', ');
+  const where = scope === 'stage' ? 'in this stage at' : 'at';
+  return unlisted > 0
+    ? `${where} ${named} and ${unlisted} more`
+    : `${where} ${named}`;
+};
+
+/**
+ * Adds one issue at every location of each repeated id. Each issue names up
+ * to five of the other locations, so that whichever one a reader looks at,
+ * they can find the rest.
  */
 export const reportDuplicateProtocolObjectIds = (
   duplicates: readonly DuplicateProtocolObjectId[],
   ctx: z.RefinementCtx,
+  scope: DuplicateScope,
 ): void => {
   for (const { id, paths } of duplicates) {
     for (const path of paths) {
-      const others = paths
-        .filter((other) => other !== path)
-        .map(formatPath)
-        .join(', ');
       ctx.addIssue({
         code: 'custom',
         path,
-        message: `The id "${id}" is also used at ${others}. Every id in a protocol must be unique.`,
-        params: { rule: DUPLICATE_OBJECT_ID, id, paths },
+        message: `The id "${id}" is also used ${otherLocations(paths, path, scope)}. Every id in a protocol must be unique.`,
+        params: { rule: DUPLICATE_OBJECT_ID, id, uses: paths.length },
       });
     }
   }
@@ -99,5 +125,6 @@ export const withUniqueObjectIds = <T extends z.ZodType>(schema: T): T =>
         collectProtocolObjectIdsFromSchema(schema, value),
       ),
       ctx,
+      'stage',
     );
   });

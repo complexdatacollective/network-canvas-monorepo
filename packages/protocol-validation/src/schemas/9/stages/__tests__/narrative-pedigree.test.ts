@@ -191,12 +191,12 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       {
         path: 'diseases.0.id',
         code: 'custom',
-        message: `The id "${testId('dup')}" is also used at diseases.1.id. Every id in a protocol must be unique.`,
+        message: `The id "${testId('dup')}" is also used in this stage at diseases.1.id. Every id in a protocol must be unique.`,
       },
       {
         path: 'diseases.1.id',
         code: 'custom',
-        message: `The id "${testId('dup')}" is also used at diseases.0.id. Every id in a protocol must be unique.`,
+        message: `The id "${testId('dup')}" is also used in this stage at diseases.0.id. Every id in a protocol must be unique.`,
       },
     ]);
   });

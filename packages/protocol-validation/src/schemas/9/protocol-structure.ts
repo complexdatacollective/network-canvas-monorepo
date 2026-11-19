@@ -86,6 +86,6 @@ export const ProtocolStructureSchema = protocolStructureShape.superRefine(
         paths.some((path) => stageIndexOf(path) !== stageIndex)
       );
     });
-    reportDuplicateProtocolObjectIds(duplicates, ctx);
+    reportDuplicateProtocolObjectIds(duplicates, ctx, 'protocol');
   },
 );

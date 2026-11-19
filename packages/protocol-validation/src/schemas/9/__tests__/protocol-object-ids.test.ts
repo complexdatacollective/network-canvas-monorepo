@@ -106,6 +106,16 @@ const duplicateIssuePaths = (
 const duplicatePaths = (protocol: unknown, id: string): Path[] =>
   duplicateIssuePaths(issuesOf(protocol), id);
 
+const duplicateIssues = (issues: readonly z.core.$ZodIssue[]) =>
+  issues.flatMap((issue) =>
+    issue.code === 'custom' && issue.params?.rule === DUPLICATE_OBJECT_ID
+      ? [issue]
+      : [],
+  );
+
+const duplicateMessage = (id: unknown, where: string) =>
+  `The id "${String(id)}" is also used ${where}. Every id in a protocol must be unique.`;
+
 const getAt = (root: unknown, at: Path): unknown =>
   at.reduce<unknown>(
     (node, key) =>
@@ -224,6 +234,93 @@ describe('protocol object ids in schema 9', () => {
       ['form', 'fields', 0, 'id'],
       ['prompts', 1, 'id'],
     ]);
+  });
+
+  it('names the other locations within the stage the same way, alone or in a protocol', () => {
+    const protocol = createBaseProtocol();
+    const [stage] = protocol.stages;
+    const fieldId = stage?.form?.fields[0]?.id;
+    const repeated = {
+      ...stage,
+      prompts: [
+        ...(stage?.prompts ?? []),
+        { id: fieldId, text: { en: 'Who else?' } },
+      ],
+    };
+    const expected = [
+      duplicateMessage(fieldId, 'in this stage at prompts.1.id'),
+      duplicateMessage(fieldId, 'in this stage at form.fields.0.id'),
+    ];
+
+    const alone = nameGeneratorStage.safeParse(repeated);
+    expect(
+      duplicateIssues(alone.error?.issues ?? []).map(({ message }) => message),
+    ).toEqual(expected);
+
+    const inProtocol = issuesOf({
+      ...protocol,
+      stages: [repeated, ...protocol.stages.slice(1)],
+    });
+    expect(
+      duplicateIssues(inProtocol).map(({ path, message }) => ({
+        path,
+        message,
+      })),
+    ).toEqual([
+      { path: ['stages', 0, 'form', 'fields', 0, 'id'], message: expected[0] },
+      { path: ['stages', 0, 'prompts', 1, 'id'], message: expected[1] },
+    ]);
+  });
+
+  it('names locations on other stages from the root of the protocol', () => {
+    const protocol = validProtocol();
+    const locations = collectProtocolObjectIds(protocol);
+    const panel = locations.find(({ kind }) => kind === 'panel');
+    const disease = locations.find(({ kind }) => kind === 'disease');
+    if (!panel || !disease) throw new Error('No panel or disease');
+    setAt(protocol, disease.path, panel.id);
+
+    expect(
+      duplicateIssues(issuesOf(protocol)).map(({ message }) => message),
+    ).toEqual([
+      duplicateMessage(panel.id, `at ${disease.path.join('.')}`),
+      duplicateMessage(panel.id, `at ${panel.path.join('.')}`),
+    ]);
+  });
+
+  it('keeps the report for an id used thousands of times linear in its uses', () => {
+    const [stage] = createBaseProtocol().stages;
+    const id = testId('repeated thousands of times');
+    const uses = 3000;
+    const result = nameGeneratorStage.safeParse({
+      ...stage,
+      prompts: Array.from({ length: uses }, (_, index) => ({
+        id,
+        text: { en: `Prompt ${index}` },
+      })),
+    });
+
+    const issues = duplicateIssues(result.error?.issues ?? []);
+    expect(issues).toHaveLength(uses);
+    expect(issues[0]?.message).toBe(
+      duplicateMessage(
+        id,
+        `in this stage at prompts.1.id, prompts.2.id, prompts.3.id, prompts.4.id, prompts.5.id and ${uses - 6} more`,
+      ),
+    );
+    expect(issues[0]?.params).toEqual({
+      rule: DUPLICATE_OBJECT_ID,
+      id,
+      uses,
+    });
+    // Each issue is the same size whatever the number of uses, so the whole
+    // report grows with the uses and not with their square.
+    const largest = Math.max(
+      ...issues.map(
+        ({ message, params }) => JSON.stringify({ message, params }).length,
+      ),
+    );
+    expect(largest).toBeLessThan(400);
   });
 
   it('marks no id outside an object a researcher edits on its own', () => {

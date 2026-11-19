@@ -431,7 +431,7 @@ describe('familyPedigreeStage', () => {
       attribute: 'hd',
     };
     const duplicate = (other: string) =>
-      `The id "${testId('heart')}" is also used at ${other}. Every id in a protocol must be unique.`;
+      `The id "${testId('heart')}" is also used in this stage at ${other}. Every id in a protocol must be unique.`;
     expect(
       parseIssues(
         familyPedigreeStage.safeParse({

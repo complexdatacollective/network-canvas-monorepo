@@ -147,7 +147,7 @@ describe('the filter of a Narrative preset', () => {
       expect.objectContaining({
         code: 'custom',
         message: expect.stringContaining(
-          `The id "${testId('rule-name')}" is also used at`,
+          `The id "${testId('rule-name')}" is also used in this stage at`,
         ),
       }),
       expect.objectContaining({ code: 'custom' }),
