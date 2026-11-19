@@ -39,6 +39,7 @@ import {
 } from '../store.ts';
 import { createProtocolSyncServer } from '../sync.ts';
 import {
+  BASE_PROTOCOL_IDS,
   TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
@@ -47,6 +48,17 @@ import {
   storeDb,
   waitForLockWait,
 } from './helpers.ts';
+
+const STAGE_INFO1 = '6009fb77-2529-588c-9016-f113a1f4d4b8';
+const STAGE_TRANSACTIONAL_INFO = '6102a264-206e-5bcd-89a4-d3c2c0e73b9d';
+const STAGE_INFO2 = '62f25aa0-56a3-5201-a4ac-a0a1ff1a3ece';
+const STAGE_INFO3 = 'ced3ec73-f926-5966-adbc-7dd4281087db';
+const STAGE_APPENDED = '1076d0d5-a5c3-5398-9f23-f5bdb92f6327';
+const STAGE_SECOND = 'f486b5cf-cfeb-51a2-9fc7-44fb33deeac6';
+const STAGE_INFO_FENCE = '921ed1f4-9e23-575b-8882-7f757e1206e2';
+const STAGE_AT_THE_END = 'cace5732-79b7-52ca-87df-80a91694e510';
+const STAGE_AT_THE_TOP = 'd0f66222-2488-589d-a488-cfb24189e928';
+const STAGE_BETWEEN = '643e4802-fe57-5498-adb8-b50be059135c';
 
 const { sections } = SYNC_TABLES;
 
@@ -185,13 +197,17 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await create(baseProtocol());
     const sync = makeTestSyncServer();
     const lease = await run(
-      sync.acquire(draftId, 'stage:nameGenerator1', 'tab-1'),
+      sync.acquire(
+        draftId,
+        `stage:${BASE_PROTOCOL_IDS.nameGenerator}`,
+        'tab-1',
+      ),
     );
     expect(lease).not.toBeNull();
     await run(
       sync.commit({
         draftId,
-        sectionId: 'stage:nameGenerator1',
+        sectionId: `stage:${BASE_PROTOCOL_IDS.nameGenerator}`,
         owner: 'tab-1',
         epoch: lease!.epoch,
         clientSeq: 1n,
@@ -246,11 +262,17 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       addStage(TEST_TEAM_ID, {
         draftId,
         stage: {
-          id: 'info1',
+          id: STAGE_INFO1,
           type: 'Information',
           label: { en: 'About' },
           title: { en: 'About this study' },
-          items: [{ id: 'item1', type: 'text', content: { en: 'Welcome.' } }],
+          items: [
+            {
+              id: '9e0f3035-e108-5135-b78d-4fa8d34b9345',
+              type: 'text',
+              content: { en: 'Welcome.' },
+            },
+          ],
         },
         index: 1,
       }),
@@ -265,10 +287,10 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       stages: { id: string }[];
     };
     expect(document.stages.map((stage) => stage.id)).toEqual([
-      'nameGenerator1',
-      'info1',
-      'sociogram1',
-      'finish',
+      BASE_PROTOCOL_IDS.nameGenerator,
+      STAGE_INFO1,
+      BASE_PROTOCOL_IDS.sociogram,
+      BASE_PROTOCOL_IDS.finish,
     ]);
   });
 
@@ -280,7 +302,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         const added = yield* addStage(TEST_TEAM_ID, {
           draftId,
           stage: {
-            id: 'transactionalInfo',
+            id: STAGE_TRANSACTIONAL_INFO,
             type: 'Information',
             label: { en: 'Transactional' },
             title: { en: 'Transactional' },
@@ -290,13 +312,13 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         });
         const moved = yield* moveStage(TEST_TEAM_ID, {
           draftId,
-          stageId: 'transactionalInfo',
+          stageId: STAGE_TRANSACTIONAL_INFO,
           toIndex: 0,
           expectedRevision: added.manifestSeq,
         });
         const unchanged = yield* moveStage(TEST_TEAM_ID, {
           draftId,
-          stageId: 'transactionalInfo',
+          stageId: STAGE_TRANSACTIONAL_INFO,
           toIndex: 0,
           expectedRevision: moved.manifestSeq,
         });
@@ -310,10 +332,10 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       stages: { id: string }[];
     };
     expect(document.stages.map((stage) => stage.id)).toEqual([
-      'transactionalInfo',
-      'nameGenerator1',
-      'sociogram1',
-      'finish',
+      STAGE_TRANSACTIONAL_INFO,
+      BASE_PROTOCOL_IDS.nameGenerator,
+      BASE_PROTOCOL_IDS.sociogram,
+      BASE_PROTOCOL_IDS.finish,
     ]);
   });
 
@@ -332,11 +354,17 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         addStage(TEST_TEAM_ID, {
           draftId,
           stage: {
-            id: 'info2',
+            id: STAGE_INFO2,
             type: 'Information',
             label: { en: 'X' },
             title: { en: 'X' },
-            items: [{ id: 'item1', type: 'text', content: { en: 'Y.' } }],
+            items: [
+              {
+                id: '85c0f7f4-b58b-52a6-be07-7b9bb8841a8b',
+                type: 'text',
+                content: { en: 'Y.' },
+              },
+            ],
           },
           index: 99,
         }),
@@ -356,11 +384,17 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           addStage(TEST_TEAM_ID, {
             draftId,
             stage: {
-              id: 'info3',
+              id: STAGE_INFO3,
               type: 'Information',
               label: { en: 'X' },
               title: { en: 'X' },
-              items: [{ id: 'item1', type: 'text', content: { en: 'Y.' } }],
+              items: [
+                {
+                  id: 'ed9d25a7-c4a9-536f-a1bc-b38aa5908d40',
+                  type: 'text',
+                  content: { en: 'Y.' },
+                },
+              ],
             },
             index,
           }),
@@ -372,15 +406,21 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   it('removeStage drops the section from the manifest but keeps the row', async () => {
     const { draftId } = await create(baseProtocol());
     const before = await run(getDraftSections(TEST_TEAM_ID, draftId));
-    const removedHash = before.sectionHashes['stage:sociogram1'];
-    await run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'sociogram1' }));
+    const removedHash =
+      before.sectionHashes[`stage:${BASE_PROTOCOL_IDS.sociogram}`];
+    await run(
+      removeStage(TEST_TEAM_ID, {
+        draftId,
+        stageId: BASE_PROTOCOL_IDS.sociogram,
+      }),
+    );
 
     const document = (await run(getDraftDocument(TEST_TEAM_ID, draftId))) as {
       stages: { id: string }[];
     };
     expect(document.stages.map((stage) => stage.id)).toEqual([
-      'nameGenerator1',
-      'finish',
+      BASE_PROTOCOL_IDS.nameGenerator,
+      BASE_PROTOCOL_IDS.finish,
     ]);
     const row = await store.rows(`SELECT 1 FROM sections WHERE hash = $1`, [
       removedHash,
@@ -388,7 +428,12 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(row).toHaveLength(1);
 
     await expect(
-      run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'sociogram1' })),
+      run(
+        removeStage(TEST_TEAM_ID, {
+          draftId,
+          stageId: BASE_PROTOCOL_IDS.sociogram,
+        }),
+      ),
     ).rejects.toThrow(DraftStructureError);
   });
 
@@ -423,16 +468,22 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
 
     it('puts a stage added with no position, or one past it, in front of it', async () => {
       const { draftId } = await create(baseProtocol());
-      await run(addStage(TEST_TEAM_ID, { draftId, stage: info('appended') }));
       await run(
-        addStage(TEST_TEAM_ID, { draftId, stage: info('atTheEnd'), index: 4 }),
+        addStage(TEST_TEAM_ID, { draftId, stage: info(STAGE_APPENDED) }),
+      );
+      await run(
+        addStage(TEST_TEAM_ID, {
+          draftId,
+          stage: info(STAGE_AT_THE_END),
+          index: 4,
+        }),
       );
       expect(await stageIds(draftId)).toEqual([
-        'nameGenerator1',
-        'sociogram1',
-        'appended',
-        'atTheEnd',
-        'finish',
+        BASE_PROTOCOL_IDS.nameGenerator,
+        BASE_PROTOCOL_IDS.sociogram,
+        STAGE_APPENDED,
+        STAGE_AT_THE_END,
+        BASE_PROTOCOL_IDS.finish,
       ]);
       expect(await run(validateDraft(TEST_TEAM_ID, draftId))).toEqual({
         valid: true,
@@ -441,24 +492,30 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
 
     it('adds further finish stages among the endings, never above the first', async () => {
       const { draftId } = await create(baseProtocol());
-      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('appended') }));
+      await run(
+        addStage(TEST_TEAM_ID, { draftId, stage: finish(STAGE_APPENDED) }),
+      );
       await run(
         addStage(TEST_TEAM_ID, {
           draftId,
-          stage: finish('atTheTop'),
+          stage: finish(STAGE_AT_THE_TOP),
           index: 0,
         }),
       );
       await run(
-        addStage(TEST_TEAM_ID, { draftId, stage: finish('between'), index: 4 }),
+        addStage(TEST_TEAM_ID, {
+          draftId,
+          stage: finish(STAGE_BETWEEN),
+          index: 4,
+        }),
       );
       expect(await stageIds(draftId)).toEqual([
-        'nameGenerator1',
-        'sociogram1',
-        'atTheTop',
-        'finish',
-        'between',
-        'appended',
+        BASE_PROTOCOL_IDS.nameGenerator,
+        BASE_PROTOCOL_IDS.sociogram,
+        STAGE_AT_THE_TOP,
+        BASE_PROTOCOL_IDS.finish,
+        STAGE_BETWEEN,
+        STAGE_APPENDED,
       ]);
       expect(await run(validateDraft(TEST_TEAM_ID, draftId))).toEqual({
         valid: true,
@@ -467,27 +524,36 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
 
     it('removes one of two finish stages, but not the last', async () => {
       const { draftId } = await create(baseProtocol());
-      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('second') }));
-      await run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'finish' }));
+      await run(
+        addStage(TEST_TEAM_ID, { draftId, stage: finish(STAGE_SECOND) }),
+      );
+      await run(
+        removeStage(TEST_TEAM_ID, {
+          draftId,
+          stageId: BASE_PROTOCOL_IDS.finish,
+        }),
+      );
       expect(await stageIds(draftId)).toEqual([
-        'nameGenerator1',
-        'sociogram1',
-        'second',
+        BASE_PROTOCOL_IDS.nameGenerator,
+        BASE_PROTOCOL_IDS.sociogram,
+        STAGE_SECOND,
       ]);
       await expect(
-        run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'second' })),
+        run(removeStage(TEST_TEAM_ID, { draftId, stageId: STAGE_SECOND })),
       ).rejects.toThrow(/only finish stage/);
     });
 
     it('moves finish stages among themselves, but not above the first', async () => {
       const { draftId } = await create(baseProtocol());
-      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('second') }));
+      await run(
+        addStage(TEST_TEAM_ID, { draftId, stage: finish(STAGE_SECOND) }),
+      );
       const head = await run(getDraftSections(TEST_TEAM_ID, draftId));
       await expect(
         run(
           moveStage(TEST_TEAM_ID, {
             draftId,
-            stageId: 'second',
+            stageId: STAGE_SECOND,
             toIndex: 1,
             expectedRevision: head.headSeq,
           }),
@@ -496,16 +562,16 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       await run(
         moveStage(TEST_TEAM_ID, {
           draftId,
-          stageId: 'second',
+          stageId: STAGE_SECOND,
           toIndex: 2,
           expectedRevision: head.headSeq,
         }),
       );
       expect(await stageIds(draftId)).toEqual([
-        'nameGenerator1',
-        'sociogram1',
-        'second',
-        'finish',
+        BASE_PROTOCOL_IDS.nameGenerator,
+        BASE_PROTOCOL_IDS.sociogram,
+        STAGE_SECOND,
+        BASE_PROTOCOL_IDS.finish,
       ]);
     });
 
@@ -513,7 +579,12 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       const { draftId } = await create(baseProtocol());
       const before = await run(getDraftSections(TEST_TEAM_ID, draftId));
       await expect(
-        run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'finish' })),
+        run(
+          removeStage(TEST_TEAM_ID, {
+            draftId,
+            stageId: BASE_PROTOCOL_IDS.finish,
+          }),
+        ),
       ).rejects.toThrow(/only finish stage/);
       const after = await run(getDraftSections(TEST_TEAM_ID, draftId));
       expect(after.headManifestHash).toBe(before.headManifestHash);
@@ -523,8 +594,8 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       const { draftId } = await create(baseProtocol());
       const head = await run(getDraftSections(TEST_TEAM_ID, draftId));
       for (const [stageId, toIndex] of [
-        ['finish', 1],
-        ['sociogram1', 2],
+        [BASE_PROTOCOL_IDS.finish, 1],
+        [BASE_PROTOCOL_IDS.sociogram, 2],
       ] as const) {
         await expect(
           run(
@@ -538,23 +609,23 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         ).rejects.toThrow(/after a finish stage/);
       }
       expect(await stageIds(draftId)).toEqual([
-        'nameGenerator1',
-        'sociogram1',
-        'finish',
+        BASE_PROTOCOL_IDS.nameGenerator,
+        BASE_PROTOCOL_IDS.sociogram,
+        BASE_PROTOCOL_IDS.finish,
       ]);
 
       await run(
         moveStage(TEST_TEAM_ID, {
           draftId,
-          stageId: 'sociogram1',
+          stageId: BASE_PROTOCOL_IDS.sociogram,
           toIndex: 0,
           expectedRevision: head.headSeq,
         }),
       );
       expect(await stageIds(draftId)).toEqual([
-        'sociogram1',
-        'nameGenerator1',
-        'finish',
+        BASE_PROTOCOL_IDS.sociogram,
+        BASE_PROTOCOL_IDS.nameGenerator,
+        BASE_PROTOCOL_IDS.finish,
       ]);
     });
   });
@@ -656,13 +727,15 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   it('a validating sync server rejects a stage rename of its own id', async () => {
     const { draftId } = await create(baseProtocol());
     const sync = createProtocolSyncServer();
-    const lease = await run(sync.acquire(draftId, 'stage:sociogram1', 'tab-1'));
+    const lease = await run(
+      sync.acquire(draftId, `stage:${BASE_PROTOCOL_IDS.sociogram}`, 'tab-1'),
+    );
 
     await expect(
       run(
         sync.commit({
           draftId,
-          sectionId: 'stage:sociogram1',
+          sectionId: `stage:${BASE_PROTOCOL_IDS.sociogram}`,
           owner: 'tab-1',
           epoch: lease!.epoch,
           clientSeq: 1n,
@@ -685,11 +758,17 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       addStage(TEST_TEAM_ID, {
         draftId,
         stage: {
-          id: 'infoFence',
+          id: STAGE_INFO_FENCE,
           type: 'Information',
           label: { en: 'Fence' },
           title: { en: 'Fence' },
-          items: [{ id: 'item1', type: 'text', content: { en: 'Z.' } }],
+          items: [
+            {
+              id: 'fcf21449-6282-5fe0-bff3-1914a944178e',
+              type: 'text',
+              content: { en: 'Z.' },
+            },
+          ],
         },
         index: 0,
       }),
@@ -813,7 +892,10 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     await step(written.promise);
 
     const pending = run(
-      removeStage(TEST_TEAM_ID, { draftId, stageId: 'sociogram1' }),
+      removeStage(TEST_TEAM_ID, {
+        draftId,
+        stageId: BASE_PROTOCOL_IDS.sociogram,
+      }),
     );
     await store.run(waitForLockWait());
     commit.resolve();
@@ -831,9 +913,13 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const before = await run(getDraftSections(TEST_TEAM_ID, draftId));
 
     for (const stages of [
-      ['nameGenerator1', 'sociogram1', 'ghost'],
-      ['nameGenerator1'],
-      ['nameGenerator1', 'sociogram1', 'sociogram1'],
+      [BASE_PROTOCOL_IDS.nameGenerator, BASE_PROTOCOL_IDS.sociogram, 'ghost'],
+      [BASE_PROTOCOL_IDS.nameGenerator],
+      [
+        BASE_PROTOCOL_IDS.nameGenerator,
+        BASE_PROTOCOL_IDS.sociogram,
+        BASE_PROTOCOL_IDS.sociogram,
+      ],
     ]) {
       await expect(
         run(
@@ -880,11 +966,28 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   it('refuses to take over a lease whose section has been removed', async () => {
     const { draftId } = await create(baseProtocol());
     const sync = makeTestSyncServer();
-    await run(sync.acquire(draftId, 'stage:sociogram1', 'editor-tab'));
-    await run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'sociogram1' }));
+    await run(
+      sync.acquire(
+        draftId,
+        `stage:${BASE_PROTOCOL_IDS.sociogram}`,
+        'editor-tab',
+      ),
+    );
+    await run(
+      removeStage(TEST_TEAM_ID, {
+        draftId,
+        stageId: BASE_PROTOCOL_IDS.sociogram,
+      }),
+    );
 
     await expect(
-      run(sync.takeover(draftId, 'stage:sociogram1', 'other-tab')),
+      run(
+        sync.takeover(
+          draftId,
+          `stage:${BASE_PROTOCOL_IDS.sociogram}`,
+          'other-tab',
+        ),
+      ),
     ).rejects.toThrow(UnknownSectionError);
   });
 

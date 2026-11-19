@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import {
   Cause,
@@ -9,6 +11,8 @@ import {
   Redacted,
 } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
+
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 
 import { createStudio, type Studio } from '../app.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
@@ -52,8 +56,22 @@ import {
 
 const limiterUrl = await reachableRedis(REDIS_DATABASES.protocolBuilder);
 
-// The sample protocol's finish stages, in order.
-const ENDINGS = ['finish', 'finish-declined'];
+// The sample protocol's finish stages, in order: its main ending, then the one
+// participants who decline consent are sent to.
+const ENDINGS = CurrentProtocolSchema.parse(
+  JSON.parse(
+    readFileSync(
+      fileURLToPath(import.meta.resolve('@codaco/protocols/sample')),
+      'utf8',
+    ),
+  ),
+)
+  .stages.filter((stage) => stage.type === 'FinishSession')
+  .map((stage) => stage.id);
+const [FINISH, DECLINED] = ENDINGS;
+if (FINISH === undefined || DECLINED === undefined) {
+  throw new Error('the sample protocol does not end with two finish stages');
+}
 
 describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const suite = setupProtocolBuilderSuite();
@@ -289,7 +307,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       throw new Error('stageOrder is not a list');
     // The sample protocol ends with two finish stages: its main ending, and
     // the one participants who decline consent are sent to.
-    const firstFinish = orderBefore.indexOf('finish');
+    const firstFinish = orderBefore.indexOf(FINISH);
     expect(orderBefore.slice(firstFinish)).toEqual(ENDINGS);
 
     const unplaced = await createStage(ADA, 'Created with no position');
@@ -357,7 +375,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('Delete', {
         protocolId: target,
-        sectionId: stageSection('finish-declined'),
+        sectionId: stageSection(DECLINED),
       }),
     );
     const before = await call(
@@ -367,15 +385,15 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     const orderBefore = Redacted.value(before.document).stages;
     if (!Array.isArray(orderBefore))
       throw new Error('stageOrder is not a list');
-    expect(orderBefore.at(-1)).toBe('finish');
-    expect(orderBefore).not.toContain('finish-declined');
+    expect(orderBefore.at(-1)).toBe(FINISH);
+    expect(orderBefore).not.toContain(DECLINED);
 
     const error = await expectRpcFailure(
       callExit(
         ADA,
         host.rpc('Delete', {
           protocolId: target,
-          sectionId: stageSection('finish'),
+          sectionId: stageSection(FINISH),
         }),
       ),
       'ReferencesRemain',
@@ -416,7 +434,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     const orderBefore = Redacted.value(before.document).stages;
     if (!Array.isArray(orderBefore))
       throw new Error('stageOrder is not a list');
-    const firstFinish = orderBefore.indexOf('finish');
+    const firstFinish = orderBefore.indexOf(FINISH);
     expect(orderBefore.slice(firstFinish)).toEqual(ENDINGS);
 
     const appended = await call(
@@ -473,7 +491,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   it.each([
     {
       direction: 'the finish stage into another kind of stage',
-      stageId: () => 'finish',
+      stageId: () => FINISH,
       rewrite: (document: Readonly<Record<string, unknown>>) => ({
         id: document.id,
         type: 'Information',
@@ -755,7 +773,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             action: 'SKIP',
             filter: {
               rules: [
-                { type: 'node', id: 'rule-1', options: { operator: 'EXISTS' } },
+                {
+                  type: 'node',
+                  id: '32676988-70f3-5a08-b8f7-14db24ca9a7b',
+                  options: { operator: 'EXISTS' },
+                },
               ],
             },
             destination: {

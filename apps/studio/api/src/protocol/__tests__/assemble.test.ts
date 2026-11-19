@@ -7,7 +7,7 @@ import {
 } from '@codaco/studio-sync/protocol-document';
 
 import { emptyProtocol, sectionizeProtocol } from '../sectionize.ts';
-import { baseProtocol } from './helpers.ts';
+import { BASE_PROTOCOL_IDS, baseProtocol } from './helpers.ts';
 
 describe('assembleProtocolSections', () => {
   it('is deterministic under section-map insertion order', () => {
@@ -22,15 +22,19 @@ describe('assembleProtocolSections', () => {
   it('orders stages from the stageOrder section', () => {
     const sections = sectionizeProtocol(baseProtocol());
     sections.stageOrder = {
-      stages: ['sociogram1', 'nameGenerator1', 'finish'],
+      stages: [
+        BASE_PROTOCOL_IDS.sociogram,
+        BASE_PROTOCOL_IDS.nameGenerator,
+        BASE_PROTOCOL_IDS.finish,
+      ],
     };
     const assembled = assembleProtocolSections(sections) as {
       stages: { id: string }[];
     };
     expect(assembled.stages.map((stage) => stage.id)).toEqual([
-      'sociogram1',
-      'nameGenerator1',
-      'finish',
+      BASE_PROTOCOL_IDS.sociogram,
+      BASE_PROTOCOL_IDS.nameGenerator,
+      BASE_PROTOCOL_IDS.finish,
     ]);
   });
 
@@ -39,7 +43,9 @@ describe('assembleProtocolSections', () => {
   // researcher's own wording for the entries the stages it has now show, and
   // none of Network Canvas's, which the interview shows by itself.
   it('holds the interface text for the stages it has now', () => {
-    const sections = sectionizeProtocol(emptyProtocol('Study'));
+    const protocol = emptyProtocol('Study');
+    const finishStageId = protocol.stages[0]?.id;
+    const sections = sectionizeProtocol(protocol);
     sections.settings = {
       ...sections.settings,
       interfaceText: {
@@ -62,13 +68,13 @@ describe('assembleProtocolSections', () => {
       label: { en: 'About you' },
       form: { fields: [] },
     };
-    sections.stageOrder = { stages: ['form', 'finish'] };
+    sections.stageOrder = { stages: ['form', finishStageId] };
     // An Ego Form can ask whether to discard changes.
     expect(held()).toEqual({
       forms: { discardChangesTitle: { en: 'Throw this away?' } },
     });
 
-    sections.stageOrder = { stages: ['finish'] };
+    sections.stageOrder = { stages: [finishStageId] };
     delete sections['stage:form'];
     expect(held()).toBeUndefined();
   });
@@ -83,7 +89,9 @@ describe('assembleProtocolSections', () => {
 
   it('rejects a stageOrder entry with no stage section', () => {
     const sections = sectionizeProtocol(baseProtocol());
-    sections.stageOrder = { stages: ['nameGenerator1', 'ghost'] };
+    sections.stageOrder = {
+      stages: [BASE_PROTOCOL_IDS.nameGenerator, 'ghost'],
+    };
     expect(() => assembleProtocolSections(sections)).toThrow(
       /missing stage ghost/,
     );
@@ -91,9 +99,9 @@ describe('assembleProtocolSections', () => {
 
   it('rejects a stage section absent from stageOrder', () => {
     const sections = sectionizeProtocol(baseProtocol());
-    sections.stageOrder = { stages: ['nameGenerator1'] };
+    sections.stageOrder = { stages: [BASE_PROTOCOL_IDS.nameGenerator] };
     expect(() => assembleProtocolSections(sections)).toThrow(
-      /missing from stageOrder: sociogram1/,
+      new RegExp(`missing from stageOrder: ${BASE_PROTOCOL_IDS.sociogram}`),
     );
   });
 });

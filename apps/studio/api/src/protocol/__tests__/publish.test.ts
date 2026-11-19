@@ -21,6 +21,7 @@ import {
   validateDraft,
 } from '../store.ts';
 import {
+  BASE_PROTOCOL_IDS,
   FIXTURES,
   TEST_TEAM_ID,
   baseProtocol,
@@ -132,13 +133,13 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       Effect.gen(function* () {
         const lease = yield* sync.acquire(
           draftId,
-          'stage:nameGenerator1',
+          `stage:${BASE_PROTOCOL_IDS.nameGenerator}`,
           'rename-tab',
         );
         if (lease === null) throw new Error('no lease');
         yield* sync.commit({
           draftId,
-          sectionId: 'stage:nameGenerator1',
+          sectionId: `stage:${BASE_PROTOCOL_IDS.nameGenerator}`,
           owner: 'rename-tab',
           epoch: lease.epoch,
           clientSeq: 1n,
@@ -150,7 +151,9 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     const result = await run(publishDraft(TEST_TEAM_ID, { draftId }));
     expect(result.status).toBe('invalid');
     if (result.status !== 'invalid') throw new Error('unreachable');
-    expect(JSON.stringify(result.issues)).toContain('stage:nameGenerator1');
+    expect(JSON.stringify(result.issues)).toContain(
+      `stage:${BASE_PROTOCOL_IDS.nameGenerator}`,
+    );
 
     const validation = await run(validateDraft(TEST_TEAM_ID, draftId));
     expect(validation.valid).toBe(false);

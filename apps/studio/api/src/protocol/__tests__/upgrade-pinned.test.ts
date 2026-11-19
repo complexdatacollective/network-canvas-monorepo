@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { Cause, Effect, Exit } from 'effect';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation';
+import {
+  CURRENT_SCHEMA_VERSION,
+  CurrentProtocolSchema,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -16,7 +19,7 @@ import {
   replaceSessionNetwork,
 } from '../../network/session-network.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
-import { listVersions, publishDraft } from '../store.ts';
+import { getVersionDocument, listVersions, publishDraft } from '../store.ts';
 import {
   PinnedUpgradeFailed,
   upgradePinnedStudies,
@@ -313,6 +316,10 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
       migratedFromVersionId: versionId,
     });
     expect(await wavePin(study.waveId)).toBe(migrated.id);
+    const [intro, outro, appendedFinish] = CurrentProtocolSchema.parse(
+      await inTeam(getVersionDocument(TEST_TEAM_ID, migrated.id)),
+    ).stages;
+    expect(appendedFinish?.type).toBe('FinishSession');
 
     // Resumes on the finish stage the migration appended where the engine's
     // own finish screen was, and a tab still open on the old protocol is
@@ -320,7 +327,7 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
     expect(await sessionRow(atFinish)).toMatchObject({
       protocol_version_id: migrated.id,
       current_stage_index: 2,
-      current_stage_id: 'finish',
+      current_stage_id: appendedFinish?.id,
       stage_metadata: { '1': { automaticLayout: true } },
       holder_epoch: '4',
       status: 'in_progress',
@@ -328,7 +335,7 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
     expect(await sessionRow(abandoned)).toMatchObject({
       protocol_version_id: migrated.id,
       current_stage_index: 1,
-      current_stage_id: 'outro',
+      current_stage_id: outro?.id,
       holder_epoch: '4',
       status: 'abandoned',
     });
@@ -342,7 +349,7 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
         type: 'person',
         attributes: { personName: 'Alex', category: [1] },
         secureAttributes: null,
-        stageId: 'intro',
+        stageId: intro?.id,
         promptIds: null,
       },
       {

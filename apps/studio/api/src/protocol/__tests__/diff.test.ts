@@ -3,18 +3,23 @@ import { describe, expect, it } from 'vitest';
 import {
   type CurrentProtocol,
   escapeMessageText,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import { type SectionDoc, contentHash } from '@codaco/studio-sync/apply';
 
 import { type SectionSet, diffProtocolSections } from '../diff.ts';
 import { sectionizeProtocol } from '../sectionize.ts';
-import { baseProtocol } from './helpers.ts';
+import { BASE_PROTOCOL_IDS, baseProtocol } from './helpers.ts';
 
 type Stage = CurrentProtocol['stages'][number];
 type Variable = NonNullable<
   NonNullable<CurrentProtocol['codebook']['node']>[string]['variables']
 >[string];
 type Asset = NonNullable<CurrentProtocol['assetManifest']>[string];
+
+const INFO_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '0f9c4a52-4d6e-4b0a-9f3e-2c8b7d1a6e40',
+);
 
 function sectionSetOf(sections: Record<string, SectionDoc>): {
   set: SectionSet;
@@ -57,11 +62,19 @@ function nameGenerator(protocol: CurrentProtocol) {
 
 function informationStage(label: Stage['label']): Stage {
   return {
-    id: 'info1',
+    id: INFO_STAGE_ID,
     type: 'Information',
     label,
     title: { en: 'About this study' },
-    items: [{ id: 'item1', type: 'text', content: { en: 'Welcome.' } }],
+    items: [
+      {
+        id: ProtocolObjectIdSchema.parse(
+          '5b2e8d17-93c4-4f6a-8e01-7a4c9b3d2f58',
+        ),
+        type: 'text',
+        content: { en: 'Welcome.' },
+      },
+    ],
   };
 }
 
@@ -92,9 +105,14 @@ describe('diffProtocolSections', () => {
       (change) => change.kind === 'stage-changed',
     );
     expect(stageChange).toMatchObject({
-      stageId: 'nameGenerator1',
+      stageId: BASE_PROTOCOL_IDS.nameGenerator,
       stageType: 'NameGenerator',
-      changes: [{ path: ['prompts', 'prompt1', 'text'], change: 'changed' }],
+      changes: [
+        {
+          path: ['prompts', BASE_PROTOCOL_IDS.namePrompt, 'text'],
+          change: 'changed',
+        },
+      ],
     });
 
     const entityChange = changes.find(
@@ -125,7 +143,7 @@ describe('diffProtocolSections', () => {
     expect(added).toEqual([
       {
         kind: 'stage-added',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         label: 'About this study',
         index: 1,
@@ -136,7 +154,7 @@ describe('diffProtocolSections', () => {
     expect(removed).toEqual([
       {
         kind: 'stage-removed',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         label: 'About this study',
       },
@@ -163,7 +181,7 @@ describe('diffProtocolSections', () => {
     expect(diff(before, after)).toEqual([
       {
         kind: 'stage-added',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         label: "L'étude {pilote}",
         index: 2,
@@ -172,7 +190,7 @@ describe('diffProtocolSections', () => {
     expect(diff(after, before)).toEqual([
       {
         kind: 'stage-removed',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         label: "L'étude {pilote}",
       },
@@ -270,20 +288,20 @@ describe('diffProtocolSections', () => {
   it('reports a prompt reorder that leaves every prompt unchanged', () => {
     const before = baseProtocol();
     nameGenerator(before).prompts = [
-      { id: 'prompt1', text: { en: 'Who do you know?' } },
-      { id: 'prompt2', text: { en: 'Anyone else?' } },
+      { id: BASE_PROTOCOL_IDS.namePrompt, text: { en: 'Who do you know?' } },
+      { id: BASE_PROTOCOL_IDS.secondPrompt, text: { en: 'Anyone else?' } },
     ];
     const after = baseProtocol();
     nameGenerator(after).prompts = [
-      { id: 'prompt2', text: { en: 'Anyone else?' } },
-      { id: 'prompt1', text: { en: 'Who do you know?' } },
+      { id: BASE_PROTOCOL_IDS.secondPrompt, text: { en: 'Anyone else?' } },
+      { id: BASE_PROTOCOL_IDS.namePrompt, text: { en: 'Who do you know?' } },
     ];
 
     const changes = diff(before, after);
     expect(changes).toEqual([
       {
         kind: 'stage-changed',
-        stageId: 'nameGenerator1',
+        stageId: BASE_PROTOCOL_IDS.nameGenerator,
         stageType: 'NameGenerator',
         changes: [{ path: ['prompts'], change: 'changed' }],
       },
@@ -347,8 +365,13 @@ describe('diffProtocolSections', () => {
 
     const changes = diff(before, after);
     expect(changes).toEqual([
-      { kind: 'stage-moved', stageId: 'nameGenerator1', from: 0, to: 2 },
-      { kind: 'stage-moved', stageId: 'info1', from: 2, to: 0 },
+      {
+        kind: 'stage-moved',
+        stageId: BASE_PROTOCOL_IDS.nameGenerator,
+        from: 0,
+        to: 2,
+      },
+      { kind: 'stage-moved', stageId: INFO_STAGE_ID, from: 2, to: 0 },
     ]);
   });
 
