@@ -115,7 +115,9 @@ export const WalkthroughToolbarControl = defineToolbarChild(
             <Eyebrow render={<span />}>
               {intl.formatMessage(messages.resumeEyebrow, values)}
             </Eyebrow>
-            <span className="font-heading font-bold">{title}</span>
+            <span lang="en" dir="ltr" className="font-heading font-bold">
+              {title}
+            </span>
           </span>
         }
         tooltipSide="top"

@@ -29,6 +29,7 @@ import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
 
 import type { WalkthroughBlock, WalkthroughStep } from './parseWalkthrough';
 import Practices from './Practices';
+import SceneBoundary from './SceneBoundary';
 import { SCENES } from './scenes/sceneRegistry';
 import { STEP_SECONDS, usePanel } from './usePanel';
 import { useStepTarget } from './useStepTarget';
@@ -431,9 +432,11 @@ function StepBody({
       {Scene !== undefined && (
         <div className="w-full shrink-0">
           {/* Holds the scene's place while its code loads. */}
-          <Suspense fallback={<div className="aspect-720/412 w-full" />}>
-            <Scene />
-          </Suspense>
+          <SceneBoundary>
+            <Suspense fallback={<div className="aspect-720/412 w-full" />}>
+              <Scene />
+            </Suspense>
+          </SceneBoundary>
         </div>
       )}
       <div className="flex flex-col gap-3">

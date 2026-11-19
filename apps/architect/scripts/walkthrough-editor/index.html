@@ -1241,18 +1241,25 @@
 
       async function save(force = false) {
         if (!isDirty()) return;
-        const source = serialize(current.doc);
+        // Another file can be opened while this one saves, so the response
+        // updates the file it was for, not whichever is open by then.
+        const saving = current;
+        const source = serialize(saving.doc);
         const { ok, status, body } = await api(
-          `/api/file?path=${encodeURIComponent(current.path)}${force ? '&force=1' : ''}`,
+          `/api/file?path=${encodeURIComponent(saving.path)}${force ? '&force=1' : ''}`,
           {
             method: 'PUT',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ base: current.base, source }),
+            body: JSON.stringify({ base: saving.base, source }),
           },
         );
+        if (current !== saving) {
+          toast(ok ? `Saved ${saving.path}` : `${saving.path} was not saved`);
+          return;
+        }
         if (status === 409) {
           const overwrite = confirm(
-            `${current.path} changed on disk after you opened it (a git pull, or an edit somewhere else).\n\nOK: overwrite it with your version.\nCancel: keep editing (reload the page to see the version on disk, losing your edits).`,
+            `${saving.path} changed on disk after you opened it (a git pull, or an edit somewhere else).\n\nOK: overwrite it with your version.\nCancel: keep editing (reload the page to see the version on disk, losing your edits).`,
           );
           if (overwrite) await save(true);
           return;
@@ -1261,11 +1268,12 @@
           toast(`Not saved: ${body.error}`);
           return;
         }
-        current.base = body.source;
+        saving.base = body.source;
         meta = (await api('/api/meta')).body;
+        if (current !== saving) return;
         render();
         updateStatus();
-        toast(`Saved ${current.path}`);
+        toast(`Saved ${saving.path}`);
       }
 
       async function route() {
@@ -1293,10 +1301,13 @@
           if (unreadable !== undefined) await load(unreadable);
           return;
         }
+        // Another file can be opened, or this one edited, while these
+        // requests are out; then their answer no longer applies.
+        const shown = current;
         const { ok, body } = await api(
-          `/api/file?path=${encodeURIComponent(current.path)}`,
+          `/api/file?path=${encodeURIComponent(shown.path)}`,
         );
-        if (!ok || body.source === current.base) return;
+        if (current !== shown || !ok || body.source === shown.base) return;
         if (isDirty()) {
           toast(
             `${current.path} changed on disk. Saving will ask before overwriting it.`,
@@ -1304,15 +1315,16 @@
           return;
         }
         meta = (await api('/api/meta')).body;
+        if (current !== shown || isDirty()) return;
         try {
-          current = { ...current, base: body.source, doc: parse(body.source) };
+          current = { ...shown, base: body.source, doc: parse(body.source) };
         } catch (error) {
-          showUnreadable(current.path, error);
+          showUnreadable(shown.path, error);
           return;
         }
         render();
         updateStatus();
-        toast(`Reloaded ${current.path}: it changed on disk`);
+        toast(`Reloaded ${shown.path}: it changed on disk`);
       });
 
       $('#save').addEventListener('click', () => save());

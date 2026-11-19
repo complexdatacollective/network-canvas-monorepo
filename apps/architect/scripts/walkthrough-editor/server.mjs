@@ -155,13 +155,18 @@ const server = createServer(async (request, response) => {
       const file = resolveFile(path);
       if (file === undefined)
         return send(response, 404, { error: `No walkthrough file ${path}` });
-      const onDisk = readFileSync(file, 'utf8');
       if (request.method === 'GET')
-        return send(response, 200, { path, source: onDisk });
+        return send(response, 200, {
+          path,
+          source: readFileSync(file, 'utf8'),
+        });
       if (request.method === 'PUT') {
         const { base, source } = JSON.parse(await readBody(request));
         if (typeof source !== 'string')
           return send(response, 400, { error: 'No source sent' });
+        // Read after the body arrives: from here to the write nothing awaits,
+        // so a second save checks against what this one wrote.
+        const onDisk = readFileSync(file, 'utf8');
         // Refuse to overwrite a file that changed on disk since the page loaded
         // it (a git pull, or an edit in another editor), unless told to.
         if (base !== onDisk && url.searchParams.get('force') !== '1') {
@@ -176,7 +181,10 @@ const server = createServer(async (request, response) => {
     }
     return send(response, 404, { error: 'Not found' });
   } catch (error) {
-    return send(response, 500, { error: String(error?.message ?? error) });
+    console.error(error);
+    return send(response, 500, {
+      error: 'The editor server failed; its terminal has the details',
+    });
   }
 });
 
