@@ -36,13 +36,11 @@
 
 <!-- scene: information-intro -->
 
-The Information stage is a page the participant reads before moving on. It shows a heading, followed by blocks of text, images, video and audio in the order you set. It asks no questions and does not create nodes or edges.
+The Information stage is a screen you can use to communicate with the participant during the interview. It can be used to explain forthcoming tasks or to give information.
+
+It supports text, images, video and audio in the order you set.
 
 Read the full [Information documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/information).
-
-## When to use it
-
-Use this stage to introduce your study, or to explain the task on the stage that follows it, such as before a [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census).
 
 > Do: Use it to explain stage activities to participants to increase comprehension and engagement. This may be especially important for increasing survey accessibility.
 
@@ -53,7 +51,7 @@ Use this stage to introduce your study, or to explain the task on the stage that
 <!-- section: page-content -->
 <!-- field: title -->
 
-The **Page heading** is required, and is shown large and centered at the top of the page. To insert one of the participant's ego attributes or today's date, use the syringe button in the toolbar.
+The **Page heading** is required, and is shown large and centered at the top of the page.
 
 ## Build the page
 
@@ -64,6 +62,8 @@ The **Page heading** is required, and is shown large and centered at the top of 
 Each item is one block of the page: text, an image, a video or audio. Items appear from top to bottom in the order listed here, and you can drag them to reorder them. A page needs at least one item, and you can add as many as you need. Participants scroll if the page is longer than the screen.
 
 Audio and video start playing as soon as the page opens, and video starts muted and loops. Give each image, video and audio item a **Description**, which a screen reader reads in place of it.
+
+> Do: Consider using piped text to customise what is shown to the participant to communicate more effectively.
 
 <!-- include: skip-logic -->
 

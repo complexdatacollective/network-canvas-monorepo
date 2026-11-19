@@ -92,14 +92,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 <!-- include: side-panels -->
 
-## Limit how many alters can be named
-
-<!-- section: nomination-limits -->
-<!-- scene: name-generator-limits -->
-
-Switch on this section to set a minimum or maximum number of alters the participant can name. The limits count every alter named on the stage, across all of its prompts.
-
-Once the participant reaches the maximum, the add button is switched off and they are prompted to continue to the next stage. Until they reach the minimum, they can't move past the last prompt.
+<!-- include: nomination-limits -->
 
 <!-- include: built-in-wording -->
 

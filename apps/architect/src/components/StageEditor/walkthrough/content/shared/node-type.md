@@ -7,7 +7,7 @@
 
 <!-- section: node-type -->
 
-Choose the **node type** this stage works with, such as _Person_. If the stage creates alters, each one is saved as a node of this type. If it asks about or shows alters, it uses the nodes of this type already in the participant's network, so an earlier stage has to create them.
+Choose the **node type** this stage works with. If the stage creates alters, each one is saved as a node of this type. If it asks about or shows alters, it uses the nodes of this type already in the interview network, so an earlier stage has to create them.
 
 If the type you need does not exist yet, you can create it here.
 

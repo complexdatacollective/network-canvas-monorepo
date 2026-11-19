@@ -36,7 +36,7 @@
 
 <!-- scene: ego-form-intro -->
 
-The Ego Form collects data about the participant, known as **ego**, rather than about any alter. The participant completes one [form](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms) about themselves. An introduction above the form explains what the form is for.
+The Ego Form collects data about the participant via a configurable [form](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms). An introduction above the form explains what the form is for.
 
 Read the full [Ego Form documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ego-form).
 
@@ -45,8 +45,6 @@ Read the full [Ego Form documentation](https://documentation.networkcanvas.com/d
 Use this stage to ask the participant a few questions about themselves.
 
 > Do: Use it as a simple way to collect attribute data on each participant in your study.
-
-> Do: Consider adding it toward the beginning of your protocol, to capture data on your participant before asking them about the alters in their network.
 
 > Avoid: Overloading the form with too many fields or text-heavy questions, which make it burdensome to complete.
 
@@ -63,7 +61,7 @@ The introduction sits above the form, so the participant knows what the question
 <!-- section: form-fields -->
 <!-- scene: ego-form-intro -->
 
-The form holds the questions the participant answers about themselves. Each field records one attribute of ego, and the fields appear in the order listed here, in a single form the participant scrolls through.
+The form contains questions the participant answers about themselves. Each field records one attribute, and the fields appear in the order listed here.
 
 For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
 

@@ -38,7 +38,7 @@
 
 The Dyad Census is an edge generator that systematically shows every possible pair of alters and asks the participant to confirm or deny if there is an edge between them.
 
-Answering yes creates an edge, and answering no is recorded in the interview session but not in the network data. Either answer moves the participant straight on to the next pair, until every pair has been asked about.
+Answering yes creates an edge, and answering no is recorded in the interview session but not in the network data. Either answer moves the participant straight on to the next pair, until every pair has been answered.
 
 Read the full [Dyad Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census).
 
@@ -63,11 +63,11 @@ Use this stage to systematically survey edges between alters, specifically in si
 <!-- section: prompts -->
 <!-- scene: dyad-census-prompts -->
 
-Each prompt asks about one kind of relationship. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many screens as there are pairs.
-
-Each prompt's **Created edge type** is the edge a yes creates. If a pair already has an edge of that type, for example from a sociogram, **Yes** is already selected, and answering **No** removes that edge.
+Each prompt asks about one kind of relationship. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many loops as there are pairs.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
+
+> Do: Use [piped text](https://documentation.networkcanvas.com/en/design-protocols/piped-text) in your prompt to reference the alters the participant is comparing
 
 <!-- include: skip-logic -->
 

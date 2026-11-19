@@ -16,14 +16,12 @@ import type { ReactNode } from 'react';
 import { backOut, segment } from '@codaco/art/illustration/motion';
 
 import {
-  CalloutPin,
   Chip,
   Click,
   CONTENT,
   defineScene,
   lerp,
   midpoint,
-  NAMES,
   smooth,
   STAGE,
   STAGE_CENTER_X,
@@ -45,20 +43,7 @@ import {
 
 const TEXT = {
   save: 'Save',
-  tools: [
-    'Add and edit',
-    'Connect',
-    'Disconnect',
-    'Wording',
-    'Undo',
-    'Redo',
-    'Progress ring',
-    'Zoom out',
-    'Zoom in',
-    'Show the whole family',
-  ],
   percent: '%',
-  sam: 'Sam',
   rose: 'Rose',
   mother: 'Mother',
   you: 'You',
@@ -492,67 +477,6 @@ function PanelBox({ y, text }: { y: number; text: string }) {
   );
 }
 
-/** How wide an answer chip is, for its label. */
-const chipWidth = (label: string) => label.length * 6.4 + 18;
-
-/** Where each answer chip in a row starts. */
-const chipLefts = (labels: readonly string[]) =>
-  labels.map(
-    (_, i) =>
-      PANEL.x +
-      16 +
-      labels.slice(0, i).reduce((sum, label) => sum + chipWidth(label) + 6, 0),
-  );
-
-/** A row of answer chips in the side panel, `chosen` filled once picked. */
-function PanelChoices({
-  y,
-  labels,
-  chosen,
-}: {
-  y: number;
-  labels: readonly string[];
-  chosen?: number;
-}) {
-  const lefts = chipLefts(labels);
-  return (
-    <>
-      {labels.map((label, i) => {
-        const width = chipWidth(label);
-        const left = lefts[i] ?? PANEL.x;
-        const on = i === chosen;
-        return (
-          <g key={label}>
-            <rect
-              x={left}
-              y={y}
-              width={width}
-              height={24}
-              rx={12}
-              className={on ? 'fill-sea-serpent' : 'fill-navy-taupe/10'}
-            />
-            <text
-              x={left + width / 2}
-              y={y + 16}
-              textAnchor="middle"
-              fontSize={11}
-              fontWeight={800}
-              className={on ? 'fill-white' : 'fill-navy-taupe'}
-            >
-              {label}
-            </text>
-          </g>
-        );
-      })}
-    </>
-  );
-}
-
-const choiceAt = (y: number, labels: readonly string[], i: number): Point => [
-  (chipLefts(labels)[i] ?? PANEL.x) + chipWidth(labels[i] ?? '') / 2,
-  y + 12,
-];
-
 const SAVE_AT: Point = [PANEL.x + PANEL.width - 50, CONTENT.bottom - 30];
 
 function PanelSave() {
@@ -579,8 +503,6 @@ function PanelSave() {
     </g>
   );
 }
-
-const SEX_OPTIONS = ['Female', 'Male', 'Intersex'] as const;
 
 /** A tap that shows the add buttons while the cursor rests on a person. */
 const showing = (t: number, windows: readonly (readonly [number, number])[]) =>
@@ -637,125 +559,6 @@ export const FamilyPedigreeIntroScene = defineScene(7.4, ({ t }) => {
           { to: addButtonAt(you, a.choice), at: a.at, glide: 0.35 },
         ])}
         leave={6.0}
-      />
-    ),
-  };
-});
-
-/** The toolbar's buttons in the order the walkthrough numbers them. */
-const NUMBERED: readonly ToolKey[] = [
-  'edit',
-  'connect',
-  'disconnect',
-  'wording',
-  'undo',
-  'redo',
-  'ring',
-  'zoomOut',
-  'zoomIn',
-  'fit',
-];
-
-/**
- * Shows every button a family pedigree's two toolbars can show, numbered to
- * match the list, and highlights each button in turn.
- */
-export const FamilyPedigreeToolsScene = defineScene(13.0, ({ t }) => {
-  const scale = 1.25;
-  const middle = (CONTENT.y + CONTENT.bottom) / 2 + 40;
-  const layout = toolbarLayout({ speech: true, ring: true });
-  const place = ([x, y]: Point): Point => [
-    CX + (x - CX) * scale,
-    middle + (y - TOOLBAR_Y) * scale,
-  ];
-  const lit = t >= 2.6 ? Math.floor((t - 2.6) / 1.0) : -1;
-  const litKey = NUMBERED[lit];
-  return {
-    body: (
-      <>
-        <g
-          transform={`translate(${CX} ${middle}) scale(${scale}) translate(${-CX} ${-TOOLBAR_Y})`}
-        >
-          <Toolbars
-            speech
-            ring={0.92}
-            active={litKey === undefined || litKey === 'ring' ? 'edit' : litKey}
-            dimmed={[]}
-          />
-        </g>
-        {NUMBERED.map((key, i) => {
-          const [x, y] = place(pointOf(layout, key));
-          return (
-            <CalloutPin
-              key={key}
-              n={i + 1}
-              at={[x, middle - 100]}
-              to={[x, y - 22 * scale]}
-              k={smooth(segment(t, 0.3 + i * 0.16, 0.35))}
-              lit={i === lit ? smooth(segment(t, 2.6 + i * 1.0, 0.2)) : 0}
-              label={TEXT.tools[i] ?? ''}
-              labelSide="above"
-            />
-          );
-        })}
-      </>
-    ),
-  };
-});
-
-/**
- * Shows a family pedigree where the participant points at their own node,
- * chooses the sibling button, types a name and picks a sex assigned at birth in
- * the side panel, then saves to add the sibling.
- */
-export const FamilyPedigreeAddScene = defineScene(6.2, ({ t }) => {
-  const hoverAt = 0.6;
-  const pickAt = 1.2;
-  const openAt = pickAt + 0.1;
-  const nameAt = openAt + 0.6;
-  const sexAt = openAt + 1.6;
-  const saveAt = openAt + 2.4;
-  const panel =
-    smooth(segment(t, openAt, 0.4)) *
-    (1 - smooth(segment(t, saveAt + 0.1, 0.4)));
-  const added = backOut(segment(t, saveAt + 0.3, 0.4));
-  const name = typed(t, NAMES.sam, nameAt, 0.12);
-  const you = BUILT.you.at;
-  return {
-    rail: { progress: 0.4 },
-    body: (
-      <>
-        <BuiltLines child={0} partner={0} siblings={added} />
-        <Person who="father" />
-        <Person who="mother" />
-        <Person who="you" />
-        <Person who="brother" label={TEXT.sam} k={added} />
-        <AddButtons at={you} k={showing(t, [[hoverAt, pickAt + 0.05]])} />
-        <Toolbars />
-        <SidePanel k={panel}>
-          <PanelLabel y={CONTENT.y + 34} text="Name (optional)" />
-          <PanelBox y={CONTENT.y + 44} text={name} />
-          <PanelLabel y={CONTENT.y + 100} text="Sex assigned at birth" />
-          <PanelChoices
-            y={CONTENT.y + 110}
-            labels={SEX_OPTIONS}
-            {...(t >= sexAt ? { chosen: 1 } : {})}
-          />
-          <PanelSave />
-        </SidePanel>
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: you, at: hoverAt, ring: false },
-          { to: addButtonAt(you, 'Sibling'), at: pickAt, glide: 0.35 },
-          { to: [PANEL.x + 60, CONTENT.y + 58], at: nameAt - 0.1 },
-          { to: choiceAt(CONTENT.y + 110, SEX_OPTIONS, 1), at: sexAt },
-          { to: SAVE_AT, at: saveAt },
-        ]}
-        leave={saveAt + 0.5}
       />
     ),
   };

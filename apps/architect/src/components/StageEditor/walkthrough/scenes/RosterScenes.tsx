@@ -7,14 +7,12 @@ import {
   Click,
   defineScene,
   lerp,
-  NEXT_BUTTON,
   PersonNode,
   pressAt,
   Prompt,
   SidePanel,
   smooth,
   STAGE,
-  Toast,
   travel,
   typed,
   type Point,
@@ -34,13 +32,6 @@ const TEXT = {
   exact: 'Search accuracy: Exact',
   // The interview's own message for a search that finds nothing.
   noMatch: 'Nothing matched your search term.',
-  // The interview's own notices for a minimum of 2 and for a maximum.
-  minimum: ['You must create at least 2', 'items before you can', 'continue.'],
-  maximum: [
-    'You have completed this',
-    'task. Click the next',
-    'arrow to continue.',
-  ],
 } as const;
 
 type Detail = Readonly<{ label: string; value: string }>;
@@ -736,134 +727,6 @@ export const RosterSearchScene = defineScene(7.0, ({ t, id }) => {
           { to: [PANEL.x + 230, SEARCH_Y], at: 3.8 },
         ]}
         leave={5.4}
-      />
-    ),
-  };
-});
-
-const LIMIT_CARDS = ['Kwame', 'Lin', 'Rosa', 'Sam', 'Ana'];
-
-/**
- * Shows a roster name generator where trying to move on before adding the
- * minimum number of alters brings up a notice, and adding the maximum brings up
- * a notice telling the participant to continue.
- */
-export const RosterLimitsScene = defineScene(6.4, ({ t, id }) => {
-  const slot = (i: number) => gridSlot(i, GRID_TOP, cardHeight(0));
-  const states = [
-    LIMIT_CARDS,
-    LIMIT_CARDS.filter((k) => k !== 'Rosa'),
-    LIMIT_CARDS.filter((k) => k !== 'Rosa' && k !== 'Lin'),
-    LIMIT_CARDS.filter((k) => !['Rosa', 'Lin', 'Sam'].includes(k)),
-  ];
-  const drags: Drag[] = [
-    {
-      key: 'Rosa',
-      label: 'Rosa',
-      pick: 0.4,
-      drop: 1.1,
-      from: centreOf(slot(2), cardHeight(0)),
-      to: netSlot(0),
-    },
-    {
-      key: 'Lin',
-      label: 'Lin',
-      pick: 3.0,
-      drop: 3.7,
-      from: centreOf(slot(1), cardHeight(0)),
-      to: netSlot(1),
-    },
-    {
-      key: 'Sam',
-      label: 'Sam',
-      pick: 4.1,
-      drop: 4.8,
-      from: centreOf(slot(1), cardHeight(0)),
-      to: netSlot(2),
-    },
-  ];
-  const placed = flow(
-    states,
-    drags.map((d) => d.drop),
-    t,
-    slot,
-  );
-  const minMet = 3.7;
-  const full = t >= 4.8;
-  const early = segment(t, 1.7, 0.3) * (1 - segment(t, 2.8, 0.3));
-  return {
-    rail: {
-      progress: 0.3,
-      pulse: t >= minMet,
-      pulseFrom: minMet,
-      press: pressAt(t, [1.7]),
-    },
-    body: (
-      <>
-        <Prompt text={TEXT.prompt} size={20} y={STAGE.y + 40} />
-        <RosterPanel id={id}>
-          {LIMIT_CARDS.map((label) => {
-            const p = placed.get(label);
-            return (
-              <Card
-                key={label}
-                at={p?.at ?? slot(0)}
-                label={label}
-                opacity={p?.k ?? 0}
-              />
-            );
-          })}
-        </RosterPanel>
-        {drags.map((drag, i) =>
-          t >= drag.drop ? (
-            <PersonNode
-              key={drag.key}
-              x={netSlot(i)[0]}
-              y={netSlot(i)[1]}
-              r={NODE_R}
-              label={drag.label}
-              k={backOut(segment(t, drag.drop, 0.3))}
-            />
-          ) : null,
-        )}
-        {drags.map((drag) => {
-          const p = carried(t, drag);
-          return p ? (
-            <PersonNode
-              key={`${drag.key}-carried`}
-              x={p[0]}
-              y={p[1]}
-              r={26}
-              label={drag.label}
-              k={1}
-            />
-          ) : null;
-        })}
-        <Toast
-          lines={TEXT.minimum}
-          variant="destructive"
-          k={early}
-          t={t}
-          from={1.7}
-        />
-        <Toast
-          lines={TEXT.maximum}
-          variant="success"
-          k={full ? segment(t, 4.9, 0.3) : 0}
-          t={t}
-          from={4.9}
-        />
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          ...dragStops(drags.slice(0, 1)),
-          { to: NEXT_BUTTON, at: 1.7 },
-          ...dragStops(drags.slice(1)),
-        ]}
-        leave={5.2}
       />
     ),
   };

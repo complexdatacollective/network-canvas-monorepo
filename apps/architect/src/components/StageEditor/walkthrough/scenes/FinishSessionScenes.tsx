@@ -16,7 +16,6 @@ import {
   STAGE,
   STAGE_CENTER_X,
   TextBar,
-  Toast,
   type Point,
 } from './parts';
 
@@ -26,7 +25,6 @@ const TEXT = {
   finish: 'Finish',
   cancel: 'Cancel',
   question: 'Are you sure you want to finish the interview?',
-  failed: ['The interview could not', 'be finished. Please try', 'again.'],
   earlier: 'About you',
   noWayBack: 'No way back',
   protocol: 'Protocol',
@@ -289,65 +287,6 @@ export const FinishSessionAutomaticScene = defineScene(4.8, ({ t }) => {
       </>
     ),
     overlay: <Click t={t} stops={[{ to: NEXT_BUTTON, at: 1.0 }]} leave={1.4} />,
-  };
-});
-
-/**
- * Shows a finish screen where the participant presses Finish and confirms, the
- * interview can't be finished and a failure message appears, and the
- * participant presses Finish and confirms again to reach the finished screen.
- */
-export const FinishSessionFailedScene = defineScene(7.4, ({ t }) => {
-  const asked =
-    backOut(segment(t, 1.1, 0.4)) * (1 - smooth(segment(t, 2.2, 0.3))) +
-    backOut(segment(t, 5.0, 0.4)) * (1 - smooth(segment(t, 6.1, 0.3)));
-  const toast =
-    smooth(segment(t, 2.5, 0.3)) * (1 - smooth(segment(t, 4.2, 0.3)));
-  const finished = t >= 6.4;
-  return {
-    rail: finished ? undefined : { progress: 1 },
-    body: (
-      <>
-        <Screen
-          center={STAGE_CENTER_X}
-          heading={TEXT.closing}
-          button
-          press={pressAt(t, [0.9, 4.8])}
-          k={finished ? 0 : 1}
-        />
-        <Screen
-          center={FINISHED_X}
-          heading={TEXT.finished}
-          k={backOut(segment(t, 6.4, 0.5))}
-        />
-      </>
-    ),
-    modal: (
-      <>
-        {finished ? null : (
-          <Toast
-            lines={TEXT.failed}
-            variant="destructive"
-            k={toast}
-            t={t}
-            from={2.5}
-          />
-        )}
-        <ConfirmDialog k={asked} press={pressAt(t, [1.9, 5.8])} />
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: FINISH_BUTTON, at: 0.9 },
-          { to: DIALOG_FINISH, at: 1.9 },
-          { to: FINISH_BUTTON, at: 4.8 },
-          { to: DIALOG_FINISH, at: 5.8 },
-        ]}
-        leave={6.2}
-      />
-    ),
   };
 });
 

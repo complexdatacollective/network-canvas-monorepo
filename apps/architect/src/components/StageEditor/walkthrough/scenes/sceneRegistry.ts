@@ -62,7 +62,6 @@ export const SCENES: Readonly<
   'roster-card-display': scene(rosterScenes, 'RosterCardDisplayScene'),
   'roster-sort': scene(rosterScenes, 'RosterSortScene'),
   'roster-search': scene(rosterScenes, 'RosterSearchScene'),
-  'roster-limits': scene(rosterScenes, 'RosterLimitsScene'),
   'ordinal-bin-intro': scene(binScenes, 'OrdinalBinIntroScene'),
   'ordinal-bin-tap': scene(binScenes, 'OrdinalBinTapScene'),
   'ordinal-bin-require': scene(binScenes, 'OrdinalBinRequireScene'),
@@ -91,10 +90,6 @@ export const SCENES: Readonly<
   'finish-session-automatic': scene(
     finishSessionScenes,
     'FinishSessionAutomaticScene',
-  ),
-  'finish-session-failed': scene(
-    finishSessionScenes,
-    'FinishSessionFailedScene',
   ),
   'finish-session-outcomes': scene(
     finishSessionScenes,
@@ -162,11 +157,6 @@ export const SCENES: Readonly<
     familyPedigreeScenes,
     'FamilyPedigreeIntroScene',
   ),
-  'family-pedigree-tools': scene(
-    familyPedigreeScenes,
-    'FamilyPedigreeToolsScene',
-  ),
-  'family-pedigree-add': scene(familyPedigreeScenes, 'FamilyPedigreeAddScene'),
   'family-pedigree-labels': scene(
     familyPedigreeScenes,
     'FamilyPedigreeLabelsScene',

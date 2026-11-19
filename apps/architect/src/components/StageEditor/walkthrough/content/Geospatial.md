@@ -36,15 +36,15 @@
 
 <!-- scene: geospatial-intro -->
 
-The Geospatial stage is a name interpreter: it collects information about alters already named, and doesn't create new ones. It shows a map with outlined areas, such as neighborhoods or census tracts, and a panel naming one alter at a time. The participant selects the area that answers the prompt for that alter, then clicks Next to move on to the next alter.
+The Geospatial stage is a name interpreter: it collects information about alters already named, and doesn't create new ones. It shows a map and renders a GEOJSON shape file, where each shape can be selected. When selected, the value of that shape is assigned to the alter. Clicking the Next button moves on to the next alter.
 
-The map is drawn by Mapbox, a map service, so the stage needs an internet connection during the interview.
+The map is drawn by Mapbox, a map service, so the stage needs an internet connection during the interview, and an API key.
 
 Read the full [Geospatial documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/geospatial).
 
 ## When to use it
 
-Use this stage to record where alters are, such as the area each one lives or works in, when you can supply those areas as a map file.
+Use this stage when a visual map will help participants to locate a place, or when you want to collect location data at your own resolution (such as census tracts, districts, or countries).
 
 > Avoid: Using this stage if your study needs to run fully offline. Because it loads maps from Mapbox, it requires an internet connection during the interview.
 
@@ -57,9 +57,7 @@ Use this stage to record where alters are, such as the area each one lives or wo
 <!-- section: map-access -->
 <!-- field: mapOptions.tokenAssetId -->
 
-The map can only be drawn with an API key from your own [Mapbox](https://www.mapbox.com/) account. Mapbox offers a free tier that suits small projects. Create an account, copy the token from your account overview, and add it here.
-
-The key is stored with the protocol's resources, so every Geospatial stage in the protocol can use the same one. It is saved as plain text, so anyone you give the protocol file to can read it.
+The map can only be drawn with an API key from your own [Mapbox](https://www.mapbox.com/) account. Mapbox offers a free tier that suits small projects.
 
 A protocol started from a template that has a map uses Network Canvas's shared testing key, which is rate-limited and for evaluation only. Replace it with your own key before you collect data.
 
@@ -88,7 +86,7 @@ The **Map selection property** is the property whose value is saved when the par
 
 <!-- section: prompts -->
 
-Each prompt asks one question about where the alters are, and records the answer in its own location attribute. The participant answers the first prompt for every alter, then the next prompt for every alter.
+Each prompt explains to the participant which location should be selected for the given alter. The participant answers each prompt for every alter.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
@@ -97,7 +95,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 <!-- section: map-appearance -->
 <!-- field: mapOptions.style -->
 
-The **Mapbox style** is the map drawn beneath the selectable areas, such as streets, outdoors, satellite imagery, or a light or dark map. Pick a style on which participants can still read the place names alongside your outline color.
+The **Mapbox style** controls how the map looks. Looks include streets, outdoors, satellite imagery, or a light or dark map. Pick a style appropriate to the task. Different styles may display different map features.
 
 ## Choose the outline color
 
@@ -118,7 +116,7 @@ This color outlines every selectable area, and fills the area the participant ha
 <!-- section: map-appearance -->
 <!-- field: mapOptions.allowSearch -->
 
-**Allow location search** adds a search box at the top left of the map, for addresses, neighborhoods and points of interest. Choosing a result moves the map there, and the participant then selects the area. Search uses the Mapbox Search API, which may add to your Mapbox costs.
+**Allow location search** adds a search box at the top left of the map, for addresses, neighborhoods and points of interest. Choosing a result moves the map there, and the participant can then select the area. Search uses the Mapbox Search API, which may add to your Mapbox costs.
 
 ## Set where the map opens
 

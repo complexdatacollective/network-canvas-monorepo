@@ -44,11 +44,11 @@ Read the full [Finish Screen documentation](https://documentation.networkcanvas.
 
 <!-- scene: finish-session-outcomes -->
 
-Every protocol ends with a Finish Screen. Add another one when some interviews should end differently, such as a Finish Screen for participants who don't qualify, with its own text and the outcome **Ineligible**.
+Every protocol ends with a Finish Screen. Add another one when some interviews should end differently, such as when participants don't qualify or decline consent.
 
-Only Finish Screens can come after a Finish Screen, so they stay together at the end of the protocol. Participants who reach the end of the interview arrive at the first Finish Screen. To send participants to a later one, choose it as the destination in an earlier stage's skip logic. A Finish Screen has no skip logic of its own, because every route through the interview ends at one.
+Only Finish Screens can come after a Finish Screen, so they stay together at the end of the protocol. Participants who reach the end of the interview arrive at the first Finish Screen. To send participants to a later one, choose it as the destination in an earlier stage's skip logic.
 
-> Avoid: Asking participants for any further information on the Finish Screen. Finishing locks in their answers, and the finished screen allows no more input, so any question has to come on an earlier stage.
+> Do: Add multiple finish screens with customised wording to reflect the different ways a participant might end the interview.
 
 ## Let participants confirm
 
@@ -58,6 +58,8 @@ Only Finish Screens can come after a Finish Screen, so they stay together at the
 
 With **Participants confirm** selected, the closing screen shows a **Finish** button. Pressing it asks the participant to confirm, and until they do, they can still go back and change their answers. This option is the default for a new Finish Screen.
 
+> Do: Use this setting when you want the participant to be in control of when they submit their answers. This is particularly relevant for self-administration.
+
 ## Or finish automatically
 
 <!-- section: finish-mode -->
@@ -66,6 +68,10 @@ With **Participants confirm** selected, the closing screen shows a **Finish** bu
 
 **Finish automatically** ends the interview as soon as the participant reaches this screen, and the participant can't go back from it. There is no closing screen, button or confirmation question, so the editor hides the **Closing screen** section and the **Confirmation question** field.
 
+> Do: Use this to immediately prevent the participant from further interacting with the interview in any way, such as if they have indicated emotional distress.
+
+> Avoid: Using this in any scenario where a participant may need to revisit earlier stages or revise answers.
+
 ## Write the closing screen
 
 <!-- section: closing-screen -->
@@ -73,44 +79,20 @@ With **Participants confirm** selected, the closing screen shows a **Finish** bu
 
 **Closing text** is what the participant reads before they finish, above the **Finish** button. It is shown only when the **Participants confirm** option is selected. Start the closing text with a heading, then add the rest of the text.
 
-A new Finish Screen starts with closing text that Network Canvas supplies, which you can change. When the **Participants confirm** option is selected, the protocol can't be downloaded until it has closing text in your default language.
+A new Finish Screen starts with closing text that Network Canvas supplies, which you can change.
 
 ## Write the finished screen
 
 <!-- section: finished-screen -->
 <!-- field: finishedContent -->
 
-**Finished text** is what the participant reads once the interview has finished, however it finished. Like the closing text, it starts with a heading. A new Finish Screen starts with finished text that Network Canvas supplies. The protocol can't be downloaded until it has finished text in your default language.
+**Finished text** is what the participant reads once the interview has finished, however it finished. Like the closing text, it starts with a heading. A new Finish Screen starts with finished text that Network Canvas supplies.
 
 > Do: Write finished text that tells participants what happens next: that their answers have been saved, whether they can close the window, and, if it applies, how they will receive any compensation or follow-up.
 
-> Avoid: Writing finished text that tells participants to go back and check their answers. Once the interview is finished they can't go back, so tell them to do it in the closing text, before they finish, or leave it out. When the interview finishes automatically, there is no closing text, so tell them on an earlier stage.
-
-> Avoid: Telling participants to press an **Exit** or **Close** button in the text. Which action, if any, the finished screen offers depends on the app running the interview, and Fresco offers none.
+> Avoid: Writing finished text that tells participants to go back and check their answers. Once the interview is finished they can't go back, so tell them to do it in the closing text, before they finish, or leave it out.
 
 <!-- include: built-in-wording -->
-
-## Word the Finish button
-
-<!-- section: built-in-wording -->
-<!-- field: finishLabel -->
-
-**Finish button** sets the label of the button that ends the interview, which reads _Finish_ unless you change it. The same label is used for the button that confirms in the confirmation question. When the interview finishes automatically, the participant sees the button only if finishing fails, so that they can try again.
-
-## Word the confirmation question
-
-<!-- section: built-in-wording -->
-<!-- field: finishConfirmation -->
-
-**Confirmation question** is the question asked after the participant presses the **Finish** button and before the interview ends, such as _"Are you sure you want to finish the interview?"_. **Cancel** takes the participant back to the closing screen. The question is asked only when the **Participants confirm** option is selected, so the editor shows this field only for that option.
-
-## Word the message for when finishing fails
-
-<!-- section: built-in-wording -->
-<!-- field: finishFailed -->
-<!-- scene: finish-session-failed -->
-
-**If finishing fails** is the message shown when the interview can't be finished, for example because the participant's latest answers could not be saved. When the **Participants confirm** option is selected, the participant stays on the closing screen and can press the **Finish** button again. When the interview finishes automatically, the **Finish** button appears so the participant can try again.
 
 ## Record how the interview ended
 
@@ -123,8 +105,6 @@ A new Finish Screen starts with closing text that Network Canvas supplies, which
 - **Completed** (`completed`): the participant reached the normal end of the interview.
 - **Ineligible** (`ineligible`): the participant did not qualify for the study.
 - **Ended early** (`terminated`): the interview ended early for another reason, such as a distress or safety stop.
-
-Preview records nothing, so the outcome only appears in data from real interviews.
 
 > Do: Leave the outcome of the Finish Screen that ends a normal interview as **Completed**. Every interview that is finished at a Finish Screen is recorded with the outcome you choose there, so choose **Ineligible** or **Ended early** for a separate Finish Screen that only interviews ending that way reach.
 

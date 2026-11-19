@@ -135,14 +135,7 @@ Each attribute you add makes searching a long roster slower and can make matches
 
 As a rule of thumb, the larger the roster, the higher the accuracy should be.
 
-## Limit how many alters can be named
-
-<!-- section: nomination-limits -->
-<!-- scene: roster-limits -->
-
-Switch on this section to set a minimum or maximum number of alters the participant can add. The limits count every alter added on the stage, across all of its prompts.
-
-Once the participant reaches the maximum, the cards can no longer be dragged and they are prompted to continue to the next stage. Until they reach the minimum, they can't move past the last prompt.
+<!-- include: nomination-limits -->
 
 <!-- include: built-in-wording -->
 

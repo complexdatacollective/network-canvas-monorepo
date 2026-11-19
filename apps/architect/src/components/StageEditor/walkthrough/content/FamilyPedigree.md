@@ -11,9 +11,11 @@
 
 <!-- scene: family-pedigree-intro -->
 
-The Family Pedigree lets participants build their family tree. Each family member they add is saved as a node, and each relationship between family members is saved as an edge. Participants start with only themselves on the canvas and add one relative at a time. A side panel asks about each person as they are added. Unlike other name generators, this stage builds the structure of the family and the details of each person together. It is designed to be visual and intuitive, so participants can complete it without face-to-face supervision.
+The Family Pedigree lets participants build a specialised map of their relatives called a **pedigree**. Each family member they add is saved as a node, and each relationship between family members is saved as an edge.
 
-Once the family is drawn, nomination prompts can ask participants to select anyone with a given attribute, such as a medical condition. The result is a structured record of the family that researchers and clinicians can analyze, export, or show back to the participant on a Narrative Pedigree.
+Participants start with only themselves on the canvas and add one relative at a time.
+
+Once the pedigree is drawn, nomination prompts can ask participants to select anyone with a given attribute, such as a medical condition.
 
 The stage suits family-history taking, such as a quick survey of a condition across relatives. It also suits studies of who a participant counts as family, whether biological, chosen or both.
 
@@ -21,32 +23,11 @@ Read the full [Family Pedigree documentation](https://documentation.networkcanva
 
 ## When to use it
 
-Use this stage when you need a participant's family as a structure: who is related to whom, and how. Pair it with a [Narrative Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree) to show the participant how a condition may run through the family they drew. Once a Narrative Pedigree reads this stage's family, this stage's node type can't be changed.
+Use this stage when you need to map a participant's family as a structure: who is related to whom, and how. Pair it with a [Narrative Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree) to show the participant how a condition may run through the family they drew.
 
-## The tools on the canvas
+> Avoid: Using this stage if you do not need to capture the relationships between family members as edges. Simple name generators can be lower burden.
 
-<!-- scene: family-pedigree-tools -->
-
-The toolbar sits at the bottom of the canvas, with the view controls beside it in a toolbar of their own. The numbers match the toolbar above:
-
-1. **Add and edit** (the default): point at a person to add relatives, or select a person to edit their details.
-2. **Connect**: join two people who are both already drawn, as partners or as parent and child. Use it for relationships between people already on the canvas, such as a step-parent or a second parent shared by half-siblings. Choices that would contradict the family already drawn, such as a third biological parent, are unavailable, with a note saying why.
-3. **Disconnect**: remove the connection between two people. The participant confirms first, and both people stay in the family. The stage refuses a removal that would cut someone off from the participant.
-4. **Wording**: shown when the stage lets the participant choose the words used for their family. The participant can use it to change their choice at any time.
-5. **Undo**: takes back the participant's last change to the family. It also works with the usual keyboard shortcut. Undo is unavailable while the side panel is open.
-6. **Redo**: brings back a change that was undone.
-7. **Progress ring**: shown when you set a completeness requirement. Pointing at the ring lists what is still needed.
-8. **Zoom out**: the first button in the separate view toolbar.
-9. **Zoom in**: the second button in the view toolbar.
-10. **Show the whole family**: fits everyone on the screen at once.
-
-The participant can also drag the canvas to move around, and zoom with the mouse wheel, a pinch, or the + and − keys.
-
-## Add a relative
-
-<!-- scene: family-pedigree-add -->
-
-Pointing at a person shows four buttons for adding a relative: a parent above, a sibling to the left, a partner to the right and a child below. When the participant chooses a button, the side panel opens and asks about the new person and their relationship before that person is saved. Selecting a person opens the same panel to edit their details.
+> Do: Use this in any setting where it is important to systematically capture the participant's family ties.
 
 <!-- include: node-type -->
 
@@ -59,13 +40,15 @@ The prompt appears above the canvas while the participant draws their family. Us
 
 > Do: Tell participants how to add relatives in your prompt. The add buttons appear when the participant hovers over a person, or after they tap a person and close their details, and a participant who has not been told may not find them.
 
+> Do: Provide an information screen prior to this that contains in-depth instructions for completing this task
+
 ## Name each person
 
 <!-- section: person-attributes -->
 <!-- field: nodeConfiguration.nameAttribute -->
 <!-- scene: family-pedigree-labels -->
 
-The **Name** attribute holds the name typed in the side panel. Names are optional. A relative left unnamed is labeled by how they are related to the participant, such as "Maternal aunt", and that label is saved as their name when the participant leaves the stage. The participant is labeled "You".
+The **Name** attribute defines which attribute is used for the node's label. Names are optional. A relative left unnamed is labeled by how they are related to the participant, such as "Maternal aunt", and that label is saved as their name when the participant leaves the stage. The participant is labeled "You".
 
 ## Record sex assigned at birth
 
@@ -79,7 +62,7 @@ The **Name** attribute holds the name typed in the side panel. Names are optiona
 <!-- section: person-attributes -->
 <!-- field: nodeConfiguration.egoAttribute -->
 
-The **Participant marker** is true on the participant's own node and blank on everyone else. Use it in a stage filter to keep the participant out of later stages about their relatives. Everyone else has no value rather than false, so filter for "is not" true.
+The **Participant marker** is a special attribute that is true on the participant's own node and blank on everyone else. Use it in a stage filter to keep the participant out of later stages about their relatives. Everyone else has no value rather than false, so filter for "is not" true.
 
 ## Ask about gender identity
 
@@ -87,11 +70,9 @@ The **Participant marker** is true on the participant's own node and blank on ev
 <!-- field: nodeConfiguration.genderIdentity.attribute -->
 <!-- scene: family-pedigree-gender -->
 
-With **Ask about gender identity** switched on, the side panel asks about each person's gender identity, and the participant must answer before the person is saved. Choose the attribute that holds the answer, then use **Edit options** to give each option its kinship words: feminine (mother, sister), masculine (father, brother), neutral (parent, sibling), or not known.
+With **Ask about gender identity** switched on, the side panel asks about each person's gender identity, and the participant must answer before the person is saved. Choose the attribute that should store this value. Use **Edit options** to customise options and kinship words: feminine (mother, sister), masculine (father, brother), neutral (parent, sibling), or not known.
 
 With **Ask about gender identity** switched off, the question is not asked, and words such as mother or brother follow each person's sex assigned at birth instead.
-
-The options belong to this stage, because it decides their words, so another Family Pedigree stage needs a gender identity attribute of its own.
 
 > Do: Give the gender identity attribute an option such as "Don't know" when the stage asks about it. The question must be answered for every person the participant adds, and many participants do not know every relative's gender identity.
 
@@ -115,17 +96,17 @@ The choice changes the codebook straight away, and it applies wherever nodes of 
 <!-- field: nodeConfiguration.relationshipToParticipantAttribute -->
 <!-- scene: family-pedigree-relationship -->
 
-Switch on **Record each person’s relationship to the participant** to save each person's relationship to the participant as a fixed value, such as `parent`, `sibling` or `grandparent`. The participant is never asked. Instead, the interview works out each relationship from the family each time the participant leaves the stage. Later stages can then filter or skip on this attribute.
+Switch on **Record each person’s relationship to the participant** to save each person's relationship to the participant in an attribute. The interview works out each relationship based on the pedigree structure. Later stages can then filter or skip on this attribute.
 
-> Avoid: Reading how people are related from their names or kinship words. A label saved for an unnamed person is worded for the participant, in their language and the stage's wording, and a named person has no kinship word saved at all. To analyze or filter on how people are related, record the relationship to the participant.
+> Avoid: Inferring how people are related from their names or kinship words. A label for an unnamed person is worded for the participant, in their language and the stage's wording. A named person has no kinship word saved at all.
 
-## Choose how relationships are saved
+## Choose how relationships are stored
 
 <!-- section: relationships -->
 <!-- field: edgeConfiguration.type -->
 <!-- scene: family-pedigree-relationships -->
 
-Pick the **Relationship edge type** used to save every partnership and parent-child relationship. Then choose the attributes the stage saves on each edge:
+Pick the **Relationship edge type** used to save every partnership and parent-child relationship. Then choose the attributes the stage stores on each edge:
 
 - **Relationship kind**: partner, biological, adoptive, step or social parent, egg or sperm donor, surrogate, or twin.
 - **Gestational carrier**: whether a parent carried the pregnancy.
@@ -133,42 +114,42 @@ Pick the **Relationship edge type** used to save every partnership and parent-ch
 
 Changing the edge type clears these attributes from the stage, because they depend on the edge type.
 
-## Choose the words for family members
+## Configure wording
 
 <!-- section: pedigree-wording -->
 <!-- field: framing -->
 <!-- scene: family-pedigree-framing -->
 
-People the participant does not name are labeled by their relationship, so the words matter:
+People the participant does not name are labelled by their relationship, and these terms are often gendered which may read as exclusionary depending on your research population. Choose between wording behaviours to address this:
 
 - **Everyday kinship words** (the default): mother, father, sister, aunt.
 - **Egg parent and sperm parent**: biological parents are named by the gamete they gave. Every other relative gets a neutral word, such as grandparent or sibling.
 - **Let the participant choose**: the participant is asked which words to use before anything else on the stage, and cannot draw their family until they answer. They can change their answer from the toolbar at any time.
 
-The choice changes only the words participants read, and adds nothing to your exported data.
+The choice changes only the words participants read and is not reflected in the data that is exported.
 
-## Ask more about each person
+## Collect additional attributes for each person
 
 <!-- section: person-form-fields -->
 <!-- field: form.fields -->
 
-Switch on **Additional person fields** to ask more about each family member, such as whether they are still living. These questions come last in the side panel. The participant answers them for every person they add, and for themselves. For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
+Switch on **Additional person fields** to ask more about each family member. The participant is shown these questions for every person they add, and also for themselves.
 
-> Do: Word an additional person field for the participant as well as for their relatives with **Participant or someone else**, so that a question such as "Is this person still living?" reads "Are you still living?" in the participant's own panel.
+> Do: Use the dynamic attribute that determines who the question is being asked of to tailor wording to suit the question being asked of the participant or their family members.
 
 > Avoid: Long forms with many items. Participants answer the additional person fields for every family member, so shorter forms reduce response burden and encourage more complete family trees.
 
-## Check the family is complete enough
+## Configure requirements
 
 <!-- section: completeness -->
 <!-- field: completeness.scope -->
 <!-- scene: family-pedigree-completeness -->
 
-Switch on **Completeness** to check that participants have recorded at least the part of their family you choose, and every required detail about each person. Choose that part under **Relatives to record**. The choices range from both biological parents to three generations, including first cousins. Only biological relatives count.
+Switch on **Completeness** to require that participants create alters up to a specific boundary. Boundary choices range from both biological parents to three generations, including first cousins. Only biological relatives count.
 
-A ring in the toolbar fills as the family nears what you require, and pointing at the ring lists what is still needed. People missing a required detail carry a warning symbol. Participants can say that someone has no siblings or children, or that they do not know, so a requirement never forces a guess.
+A ring in the toolbar fills to show the participant their progress, and interacting with the ring lists what is still needed. Participants can say that someone has no siblings or children, or that they do not know, so a requirement never forces them to provide inaccurate data.
 
-> Do: Check how much family history your analysis needs before you set a completeness requirement. Required completeness asks for more of every participant, and a participant who knows little about their relatives cannot continue until each missing person is added or answered.
+> Do: Check how much family history your analysis needs before you set a completeness requirement. Required completeness asks for more work of every participant, and a participant who knows little about their relatives cannot continue until each missing person is added or answered.
 
 ## Make completeness required or recommended
 
@@ -182,15 +163,15 @@ A ring in the toolbar fills as the family nears what you require, and pointing a
 
 <!-- include: built-in-wording -->
 
-## Ask about the whole family
+## Attribute nomination prompts
 
 <!-- section: nomination-prompts -->
 <!-- field: nominationPrompts -->
 <!-- scene: family-pedigree-nomination -->
 
-Nomination prompts ask questions about the whole family once it is drawn, such as "Who in your family has had heart disease?" The participant selects everyone the question applies to. Participants see the prompts in order, after drawing the family.
+Nomination prompts ask the participant to select any family member with a given attribute, such as "Who in your family has had heart disease?".
 
-Each prompt records a true or false attribute: true for everyone the participant selects, false for anyone they select and then deselect, and blank for everyone else. A Narrative Pedigree reads this attribute to show who has a condition.
+Each prompt records a true or false attribute: true for everyone the participant selects, false for anyone they select and then deselect, and blank for everyone else.
 
 > Do: Use a nomination prompt when you want to know which relatives a condition applies to. The participant looks over the whole family and selects everyone it applies to, instead of answering the same question for each person one at a time.
 

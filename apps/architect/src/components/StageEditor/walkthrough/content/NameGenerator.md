@@ -36,9 +36,7 @@
 
 <!-- scene: name-generator-intro -->
 
-Name generators are a fundamental part of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Each alter named on this stage is saved as a node, so later stages can ask about these alters, place them, or connect them.
-
-The form and quick-add name generators have the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds an alter, and optionally one or two **side panels**.
+Name generators are a fundamental part of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Each alter named on this stage is saved as a node, so later stages can add attributes to them or create edges between them.
 
 Read the full [Name Generator using Forms documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms).
 
@@ -46,9 +44,7 @@ Read the full [Name Generator using Forms documentation](https://documentation.n
 
 <!-- scene: name-generator-form -->
 
-In the Name Generator (using forms), the add button opens a **form** that the participant fills in to create each node. The form can include one or more fields, each capturing an attribute of the node. This stage therefore lets participants name alters and answer a few basic questions about each one, a task known as name interpreting, at the same time.
-
-If you only need names, the [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants. If you already have a list of the alters they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
+In the Name Generator (using forms), the add button opens a **form** that the participant fills in to create each node. The form can include one or more fields, each capturing an attribute of the node.
 
 ## When to use it
 
@@ -60,6 +56,8 @@ Use this stage when you want to collect a small amount of information about each
 
 > Avoid: Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin) Interface.
 
+> Avoid: Using this interface if you only need names. The [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants.
+
 <!-- include: node-type -->
 
 ## Build the form
@@ -68,35 +66,28 @@ Use this stage when you want to collect a small amount of information about each
 <!-- field: form.title -->
 <!-- scene: name-generator-form -->
 
-The form holds the questions the participant answers each time they add a node. The **form title** is the heading shown at the top of the form, such as _Add a person_. Each field below it records one attribute of the node.
-
-> Do: Include a field for an attribute called `name`, so [node labeling](https://documentation.networkcanvas.com/design-protocols/key-concepts/node-labelling) works correctly everywhere else in the interview.
+The form contains the questions the participant answers each time they add a node. The **form title** is the heading shown at the top of the form, such as _Add a person_. Each field below it records one attribute of the node.
 
 For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
 
 Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
+
+> Do: Include a field for an attribute called `name`, so [node labeling](https://documentation.networkcanvas.com/design-protocols/key-concepts/node-labelling) works correctly everywhere else in the interview.
 
 ## Write the prompts
 
 <!-- section: prompts -->
 <!-- scene: name-generator-prompts -->
 
-The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Who have you discussed important matters with in the last six months?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
+The prompt is critical for name generation, and determines the kind of network that will result from your interview. It is displayed at the top of the screen. Multiple prompts can be used, and the participant moves between them by using the Next and Back buttons.
 
-Each prompt can also set **additional attributes** on every alter added in response to it, such as `discuss_matters` set to true, so your data shows which prompt each alter was added for.
+Each prompt can also set **additional attributes** for every alter added in response to it. This feature allows you to track alters nominated in response to a specific prompt, such as setting `discuss_matters` to true.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
 <!-- include: side-panels -->
 
-## Limit how many alters can be named
-
-<!-- section: nomination-limits -->
-<!-- scene: name-generator-limits -->
-
-Switch on this section to set a minimum or maximum number of alters the participant can name. The limits count every alter named on the stage, across all of its prompts.
-
-Once the participant reaches the maximum, the add button is switched off and they are prompted to continue to the next stage. Until they reach the minimum, they can't move past the last prompt.
+<!-- include: nomination-limits -->
 
 <!-- include: built-in-wording -->
 
