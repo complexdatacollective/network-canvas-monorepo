@@ -6,6 +6,7 @@ import type {
   ProtocolEvent,
   Revision,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import { protocolSections } from '@codaco/protocol-builder/host/protocolSections';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
@@ -13,7 +14,6 @@ import { getActiveProtocolId } from '~/ducks/modules/app';
 import { getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
-import { protocolSections } from './protocolSections.ts';
 
 export type SectionAtRevision = Readonly<{
   document: SectionDoc;
