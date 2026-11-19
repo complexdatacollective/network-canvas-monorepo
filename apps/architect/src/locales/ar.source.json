@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "Form Fields",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "Name Generation Step Instructions",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {Shown} other {Not shown}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "Page Heading",
   "architect.protocolSummary.stage.panels.existingNetwork": "Existing network",
   "architect.protocolSummary.stage.panels.panels": "Panels",
   "architect.protocolSummary.stage.presets.presets": "Presets",

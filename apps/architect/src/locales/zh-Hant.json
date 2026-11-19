@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "表單欄位",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "名字產生步驟說明",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {顯示} other {不顯示}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "頁面標題",
   "architect.protocolSummary.stage.panels.existingNetwork": "現有網絡",
   "architect.protocolSummary.stage.panels.panels": "面板",
   "architect.protocolSummary.stage.presets.presets": "預設檢視",

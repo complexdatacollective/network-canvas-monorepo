@@ -122,6 +122,9 @@ export default defineConfig({
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
+            // The markdown parser that finds the files an Information page
+            // shows as blocks (`assetBlocksInMarkdown`).
+            '@codaco/protocol-validation > mdast-util-from-markdown',
             'd3-force',
             'zod',
             'zod/mini',

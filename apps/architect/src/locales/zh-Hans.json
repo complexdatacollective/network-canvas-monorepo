@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "表单字段",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "姓名生成步骤说明",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {显示} other {不显示}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "页面标题",
   "architect.protocolSummary.stage.panels.existingNetwork": "现有网络",
   "architect.protocolSummary.stage.panels.panels": "面板",
   "architect.protocolSummary.stage.presets.presets": "预设",

@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "Formularfelder",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "Anweisungen für den Schritt zur Namenserfassung",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {Angezeigt} other {Nicht angezeigt}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "Seitenüberschrift",
   "architect.protocolSummary.stage.panels.existingNetwork": "Bestehendes Netzwerk",
   "architect.protocolSummary.stage.panels.panels": "Panels",
   "architect.protocolSummary.stage.presets.presets": "Voreinstellungen",

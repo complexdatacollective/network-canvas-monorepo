@@ -142,6 +142,9 @@ export default defineConfig({
             '@codaco/fresco-ui > usehooks-ts',
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
+            // The markdown parser that finds the files an Information page
+            // shows as blocks (`assetBlocksInMarkdown`).
+            '@codaco/protocol-validation > mdast-util-from-markdown',
             'es-toolkit/compat',
             'lucide-react',
             'motion/react',

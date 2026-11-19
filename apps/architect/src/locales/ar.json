@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "حقول النموذج",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "تعليمات خطوة توليد الأسماء",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {تُعرض} other {لا تُعرض}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "عنوان الصفحة",
   "architect.protocolSummary.stage.panels.existingNetwork": "الشبكة الحالية",
   "architect.protocolSummary.stage.panels.panels": "اللوحات",
   "architect.protocolSummary.stage.presets.presets": "العروض المُعدّة مسبقًا",

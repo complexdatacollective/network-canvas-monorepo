@@ -48,6 +48,7 @@ import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
 import NarrativePedigree from './NarrativePedigree';
 import PageContent from './PageContent';
+import PageHeading from './PageHeading';
 import Panels from './Panels';
 import Presets from './Presets';
 import Prompts, { type PromptType } from './Prompts';
@@ -143,6 +144,7 @@ export type StageConfiguration = {
     edges?: { display?: { type: string; label: LocalizedString }[] };
     highlight?: { variable: string; label: LocalizedString }[];
   }[];
+  title?: LocalizedString;
   interviewScript?: string;
   content?: LocalizedString;
   finishedContent?: LocalizedString;
@@ -239,6 +241,7 @@ const StageContent = ({
     form,
     behaviours,
     presets,
+    title,
     interviewScript,
     // FinishSession
     content,
@@ -411,6 +414,7 @@ const StageContent = ({
       {type === 'NetworkComposer' && (
         <ComposerEdges edges={configuration.edges ?? null} />
       )}
+      <PageHeading heading={title ?? null} />
       {type === 'Information' && <PageContent content={content ?? null} />}
       <FamilyTreeVariables
         relationshipTypeVariable={relationshipTypeVariable}

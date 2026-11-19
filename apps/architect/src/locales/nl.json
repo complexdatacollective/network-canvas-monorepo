@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "Formuliervelden",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "Instructies voor de naamgeneratiestap",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {Getoond} other {Niet getoond}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "Paginakop",
   "architect.protocolSummary.stage.panels.existingNetwork": "Bestaand netwerk",
   "architect.protocolSummary.stage.panels.panels": "Panelen",
   "architect.protocolSummary.stage.presets.presets": "Voorinstellingen",

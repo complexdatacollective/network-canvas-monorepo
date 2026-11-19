@@ -134,6 +134,29 @@ describe('Protocol Summary stage', () => {
     expect(screen.queryByText('Submit your answers?')).not.toBeInTheDocument();
   });
 
+  // A Language Chooser's page heading is a field of its own, where an
+  // Information page's is part of its text.
+  it('prints the page heading of a Language Chooser stage under its own section', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <Stage
+          id="languages"
+          label={{ en: 'Languages' }}
+          stageNumber={1}
+          type="LanguageChooser"
+          configuration={{ title: { en: 'Choose a language' } }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('Page Heading')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Choose a language' }),
+    ).toBeInTheDocument();
+  });
+
   it('prints the heading a roster stage shows over the people it offers', () => {
     render(
       <SummaryContext.Provider

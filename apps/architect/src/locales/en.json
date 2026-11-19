@@ -3171,6 +3171,10 @@
     "defaultMessage": "Small",
     "description": "Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage."
   },
+  "architect.protocolSummary.stage.pageHeading.pageHeading": {
+    "defaultMessage": "Page Heading",
+    "description": "Section heading in the printable protocol summary, above the heading text shown at the top of a stage's page, such as a Language Chooser's."
+  },
   "architect.protocolSummary.stage.panels.existingNetwork": {
     "defaultMessage": "Existing network",
     "description": "Value in the data source row of a panel in the printable protocol summary, meaning the panel lists nodes already in the participant's network rather than an uploaded file."

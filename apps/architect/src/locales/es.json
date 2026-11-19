@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "Campos del formulario",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "Instrucciones del paso de generación de nombres",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {Se muestran} other {No se muestran}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "Encabezado de página",
   "architect.protocolSummary.stage.panels.existingNetwork": "Red existente",
   "architect.protocolSummary.stage.panels.panels": "Paneles",
   "architect.protocolSummary.stage.presets.presets": "Vistas predefinidas",

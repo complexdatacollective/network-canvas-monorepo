@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "Champs du formulaire",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "Instructions de l’étape de génération de noms",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {Affichés} other {Non affichés}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "Titre de la page",
   "architect.protocolSummary.stage.panels.existingNetwork": "Réseau existant",
   "architect.protocolSummary.stage.panels.panels": "Panneaux",
   "architect.protocolSummary.stage.presets.presets": "Préréglages",

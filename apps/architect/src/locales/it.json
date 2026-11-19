@@ -778,6 +778,7 @@
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "Campi del modulo",
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": "Istruzioni del passaggio di generazione dei nomi",
   "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": "{shown, select, true {Mostrati} other {Non mostrati}}",
+  "architect.protocolSummary.stage.pageHeading.pageHeading": "Intestazione della pagina",
   "architect.protocolSummary.stage.panels.existingNetwork": "Rete esistente",
   "architect.protocolSummary.stage.panels.panels": "Pannelli",
   "architect.protocolSummary.stage.presets.presets": "Viste predefinite",
