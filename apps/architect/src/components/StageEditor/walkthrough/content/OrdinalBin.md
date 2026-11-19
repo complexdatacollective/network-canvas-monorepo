@@ -36,7 +36,7 @@
 
 <!-- scene: ordinal-bin-intro -->
 
-The Ordinal Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into a **bin**, which represents one option value of an ordinal attribute.
+The Ordinal Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants place each alter from the drawer at the bottom of the screen into a **bin**, which represents one option value of an ordinal attribute.
 
 Read the full [Ordinal Bin documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin).
 
@@ -62,13 +62,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 <!-- include: placing-nodes -->
 
-## Require every alter to be placed
-
-<!-- section: placing-nodes -->
-<!-- field: behaviours.requireCompletePlacement -->
-<!-- scene: ordinal-bin-require -->
-
-Switch on **Require every node to be placed** to stop the participant from leaving a prompt while any alter is still in the drawer. If they try, they are told to place every alter first.
+<!-- include: require-placement -->
 
 <!-- include: built-in-wording -->
 

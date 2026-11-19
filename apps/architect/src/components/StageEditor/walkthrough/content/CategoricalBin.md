@@ -68,15 +68,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 <!-- include: placing-nodes -->
 
-## Require every alter to be placed
-
-<!-- section: placing-nodes -->
-<!-- field: behaviours.requireCompletePlacement -->
-<!-- scene: categorical-bin-require -->
-
-Switch on **Require every node to be placed** to stop the participant from leaving a prompt while any alter is still in the drawer.
-
-> Avoid: Turning this option on when there is no "other"/"don't know"/"don't want to answer" option available.
+<!-- include: require-placement -->
 
 <!-- include: built-in-wording -->
 

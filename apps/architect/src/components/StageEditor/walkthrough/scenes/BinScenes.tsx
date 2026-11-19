@@ -16,7 +16,6 @@ import {
   smooth,
   STAGE,
   STAGE_CENTER_X,
-  Toast,
   type DrawerStyle,
   type Point,
   type Stop,
@@ -27,7 +26,6 @@ const TEXT = {
   categoricalPrompt: 'Which best describes how you know each person?',
   closeness: ['Not close', 'Somewhat', 'Close', 'Very close', 'Extremely'],
   categories: ['Family', 'Work', 'School', 'Neighbours', 'Social'],
-  unplaced: ['You must place every', 'item before you can', 'continue.'],
   // A categorical attribute exports one true-or-false column per value.
   network: 'In the interview',
   thisStage: 'On this stage',
@@ -262,88 +260,6 @@ export const OrdinalBinIntroScene = defineScene(5.6, ({ t, id }) => {
   };
 });
 
-/** Require every node to be placed: Next refuses while one waits in the drawer. */
-function requireScene(kind: 'ordinal' | 'categorical') {
-  return defineScene(5.6, ({ t, id }) => {
-    const last: Move = {
-      label: NAMES.jo,
-      to: kind === 'ordinal' ? ordSlot(1, 0) : catCentre(2),
-      at: 2.7,
-    };
-    const from = drawerSlot(0, 1, DRAWER);
-    const { pos, done } = moved(t, last, from);
-    const toast =
-      backOut(segment(t, 0.95, 0.4)) * (1 - smooth(segment(t, 2.5, 0.3)));
-    return {
-      rail: {
-        progress: 0.45,
-        press: segment(t, 0.8, 0.25) < 1 ? segment(t, 0.8, 0.25) : 0,
-        pulse: done,
-        pulseFrom: last.at + 0.7,
-      },
-      body: (
-        <>
-          {kind === 'ordinal' ? (
-            <>
-              <Prompt text={TEXT.ordinalPrompt} y={STAGE.y + 32} size={19} />
-              <OrdinalBins id={id} labels={TEXT.closeness} />
-              <BinNode at={ordSlot(2, 0)} label={NAMES.sam} />
-              <BinNode at={ordSlot(4, 0)} label={NAMES.ana} />
-            </>
-          ) : (
-            <>
-              <Prompt
-                text={TEXT.categoricalPrompt}
-                y={STAGE.y + 32}
-                size={19}
-              />
-              <CategoryCircles
-                labels={TEXT.categories}
-                members={[
-                  [NAMES.sam],
-                  [NAMES.ana],
-                  done ? [NAMES.jo] : [],
-                  [],
-                  [],
-                ]}
-              />
-            </>
-          )}
-          <Drawer style={DRAWER} />
-          {done && kind === 'categorical' ? null : (
-            <BinNode at={pos} label={last.label} />
-          )}
-          <Toast
-            lines={TEXT.unplaced}
-            variant="destructive"
-            k={toast}
-            t={t}
-            from={0.95}
-          />
-        </>
-      ),
-      overlay: (
-        <Click
-          t={t}
-          stops={[
-            { to: [CONTENT.x + 33, CONTENT.bottom - 40], at: 0.8 },
-            { to: from, at: last.at - 0.05, ring: false },
-            { to: last.to, at: last.at + 0.7, glide: 0.7, ring: false },
-          ]}
-          leave={3.8}
-        />
-      ),
-    };
-  });
-}
-
-/**
- * Shows an ordinal bin where the participant tries to continue with an alter
- * still in the drawer, a notice tells them to place every item first, and the
- * participant then drags that alter into a bin so they can continue.
- */
-export const OrdinalBinRequireScene = requireScene('ordinal');
-
 const CAT_R = 46;
 const CAT_STROKES = [
   'stroke-cat-1',
@@ -558,13 +474,6 @@ export const CategoricalBinIntroScene = defineScene(6.0, ({ t }) => {
     ),
   };
 });
-
-/**
- * Shows a categorical bin where the participant tries to continue with an alter
- * still in the drawer, a notice tells them to place every item first, and the
- * participant then drags that alter into a circle so they can continue.
- */
-export const CategoricalBinRequireScene = requireScene('categorical');
 
 /**
  * Shows a stage filter of close_friend is true, where only the alters with that

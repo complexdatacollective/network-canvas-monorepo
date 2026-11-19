@@ -10,3 +10,5 @@
 <!-- field: behaviours.interactionMode -->
 
 **Interaction mode** decides how the participant puts each alter into a bin. With **Drag and drop**, the participant drags each alter from the drawer at the bottom of the screen. With **Tap to place**, Network Canvas selects one alter in the drawer, the participant taps the bin that alter belongs in, and the next alter is selected.
+
+> Do: Think carefully about which interaction mode is more appropriate for your research population and the devices you will be using for data collection (touch screen vs keyboard and mouse, for example).
