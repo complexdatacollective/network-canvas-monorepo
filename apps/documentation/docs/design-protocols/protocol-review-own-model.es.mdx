@@ -1,0 +1,91 @@
+---
+title: Revisar un protocolo con tu propio modelo
+navOrder: 5.5
+toc: true
+translatedFrom: ae4b8810c5db40a4781bc7b02c31b0994ce62494
+---
+
+<Definition>
+  La revisión automatizada de protocolos es una función experimental de
+  Architect que pide a un modelo de IA que busque problemas en tu protocolo.
+  Puedes hacer que la revisión la escriba un modelo que ejecutas tú o uno que
+  proporciona tu institución, en lugar de los modelos que se ofrecen a través
+  del servicio de Network Canvas.
+</Definition>
+
+## Cuándo usar tu propio modelo {#when-to-use-your-own-model}
+
+Elige **Tu propio modelo** en el último paso del cuadro de diálogo **Revisar protocolo** cuando:
+
+- tu institución o tu comité de ética solo permite un modelo que haya aprobado, o uno que mantenga los datos dentro de la institución;
+- quieres que el protocolo y los detalles del estudio no salgan de tu ordenador;
+- trabajas sin conexión a internet, con un modelo que se ejecuta en el mismo ordenador; o
+- se ha alcanzado el límite por hora o el presupuesto del servicio de Network Canvas.
+
+## Qué pasa con tus datos {#what-happens-to-your-data}
+
+Con tu propio modelo, Architect envía la revisión directamente desde tu navegador a la dirección que indiques, y a ningún otro lugar.
+
+- Tu protocolo y los detalles del estudio **no** pasan por el servicio de Network Canvas.
+- La revisión nunca se comparte con el equipo de Network Canvas, elijas lo que elijas en **Compartir los resultados de esta revisión**.
+- La dirección, el nombre del modelo y la clave de API se guardan únicamente en tu navegador. No se guardan en el archivo del protocolo.
+- Como en cualquier revisión, no se envían imágenes, vídeo, audio, otros recursos ni las claves de API guardadas en el protocolo.
+
+Cualquier persona que pueda usar el perfil del navegador en el que se guarda una clave de API puede leerla. Si tu proveedor lo permite, usa una clave limitada a este uso.
+
+## Qué necesita tu endpoint {#what-your-endpoint-needs}
+
+Architect se comunica con una **API de chat compatible con OpenAI**. La mayoría de las herramientas para ejecutar modelos en local, y muchos servicios alojados e institucionales, ofrecen una. Para funcionar con Architect, el endpoint debe:
+
+- **Responder en una dirección `https://`, o en `http://localhost`** (o `http://127.0.0.1`) si el modelo está en el mismo ordenador que tu navegador. Los navegadores no permiten que una página segura como Architect llame a una dirección `http://` sin cifrar de otra máquina.
+- **Aceptar solicitudes de páginas web (CORS).** El servidor debe permitir la dirección en la que abres Architect, por ejemplo `https://architect.networkcanvas.com`. Los servidores de modelos suelen rechazar las páginas web hasta que cambias este ajuste. No se puede usar un proveedor alojado que no admita solicitudes desde navegadores.
+- **Tener espacio para la revisión.** Las instrucciones de revisión son largas (unos 10 000 tokens) antes de añadir tu protocolo. Un modelo con una ventana de contexto pequeña no puede revisar un protocolo grande.
+
+Introduce tres datos en el cuadro de diálogo:
+
+| Campo                      | Qué introducir                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Dirección del endpoint** | La dirección base de la API, que suele terminar en `/v1`. Architect le añade `/chat/completions`.            |
+| **Nombre del modelo**      | El nombre del modelo, exactamente como lo muestra tu endpoint.                                               |
+| **Clave de API**           | Solo si tu endpoint la necesita. Un modelo que se ejecuta en tu propio ordenador normalmente no la necesita. |
+
+**Probar conexión** pide al modelo una sola palabra, con la misma dirección, el mismo nombre de modelo y la misma clave que usará la revisión. No envía nada de tu protocolo.
+
+## Ollama {#ollama}
+
+1. Instala [Ollama](https://ollama.com) y descarga un modelo.
+2. Permite que Architect lo llame: asigna a la variable de entorno `OLLAMA_ORIGINS` la dirección en la que abres Architect (por ejemplo, `https://architect.networkcanvas.com`) y reinicia Ollama.
+3. Comprueba la longitud de contexto. Ollama elige una longitud predeterminada según la memoria gráfica de tu ordenador y, en la mayoría de los ordenadores, es demasiado pequeña para una revisión; el texto que la supera se corta sin aviso. Configura una longitud de contexto mayor en los ajustes de Ollama o con la variable de entorno `OLLAMA_CONTEXT_LENGTH`.
+4. En Architect, introduce la dirección del endpoint `http://localhost:11434/v1` y el nombre del modelo tal como lo muestra `ollama list`. Deja vacía la clave de API.
+
+Consulta la documentación de Ollama para saber cómo configurar variables de entorno en tu sistema operativo.
+
+## LM Studio {#lm-studio}
+
+1. Instala [LM Studio](https://lmstudio.ai) y descarga un modelo.
+2. Inicia el servidor local desde la vista de desarrollador de LM Studio y activa su ajuste **CORS**.
+3. Carga el modelo con una longitud de contexto suficiente para las instrucciones de revisión y tu protocolo.
+4. En Architect, introduce la dirección del endpoint `http://localhost:1234/v1` y el identificador del modelo tal como lo muestra LM Studio. Deja vacía la clave de API.
+
+## Otros endpoints {#other-endpoints}
+
+Puedes usar cualquier servicio con una API de chat compatible con OpenAI si cumple los requisitos anteriores. Introduce su dirección base, el nombre del modelo y, si la necesita, tu clave de API. Si no sabes si un servicio acepta solicitudes desde navegadores, usa **Probar conexión**.
+
+## Si algo falla {#if-something-goes-wrong}
+
+| Architect dice                                          | Qué comprobar                                                                                                                                                                           |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No se ha podido conectar con tu endpoint                | La dirección, que el servidor del modelo esté en marcha y que su configuración de CORS permita la dirección en la que abres Architect.                                                  |
+| Tu endpoint ha rechazado la clave de API                | La clave de API y que tenga permiso para usar el modelo.                                                                                                                                |
+| No se ha encontrado la dirección o el modelo            | El nombre del modelo y que la dirección sea la dirección base de la API (suele terminar en `/v1`).                                                                                      |
+| Este protocolo es demasiado largo para tu modelo        | Usa un modelo con una ventana de contexto mayor o aumenta la longitud de contexto que permite el servidor de tu modelo.                                                                 |
+| No se ha podido usar la respuesta de tu modelo          | El modelo no ha respondido en el formato que Architect necesita, o su respuesta ha quedado cortada. Puede que un modelo más capaz, o una ventana de contexto mayor, dé mejor resultado. |
+| Tu endpoint ha devuelto un error o ha tardado demasiado | Los registros del propio servidor del modelo.                                                                                                                                           |
+
+Es posible que tu navegador también pida permiso antes de dejar que Architect acceda a un servidor de modelos de tu ordenador o de tu red local. Concédelo para que la revisión funcione.
+
+## Qué esperar {#what-to-expect}
+
+Las instrucciones de revisión se escribieron y probaron con los modelos que ofrece el servicio de Network Canvas. Un modelo más pequeño puede encontrar menos problemas, describirlos peor o proponer correcciones que no encajen con tu protocolo. Architect comprueba cada corrección antes de ofrecer **Corregir por mí**, así que nunca hará por ti una corrección que no se pueda aplicar o que deje el protocolo no válido.
+
+Un modelo que se ejecuta en tu propio ordenador puede tardar mucho más que uno alojado. Puedes detener una revisión en cualquier momento con **Cancelar revisión**.

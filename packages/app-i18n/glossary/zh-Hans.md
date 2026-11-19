@@ -34,10 +34,12 @@ blocks or inline code. "Architect" is never written 架构师 and never shortene
 
 ## Concepts
 
-| English  | Simplified Chinese | Notes                                                                                                                                                              |
-| -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| protocol | 协议               | Only the interview design file (`.netcanvas`). A network protocol is named ("HTTPS"), or 网络协议 when generic. A licence is 许可证 and terms of use are 使用条款. |
-| schema   | 架构               | The protocol file format specification; schema 8 and schema 9 are its versions. Never bare (see below). Never 模式, 结构描述 or 结构定义.                          |
+| English                        | Simplified Chinese     | Notes                                                                                                                                                              |
+| ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| protocol                       | 协议                   | Only the interview design file (`.netcanvas`). A network protocol is named ("HTTPS"), or 网络协议 when generic. A licence is 许可证 and terms of use are 使用条款. |
+| schema                         | 架构                   | The protocol file format specification; schema 8 and schema 9 are its versions. Never bare (see below). Never 模式, 结构描述 or 结构定义.                          |
+| endpoint (of a model server)   | 端点                   | As Fresco’s "兼容 S3 的端点". Architect’s protocol review with a model of the researcher’s own.                                                                    |
+| context window, context length | 上下文窗口、上下文长度 | How much text a language model can read at once.                                                                                                                   |
 
 ## Logic in text and dynamic labels
 

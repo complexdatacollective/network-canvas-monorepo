@@ -8,6 +8,13 @@ import {
 } from './contract.ts';
 
 /**
+ * Reads a model's answer. The Worker uses it on the providers' answers, and
+ * Architect imports it from `@codaco/protocol-review-worker/findings` to read
+ * the answer of a model endpoint of the researcher's own by the same rules.
+ * Kept free of Worker-only and browser-only APIs so both sides can load it.
+ */
+
+/**
  * The shape the model must answer in, as a JSON schema for structured output.
  * It is a finding without its `id`: the service numbers findings itself, so
  * they are unique whatever the model writes. Length limits are left out

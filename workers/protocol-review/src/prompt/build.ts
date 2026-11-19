@@ -3,6 +3,11 @@ import { PROTOCOL_REFERENCE } from './protocol-reference.ts';
 import { REVIEW_BRIEF } from './rubric.ts';
 
 /**
+ * The review's prompt. The Worker sends it to the providers it calls, and
+ * Architect imports it from `@codaco/protocol-review-worker/prompt` to send
+ * the same review to a model endpoint of the researcher's own. Kept free of
+ * Worker-only and browser-only APIs so both sides can load it.
+ *
  * The system prompt is the same for every review, so the provider caches it
  * and later reviews read it at a tenth of the price. Everything that varies
  * goes in the user message, after it.
@@ -59,7 +64,13 @@ const stageList = (
   });
 };
 
-export const buildReviewMessage = (request: ReviewRequest): string => {
+/** What of a request the prompt is written from. */
+export type ReviewMaterial = Pick<
+  ReviewRequest,
+  'locale' | 'studyContext' | 'protocol'
+>;
+
+export const buildReviewMessage = (request: ReviewMaterial): string => {
   const findingsLanguage = languageTag(request.locale, 'en');
   const defaultLocale = defaultLocaleOf(request.protocol);
 

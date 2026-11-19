@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./contract": "./src/contract.ts"
+    "./contract": "./src/contract.ts",
+    "./findings": "./src/findings.ts",
+    "./prompt": "./src/prompt/build.ts"
   },
   "scripts": {
     "bundle": "wrangler deploy --dry-run --outdir .wrangler/bundle",

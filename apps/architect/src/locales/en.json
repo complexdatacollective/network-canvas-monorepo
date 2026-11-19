@@ -2351,6 +2351,118 @@
     "defaultMessage": "Protocol review is not available right now",
     "description": "Title of the notice shown when the review service failed or refused the request."
   },
+  "architect.protocolReview.ownModel.addressHint": {
+    "defaultMessage": "The base address of an OpenAI-compatible API, such as {ollama} for Ollama or {lmStudio} for LM Studio.",
+    "description": "Hint under the Endpoint address label. \"OpenAI-compatible API\" is a technical term; \"OpenAI\" is a company name and is not translated. \"Ollama\" and \"LM Studio\" are names of programs and are not translated. {ollama} and {lmStudio} are example web addresses."
+  },
+  "architect.protocolReview.ownModel.addressInvalid": {
+    "defaultMessage": "Enter an address that starts with {https}, or with {localhost} for a model on this computer.",
+    "description": "Error under the Endpoint address box when what was typed is not an address Architect can call. {https} is \"https://\" and {localhost} is \"http://localhost\"."
+  },
+  "architect.protocolReview.ownModel.addressLabel": {
+    "defaultMessage": "Endpoint address",
+    "description": "Label of the text box for the web address of the researcher’s own model server. An endpoint is the web address a model server answers at."
+  },
+  "architect.protocolReview.ownModel.addressRequired": {
+    "defaultMessage": "Enter the address of your endpoint.",
+    "description": "Error under an empty Endpoint address box when the researcher tries to continue."
+  },
+  "architect.protocolReview.ownModel.failure.endpointErrorBody": {
+    "defaultMessage": "The model server’s own logs will say why.",
+    "description": "Text of the notice shown when the researcher’s own model endpoint answered with an error, or did not answer in time. The model server is the program that runs the model behind the endpoint; its logs are its record of what happened."
+  },
+  "architect.protocolReview.ownModel.failure.endpointErrorTitle": {
+    "defaultMessage": "Your endpoint returned an error or took too long",
+    "description": "Title of the notice shown when the researcher’s own model endpoint answered with an error, or did not answer in time."
+  },
+  "architect.protocolReview.ownModel.failure.notFoundBody": {
+    "defaultMessage": "Check the model name, and that the address is the base address of an OpenAI-compatible API. It often ends in /v1.",
+    "description": "Text of the notice shown when the researcher’s own model endpoint answered that the address or the model name does not exist. \"OpenAI-compatible API\" is a technical term; \"OpenAI\" is a company name and is not translated. \"/v1\" is part of a web address and is not translated."
+  },
+  "architect.protocolReview.ownModel.failure.notFoundTitle": {
+    "defaultMessage": "The address or the model was not found",
+    "description": "Title of the notice shown when the researcher’s own model endpoint answered that the address or the model name does not exist."
+  },
+  "architect.protocolReview.ownModel.failure.refusedBody": {
+    "defaultMessage": "Check the API key, and that it is allowed to use this model.",
+    "description": "Text of the notice shown when the researcher’s own model endpoint refused the API key they entered."
+  },
+  "architect.protocolReview.ownModel.failure.refusedTitle": {
+    "defaultMessage": "Your endpoint refused the API key",
+    "description": "Title of the notice shown when the researcher’s own model endpoint refused the API key they entered. An API key is a credential."
+  },
+  "architect.protocolReview.ownModel.failure.tooLongBody": {
+    "defaultMessage": "The review instructions and your protocol together are more than the model can read at once. Use a model with a larger context window, or raise the context length your model server allows.",
+    "description": "Text of the notice shown when the protocol is too long for the researcher’s own model. A \"context window\" (or \"context length\") is the amount of text a language model can read at once."
+  },
+  "architect.protocolReview.ownModel.failure.tooLongTitle": {
+    "defaultMessage": "This protocol is too long for your model",
+    "description": "Title of the notice shown when the review instructions and the protocol together are more text than the researcher’s own model can read at once."
+  },
+  "architect.protocolReview.ownModel.failure.unreachableBody": {
+    "defaultMessage": "Check that the address is right, that the model server is running, and that it accepts requests from web pages: its CORS setting must allow {origin}.",
+    "description": "Text of the notice shown when Architect could not connect to the researcher’s own model endpoint. \"CORS\" is a technical term for the setting that lets a web page call a server, and is not translated. {origin} is the web address of Architect itself, such as \"https://architect.networkcanvas.com\"."
+  },
+  "architect.protocolReview.ownModel.failure.unreachableTitle": {
+    "defaultMessage": "Your endpoint could not be reached",
+    "description": "Title of the notice shown when Architect could not connect to the model endpoint the researcher set up for automated protocol review. An endpoint is the web address a model server answers at."
+  },
+  "architect.protocolReview.ownModel.failure.unreadableBody": {
+    "defaultMessage": "The model did not answer in the form Architect needs, or its answer was cut short. A more capable model, or a larger context window, may do better.",
+    "description": "Text of the notice shown when the researcher’s own model’s answer could not be read as a review. \"Architect\" is the product name and is not translated. A \"context window\" is the amount of text a language model can read at once."
+  },
+  "architect.protocolReview.ownModel.failure.unreadableTitle": {
+    "defaultMessage": "Your model’s answer could not be used",
+    "description": "Title of the notice shown when the researcher’s own model answered, but not with a review in the form Architect needs."
+  },
+  "architect.protocolReview.ownModel.keyHint": {
+    "defaultMessage": "Only if your endpoint needs one. A model running on your own computer usually does not.",
+    "description": "Hint under the API key label."
+  },
+  "architect.protocolReview.ownModel.keyLabel": {
+    "defaultMessage": "API key (optional)",
+    "description": "Label of the text box for the API key of the researcher’s own model server. An API key is a credential; many model servers need none."
+  },
+  "architect.protocolReview.ownModel.nameHint": {
+    "defaultMessage": "The name of the model, exactly as your endpoint lists it.",
+    "description": "Hint under the Model name label."
+  },
+  "architect.protocolReview.ownModel.nameLabel": {
+    "defaultMessage": "Model name",
+    "description": "Label of the text box for the name of the model on the researcher’s own model server."
+  },
+  "architect.protocolReview.ownModel.nameRequired": {
+    "defaultMessage": "Enter the name of the model.",
+    "description": "Error under an empty Model name box when the researcher tries to continue."
+  },
+  "architect.protocolReview.ownModel.option": {
+    "defaultMessage": "Your own model",
+    "description": "Option in the choice of which AI model writes the automated protocol review, beside the models the Network Canvas service offers: a model the researcher runs themselves or that their institution provides."
+  },
+  "architect.protocolReview.ownModel.optionDescription": {
+    "defaultMessage": "A model you run yourself, for example with Ollama or LM Studio, or one your institution provides. No limit on reviews per hour.",
+    "description": "Line under the \"Your own model\" option in the choice of AI model. \"Ollama\" and \"LM Studio\" are names of programs that run AI models on a researcher’s own computer, and are not translated. The models the Network Canvas service offers are limited to a few reviews an hour; this one is not."
+  },
+  "architect.protocolReview.ownModel.privacy": {
+    "defaultMessage": "Your protocol and study details are sent straight from this browser to the address you give here, and nowhere else. They do not pass through the Network Canvas service, and this review is not shared with the Network Canvas team. The address, model name and API key are kept in this browser only.",
+    "description": "Note shown when the researcher chooses to have their own model write the automated protocol review. \"Network Canvas\" is a product name and is not translated. An API key is a credential."
+  },
+  "architect.protocolReview.ownModel.test": {
+    "defaultMessage": "Test connection",
+    "description": "Button that checks whether Architect can reach the researcher’s own model server with the address, model name and API key entered."
+  },
+  "architect.protocolReview.ownModel.testOk": {
+    "defaultMessage": "Connected. The model answered.",
+    "description": "Status shown when the connection test reached the researcher’s own model server and the model answered."
+  },
+  "architect.protocolReview.ownModel.testing": {
+    "defaultMessage": "Testing the connection…",
+    "description": "Status shown while Architect checks whether it can reach the researcher’s own model server."
+  },
+  "architect.protocolReview.ownModel.useInstead": {
+    "defaultMessage": "Use your own model instead",
+    "description": "Link in the review panel, shown while a review cannot be started with the models the Network Canvas service offers (offline, the hourly limit is reached, or the budget is spent). It opens the dialog that starts a review with \"Your own model\" chosen: a model the researcher runs themselves or that their institution provides."
+  },
   "architect.protocolReview.popover.cancelReview": {
     "defaultMessage": "Cancel review",
     "description": "Button that stops the review in progress. Nothing is saved and it does not count towards the hourly limit."
@@ -2612,8 +2724,8 @@
     "description": "A moment, said relative to today, used inside other protocol review sentences such as \"Reviewed {when}\" and \"You can review again {when}\". The sentence around it adds no \"at\" or \"on\" of its own. {time} is a time of day and {date} a date, both already formatted for the reader’s language. Keep the four cases (today, yesterday, tomorrow, other) as they are; translate only the words inside them."
   },
   "architect.protocolReview.wizard.before.description": {
-    "defaultMessage": "This experimental feature uses LLMs (also known as ‘AI’) to generate review feedback to help you improve your protocol. To use this feature, your protocol must be sent to one of the providers we support (Anthropic and OpenAI). Ensure that you are permitted to do this by your IRB or ethics review body.",
-    "description": "Text of the first step of the dialog that starts an automated protocol review. An LLM is a large language model. \"Anthropic\" and \"OpenAI\" are company names and are not translated. An IRB is an institutional review board, the body that approves research involving people."
+    "defaultMessage": "This experimental feature uses LLMs (also known as ‘AI’) to generate review feedback to help you improve your protocol. To use this feature, your protocol must be sent to a model: one from the providers we support (Anthropic and OpenAI), or one of your own that you set up in the last step of this dialog. Ensure that you are permitted to do this by your IRB or ethics review body.",
+    "description": "Text of the first step of the dialog that starts an automated protocol review. An LLM is a large language model. \"Anthropic\" and \"OpenAI\" are company names and are not translated. \"One of your own\" is a model the researcher runs themselves or that their institution provides. An IRB is an institutional review board, the body that approves research involving people."
   },
   "architect.protocolReview.wizard.before.title": {
     "defaultMessage": "Before you use this feature",
