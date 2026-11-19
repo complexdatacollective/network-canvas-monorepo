@@ -321,3 +321,19 @@ images in `/assets/img/custom-node-shapes/` are new and current.
 | `/assets/img/architect/edit-node-type-web.png` (Codebook)               | ✅ Recaptured |
 | `/assets/img/architect-guide/node-type-shape.png` (Building a protocol) | ✅ Recaptured |
 | `/assets/img/custom-node-shapes/architect-custom-shapes.png`            | ✅ Recaptured |
+
+## Logic in piped text (schema 9)
+
+The piped text editor now has two toolbar buttons: the syringe inserts values
+only, and **Insert logic** inserts If blocks, different wording for each
+answer, wording that fits a number, and wording for the participant or someone
+else. Logic is drawn as a pill of its own colour and icon. These images on
+`design-protocols/piped-text.en.mdx` predate that change:
+
+| Image                                   | What changed                                                                                                                                                                                        |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `piped-text/insert-menu.png`            | The syringe menu no longer lists a second **Different wording for each answer** entry for `overall_review`; that entry moved to the **Insert logic** menu. The toolbar also shows the logic button. |
+| `piped-text/missing-value-versions.png` | The toolbar shows the **Insert logic** button beside the syringe.                                                                                                                                   |
+| `piped-text/value-in-question.png`      | Same toolbar change: both toolbars in frame lack the **Insert logic** button.                                                                                                                       |
+| `piped-text/pair-prompt.png`            | Same toolbar change: the toolbar lacks the **Insert logic** button.                                                                                                                                 |
+| (new) `piped-text/if-block.png`         | Not yet captured: an open If block with an **If:** row, an **Otherwise** row, **Edit rules** and **Add else if**, for the new Logic section.                                                        |
