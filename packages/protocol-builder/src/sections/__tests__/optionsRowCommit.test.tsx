@@ -61,10 +61,17 @@ const censusEdgeDocument = (harness: StageEditorHarness): SectionDoc => {
   return section;
 };
 
-/** The scale as the codebook holds it now. */
-const scale = (harness: StageEditorHarness): Record<string, unknown> => {
-  const held =
-    harness.hostCodebook().edge?.[CENSUS_EDGE]?.variables?.[SCALE_VARIABLE];
+/**
+ * The scale as the PROTOCOL holds it now, or as the EDITOR shows it, which is
+ * the protocol's with the stage's own unsaved codebook changes laid over.
+ */
+const scale = (
+  harness: StageEditorHarness,
+  reader: 'protocol' | 'editor' = 'protocol',
+): Record<string, unknown> => {
+  const codebook =
+    reader === 'protocol' ? harness.hostCodebook() : harness.editorCodebook();
+  const held = codebook.edge?.[CENSUS_EDGE]?.variables?.[SCALE_VARIABLE];
   if (held === undefined) {
     throw new Error(
       `the protocol no longer holds the "${SCALE_VARIABLE}" scale this test is about.`,
@@ -224,13 +231,23 @@ describe('the answers a prompt writes back to its attribute', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
+    // The list is the stage's draft until the stage is saved: the editor
+    // shows the researcher's list with the collaborator's rename merged in,
+    // and the protocol still holds what the collaborator left.
+    const written = [
+      { label: en('Inseparable'), value: 3 },
+      { label: en('Somewhat close'), value: 2 },
+      { label: en('Not close'), value: 1 },
+    ];
     await waitFor(() =>
-      expect(scale(harness).options).toEqual([
-        { label: en('Inseparable'), value: 3 },
-        { label: en('Somewhat close'), value: 2 },
-        { label: en('Not close'), value: 1 },
-      ]),
+      expect(scale(harness, 'editor').options).toEqual(written),
     );
+    expect(scale(harness, 'editor').name).toBe('tieStrength');
+    expect(scale(harness).options).toHaveLength(4);
+
+    // Saving the stage writes the list whole, and keeps the rename.
+    expect(await harness.submit()).not.toBeNull();
+    expect(scale(harness).options).toEqual(written);
     expect(scale(harness).name).toBe('tieStrength');
   });
 });

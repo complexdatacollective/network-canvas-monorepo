@@ -1686,4 +1686,371 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       );
     });
   });
+  describe('codebook sections saved with a stage', () => {
+    const INVENTED = sid(`codebook:node:${randomUUID()}`);
+    const invented = {
+      name: 'Invented',
+      color: 'node-color-seq-2',
+      icon: 'add-a-person',
+      shape: { default: 'circle' },
+      variables: {},
+    };
+
+    const read = (sectionId: ReturnType<typeof sid>) =>
+      call(ADA, host.rpc('GetSection', { protocolId, sectionId }));
+
+    it('writes a changed codebook section in the stage’s revision', async () => {
+      const sectionId = stageSection(reference.stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+      const codebookSection = sid(`codebook:node:${reference.typeId}`);
+      // The requester's own lock on the codebook section is no obstacle.
+      const typeLock = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId: codebookSection }),
+      );
+      if (typeLock.lock !== 'held') throw new Error('the type was taken');
+      const recoloured = {
+        ...Redacted.value(typeLock.document),
+        color: 'node-color-seq-6',
+      };
+
+      try {
+        const written = await call(
+          ADA,
+          host.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId,
+            document: Redacted.make({
+              ...Redacted.value(held.document),
+              label: inEnglish('Saved with its codebook'),
+            }),
+            revision: held.revision,
+            codebook: [
+              {
+                sectionId: codebookSection,
+                document: Redacted.make(recoloured),
+              },
+            ],
+          }),
+        );
+
+        const after = await read(codebookSection);
+        expect(Redacted.value(after.document).color).toBe('node-color-seq-6');
+        expect(after.revision.sequence).toBe(written.revision.sequence);
+      } finally {
+        await call(
+          ADA,
+          host.rpc('ReleaseLock', { protocolId, sectionId: codebookSection }),
+        );
+        await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+      }
+    });
+
+    it('creates a node type the protocol does not hold, with a created stage', async () => {
+      const created = await call(
+        ADA,
+        host.rpc('Create', {
+          protocolId,
+          requestId: randomUUID(),
+          kind: 'stage',
+          document: Redacted.make({
+            type: 'Information',
+            label: inEnglish('Created with a type'),
+            title: inEnglish('Created with a type'),
+            items: [],
+          }),
+          codebook: [
+            { sectionId: INVENTED, document: Redacted.make(invented) },
+          ],
+        }),
+      );
+
+      const type = await read(INVENTED);
+      expect(Redacted.value(type.document).name).toBe('Invented');
+      expect(type.revision.sequence).toBe(created.revision.sequence);
+    });
+
+    it('refuses while another editor holds a codebook section', async () => {
+      const stage = await createStage(ADA, 'Saved behind a held type');
+      const codebookSection = sid(`codebook:node:${reference.typeId}`);
+      const theirs = await call(
+        GRACE,
+        host.rpc('AcquireLock', { protocolId, sectionId: codebookSection }),
+      );
+      expect(theirs.lock).toBe('held');
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      const before = await read(codebookSection);
+
+      try {
+        const error = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId: stage.sectionId,
+              document: held.document,
+              revision: held.revision,
+              codebook: [
+                {
+                  sectionId: codebookSection,
+                  document: Redacted.make({
+                    ...Redacted.value(before.document),
+                    color: 'node-color-seq-7',
+                  }),
+                },
+              ],
+            }),
+          ),
+          'SectionsLocked',
+        );
+        expect(error.blocked.map((entry) => entry.sectionId)).toEqual([
+          codebookSection,
+        ]);
+        expect(error.blocked[0]?.holder?.userId).toBe(GRACE.principal.userId);
+        expect((await read(codebookSection)).revision).toEqual(before.revision);
+      } finally {
+        await call(
+          GRACE,
+          host.rpc('ReleaseLock', { protocolId, sectionId: codebookSection }),
+        );
+        await call(
+          ADA,
+          host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+        );
+      }
+    });
+
+    it('writes nothing when a codebook section is malformed', async () => {
+      const malformed = sid(`codebook:node:${randomUUID()}`);
+      const sectionId = stageSection(reference.stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+
+      const refused = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId,
+            document: Redacted.make({
+              ...Redacted.value(held.document),
+              label: inEnglish('Refused with its codebook'),
+            }),
+            revision: held.revision,
+            codebook: [
+              { sectionId: malformed, document: Redacted.make({ name: 7 }) },
+            ],
+          }),
+        ),
+        'InvalidShape',
+      );
+      await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+
+      expect(refused.sectionId).toBe(malformed);
+      const listed = await call(ADA, host.rpc('ListSections', { protocolId }));
+      expect(listed.sectionIds).not.toContain(malformed);
+      const stage = await read(sectionId);
+      expect(Redacted.value(stage.document).label).not.toEqual(
+        inEnglish('Refused with its codebook'),
+      );
+    });
+
+    it('refuses a codebook on a section that is not a stage', async () => {
+      const sectionId = sid(`codebook:node:${reference.typeId}`);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+
+      try {
+        await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId,
+              document: held.document,
+              revision: held.revision,
+              codebook: [
+                { sectionId: INVENTED, document: Redacted.make(invented) },
+              ],
+            }),
+          ),
+          'InvalidShape',
+        );
+      } finally {
+        await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+      }
+    });
+
+    it('refuses an existing codebook section the writer does not hold, writing nothing', async () => {
+      const stage = await createStage(ADA, 'Saved without the type lock');
+      const codebookSection = sid(`codebook:node:${reference.typeId}`);
+      const before = await read(codebookSection);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+
+      try {
+        const refused = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId: stage.sectionId,
+              document: Redacted.make({
+                ...Redacted.value(held.document),
+                label: inEnglish('Refused without the type lock'),
+              }),
+              revision: held.revision,
+              codebook: [
+                {
+                  sectionId: codebookSection,
+                  document: Redacted.make({
+                    ...Redacted.value(before.document),
+                    color: 'node-color-seq-7',
+                  }),
+                },
+              ],
+            }),
+          ),
+          'InvalidShape',
+        );
+
+        expect(refused.sectionId).toBe(codebookSection);
+        expect(refused.issues[0]?.path).toEqual(['codebook']);
+        expect((await read(codebookSection)).revision).toEqual(before.revision);
+        expect(
+          Redacted.value((await read(stage.sectionId)).document).label,
+        ).not.toEqual(inEnglish('Refused without the type lock'));
+      } finally {
+        await call(
+          ADA,
+          host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+        );
+      }
+    });
+
+    it('refuses a section someone else created after the writer found it missing', async () => {
+      const contested = sid(`codebook:node:${randomUUID()}`);
+      const stage = await createStage(ADA, 'Saved over a contested type');
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+      await call(
+        GRACE,
+        host.rpc('Create', {
+          protocolId,
+          requestId: randomUUID(),
+          kind: 'stage',
+          document: Redacted.make({
+            type: 'Information',
+            label: inEnglish('Created beside the contested type'),
+            title: inEnglish('Created beside the contested type'),
+            items: [],
+          }),
+          codebook: [
+            {
+              sectionId: contested,
+              document: Redacted.make({ ...invented, name: 'Grace’s type' }),
+            },
+          ],
+        }),
+      );
+
+      try {
+        const refused = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId: stage.sectionId,
+              document: Redacted.make({
+                ...Redacted.value(held.document),
+                label: inEnglish('Refused over a contested type'),
+              }),
+              revision: held.revision,
+              codebook: [
+                { sectionId: contested, document: Redacted.make(invented) },
+              ],
+            }),
+          ),
+          'InvalidShape',
+        );
+
+        expect(refused.sectionId).toBe(contested);
+        expect(Redacted.value((await read(contested)).document).name).toBe(
+          'Grace’s type',
+        );
+      } finally {
+        await call(
+          ADA,
+          host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+        );
+      }
+    });
+
+    it('refuses a create carrying an existing codebook section the writer does not hold', async () => {
+      const codebookSection = sid(`codebook:node:${reference.typeId}`);
+      const before = await read(codebookSection);
+      const stagesBefore = (
+        await call(ADA, host.rpc('ListSections', { protocolId }))
+      ).sectionIds.length;
+
+      const refused = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('Create', {
+            protocolId,
+            requestId: randomUUID(),
+            kind: 'stage',
+            document: Redacted.make({
+              type: 'Information',
+              label: inEnglish('Refused create'),
+              title: inEnglish('Refused create'),
+              items: [],
+            }),
+            codebook: [
+              {
+                sectionId: codebookSection,
+                document: Redacted.make({
+                  ...Redacted.value(before.document),
+                  color: 'node-color-seq-7',
+                }),
+              },
+            ],
+          }),
+        ),
+        'InvalidShape',
+      );
+
+      expect(refused.sectionId).toBe(codebookSection);
+      expect((await read(codebookSection)).revision).toEqual(before.revision);
+      expect(
+        (await call(ADA, host.rpc('ListSections', { protocolId }))).sectionIds
+          .length,
+      ).toBe(stagesBefore);
+    });
+  });
 });

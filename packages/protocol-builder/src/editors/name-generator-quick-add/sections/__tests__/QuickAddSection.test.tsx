@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
@@ -17,6 +19,39 @@ import {
 import QuickAddSection from '../QuickAddSection.tsx';
 
 const quickAdd = <QuickAddSection />;
+
+/**
+ * Whether the stage form holds unsaved work, read from inside it with the
+ * selector the host's "Finished Editing" button reads.
+ */
+function DirtyFlag() {
+  const dirty = useFormStore(selectIsFormDirty);
+  return <p data-testid="form-dirty">{dirty ? 'dirty' : 'clean'}</p>;
+}
+
+const formIsDirty = () =>
+  screen.getByTestId('form-dirty').textContent === 'dirty';
+
+const quickAddWithDirtyFlag = (
+  <>
+    <QuickAddSection />
+    <DirtyFlag />
+  </>
+);
+
+/** The rules the EDITOR shows for one of the person type's attributes. */
+const editorValidation = (
+  harness: StageEditorHarness,
+  variableId: string,
+): Record<string, unknown> | undefined => {
+  const variable =
+    harness.editorCodebook().node?.person?.variables?.[variableId];
+  const validation =
+    variable === undefined ? undefined : Reflect.get(variable, 'validation');
+  return typeof validation === 'object' && validation !== null
+    ? (validation as Record<string, unknown>)
+    : undefined;
+};
 
 /** The label of the field the quick-add attribute is chosen in. */
 const LABEL = 'Select an attribute';
@@ -172,12 +207,13 @@ describe('what a quick-add name generator records', () => {
   });
 
   /**
-   * The attribute exists in the codebook the moment it is created, and the
+   * The attribute exists for the editor the moment it is created, and the
    * stage that names it is then pointed at it — which is the point of
    * inventing one here rather than sending the researcher to the codebook and
-   * back.
+   * back. It belongs to the stage's draft: the protocol learns of it when the
+   * stage is saved, and not before.
    */
-  it('creates an attribute for the stage to fill in, and selects it', async () => {
+  it('creates an attribute for the stage to fill in, selects it, and saves it with the stage', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
       sections: quickAdd,
@@ -197,7 +233,7 @@ describe('what a quick-add name generator records', () => {
     );
 
     const created = await waitFor(() => {
-      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const variables = harness.editorCodebook().node?.person?.variables ?? {};
       const entry = Object.entries(variables).find(
         ([, variable]) => variable.name === 'nickname',
       );
@@ -213,6 +249,12 @@ describe('what a quick-add name generator records', () => {
       type: 'text',
       validation: { required: true },
     });
+    // Not in the protocol yet: it is the stage's draft.
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('nickname');
 
     // What the field shows is the researcher's NAME for the attribute; that it
     // is the one just created — rather than another attribute of that name —
@@ -222,6 +264,9 @@ describe('what a quick-add name generator records', () => {
     );
     const request = await harness.submit();
     expect(request?.stageDocument.quickAdd).toBe(created[0]);
+    expect(
+      harness.hostCodebook().node?.person?.variables?.[created[0]],
+    ).toEqual(created[1]);
   });
 
   /**
@@ -308,9 +353,6 @@ describe('what a quick-add name generator records', () => {
  * directions; the package offered one of them, once, behind an Alert.
  */
 describe('the rules the quick-add attribute’s answers have to satisfy', () => {
-  const validationSwitch = (): HTMLElement =>
-    screen.getByRole('switch', { name: 'Validation' });
-
   it('offers them as a nested section rather than a one-way offer', async () => {
     renderStageEditor({
       stageId: 'name-generator-quick-add-1',
@@ -359,7 +401,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     }
   });
 
-  it('writes a rule switched on, and a rule switched off, to the codebook', async () => {
+  it('keeps a rule switched on, and a rule switched off, with the stage', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
       sections: quickAdd,
@@ -371,17 +413,18 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     // Merged over the rules the attribute already had rather than replacing
     // them: the researcher added one rule, not a rule map.
     await waitFor(() =>
-      expect(personValidation(harness, 'name')).toEqual({
+      expect(editorValidation(harness, 'name')).toEqual({
         unique: true,
         required: true,
       }),
     );
+    expect(personValidation(harness, 'name')).toEqual({ unique: true });
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Required answer' }),
     );
     await waitFor(() =>
-      expect(personValidation(harness, 'name')).toEqual({ unique: true }),
+      expect(editorValidation(harness, 'name')).toEqual({ unique: true }),
     );
   });
 
@@ -389,7 +432,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
    * A rule switched on with no number yet is kept on screen to be corrected
    * rather than written half-set, and the row says what is missing.
    */
-  it('writes a number rule once it has a number, and not before', async () => {
+  it('keeps a number rule once it has a number, and not before', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
       sections: quickAdd,
@@ -401,7 +444,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
       await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
     await waitFor(() =>
-      expect(personValidation(harness, 'name')).toEqual({
+      expect(editorValidation(harness, 'name')).toEqual({
         unique: true,
         minLength: 1,
       }),
@@ -418,9 +461,9 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
         'Enter a value for "Minimum text length", or switch the rule off.',
       ),
     ).toBeInTheDocument();
-    // Nothing was written for the empty box: a rule with no value is kept on
-    // screen to be corrected, and the codebook still holds what it last had.
-    expect(personValidation(harness, 'name')).toEqual({
+    // Nothing was kept for the empty box: a rule with no value stays on
+    // screen to be corrected, and the draft still holds what it last had.
+    expect(editorValidation(harness, 'name')).toEqual({
       unique: true,
       minLength: 1,
     });
@@ -428,7 +471,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     await harness.user.type(value, '2');
     await harness.user.tab();
     await waitFor(() =>
-      expect(personValidation(harness, 'name')).toEqual({
+      expect(editorValidation(harness, 'name')).toEqual({
         unique: true,
         minLength: 2,
       }),
@@ -452,7 +495,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
 
     await waitFor(() =>
       expect(
-        harness.hostCodebook().node?.person?.variables?.name,
+        harness.editorCodebook().node?.person?.variables?.name,
       ).not.toHaveProperty('validation'),
     );
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
@@ -487,29 +530,30 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
   });
 
   /**
-   * The rules belong to the codebook, not to the stage: they commit as they
-   * are made and the stage document never carries them.
+   * The rules belong to the codebook, but changing them inside a stage editor
+   * is part of editing the stage: the stage form becomes dirty (so the host
+   * offers "Finished Editing" and asks before discarding), the stage document
+   * itself never carries them, and saving writes them to the protocol.
    */
-  it('commits outside the stage draft', async () => {
+  it('makes the stage form dirty, and saving the stage writes the rule to the codebook', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
-      sections: quickAdd,
+      sections: quickAddWithDirtyFlag,
     });
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
-    await waitFor(() =>
-      expect(personValidation(harness, 'name')).toEqual({
-        unique: true,
-        required: true,
-      }),
-    );
+    expect(editorValidation(harness, 'name')).toEqual({
+      unique: true,
+      required: true,
+    });
+    expect(formIsDirty()).toBe(true);
+    // The change is the stage's, not the protocol's, until the stage is saved.
+    expect(personValidation(harness, 'name')).toEqual({ unique: true });
 
     const request = await harness.submit();
     expect(request?.stageDocument).not.toHaveProperty('validation');
-
-    await harness.cancel();
     expect(personValidation(harness, 'name')).toEqual({
       unique: true,
       required: true,
@@ -517,60 +561,44 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
   });
 
   /**
-   * The same refusal, on the other codebook write this section makes — and the
-   * name it is about was typed in the picker's window, which stays open on it.
-   * A sentence left on this section would be under a modal, which is where the
-   * researcher cannot read it, and would still be there after they recovered
-   * by choosing an attribute that already exists.
+   * The reported bug: changing the attribute's validation left the stage
+   * looking unchanged, and cancelling kept the change. Cancelling now throws
+   * the rule away, and a fresh editor over the same protocol does not see it.
    */
-  it('says inside the window why the codebook refused the name', async () => {
-    const harness = renderStageEditor({
+  it('discards the rule when the stage is cancelled, and a fresh editor does not show it', async () => {
+    const first = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
-      sections: quickAdd,
-      heldSections: [
-        {
-          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
-          displayName: 'Robin',
-        },
-      ],
+      sections: quickAddWithDirtyFlag,
     });
 
-    const dialog = await openAttributePicker(harness.user, await findPicker());
-    await harness.user.type(
-      within(dialog).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
-      'nickname',
+    expect(formIsDirty()).toBe(false);
+    await first.user.click(
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
-    await harness.user.click(
-      within(dialog).getByRole('option', {
-        name: 'Create new attribute called “nickname”.',
-      }),
-    );
+    expect(formIsDirty()).toBe(true);
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Robin is currently editing a section needed for this change.',
-    );
-    // Still open on the name that was refused, which is what the sentence is
-    // about and what the researcher has to correct.
+    await first.cancel();
+    expect(personValidation(first, 'name')).toEqual({ unique: true });
+
+    // Reopened on a fresh host: the rule was never part of the protocol.
+    const second = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAddWithDirtyFlag,
+    });
+    await screen.findByRole('switch', { name: 'Required answer' });
+    expect(editorValidation(second, 'name')).toEqual({ unique: true });
     expect(
-      within(dialog).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
-    ).toHaveValue('nickname');
-    expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
-        (variable) => variable.name,
-      ),
-    ).not.toContain('nickname');
+      screen.getByRole('switch', { name: 'Required answer' }),
+    ).not.toBeChecked();
+    expect(formIsDirty()).toBe(false);
   });
 
   /**
-   * A codebook write a colleague is holding up is not a fault — it lands once
-   * they are finished — so it is said in the notice register, and the switch
-   * stays where the researcher left it.
+   * Nothing is locked while the researcher edits, so a colleague holding the
+   * codebook cannot refuse a choice or a rule at that moment. The stage save
+   * is refused naming them, and the rule stays in the draft.
    */
-  it('names the colleague holding the codebook, and leaves the switch alone', async () => {
+  it('refuses the stage save naming the colleague holding the codebook, and keeps the rule', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
       sections: quickAdd,
@@ -583,15 +611,23 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     });
 
     await harness.user.click(
-      await screen.findByRole('switch', { name: 'Validation' }),
+      await screen.findByRole('switch', { name: 'Required answer' }),
     );
+    expect(editorValidation(harness, 'name')).toEqual({
+      unique: true,
+      required: true,
+    });
 
+    expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
         'Robin is currently editing a section needed for this change.',
       ),
     ).toBeInTheDocument();
     expect(personValidation(harness, 'name')).toEqual({ unique: true });
-    expect(validationSwitch()).toHaveAttribute('aria-checked', 'true');
+    expect(editorValidation(harness, 'name')).toEqual({
+      unique: true,
+      required: true,
+    });
   });
 });

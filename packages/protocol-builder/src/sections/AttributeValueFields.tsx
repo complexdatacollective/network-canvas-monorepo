@@ -153,8 +153,8 @@ export type AttributeValueFieldsProps = Readonly<{
  * ordinal or a boolean attribute — the form-field row's "Choice values" and
  * "Boolean values" sections, the bin prompts' "Attribute options", the
  * tie-strength prompt's response options — and wrote them in the row's own
- * save. They belong to the codebook attribute, which is why the write is a
- * codebook write under that section's own lock; but where the researcher
+ * save. They belong to the codebook attribute, which is why the change is a
+ * codebook change, kept with the stage once the row is saved; but where the researcher
  * types them is beside the question, because the values ARE what the question
  * offers and a dialog over a dialog is a second place to look for them.
  *

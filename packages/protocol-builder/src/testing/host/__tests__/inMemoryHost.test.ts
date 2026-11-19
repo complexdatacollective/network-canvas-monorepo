@@ -1541,3 +1541,243 @@ function refusalData(refusal: object | undefined): unknown {
     Object.entries(refusal).filter(([key]) => key !== '_tag'),
   );
 }
+
+describe('codebook sections written with a stage', () => {
+  const INVENTED = sectionId({ kind: 'codebookNode', typeId: 'invented-type' });
+  const invented = {
+    name: 'Invented',
+    color: 'node-color-seq-2',
+    icon: 'add-a-person',
+    shape: { default: 'circle' },
+    variables: {},
+  };
+
+  const submitWith = async (
+    subject: InMemoryHost,
+    codebook: NonNullable<
+      Parameters<InMemoryHost['adapter']['rpcCall']>[1] extends infer P
+        ? P extends { codebook?: infer C }
+          ? C
+          : never
+        : never
+    >,
+    label = 'Saved with its codebook',
+  ) => {
+    const held = await subject.adapter.rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
+    return attempt(subject.adapter, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: { 'en-US': label },
+      }),
+      revision: held.revision,
+      codebook,
+    });
+  };
+
+  it('writes a changed section and a new type in the stage’s revision', async () => {
+    const subject = host();
+    const person = Redacted.value(
+      (
+        await subject.adapter.rpcCall('GetSection', {
+          protocolId: subject.protocolId,
+          sectionId: PERSON,
+        })
+      ).document,
+    );
+    // The requester's own lock on a codebook section is no obstacle.
+    await subject.adapter.rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: PERSON,
+    });
+
+    const { data: result, isSuccess } = await submitWith(subject, [
+      {
+        sectionId: PERSON,
+        document: Redacted.make({ ...person, color: 'node-color-seq-6' }),
+      },
+      { sectionId: INVENTED, document: Redacted.make(invented) },
+    ]);
+
+    expect(isSuccess).toBe(true);
+    const sequence = result?.revision.sequence;
+    for (const id of [INFORMATION, PERSON, INVENTED]) {
+      expect(subject.store.read(id).revision.sequence).toBe(sequence);
+    }
+    expect(subject.store.read(PERSON).document.color).toBe('node-color-seq-6');
+    expect(subject.store.read(INVENTED).document.name).toBe('Invented');
+  });
+
+  it('is refused while another editor holds a codebook section', async () => {
+    const subject = host();
+    await subject.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: PERSON,
+    });
+    const person = subject.store.read(PERSON).document;
+
+    const { refusal, isSuccess } = await submitWith(subject, [
+      {
+        sectionId: PERSON,
+        document: Redacted.make({ ...person, color: 'node-color-seq-6' }),
+      },
+    ]);
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('SectionsLocked');
+    expect(subject.store.read(PERSON).document.color).toBe(person.color);
+  });
+
+  it('is refused for an existing section the writer does not hold, and writes nothing', async () => {
+    const subject = host();
+    const person = subject.store.read(PERSON).document;
+    const information = subject.store.read(INFORMATION).document;
+
+    const { refusal, isSuccess } = await submitWith(subject, [
+      { sectionId: INVENTED, document: Redacted.make(invented) },
+      {
+        sectionId: PERSON,
+        document: Redacted.make({ ...person, color: 'node-color-seq-6' }),
+      },
+    ]);
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      sectionId: PERSON,
+      issues: [{ path: ['codebook'] }],
+    });
+    expect(subject.store.read(PERSON).document).toEqual(person);
+    expect(subject.store.has(INVENTED)).toBe(false);
+    expect(subject.store.read(INFORMATION).document).toEqual(information);
+  });
+
+  it('is refused for a section someone else created after the writer found it missing', async () => {
+    const subject = host();
+    const grace = subject.asCollaborator(COLLABORATOR);
+    const graceHeld = await grace.rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: ALTER_FORM,
+    });
+    await grace.rpcCall('Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: ALTER_FORM,
+      document: graceHeld.document,
+      revision: graceHeld.revision,
+      codebook: [
+        {
+          sectionId: INVENTED,
+          document: Redacted.make({ ...invented, name: 'Grace’s type' }),
+        },
+      ],
+    });
+    expect(subject.store.has(INVENTED)).toBe(true);
+
+    const { refusal, isSuccess } = await submitWith(subject, [
+      { sectionId: INVENTED, document: Redacted.make(invented) },
+    ]);
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      sectionId: INVENTED,
+    });
+    expect(subject.store.read(INVENTED).document.name).toBe('Grace’s type');
+  });
+
+  it('is refused on a create for an existing section the writer does not hold', async () => {
+    const subject = host();
+    const person = subject.store.read(PERSON).document;
+    const sections = subject.store.sectionIds().length;
+
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Create', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: Redacted.make({
+        type: 'Information',
+        label: { 'en-US': 'Created with a type' },
+        title: { 'en-US': 'Created with a type' },
+        items: [],
+      }),
+      position: 1,
+      codebook: [
+        {
+          sectionId: PERSON,
+          document: Redacted.make({ ...person, color: 'node-color-seq-6' }),
+        },
+      ],
+    });
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(revealed(refusalData(refusal))).toMatchObject({ sectionId: PERSON });
+    expect(subject.store.read(PERSON).document).toEqual(person);
+    expect(subject.store.sectionIds().length).toBe(sections);
+  });
+
+  it('writes nothing when a codebook section is malformed', async () => {
+    const subject = host();
+    const before = subject.store.read(INFORMATION).document;
+
+    const { refusal, isSuccess } = await submitWith(subject, [
+      { sectionId: INVENTED, document: Redacted.make({ name: 7 }) },
+    ]);
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      sectionId: INVENTED,
+    });
+    expect(subject.store.has(INVENTED)).toBe(false);
+    expect(subject.store.read(INFORMATION).document).toEqual(before);
+  });
+
+  it('is refused for a section that is not a stage', async () => {
+    const subject = host();
+    const held = await subject.adapter.rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: PERSON,
+    });
+
+    const { refusal } = await attempt(subject.adapter, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: PERSON,
+      document: held.document,
+      revision: held.revision,
+      codebook: [{ sectionId: INVENTED, document: Redacted.make(invented) }],
+    });
+
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(subject.store.has(INVENTED)).toBe(false);
+  });
+
+  it('creates a stage with its codebook in one revision', async () => {
+    const subject = host();
+
+    const created = await subject.adapter.rpcCall('Create', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: Redacted.make({
+        type: 'Information',
+        label: { 'en-US': 'Created with a type' },
+        title: { 'en-US': 'Created with a type' },
+        items: [],
+      }),
+      position: 1,
+      codebook: [{ sectionId: INVENTED, document: Redacted.make(invented) }],
+    });
+
+    expect(subject.store.read(INVENTED).revision.sequence).toBe(
+      created.revision.sequence,
+    );
+  });
+});

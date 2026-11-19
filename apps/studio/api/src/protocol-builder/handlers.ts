@@ -412,6 +412,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         document,
         promote,
         interfaceText,
+        codebook,
       }) {
         const session = yield* openSession(protocolId);
         // Asked before planning: the first attempt already took the staged
@@ -453,6 +454,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               submit(session, sectionId, Redacted.value(document), {
                 requestId,
                 ...(interfaceText === undefined ? {} : { interfaceText }),
+                ...(codebook === undefined ? {} : { codebook }),
                 ...(planned === undefined || promote === undefined
                   ? {}
                   : {
@@ -513,6 +515,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         position,
         promote,
         interfaceText,
+        codebook,
       }) {
         const session = yield* openSession(protocolId);
         const already = yield* command(
@@ -552,6 +555,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 document: Redacted.value(document),
                 ...(position === undefined ? {} : { position }),
                 ...(interfaceText === undefined ? {} : { interfaceText }),
+                ...(codebook === undefined ? {} : { codebook }),
                 ...(planned === undefined || promote === undefined
                   ? {}
                   : {

@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import { expect } from 'vitest';
 
-import type { StageType } from '@codaco/protocol-validation';
+import type { Codebook, StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId, type SectionRef } from '@codaco/studio-sync/taxonomy';
 
@@ -232,27 +232,56 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     : {};
 
 /**
- * The attributes the protocol holds for one codebook subject.
+ * The attributes of one codebook subject, in a codebook read off the harness.
  *
- * Read from the protocol rather than from the stage: an attribute a form field
- * collects belongs to the codebook, and a form editor writing it there — not
- * into its own stage document — is the whole claim these journeys make. Each
- * form editor asks about a different subject, which is why the section is a
- * parameter and not a constant.
+ * An attribute a form field collects belongs to the codebook, and a form
+ * editor keeping it there — not in its own stage document — is the whole claim
+ * these journeys make. Each form editor asks about a different subject, which
+ * is why the section is a parameter and not a constant.
+ */
+const variablesOf = (codebook: Codebook, subject: SectionRef) => {
+  switch (subject.kind) {
+    case 'codebookEgo':
+      return asRecord(codebook.ego?.variables);
+    case 'codebookNode':
+      return asRecord(codebook.node?.[subject.typeId]?.variables);
+    case 'codebookEdge':
+      return asRecord(codebook.edge?.[subject.typeId]?.variables);
+    case 'assets':
+    case 'settings':
+    case 'stage':
+    case 'stageOrder':
+    default:
+      throw new Error(`"${subject.kind}" is not a codebook subject.`);
+  }
+};
+
+/**
+ * The attributes the PROTOCOL holds for a subject: nothing an editor does
+ * reaches it before the stage is saved, because everything changed inside a
+ * stage editor is part of that stage's draft.
  */
 const codebookVariables = (harness: Harness, subject: SectionRef) =>
-  asRecord(asRecord(harness.protocolSections()[sectionId(subject)]).variables);
+  variablesOf(harness.hostCodebook(), subject);
+
+/** The attributes the EDITOR shows for a subject: the protocol's, plus the draft's. */
+const draftVariables = (harness: Harness, subject: SectionRef) =>
+  variablesOf(harness.editorCodebook(), subject);
 
 /** One attribute of that subject, by the name the researcher gave it. */
-const attributeNamed = (harness: Harness, subject: SectionRef, name: string) =>
-  Object.entries(codebookVariables(harness, subject)).find(
+const attributeNamed = (variables: Record<string, unknown>, name: string) =>
+  Object.entries(variables).find(
     ([, variable]) => asRecord(variable).name === name,
   );
 
-/** The same, waited for: the codebook write it comes from is asynchronous. */
-const savedAttribute = (harness: Harness, subject: SectionRef, name: string) =>
+/** The same, waited for in the stage draft. */
+const draftedAttribute = (
+  harness: Harness,
+  subject: SectionRef,
+  name: string,
+) =>
   waitFor(() => {
-    const entry = attributeNamed(harness, subject, name);
+    const entry = attributeNamed(draftVariables(harness, subject), name);
     if (entry === undefined) throw new Error(`${name} was not created`);
     return entry;
   });
@@ -368,8 +397,9 @@ const seedCategoricalAttribute = (
  * Shared because it is one journey asked of three editors. The section's own
  * tests prove the control; what each editor's copy proves is that the section
  * it mounts reaches the codebook for the subject THAT editor is about — a node
- * type, an edge type, or the participant — and writes there rather than into
- * its own stage document.
+ * type, an edge type, or the participant — holding the change with the stage
+ * and writing it there when the stage is saved, rather than into the stage
+ * document itself.
  */
 export const authorsValuesFromField = async (
   harness: Harness,
@@ -392,15 +422,27 @@ export const authorsValuesFromField = async (
   await harness.user.click(creating.getByRole('button', { name: 'Add' }));
   await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
 
+  // Part of the stage's draft, like everything changed inside the editor: the
+  // editor reads it at once, and the protocol does not until the stage is
+  // saved.
+  const authored = [
+    { label: { 'en-US': 'At home' }, value: 'home' },
+    { label: { 'en-US': 'At work' }, value: 'work' },
+    { label: { 'en-US': 'Somewhere else' }, value: 'elsewhere' },
+  ];
   await waitFor(() =>
     expect(
-      asRecord(codebookVariables(harness, subject)[categoricalId]).options,
-    ).toEqual([
-      { label: { 'en-US': 'At home' }, value: 'home' },
-      { label: { 'en-US': 'At work' }, value: 'work' },
-      { label: { 'en-US': 'Somewhere else' }, value: 'elsewhere' },
-    ]),
+      asRecord(draftVariables(harness, subject)[categoricalId]).options,
+    ).toEqual(authored),
   );
+  expect(
+    asRecord(codebookVariables(harness, subject)[categoricalId]).options,
+  ).toEqual(authored.slice(0, 2));
+
+  expect(await harness.submit()).not.toBeNull();
+  expect(
+    asRecord(codebookVariables(harness, subject)[categoricalId]).options,
+  ).toEqual(authored);
 };
 
 /**
@@ -431,7 +473,13 @@ export const authorsDateSettingsFromField = async (
   );
   await harness.user.click(dating.getByRole('button', { name: 'Add' }));
   await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
-  const [dateId] = await savedAttribute(harness, subject, 'met_on');
+  const [dateId] = await draftedAttribute(harness, subject, 'met_on');
+
+  // The attribute is the stage draft's until the stage is saved.
+  expect(attributeNamed(codebookVariables(harness, subject), 'met_on')).toBe(
+    undefined,
+  );
+  expect(await harness.submit()).not.toBeNull();
 
   await waitFor(() =>
     expect(

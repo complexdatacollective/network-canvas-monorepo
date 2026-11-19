@@ -47,7 +47,7 @@ const errorMessages = defineMessages({
   },
 });
 import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
-import { find, get, has, omit } from 'es-toolkit/compat';
+import { find, get, has, omit, size } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
 import {
@@ -74,7 +74,7 @@ import { getProtocol } from '~/selectors/protocol';
 import prune from '~/utils/prune';
 
 import { deleteStage } from './deleteStage';
-import { getNextCategoryColor } from './utils/helpers';
+import { definitionAsStored, normalizedName } from './utils/helpers';
 
 type Entity = 'node' | 'edge' | 'ego';
 
@@ -120,15 +120,6 @@ const initialState: Codebook = {
   node: {},
 };
 
-const defaultTypeTemplate: Partial<EntityDefinition> = {
-  variables: {},
-};
-
-// Names are saved normalized (`normalizeCodebookName`), whatever the editor
-// that wrote them let through.
-const normalizedName = (name: unknown) =>
-  typeof name === 'string' ? { name: normalizeCodebookName(name) } : {};
-
 // Only categorical and ordinal options carry text a researcher typed; a boolean
 // variable's options are true and false. It runs on the variable as stored,
 // because an edit sends only what changed and so may not say the type.
@@ -157,18 +148,17 @@ export const createTypeAsync = createAppAsyncThunk(
       entity,
       configuration,
     }: { entity: Entity; configuration: Partial<EntityDefinition> },
-    { dispatch },
+    { dispatch, getState },
   ) => {
     const type = uuid();
-    const name = normalizedName(get(configuration, 'name'));
     const payload: CreateTypePayload = {
       entity,
       type,
-      configuration: {
-        ...defaultTypeTemplate,
-        ...configuration,
-        ...name,
-      },
+      configuration: definitionAsStored(
+        entity,
+        configuration,
+        size(get(getProtocol(getState()), ['codebook', entity], {})),
+      ),
     };
 
     dispatch(codebookSlice.actions.createType(payload));
@@ -193,10 +183,7 @@ export const updateTypeAsync = createAppAsyncThunk(
     const payload: UpdateTypePayload = {
       entity,
       type,
-      configuration: {
-        ...configuration,
-        ...normalizedName(get(configuration, 'name')),
-      },
+      configuration: definitionAsStored(entity, configuration),
     };
     dispatch(codebookSlice.actions.updateType(payload));
     return { type, entity };
@@ -207,27 +194,17 @@ export const createEdgeAsync = createAppAsyncThunk(
   'codebook/createEdgeAsync',
   async (configuration: Partial<EdgeDefinition>, { dispatch, getState }) => {
     const entity: Entity = 'edge';
-    const state = getState();
-    const protocol = getProtocol(state);
-    const colorFromHelper = protocol
-      ? getNextCategoryColor(protocol, entity)
-      : undefined;
-    const color = configuration.color ?? colorFromHelper;
     const type = uuid();
-    const name = normalizedName(configuration.name);
 
     const payload: CreateTypePayload<EdgeDefinition> = {
       entity,
       type,
-      configuration: {
-        ...configuration,
-        ...name,
-      },
+      configuration: definitionAsStored(
+        entity,
+        configuration,
+        size(get(getProtocol(getState()), ['codebook', entity], {})),
+      ),
     };
-
-    if (color) {
-      payload.configuration.color = color;
-    }
 
     dispatch(codebookSlice.actions.createType(payload));
     return { type, entity };

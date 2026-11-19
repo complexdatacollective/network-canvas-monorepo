@@ -31,47 +31,6 @@ const flattenIssues = (
     })),
   );
 
-const getFieldId = (field: string) => {
-  // Needs to be safe for urls and ids
-  const safeFieldName = encodeURIComponent(field.replace(/\[|\]|\./g, '_'));
-  return `field_${safeFieldName}`;
-};
-
-// Ordered candidate ids for an issue path: exact match first, then progressively
-// trimmed ancestors (each also tried with `._error`), so the nearest mounted
-// anchor can be found when the exact field isn't in the DOM.
-const candidateIdsFor = (field: string): string[] => {
-  const ids: string[] = [];
-  const push = (p: string) => {
-    ids.push(getFieldId(p));
-    // Skip the synthetic `._error` variant when the path already targets an
-    // `_error` node, which would otherwise yield a dead `..._error._error` id.
-    if (!p.endsWith('._error')) {
-      ids.push(getFieldId(`${p}._error`));
-    }
-  };
-  let path = field;
-  push(path);
-  while (/[.[]/.test(path)) {
-    const next = path.replace(/(\.[^.[\]]+|\[\d+\])$/, '');
-    if (!next || next === path) {
-      break;
-    }
-    path = next;
-    push(path);
-  }
-  return ids;
-};
-
-/** The first mounted legacy `IssueAnchor` for an issue path, if there is one. */
-const findAnchorElement = (field: string): HTMLElement | null => {
-  for (const id of candidateIdsFor(field)) {
-    const element = document.getElementById(id);
-    if (element instanceof HTMLElement) return element;
-  }
-  return null;
-};
-
 /**
  * The label element a field is named by, and nothing nested inside it.
  *
@@ -134,30 +93,17 @@ type IssueTarget = {
  * nothing for every field in the editor: rows linked to a dead fragment and,
  * with no anchor to read a `data-name` off, named their field by the store's
  * internal path — "prompts", "quickAdd", "subject" — which is the same defect
- * #1400 fixed for the fields Architect still renders itself.
- *
- * The legacy anchor stays as a second tier for those: Architect's own dialog
- * forms (`ArchitectField`) still render one, and it carries a name for
- * surfaces that are not a `Field` at all.
+ * #1400 fixed for the fields Architect used to render itself.
  */
 const resolveIssueTarget = (field: string): IssueTarget | null => {
   const container = resolveFieldContainer(field);
-  if (container) {
-    const label = fieldLabelElement(container);
-    return {
-      element: container,
-      anchorId: label?.id || undefined,
-      label: (label ? visibleText(label) : null) ?? undefined,
-    };
-  }
-
-  const anchor = findAnchorElement(field);
-  if (!anchor) return null;
+  if (!container) return null;
+  const label = fieldLabelElement(container);
   return {
-    element: anchor,
-    anchorId: anchor.id || undefined,
-    label: anchor.getAttribute('data-name') ?? visibleText(anchor) ?? undefined,
+    element: container,
+    anchorId: label?.id || undefined,
+    label: (label ? visibleText(label) : null) ?? undefined,
   };
 };
 
-export { flattenIssues, getFieldId, resolveIssueTarget, type IssueTarget };
+export { flattenIssues, resolveIssueTarget, type IssueTarget };

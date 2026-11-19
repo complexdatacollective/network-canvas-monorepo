@@ -215,9 +215,23 @@ describe('writing the answers an attribute offers', () => {
       );
 
       await waitFor(() => expect(outcome()).toBe('written'));
-      const variables = harness.protocolSections()[familyMemberSection]
-        ?.variables as Record<string, { options?: unknown }> | undefined;
-      expect(variables?.genderIdentity?.options).toEqual(WITH_A_NEW_OPTION);
+      // Written into the stage's draft, like everything changed inside a
+      // stage editor: the editor reads it at once and the protocol holds it
+      // only once the stage is saved.
+      expect(
+        Reflect.get(
+          harness.editorCodebook().node?.family_member?.variables
+            ?.genderIdentity ?? {},
+          'options',
+        ),
+      ).toEqual(WITH_A_NEW_OPTION);
+      expect(
+        Reflect.get(
+          harness.hostCodebook().node?.family_member?.variables
+            ?.genderIdentity ?? {},
+          'options',
+        ),
+      ).not.toEqual(WITH_A_NEW_OPTION);
     });
 
     it('leaves another attribute of the same type editable', async () => {

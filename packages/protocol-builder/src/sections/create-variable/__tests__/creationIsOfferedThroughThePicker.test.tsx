@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import type { Codebook } from '@codaco/protocol-validation';
 
 import {
   packageSource,
@@ -645,7 +646,7 @@ describe('a categorical bin invents its attributes from the picker', () => {
     ).toHaveValue('contactBand');
   });
 
-  it('writes the follow-up attribute straight to the codebook', async () => {
+  it('keeps the follow-up attribute in the stage draft, and writes it with the stage', async () => {
     const harness = renderStageEditor({
       stageId: 'categorical-bin-1',
       registry: categoricalBinStageEditor,
@@ -664,24 +665,74 @@ describe('a categorical bin invents its attributes from the picker', () => {
       'somethingElse',
     );
 
-    await waitFor(() => {
-      expect(
-        Object.values(
-          harness.hostCodebook().node?.person?.variables ?? {},
-        ).some(
-          (variable) =>
-            variable.name === 'somethingElse' && variable.type === 'text',
-        ),
-        'the codebook did not gain the text attribute the follow-up answer was created for',
-      ).toBe(true);
-    });
-    // The window shows the researcher's NAME for an attribute and the prompt
-    // stores its id, so the pill is read back: what a researcher sees is that
-    // the slot now holds the attribute they just named.
+    // The follow-up bin is only a prompt a researcher can save once it has a
+    // name and a question.
+    await harness.user.type(
+      within(group).getByRole('textbox', { name: 'Other bin label' }),
+      'Something else',
+    );
+    await harness.user.type(
+      within(group).getByRole('textbox', { name: 'Follow-up question' }),
+      'What kind of contact is it?',
+    );
+
+    const namedSomethingElse = (codebook: Codebook) =>
+      Object.values(codebook.node?.person?.variables ?? {}).some(
+        (variable) =>
+          variable.name === 'somethingElse' && variable.type === 'text',
+      );
+    // Inside a stage editor the attribute is the stage's draft from the moment
+    // it is created, and everything in the editor reads it. The prompt's
+    // dialog keeps it when the prompt is saved and takes it back if the
+    // dialog is cancelled.
+    expect(namedSomethingElse(harness.editorCodebook())).toBe(true);
+    expect(namedSomethingElse(harness.hostCodebook())).toBe(false);
+    await harness.user.click(
+      within(dialog).getByRole('button', { name: 'Save' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
     expect(
-      within(attributeField('Other attribute', group)).getByText(
-        'somethingElse',
-      ),
-    ).toBeInTheDocument();
+      namedSomethingElse(harness.editorCodebook()),
+      'the stage draft did not gain the text attribute the follow-up answer was created for',
+    ).toBe(true);
+    // Not the protocol's until the stage is saved.
+    expect(namedSomethingElse(harness.hostCodebook())).toBe(false);
+    expect(await harness.submit()).not.toBeNull();
+    expect(namedSomethingElse(harness.hostCodebook())).toBe(true);
+  });
+
+  /**
+   * The prompt's dialog is the researcher's draft of one prompt: closing it
+   * without saving takes back what was created in it, as it takes back
+   * everything else typed there.
+   */
+  it('takes the follow-up attribute back when the prompt is closed without saving', async () => {
+    const harness = renderStageEditor({
+      stageId: 'categorical-bin-1',
+      registry: categoricalBinStageEditor,
+    });
+    const dialog = await openPrompt(harness);
+    await harness.user.click(
+      within(dialog).getByRole('switch', { name: 'Follow-up other option' }),
+    );
+    const group = await within(dialog).findByRole('region', {
+      name: 'Follow-up other option',
+    });
+    await inventAttribute(
+      harness.user,
+      attributeField('Other attribute', group),
+      'somethingElse',
+    );
+
+    await closeRowDialog(harness);
+
+    const names = (codebook: Codebook) =>
+      Object.values(codebook.node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      );
+    expect(names(harness.editorCodebook())).not.toContain('somethingElse');
+    expect(names(harness.hostCodebook())).not.toContain('somethingElse');
   });
 });

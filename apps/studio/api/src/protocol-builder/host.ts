@@ -18,6 +18,7 @@ import type {
   Presence,
   ResourceDescriptor,
   Revision,
+  StageCodebookSection,
 } from '@codaco/protocol-builder-core/contract/schemas';
 import { type InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
@@ -206,6 +207,11 @@ export type WriteIntent = {
   staged?: { editId: string; resourceIds: readonly string[] };
   /** The shared words a stage brings in, written into the settings with it. */
   interfaceText?: readonly InterfaceTextUpdate[];
+  /**
+   * The codebook sections a stage's editor changed, each written whole with
+   * it, in the stage's own revision. A section the draft lacks is created.
+   */
+  codebook?: readonly StageCodebookSection[];
 };
 
 /**
@@ -256,6 +262,85 @@ const settingsWith = (
         : { ...document, interfaceText },
     );
   });
+
+const CODEBOOK_CHANGED_MESSAGE =
+  'This codebook section changed since you read it, or was created by someone else. Review it and try again.';
+
+/**
+ * Adds the codebook sections a stage's write carries to `writes`, or says why
+ * they cannot be written. Taken on the terms the shared words are: an editor
+ * holding one of the sections blocks the write, except that the writer's own
+ * lease is no obstacle (a client holds each existing section while it reads
+ * and writes it, to keep collaborators out between the two).
+ *
+ * A section that exists when the write is applied is written only by the
+ * editor holding its lock, so a section another editor created or changed
+ * since this writer read it is never overwritten unseen. A section that does
+ * not exist is created.
+ */
+const withCodebook: (
+  session: ProtocolBuilderSession,
+  codebook: readonly StageCodebookSection[],
+  isStage: boolean,
+  writes: Map<ProtocolSectionId, SectionDoc | undefined>,
+) => Effect.Effect<
+  | { status: 'ok' }
+  | { status: 'blocked'; blocked: SectionHolder[] }
+  | {
+      status: 'invalidShape';
+      sectionId?: ProtocolSectionId;
+      issues: SectionIssue[];
+    },
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('protocolBuilder.withCodebook')(
+  function* (session, codebook, isStage, writes) {
+    if (!isStage) {
+      return {
+        status: 'invalidShape' as const,
+        issues: [
+          {
+            path: ['codebook'],
+            message: 'only a stage is written with codebook sections',
+          },
+        ],
+      };
+    }
+    for (const { sectionId, document } of codebook) {
+      const issues = shapeIssues(sectionId, Redacted.value(document));
+      if (issues.length > 0) {
+        return { status: 'invalidShape' as const, sectionId, issues };
+      }
+    }
+    const ids = codebook.map(({ sectionId }) => sectionId);
+    const blocked = yield* blockedBy(session, ids, new Set(ids));
+    if (blocked.length > 0) return { status: 'blocked' as const, blocked };
+    const owner = sessionOwner(session);
+    for (const sectionId of ids) {
+      if ((yield* headSection(session, sectionId)) === undefined) continue;
+      const lease = yield* lockLease(
+        session.access.teamId,
+        session.draftId,
+        sectionId,
+      );
+      if (lease !== undefined && lease.live && lease.owner === owner) continue;
+      return {
+        status: 'invalidShape' as const,
+        sectionId,
+        issues: [
+          {
+            path: ['codebook'],
+            message: CODEBOOK_CHANGED_MESSAGE,
+          },
+        ],
+      };
+    }
+    for (const { sectionId, document } of codebook) {
+      writes.set(sectionId, Redacted.value(document));
+    }
+    return { status: 'ok' as const };
+  },
+);
 
 export type RefactorOutcome =
   | {
@@ -1002,6 +1087,20 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
       const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
         [sectionId, document],
       ]);
+      if (write.codebook !== undefined) {
+        const refused = yield* withCodebook(
+          session,
+          write.codebook,
+          parseSectionId(sectionId).kind === 'stage',
+          writes,
+        );
+        if (refused.status !== 'ok') {
+          return unchanged<Published<SubmitOutcome | undefined>>({
+            outcome: refused,
+            events: [],
+          });
+        }
+      }
       if (write.assetEntries !== undefined) {
         // The manifest is a section like any other and a promotion writes it,
         // so it is taken on the terms every cross-section write uses. An
@@ -1224,6 +1323,23 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
         );
         stages.splice(at, 0, id);
         writes.set(STAGE_ORDER, { ...Redacted.value(order.document), stages });
+      }
+      if (input.codebook !== undefined) {
+        const refused = yield* withCodebook(
+          session,
+          input.codebook,
+          input.kind === 'stage',
+          writes,
+        );
+        if (refused.status !== 'ok') {
+          return unchanged<Published<CreateOutcome>>({
+            outcome:
+              refused.status === 'invalidShape'
+                ? { ...refused, sectionId: refused.sectionId ?? target }
+                : refused,
+            events: [],
+          });
+        }
       }
       if (input.assetEntries !== undefined) {
         const assets = yield* headSection(session, ASSETS);

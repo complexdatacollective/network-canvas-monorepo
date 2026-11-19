@@ -11,6 +11,7 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { buildProtocolWithStage } from '../buildProtocolWithStage';
 
@@ -249,6 +250,55 @@ describe('buildProtocolWithStage', () => {
       buildProtocolWithStage(fixture, searching, map.id).interfaceText
         ?.geospatial?.searchFailed,
     ).not.toEqual(reworded);
+    const result = await validateProtocol(built, { draft: true });
+    expect(result.error?.issues).toBeUndefined();
+  });
+
+  it('previews the codebook changes held with the stage over the protocol’s', async () => {
+    const protocol = makeProtocol();
+    const stage = protocol.stages[0];
+    if (stage === undefined) throw new Error('No stage');
+    const person = protocol.codebook.node?.person;
+    if (person === undefined) throw new Error('No person type');
+    const held = {
+      ...person,
+      variables: {
+        name: { ...person.variables?.name, validation: { required: true } },
+      },
+    };
+    const place = {
+      name: 'Place',
+      color: 'node-color-seq-2',
+      shape: { default: 'square' },
+      variables: {},
+    };
+
+    const built = buildProtocolWithStage(
+      protocol,
+      stage,
+      STAGE_ID,
+      undefined,
+      [],
+      {
+        [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+          base: person,
+          edited: held,
+        },
+        [sectionId({ kind: 'codebookNode', typeId: 'place' })]: {
+          base: null,
+          edited: place,
+        },
+      },
+    );
+
+    expect(built.codebook.node?.person?.variables?.name).toMatchObject({
+      validation: { required: true },
+    });
+    expect(built.codebook.node?.place).toEqual(place);
+    // The protocol itself is left as it was: the changes are the editor's.
+    expect(protocol.codebook.node?.person?.variables?.name).not.toHaveProperty(
+      'validation',
+    );
     const result = await validateProtocol(built, { draft: true });
     expect(result.error?.issues).toBeUndefined();
   });

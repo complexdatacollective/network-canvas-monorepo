@@ -285,9 +285,10 @@ export type FieldPreviewPaneProps = Readonly<{
  * about what the researcher has authored.
  *
  * The value sets, rules and settings the preview needs are the ATTRIBUTE's,
- * and they are read from the live protocol rather than from the row: the
- * codebook editors beside this pane commit immediately, so an option added or
- * a rule tightened appears here without the dialog being reopened.
+ * and they are read from the codebook as the editor shows it rather than from
+ * the row: the codebook editors beside this pane change it as they are used
+ * (see `StagedCodebookStore`), so an option added or a rule tightened appears
+ * here without the dialog being reopened.
  */
 const SCALE_LABELS = ['minLabel', 'maxLabel'] as const;
 

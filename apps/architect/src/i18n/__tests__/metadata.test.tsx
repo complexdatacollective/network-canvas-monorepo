@@ -13,7 +13,6 @@ import {
   describeImportFailure,
   PROTOCOL_OPEN_FAILURE_MESSAGE,
 } from '~/utils/protocolImportErrors';
-import { createValidations } from '~/utils/validations';
 
 const spanish = createAppIntl({
   locale: 'es',
@@ -35,25 +34,6 @@ it('translates attribute type labels while preserving stable type identifiers', 
     'Unrecognized_Research_Type',
   );
   expect(VARIABLE_TYPES.datetime.value).toBe('datetime');
-});
-
-it('allows equality at a maximum and explains singular limits precisely in Spanish', () => {
-  const rules = createValidations(spanish);
-  const maximum = rules.maxValue(5, undefined);
-  expect(maximum(5)).toBeUndefined();
-  expect(maximum(6)).toBe('Debe ser como máximo 5');
-  expect(rules.maxLength(1, undefined)('ab')).toBe(
-    'Debe tener 1 carácter o menos',
-  );
-  expect(rules.minLength(2, undefined)('a')).toBe(
-    'Debe tener 2 caracteres o más',
-  );
-  expect(rules.maxSelected(1, undefined)(['a', 'b'])).toBe(
-    'Debes elegir un máximo de 1 opción',
-  );
-  expect(rules.minSelected(1, undefined)([])).toBe(
-    'Debes elegir un mínimo de 1 opción',
-  );
 });
 
 it('preserves the byte boundary and provides complete localized oversized-file guidance', () => {

@@ -12,7 +12,7 @@ import { chooseOrCreateAttribute } from './variables.js';
 // - "Node layout" holds the picker "Layout attribute"
 //   (`layout.layoutVariable`). There is no create control beside it: the slot
 //   binds a `layout` attribute, which a name finishes, so the picker's own
-//   create row writes it straight to the codebook and no editor opens.
+//   create row makes it (kept with the stage's draft) and no editor opens.
 // - "Node interaction" is toggleable, and switched off is how a prompt says
 //   tapping does nothing. Switched on it holds one choice, "Interaction type",
 //   between "Edge creation" and "Attribute toggling" — mutually exclusive,
@@ -20,7 +20,7 @@ import { chooseOrCreateAttribute } from './variables.js';
 //   toggles an attribute. Choosing "Edge creation" reveals the edge-type
 //   radiogroup "Created edge type" (`edges.create`); choosing "Attribute
 //   toggling" reveals the picker "Boolean attribute" (`highlight.variable`),
-//   whose create row writes a `boolean` attribute the same way, and writes
+//   whose create row makes a `boolean` attribute the same way, and writes
 //   `highlight.allowHighlighting: true` for itself.
 // - "Displayed edges" holds the tick list "Edge types"
 //   (`edges.display`). Choosing a connection type to CREATE here ticks that

@@ -133,13 +133,11 @@ type EditorSession = Readonly<{
  * Creates a codebook attribute through the codebook's own editor, and hands
  * its id back to the slot that asked for it.
  *
- * The attribute is created under the codebook section's own lock, which is
- * what puts it into the protocol atomically and reports the specific lock
- * holder when it cannot. Binding it to the slot afterwards is an ordinary form
- * change rather than part of that edit, and deliberately so: an attribute in
- * the codebook is valid on its own, while a stage pointing at it may not be
- * finished yet — saved as one edit, a host keeping its stored protocol valid
- * would be right to refuse the pair.
+ * The attribute is created in the codebook the stage editor shows, and kept
+ * with the stage's draft: it is written with the stage when the stage is
+ * saved, and cancelling the stage takes it away (see `StagedCodebookStore`).
+ * Binding it to the slot afterwards is an ordinary form change, so the stage
+ * and the attribute it names reach the protocol together or not at all.
  *
  * A hook and a rendered dialog rather than a button, because the act of
  * inventing an attribute is reached from more than one control: a picker's
