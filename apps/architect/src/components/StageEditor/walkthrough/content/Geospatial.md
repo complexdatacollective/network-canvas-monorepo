@@ -36,7 +36,7 @@
 
 <!-- scene: geospatial-intro -->
 
-The Geospatial stage is a name interpreter: it collects information about alters already named, and doesn't create new ones. It shows a map and renders a GEOJSON shape file, where each shape can be selected. When selected, the value of that shape is assigned to the alter. Clicking the Next button moves on to the next alter.
+The Geospatial stage is a name interpreter: it collects information about alters already named, and doesn't create new ones. It shows a map and renders a GeoJSON shape file, where each shape can be selected. When selected, the value of that shape is assigned to the alter. Clicking the Next button moves on to the next alter.
 
 The map is drawn by Mapbox, a map service, so the stage needs an internet connection during the interview, and an API key.
 

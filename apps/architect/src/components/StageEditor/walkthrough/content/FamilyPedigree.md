@@ -11,7 +11,7 @@
 
 <!-- scene: family-pedigree-intro -->
 
-The Family Pedigree lets participants build a specialised map of their relatives called a **pedigree**. Each family member they add is saved as a node, and each relationship between family members is saved as an edge.
+The Family Pedigree lets participants build a specialized map of their relatives called a **pedigree**. Each family member they add is saved as a node, and each relationship between family members is saved as an edge.
 
 Participants start with only themselves on the canvas and add one relative at a time.
 
@@ -40,7 +40,7 @@ The prompt appears above the canvas while the participant draws their family. Us
 
 > Do: Tell participants how to add relatives in your prompt. The add buttons appear when the participant hovers over a person, or after they tap a person and close their details, and a participant who has not been told may not find them.
 
-> Do: Provide an information screen prior to this that contains in-depth instructions for completing this task
+> Do: Provide an information screen prior to this that contains in-depth instructions for completing this task.
 
 ## Name each person
 
@@ -70,7 +70,7 @@ The **Participant marker** is a special attribute that is true on the participan
 <!-- field: nodeConfiguration.genderIdentity.attribute -->
 <!-- scene: family-pedigree-gender -->
 
-With **Ask about gender identity** switched on, the side panel asks about each person's gender identity, and the participant must answer before the person is saved. Choose the attribute that should store this value. Use **Edit options** to customise options and kinship words: feminine (mother, sister), masculine (father, brother), neutral (parent, sibling), or not known.
+With **Ask about gender identity** switched on, the side panel asks about each person's gender identity, and the participant must answer before the person is saved. Choose the attribute that should store this value. Use **Edit options** to customize options and kinship words: feminine (mother, sister), masculine (father, brother), neutral (parent, sibling), or not known.
 
 With **Ask about gender identity** switched off, the question is not asked, and words such as mother or brother follow each person's sex assigned at birth instead.
 
@@ -120,7 +120,7 @@ Changing the edge type clears these attributes from the stage, because they depe
 <!-- field: framing -->
 <!-- scene: family-pedigree-framing -->
 
-People the participant does not name are labelled by their relationship, and these terms are often gendered which may read as exclusionary depending on your research population. Choose between wording behaviours to address this:
+People the participant does not name are labeled by their relationship, and these terms are often gendered, which may read as exclusionary depending on your research population. Choose between wording behaviors to address this:
 
 - **Everyday kinship words** (the default): mother, father, sister, aunt.
 - **Egg parent and sperm parent**: biological parents are named by the gamete they gave. Every other relative gets a neutral word, such as grandparent or sibling.
@@ -169,7 +169,7 @@ A ring in the toolbar fills to show the participant their progress, and interact
 <!-- field: nominationPrompts -->
 <!-- scene: family-pedigree-nomination -->
 
-Nomination prompts ask the participant to select any family member with a given attribute, such as "Who in your family has had heart disease?".
+Nomination prompts ask the participant to select any family member with a given attribute, such as "Who in your family has had heart disease?"
 
 Each prompt records a true or false attribute: true for everyone the participant selects, false for anyone they select and then deselect, and blank for everyone else.
 

@@ -48,7 +48,7 @@ Every protocol ends with a Finish Screen. Add another one when some interviews s
 
 Only Finish Screens can come after a Finish Screen, so they stay together at the end of the protocol. Participants who reach the end of the interview arrive at the first Finish Screen. To send participants to a later one, choose it as the destination in an earlier stage's skip logic.
 
-> Do: Add multiple finish screens with customised wording to reflect the different ways a participant might end the interview.
+> Do: Add multiple Finish Screens with customized wording to reflect the different ways a participant might end the interview.
 
 ## Let participants confirm
 

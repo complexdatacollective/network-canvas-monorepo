@@ -44,7 +44,7 @@ Read the full [Per Alter Form documentation](https://documentation.networkcanvas
 
 ## When to use it
 
-Use this stage in situations where you want to follow-up about named alters, and capture a set of attributes in one go.
+Use this stage in situations where you want to follow up about named alters, and capture a set of attributes in one go.
 
 > Do: Use it as a simple way to collect multiple alter attributes systematically.
 

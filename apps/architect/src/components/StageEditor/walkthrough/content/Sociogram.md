@@ -36,17 +36,13 @@
 
 <!-- scene: sociogram-intro -->
 
-On the Sociogram, participants work with the alters they have already named. They position the alters on a canvas, draw edges between them, and tap an alter to highlight it. Each edge is saved as one of the stage's edge types, and highlighting an alter sets a true/false attribute to true for it. The Sociogram does not create new nodes.
-
-Its companion, the [Narrative](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative) Interface, displays a network the participant has already laid out so that it can be discussed. It collects no new data.
+The Sociogram interface is a core part of a Network Canvas interview. It is simultaneously a name interpreter and edge generator. Participants can position alters on a canvas, draw edges between them, and tap an alter to assign an attribute. The Sociogram does not create new nodes.
 
 Read the full [Sociogram documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
 ## When to use it
 
 Use this stage when you want participants to build a visual picture of their network by positioning alters, drawing the ties between them, and marking a yes/no attribute, such as group membership, directly on the canvas.
-
-> Avoid: Nodes positioned too close together may visually occlude one another, or the edge between them. Caution participants not to place nodes directly on top of one another.
 
 <!-- include: node-type -->
 
@@ -56,9 +52,9 @@ Use this stage when you want participants to build a visual picture of their net
 
 <!-- section: prompts -->
 
-Each prompt sets one task on the canvas, such as placing nodes, drawing one kind of edge, or marking nodes with a characteristic. The participant works through the prompts one at a time, in the order you set, on the same canvas.
+Each prompt configures a task, such as placing nodes, connecting nodes, or assigning an attribute. The participant works through the prompts one at a time, in the order you set, on the same canvas. The Next and Back buttons control moving between prompts.
 
-Prompts that use the same **Layout attribute** share one arrangement, so positions carry over from one prompt to the next. A prompt with a different layout attribute starts a separate arrangement. Edges between the same two nodes are drawn on top of each other, so only one of them can be seen.
+Prompts that use the same **Layout attribute** share one spatial arrangement, so positions carry over from one prompt to the next. A prompt with a different layout attribute moves the nodes to the positions specified in the new attribute.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 

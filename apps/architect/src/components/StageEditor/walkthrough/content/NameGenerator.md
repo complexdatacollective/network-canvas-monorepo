@@ -46,11 +46,11 @@ Read the full [Name Generator using Forms documentation](https://documentation.n
 
 Use this stage when you want to collect a small amount of information about each alter at the moment it is named.
 
-> Do: Use this interface when you want to collect small amounts of attribute data at the same time as a node is elicited. This can be more efficient than adding additional [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form) Interfaces, or dedicated name interpreter Interfaces later.
+> Do: Use this interface when you want to collect small amounts of attribute data at the same time as a node is elicited. This can be more efficient than adding additional [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form) interfaces, or dedicated name interpreter interfaces later.
 
-> Avoid: Resist the urge to create long forms with many items. This may discourage participants from naming additional alters, as it will make the task of nominating an alter more burdensome.
+> Avoid: Creating long forms with many items. This may discourage participants from naming additional alters, as it will make the task of nominating an alter more burdensome.
 
-> Avoid: Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin) Interface.
+> Avoid: Attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin) interface.
 
 > Avoid: Using this interface if you only need names. The [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants.
 

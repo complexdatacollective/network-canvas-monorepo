@@ -59,7 +59,7 @@ Read more about [node labeling](https://documentation.networkcanvas.com/design-p
 
 <!-- section: quick-add -->
 
-The **Validation** section under the picker configures rules for what the quick add attribute.
+The **Validation** section under the picker configures rules for what the participant can enter in the quick add attribute.
 
 These rules belong to the attribute in the codebook, so a change applies wherever a value for this attribute is set, not only on this stage.
 

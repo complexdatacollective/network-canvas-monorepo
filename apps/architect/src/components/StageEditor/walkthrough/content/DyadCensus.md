@@ -50,7 +50,7 @@ Use this stage to systematically survey edges between alters, specifically in si
 
 > Do: Use this interface when you need every possible pair to be considered.
 
-> Avoid: Using it with a large number of alters, which results in a large number of screens. This is the most high-burden way to collect alter-alter edge data.
+> Avoid: Using it with a large number of alters, which results in a large number of screens. This is the highest-burden way to collect alter-alter edge data.
 
 > Do: Consider using alternative methods of capturing alter-alter edges instead, such as the one-to-many dyad census, or the sociogram.
 
@@ -67,7 +67,7 @@ Each prompt asks about one kind of relationship. The participant goes through ev
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
-> Do: Use [piped text](https://documentation.networkcanvas.com/en/design-protocols/piped-text) in your prompt to reference the alters the participant is comparing
+> Do: Use [piped text](https://documentation.networkcanvas.com/en/design-protocols/piped-text) in your prompt to reference the alters the participant is comparing.
 
 <!-- include: skip-logic -->
 

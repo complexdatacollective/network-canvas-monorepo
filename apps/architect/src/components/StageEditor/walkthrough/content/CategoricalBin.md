@@ -48,7 +48,7 @@ Use this stage to assign a categorical attribute to alters by sorting them.
 
 > Do: Use it to collect categorical data in a tactile and engaging way.
 
-> Avoid: More than eight categories. More thank this number will make the category labels hard to read and crowd the rest of the screen.
+> Avoid: More than eight categories. More than this number will make the category labels hard to read and crowd the rest of the screen.
 
 > Avoid: Dichotomous variables. A yes-or-no answer is better collected with a toggle [input control](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls) on a [Name Generator](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms) or [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), or by attribute toggling on a [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
@@ -62,7 +62,7 @@ Use this stage to assign a categorical attribute to alters by sorting them.
 
 <!-- section: prompts -->
 
-Each prompt asks the participant a question and selects a categorical attribute used to generate the circles. You can define multiple prompts to collect multiple attributes. The participant sees one prompt at a time, in the order you set, and moves to the next prompt using the next button.
+Each prompt asks the participant a question and selects a categorical attribute used to generate the circles. You can define multiple prompts to collect multiple attributes. The participant sees one prompt at a time, in the order you set, and moves to the next prompt using the Next button.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 

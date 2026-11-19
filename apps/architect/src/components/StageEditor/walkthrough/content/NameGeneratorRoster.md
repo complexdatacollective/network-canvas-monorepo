@@ -77,7 +77,7 @@ The title is shown above the cards, so participants know what the list is. A new
 <!-- section: card-display -->
 <!-- scene: roster-card-display -->
 
-Every card is titled with the entry's `name` from the data file. Switch on **Card display** to shown more of the entry's attributes under its name. Each attribute is shown with a label.
+Every card is titled with the entry's `name` from the data file. Switch on **Card display** to show more of the entry's attributes under its name. Each attribute is shown with a label.
 
 Read more about [formatting the display of the roster](https://documentation.networkcanvas.com/design-protocols/tutorials/working-with-rosters#formatting-the-display-of-the-roster).
 

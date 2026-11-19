@@ -25,7 +25,7 @@ Use this stage to show a participant how a condition may run through their famil
 
 > Do: Use the Family Pedigree's completeness setting to require the relatives your conditions need. Missing parents and siblings leave statuses _Not known_ that a fuller family would establish.
 
-> Avoid: Using this interface without a professional genetic counsellor or trained interviewer present to help the participant interpret what they are seeing.
+> Avoid: Using this interface without a professional genetic counselor or trained interviewer present to help the participant interpret what they are seeing.
 
 ## Choose the pedigree
 

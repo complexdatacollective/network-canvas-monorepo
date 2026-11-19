@@ -7,7 +7,7 @@
 
 # Network Composer
 
-## What is the network composer?
+## What is the Network Composer?
 
 <!-- scene: network-composer-intro -->
 
@@ -19,7 +19,7 @@ Read the full [Network Composer documentation](https://documentation.networkcanv
 
 Use this stage when you want to build and edit a whole network from a single screen, rather than leading the participant through one task at a time.
 
-> Do: Use the Network Composer when an interviewer works through a participant's network in conversation, or when a researcher sketches a network while discussing with the participant.
+> Do: Use the Network Composer when an interviewer works through a participant's network in conversation, or when a researcher sketches a network while discussing it with the participant.
 
 > Avoid: Handing the Network Composer to an unassisted participant. It is a dense tool intended for researcher- or interviewer-led use, not a guided, step-by-step participant task.
 
@@ -41,7 +41,7 @@ A palette of tools runs down the left of the canvas. A tool stays active until t
 
 <!-- include: node-type -->
 
-## Choose quickAdd attribute
+## Choose the quick add attribute
 
 <!-- section: composer-nodes -->
 <!-- field: quickAdd -->

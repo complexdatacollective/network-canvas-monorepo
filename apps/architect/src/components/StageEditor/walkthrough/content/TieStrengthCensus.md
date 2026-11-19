@@ -36,7 +36,7 @@
 
 <!-- scene: tie-strength-intro -->
 
-The Tie-Strength Census is a name interpreter that collects edges between alters already named, along with how strong each tie is. Like the [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census), it shows the participant two alters at a time. Instead of answering yes or no, the participant chooses an option on a scale, or an option that says there is no tie. Once they choose, the next pair appears, until every pair has been asked about.
+The Tie-Strength Census is an **edge generator** and **edge interpreter** that creates edges between alters, along with an ordinal attribute reflecting how strong each tie is. Like the [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census), it shows the participant two alters at a time. Instead of answering yes or no, the participant chooses an option on a scale, or an option that says there is no tie. Once they choose, the next pair appears, until every pair has been asked about.
 
 Read the full [Tie-Strength Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/tie-strength-census).
 
@@ -48,7 +48,7 @@ Use this stage to ask systematically about the relationships between alters and 
 
 > Do: Use this interface in scenarios where you are already using a Dyad Census and wish to also collect data about the strength of a tie.
 
-> Avoid: Using this interface in an interview that also uses the Sociogram to create edges.
+> Avoid: Using this interface in large networks, since it has high response burden and scales poorly with alter count.
 
 <!-- include: node-type -->
 
@@ -58,9 +58,9 @@ Use this stage to ask systematically about the relationships between alters and 
 
 <!-- section: prompts -->
 
-Each prompt asks about one kind of relationship, on its own scale. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many screens as there are pairs.
+Each prompt asks the participant about one kind of relationship, and requires configuring an edge type and an ordinal attribute. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many steps as there are pairs.
 
-The scale is an **Ordinal attribute** of the prompt's **Edge type**, so choose the edge type first: choosing a different one later clears the attribute. Choosing the **Decline option** creates no edge and removes any edge of this type the pair already had.
+Choosing the **Decline option** creates no edge and removes any edge of this type the pair already had.
 
 > Avoid: Ordinal variables with more than 5 options, since this will create a very crowded interface.
 

@@ -63,7 +63,7 @@ Each item is one block of the page: text, an image, a video or audio. Items appe
 
 Audio and video start playing as soon as the page opens, and video starts muted and loops. Give each image, video and audio item a **Description**, which a screen reader reads in place of it.
 
-> Do: Consider using piped text to customise what is shown to the participant to communicate more effectively.
+> Do: Consider using piped text to customize what is shown to the participant to communicate more effectively.
 
 <!-- include: skip-logic -->
 

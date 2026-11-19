@@ -42,7 +42,7 @@ Read the full [One to Many Dyad Census documentation](https://documentation.netw
 
 ## When to use it
 
-This interface is the lowest burden method of collecting alter-alter edges, and should be used over other approaches most of the time.
+This interface is the lowest-burden method of collecting alter-alter edges, and should be used over other approaches most of the time.
 
 > Do: Use this interface in favor of the standard Dyad Census when you expect that one alter will have many relationships with others, as it simplifies the process for participants.
 
@@ -56,13 +56,13 @@ This interface is the lowest burden method of collecting alter-alter edges, and 
 
 <!-- section: prompts -->
 
-Each prompt asks about one kind of relationship. The each prompt cycles through every focal node, before advancing to the next prompt.
+Each prompt asks about one kind of relationship. Each prompt cycles through every focal node, before advancing to the next prompt.
 
 The **Created edge type** controls what is created by nominating an alter.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
-## Behaviour
+## Behavior
 
 <!-- section: node-availability -->
 <!-- field: behaviours.removeAfterConsideration -->

@@ -54,7 +54,7 @@ This stage collects no data, so plan separately how you will capture the discuss
 
 <!-- section: presets -->
 
-A preset is a customised view of the network designed to promote a specific kind of discussion. The participant sees the first preset when the stage opens, and steps through the others in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset.
+A preset is a customized view of the network designed to promote a specific kind of discussion. The participant sees the first preset when the stage opens, and steps through the others in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset.
 
 > Do: Give each preset a single focus that maps to one question, and label it accordingly, for example a _Support_ preset that highlights who provides support, or a _Groups_ preset that shows how the network divides into communities.
 
