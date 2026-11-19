@@ -11,6 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { test } from 'vitest';
 
@@ -1354,6 +1355,134 @@ test('every CI browser install goes through the shared install action', () => {
     installs.length >= 6,
     'the native E2E lanes, Storybook, Studio and the cache warm use the action',
   );
+});
+
+const CACHE_KEY_SCRIPT = '.github/actions/playwright-browsers/cache-key.sh';
+
+// Runs cache-key.sh against an os-release file with the given lines, and
+// returns its exit status and what it wrote to $GITHUB_OUTPUT.
+function playwrightCacheKey(osReleaseLines) {
+  const dir = mkdtempSync(join(tmpdir(), 'playwright-cache-key-'));
+  try {
+    const output = join(dir, 'output');
+    writeFileSync(output, '');
+    const env = { ...process.env, GITHUB_OUTPUT: output };
+    if (osReleaseLines === undefined) {
+      env.OS_RELEASE_FILE = join(dir, 'absent');
+    } else {
+      env.OS_RELEASE_FILE = join(dir, 'os-release');
+      writeFileSync(env.OS_RELEASE_FILE, `${osReleaseLines.join('\n')}\n`);
+    }
+    const run = spawnSync('bash', [CACHE_KEY_SCRIPT], {
+      cwd: fileURLToPath(new URL('../..', import.meta.url)),
+      env,
+      encoding: 'utf8',
+    });
+    const outputs = Object.fromEntries(
+      readFileSync(output, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.split(/=(.*)/s).slice(0, 2)),
+    );
+    return { status: run.status, log: run.stdout + run.stderr, outputs };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// Playwright downloads a different WebKit for each Ubuntu release and keeps
+// it in a directory named only by the build number, so a cache entry restored
+// on another release is used as it is and cannot start. The key is the only
+// thing that keeps the two apart.
+test('the Playwright browser cache is keyed by the platform the browsers were downloaded for', () => {
+  const noble = playwrightCacheKey([
+    'NAME="Ubuntu"',
+    'ID=ubuntu',
+    'VERSION_ID="24.04"',
+  ]);
+  const next = playwrightCacheKey([
+    'NAME="Ubuntu"',
+    'ID=ubuntu',
+    'VERSION_ID="26.04"',
+  ]);
+  assert.equal(noble.status, 0, noble.log);
+  assert.equal(next.status, 0, next.log);
+  assert.match(noble.outputs.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(next.outputs.version, noble.outputs.version);
+
+  assert.notEqual(
+    next.outputs['cache-key'],
+    noble.outputs['cache-key'],
+    'two Ubuntu releases never share an entry',
+  );
+  const architecture = execFileSync('uname', ['-m'], {
+    encoding: 'utf8',
+  }).trim();
+  assert.equal(
+    noble.outputs['cache-key'],
+    `playwright-ubuntu24.04-${architecture}-${noble.outputs.version}`,
+  );
+  // The same platform reads the entry it wrote.
+  assert.deepEqual(
+    playwrightCacheKey(['VERSION_ID="26.04"', 'ID=ubuntu']).outputs,
+    next.outputs,
+  );
+});
+
+test('the Playwright browser cache has no key when the OS release is unknown', () => {
+  for (const { what, lines } of [
+    { what: 'no os-release file', lines: undefined },
+    { what: 'no VERSION_ID', lines: ['NAME="Ubuntu"', 'ID=ubuntu'] },
+    { what: 'no ID', lines: ['VERSION_ID="26.04"'] },
+    { what: 'an empty VERSION_ID', lines: ['ID=ubuntu', 'VERSION_ID=""'] },
+  ]) {
+    const result = playwrightCacheKey(lines);
+    assert.notEqual(result.status, 0, `${what}: the step fails`);
+    assert.match(result.log, /::error::could not read the OS release/);
+    assert.deepEqual(result.outputs, {}, `${what}: no key is written`);
+  }
+});
+
+// One writer and many readers of one entry: they agree on the key only while
+// both take it from the same script.
+test('the cache warm and every browser install take the cache key from one script', () => {
+  assert.ok(existsSync(new URL(`../../${CACHE_KEY_SCRIPT}`, import.meta.url)));
+  const action = readActionsYaml(
+    new URL(
+      '../../.github/actions/playwright-browsers/action.yml',
+      import.meta.url,
+    ),
+  );
+  const warm = ciJob('warm-playwright-cache');
+  const KEY = '${{ steps.pw.outputs.cache-key }}';
+
+  const actionSteps = action.runs.steps;
+  const resolve = actionSteps.find((step) => step.id === 'pw');
+  assert.equal(resolve.run, 'bash "$GITHUB_ACTION_PATH/cache-key.sh"');
+  const restores = actionSteps.filter((step) =>
+    step.uses?.startsWith('actions/cache'),
+  );
+  assert.equal(restores.length, 1);
+  assert.match(restores[0].uses, /^actions\/cache\/restore@/);
+  assert.equal(restores[0].with.key, KEY);
+  assert.equal(restores[0].with['restore-keys'], undefined);
+  assert.ok(actionSteps.indexOf(resolve) < actionSteps.indexOf(restores[0]));
+
+  assert.equal(getStep(warm, { id: 'pw' }).run, `bash ${CACHE_KEY_SCRIPT}`);
+  const write = getStep(warm, { uses: /^actions\/cache@/ });
+  assert.equal(write.with.key, KEY);
+  assert.equal(write.with['restore-keys'], undefined);
+  assert.ok(stepIndex(warm, { id: 'pw' }) < warm.steps.indexOf(write));
+
+  // No other step anywhere caches the browser directory under a key of its
+  // own.
+  for (const file of workflowFiles()) {
+    for (const step of liveStepsOf(readWorkflow(file))) {
+      if (!step.uses?.startsWith('actions/cache')) continue;
+      if (!String(step.with?.path).includes('ms-playwright')) continue;
+      assert.equal(step.with.key, KEY, `${file} caches browsers under ${KEY}`);
+    }
+  }
 });
 
 test('every CI turbo invocation is capped at one task, job-wide', () => {
