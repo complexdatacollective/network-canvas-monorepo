@@ -112,15 +112,14 @@ describe('Architect catalog contract', () => {
     ).toEqual([]);
   });
   it('detects a removed Spanish message and an altered ICU argument', () => {
+    // Derived rather than named, for the reason given in the next test.
+    const removed = Object.keys(es).find((key) => en[key] !== undefined);
+    expect(removed).toBeDefined();
     const incomplete = { ...es };
-    delete incomplete[
-      'architect.additional.form.arrayFields.options.noOptionsHaveBeenAddedYet'
-    ];
+    delete incomplete[removed!];
     expect(
       checkFullLocale(en, incomplete, esSources).some((x) =>
-        x.includes(
-          'architect.additional.form.arrayFields.options.noOptionsHaveBeenAddedYet',
-        ),
+        x.includes(removed!),
       ),
     ).toBe(true);
     const corrupt = {

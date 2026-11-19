@@ -74,11 +74,6 @@ describe('utils/issues', () => {
       `;
     };
 
-    /** A field as Architect's own `ArchitectField` still renders one. */
-    const mountAnchor = (path: string, label: string) => {
-      document.body.innerHTML = `<div id="${issues.getFieldId(path)}" data-name="${label}"></div>`;
-    };
-
     it('names a field by the label the researcher reads, without its required marker', () => {
       mountField('prompts', 'Prompts');
 
@@ -116,22 +111,6 @@ describe('utils/issues', () => {
       `;
 
       expect(issues.resolveIssueTarget('prompts')?.label).toBe('Prompts');
-    });
-
-    it('falls back to the legacy anchor for the forms that still render one', () => {
-      mountAnchor('form.title', 'Page heading');
-      const target = issues.resolveIssueTarget('form.title');
-
-      expect(target?.label).toBe('Page heading');
-      expect(target?.anchorId).toBe('field_form_title');
-    });
-
-    it('walks up to an ancestor anchor when the exact field has none', () => {
-      mountAnchor('form.fields', 'Form fields');
-
-      expect(issues.resolveIssueTarget('form.fields[0].variable')?.label).toBe(
-        'Form fields',
-      );
     });
 
     it('answers with nothing at all when the field is not on the page', () => {

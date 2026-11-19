@@ -1,4 +1,3 @@
-import { get } from 'es-toolkit/compat';
 import { Check, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -17,6 +16,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
+import {
+  variableNameRefusal,
+  variableNameScope,
+} from '@codaco/protocol-builder/fields/variableNameRules';
 import { normalizeCodebookName } from '@codaco/shared-consts';
 import {
   getVariableTypeLabel,
@@ -31,11 +34,6 @@ import {
   makeGetVariableWithEntity,
 } from '~/selectors/codebook';
 import { cx } from '~/utils/cva';
-import {
-  findExportColumnConflictMessage,
-  toExportColumnCandidate,
-} from '~/utils/exportColumnConflicts';
-import { createValidations } from '~/utils/validations';
 const messages = defineMessages({
   editAttributeName: {
     id: 'architect.variablePill.editAttributeName',
@@ -255,16 +253,12 @@ export const VariablePill = ({
   const savedName = normalizeCodebookName(newName);
   const hasChanges = savedName !== label;
 
-  const getValidation = (value: string) => {
-    const validations = createValidations(intl);
-    const required = validations.required(
-      intl.formatMessage(finalMessages.required),
-    )(value);
-    const allowed = validations.codebookName()(value);
-    const external = validateLabel?.(value);
-
-    return required || allowed || external || null;
-  };
+  // A name that saves as nothing is missing, whatever whitespace was typed;
+  // every other rule a name answers to is the caller's (`validateLabel`).
+  const getValidation = (value: string) =>
+    normalizeCodebookName(value) === ''
+      ? intl.formatMessage(finalMessages.required)
+      : (validateLabel?.(value) ?? null);
 
   const validation = editing ? getValidation(savedName) : null;
   const isValid = !validation;
@@ -599,14 +593,13 @@ const ConnectedVariablePillComponent = ({
     getVariablesForSubject(state, subject),
   );
 
-  const siblings = useMemo(
-    () =>
-      Object.entries(existingVariables ?? {})
-        .filter(([variableId]) => variableId !== uuid)
-        .map(([, existingVariable]) => existingVariable),
-    [existingVariables, uuid],
+  // The rule protocol-builder's attribute editors ask of a name — taken,
+  // unstorable, or clashing with an export column — so a rename here and one
+  // in a stage editor are refused for the same reasons in the same words.
+  const nameScope = useMemo(
+    () => variableNameScope(entity ?? 'node', existingVariables ?? {}),
+    [entity, existingVariables],
   );
-  const options: unknown = get(existingVariables, [uuid, 'options']);
 
   if (!type) {
     return null;
@@ -624,14 +617,13 @@ const ConnectedVariablePillComponent = ({
         void dispatch(action);
       }}
       validateLabel={(nextName) =>
-        createValidations(intl).uniqueByList(
-          siblings.map((sibling) => sibling.name),
-        )(nextName) ??
-        findExportColumnConflictMessage({
-          entity: entity ?? 'node',
+        variableNameRefusal(nextName, {
           intl,
-          siblings,
-          candidate: toExportColumnCandidate({ name: nextName, type, options }),
+          scope: nameScope,
+          // Self-excluded by record id, so a change of case is not refused as
+          // a name already taken, and the attribute's own columns do not stand
+          // in the way of the ones its new name would write.
+          excluding: uuid,
         })
       }
     />
