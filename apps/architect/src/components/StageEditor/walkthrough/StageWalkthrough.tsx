@@ -99,7 +99,6 @@ export default function StageWalkthrough() {
   const walkthrough = useWalkthrough(identity?.type);
   const open = useWalkthroughState((state) => state.open);
   const collapsed = useWalkthroughState((state) => state.collapsed);
-  const portalContainer = usePortalContainer();
 
   useEffect(() => () => closeWalkthrough({ restoreFocus: false }), []);
 
@@ -107,9 +106,8 @@ export default function StageWalkthrough() {
   if (!open || collapsed || walkthrough === undefined) return null;
   if (walkthrough.steps.length === 0) return null;
 
-  return createPortal(
-    <WalkthroughPanel title={walkthrough.title} steps={walkthrough.steps} />,
-    portalContainer ?? document.body,
+  return (
+    <WalkthroughPanel title={walkthrough.title} steps={walkthrough.steps} />
   );
 }
 
@@ -200,6 +198,7 @@ function WalkthroughCard({
   const nextRef = useRef<HTMLButtonElement>(null);
   const reducedMotion = usePrefersReducedMotion() === true;
   const focusRequest = useWalkthroughState((state) => state.focusRequest);
+  const portalContainer = usePortalContainer();
 
   // On mount, and whenever the researcher asks for the panel again.
   const focusedFor = useRef<number | null>(null);
@@ -221,6 +220,7 @@ function WalkthroughCard({
     x,
     y,
     height,
+    width,
     sized,
     ring,
     startDrag,
@@ -230,13 +230,14 @@ function WalkthroughCard({
 
   return (
     <>
+      {/*
+        Rendered in place rather than in the overlay layer, so it stacks with
+        the editor: above the page, below the navigation bar and the toolbar.
+      */}
       <motion.div
         aria-hidden
-        className="ring-warning fixed rounded ring-4"
-        // Inline: the portal layer re-enables pointer events on its children,
-        // and a ring that caught clicks would block the control it points at.
+        className="ring-warning pointer-events-none fixed z-10 rounded ring-4"
         style={{
-          pointerEvents: 'none',
           top: ring.top,
           left: ring.left,
           width: ring.width,
@@ -244,124 +245,143 @@ function WalkthroughCard({
           opacity: ring.opacity,
         }}
       />
-      <div
-        ref={bounds}
-        aria-hidden
-        className="fixed inset-x-3 bottom-24"
-        style={{ pointerEvents: 'none', top: ROOM_TOP }}
-      />
-      <motion.div
-        ref={card}
-        drag
-        dragListener={false}
-        dragControls={dragControls}
-        dragMomentum={false}
-        onDragEnd={settle}
-        style={{ x, y }}
-        className="pointer-events-auto fixed inset-e-6 top-0 flex w-[min(30rem,calc(100vw-3rem))] flex-col"
-      >
-        <MotionSurface
-          ref={surface}
-          as="section"
-          aria-labelledby={headingId}
-          floating
-          shadow="none"
-          spacing="none"
-          noContainer
-          onKeyDown={closeOnEscape}
-          className="effect-shadow-lg flex min-h-0 w-full flex-col overflow-hidden"
-          style={{ height: sized ? height : undefined }}
-          initial={reducedMotion ? false : { opacity: 0, y: 16, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={SPRING}
-        >
-          <header
-            ref={header}
-            onPointerDown={startDrag}
-            className="flex shrink-0 cursor-grab touch-none flex-col px-5 pt-4 select-none active:cursor-grabbing"
+      {createPortal(
+        <>
+          <div
+            ref={bounds}
+            aria-hidden
+            className="fixed inset-x-3 bottom-24"
+            style={{ pointerEvents: 'none', top: ROOM_TOP }}
+          />
+          <motion.div
+            ref={card}
+            drag
+            dragListener={false}
+            dragControls={dragControls}
+            dragMomentum={false}
+            onDragEnd={settle}
+            style={{ x, y, width: sized ? width : undefined }}
+            // oxlint-disable-next-line tailwindcss/enforce-logical -- placed from measured viewport coordinates, which start at the left
+            className="pointer-events-auto fixed top-0 left-0 flex w-[min(30rem,calc(100vw-3rem))] flex-col"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-col">
-                <Eyebrow>{intl.formatMessage(messages.walkthrough)}</Eyebrow>
-                {/* Walkthrough content is English in every interface language. */}
-                <span
-                  lang="en"
-                  dir="ltr"
-                  className="font-heading text-match-parent truncate text-sm font-bold"
-                >
-                  {title}
+            <MotionSurface
+              ref={surface}
+              as="section"
+              aria-labelledby={headingId}
+              floating
+              shadow="none"
+              spacing="none"
+              noContainer
+              onKeyDown={closeOnEscape}
+              className="effect-shadow-lg flex min-h-0 w-full flex-col overflow-hidden"
+              style={{ height: sized ? height : undefined }}
+              initial={
+                reducedMotion ? false : { opacity: 0, y: 16, scale: 0.98 }
+              }
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={SPRING}
+            >
+              <header
+                ref={header}
+                onPointerDown={startDrag}
+                className="flex shrink-0 cursor-grab touch-none flex-col px-5 pt-4 select-none active:cursor-grabbing"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col">
+                    <Eyebrow>
+                      {intl.formatMessage(messages.walkthrough)}
+                    </Eyebrow>
+                    {/* Walkthrough content is English in every interface language. */}
+                    <span
+                      lang="en"
+                      dir="ltr"
+                      className="font-heading text-match-parent truncate text-sm font-bold"
+                    >
+                      {title}
+                    </span>
+                  </div>
+                  <div className="-me-2 flex shrink-0 items-center">
+                    <IconButton
+                      size="sm"
+                      variant="text"
+                      color="dynamic"
+                      icon={<Minus />}
+                      title={intl.formatMessage(messages.collapse)}
+                      aria-label={intl.formatMessage(messages.collapse)}
+                      onClick={() => setWalkthroughCollapsed(true)}
+                    />
+                    <CloseButton size="sm" onClick={() => closeWalkthrough()} />
+                  </div>
+                </div>
+              </header>
+              <ScrollArea
+                ref={viewport}
+                viewportClassName="flex flex-col gap-4 px-5 pt-6 pb-4"
+              >
+                {/* The step's text, read out as it changes. */}
+                <div ref={content} aria-live="polite" className="relative">
+                  <AnimatePresence
+                    mode="popLayout"
+                    initial={false}
+                    // A new step starts at its top, not where the last one was
+                    // scrolled to.
+                    onExitComplete={() =>
+                      viewport.current?.scrollTo({ top: 0 })
+                    }
+                  >
+                    <StepBody
+                      key={index}
+                      step={step}
+                      headingId={headingId}
+                      reducedMotion={reducedMotion}
+                      target={target}
+                      showStep={showStep}
+                    />
+                  </AnimatePresence>
+                </div>
+              </ScrollArea>
+              <footer
+                ref={footer}
+                className="grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-3"
+              >
+                <div>
+                  <Button
+                    variant="text"
+                    size="sm"
+                    disabled={onBack === undefined}
+                    onClick={() => {
+                      // Back disables itself on the first step, and a disabled
+                      // button drops focus to the page: hand it to Next first.
+                      if (index === 1) nextRef.current?.focus();
+                      onBack?.();
+                    }}
+                  >
+                    {intl.formatMessage(messages.back)}
+                  </Button>
+                </div>
+                <StepSegments index={index} total={total} />
+                <span className="sr-only" lang="en">
+                  {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
+                  {`Step ${index + 1} of ${total}`}
                 </span>
-              </div>
-              <div className="-me-2 flex shrink-0 items-center">
-                <IconButton
-                  size="sm"
-                  variant="text"
-                  color="dynamic"
-                  icon={<Minus />}
-                  title={intl.formatMessage(messages.collapse)}
-                  aria-label={intl.formatMessage(messages.collapse)}
-                  onClick={() => setWalkthroughCollapsed(true)}
-                />
-                <CloseButton size="sm" onClick={() => closeWalkthrough()} />
-              </div>
-            </div>
-          </header>
-          <ScrollArea
-            ref={viewport}
-            viewportClassName="flex flex-col gap-4 px-5 pt-6 pb-4"
-          >
-            {/* The step's text, read out as it changes. */}
-            <div ref={content} aria-live="polite" className="relative">
-              <AnimatePresence
-                mode="popLayout"
-                initial={false}
-                // A new step starts at its top, not where the last one was
-                // scrolled to.
-                onExitComplete={() => viewport.current?.scrollTo({ top: 0 })}
-              >
-                <StepBody
-                  key={index}
-                  step={step}
-                  headingId={headingId}
-                  reducedMotion={reducedMotion}
-                  target={target}
-                  showStep={showStep}
-                />
-              </AnimatePresence>
-            </div>
-          </ScrollArea>
-          <footer
-            ref={footer}
-            className="grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-3"
-          >
-            <div>
-              <Button
-                variant="text"
-                size="sm"
-                disabled={onBack === undefined}
-                onClick={() => {
-                  // Back disables itself on the first step, and a disabled
-                  // button drops focus to the page: hand it to Next first.
-                  if (index === 1) nextRef.current?.focus();
-                  onBack?.();
-                }}
-              >
-                {intl.formatMessage(messages.back)}
-              </Button>
-            </div>
-            <StepSegments index={index} total={total} />
-            <span className="sr-only" lang="en">
-              {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
-              {`Step ${index + 1} of ${total}`}
-            </span>
-            <div className="flex justify-end">
-              <Button ref={nextRef} color="primary" size="sm" onClick={onNext}>
-                {intl.formatMessage(isLast ? messages.finish : messages.next)}
-              </Button>
-            </div>
-          </footer>
-        </MotionSurface>
-      </motion.div>
+                <div className="flex justify-end">
+                  <Button
+                    ref={nextRef}
+                    color="primary"
+                    size="sm"
+                    onClick={onNext}
+                  >
+                    {intl.formatMessage(
+                      isLast ? messages.finish : messages.next,
+                    )}
+                  </Button>
+                </div>
+              </footer>
+            </MotionSurface>
+          </motion.div>
+        </>,
+        portalContainer ?? document.body,
+      )}
     </>
   );
 }

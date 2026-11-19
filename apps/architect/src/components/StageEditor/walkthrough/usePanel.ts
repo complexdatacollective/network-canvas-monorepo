@@ -13,13 +13,17 @@ import {
   useState,
 } from 'react';
 
+import { STAGE_FORM_ID } from '../stageFormId';
 import {
+  besideColumn,
   besideTarget,
   type Box,
+  type Fit,
   keepInside,
   type Placement,
   ringAround,
   scrollToCentre,
+  scrollToTop,
 } from './panelGeometry';
 import {
   getWalkthroughPosition,
@@ -37,6 +41,34 @@ const STEP = {
   duration: STEP_SECONDS,
   ease: [0.65, 0, 0.35, 1],
 } as const;
+
+/** The width the panel prefers and the narrowest it may become, in rem. */
+const PANEL_REM = 30;
+const MIN_PANEL_REM = 18;
+/** The shortest the panel becomes to fit above or below a section, in rem. */
+const MIN_TALL_REM = 16;
+
+const remPixels = () =>
+  Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+
+/** The editor's content: the stage form, which the panel keeps clear of. */
+const contentColumn = () =>
+  document.getElementById(STAGE_FORM_ID)?.getBoundingClientRect();
+
+/**
+ * What the panel keeps clear beside `section`: the section's height, across
+ * the whole content column, so the panel covers only the margin beside it.
+ */
+function besideBox(section: HTMLElement, box: Box): Box {
+  const column = isFixed(section) ? undefined : contentColumn();
+  if (column === undefined) return box;
+  return {
+    top: box.top,
+    height: box.height,
+    left: column.left,
+    width: column.width,
+  };
+}
 
 /** Whether `element` sits in a fixed box, which the page scrolls past. */
 function isFixed(element: HTMLElement): boolean {
@@ -77,7 +109,9 @@ function scrollerOf(element: HTMLElement): HTMLElement {
  * and can be dragged anywhere by its header.
  *
  * A step about another section scrolls that section into the middle of the
- * room and moves the panel beside it. Everything a step change moves is
+ * room and moves the panel clear of the editor's content beside it: narrower
+ * where the margin is narrow, or above or below it, shorter, where no margin
+ * is wide enough. Everything a step change moves is
  * worked out first and then animated together with `STEP`: the page's
  * scroll, the panel's place and height, and the ring, which therefore stays on
  * its section while the page scrolls under it.
@@ -96,6 +130,9 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
   const x = useMotionValue(start?.x ?? 0);
   const y = useMotionValue(start?.y ?? 0);
   const height = useMotionValue(0);
+  const width = useMotionValue(0);
+  /** The height the panel was shortened to, to fit above or below a section. */
+  const tallCap = useRef(Number.POSITIVE_INFINITY);
   // State for the style that switches to the animated height; a ref for the
   // callbacks, so they stay the same functions once it flips.
   const [sized, setSized] = useState(false);
@@ -159,13 +196,26 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
     const at: Placement =
       moving.current && destination.current !== null
         ? destination.current
-        : { left: rect.left, top: rect.top, tall: rect.height };
+        : {
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            tall: rect.height,
+          };
+    const rem = remPixels();
+    const fit: Fit = {
+      preferred: Math.min(PANEL_REM * rem, Math.floor(room.width)),
+      min: MIN_PANEL_REM * rem,
+    };
+    const full = Math.min(Math.ceil(natural), Math.floor(room.height));
     return {
       rect,
       room,
-      width: rect.width,
       at,
-      tall: Math.min(Math.ceil(natural), Math.floor(room.height)),
+      fit,
+      minTall: MIN_TALL_REM * rem,
+      full,
+      tall: Math.min(full, tallCap.current),
     };
   }, []);
 
@@ -206,7 +256,7 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
     ) => {
       const now = measure();
       if (now === undefined) return;
-      const to = keepInside(plan, now.room, now.width);
+      const to = keepInside(plan, now.room);
       // The motion values hold the panel's live offset, so the move is
       // measured from where it is drawn now, not from its destination.
       const toX = x.get() + to.left - now.rect.left;
@@ -222,8 +272,13 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
       go(x, toX);
       go(y, toY);
       // The first sizing is not a change, so it is not animated.
-      if (sizedRef.current) go(height, to.tall);
-      else height.jump(to.tall);
+      if (sizedRef.current) {
+        go(height, to.tall);
+        go(width, to.width);
+      } else {
+        height.jump(to.tall);
+        width.jump(to.width);
+      }
 
       scrolling.current?.stop();
       scrolling.current = null;
@@ -277,6 +332,7 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
       ringTop,
       ringWidth,
       setRing,
+      width,
       x,
       y,
     ],
@@ -292,15 +348,30 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
         return;
       }
       unshown.current = null;
-      const { room, width, at, tall } = now;
+      const { room, at, fit, minTall, full } = now;
+      let { tall } = now;
       const animated = sizedRef.current && !reduced.current;
 
-      // Keep the bottom where it is; on first opening, sit in the corner.
+      // Keep the bottom where it is; on first opening, sit at the foot of the
+      // margin beside the content, or in the end corner if it is too narrow.
+      const opening = !sizedRef.current && !restoring.current;
       let left = at.left;
-      let top =
-        sizedRef.current || restoring.current
-          ? at.top + at.tall - tall
-          : room.top + room.height - tall;
+      let top = opening
+        ? room.top + room.height - tall
+        : at.top + at.tall - tall;
+      let panelWidth = opening ? fit.preferred : at.width;
+      if (opening) {
+        const column = contentColumn();
+        const beside =
+          column === undefined ? undefined : besideColumn(column, room, fit);
+        if (beside !== undefined) ({ left, width: panelWidth } = beside);
+        else if (
+          card.current &&
+          getComputedStyle(card.current).direction === 'rtl'
+        )
+          left = room.left;
+        else left = room.left + room.width - panelWidth;
+      }
       let scroll: { scroller: HTMLElement; to: number } | undefined;
       let ring: { from: Box | null; to: Box | null } = { from: null, to: null };
 
@@ -309,10 +380,16 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
         // A control on a fixed bar, such as the toolbar, is always in view.
         const scroller =
           isFixed(section) || restoring.current ? null : scrollerOf(section);
+        // Centred if the panel fits in the margin beside it; otherwise at the
+        // top, leaving the room below it for the panel.
+        const scrollTo =
+          besideColumn(besideBox(section, box), room, fit) === undefined
+            ? scrollToTop
+            : scrollToCentre;
         const by =
           scroller === null
             ? 0
-            : scrollToCentre(
+            : scrollTo(
                 box,
                 room,
                 scroller.scrollTop,
@@ -331,7 +408,19 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
         // Another step about the same section, or a panel being restored,
         // stays where it is.
         if (besideOf.current !== section && !restoring.current) {
-          ({ left, top } = besideTarget(there, room, width, tall));
+          ({
+            left,
+            top,
+            width: panelWidth,
+            tall,
+          } = besideTarget(
+            besideBox(section, there),
+            room,
+            fit,
+            full,
+            minTall,
+          ));
+          tallCap.current = tall < full ? tall : Number.POSITIVE_INFINITY;
           byHand.current = false;
         }
         besideOf.current = section;
@@ -340,7 +429,10 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
       }
 
       restoring.current = false;
-      moveTogether({ left, top, tall }, { animated, scroll, ring });
+      moveTogether(
+        { left, top, width: panelWidth, tall },
+        { animated, scroll, ring },
+      );
       if (!sizedRef.current) {
         sizedRef.current = true;
         setSized(true);
@@ -369,12 +461,15 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
       const now = measure();
       if (now === undefined) return false;
       const spot = besideTarget(
-        section.getBoundingClientRect(),
+        besideBox(section, section.getBoundingClientRect()),
         now.room,
-        now.width,
-        now.tall,
+        now.fit,
+        now.full,
+        now.minTall,
       );
-      moveTogether({ ...spot, tall: now.tall }, { animated: false });
+      tallCap.current =
+        spot.tall < now.full ? spot.tall : Number.POSITIVE_INFINITY;
+      moveTogether(spot, { animated: false });
       return true;
     };
     /**
@@ -394,7 +489,7 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
       const resized = tall !== Math.round(height.get());
       if (!resized && inside) return;
       moveTogether(
-        { left: rect.left, top: rect.bottom - tall, tall },
+        { left: rect.left, top: rect.bottom - tall, width: rect.width, tall },
         // A change of room is the window being resized: keep up with it.
         { animated: resized && !reduced.current },
       );
@@ -440,6 +535,7 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
       // Otherwise moving the pointer across the page selects its text.
       event.preventDefault();
       byHand.current = true;
+      tallCap.current = Number.POSITIVE_INFINITY;
       dragControls.start(event);
     },
     [dragControls],
@@ -452,7 +548,12 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
     const now = measure();
     if (now === undefined) return;
     moveTogether(
-      { left: now.rect.left, top: now.rect.top, tall: now.tall },
+      {
+        left: now.rect.left,
+        top: now.rect.top,
+        width: now.rect.width,
+        tall: now.tall,
+      },
       { animated: !reduced.current },
     );
   }, [measure, moveTogether]);
@@ -469,6 +570,7 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
     x,
     y,
     height,
+    width,
     sized,
     ring: {
       top: ringTop,
