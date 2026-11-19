@@ -4,6 +4,11 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  type MarkdownBlockImages,
+} from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  type BlockMarkdown,
   type DynamicMessageSite,
   DynamicMessageSummary,
 } from '@codaco/protocol-builder/fields/DynamicTextField';
@@ -59,6 +64,14 @@ type SummaryTextProps = {
 };
 
 type Format = 'plain' | 'markdown';
+
+/** How markdown that holds files as blocks is drawn where it shows values. */
+const blockMarkdownWith = (
+  blockImages: MarkdownBlockImages | undefined,
+): BlockMarkdown | undefined =>
+  blockImages === undefined
+    ? undefined
+    : { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS, blockImages };
 
 /** Whether the protocol has more than one language. */
 export const useMultilingualSummary = () => {
@@ -137,11 +150,13 @@ const TranslationContent = ({
   format,
   locale,
   messageArguments,
+  blockImages,
 }: {
   text: string;
   format: Format;
   locale: LocaleTag;
   messageArguments: MessageArguments | undefined;
+  blockImages: MarkdownBlockImages | undefined;
 }) => {
   const dynamicSite = useContext(SummaryDynamicValuesContext);
   // A setting that declares arguments is given them by the interview, not
@@ -160,13 +175,18 @@ const TranslationContent = ({
       <DynamicMessageSummary
         message={text}
         markdown={format === 'markdown'}
+        blockMarkdown={blockMarkdownWith(blockImages)}
         locale={locale}
         site={dynamicSite}
       />
     );
   }
   const literal = messageText(text);
-  return format === 'markdown' ? <Markdown label={literal} /> : literal;
+  return format === 'markdown' ? (
+    <Markdown label={literal} blockImages={blockImages} />
+  ) : (
+    literal
+  );
 };
 
 /**
@@ -203,10 +223,12 @@ const Translations = ({
   value,
   format,
   messageArguments,
+  blockImages,
 }: {
   value: LocalizedString;
   format: Format;
   messageArguments: MessageArguments | undefined;
+  blockImages: MarkdownBlockImages | undefined;
 }) => {
   const languageName = useLanguageName();
   const { protocol } = useContext(SummaryContext);
@@ -243,6 +265,7 @@ const Translations = ({
                   format={format}
                   locale={locale}
                   messageArguments={messageArguments}
+                  blockImages={blockImages}
                 />
               </dd>
             )}
@@ -262,9 +285,11 @@ const LocalizedText = ({
   value,
   format,
   messageArguments,
+  blockImages,
 }: SummaryTextProps & {
   format: Format;
   messageArguments?: MessageArguments;
+  blockImages?: MarkdownBlockImages;
 }) => {
   const multilingual = useMultilingualSummary();
   const resolved = useDefaultLanguageText()(value);
@@ -277,6 +302,7 @@ const LocalizedText = ({
         value={value}
         format={format}
         messageArguments={messageArguments}
+        blockImages={blockImages}
       />
     );
   }
@@ -287,6 +313,7 @@ const LocalizedText = ({
         format={format}
         locale={resolved.lang}
         messageArguments={messageArguments}
+        blockImages={blockImages}
       />
     </span>
   );
@@ -296,8 +323,14 @@ export const SummaryText = ({ value }: SummaryTextProps) => (
   <LocalizedText value={value} format="plain" />
 );
 
-export const SummaryMarkdown = ({ value }: SummaryTextProps) => (
-  <LocalizedText value={value} format="markdown" />
+export const SummaryMarkdown = ({
+  value,
+  blockImages,
+}: SummaryTextProps & {
+  /** How a file the text holds as a block is drawn; without it, it is not. */
+  blockImages?: MarkdownBlockImages;
+}) => (
+  <LocalizedText value={value} format="markdown" blockImages={blockImages} />
 );
 
 /** A message that reads differently by what it is about: its versions. */

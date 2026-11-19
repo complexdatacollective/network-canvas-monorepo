@@ -96,7 +96,6 @@
   "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "“名册数据姓名生成器”阶段现在有一个面板标题，显示在参与者从中选择人员的列表上方，因此您可以更改它，并像协议的其他内容一样进行翻译。其初始内容就是访谈一直以来在此处显示的标题：“Available to add”。",
   "protocolValidation.migrationNotes.schema9.singleLineText": "参与者以单行形式阅读的文字，例如阶段名称、提示、表单字段的问题及其提示文本，或答案选项的标签，现在不能再包含换行符。如果原本包含换行符，每个换行符及其前后的空格都会被替换为一个空格。",
   "protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel": "在“关系强度普查”阶段中，用于拒绝评价某段关系的选项标签现在必须包含文字。如果它只包含空格，现在会显示为“No relationship”。",
-  "protocolValidation.migrationNotes.schema9.informationTitle": "信息阶段的标题现在必须包含文字。如果标题只包含空格，现在会显示为该阶段的名称。",
   "protocolValidation.migrationNotes.schema9.participantTextNotBlank": "参与者看到的其他一些文字现在也必须包含文字。如果其中某项只包含空格，叙事预设的标签现在会显示为“Preset”加上其位置，例如“Preset 1”；姓名生成器中用于添加节点的表单标题现在会显示为“Add”加上节点类型的名称，例如“Add Person”，或者只显示“Add”。信息阶段中只包含空格的文本块会被删除；辅助说明文字、量表任一端的标签，以及图片、音频或视频的描述，如果只包含空格，也会被删除。",
   "protocolValidation.migrationNotes.schema9.stageNames": "阶段的名称现在必须包含文字。如果名称为空或只包含空格，现在会显示为“Stage”加上该阶段的位置，例如“Stage 3”。",
   "protocolValidation.migrationNotes.schema9.optionLabels": "分类、有序或布尔值属性的每个选项的标签现在必须包含文字。如果标签为空或只包含空格，现在会显示该选项的值；对于布尔值属性，则改为真值选项显示“Yes”，假值选项显示“No”。已记录的回答不会改变。",

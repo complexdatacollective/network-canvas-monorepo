@@ -456,18 +456,9 @@
       "label": {
         "en": "Researcher notes (delete before fielding)"
       },
-      "title": {
-        "en": "Notes for the research team"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** Students, classmates and the places they study.\n\n**Design rationale.** Exercises every branch of the compiler.\n\n**Placeholder roster.** Stage \"Classmates\" picks classmates from a generated list of 12 example rows (classmates_roster.csv). Replace it in Architect with your real list before fielding, keeping the column headers: name, year_of_study, major, commuter.\n\n**Map token.** The map stage uses the Network Canvas testing Mapbox token, which only works on networkcanvas.com sites and localhost. Replace the \"Mapbox token\" resource with your own token before fielding."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Notes for the research team\n\n**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** Students, classmates and the places they study.\n\n**Design rationale.** Exercises every branch of the compiler.\n\n**Placeholder roster.** Stage \"Classmates\" picks classmates from a generated list of 12 example rows (classmates_roster.csv). Replace it in Architect with your real list before fielding, keeping the column headers: name, year_of_study, major, commuter.\n\n**Map token.** The map stage uses the Network Canvas testing Mapbox token, which only works on networkcanvas.com sites and localhost. Replace the \"Mapbox token\" resource with your own token before fielding."
+      }
     },
     {
       "id": "consent",
@@ -554,18 +545,9 @@
       "label": {
         "en": "Classmates (introduction)"
       },
-      "title": {
-        "en": "Naming classmates"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see a list of classmates. Find everyone the question describes, using the search if it helps, and drag each one into the panel of people you have added."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Naming classmates\n\nOn the next screen you will see a list of classmates. Find everyone the question describes, using the search if it helps, and drag each one into the panel of people you have added."
+      }
     },
     {
       "id": "classmates",
@@ -644,18 +626,9 @@
       "label": {
         "en": "Places (introduction)"
       },
-      "title": {
-        "en": "Naming places"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will be asked a question. For each place who comes to mind, tap the add button, answer a few short questions about them, and save. Move on when you have added everyone."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Naming places\n\nOn the next screen you will be asked a question. For each place who comes to mind, tap the add button, answer a few short questions about them, and save. Move on when you have added everyone."
+      }
     },
     {
       "id": "places",
@@ -706,18 +679,9 @@
       "label": {
         "en": "More classmates (introduction)"
       },
-      "title": {
-        "en": "Naming classmates"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will be asked a question. Tap the add button, then type the name of each classmate who comes to mind and press Enter. Move on when you have added everyone."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Naming classmates\n\nOn the next screen you will be asked a question. Tap the add button, then type the name of each classmate who comes to mind and press Enter. Move on when you have added everyone."
+      }
     },
     {
       "id": "more_classmates",
@@ -754,18 +718,9 @@
       "label": {
         "en": "Friend strength (introduction)"
       },
-      "title": {
-        "en": "How the classmates you named are connected"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see pairs of the classmates you named. For each pair, choose the answer that describes them best."
-          }
-        }
-      ]
+      "content": {
+        "en": "# How the classmates you named are connected\n\nOn the next screen you will see pairs of the classmates you named. For each pair, choose the answer that describes them best."
+      }
     },
     {
       "id": "friend_strength",
@@ -797,18 +752,9 @@
       "label": {
         "en": "Study ties (introduction)"
       },
-      "title": {
-        "en": "How the classmates you named are connected"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the classmates you named one at a time. For each one, tap everyone else the question describes, then move on."
-          }
-        }
-      ]
+      "content": {
+        "en": "# How the classmates you named are connected\n\nOn the next screen you will see the classmates you named one at a time. For each one, tap everyone else the question describes, then move on."
+      }
     },
     {
       "id": "study_ties",
@@ -854,18 +800,9 @@
           ]
         }
       },
-      "title": {
-        "en": "How the classmates you named are connected"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see pairs of the classmates you named. Answer the question for each pair."
-          }
-        }
-      ]
+      "content": {
+        "en": "# How the classmates you named are connected\n\nOn the next screen you will see pairs of the classmates you named. Answer the question for each pair."
+      }
     },
     {
       "id": "conflicts",
@@ -937,18 +874,9 @@
           ]
         }
       },
-      "title": {
-        "en": "About these relationships"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "Next, you will answer a few questions about each \"friends\" relationship you described, one at a time."
-          }
-        }
-      ]
+      "content": {
+        "en": "# About these relationships\n\nNext, you will answer a few questions about each \"friends\" relationship you described, one at a time."
+      }
     },
     {
       "id": "friendship_details",
@@ -1008,18 +936,9 @@
           ]
         }
       },
-      "title": {
-        "en": "Sorting the places you named"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the places you named and a set of boxes. Drag each place into the box that describes them best."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Sorting the places you named\n\nOn the next screen you will see the places you named and a set of boxes. Drag each place into the box that describes them best."
+      }
     },
     {
       "id": "place_bins",
@@ -1105,18 +1024,9 @@
       "label": {
         "en": "Advisors (introduction)"
       },
-      "title": {
-        "en": "Sorting the classmates you named"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the classmates you named and a set of boxes. Drag each classmate into the box that describes them best."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Sorting the classmates you named\n\nOn the next screen you will see the classmates you named and a set of boxes. Drag each classmate into the box that describes them best."
+      }
     },
     {
       "id": "advisors",
@@ -1144,18 +1054,9 @@
       "label": {
         "en": "Home countries (introduction)"
       },
-      "title": {
-        "en": "On the map"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see a map. For each of the classmates you named, tap the place the question asks about."
-          }
-        }
-      ]
+      "content": {
+        "en": "# On the map\n\nOn the next screen you will see a map. For each of the classmates you named, tap the place the question asks about."
+      }
     },
     {
       "id": "home_countries",
@@ -1194,18 +1095,9 @@
       "label": {
         "en": "Classmate form (introduction)"
       },
-      "title": {
-        "en": "About the classmates you named"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "Next, you will answer a few questions about each of the classmates you named, one at a time."
-          }
-        }
-      ]
+      "content": {
+        "en": "# About the classmates you named\n\nNext, you will answer a few questions about each of the classmates you named, one at a time."
+      }
     },
     {
       "id": "classmate_form",
@@ -1292,18 +1184,9 @@
           ]
         }
       },
-      "title": {
-        "en": "Your network map"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the places you named on a map, with you at the centre.\n\nTap each place the question describes. Tap them again to undo."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Your network map\n\nOn the next screen you will see the places you named on a map, with you at the centre.\n\nTap each place the question describes. Tap them again to undo."
+      }
     },
     {
       "id": "place_map",
@@ -1412,18 +1295,9 @@
       "label": {
         "en": "Class map (introduction)"
       },
-      "title": {
-        "en": "Your network map"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the classmates you named on a map, with you at the centre.\n\nDrag each of the classmates onto the circles. The closer to the centre you place someone, the closer they are to you."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Your network map\n\nOn the next screen you will see the classmates you named on a map, with you at the centre.\n\nDrag each of the classmates onto the circles. The closer to the centre you place someone, the closer they are to you."
+      }
     },
     {
       "id": "class_map",
@@ -1476,18 +1350,9 @@
       "label": {
         "en": "Mentor canvas (introduction)"
       },
-      "title": {
-        "en": "Drawing your network"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "Next, you and the interviewer will draw your network together. Add mentors and move them around. You can answer a few questions about each mentor. You can put mentors into groups. You can draw lines between mentors who are connected."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Drawing your network\n\nNext, you and the interviewer will draw your network together. Add mentors and move them around. You can answer a few questions about each mentor. You can put mentors into groups. You can draw lines between mentors who are connected."
+      }
     },
     {
       "id": "mentor_canvas",
@@ -1639,18 +1504,9 @@
       "label": {
         "en": "Bye"
       },
-      "title": {
-        "en": "Thank you"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "Thanks!"
-          }
-        }
-      ]
+      "content": {
+        "en": "# Thank you\n\nThanks!"
+      }
     },
     {
       "id": "finish",

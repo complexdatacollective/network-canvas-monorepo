@@ -32,6 +32,10 @@ import {
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
+import {
+  combineInformationContent,
+  headingMarkdown,
+} from './information-content-migration.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
@@ -134,11 +138,9 @@ const moveAnonymisationTitlesIntoText = (protocol: unknown) => {
     const { explanationText } = stage;
     if (!isRecord(explanationText)) continue;
     const { title, body } = explanationText;
-    // A heading is one line, so a line break in the title becomes a space,
-    // and a run of # that ends it would close the heading rather than show.
     const heading =
       typeof title === 'string' && !isBlankText(title)
-        ? `# ${escapeMarkdownText(title.trim().replace(/\s+/g, ' ')).replace(/(\s)(#+)$/, '$1\\$2')}`
+        ? headingMarkdown(title)
         : undefined;
     const text =
       typeof body === 'string' && !isBlankText(body) ? body : undefined;
@@ -627,22 +629,6 @@ const moveIntroductionPanelsToInformationStages = (
 };
 
 /**
- * Schema 8 accepted an Information stage whose title was only spaces, which
- * showed a stage with no heading. Schema 9 requires the title to say
- * something, so a title that shows nothing takes the stage's label, as an
- * introduction panel's does; a label is required to say something already.
- * Text already localized loses only its translations that show nothing, which
- * then fall back to another.
- */
-const repairInformationTitles = (protocol: unknown) => {
-  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  for (const stage of protocol.stages) {
-    if (!isRecord(stage) || stage.type !== 'Information') continue;
-    stage.title = withoutBlankText(stage.title) ?? stage.label;
-  }
-};
-
-/**
  * Schema 9 requires the caption of a Categorical Bin's bin for answers not
  * listed to say something, where schema 8 accepted text of only spaces, which
  * showed an unlabelled bin. One that shows nothing takes the default the 7 to
@@ -1122,28 +1108,6 @@ const repairDiseaseLabels = (protocol: unknown) => {
   }
 };
 
-/**
- * Schema 9 requires the text of an Information stage's text item to say
- * something, where schema 8 accepted text of only spaces, which showed
- * nothing. Such an item is removed, so the stage still shows nothing in its
- * place. Text already localized loses only its translations that show
- * nothing, which then fall back to another.
- */
-const repairInformationTextItems = (protocol: unknown) => {
-  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  for (const stage of protocol.stages) {
-    if (!isRecord(stage) || stage.type !== 'Information') continue;
-    if (!Array.isArray(stage.items)) continue;
-    stage.items = stage.items.flatMap((item: unknown) => {
-      if (!isRecord(item) || item.type !== 'text') return [item];
-      // Content that is missing is left for validation to report.
-      if (item.content === undefined) return [item];
-      const content = shownText(item.content);
-      return content === undefined ? [] : [{ ...item, content }];
-    });
-  }
-};
-
 // The id the appended finish stage takes, unless a schema 8 stage already
 // has it. Deterministic, so migrating one document twice gives one result.
 const FINISH_STAGE_ID = 'finish';
@@ -1333,6 +1297,7 @@ const migrationV8toV9 = createMigration({
   to: 9,
   dependencies: {},
   notes: `- Introduction panels within interfaces other than the Ego Form have been removed, so participant-facing instructions on those stages use the Information interface. The content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.
+- The page heading, text and media of an Information stage are now one piece of text, which you edit as a single document. The page heading is now a heading at the top of the text, and each image, audio recording or video is a block within the text, in the place it was shown before. A page heading that contained only spaces is left out, as is a file that is no longer among the protocol's resources; if the page then has nothing to show, it shows the name of the stage as its heading.
 - Protocols can now be written in multiple languages. Existing protocols are presumed to be in English. If your protocol is written in another language, change its default language on the Languages page in Architect.
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol.
 - Encrypted attributes are no longer experimental: the Anonymisation interface can be added in Architect like any other interface.
@@ -1344,7 +1309,6 @@ const migrationV8toV9 = createMigration({
 - Several places that accepted empty text, or text made up only of spaces, now require some text:
   - On a Categorical Bin stage, the label of the bin for answers not listed must now contain some text. Where it contained only spaces, it now reads "Other".
   - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
-  - The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.
   - Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator's form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.
   - The name of a stage must now contain some text. Where it was empty or contained only spaces, it now reads "Stage" followed by the stage's position, such as "Stage 3".
   - The label of each option of a categorical, ordinal or Boolean attribute must now contain some text. Where it was empty or contained only spaces, it now shows the option's value; on a Boolean attribute it reads "Yes" for the true choice and "No" for the false one instead. Answers already recorded are not changed.
@@ -1384,8 +1348,7 @@ const migrationV8toV9 = createMigration({
     addLegendLabels(migrated);
     addComposerCaptions(migrated);
     moveIntroductionPanelsToInformationStages(migrated, localization);
-    repairInformationTitles(migrated);
-    repairInformationTextItems(migrated);
+    combineInformationContent(migrated, localization);
     repairNarrativeLabels(migrated);
     repairFormTitles(migrated);
     // After the option values are normalized and the pedigree conversion has

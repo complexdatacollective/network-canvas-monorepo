@@ -84,14 +84,7 @@ test('keeps history to saved changes while a stage editor is open', async ({
         id: 'information-1',
         type: 'Information',
         label: { en: 'A page to rename' },
-        title: { en: 'Welcome' },
-        items: [
-          {
-            id: 'item-1',
-            type: 'text',
-            content: { en: 'Thanks for coming.' },
-          },
-        ],
+        content: { en: '# Welcome\n\nThanks for coming.' },
       },
       ...emptyProtocol().stages,
     ],
@@ -205,11 +198,11 @@ test('discards an invalid stage draft before returning to the start screen', asy
     defaultLanguageText(protocol, informationStage.label),
   );
 
-  // Clearing Information's required page heading makes the in-progress stage
+  // Clearing Information's required page content makes the in-progress stage
   // invalid. The stage editor keeps this in its separate draft until the user
   // chooses "Finished Editing", so it must never replace the durable protocol
   // shown on the start screen.
-  await architectPage.getByRole('textbox', { name: 'Page heading' }).fill('');
+  await architectPage.getByRole('textbox', { name: 'Page content' }).fill('');
 
   // The stage editor replaces ProjectActions with StageEditorNav, so leaving
   // the protocol from here uses Brand's app-header button rather than the

@@ -30,6 +30,8 @@ import {
 export type MessageDocumentFormat = Readonly<{
   markdown: boolean;
   singleLine: boolean;
+  /** Whether markdown of several lines may hold files as blocks. */
+  assetBlocks?: boolean;
 }>;
 
 /** What the editor calls a switch and each of its versions. */
@@ -299,6 +301,15 @@ const restoreMarkers = (
       throw new MessageDocumentProblem('valueInLinkAddress');
     }
   }
+  // A file's block keeps its address and description as attributes, where a
+  // value cannot be shown any more than in a link's address.
+  if (
+    content.type !== 'text' &&
+    content.attrs !== undefined &&
+    JSON.stringify(content.attrs).includes(MARKER_OPEN)
+  ) {
+    throw new MessageDocumentProblem('valueInLinkAddress');
+  }
   if (content.type === 'text') return content;
   if (content.content === undefined) return content;
 
@@ -452,7 +463,12 @@ export const messageToDocument = (
   const top = level(nodes, undefined);
   if (!format.markdown) return restoreMarkers(PLAIN_LINE(top.text), top.pieces);
   return restoreMarkers(
-    markdownToRichTextContent(top.text, format.singleLine, true),
+    markdownToRichTextContent(
+      top.text,
+      format.singleLine,
+      true,
+      format.assetBlocks === true,
+    ),
     top.pieces,
   );
 };

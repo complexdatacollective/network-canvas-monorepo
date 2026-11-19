@@ -11,7 +11,6 @@ import {
   type FinishMode,
   type FinishOutcome,
   type FramingSetting,
-  type Item,
   type LocalizedString,
   type Panel,
   stageDynamicValueContext,
@@ -45,11 +44,10 @@ import FinishScreen from './FinishScreen';
 import Form from './Form';
 import InterviewScript from './InterviewScript';
 import IntroductionPanel from './IntroductionPanel';
-import Items from './Items';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
 import NarrativePedigree from './NarrativePedigree';
-import PageHeading from './PageHeading';
+import PageContent from './PageContent';
 import Panels from './Panels';
 import Presets from './Presets';
 import Prompts, { type PromptType } from './Prompts';
@@ -145,8 +143,6 @@ export type StageConfiguration = {
     edges?: { display?: { type: string; label: LocalizedString }[] };
     highlight?: { variable: string; label: LocalizedString }[];
   }[];
-  title?: LocalizedString;
-  items?: Item[];
   interviewScript?: string;
   content?: LocalizedString;
   finishedContent?: LocalizedString;
@@ -243,8 +239,6 @@ const StageContent = ({
     form,
     behaviours,
     presets,
-    title,
-    items,
     interviewScript,
     // FinishSession
     content,
@@ -417,8 +411,7 @@ const StageContent = ({
       {type === 'NetworkComposer' && (
         <ComposerEdges edges={configuration.edges ?? null} />
       )}
-      <PageHeading heading={title ?? null} />
-      <Items items={items ?? null} />
+      {type === 'Information' && <PageContent content={content ?? null} />}
       <FamilyTreeVariables
         relationshipTypeVariable={relationshipTypeVariable}
         relationshipToEgoVariable={relationshipToEgoVariable}

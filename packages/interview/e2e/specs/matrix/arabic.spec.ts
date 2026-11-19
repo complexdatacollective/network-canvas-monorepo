@@ -120,7 +120,7 @@ function arabicInterview() {
 
   const information = synth.addInformationStage({
     title: 'مرحبا بكم في الدراسة',
-    items: [{ id: 'welcome', type: 'text', content: 'شكرا لمشاركتكم.' }],
+    text: 'شكرا لمشاركتكم.',
   });
   stages.push({
     name: 'Information',

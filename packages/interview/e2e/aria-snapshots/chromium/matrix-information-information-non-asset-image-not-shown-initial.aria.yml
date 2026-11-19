@@ -1,5 +1,8 @@
 - main:
-  - heading "Empty stage" [level=1]
+  - heading "Web image" [level=1]
+  - paragraph: Before
+  - paragraph
+  - paragraph: After
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

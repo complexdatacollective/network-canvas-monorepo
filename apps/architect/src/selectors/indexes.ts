@@ -169,14 +169,19 @@ export const getVariableUsageHits = (
  * consumers (`getUnusedAssets` and the Resource Library's `withAssets`) read
  * only the VALUES, through `utils.buildSearch`.
  *
- * @returns {object} in format: { [dotted-path]: assetId }
+ * One text can show several files as blocks, and each of those references has
+ * the text's path, so a key also carries the reference's position among them
+ * all: keyed by path alone, the last file a page shows would be the only one
+ * counted as used, and the rest offered for deletion.
+ *
+ * @returns {object} in format: { [dotted-path#position]: assetId }
  */
 const getAssetIndex = createSelector(getProtocol, (protocol) => {
   if (!protocol) return {};
   const index: Record<string, string> = {};
-  for (const hit of collectAssetReferences(protocol)) {
-    index[hit.path.join('.')] = hit.assetId;
-  }
+  collectAssetReferences(protocol).forEach((hit, position) => {
+    index[`${hit.path.join('.')}#${position}`] = hit.assetId;
+  });
   return index;
 });
 

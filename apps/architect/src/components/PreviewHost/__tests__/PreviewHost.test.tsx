@@ -134,8 +134,7 @@ function makeProtocol(localization = ENGLISH_ONLY) {
         id: 's1',
         type: 'Information',
         label: text('A'),
-        title: text('A'),
-        items: [],
+        content: text('A'),
       },
     ],
     codebook: { node: {}, edge: {}, ego: {} },
@@ -242,8 +241,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         id: 'background',
         type: 'Information',
         label: { en: 'Background' },
-        title: { en: 'Background' },
-        items: [],
+        content: { en: '# Background' },
         skipLogic: {
           action: 'SKIP',
           filter: {
@@ -306,8 +304,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         id: 'following',
         type: 'Information',
         label: { en: 'Following stage' },
-        title: { en: 'Following stage' },
-        items: [],
+        content: { en: '# Following stage' },
       },
     ],
     codebook: {

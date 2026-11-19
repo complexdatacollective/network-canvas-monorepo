@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { assetBlocksInMessage } from '../../localization/assetBlock.ts';
 import type {
   LocaleTag,
   LocalizationDeclaration,
@@ -413,11 +414,17 @@ const buttonsUsed = (protocol: ProtocolDocument): ReadonlySet<string> =>
       : []),
   ]);
 
-/** An Information stage that shows a file, which may fail to display. */
+/**
+ * An Information stage that shows a file, which may fail to display: its
+ * text holds a block naming one, in any language.
+ */
 const showsAFile = (stage: Readonly<Record<string, unknown>>) =>
   stage.type === 'Information' &&
-  Array.isArray(stage.items) &&
-  stage.items.some((item) => isRecord(item) && item.type === 'asset');
+  isRecord(stage.content) &&
+  Object.values(stage.content).some(
+    (message) =>
+      typeof message === 'string' && assetBlocksInMessage(message).length > 0,
+  );
 
 /**
  * Which messages the protocol shows: the errors any interview may show and

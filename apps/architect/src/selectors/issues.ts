@@ -344,6 +344,8 @@ export type TranslationRow = {
   format: LocalizedStringFormat;
   /** Whether the string is one line or several, as its field declares. */
   lines: LocalizedTextLines;
+  /** Set when the string can hold files as blocks, as its field declares. */
+  assetBlocks?: true;
   /** Every translation the string has. */
   value: LocalizedString;
   /**
@@ -422,6 +424,7 @@ export const getTranslationGroups = createSelector(
         field,
         format: hit.format,
         lines: hit.lines,
+        ...(hit.assetBlocks === true && { assetBlocks: true as const }),
         value: hit.value,
         ...(supplied === undefined ? {} : { supplied }),
         schema: hit.schema,

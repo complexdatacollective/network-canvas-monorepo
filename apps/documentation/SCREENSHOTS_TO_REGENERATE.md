@@ -63,6 +63,20 @@ The Per Alter Form and Per Alter Edge Form interface pages no longer show
 `interface-documentation/per-alter-form/architect-intro.png` and
 `interface-documentation/per-edge-form/architect-intro.png`.
 
+## Information page as one text (schema 9)
+
+An Information stage's page heading and list of items became one text, written
+in a single editor, with images, audio and video placed in it as blocks. This
+image predates that work:
+
+| Image                                                     | Page                                                          | What changed                                                                                                                                                                                                                                               |
+| --------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface-documentation/information/architect-items.png` | `design-protocols/interface-documentation/information.en.mdx` | Shows the removed **Page heading** field and the list of items. Recapture the **Page content** section: one editor holding a heading, a paragraph and an image block, with the image selected so its settings (Description, Display size, Alignment) show. |
+
+Every Architect capture that shows a rich text editor's toolbar also predates
+its regrouping (undo and redo, text styles, formatting, lists, then the
+buttons that insert something); check them when they are next retaken.
+
 ## Interface documentation (Architect and interview captures)
 
 In November 2026 every Architect Classic stage-editor capture on the

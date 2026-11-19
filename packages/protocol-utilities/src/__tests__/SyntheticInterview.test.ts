@@ -1825,23 +1825,57 @@ describe('quickAdd variable reference', () => {
   });
 });
 
-describe('addInformationStage items', () => {
-  it('emits explicit items and interviewScript verbatim', () => {
+describe('addInformationStage content', () => {
+  const contentOf = (synth: SyntheticInterview) =>
+    (
+      synth.getProtocol().stages[0] as {
+        content: Record<string, string>;
+        interviewScript?: string;
+      }
+    ).content;
+
+  it('writes the title as a heading and the text as the body, with the interviewScript verbatim', () => {
     const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
     synth.addInformationStage({
       title: 'Media stage',
+      text: 'Hello',
       interviewScript: 'Internal note.',
-      items: [
-        { id: 'item-a', type: 'text', content: 'Hello' },
-        { id: 'item-b', type: 'asset', content: 'img-1', size: 'LARGE' },
-      ],
     });
     const stage = synth.getProtocol().stages[0] as {
-      items: { id: string; type: string }[];
       interviewScript?: string;
     };
-    expect(stage.items.map((i) => i.id)).toEqual(['item-a', 'item-b']);
+    expect(contentOf(synth)).toEqual({ en: '# Media stage\n\nHello' });
     expect(stage.interviewScript).toBe('Internal note.');
+  });
+
+  it('writes each block as an asset image after the text', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+    synth.addInformationStage({
+      title: 'Media',
+      text: 'Look',
+      blocks: [
+        { assetId: 'img-1', description: 'A map', size: 'large' },
+        { assetId: 'vid-1', autoplay: false, loop: false, align: 'end' },
+      ],
+    });
+    expect(contentOf(synth).en).toBe(
+      '# Media\n\nLook\n\n![A map](asset:img-1?size=large)\n\n![](asset:vid-1?align=end&autoplay=false&loop=false)',
+    );
+  });
+
+  it('composes a page per language when the inputs are written per language', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en', 'fr'] });
+    synth.addInformationStage({
+      title: { en: 'Welcome', fr: 'Bienvenue' },
+      blocks: [{ assetId: 'img-1', description: { en: 'Map', fr: 'Carte' } }],
+    });
+    expect(contentOf(synth)).toEqual({
+      en: '# Welcome\n\n![Map](asset:img-1)',
+      fr: '# Bienvenue\n\n![Carte](asset:img-1)',
+    });
   });
 });
 

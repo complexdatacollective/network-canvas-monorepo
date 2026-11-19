@@ -123,7 +123,7 @@ const reload = async (id: string, protocol: CurrentProtocol) => {
 };
 
 const TITLE = makeFinding('title', [
-  op('set', '/stages/welcome/title/en', 'Welcome to our study'),
+  op('set', '/stages/welcome/label/en', 'Welcome to our study'),
 ]);
 
 let store: Store;
@@ -204,8 +204,7 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
       id: 'added',
       type: 'Information',
       label: { en: 'Added', fr: 'Ajouté' },
-      title: { en: 'Added', fr: 'Ajouté' },
-      items: [],
+      content: { en: '# Added', fr: '# Ajouté' },
     };
     await reviewed(store, [
       makeFinding('add', [op('insert', '/stages/finish', stage)]),
@@ -218,7 +217,7 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
 
     store.dispatch(
       setProtocolTranslation({
-        path: ['stages', 2, 'title'],
+        path: ['stages', 2, 'label'],
         locale: 'en',
         text: 'My own title',
       }),
@@ -289,7 +288,7 @@ describe('C: an id-aware path reaches the member with that id, or nothing', () =
     };
     await reviewed(
       store,
-      [makeFinding('zero', [op('set', '/stages/0/title/en', 'Better')])],
+      [makeFinding('zero', [op('set', '/stages/0/label/en', 'Better')])],
       protocol,
     );
     store.dispatch(
@@ -305,7 +304,7 @@ describe('C: an id-aware path reaches the member with that id, or nothing', () =
     });
     expect(protocolOf(store).stages[0]).toMatchObject({
       id: 'second',
-      title: { en: 'Hello' },
+      label: { en: 'Welcome' },
     });
   });
 });
@@ -374,9 +373,9 @@ describe('E: a finding’s availability is checked whenever it needs it', () => 
     await store.dispatch(checkFixAvailability());
     store.dispatch(
       setProtocolTranslation({
-        path: ['stages', 0, 'label'],
+        path: ['stages', 0, 'content'],
         locale: 'en',
-        text: 'Another label',
+        text: 'Another content',
       }),
     );
     expect(findingOf(store, 'title').availability).toBe('checking');
@@ -423,12 +422,12 @@ describe('F: the preview shows every text change a fix makes', () => {
 describe('G: a problem reads as fixed only while its fix is made', () => {
   const titleOf = (target: Store) => {
     const [welcome] = protocolOf(target).stages;
-    return welcome && 'title' in welcome ? welcome.title : undefined;
+    return welcome && 'label' in welcome ? welcome.label : undefined;
   };
   const setTitle = (target: Store, text: string) =>
     target.dispatch(
       setProtocolTranslation({
-        path: ['stages', 0, 'title'],
+        path: ['stages', 0, 'label'],
         locale: 'en',
         text,
       }),
@@ -456,7 +455,7 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     await reviewed(store, [TITLE]);
     await store.dispatch(checkFixAvailability());
     await store.dispatch(decideFinding('title', 'fix'));
-    setTitle(store, 'Hello');
+    setTitle(store, 'Welcome');
     await store.dispatch(checkFixAvailability());
     expect(findingOf(store, 'title')).toMatchObject({
       status: 'undecided',
@@ -469,7 +468,7 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     await store.dispatch(checkFixAvailability());
     await store.dispatch(decideFinding('title', 'fix'));
     store.dispatch(timelineActions.undo());
-    expect(titleOf(store)).toMatchObject({ en: 'Hello' });
+    expect(titleOf(store)).toMatchObject({ en: 'Welcome' });
     expect(findingOf(store, 'title').status).toBe('undecided');
     // The researcher's own wording, written in place of the fix they undid.
     setTitle(store, 'Good morning');
@@ -493,7 +492,7 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     setTitle(store, 'Welcome, all');
     store.dispatch(timelineActions.undo());
     store.dispatch(timelineActions.undo());
-    expect(titleOf(store)).toMatchObject({ en: 'Hello' });
+    expect(titleOf(store)).toMatchObject({ en: 'Welcome' });
     expect(findingOf(store, 'title').status).toBe('undecided');
     store.dispatch(timelineActions.redo());
     expect(findingOf(store, 'title').status).toBe('fixed');

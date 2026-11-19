@@ -443,12 +443,12 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: tieStrengthDeclineLabel. Tie-Strength Census is the name of an interface (stage type) where participants rate the strength of the relationship between pairs of people; one option lets them decline to rate it. "No relationship" is a literal English default written into protocol data: keep it in English.',
   },
-  schema9InformationTitle: {
-    id: 'protocolValidation.migrationNotes.schema9.informationTitle',
+  schema9InformationContent: {
+    id: 'protocolValidation.migrationNotes.schema9.informationContent',
     defaultMessage:
-      'The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.',
+      "The page heading, text and media of an Information stage are now one piece of text, which you edit as a single document. The page heading is now a heading at the top of the text, and each image, audio recording or video is a block within the text, in the place it was shown before. A page heading that contained only spaces is left out, as is a file that is no longer among the protocol's resources; if the page then has nothing to show, it shows the name of the stage as its heading.",
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance: informationTitle. Information is the name of an interface (stage type) that shows text and media to participants.',
+      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: informationContent. Information is the name of an interface (stage type) that shows a page of text and media to participants. The page heading was a separate title field; the media are files the researcher added to the page. A block is an item that sits on its own line between paragraphs. The name of the stage is the name shown for the stage in the list of stages.',
   },
   schema9ParticipantTextNotBlank: {
     id: 'protocolValidation.migrationNotes.schema9.participantTextNotBlank',
@@ -657,6 +657,7 @@ const migrationNoteSets: Record<
     suffix: '',
     messages: [
       migrationNoteMessages.schema9IntroductionPanels,
+      migrationNoteMessages.schema9InformationContent,
       migrationNoteMessages.schema9DefaultLanguage,
       migrationNoteMessages.schema9FinishStage,
       migrationNoteMessages.schema9EncryptedAttributes,
@@ -670,7 +671,6 @@ const migrationNoteSets: Record<
         children: [
           migrationNoteMessages.schema9OtherBinText,
           migrationNoteMessages.schema9TieStrengthDeclineLabel,
-          migrationNoteMessages.schema9InformationTitle,
           migrationNoteMessages.schema9ParticipantTextNotBlank,
           migrationNoteMessages.schema9StageNames,
           migrationNoteMessages.schema9OptionLabels,

@@ -1,0 +1,329 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  type RichTextContent,
+  markdownToRichTextContent,
+  richTextContentToMarkdown,
+} from '../markdownAdapter.ts';
+
+const read = (value: string) =>
+  markdownToRichTextContent(value, false, false, true);
+
+const write = (content: RichTextContent) => richTextContentToMarkdown(content);
+
+const roundTrip = (value: string) => write(read(value));
+
+const blockNode = (attrs: Record<string, unknown>): RichTextContent => ({
+  type: 'assetBlock',
+  attrs: {
+    assetId: 'a1',
+    description: '',
+    size: null,
+    align: 'center',
+    autoplay: true,
+    loop: true,
+    ...attrs,
+  },
+});
+
+const paragraph = (text?: string): RichTextContent =>
+  text === undefined
+    ? { type: 'paragraph' }
+    : { type: 'paragraph', content: [{ type: 'text', text }] };
+
+describe('reading an asset image as a block', () => {
+  it('reads an image alone in its paragraph as a block with every setting at its default', () => {
+    expect(read('![A map](asset:a1)')).toEqual({
+      type: 'doc',
+      content: [blockNode({ description: 'A map' })],
+    });
+  });
+
+  it('reads every setting from the address', () => {
+    expect(
+      read('![](asset:a1?size=large&align=end&autoplay=false&loop=false)'),
+    ).toEqual({
+      type: 'doc',
+      content: [
+        blockNode({
+          size: 'large',
+          align: 'end',
+          autoplay: false,
+          loop: false,
+        }),
+      ],
+    });
+  });
+
+  it('decodes an asset id that was written percent-encoded', () => {
+    expect(read('![](asset:a%20b%29)').content?.[0]?.attrs?.assetId).toBe(
+      'a b)',
+    );
+  });
+
+  it('keeps the attributes in the order the editor compares documents in', () => {
+    // The editor compares a document with the one it started from by their
+    // JSON, so a different key order reads as an edit.
+    const attrs = read('![x](asset:a1?size=small)').content?.[0]?.attrs;
+    expect(Object.keys(attrs ?? {})).toEqual([
+      'assetId',
+      'description',
+      'size',
+      'align',
+      'autoplay',
+      'loop',
+    ]);
+  });
+
+  it('reads a block between paragraphs', () => {
+    expect(read('Before\n\n![](asset:a1)\n\nAfter')).toEqual({
+      type: 'doc',
+      content: [paragraph('Before'), blockNode({}), paragraph('After')],
+    });
+  });
+
+  it('reads a block first, and last, and alone', () => {
+    expect(read('![](asset:a1)\n\nAfter').content?.map((n) => n.type)).toEqual([
+      'assetBlock',
+      'paragraph',
+    ]);
+    expect(read('Before\n\n![](asset:a1)').content?.map((n) => n.type)).toEqual(
+      ['paragraph', 'assetBlock'],
+    );
+    expect(read('![](asset:a1)').content?.map((n) => n.type)).toEqual([
+      'assetBlock',
+    ]);
+  });
+
+  it('splits a paragraph around an image in the middle of a sentence', () => {
+    expect(read('Before ![Map](asset:a1) after')).toEqual({
+      type: 'doc',
+      content: [
+        paragraph('Before'),
+        blockNode({ description: 'Map' }),
+        paragraph('after'),
+      ],
+    });
+  });
+
+  it('splits around two images in one paragraph, keeping their order', () => {
+    const blocks = read('![](asset:one) and ![](asset:two)').content;
+    expect(blocks?.map((node) => node.attrs?.assetId ?? node.type)).toEqual([
+      'one',
+      'paragraph',
+      'two',
+    ]);
+  });
+
+  it('gives a list item that opens with a block an empty paragraph to open with', () => {
+    expect(read('- ![](asset:a1)').content).toEqual([
+      {
+        type: 'bulletList',
+        attrs: undefined,
+        content: [
+          {
+            type: 'listItem',
+            content: [{ type: 'paragraph' }, blockNode({})],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('leaves a list item that opens with text as it was', () => {
+    const [list] = read('- Text\n\n  ![](asset:a1)').content ?? [];
+    expect(list?.content?.[0]?.content?.map((n) => n.type)).toEqual([
+      'paragraph',
+      'assetBlock',
+    ]);
+  });
+});
+
+describe('where an asset image is not a block', () => {
+  it('is its description when the field does not hold blocks', () => {
+    const content = markdownToRichTextContent('![A map](asset:a1)');
+    expect(JSON.stringify(content)).not.toContain('assetBlock');
+    expect(content).toEqual(
+      markdownToRichTextContent('![A map](asset:a1)', false, false, false),
+    );
+    expect(content.content?.[0]).toEqual(paragraph('A map'));
+  });
+
+  it.each([
+    ['inline', true, false],
+    ['inline with links', true, true],
+  ])('is never one in a line (%s)', (_kind, inline, links) => {
+    const content = markdownToRichTextContent(
+      'See ![A map](asset:a1) here',
+      inline,
+      links,
+      true,
+    );
+    expect(JSON.stringify(content)).not.toContain('assetBlock');
+  });
+
+  it('is unchanged for an image that does not name a file of the protocol', () => {
+    const withBlocks = markdownToRichTextContent(
+      'Text ![Logo](https://example.org/logo.png) more',
+      false,
+      false,
+      true,
+    );
+    const without = markdownToRichTextContent(
+      'Text ![Logo](https://example.org/logo.png) more',
+    );
+    expect(withBlocks).toEqual(without);
+    expect(JSON.stringify(withBlocks)).not.toContain('assetBlock');
+  });
+});
+
+describe('writing a block as markdown', () => {
+  it('writes the defaults as a bare address', () => {
+    expect(write({ type: 'doc', content: [blockNode({})] })).toBe(
+      '![](asset:a1)',
+    );
+  });
+
+  it('writes a default alignment, autoplay and loop as nothing', () => {
+    expect(
+      write({
+        type: 'doc',
+        content: [blockNode({ align: 'center', autoplay: true, loop: true })],
+      }),
+    ).toBe('![](asset:a1)');
+  });
+
+  it('writes a block with no asset as nothing', () => {
+    expect(
+      write({
+        type: 'doc',
+        content: [
+          paragraph('Before'),
+          blockNode({ assetId: '' }),
+          paragraph('After'),
+        ],
+      }),
+    ).toBe('Before\n\nAfter');
+    expect(write({ type: 'doc', content: [blockNode({ assetId: '' })] })).toBe(
+      '',
+    );
+  });
+
+  it('counts a document holding only a block as content', () => {
+    expect(write({ type: 'doc', content: [blockNode({})] })).not.toBe('');
+  });
+
+  it('ignores a size or alignment the editor could not have set', () => {
+    expect(
+      write({
+        type: 'doc',
+        content: [blockNode({ size: 'huge', align: 'diagonal' })],
+      }),
+    ).toBe('![](asset:a1)');
+  });
+
+  it.each([
+    ['a size', { size: 'medium' }, '![](asset:a1?size=medium)'],
+    ['an alignment', { align: 'end' }, '![](asset:a1?align=end)'],
+    ['autoplay off', { autoplay: false }, '![](asset:a1?autoplay=false)'],
+    ['loop off', { loop: false }, '![](asset:a1?loop=false)'],
+    [
+      'everything',
+      { size: 'small', align: 'start', autoplay: false, loop: false },
+      '![](asset:a1?size=small&align=start&autoplay=false&loop=false)',
+    ],
+  ])('writes %s', (_kind, attrs, expected) => {
+    expect(write({ type: 'doc', content: [blockNode(attrs)] })).toBe(expected);
+  });
+});
+
+describe('a block through markdown and back', () => {
+  const sizes = [null, 'small', 'medium', 'large'] as const;
+  const aligns = ['start', 'center', 'end'] as const;
+  const flags = [true, false] as const;
+  const combinations = sizes.flatMap((size) =>
+    aligns.flatMap((align) =>
+      flags.flatMap((autoplay) =>
+        flags.map((loop) => ({ size, align, autoplay, loop })),
+      ),
+    ),
+  );
+
+  it('covers every combination of settings', () => {
+    expect(combinations).toHaveLength(4 * 3 * 2 * 2);
+  });
+
+  it.each(combinations)('returns the same block for %j', (settings) => {
+    const node = blockNode({ ...settings, description: 'A map' });
+    const markdown = write({ type: 'doc', content: [node] });
+    expect(read(markdown)).toEqual({ type: 'doc', content: [node] });
+    // And the markdown is stable: one spelling for one block.
+    expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it.each([
+    ['quotes', 'She said "hi" and \'bye\''],
+    ['brackets', 'a [b] c'],
+    ['emphasis marks', '*not* _emphasis_ and `code`'],
+    ['angle brackets', 'a <b> and > c'],
+    ['an ampersand', 'Fish & chips &amp; more'],
+    ['a backslash', 'C:\\maps\\a'],
+    ['unicode', 'Carte du quartier 地図 😀'],
+    ['a heading marker', '# not a heading'],
+  ])('keeps a description with %s as written', (_kind, description) => {
+    const node = blockNode({ description });
+    const markdown = write({ type: 'doc', content: [node] });
+    const back = read(markdown);
+    expect(back).toEqual({ type: 'doc', content: [node] });
+  });
+
+  it('writes a description on one line, with its breaks and edges tidied', () => {
+    const markdown = write({
+      type: 'doc',
+      content: [blockNode({ description: '  Line one\n  line   two  ' })],
+    });
+    expect(markdown).toBe('![Line one line two](asset:a1)');
+  });
+
+  it('keeps an asset id that needs escaping', () => {
+    const node = blockNode({ assetId: "a b(c)'!*?&=" });
+    const markdown = write({ type: 'doc', content: [node] });
+    expect(markdown).toBe('![](asset:a%20b%28c%29%27%21%2A%3F%26%3D)');
+    expect(read(markdown)).toEqual({ type: 'doc', content: [node] });
+  });
+
+  it('keeps a block between paragraphs', () => {
+    const markdown = 'Before\n\n![Map](asset:a1?size=small)\n\nAfter';
+    expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it('keeps a block first, last and alone', () => {
+    for (const markdown of [
+      '![Map](asset:a1)\n\nAfter',
+      'Before\n\n![Map](asset:a1)',
+      '![Map](asset:a1)',
+    ]) {
+      expect(roundTrip(markdown)).toBe(markdown);
+    }
+  });
+
+  it('keeps a block that opens a list item', () => {
+    const markdown = '- ![Map](asset:a1)\n- Second';
+    const once = roundTrip(markdown);
+    expect(read(once)).toEqual(read(markdown));
+    // And the text it wrote is a fixed point.
+    expect(roundTrip(once)).toBe(once);
+  });
+
+  it('keeps a block after text in a list item', () => {
+    const markdown = '1. Text\n   ![Map](asset:a1)\n2. Second';
+    const doc = read(markdown);
+    expect(read(roundTrip(markdown))).toEqual(doc);
+  });
+
+  it('writes a sentence split around a block as three paragraphs, then keeps them', () => {
+    const once = roundTrip('Before ![Map](asset:a1) after');
+    expect(once).toBe('Before\n\n![Map](asset:a1)\n\nafter');
+    expect(roundTrip(once)).toBe(once);
+  });
+});

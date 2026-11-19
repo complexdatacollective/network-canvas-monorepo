@@ -2,7 +2,9 @@ import { isEqual } from 'es-toolkit/compat';
 import { useMemo, useState } from 'react';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
-import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import RichTextEditorField, {
+  type RichTextAssetBlocks,
+} from '@codaco/fresco-ui/form/fields/RichTextEditor';
 
 import { richTextToolbarFor } from '../localization/textShape.ts';
 import {
@@ -40,6 +42,12 @@ type RichTextFieldProps = CreateFormFieldProps<
     'singleLine'?: boolean;
     /** Toolbar features to withhold, e.g. `['bold', 'lists']`. */
     'disallowedTypes'?: string[];
+    /**
+     * How the files the text holds as blocks are drawn and chosen, for text
+     * declared to hold them (`textFieldPropsFor`). Absent for any other
+     * text, where an image written into it is read as its description.
+     */
+    'assetBlocks'?: RichTextAssetBlocks;
   }
 >;
 
@@ -57,14 +65,17 @@ const RichTextField = ({
   onChange,
   singleLine = false,
   disallowedTypes = [],
+  assetBlocks,
   ...props
 }: RichTextFieldProps) => {
+  const holdsAssetBlocks = assetBlocks !== undefined;
   const toolbarOptions = richTextToolbarFor(singleLine, disallowedTypes);
 
   const markdown = typeof value === 'string' ? value : null;
   const normalizedContent = useMemo(
-    () => markdownToRichTextContent(markdown, singleLine),
-    [markdown, singleLine],
+    () =>
+      markdownToRichTextContent(markdown, singleLine, false, holdsAssetBlocks),
+    [markdown, singleLine, holdsAssetBlocks],
   );
 
   // The editor's live document can hold structure markdown cannot express —
@@ -101,7 +112,12 @@ const RichTextField = ({
     if (
       isEqual(
         normalizedContent,
-        markdownToRichTextContent(nextMarkdown, singleLine),
+        markdownToRichTextContent(
+          nextMarkdown,
+          singleLine,
+          false,
+          holdsAssetBlocks,
+        ),
       )
     ) {
       return;
@@ -116,6 +132,7 @@ const RichTextField = ({
       singleLine={singleLine}
       changeMode="input"
       toolbarOptions={toolbarOptions}
+      {...(assetBlocks !== undefined && { assetBlocks })}
       value={content}
       onChange={handleChange}
     />

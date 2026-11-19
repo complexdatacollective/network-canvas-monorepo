@@ -16,8 +16,8 @@ import { readProtocolJson } from '../helpers/read-store.js';
  * languages, and the translation table, a dialog over that page
  * (`/protocol/localization?table=open`), where its texts are translated.
  *
- * Seeded with one English stage holding three texts (its name, its heading and
- * one text block of two paragraphs), which are the researcher's own, so there
+ * Seeded with one English stage holding two texts (its name and its page
+ * content: a heading and two paragraphs), which are the researcher's own, so there
  * is something to count and translate once a second language joins. Then the
  * finish stage every protocol ends with: its name, closing text and finished
  * text (each screen's heading is part of its markdown), reworded by the
@@ -25,19 +25,19 @@ import { readProtocolJson } from '../helpers/read-store.js';
  * supplies, as it does the interview's own words (Back, Continue and the
  * like). A language Network Canvas supplies them in gains them when it is
  * added, reworded or not, so French starts with every text but the
- * researcher's three.
+ * researcher's two.
  */
 const STAGE_NAME = 'Welcome';
 
-/** The welcome text, of more than one line, so Enter takes a new line in it. */
-const WELCOME_TEXT_EN = 'Thank you for taking part.\n\nIt takes ten minutes.';
+/**
+ * The welcome page: a heading, then text of more than one line, so Enter takes
+ * a new line in it.
+ */
+const WELCOME_TEXT_EN =
+  '# Welcome to the study\n\nThank you for taking part.\n\nIt takes ten minutes.';
 
 /** The researcher's own texts' rows, named as the stage editor names them. */
-const WELCOME_TEXT_ROWS = [
-  'Stage name',
-  'Page content › Page heading',
-  'Page content › Item 1 › Content',
-];
+const WELCOME_TEXT_ROWS = ['Stage name', 'Page content'];
 
 /** Each stage text's row in the translation table. */
 const STAGE_TEXT_ROWS = [
@@ -106,14 +106,7 @@ function englishProtocol(): CurrentProtocol {
           id: 'welcome',
           type: 'Information',
           label: { en: STAGE_NAME },
-          title: { en: 'Welcome to the study' },
-          items: [
-            {
-              id: 'welcome-text',
-              type: 'text',
-              content: { en: WELCOME_TEXT_EN },
-            },
-          ],
+          content: { en: WELCOME_TEXT_EN },
         },
         {
           id: 'finish',
@@ -130,15 +123,9 @@ function englishProtocol(): CurrentProtocol {
   );
 }
 
-function welcomeTitle(protocol: CurrentProtocol) {
-  const stage = protocol.stages[0];
-  return stage?.type === 'Information' ? stage.title : undefined;
-}
-
 function welcomeContent(protocol: CurrentProtocol) {
   const stage = protocol.stages[0];
-  const item = stage?.type === 'Information' ? stage.items?.[0] : undefined;
-  return item?.type === 'text' ? item.content : undefined;
+  return stage?.type === 'Information' ? stage.content : undefined;
 }
 
 /**
@@ -229,7 +216,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(languageRows(page)).toHaveCount(1);
   await expect(english).toContainText('English');
   await expect(english.getByText('Default', { exact: true })).toBeVisible();
-  await expect(english).toContainText('31 of 31 strings translated');
+  await expect(english).toContainText('30 of 30 strings translated');
   // The translation table is there even with nothing to translate into: it
   // is where the protocol's own words for the interface are edited.
   const openTable = page.getByRole('link', {
@@ -268,7 +255,7 @@ test('adds a language, keeps the default language from being removed, translates
 
   const french = languageRow(page, 'fr');
   await expect(french).toContainText('French');
-  await expect(french).toContainText('28 of 31 strings translated');
+  await expect(french).toContainText('28 of 30 strings translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
   await expect(
     french.getByText('Missing translations', { exact: true }),
@@ -382,7 +369,7 @@ test('adds a language, keeps the default language from being removed, translates
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
   const strandedReason =
-    '3 strings have a translation only in English. Translate them into another language before removing English.';
+    '2 strings have a translation only in English. Translate them into another language before removing English.';
   await expect(removeEnglish).toBeDisabled();
   await expect(removeEnglish).toHaveAccessibleDescription(strandedReason);
   await removeEnglish.hover();
@@ -408,7 +395,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(page).toHaveURL(
     /\/protocol\/localization\?table=open&missing=fr$/,
   );
-  await expect(page.getByText('Showing 3 of 31 strings')).toBeVisible();
+  await expect(page.getByText('Showing 2 of 30 strings')).toBeVisible();
   const table = translationTable(page);
   await expect(table.locator('th[scope="row"]')).toHaveText(WELCOME_TEXT_ROWS);
   // A stage is headed by its position, its name in the default language and
@@ -421,8 +408,8 @@ test('adds a language, keeps the default language from being removed, translates
   ).toHaveAttribute('href', '/protocol/stage/welcome');
   // An empty cell shows the English text participants see in place of French.
   await expect(
-    translationCell(page, 'Page heading', 'French'),
-  ).toHaveAccessibleDescription(/^Welcome to the study Not translated yet\./);
+    translationCell(page, 'Stage name', 'French'),
+  ).toHaveAccessibleDescription(/^Welcome Not translated yet\./);
 
   // Enter moves to the next row from a text its field declares one line.
   // Rows translated while the filter is on stay until it changes, and nothing
@@ -430,25 +417,22 @@ test('adds a language, keeps the default language from being removed, translates
   await translationCell(page, 'Stage name', 'French').click();
   await page.keyboard.type('Bienvenue');
   await page.keyboard.press('Enter');
-  await expect(translationCell(page, 'Page heading', 'French')).toBeFocused();
-  await page.keyboard.type('Bienvenue dans l’étude');
-  await page.keyboard.press('Enter');
-  await expect(translationCell(page, 'Content', 'French')).toBeFocused();
+  await expect(translationCell(page, 'Page content', 'French')).toBeFocused();
   // Information text may hold several lines, whatever this one holds, so
   // Enter starts a new line in it; Ctrl+Enter moves on, and in the last row
   // checks the text where it is.
   await page.keyboard.type('Merci de votre participation.');
   await page.keyboard.press('Enter');
-  await expect(translationCell(page, 'Content', 'French')).toBeFocused();
+  await expect(translationCell(page, 'Page content', 'French')).toBeFocused();
   await expect(
-    translationCell(page, 'Content', 'French').locator('p'),
+    translationCell(page, 'Page content', 'French').locator('p'),
   ).toHaveCount(2);
   await page.keyboard.type('Cela prend dix minutes.');
   await page.keyboard.press('Control+Enter');
   await expect(table.locator('th[scope="row"]')).toHaveText(WELCOME_TEXT_ROWS);
   await expect(
     table.getByRole('columnheader', { name: /^French/ }),
-  ).toContainText('28 of 31 translated');
+  ).toContainText('28 of 30 translated');
 
   // Saving writes every translation at once, and goes back to the Languages
   // page and to the link that opened the table.
@@ -465,16 +449,12 @@ test('adds a language, keeps the default language from being removed, translates
     en: STAGE_NAME,
     fr: 'Bienvenue',
   });
-  expect(welcomeTitle(translated)).toEqual({
-    en: 'Welcome to the study',
-    fr: 'Bienvenue dans l’étude',
-  });
   expect(welcomeContent(translated)).toEqual({
     en: WELCOME_TEXT_EN,
     fr: 'Merci de votre participation.\n\nCela prend dix minutes.',
   });
   expect(translated.stages.at(-1)).toEqual(added.stages.at(-1));
-  await expect(french).toContainText('31 of 31 strings translated');
+  await expect(french).toContainText('30 of 30 strings translated');
   await expect(
     french.getByText('Missing translations', { exact: true }),
   ).toHaveCount(0);
@@ -679,7 +659,7 @@ test('opens the translation table on every missing translation from the protocol
   await expect(textsToShow(page).locator('option:checked')).toHaveText(
     'Missing in any shown language',
   );
-  await expect(page.getByText('Showing 6 of 31 strings')).toBeVisible();
+  await expect(page.getByText('Showing 5 of 30 strings')).toBeVisible();
 
   // The filter is kept in the address, and every text has a row without it.
   await textsToShow(page).selectOption({ label: 'All translations' });
@@ -720,7 +700,7 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
           stage.type === 'Information'
             ? {
                 ...stage,
-                title: {
+                content: {
                   en: 'Hello{name, select, missing {} other {, {name}}}',
                   fr: 'Bonjour{name, select, missing {} other {, {name}}}',
                 },
@@ -734,9 +714,9 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
   await page.goto('/protocol/localization?table=open');
 
   await translationTable(page)
-    .getByRole('button', { name: /Page heading French$/ })
+    .getByRole('button', { name: /Page content French$/ })
     .click();
-  const editor = translationCell(page, 'Page content › Page heading', 'French');
+  const editor = translationCell(page, 'Page content', 'French');
   await expect(editor).toBeFocused();
 
   // The toolbar sits above the text it formats, not over it, and stays there

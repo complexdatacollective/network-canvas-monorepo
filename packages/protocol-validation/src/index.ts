@@ -109,7 +109,24 @@ export {
   MISSING_CASE,
   pluralValueExamples,
 } from './localization/dynamicValueMessages.ts';
+export {
+  ASSET_BLOCK_ALIGNMENTS,
+  ASSET_BLOCK_DEFAULTS,
+  ASSET_BLOCK_SIZES,
+  type AssetBlock,
+  type AssetBlockAlignment,
+  type AssetBlockKind,
+  type AssetBlockSize,
+  assetBlockMarkdown,
+  assetBlocksInMarkdown,
+  assetBlocksInMessage,
+  assetBlockUrl,
+  isAssetBlockKind,
+  isAssetBlockUrl,
+  readAssetBlockUrl,
+} from './localization/assetBlock.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
+export { headingMarkdown } from './schemas/9/information-content-migration.ts';
 export {
   escapeMessageText,
   messageText,

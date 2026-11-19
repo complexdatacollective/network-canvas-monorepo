@@ -1,6 +1,7 @@
 import { invariant } from 'es-toolkit';
 
 import {
+  assetBlockMarkdown,
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
   defaultFinishSessionFields,
@@ -16,6 +17,7 @@ import {
   type FinishMode,
   type FinishOutcome,
   type Experiments,
+  type LocaleTag,
   type LocalizedString,
   collectLocalizedStrings,
   findBuiltInWordingProblems,
@@ -98,6 +100,7 @@ import type {
   AddStageInput,
   AddTieStrengthCensusPromptInput,
   AddVariableInput,
+  AssetBlockInput,
   CategoricalBinPromptEntry,
   DyadCensusPromptEntry,
   EdgeEntry,
@@ -106,7 +109,6 @@ import type {
   FormFieldInput,
   GeospatialPromptEntry,
   GetSessionInput,
-  ItemInput,
   LocalizationInput,
   NameGeneratorPromptEntry,
   NetworkComposerEdgeEntry,
@@ -1068,17 +1070,21 @@ export class SyntheticInterview {
     return this.createStageHandle(type, entry);
   }
 
+  /**
+   * A page of text. Its heading is `title` and its words are `text`, both
+   * written into the one markdown text a page holds; `blocks` follow, each an
+   * image, audio recording or video among the paragraphs.
+   */
   addInformationStage(opts?: {
     title?: TextInput;
     text?: TextInput;
+    blocks?: AssetBlockInput[];
     label?: TextInput;
     interviewScript?: string;
     skipLogic?: SkipLogicInput;
-    items?: ItemInput[];
   }): InformationHandle {
     const stageId = this.nextId('stage');
     const title = opts?.title ?? 'Information';
-    const text = opts?.text ?? '';
 
     const entry: StageEntry = {
       id: stageId,
@@ -1086,12 +1092,7 @@ export class SyntheticInterview {
       label: opts?.label ?? title,
       interviewScript: opts?.interviewScript,
       skipLogic: opts?.skipLogic,
-      title,
-      items:
-        opts?.items ??
-        (text
-          ? [{ id: this.nextId('item'), type: 'text', content: text }]
-          : []),
+      content: this.informationContent(title, opts?.text, opts?.blocks ?? []),
       prompts: [],
       presets: [],
       panels: [],
@@ -2758,13 +2759,54 @@ export class SyntheticInterview {
     return built;
   }
 
-  private buildItem(item: ItemInput): Record<string, unknown> {
-    if (item.type === 'text') {
-      return { ...item, content: this.localized(item.content) };
+  /**
+   * An Information page's markdown in each language its inputs are written
+   * in. Text written as a string is the default language's words as typed, so
+   * it is escaped as text; text written per language is a message already.
+   */
+  private informationContent(
+    title: TextInput,
+    text: TextInput | undefined,
+    blocks: readonly AssetBlockInput[],
+  ): Record<string, string> {
+    const { defaultLocale } = this.localization;
+    const inputs = [title, text, ...blocks.map((block) => block.description)];
+    const locales = new Set<LocaleTag>(
+      inputs.flatMap((input) => {
+        if (input === undefined) return [];
+        return typeof input === 'object' ? Object.keys(input) : [defaultLocale];
+      }),
+    );
+    const content: Record<string, string> = {};
+    for (const locale of locales) {
+      const read = (input: TextInput | undefined, escapeText: boolean) => {
+        if (input === undefined) return undefined;
+        if (typeof input === 'string') {
+          if (locale !== defaultLocale) return undefined;
+          return escapeText ? escapeMessageText(input) : input;
+        }
+        return input[locale];
+      };
+      const heading = read(title, false);
+      const paragraphs = [
+        heading === undefined || heading === ''
+          ? undefined
+          : `# ${typeof title === 'string' ? escapeMessageText(escapeMarkdownText(heading)) : escapeMarkdownText(heading)}`,
+        read(text, true),
+        ...blocks.map((block) => {
+          const described = read(block.description, true);
+          return assetBlockMarkdown({
+            ...block,
+            description: described,
+          });
+        }),
+      ].filter(
+        (paragraph): paragraph is string =>
+          paragraph !== undefined && paragraph !== '',
+      );
+      content[locale] = paragraphs.join('\n\n');
     }
-    return item.description === undefined
-      ? item
-      : { ...item, description: this.localized(item.description) };
+    return content;
   }
 
   private buildComposerField(
@@ -2994,14 +3036,6 @@ export class SyntheticInterview {
 
     if (stage.outcome !== undefined) {
       config.outcome = stage.outcome;
-    }
-
-    if (stage.title !== undefined) {
-      config.title = this.localized(stage.title);
-    }
-
-    if (stage.items) {
-      config.items = stage.items.map((item) => this.buildItem(item));
     }
 
     // NameGeneratorQuickAdd

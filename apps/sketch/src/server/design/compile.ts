@@ -8,6 +8,7 @@ import {
   createDefaultFinishSessionStage,
   type CurrentProtocolSchema,
   defaultFinishSessionText,
+  headingMarkdown,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
@@ -185,6 +186,18 @@ const INFO_TITLES = {
 
 const pick = (...xs: (string | undefined)[]) =>
   xs.find((x) => x && x.trim())?.trim() ?? '';
+
+/**
+ * The one text an Information screen shows: its title as the heading that
+ * opens the page, then its words, which are markdown already. Either may be
+ * empty.
+ */
+const pageContent = (title: string, text: string) =>
+  localized(
+    [title.trim() && headingMarkdown(title), text.trim()]
+      .filter(Boolean)
+      .join('\n\n'),
+  );
 
 const qKey = (scope: string, id: string) =>
   scope === 'ego' ? `ego/${id}` : `${scope}/${id}`;
@@ -741,14 +754,10 @@ export const compile = (
           ...(stage.skipLogic
             ? { skipLogic: structuredClone(stage.skipLogic) }
             : {}),
-          title: localized(pick(w?.title, introFor.title)),
-          items: [
-            {
-              id: 'text',
-              type: 'text',
-              content: localized(pick(w?.text, introFor.text)),
-            },
-          ],
+          content: pageContent(
+            pick(w?.title, introFor.title),
+            pick(w?.text, introFor.text),
+          ),
         },
         { added: 'introduction' },
       );
@@ -777,19 +786,10 @@ export const compile = (
           type: 'Information',
           label: localized('Consent given'),
           skipLogic: gate,
-          title: localized(pick(w?.title, 'Thank you')),
-          items: [
-            {
-              id: 'text',
-              type: 'text',
-              content: localized(
-                pick(
-                  w?.text,
-                  "Thank you for agreeing to take part. Let's begin.",
-                ),
-              ),
-            },
-          ],
+          content: pageContent(
+            pick(w?.title, 'Thank you'),
+            pick(w?.text, "Thank you for agreeing to take part. Let's begin."),
+          ),
         });
         stageMap.push({ added: 'consent gate' });
       } else stage.skipLogic = gate;
@@ -865,10 +865,7 @@ export const compile = (
         push(
           {
             ...base(s.id, 'Information', label(s.id, humanise(s.id))),
-            title: localized(pick(w?.title, INFO_TITLES[s.role])),
-            items: content
-              ? [{ id: 'text', type: 'text', content: localized(content) }]
-              : [],
+            content: pageContent(pick(w?.title, INFO_TITLES[s.role]), content),
           },
           src,
         );
@@ -1464,10 +1461,7 @@ export const compile = (
     id: sid('researcher_notes'),
     type: 'Information',
     label: localized('Researcher notes (delete before fielding)'),
-    title: localized('Notes for the research team'),
-    items: [
-      { id: 'text', type: 'text', content: localized(notes.join('\n\n')) },
-    ],
+    content: pageContent('Notes for the research team', notes.join('\n\n')),
   });
   stageMap.unshift({ added: 'researcher notes' });
 

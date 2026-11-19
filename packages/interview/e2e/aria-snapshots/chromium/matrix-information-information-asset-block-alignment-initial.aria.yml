@@ -1,7 +1,8 @@
 - main:
-  - heading "Fallback stage" [level=1]
-  - paragraph: This item could not be displayed.
-  - paragraph: This item could not be displayed.
+  - heading "Alignment" [level=1]
+  - img "Image at the start"
+  - img "Image at the centre"
+  - img "Image at the end"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

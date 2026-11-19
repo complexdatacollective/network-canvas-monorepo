@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { assetBlockMarkdown } from '@codaco/protocol-validation';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
@@ -12,8 +13,8 @@ export const informationScenarios: InterfaceScenarios = {
     {
       id: 'text-markdown-and-sanitization',
       covers: [
-        'title',
-        'items[].type=text',
+        'content',
+        'content.heading',
         'markdown-allowlist',
         'label',
         'interviewScript',
@@ -26,19 +27,7 @@ export const informationScenarios: InterfaceScenarios = {
           label: 'Menu-only label',
           title: 'Welcome to the study',
           interviewScript: 'INTERVIEWER: read aloud slowly',
-          items: [
-            {
-              id: 'item-1',
-              type: 'text',
-              content:
-                '## Section\n\nA paragraph with **bold** and *italic* text.\n\n- first\n- second',
-            },
-            {
-              id: 'item-2',
-              type: 'text',
-              content: '<script>window.__pwned=1</script> plain tail text',
-            },
-          ],
+          text: '## Section\n\nA paragraph with **bold** and *italic* text.\n\n- first\n- second\n\n<script>window.__pwned=1</script> plain tail text',
         });
         return synth;
       },
@@ -71,7 +60,7 @@ export const informationScenarios: InterfaceScenarios = {
     },
     {
       id: 'image-asset-and-size-bands',
-      covers: ['items[].type=asset(image)', 'items[].size'],
+      covers: ['asset-block.image', 'asset-block.size'],
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -83,28 +72,10 @@ export const informationScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({
           title: 'Image sizes',
-          items: [
-            {
-              id: 'item-s',
-              type: 'asset',
-              content: 'img-1',
-              size: 'SMALL',
-              description: 'Small image',
-            },
-            {
-              id: 'item-m',
-              type: 'asset',
-              content: 'img-1',
-              size: 'MEDIUM',
-              description: 'Medium image',
-            },
-            {
-              id: 'item-l',
-              type: 'asset',
-              content: 'img-1',
-              size: 'LARGE',
-              description: 'Large image',
-            },
+          blocks: [
+            { assetId: 'img-1', size: 'small', description: 'Small image' },
+            { assetId: 'img-1', size: 'medium', description: 'Medium image' },
+            { assetId: 'img-1', size: 'large', description: 'Large image' },
           ],
         });
         return synth;
@@ -153,7 +124,7 @@ export const informationScenarios: InterfaceScenarios = {
     },
     {
       id: 'media-asset-description-and-kind-fallback',
-      covers: ['items[].type=asset(audio)', 'items[].description'],
+      covers: ['asset-block.audio', 'asset-block.description'],
       build: () => {
         const synth = new SyntheticInterview();
         synth.addAsset({
@@ -170,15 +141,10 @@ export const informationScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({
           title: 'Media stage',
-          items: [
-            {
-              id: 'item-1',
-              type: 'asset',
-              content: 'audio-1',
-              description: 'Intro narration',
-            },
-            { id: 'item-2', type: 'asset', content: 'audio-1' },
-            { id: 'item-3', type: 'asset', content: 'video-1' },
+          blocks: [
+            { assetId: 'audio-1', description: 'Intro narration' },
+            { assetId: 'audio-1' },
+            { assetId: 'video-1' },
           ],
         });
         return synth;
@@ -220,7 +186,7 @@ export const informationScenarios: InterfaceScenarios = {
     },
     {
       id: 'video-asset-e2e-mode',
-      covers: ['items[].type=asset(video)', 'items[].description'],
+      covers: ['asset-block.video', 'asset-block.description'],
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -232,12 +198,10 @@ export const informationScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({
           title: 'Video stage',
-          items: [
+          blocks: [
             {
-              id: 'item-1',
-              type: 'asset',
-              content: 'video-1',
-              size: 'MEDIUM',
+              assetId: 'video-1',
+              size: 'medium',
               description: 'A welcome from the research team',
             },
           ],
@@ -269,49 +233,8 @@ export const informationScenarios: InterfaceScenarios = {
       },
     },
     {
-      id: 'missing-and-unsupported-asset-fallback',
-      covers: ['missing-asset-fallback', 'unsupported-asset-fallback'],
-      build: () => {
-        const synth = new SyntheticInterview();
-        synth.addAsset({
-          id: 'roster-1',
-          name: 'roster',
-          type: 'network',
-          source: 'roster.json',
-        });
-        synth.addInformationStage({
-          title: 'Fallback stage',
-          items: [
-            { id: 'item-1', type: 'asset', content: 'does-not-exist' },
-            { id: 'item-2', type: 'asset', content: 'roster-1' },
-          ],
-        });
-        return synth;
-      },
-      assets: [
-        {
-          assetId: 'roster-1',
-          name: 'roster',
-          type: 'network',
-          source: 'roster.json',
-          localPath: path.resolve(
-            import.meta.dirname,
-            '../../.storybook/static/storybook/roster-50.json',
-          ),
-        },
-      ],
-      run: async ({ page, interview }) => {
-        // Unresolvable and unsupported (network) assets both fall back
-        await expect(page.getByTestId('information-item-fallback')).toHaveCount(
-          2,
-        );
-        // No crash: navigation stays available
-        await expect(interview.nextButton).toBeEnabled();
-      },
-    },
-    {
-      id: 'items-ordering-mixed-types',
-      covers: ['items-ordering'],
+      id: 'asset-block-ordering-mixed-content',
+      covers: ['asset-block-ordering'],
       build: () => {
         const synth = new SyntheticInterview();
         synth.addAsset({
@@ -322,11 +245,11 @@ export const informationScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({
           title: 'Ordered stage',
-          items: [
-            { id: 'item-a', type: 'text', content: 'Alpha block' },
-            { id: 'item-b', type: 'asset', content: 'img-1', size: 'SMALL' },
-            { id: 'item-c', type: 'text', content: 'Omega block' },
-          ],
+          text: [
+            'Alpha block',
+            assetBlockMarkdown({ assetId: 'img-1', size: 'small' }),
+            'Omega block',
+          ].join('\n\n'),
         });
         return synth;
       },
@@ -340,7 +263,8 @@ export const informationScenarios: InterfaceScenarios = {
         },
       ],
       run: async ({ page }) => {
-        // Items render in config order: text, image, text
+        // The page shows what its text holds in the order it holds it: text,
+        // image, text
         const alpha = page.getByText('Alpha block');
         const omega = page.getByText('Omega block');
         await expect(alpha).toBeVisible();
@@ -368,19 +292,212 @@ export const informationScenarios: InterfaceScenarios = {
       },
     },
     {
+      id: 'asset-block-alignment',
+      covers: ['asset-block.align'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.addAsset({
+          id: 'img-1',
+          name: 'quadrant',
+          type: 'image',
+          source: 'quadrant.png',
+        });
+        synth.addAsset({
+          id: 'audio-1',
+          name: 'clip',
+          type: 'audio',
+          source: 'click_the_thing.mp3',
+        });
+        synth.addInformationStage({
+          title: 'Alignment',
+          // Long enough that the page is wider than an audio player, which has
+          // nowhere to move across a page no wider than itself.
+          text: 'The page is as wide as its widest line, so this paragraph is long enough to give the page its full width, which leaves a recording room to sit at the start, the centre or the end of it.',
+          blocks: [
+            {
+              assetId: 'img-1',
+              size: 'small',
+              align: 'start',
+              description: 'Image at the start',
+            },
+            {
+              assetId: 'img-1',
+              size: 'small',
+              description: 'Image at the centre',
+            },
+            {
+              assetId: 'img-1',
+              size: 'small',
+              align: 'end',
+              description: 'Image at the end',
+            },
+            {
+              assetId: 'audio-1',
+              autoplay: false,
+              align: 'start',
+              description: 'Audio at the start',
+            },
+            {
+              assetId: 'audio-1',
+              autoplay: false,
+              description: 'Audio at the centre',
+            },
+            {
+              assetId: 'audio-1',
+              autoplay: false,
+              align: 'end',
+              description: 'Audio at the end',
+            },
+          ],
+        });
+        return synth;
+      },
+      assets: [
+        {
+          assetId: 'img-1',
+          name: 'quadrant',
+          type: 'image',
+          source: 'quadrant.png',
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
+        },
+        {
+          assetId: 'audio-1',
+          name: 'clip',
+          type: 'audio',
+          source: 'click_the_thing.mp3',
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'click_the_thing.mp3'),
+        },
+      ],
+      run: async ({ page }) => {
+        // An image held to a height is drawn in a box as wide as the page, so
+        // where it sits is where the picture sits inside that box.
+        const position = (name: string) =>
+          page
+            .getByRole('img', { name })
+            .evaluate((el) => getComputedStyle(el).objectPosition);
+        await expect.poll(() => position('Image at the start')).toBe('0% 50%');
+        await expect
+          .poll(() => position('Image at the centre'))
+          .toBe('50% 50%');
+        await expect.poll(() => position('Image at the end')).toBe('100% 50%');
+
+        // An audio player keeps the width the browser draws it at, so its box
+        // moves across the page.
+        const left = async (name: string) => {
+          const box = await page
+            .locator(`audio[aria-label="${name}"]`)
+            .boundingBox();
+          expect(box, `${name} is laid out`).not.toBeNull();
+          return box?.x ?? 0;
+        };
+        const start = await left('Audio at the start');
+        const centre = await left('Audio at the centre');
+        const end = await left('Audio at the end');
+        expect(start).toBeLessThan(centre);
+        expect(centre).toBeLessThan(end);
+      },
+    },
+    {
+      id: 'asset-block-autoplay-and-loop',
+      covers: ['asset-block.autoplay', 'asset-block.loop'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.addAsset({
+          id: 'audio-1',
+          name: 'clip',
+          type: 'audio',
+          source: 'click_the_thing.mp3',
+        });
+        synth.addAsset({
+          id: 'video-1',
+          name: 'welcome',
+          type: 'video',
+          source: 'withSound.mp4',
+        });
+        synth.addInformationStage({
+          title: 'Playback',
+          blocks: [
+            { assetId: 'audio-1', description: 'Audio by default' },
+            {
+              assetId: 'audio-1',
+              autoplay: false,
+              loop: false,
+              description: 'Audio set not to play or repeat',
+            },
+            { assetId: 'video-1', description: 'Video by default' },
+            {
+              assetId: 'video-1',
+              loop: false,
+              description: 'Video set not to repeat',
+            },
+          ],
+        });
+        return synth;
+      },
+      assets: [
+        {
+          assetId: 'audio-1',
+          name: 'clip',
+          type: 'audio',
+          source: 'click_the_thing.mp3',
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'click_the_thing.mp3'),
+        },
+        {
+          assetId: 'video-1',
+          name: 'welcome',
+          type: 'video',
+          source: 'withSound.mp4',
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'withSound.mp4'),
+        },
+      ],
+      run: async ({ page }) => {
+        const player = (name: string) => page.locator(`[aria-label="${name}"]`);
+        await expect(player('Audio by default')).toHaveAttribute(
+          'autoplay',
+          '',
+        );
+        await expect(player('Audio by default')).toHaveAttribute('loop', '');
+        await expect(
+          player('Audio set not to play or repeat'),
+        ).not.toHaveAttribute('autoplay');
+        await expect(
+          player('Audio set not to play or repeat'),
+        ).not.toHaveAttribute('loop');
+        await expect(player('Video by default')).toHaveAttribute('loop', '');
+        await expect(player('Video set not to repeat')).not.toHaveAttribute(
+          'loop',
+        );
+        // The E2E host never starts a video by itself, whatever the setting
+        // (see video-asset-e2e-mode), so a video's autoplay is proved by the
+        // unit tests rather than here.
+      },
+    },
+    {
+      id: 'non-asset-image-not-shown',
+      covers: ['asset-block.asset-only'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.addInformationStage({
+          title: 'Web image',
+          text: 'Before\n\n![A picture on the web](https://example.com/picture.png)\n\nAfter',
+        });
+        return synth;
+      },
+      run: async ({ page }) => {
+        await expect(page.getByText('Before')).toBeVisible();
+        await expect(page.getByText('After')).toBeVisible();
+        await expect(page.locator('main img')).toHaveCount(0);
+        await expect(page.locator('main [data-asset-block]')).toHaveCount(0);
+      },
+    },
+    {
       id: 'external-link-new-tab',
       covers: ['external-links'],
       build: () => {
         const synth = new SyntheticInterview();
         synth.addInformationStage({
           title: 'Link stage',
-          items: [
-            {
-              id: 'item-1',
-              type: 'text',
-              content: 'Read the [docs](https://example.com) first.',
-            },
-          ],
+          text: 'Read the [docs](https://example.com) first.',
         });
         return synth;
       },
@@ -404,14 +521,13 @@ export const informationScenarios: InterfaceScenarios = {
       },
     },
     {
-      id: 'empty-items',
-      covers: ['items=[]'],
+      id: 'heading-only-page',
+      covers: ['content.heading-only'],
       build: () => {
         const synth = new SyntheticInterview();
         synth.addInformationStage({
-          label: 'Empty stage',
-          title: 'Empty stage',
-          items: [],
+          label: 'Heading-only stage',
+          title: 'Heading-only stage',
         });
         return synth;
       },
@@ -449,16 +565,10 @@ export const informationScenarios: InterfaceScenarios = {
             'en-US':
               '{name, select, missing {Welcome} other {Welcome, {name}}}',
           },
-          items: [
-            {
-              id: 'item-1',
-              type: 'text',
-              content: {
-                'en-US':
-                  'Thanks for **joining**{name, select, missing {.} other {, {name}.}}',
-              },
-            },
-          ],
+          text: {
+            'en-US':
+              'Thanks for **joining**{name, select, missing {.} other {, {name}.}}',
+          },
         });
         info.stageEntry.dynamicValues = {
           name: { path: `ego.${nameVar.id}` },

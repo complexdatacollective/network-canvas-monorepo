@@ -1,0 +1,53 @@
+---
+'@codaco/protocol-validation': minor
+'@codaco/protocol-utilities': major
+'@codaco/fresco-ui': minor
+'@codaco/interview': minor
+'@codaco/architect': minor
+'@codaco/interviewer': minor
+'fresco': minor
+'@codaco/development-protocol': patch
+'@codaco/sample-protocol': patch
+---
+
+An Information stage's page is now one text. Its page heading, text, images,
+audio and video, which were a title and a list of separate items, are written
+together in a single editor in Architect, in the order participants read them.
+The page heading is a heading at the top of the text. An image, audio recording
+or video is added from the editor's toolbar (Insert image, Insert audio, Insert
+video) and sits in the text as a block, which can be dragged to another place.
+Selecting a block shows its settings: a description for participants who cannot
+see or hear it, a display size for images and videos, where it sits across the
+page, and, for audio and video, whether it starts playing automatically and
+whether it repeats when it ends. Both are on unless you turn them off.
+
+Each language of a protocol has its own text, so a page can show a different
+file in each language. The translation table shows each file as a line naming
+it and keeps it in place while you edit the words around it, and the printable
+summary lists each file where it sits in the page, with its settings.
+
+The rich text editor's toolbar is regrouped: undo and redo, then text styles,
+formatting, lists, and everything that inserts something. It wraps onto a
+second line where the editor is too narrow for it, instead of hiding its last
+buttons.
+
+Upgrading a protocol from schema 8 joins each Information stage's page heading
+and items into one text, in the order they were shown, so participants see the
+same page. An audio recording keeps playing once, at the start of its line, as
+it did before. A page heading that held only spaces is left out, as is an item
+whose file is no longer among the protocol's resources; a page that would then
+be empty shows the name of its stage as its heading. The migration notes
+describe this in English; the other languages follow.
+
+For developers: the schema 9 Information stage is `{ content }`, a localized
+markdown string declared with `assetBlocks: true`, in place of `title` and
+`items`, and the `Item` type is gone. A file is written as a markdown image in
+a paragraph of its own whose address names an asset:
+`![description](asset:<assetId>?size=small|medium|large&align=start|end&autoplay=false&loop=false)`.
+`@codaco/protocol-validation` exports the grammar (`assetBlockMarkdown`,
+`readAssetBlockUrl`, `assetBlocksInMessage` and others), reports a block whose
+asset is missing or is not an image, audio or video, and counts each block as
+an asset reference. `RichTextEditor` takes `assetBlocks` (a block view and an
+optional picker), and `RenderMarkdown` takes `blockImages`, which draws
+matching markdown images with a component of the caller's and never draws one
+from raw HTML. `SyntheticInterview` builds Information stages in the new shape.

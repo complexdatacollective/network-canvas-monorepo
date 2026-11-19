@@ -14,18 +14,13 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { contentBlocks } from '../content-blocks/contentBlocks.tsx';
 import IntroductionSection from '../introduction/IntroductionSection.tsx';
+import { pageContent } from '../page-content/pageContent.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import SubjectSection from '../subject-picker/SubjectSection.tsx';
-import {
-  TestItemEditor,
-  TestItemPreview,
-  TestPromptEditor,
-  TestPromptPreview,
-} from './rowFixtures.tsx';
+import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 /**
  * Copy in the fixture protocol's only language, as schema 9 holds it. The
@@ -75,20 +70,16 @@ describe('the shared stage sections, read in Spanish', () => {
       locale: 'es',
       sections: (
         <>
-          <PageContentSection
-            ItemEditor={TestItemEditor}
-            ItemPreview={TestItemPreview}
-          />
+          <PageContentSection />
         </>
       ),
     });
 
-    expect(
-      screen.getByRole('textbox', { name: 'Encabezado de página' }).textContent,
-    ).toBe('Welcome');
-    expect(
-      screen.getByRole('button', { name: 'Crear nuevo elemento de contenido' }),
-    ).toBeInTheDocument();
+    const editor = await screen.findByRole('textbox', {
+      name: 'Contenido de la página',
+    });
+    expect(editor).toHaveTextContent('Welcome');
+    expect(editor).toHaveTextContent('Welcome to this interview.');
     // The section the editor publishes to its host carries the SAME title the
     // card shows, so a section named in Spanish on screen and published in
     // English would fail here rather than pass halfway. Its state is the
@@ -155,397 +146,88 @@ describe('the shared stage sections, read in Spanish', () => {
 });
 
 /**
- * The blocks exactly as an interface composes them.
+ * A page, written as one text, with the files its blocks name.
  *
- * Through `contentBlocks` rather than by mounting the shared page section with
- * this family's parts by hand: what a block editor is paired with — its
- * preview, its slots, the sentence its dialog says — is that function's
- * business, and a fixture that re-pairs them stops testing what ships the
- * moment the pairing gains a part.
+ * Through `pageContent` rather than by mounting the shared section by hand:
+ * the pairing an interface composes is that function's business.
  */
-const pageOfBlocks = contentBlocks()();
-
-/** A page holding one passage of prose and one picture. */
-const mediaPage = () => ({
+const pageOf = (id: string, content: string) => ({
   stage: {
-    id: 'information-media-es',
+    id,
     type: 'Information' as const,
     fields: {
       label: inProtocolLanguage('Information'),
-      title: inProtocolLanguage('Bienvenida'),
-      items: [
-        {
-          id: 'block-text',
-          type: 'text',
-          content: inProtocolLanguage('Lee esto.'),
-        },
-        { id: 'block-image', type: 'asset', content: 'welcome_image' },
-      ],
-    },
-  },
-  assets: {
-    welcome_image: {
-      name: 'Welcome image',
-      type: 'image',
-      source: 'welcome.png',
+      content: inProtocolLanguage(content),
     },
   },
   locale: 'es',
-  sections: pageOfBlocks,
-});
-
-/**
- * The block editor, read in Spanish.
- *
- * Every branch of it says something different, and most of what it says only
- * appears when something is wrong — a kind nobody chose, a file nobody
- * supplied, a reference to a resource that is gone. So each is reached by
- * driving it rather than by asserting over a surface at rest.
- */
-describe('the content-block dialog, read in Spanish', () => {
-  it('names the dialog, the kinds it offers, and the guidance under them', async () => {
-    const harness = renderStageEditor({
-      stageId: 'information-1',
-      locale: 'es',
-      sections: pageOfBlocks,
-    });
-
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Crear nuevo elemento de contenido',
-      }),
-    );
-    const dialog = await screen.findByRole('dialog');
-
-    // The dialog's own title and the sentence under it — said once now that
-    // the fields are the dialog's only topic, rather than restated by a group
-    // inside it.
-    expect(dialog).toHaveAccessibleName('Crear elemento');
-    expect(dialog).toHaveAccessibleDescription(
-      'Elige el tipo de contenido, proporciona lo que verán quienes participan y ajusta su presentación cuando sea posible.',
-    );
-    expect(within(dialog).getByText('Tipo de contenido')).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        'Elige el tipo de contenido que mostrará este elemento.',
-      ),
-    ).toBeInTheDocument();
-    for (const kind of ['Imagen', 'Vídeo', 'Audio', 'Texto']) {
-      expect(
-        within(dialog).getByRole('radio', { name: kind }),
-      ).toBeInTheDocument();
-    }
-    expectNoLocaleLeaks('the content block dialog', researcherWords(harness));
-  });
-
-  it('refuses each kind of empty block in the researcher’s language', async () => {
-    const harness = renderStageEditor({
-      stageId: 'information-1',
-      locale: 'es',
-      sections: pageOfBlocks,
-    });
-
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Crear nuevo elemento de contenido',
-      }),
-    );
-    const dialog = await screen.findByRole('dialog');
-    const commit = async () => {
-      await harness.user.click(
-        within(dialog).getByRole('button', { name: 'Añadir' }),
-      );
-    };
-    const chooseKind = async (kind: string) => {
-      await harness.user.click(
-        within(dialog).getByRole('radio', { name: kind }),
-      );
-    };
-
-    // Nothing chosen at all: the block has no content control to refuse, so
-    // the refusal belongs to the kind.
-    await commit();
-    expect(
-      await within(dialog).findByText(
-        'Elige qué tipo de contenido tiene este bloque.',
-      ),
-    ).toBeInTheDocument();
-
-    await chooseKind('Imagen');
-    expect(
-      await within(dialog).findByText(
-        'Proporciona el contenido de imagen para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
-      ),
-    ).toBeInTheDocument();
-    await commit();
-    expect(
-      await within(dialog).findByText(
-        'Elige la imagen que muestra este bloque.',
-      ),
-    ).toBeInTheDocument();
-
-    await chooseKind('Audio');
-    expect(
-      await within(dialog).findByText(
-        'Proporciona el contenido de audio para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
-      ),
-    ).toBeInTheDocument();
-    await commit();
-    expect(
-      await within(dialog).findByText(
-        'Elige el archivo de audio que reproduce este bloque.',
-      ),
-    ).toBeInTheDocument();
-
-    await chooseKind('Vídeo');
-    expect(
-      await within(dialog).findByText(
-        'Proporciona el contenido de vídeo para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
-      ),
-    ).toBeInTheDocument();
-    await commit();
-    expect(
-      await within(dialog).findByText(
-        'Elige el vídeo que reproduce este bloque.',
-      ),
-    ).toBeInTheDocument();
-
-    await chooseKind('Texto');
-    expect(
-      await within(dialog).findByText(
-        'Proporciona el contenido de texto para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.',
-      ),
-    ).toBeInTheDocument();
-    // The prose control carries its placeholder as `aria-placeholder`, which
-    // is what a researcher reads while the block is still empty.
-    expect(
-      await within(dialog).findByRole('textbox', { name: 'Contenido' }),
-    ).toHaveAttribute(
-      'aria-placeholder',
-      'Introduce el texto de este bloque...',
-    );
-    await commit();
-    expect(
-      await within(dialog).findByText(
-        'Escribe el texto que muestra este bloque.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('names the display sizes a picture on a page may be drawn at', async () => {
-    const harness = renderStageEditor(mediaPage());
-
-    await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit elemento' }))[1]!,
-    );
-    const dialog = await screen.findByRole('dialog');
-
-    expect(
-      await within(dialog).findByText('Tamaño de visualización'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        'Puedes limitar la altura de este elemento. El tamaño completo permite mostrarlo con su altura natural.',
-      ),
-    ).toBeInTheDocument();
-    for (const size of ['Tamaño completo', 'Pequeño', 'Mediano', 'Grande']) {
-      expect(
-        within(dialog).getByRole('radio', { name: size }),
-      ).toBeInTheDocument();
-    }
-  });
-});
-
-/**
- * The live region of the block editor, read in Spanish.
- *
- * Choosing or changing a block's kind swaps a whole required control, and
- * these four sentences are the only thing that says so to anyone not watching
- * it happen. Scoped to the dialog: the list beneath it reports its own changes
- * through a live region of its own.
- */
-describe('what a Spanish screen reader is told when a block changes type', () => {
-  const status = () =>
-    within(screen.getByRole('dialog')).getByRole('status').textContent;
-
-  it('names the control that has just appeared on a new block', async () => {
-    const harness = renderStageEditor(mediaPage());
-
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Crear nuevo elemento de contenido',
-      }),
-    );
-    await harness.user.click(
-      await screen.findByRole('radio', { name: 'Texto' }),
-    );
-
-    await waitFor(() =>
-      expect(status()).toBe(
-        'Content type set to Texto. A content field for it has been added below.',
-      ),
-    );
-  });
-
-  it('walks a saved block through all three outcomes for its draft', async () => {
-    const harness = renderStageEditor(mediaPage());
-
-    await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit elemento' }))[1]!,
-    );
-    await screen.findByRole('radio', { name: 'Imagen' });
-
-    await harness.user.click(screen.getByRole('radio', { name: 'Texto' }));
-    await waitFor(() =>
-      expect(status()).toBe(
-        'Content type changed to Texto. The content you entered for the previous type is kept, and returns if you change back to it.',
-      ),
-    );
-
-    await harness.user.click(screen.getByRole('radio', { name: 'Imagen' }));
-    await waitFor(() =>
-      expect(status()).toBe(
-        'Content type changed to Imagen. The content you entered for Imagen earlier has been restored.',
-      ),
-    );
-
-    await harness.user.click(screen.getByRole('radio', { name: 'Texto' }));
-    await waitFor(() => expect(status()).toContain('changed to Texto'));
-    await harness.user.click(screen.getByRole('radio', { name: 'Audio' }));
-    await waitFor(() =>
-      expect(status()).toBe(
-        'Content type changed to Audio. Nothing has been entered for Audio yet.',
-      ),
-    );
-  });
+  sections: pageContent()(),
 });
 
 /**
  * A block the page cannot show, read in Spanish.
  *
- * Three separate things are wrong here and each has its own sentence: a
- * reference to a resource that has been deleted, a reference to one the
- * protocol still holds but a page cannot present, and a block whose content
- * nobody has supplied at all.
+ * Two separate things are wrong here and read the same to a participant but
+ * not to the researcher's eye: a reference to a resource that has been
+ * deleted, and a reference to one the protocol still holds but a page cannot
+ * present. `geo_data` is a map layer the shared fixture protocol really holds.
  */
 describe('a block a page cannot show, read in Spanish', () => {
-  /** `geo_data` is a map layer the shared fixture protocol really holds. */
-  const brokenPage = () => ({
-    stage: {
-      id: 'information-broken-es',
-      type: 'Information' as const,
-      fields: {
-        label: inProtocolLanguage('Information'),
-        title: inProtocolLanguage('Bienvenida'),
-        items: [
-          {
-            id: 'block-missing',
-            type: 'asset',
-            content: 'retirada_del_protocolo',
-          },
-          { id: 'block-layer', type: 'asset', content: 'geo_data' },
-          { id: 'block-empty', type: 'asset', content: '' },
-        ],
+  const UNUSABLE =
+    'El recurso de este bloque no está en este protocolo, o no es algo que una página pueda mostrar.';
+
+  it('says which blocks name a resource that is gone or is not a file a page shows', async () => {
+    renderStageEditor(
+      pageOf(
+        'information-broken-es',
+        [
+          'Bienvenida',
+          '![](asset:retirada_del_protocolo)',
+          '![](asset:geo_data)',
+        ].join('\n\n'),
+      ),
+    );
+
+    expect(await screen.findAllByText(UNUSABLE)).toHaveLength(2);
+  });
+
+  it('says nothing of a block that names a file the page can show', async () => {
+    renderStageEditor({
+      ...pageOf(
+        'information-fine-es',
+        'Bienvenida\n\n![](asset:welcome_image)',
+      ),
+      assets: {
+        welcome_image: {
+          name: 'Welcome image',
+          type: 'image',
+          source: 'welcome.png',
+        },
       },
-    },
-    locale: 'es',
-    sections: pageOfBlocks,
-  });
+    });
 
-  it('says in the list which blocks hold nothing and which hold the wrong thing', async () => {
-    renderStageEditor(brokenPage());
-
-    expect(
-      await screen.findAllByText(
-        'El recurso de este bloque no está en este protocolo, o no es algo que una página pueda mostrar.',
-      ),
-    ).toHaveLength(2);
-    expect(
-      screen.getByText('Este bloque todavía no tiene contenido.'),
-    ).toBeInTheDocument();
-  });
-
-  it('tells a researcher whose resource is gone that it is gone', async () => {
-    const harness = renderStageEditor(brokenPage());
-
-    await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit elemento' }))[0]!,
-    );
-    const dialog = await screen.findByRole('dialog');
-
-    expect(
-      await within(dialog).findByText('Este bloque no se puede mostrar'),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        'El recurso de este elemento ya no está en el protocolo. Elige un tipo de contenido arriba para sustituirlo.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('tells a researcher whose resource is the wrong kind exactly that', async () => {
-    const harness = renderStageEditor(brokenPage());
-
-    await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit elemento' }))[1]!,
-    );
-    const dialog = await screen.findByRole('dialog');
-
-    expect(
-      await within(dialog).findByText(
-        'El recurso de este elemento no es un archivo de imagen, audio o vídeo, por lo que el elemento no puede mostrarlo. Elige un tipo de contenido arriba para sustituirlo.',
-      ),
-    ).toBeInTheDocument();
+    await screen.findByRole('textbox', { name: 'Contenido de la página' });
+    expect(screen.queryByText(UNUSABLE)).toBeNull();
   });
 });
 
 /**
- * The page list itself, read in Spanish: what it says while it holds nothing,
- * what it calls the dialog that changes a block, and what it refuses a save
- * with.
+ * What the page-content section refuses a save with, in Spanish: a page with
+ * nothing in it shows the participant nothing.
  */
-describe('the page-content list, read in Spanish', () => {
-  it('names the dialog that edits a block already on the page', async () => {
-    const harness = renderStageEditor({
-      stageId: 'information-1',
-      locale: 'es',
-      sections: pageOfBlocks,
-    });
-
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit elemento' }),
-    );
-    const dialog = await screen.findByRole('dialog');
-
-    expect(within(dialog).getByText('Editar elemento')).toBeInTheDocument();
-  });
-
+describe('the page-content section, read in Spanish', () => {
   it('refuses in Spanish to save a page that shows the participant nothing', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        id: 'information-empty-es',
-        type: 'Information' as const,
-        fields: {
-          label: inProtocolLanguage('Information'),
-          title: inProtocolLanguage('Bienvenida'),
-          items: [],
-        },
-      },
-      locale: 'es',
-      sections: pageOfBlocks,
-    });
+    const harness = renderStageEditor(pageOf('information-empty-es', ''));
 
-    expect(
-      await screen.findByText(
-        'Todavía no se han creado elementos. Pulsa «Crear nuevo elemento de contenido» para añadir texto o medios.',
-      ),
-    ).toBeInTheDocument();
-
+    await screen.findByRole('textbox', { name: 'Contenido de la página' });
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        'Añade al menos un bloque. Una página sin contenido no muestra nada a la persona participante.',
+        /Esta etapa no está terminada, así que no se ha guardado\./,
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('textbox', { name: 'Contenido de la página' }),
     ).toBeInTheDocument();
   });
 });

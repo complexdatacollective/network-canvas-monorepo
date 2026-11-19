@@ -703,7 +703,7 @@ function buildEmptySubjectScenario(): ScenarioDefinition {
         name: 'Location',
       });
 
-      synth.addInformationStage({ title: 'Previous stage', items: [] });
+      synth.addInformationStage({ title: 'Previous stage' });
       const geo = synth.addStage('Geospatial', {
         subject: { entity: 'node', type: person.id },
         mapOptions: chicagoMapOptions(),

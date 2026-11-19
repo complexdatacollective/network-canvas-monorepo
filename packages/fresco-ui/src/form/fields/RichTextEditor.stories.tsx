@@ -9,6 +9,11 @@ import { TokenizedText } from '../../TokenPill';
 import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
+import {
+  assetBlockControlsProps,
+  type RichTextAssetBlockViewProps,
+  type RichTextAssetBlocks,
+} from './richText/assetBlockNode';
 import type { RichTextInsertMenu } from './richText/InsertMenu';
 import RichTextEditorField, {
   type RichTextEditorToken,
@@ -1322,5 +1327,81 @@ export const Emoji: Story = {
     await userEvent.type(search, 'hospital');
     await userEvent.click(await body.findByRole('option', { name: /🏥/ }));
     await waitFor(() => expect(editor).toHaveTextContent('🚀🏥'));
+  },
+};
+
+// A stand-in for what a consumer draws for a file: it says which file and how
+// it is shown, and offers the controls a block's view is given.
+function StoryAssetBlockView({
+  attributes,
+  selected,
+  editable,
+  update,
+  remove,
+}: RichTextAssetBlockViewProps) {
+  return (
+    <div className="bg-surface-1 rounded-sm border p-3">
+      <p data-testid="asset-block-summary">
+        {attributes.assetId}, size {attributes.size ?? 'full'}, aligned{' '}
+        {attributes.align}
+      </p>
+      {selected && editable && (
+        <div {...assetBlockControlsProps} className="mt-2 flex gap-2">
+          <button type="button" onClick={() => update({ size: 'small' })}>
+            Small
+          </button>
+          <button type="button" onClick={() => remove()}>
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const storyAssetBlocks: RichTextAssetBlocks = {
+  pick: (kind) => Promise.resolve(`${kind}-1`),
+  View: StoryAssetBlockView,
+};
+
+/**
+ * A field whose text can hold files as blocks among its paragraphs. The
+ * consumer chooses a file (`pick`) and draws a block (`View`); the toolbar
+ * offers one button for each kind of file. A block is one whole thing: arrow
+ * to it, press Enter to reach its controls, Escape to come back out.
+ */
+export const WithAssetBlocks: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<JSONContent | undefined>({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Before the picture' }],
+        },
+      ],
+    });
+    return (
+      <div className="w-[48rem]">
+        <RichTextEditorField
+          {...args}
+          aria-label="Page content"
+          changeMode="input"
+          assetBlocks={storyAssetBlocks}
+          value={value}
+          onChange={setValue}
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    await userEvent.click(editor);
+    await userEvent.click(canvas.getByRole('button', { name: 'Insert image' }));
+    const summary = await canvas.findByTestId('asset-block-summary');
+    await expect(summary).toHaveTextContent(
+      'image-1, size full, aligned center',
+    );
   },
 };

@@ -13,6 +13,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
+  type RichTextAssetBlocks,
   type RichTextEditorToken,
   type RichTextInsertMenu,
   type RichTextInsertMenuItem,
@@ -100,6 +101,7 @@ import {
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
 import ConditionDialog from '../rules/ConditionDialog.tsx';
+import { useStageAssetBlocks } from './assetBlocks.tsx';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
 
 const PLAIN_LINE: LocalizedTextShape = { format: 'plain', lines: 'single' };
@@ -649,6 +651,12 @@ export type DynamicMessageEditorProps = Readonly<{
   readOnly: boolean;
   markdown: boolean;
   singleLine: boolean;
+  /**
+   * How the files the text holds as blocks are drawn and chosen, for text
+   * declared to hold them (`textFieldPropsFor`). Absent for any other text,
+   * where an image written into it is read as its description.
+   */
+  assetBlocks?: RichTextAssetBlocks;
   message: string;
   onMessageChange: (message: string | undefined) => void;
   locale: LocaleTag;
@@ -682,6 +690,7 @@ export function DynamicMessageEditor({
   readOnly,
   markdown,
   singleLine,
+  assetBlocks,
   message,
   onMessageChange,
   locale,
@@ -691,9 +700,14 @@ export function DynamicMessageEditor({
 }: DynamicMessageEditorProps) {
   const intl = useAppIntl();
   const { localization } = useEditingLanguage();
+  const holdsAssetBlocks = assetBlocks !== undefined;
   const format = useMemo(
-    (): MessageDocumentFormat => ({ markdown, singleLine }),
-    [markdown, singleLine],
+    (): MessageDocumentFormat => ({
+      markdown,
+      singleLine,
+      assetBlocks: holdsAssetBlocks,
+    }),
+    [markdown, singleLine, holdsAssetBlocks],
   );
   const { context, bindings, setBindings, namesInUse } = site;
   const conditionValues = site.conditions?.values ?? NO_CONDITIONS;
@@ -1353,6 +1367,7 @@ export function DynamicMessageEditor({
         versions
         insertMenu={insertMenu}
         {...(logicItems.length > 0 && { logicMenu })}
+        {...(assetBlocks !== undefined && { assetBlocks })}
         onVersionsAction={handleVersionsAction}
         value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
         onChange={handleChange}
@@ -1476,6 +1491,8 @@ const SUMMARY_REHYPE_PLUGINS = [
 export type BlockMarkdown = Readonly<{
   allowedElements: readonly string[];
   components?: ComponentProps<typeof RenderMarkdown>['components'];
+  /** How a file the text holds as a block is drawn; without it, it is not. */
+  blockImages?: ComponentProps<typeof RenderMarkdown>['blockImages'];
 }>;
 
 const SECTION_MARKDOWN: BlockMarkdown = {
@@ -1653,6 +1670,7 @@ export function MessageNodesSummary({
             allowedElements={allowedElements}
             rehypePlugins={SUMMARY_REHYPE_PLUGINS}
             components={{ ...elements.components, span: SummaryValueSpan }}
+            blockImages={elements.blockImages}
           >
             {source}
           </RenderMarkdown>
@@ -1848,36 +1866,45 @@ export default function DynamicTextField({
   'aria-required': ariaRequired,
 }: DynamicTextFieldProps) {
   const site = useDynamicValueSite(siteKind, fieldPath);
-  const { markdown, singleLine } = textFieldPropsFor(shape);
+  const {
+    markdown,
+    singleLine,
+    assetBlocks: holdsAssetBlocks,
+  } = textFieldPropsFor(shape);
+  const { assetBlocks, picker } = useStageAssetBlocks(holdsAssetBlocks);
   const { localization, locale } = useEditingLanguage();
   const defaultLocale = localization?.defaultLocale;
 
   return (
-    <LocalizedStringField
-      value={value}
-      onChange={onChange}
-      hideUntranslatedNote={hideUntranslatedNote}
-    >
-      {(translation) => (
-        <DynamicMessageEditor
-          id={id}
-          name={name}
-          ariaDescribedBy={ariaDescribedBy}
-          ariaLabelledBy={ariaLabelledBy}
-          ariaInvalid={ariaInvalid}
-          ariaRequired={ariaRequired === true}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          disabled={disabled}
-          readOnly={readOnly === true || translation.readOnly}
-          markdown={markdown}
-          singleLine={singleLine}
-          message={translation.message}
-          onMessageChange={translation.onMessageChange}
-          locale={locale ?? defaultLocale ?? 'en'}
-          site={site}
-        />
-      )}
-    </LocalizedStringField>
+    <>
+      <LocalizedStringField
+        value={value}
+        onChange={onChange}
+        hideUntranslatedNote={hideUntranslatedNote}
+      >
+        {(translation) => (
+          <DynamicMessageEditor
+            id={id}
+            name={name}
+            ariaDescribedBy={ariaDescribedBy}
+            ariaLabelledBy={ariaLabelledBy}
+            ariaInvalid={ariaInvalid}
+            ariaRequired={ariaRequired === true}
+            placeholder={placeholder}
+            autoFocus={autoFocus}
+            disabled={disabled}
+            readOnly={readOnly === true || translation.readOnly}
+            markdown={markdown}
+            singleLine={singleLine}
+            {...(assetBlocks !== undefined && { assetBlocks })}
+            message={translation.message}
+            onMessageChange={translation.onMessageChange}
+            locale={locale ?? defaultLocale ?? 'en'}
+            site={site}
+          />
+        )}
+      </LocalizedStringField>
+      {picker}
+    </>
   );
 }

@@ -285,26 +285,15 @@ test('inserts a new Information stage at the clicked index', async ({
     .getByRole('textbox', { name: 'Stage name' })
     .fill('Inserted Info Stage');
 
-  // The page's heading is required by the editor (stricter than the schema's
-  // `title: z.string().optional()`) and a page with no blocks shows the
-  // participant nothing, so a save that actually commits needs both filled.
-  await architectPage
-    .getByRole('textbox', { name: 'Page heading' })
-    .fill('Inserted stage heading');
-  await architectPage
-    .getByRole('button', { name: 'Create new content item' })
-    .click();
-  await architectPage.getByRole('radio', { name: 'Text' }).click();
+  // The page is one required rich text, so a save that actually commits needs
+  // it filled. Real keystrokes (not `.fill()`) so Tiptap/ProseMirror's own
+  // input handling — which `.fill()`'s direct DOM write bypasses — registers
+  // the change into the form store.
   const contentField = architectPage.getByRole('textbox', {
-    name: 'Content',
+    name: 'Page content',
   });
   await contentField.click();
-  // Real keystrokes (not `.fill()`) so Tiptap/ProseMirror's own input
-  // handling — which `.fill()`'s direct DOM write bypasses — registers the
-  // change into the form store.
   await contentField.pressSequentially('Minimal content.');
-  // `exact` to avoid matching the RichTextEditor toolbar's "Add link" button.
-  await architectPage.getByRole('button', { name: 'Add', exact: true }).click();
 
   const toolbar = new Toolbar(architectPage);
   await toolbar.button('finished-editing').click();
@@ -536,19 +525,11 @@ test('adds new stages before the stage that ends the interview', async ({
   await architectPage
     .getByRole('textbox', { name: 'Stage name' })
     .fill('Appended Info Stage');
-  await architectPage
-    .getByRole('textbox', { name: 'Page heading' })
-    .fill('Appended stage heading');
-  await architectPage
-    .getByRole('button', { name: 'Create new content item' })
-    .click();
-  await architectPage.getByRole('radio', { name: 'Text' }).click();
-  const contentField = architectPage.getByRole('textbox', {
-    name: 'Content',
+  const appendedContent = architectPage.getByRole('textbox', {
+    name: 'Page content',
   });
-  await contentField.click();
-  await contentField.pressSequentially('Minimal content.');
-  await architectPage.getByRole('button', { name: 'Add', exact: true }).click();
+  await appendedContent.click();
+  await appendedContent.pressSequentially('Minimal content.');
   await new Toolbar(architectPage).button('finished-editing').click();
   await architectPage.waitForURL(/\/protocol$/);
 

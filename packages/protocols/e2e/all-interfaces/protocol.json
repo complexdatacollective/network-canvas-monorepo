@@ -377,18 +377,9 @@
       "label": {
         "en-US": "Information"
       },
-      "title": {
-        "en-US": "Welcome"
-      },
-      "items": [
-        {
-          "id": "info-item-1",
-          "type": "text",
-          "content": {
-            "en-US": "Welcome to this interview."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# Welcome\n\nWelcome to this interview."
+      }
     },
     {
       "id": "name-generator-1",

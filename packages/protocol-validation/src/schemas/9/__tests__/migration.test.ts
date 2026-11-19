@@ -1061,14 +1061,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         id: 'alter-form-introduction',
         type: 'Information',
         label: localized('Welcome'),
-        title: localized('Welcome'),
-        items: [
-          {
-            id: 'introduction-text',
-            type: 'text',
-            content: localized('Some questions about them.'),
-          },
-        ],
+        content: localized('# Welcome\n\nSome questions about them.'),
       });
       expect(migrated.stages[3]).not.toHaveProperty('introductionPanel');
     },
@@ -1080,7 +1073,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         schema8WithStages(alterFormWithPanel({ title: 'Welcome' })),
         'alter-form-introduction',
       ),
-    ).toMatchObject({ title: localized('Welcome'), items: [] });
+    ).toMatchObject({ content: localized('# Welcome') });
   });
 
   it('shows or skips the Information stage with its stage', () => {
@@ -1215,7 +1208,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
           schema8WithStages(alterFormWithPanel({ title: 'Welcome', text })),
           'alter-form-introduction',
         ),
-      ).toMatchObject({ items: [] });
+      ).toMatchObject({ content: localized('# Welcome') });
     },
   );
 
@@ -1255,7 +1248,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
           schema8WithStages(alterFormWithPanel({ title, text: 'Hello' })),
           'alter-form-introduction',
         ),
-      ).toMatchObject({ title: localized('About them') });
+      ).toMatchObject({ content: localized('# About them\n\nHello') });
     },
   );
 
@@ -1408,7 +1401,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
           text: localized('Some more questions.'),
         },
       },
-      { id: 'alter-1-introduction', title: localized('About them'), items: [] },
+      { id: 'alter-1-introduction', content: localized('# About them') },
       { id: 'alter-1' },
     ]);
     expect(migrated.stages[0]).not.toHaveProperty('introductionPanel.text');
@@ -1647,16 +1640,26 @@ const migratedInformationTitle = (title: string) => {
 };
 
 describe('Migrating an Information stage title from schema 8 to 9', () => {
-  it.each(BLANK_TEXT)('gives a title of %s the stage name', (_, blank) => {
-    expect(migratedInformationTitle(blank)).toMatchObject({
-      title: localized('Welcome'),
+  // The page shows its text with no heading above it, as it showed before.
+  it.each(BLANK_TEXT)(
+    'leaves out a title of %s, leaving the rest of the page',
+    (_, blank) => {
+      expect(migratedInformationTitle(blank)).toMatchObject({
+        content: localized('Hi'),
+      });
+    },
+  );
+
+  it('keeps a title that says something, as the heading of the page', () => {
+    expect(migratedInformationTitle('Hello')).toMatchObject({
+      content: localized('# Hello\n\nHi'),
     });
   });
 
-  it('keeps a title that says something', () => {
-    expect(migratedInformationTitle('Hello')).toMatchObject({
-      title: localized('Hello'),
-    });
+  it('removes the title and items the page was held in', () => {
+    const stage = migratedInformationTitle('Hello');
+    expect(stage).not.toHaveProperty('title');
+    expect(stage).not.toHaveProperty('items');
   });
 });
 
@@ -1844,21 +1847,20 @@ const migratedInformationItems = (content: string) => {
   const migrated = migrateProtocol(document, 9).stages.find(
     ({ id }) => id === 'welcome',
   );
-  return migrated && 'items' in migrated ? migrated.items : undefined;
+  return migrated && 'content' in migrated ? migrated.content : undefined;
 };
 
 describe('Migrating Information text items from schema 8 to 9', () => {
-  it.each(BLANK_TEXT)('removes an item of %s', (_, blank) => {
-    expect(migratedInformationItems(blank)).toEqual([
-      { id: 'second', type: 'text', content: localized('Bye') },
-    ]);
+  it.each(BLANK_TEXT)('leaves out an item of %s', (_, blank) => {
+    expect(migratedInformationItems(blank)).toEqual(
+      localized('# Welcome\n\nBye'),
+    );
   });
 
-  it('keeps an item that says something', () => {
-    expect(migratedInformationItems('Hello')).toEqual([
-      { id: 'first', type: 'text', content: localized('Hello') },
-      { id: 'second', type: 'text', content: localized('Bye') },
-    ]);
+  it('keeps an item that says something, in its place on the page', () => {
+    expect(migratedInformationItems('Hello')).toEqual(
+      localized('# Welcome\n\nHello\n\nBye'),
+    );
   });
 });
 

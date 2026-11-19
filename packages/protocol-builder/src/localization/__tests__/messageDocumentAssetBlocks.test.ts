@@ -1,0 +1,118 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  messageStructure,
+  printMessageStructure,
+} from '@codaco/protocol-validation';
+
+import {
+  documentToMessageNodes,
+  type MessageDocumentFormat,
+  type MessageDocumentLabels,
+  MessageDocumentProblem,
+  messageToDocument,
+} from '../messageDocument';
+
+const labels: MessageDocumentLabels = {
+  switchLabel: (node) => `By ${node.argument}`,
+  switchSummary: (node) => node.argument,
+  versionLabel: (node, key) => `${node.argument} ${key}`,
+};
+
+const WITH_BLOCKS: MessageDocumentFormat = {
+  markdown: true,
+  singleLine: false,
+  assetBlocks: true,
+};
+const WITHOUT_BLOCKS: MessageDocumentFormat = {
+  markdown: true,
+  singleLine: false,
+};
+
+const nodesOf = (message: string) => {
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) throw new Error('unreadable');
+  return structure.nodes;
+};
+
+const toDocument = (message: string, format = WITH_BLOCKS) =>
+  messageToDocument(nodesOf(message), format, labels);
+
+const roundTrip = (message: string, format = WITH_BLOCKS) =>
+  printMessageStructure(
+    documentToMessageNodes(toDocument(message, format), format),
+  );
+
+describe('a message holding asset blocks', () => {
+  it('shows an asset image as a block in the editor’s document', () => {
+    const document = toDocument('![A map](asset:a1?size=small)');
+    expect(document.content).toEqual([
+      {
+        type: 'assetBlock',
+        attrs: {
+          assetId: 'a1',
+          description: 'A map',
+          size: 'small',
+          align: 'center',
+          autoplay: true,
+          loop: true,
+        },
+      },
+    ]);
+  });
+
+  it('shows it as the description alone when the field holds no blocks', () => {
+    const document = toDocument('![A map](asset:a1)', WITHOUT_BLOCKS);
+    expect(JSON.stringify(document)).not.toContain('assetBlock');
+  });
+
+  it('keeps blocks and dynamic values through the editor and back', () => {
+    const message = [
+      '# Hello {name}',
+      '',
+      '![A map](asset:a1?size=large&align=end&loop=false)',
+      '',
+      'Meet {name, select, missing {this person} other {{name}}} here.',
+      '',
+      '![](asset:a2?autoplay=false)',
+    ].join('\n');
+
+    const document = toDocument(message);
+    expect(
+      document.content?.flatMap((node) =>
+        node.type === 'assetBlock' ? [node.attrs?.assetId] : [],
+      ),
+    ).toEqual(['a1', 'a2']);
+    expect(roundTrip(message)).toBe(message);
+  });
+
+  it('keeps a value in the text around a block as a placeholder', () => {
+    const document = toDocument('Hi {name}\n\n![](asset:a1)');
+    expect(document.content?.[0]?.content?.at(-1)).toEqual({
+      type: 'token',
+      attrs: { id: 'name' },
+    });
+    expect(document.content?.[1]?.type).toBe('assetBlock');
+  });
+
+  it.each([
+    ['its description', '![Hello {name}](asset:a1)'],
+    ['its address', '![A map](asset:{name})'],
+  ])('cannot be shown with a value in %s', (_kind, message) => {
+    expect(() => toDocument(message)).toThrow(MessageDocumentProblem);
+    try {
+      toDocument(message);
+    } catch (error) {
+      expect(error).toBeInstanceOf(MessageDocumentProblem);
+      expect(error instanceof MessageDocumentProblem && error.kind).toBe(
+        'valueInLinkAddress',
+      );
+    }
+  });
+
+  it('does not refuse a value in an image’s description where blocks are not held', () => {
+    expect(() =>
+      toDocument('![Hello {name}](asset:a1)', WITHOUT_BLOCKS),
+    ).not.toThrow();
+  });
+});

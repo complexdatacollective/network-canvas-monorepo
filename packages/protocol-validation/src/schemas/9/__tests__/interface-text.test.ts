@@ -382,13 +382,27 @@ describe('the interface text a protocol shows', () => {
     expect(
       holdsNotice({
         type: 'Information',
-        items: [{ id: 'i', type: 'asset', content: 'image' }],
+        content: { en: '# Hello\n\n![](asset:image)' },
+      }),
+    ).toBe(true);
+    // A file shown in any one language is enough.
+    expect(
+      holdsNotice({
+        type: 'Information',
+        content: { en: '# Hello', fr: '# Bonjour\n\n![](asset:image)' },
       }),
     ).toBe(true);
     expect(
       holdsNotice({
         type: 'Information',
-        items: [{ id: 'i', type: 'text', content: { en: 'Hello' } }],
+        content: { en: '# Hello\n\nSome text' },
+      }),
+    ).toBe(false);
+    // An image whose address is not a file of the protocol is not one.
+    expect(
+      holdsNotice({
+        type: 'Information',
+        content: { en: '![](https://example.com/a.png)' },
       }),
     ).toBe(false);
     expect(holdsNotice({ type: 'Information' })).toBe(false);

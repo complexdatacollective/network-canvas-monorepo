@@ -8,8 +8,6 @@ import PedigreePromptSection from '../editors/family-pedigree/sections/PedigreeP
 import PersonFormFieldsSection from '../editors/family-pedigree/sections/PersonFormFieldsSection.tsx';
 import RelationshipsSection from '../editors/family-pedigree/sections/RelationshipsSection.tsx';
 import {
-  TestItemEditor,
-  TestItemPreview,
   TestPromptEditor,
   TestPromptPreview,
 } from '../sections/__tests__/rowFixtures.tsx';
@@ -139,10 +137,7 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <PageContentSection
-            ItemEditor={TestItemEditor}
-            ItemPreview={TestItemPreview}
-          />
+          <PageContentSection />
         </>
       ),
     });
@@ -315,32 +310,6 @@ describe('the row dialogs under es', () => {
 
     expectNoLocaleLeaks(
       'the form-field dialog inventing an attribute',
-      researcherWords(harness),
-    );
-  });
-
-  it('sweeps the page-content dialog', async () => {
-    const harness = renderStageEditor({
-      stageId: 'information-1',
-      locale: 'es',
-      sections: (
-        <PageContentSection
-          ItemEditor={TestItemEditor}
-          ItemPreview={TestItemPreview}
-        />
-      ),
-    });
-    await screen.findAllByRole('button');
-
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Crear nuevo elemento de contenido',
-      }),
-    );
-    await screen.findByRole('dialog');
-
-    expectNoLocaleLeaks(
-      'the add-a-content-block dialog',
       researcherWords(harness),
     );
   });

@@ -1,7 +1,14 @@
 import markdown from 'remark-parse';
 import { unified } from 'unified';
 
-import { escapeMarkdownText } from '@codaco/protocol-validation';
+import {
+  ASSET_BLOCK_ALIGNMENTS,
+  ASSET_BLOCK_DEFAULTS,
+  ASSET_BLOCK_SIZES,
+  assetBlockMarkdown,
+  escapeMarkdownText,
+  readAssetBlockUrl,
+} from '@codaco/protocol-validation';
 
 export type RichTextMark = {
   type: string;
@@ -201,10 +208,95 @@ const childrenAsInline = (
 const paragraphFromInline = (content: RichTextContent[]): RichTextContent =>
   content.length > 0 ? { type: 'paragraph', content } : { type: 'paragraph' };
 
-const blockFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
+/** The editor's node for a file shown as a block (fresco-ui's). */
+const ASSET_BLOCK = 'assetBlock';
+
+type BlockParseOptions = {
+  /** Whether a markdown image naming a file of the protocol is a block. */
+  assetBlocks?: boolean;
+};
+
+/**
+ * The block a markdown image stands for, when its address names a file of
+ * the protocol (see protocol-validation's `AssetBlock`). The node carries
+ * every setting, with the ones the address leaves out at their defaults, as
+ * the editor's node holds them.
+ */
+const assetBlockFromImage = (
+  node: MarkdownNode,
+): RichTextContent | undefined => {
+  if (node.type !== 'image' || typeof node.url !== 'string') return undefined;
+  const reading = readAssetBlockUrl(node.url);
+  if (reading === undefined) return undefined;
+  const { assetId, size, align, autoplay, loop } = reading.block;
+  return {
+    type: ASSET_BLOCK,
+    attrs: {
+      assetId,
+      description: node.alt ?? '',
+      size: size ?? null,
+      align: align ?? ASSET_BLOCK_DEFAULTS.align,
+      autoplay: autoplay ?? ASSET_BLOCK_DEFAULTS.autoplay,
+      loop: loop ?? ASSET_BLOCK_DEFAULTS.loop,
+    },
+  };
+};
+
+// The line break markdown leaves between an image and the text beside it
+// belongs to neither once the image is a block of its own.
+const withoutEdgeSpace = (run: RichTextContent[]): RichTextContent[] => {
+  const trimmed = [...run];
+  const first = trimmed[0];
+  if (first?.type === 'text') {
+    const text = (first.text ?? '').trimStart();
+    if (text === '') trimmed.shift();
+    else trimmed[0] = { ...first, text };
+  }
+  const last = trimmed.at(-1);
+  if (last?.type === 'text') {
+    const text = (last.text ?? '').trimEnd();
+    if (text === '') trimmed.pop();
+    else trimmed[trimmed.length - 1] = { ...last, text };
+  }
+  return trimmed;
+};
+
+/**
+ * A paragraph that may name files: each becomes a block of its own, and the
+ * words on either side of it a paragraph of their own. Written by the
+ * editor, a file is always alone in its paragraph; written by hand it may
+ * sit in a sentence, which is split around it, as the interview shows it.
+ */
+const paragraphWithAssetBlocks = (node: MarkdownNode): RichTextContent[] => {
+  const blocks: RichTextContent[] = [];
+  let run: RichTextContent[] = [];
+  const endRun = () => {
+    const words = withoutEdgeSpace(run);
+    if (words.length > 0) blocks.push(paragraphFromInline(words));
+    run = [];
+  };
+  for (const child of node.children ?? []) {
+    const block = assetBlockFromImage(child);
+    if (block === undefined) {
+      run.push(...inlineFromMarkdown(child));
+      continue;
+    }
+    endRun();
+    blocks.push(block);
+  }
+  endRun();
+  return blocks.length > 0 ? blocks : [paragraphFromInline([])];
+};
+
+const blockFromMarkdown = (
+  node: MarkdownNode,
+  options: BlockParseOptions = {},
+): RichTextContent[] => {
   switch (node.type) {
     case 'paragraph':
-      return [paragraphFromInline(childrenAsInline(node))];
+      return options.assetBlocks === true
+        ? paragraphWithAssetBlocks(node)
+        : [paragraphFromInline(childrenAsInline(node))];
 
     case 'heading': {
       const level = Math.min(Math.max(node.depth ?? 1, 1), 4);
@@ -224,7 +316,7 @@ const blockFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
           attrs: node.ordered ? { start: node.start ?? 1 } : undefined,
           content: (node.children ?? []).map((child) => ({
             type: 'listItem',
-            content: blockChildrenFromMarkdown(child),
+            content: blockChildrenFromMarkdown(child, options),
           })),
         },
       ];
@@ -248,13 +340,23 @@ const blockFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
   }
 };
 
-const blockChildrenFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
+const blockChildrenFromMarkdown = (
+  node: MarkdownNode,
+  options: BlockParseOptions,
+): RichTextContent[] => {
   if (node.type !== 'listItem') {
-    return blockFromMarkdown(node);
+    return blockFromMarkdown(node, options);
   }
 
-  const children = (node.children ?? []).flatMap(blockFromMarkdown);
-  return children.length > 0 ? children : [{ type: 'paragraph' }];
+  const children = (node.children ?? []).flatMap((child) =>
+    blockFromMarkdown(child, options),
+  );
+  if (children.length === 0) return [{ type: 'paragraph' }];
+  // The editor's list item opens with a paragraph, so an item that opens
+  // with a file is given an empty one to open with.
+  return children[0]?.type === ASSET_BLOCK
+    ? [{ type: 'paragraph' }, ...children]
+    : children;
 };
 
 const inlineDocumentFromMarkdown = (
@@ -285,6 +387,12 @@ export const markdownToRichTextContent = (
   inline = false,
   /** Whether a line (`inline`) keeps its links. A document always does. */
   links = false,
+  /**
+   * Whether a document's images that name a file of the protocol are read as
+   * blocks, for a field declared to hold them. Elsewhere, and in a line, an
+   * image is its description, as before.
+   */
+  assetBlocks = false,
 ): RichTextContent => {
   if (!value || !/\S/.test(value)) {
     return cloneEmptyDocument();
@@ -298,7 +406,9 @@ export const markdownToRichTextContent = (
     return inlineDocumentFromMarkdown(root, links);
   }
 
-  const content = (root.children ?? []).flatMap(blockFromMarkdown);
+  const content = (root.children ?? []).flatMap((node) =>
+    blockFromMarkdown(node, { assetBlocks }),
+  );
 
   if (content.length === 0) {
     return cloneEmptyDocument();
@@ -530,6 +640,27 @@ const serializeListItem = (
   );
 };
 
+const isOneOf = <Value extends string>(
+  values: readonly Value[],
+  value: unknown,
+): value is Value => values.some((candidate) => candidate === value);
+
+// A block that names no file shows nothing and is written as nothing.
+const serializeAssetBlock = (node: RichTextContent): string => {
+  const { assetId, description, size, align, autoplay, loop } =
+    node.attrs ?? {};
+  if (typeof assetId !== 'string' || assetId === '') return '';
+  return assetBlockMarkdown({
+    assetId,
+    ...(typeof description === 'string' &&
+      description.trim() !== '' && { description }),
+    ...(isOneOf(ASSET_BLOCK_SIZES, size) && { size }),
+    ...(isOneOf(ASSET_BLOCK_ALIGNMENTS, align) && { align }),
+    ...(autoplay === false && { autoplay }),
+    ...(loop === false && { loop }),
+  });
+};
+
 const serializeBlock = (node: RichTextContent): string => {
   switch (node.type) {
     case 'doc':
@@ -564,6 +695,9 @@ const serializeBlock = (node: RichTextContent): string => {
     case 'horizontalRule':
       return '---';
 
+    case ASSET_BLOCK:
+      return serializeAssetBlock(node);
+
     case 'hardBreak':
       return '  \n';
 
@@ -581,6 +715,10 @@ const serializeBlocks = (content: RichTextContent[] | undefined): string =>
 const containsContent = (node: RichTextContent): boolean => {
   if (node.type === 'horizontalRule') {
     return true;
+  }
+
+  if (node.type === ASSET_BLOCK) {
+    return typeof node.attrs?.assetId === 'string' && node.attrs.assetId !== '';
   }
 
   if (node.type === 'text') {

@@ -57,6 +57,7 @@
     "@formatjs/icu-messageformat-parser": "catalog:",
     "csvtojson": "catalog:",
     "jszip": "catalog:",
+    "mdast-util-from-markdown": "^2.0.2",
     "ohash": "^2.0.12",
     "zod": "catalog:"
   },

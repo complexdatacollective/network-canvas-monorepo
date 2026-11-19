@@ -55,8 +55,7 @@ function sequentialIds(prefix = 'staged-resource'): () => string {
  */
 const DEFAULT_INFORMATION_FIELDS: SectionDoc = {
   label: { 'en-US': 'Welcome' },
-  title: { 'en-US': 'Welcome' },
-  items: [],
+  content: { 'en-US': 'Welcome' },
 };
 
 export type ResourceHostSeed = Readonly<{

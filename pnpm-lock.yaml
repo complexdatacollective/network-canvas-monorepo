@@ -3287,6 +3287,9 @@ importers:
       jszip:
         specifier: 'catalog:'
         version: 3.10.2
+      mdast-util-from-markdown:
+        specifier: ^2.0.2
+        version: 2.0.3(supports-color@10.2.2)
       ohash:
         specifier: ^2.0.12
         version: 2.0.12

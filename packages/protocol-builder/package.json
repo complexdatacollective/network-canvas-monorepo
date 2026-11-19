@@ -26,6 +26,7 @@
     "./host/inProcess": "./src/host/inProcess.ts",
     "./host/protocolSections": "./src/host/protocolSections.ts",
     "./host/writeLedger": "./src/host/writeLedger.ts",
+    "./fields/assetBlocks": "./src/fields/assetBlocks.tsx",
     "./fields/DynamicTextField": "./src/fields/DynamicTextField.tsx",
     "./fields/LocalizedMessageField": "./src/fields/LocalizedMessageField.tsx",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",

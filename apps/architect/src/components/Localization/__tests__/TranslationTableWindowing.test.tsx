@@ -36,8 +36,8 @@ vi.mock('../TranslationCell', async (importOriginal) => {
 
 const STAGES = 400;
 const SCREEN_HEIGHT = 600;
-// What the table expects a stage to take: its heading and four rows.
-const STAGE_HEIGHT = 40 + 4 * 96;
+// What the table expects a stage to take: its heading and two rows.
+const STAGE_HEIGHT = 40 + 2 * 96;
 
 const ONLY_ENGLISH =
   'This is the only translation, and it is in English. Add a translation in another language before clearing it.';
@@ -168,7 +168,7 @@ const rowNumbers = () =>
 
 const titleCell = (stage: number, language: string) =>
   screen.queryByRole('textbox', {
-    name: new RegExp(`^Stage ${stage} .*Page heading ${language}$`),
+    name: new RegExp(`^Stage ${stage} .*Stage name ${language}$`),
   });
 
 describe('TranslationTable with a large protocol', () => {
@@ -176,7 +176,7 @@ describe('TranslationTable with a large protocol', () => {
     const { store } = renderTable();
     const groups = getTranslationGroups(store.getState());
     const rows = groups.reduce((sum, group) => sum + group.rows.length, 0);
-    expect(rows).toBeGreaterThan(4 * STAGES);
+    expect(rows).toBeGreaterThan(2 * STAGES);
 
     expect(drawnRows().length).toBeGreaterThan(0);
     expect(drawnRows().length).toBeLessThan(40);
@@ -213,7 +213,7 @@ describe('TranslationTable with a large protocol', () => {
     const { store, onSaved, user } = renderTable();
     await scrollTo(stageTop(8));
 
-    // Stage 8's heading has no French translation yet.
+    // Stage 8's name has no French translation yet.
     const french = titleCell(8, 'French');
     if (!french) throw new Error('No cell for stage 8');
     await user.type(french, 'Bonjour');
@@ -230,8 +230,7 @@ describe('TranslationTable with a large protocol', () => {
     await scrollTo(stageTop(300));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
-    const stage = getProtocol(store.getState())?.stages[7];
-    expect(stage && 'title' in stage ? stage.title : undefined).toMatchObject({
+    expect(getProtocol(store.getState())?.stages[7]?.label).toMatchObject({
       fr: 'Bonjour',
     });
   });
@@ -240,7 +239,7 @@ describe('TranslationTable with a large protocol', () => {
     const { user } = renderTable();
     await scrollTo(stageTop(4));
 
-    // Stage 4's heading is in English only.
+    // Stage 4's name is in English only.
     const english = titleCell(4, 'English');
     if (!english) throw new Error('No cell for stage 4');
     await user.clear(english);
@@ -288,8 +287,8 @@ describe('TranslationTable with a large protocol', () => {
 
     // Every text under the stage that names the section.
     await waitFor(() => expect(stageHeading(251)).toBeInTheDocument());
-    expect(drawnRows()).toHaveLength(4);
-    expect(screen.getByText(/^Showing 4 of /)).toBeInTheDocument();
+    expect(drawnRows()).toHaveLength(2);
+    expect(screen.getByText(/^Showing 2 of /)).toBeInTheDocument();
   });
 
   it('moves to the next row with Enter from the last row drawn', async () => {
@@ -344,7 +343,7 @@ describe('TranslationTable with a large protocol', () => {
       const { user } = renderTable();
       await scrollTo(stageTop(10));
 
-      const name = /^Stage 10 .*Item 1 › Content English$/;
+      const name = /^Stage 10 .*Page content English$/;
       await user.click(screen.getByRole('button', { name }));
       const editor = await screen.findByRole('textbox', { name });
       await waitFor(() => expect(editor).toHaveFocus());
@@ -380,7 +379,9 @@ describe('TranslationTable with a large protocol', () => {
         index === 9 && stage.type === 'Information'
           ? {
               ...stage,
-              title: { en: 'Hello{name, select, missing {} other {, {name}}}' },
+              content: {
+                en: 'Hello{name, select, missing {} other {, {name}}}',
+              },
               dynamicValues: { name: { path: 'ego.firstName' } },
             }
           : stage,
@@ -388,7 +389,7 @@ describe('TranslationTable with a large protocol', () => {
       const { user } = renderTable(protocol);
       await scrollTo(stageTop(10));
 
-      const name = /^Stage 10 .*Page heading English$/;
+      const name = /^Stage 10 .*Page content English$/;
       await user.click(screen.getByRole('button', { name }));
       const editor = await screen.findByRole('textbox', { name });
       await waitFor(() => expect(editor).toHaveFocus());
@@ -451,8 +452,8 @@ describe('TranslationTable with a large protocol', () => {
       const groups = getTranslationGroups(store.getState());
       const rows = groups.reduce((sum, group) => sum + group.rows.length, 0);
       await scrollTo(stageTop(100));
-      // The four texts of stage 100, which is on the screen.
-      const measuredKeys = [496, 497, 498, 499].map((index) => {
+      // The two texts of stage 100, which is on the screen.
+      const measuredKeys = [298, 299].map((index) => {
         const row = item(index);
         laidOutAt(row, 200);
         return row.getAttribute('data-window-key');
@@ -462,7 +463,7 @@ describe('TranslationTable with a large protocol', () => {
 
       const nowDrawn = drawnKeys();
       const measuredAway = measuredKeys.filter((key) => !nowDrawn.has(key));
-      expect(measuredAway).toHaveLength(4);
+      expect(measuredAway).toHaveLength(2);
       const rowsDrawn = Array.from(nowDrawn).filter((key) =>
         key?.startsWith('row:'),
       ).length;
@@ -484,12 +485,12 @@ describe('TranslationTable with a large protocol', () => {
 
       // Stage 98's last text ends above the top of the screen, in the rows
       // drawn beyond it.
-      const above = item(97 * 5 + 4);
+      const above = item(97 * 3 + 2);
       laidOutAt(above, 150);
       expect(scroller().scrollTop).toBe(top + 54);
 
       // A row on the screen is not above it, so nothing moves for it.
-      laidOutAt(item(99 * 5 + 1), 150);
+      laidOutAt(item(99 * 3 + 1), 150);
       expect(scroller().scrollTop).toBe(top + 54);
 
       // And it moves back when the row above is shorter again.
@@ -506,7 +507,7 @@ describe('TranslationTable with a large protocol', () => {
         new DOMRect(0, 0, 800, 180),
       );
 
-      laidOutAt(item(97 * 5 + 4), 150);
+      laidOutAt(item(97 * 3 + 2), 150);
 
       expect(scroller().scrollTop).toBe(top + 54);
     });

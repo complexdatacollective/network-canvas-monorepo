@@ -1320,7 +1320,7 @@ describe('one problem at a time, in the panel', () => {
         makeFinding(
           'both',
           [
-            op('set', '/stages/welcome/title', {
+            op('set', '/stages/welcome/label', {
               en: 'Welcome to our study',
               fr: 'Bienvenue dans notre étude',
             }),
@@ -1344,17 +1344,13 @@ describe('one problem at a time, in the panel', () => {
     dialog = await openProblemFromListAlreadyOpen(
       'The welcome title is unclear',
     );
-    expect(within(dialog).getByText('Hello')).toBeVisible();
+    expect(within(dialog).getByText('Welcome')).toBeVisible();
     expect(within(dialog).getByText('Welcome to our study')).toBeVisible();
-    expect(within(dialog).getByText('Bonjour')).toBeVisible();
+    expect(within(dialog).getByText('Bienvenue')).toBeVisible();
     expect(
       within(dialog).getByText('Bienvenue dans notre étude'),
     ).toBeVisible();
-    expect(
-      within(dialog).getByText('Page content › Page heading · English'),
-    ).toBeVisible();
-    expect(
-      within(dialog).getByText('Page content › Page heading · French'),
-    ).toBeVisible();
+    expect(within(dialog).getByText('Stage name · English')).toBeVisible();
+    expect(within(dialog).getByText('Stage name · French')).toBeVisible();
   });
 });

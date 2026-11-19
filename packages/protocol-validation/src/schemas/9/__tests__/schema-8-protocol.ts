@@ -68,12 +68,46 @@ const explanationTitle = (stage: unknown) => {
     : { title: '', body: explanationText };
 };
 
+// A schema 8 Information stage held its heading as a title and the rest of
+// its page as items: a text item for each paragraph, and an asset item for
+// each block naming a file.
+const informationItems = (
+  stage: unknown,
+  rewrite: (text: string) => string,
+) => {
+  if (!isRecord(stage) || stage.type !== 'Information') return;
+  const { content: localizedContent } = stage;
+  const content = isRecord(localizedContent) ? localizedContent.en : undefined;
+  if (typeof content !== 'string') return;
+  const blocks = content.split('\n\n');
+  const heading = /^# (.+)$/.exec(blocks[0] ?? '');
+  const items = (heading === null ? blocks : blocks.slice(1)).map(
+    (block, index) => {
+      const asset = /^!\[(.*)\]\(asset:([^?)]+)\)$/.exec(block);
+      return asset === null
+        ? { id: `item-${index}`, type: 'text', content: rewrite(block) }
+        : {
+            id: `item-${index}`,
+            type: 'asset',
+            content: asset[2],
+            ...(asset[1] === ''
+              ? {}
+              : { description: rewrite(asset[1] ?? '') }),
+          };
+    },
+  );
+  delete stage.content;
+  stage.title = heading === null ? '' : rewrite(heading[1] ?? '');
+  stage.items = items;
+};
+
 /**
  * A schema 9 protocol written in English, as schema 8 held it: each localized
  * string is its English text, put through `rewrite` (text with placeholders,
  * which schema 8 never held, stays localized), Narrative highlights and
  * legend edges are ids, Network Composer edges have no label, an Anonymisation
- * explanation's heading is a title of its own, and the language
+ * explanation's heading is a title of its own, an Information page is a title
+ * and a list of items, and the language
  * chooser and language settings, which schema 8 did not have, are gone.
  */
 export const asSchema8Protocol = (
@@ -92,6 +126,20 @@ export const asSchema8Protocol = (
     if (declared !== undefined) continue;
     const text = value.en;
     const key = path.at(-1);
+    // The page is rewritten a part at a time when it is split into a title
+    // and items, below.
+    const owner = path
+      .slice(0, -1)
+      .reduce<unknown>(
+        (node, segment) =>
+          isRecord(node) || Array.isArray(node)
+            ? Reflect.get(node, segment)
+            : undefined,
+        document,
+      );
+    if (key === 'content' && isRecord(owner) && owner.type === 'Information') {
+      continue;
+    }
     const parent = path
       .slice(0, -1)
       .reduce<unknown>(
@@ -115,6 +163,7 @@ export const asSchema8Protocol = (
     legendIds(stage);
     composerEdgeLabels(stage);
     explanationTitle(stage);
+    informationItems(stage, rewrite);
   }
   // Schema 8 has neither stage type: the interview chose no language, and
   // added its own finish screen.

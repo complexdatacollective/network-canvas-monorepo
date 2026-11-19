@@ -961,29 +961,29 @@ describe('a picker whose in-flight call is superseded', () => {
 });
 
 /**
- * An Information stage whose two items can hold the same image, which is what
+ * A name generator whose two side panels can name the same data file, which is what
  * makes "another field is still using this" a state a researcher can reach.
  *
- * The item's `id` and `type` are rendered alongside its content because a
+ * The panel's `id` and `title` are rendered alongside its data source because a
  * section owning part of a nested value has to render every part of it: the
- * form replaces the whole `items` key, so an item whose type no field carries
- * stops being an asset item the moment the form is read.
+ * form replaces the whole `panels` key, so a panel whose title no field carries
+ * stops being a panel the moment the form is read.
  */
 function itemIdentityFields(index: number) {
   return (
     <>
       <Field
         component={InputField}
-        name={`items[${index}].id`}
+        name={`panels[${index}].id`}
         nameMode="path"
         label={`Item ${index + 1} id`}
         labelHidden
       />
       <Field
         component={InputField}
-        name={`items[${index}].type`}
+        name={`panels[${index}].title`}
         nameMode="path"
-        label={`Item ${index + 1} type`}
+        label={`Item ${index + 1} title`}
         labelHidden
       />
     </>
@@ -994,20 +994,20 @@ function itemPicker(index: number, label: string) {
   return (
     <Field
       component={AssetPickerField}
-      name={`items[${index}].content`}
+      name={`panels[${index}].dataSource`}
       nameMode="path"
       label={label}
-      kind="image"
+      kind="network"
     />
   );
 }
 
 const ASSET_ITEMS: SectionDoc = {
-  label: en('Welcome'),
-  title: en('Welcome'),
-  items: [
-    { id: 'item-1', type: 'asset', content: '' },
-    { id: 'item-2', type: 'asset', content: '' },
+  label: en('People'),
+  subject: { entity: 'node', type: 'person' },
+  panels: [
+    { id: 'panel-1', title: en('One'), dataSource: '' },
+    { id: 'panel-2', title: en('Two'), dataSource: '' },
   ],
 };
 
@@ -1024,11 +1024,11 @@ describe('discarding a resource other fields may share', () => {
     group: HTMLElement,
   ) {
     await user.click(
-      within(group).getByRole('button', { name: 'Select an image' }),
+      within(group).getByRole('button', { name: 'Select a data file' }),
     );
     await user.upload(
       await screen.findByLabelText('Choose a file from your computer'),
-      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+      new File([ROSTER], 'people.json', { type: 'application/json' }),
     );
   }
 
@@ -1036,6 +1036,7 @@ describe('discarding a resource other fields may share', () => {
     adapter?: (host: InMemoryHost) => ProtocolBuilderAdapter,
   ) {
     const { formValues, staged, resourceClient } = renderResourceEditor({
+      stageType: 'NameGenerator',
       fields: ASSET_ITEMS,
       ...(adapter === undefined ? {} : { adapter }),
       children: (
@@ -1048,8 +1049,8 @@ describe('discarding a resource other fields may share', () => {
       ),
     });
     const contents = (): unknown[] =>
-      (formValues().items as { content?: unknown }[] | undefined)?.map(
-        (item) => item.content,
+      (formValues().panels as { dataSource?: unknown }[] | undefined)?.map(
+        (panel) => panel.dataSource,
       ) ?? [];
     return Object.assign(contents, { staged, resourceClient });
   }
@@ -1066,10 +1067,10 @@ describe('discarding a resource other fields may share', () => {
     // The second item is pointed at the very same import, which the browser
     // offers because it lists everything staged in this edit.
     await user.click(
-      within(second).getByRole('button', { name: 'Select an image' }),
+      within(second).getByRole('button', { name: 'Select a data file' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'skyline.png' }),
+      await screen.findByRole('button', { name: 'people.json' }),
     );
     await waitFor(() => expect(contents()[1]).toBe('staged-resource-1'));
 
@@ -1096,10 +1097,10 @@ describe('discarding a resource other fields may share', () => {
     await importInto(user, first);
     await waitFor(() => expect(contents()[0]).toBe('staged-resource-1'));
     await user.click(
-      within(second).getByRole('button', { name: 'Select an image' }),
+      within(second).getByRole('button', { name: 'Select a data file' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'skyline.png' }),
+      await screen.findByRole('button', { name: 'people.json' }),
     );
     await waitFor(() => expect(contents()[1]).toBe('staged-resource-1'));
 
@@ -1151,9 +1152,9 @@ describe('discarding a resource other fields may share', () => {
     // The second field opens its browser, which reads the list once. Nothing
     // refreshes it after that.
     await user.click(
-      within(second).getByRole('button', { name: 'Select an image' }),
+      within(second).getByRole('button', { name: 'Select a data file' }),
     );
-    await screen.findByRole('button', { name: 'skyline.png' });
+    await screen.findByRole('button', { name: 'people.json' });
 
     // The first field discards the resource, and the host finishes carrying it
     // out — so the in-flight mark that would have covered this is lifted again
@@ -1169,7 +1170,7 @@ describe('discarding a resource other fields may share', () => {
     });
     expect(await contents.staged()).toEqual([]);
 
-    await user.click(screen.getByRole('button', { name: 'skyline.png' }));
+    await user.click(screen.getByRole('button', { name: 'people.json' }));
     await act(flushPendingWork);
 
     expect(within(second).getByRole('alert')).toHaveTextContent(
@@ -1204,10 +1205,10 @@ describe('discarding a resource other fields may share', () => {
     // its own button, which the first field's discard does not disable — and
     // the browser still lists the resource, because it is still staged.
     await user.click(
-      within(second).getByRole('button', { name: 'Select an image' }),
+      within(second).getByRole('button', { name: 'Select a data file' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'skyline.png' }),
+      await screen.findByRole('button', { name: 'people.json' }),
     );
     await act(flushPendingWork);
 

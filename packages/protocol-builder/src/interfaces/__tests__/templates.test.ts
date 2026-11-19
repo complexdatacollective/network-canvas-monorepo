@@ -143,7 +143,7 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   // the protocol's languages that has them, so a name is all it needs.
   FinishSession: [],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
-  Information: ['items', 'title'],
+  Information: ['content'],
   // Its choices are the protocol's own languages and its heading is supplied,
   // so a name is all it needs.
   LanguageChooser: [],

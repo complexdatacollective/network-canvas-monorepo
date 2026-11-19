@@ -329,7 +329,7 @@ describe('Protocol Summary text that reads by a number answer', () => {
           stageNumber={6}
           type="Information"
           configuration={{
-            title: {
+            content: {
               cs: '{hours, select, missing {} other {{hours, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}',
             },
             dynamicValues: { hours: { path: 'ego.hours' } },

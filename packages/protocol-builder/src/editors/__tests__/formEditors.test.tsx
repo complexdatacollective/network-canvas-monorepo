@@ -62,7 +62,7 @@ const FORM_EDITORS: FormEditorCase[] = [
     stageId: 'information-1',
     editor: informationStageEditor,
     sections: ['Page content', 'Skip logic', 'Interviewer guidance'],
-    ownedKeys: ['conditions', 'dynamicValues', 'items', 'label', 'title'],
+    ownedKeys: ['conditions', 'content', 'dynamicValues', 'label'],
   },
   {
     interfaceName: 'EgoForm',

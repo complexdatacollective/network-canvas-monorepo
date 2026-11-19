@@ -20,8 +20,7 @@ const STAGE: SectionDoc = {
   id: STAGE_ID,
   type: 'Information',
   label: { en: 'Welcome to the study' },
-  title: { en: 'Welcome' },
-  items: [],
+  content: { en: '# Welcome' },
 };
 
 /**

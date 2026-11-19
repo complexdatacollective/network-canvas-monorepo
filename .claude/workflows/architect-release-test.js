@@ -575,8 +575,8 @@ ends the interview and always stays last on the timeline; the counts below
 include it.
 1. "add-information-stage": Create your protocol, then use "Add new stage" to
    open the interface picker. Confirm it lists multiple stage types, choose
-   "Information", give the stage a name and one content item with recognizable
-   text, and save. Confirm the stage appears in the "Protocol stages" timeline,
+   "Information", give the stage a name, type some recognizable text into
+   its "Page content" editor, and save. Confirm the stage appears in the "Protocol stages" timeline,
    above "Finish Interview".
 2. "edit-stage": Reopen the stage with its "Edit stage" control, change the
    stage name, save, and confirm the timeline shows the new name.

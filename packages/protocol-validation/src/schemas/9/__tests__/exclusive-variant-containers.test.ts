@@ -58,7 +58,6 @@ describe('the exclusive-variant containers of a stage document', () => {
       ['background'],
       ['edges', '*', 'form', 'fields', '*'],
       ['filter', 'rules', '*'],
-      ['items', '*'],
       ['nodeForm', 'fields', '*'],
       ['panels', '*', 'filter', 'rules', '*'],
       ['prompts', '*', 'highlight'],

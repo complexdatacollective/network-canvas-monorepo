@@ -62,8 +62,7 @@ const STAGES = [
     id: 'intro',
     type: 'Information',
     label: { en: 'Intro' },
-    title: { en: 'Intro' },
-    items: [],
+    content: { en: '# Intro' },
   },
   {
     id: 'finish-ineligible',

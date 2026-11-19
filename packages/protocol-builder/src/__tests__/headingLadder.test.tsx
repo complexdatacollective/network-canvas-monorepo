@@ -17,7 +17,7 @@ import { nameGeneratorStageEditor } from '../editors/name-generator/NameGenerato
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { ResourceClientProvider } from '../resources/client.tsx';
-import { contentBlocks } from '../sections/content-blocks/contentBlocks.tsx';
+import { pageContent } from '../sections/page-content/pageContent.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 import { StageEditorStoryHost } from '../testing/StageEditorStoryHost.tsx';
@@ -265,8 +265,8 @@ describe('the stage editor shell', () => {
           <StageEditSession target={target} formId={formId} onSaved={onSaved}>
             <StageEditorShell actions={actions}>
               {/* The production pairing, not a hand-mount of its parts: what a
-                  block editor is paired with is `contentBlocks`' business. */}
-              {contentBlocks()()}
+                  page's section is `pageContent`'s business. */}
+              {pageContent()()}
             </StageEditorShell>
           </StageEditSession>
         </ResourceClientProvider>
@@ -304,8 +304,16 @@ describe('the stage editor shell', () => {
       'h1: Who you turn to',
       'h2: Stage name',
       'h3: Page content',
+      // The page's own heading, written in the text the section edits. It is
+      // an `h1` element, which is how it looks, and says its place below the
+      // section as `aria-level`.
+      'h1: Welcome',
     ]);
-    await expectHeadingOrder(3);
+    expect(screen.getByRole('heading', { name: 'Welcome' })).toHaveAttribute(
+      'aria-level',
+      '4',
+    );
+    await expectHeadingOrder(4);
   });
 
   /**
@@ -329,8 +337,13 @@ describe('the stage editor shell', () => {
       'h2: Who you turn to',
       'h3: Prompt configuration',
       'h4: Page content',
+      'h1: Welcome',
     ]);
-    await expectHeadingOrder(4);
+    expect(screen.getByRole('heading', { name: 'Welcome' })).toHaveAttribute(
+      'aria-level',
+      '5',
+    );
+    await expectHeadingOrder(5);
   });
 });
 
