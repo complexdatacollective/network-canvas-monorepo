@@ -32,21 +32,19 @@
 
 # Name Generator (using quick add)
 
-## What a name generator is
-
-<!-- scene: name-generator-intro -->
-
-Name generators are a fundamental part of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Each alter named on this stage is saved as a node, so later stages can ask about these alters, place them, or connect them.
-
-The form and quick-add name generators have the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds an alter, and optionally one or two **side panels**.
-
-Read the full [Name Generator using Quick Add documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add).
+<!-- include: name-generator-intro -->
 
 ## This one uses quick add
 
+<!-- scene: name-generator-intro -->
+
 In the Name Generator (using quick add), the add button opens a text box. The participant types a short label, usually a name, and presses Enter to add the alter. This is the quickest way to name many alters.
 
+The form and quick-add name generators have the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds an alter, and optionally one or two **side panels**.
+
 If you also want to ask a few questions about each alter as it is named, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms). If you already have a list of the alters participants might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
+
+Read the full [Name Generator using Quick Add documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add).
 
 ## When to use it
 

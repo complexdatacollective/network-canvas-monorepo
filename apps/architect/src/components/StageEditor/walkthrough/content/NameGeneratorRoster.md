@@ -32,13 +32,7 @@
 
 # Name Generator for Roster Data
 
-## What a name generator is
-
-Name generators are a fundamental part of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Each alter named on this stage is saved as a node, so later stages can ask about these alters, place them, or connect them.
-
-Network Canvas has several name generators, each suited to a different way of naming alters.
-
-Read the full [Name Generator for Roster Data documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
+<!-- include: name-generator-intro -->
 
 ## This one uses a roster
 
@@ -47,6 +41,8 @@ Read the full [Name Generator for Roster Data documentation](https://documentati
 In the Name Generator for Roster Data, the participant does not type anything. Instead, the alters already exist in a **roster**: a data file you import, such as the members of a class or team. The screen is split in two, with a panel of **cards** on one side, one for each entry in the roster, and the participant's network on the other. The participant drags a card across to add that alter, and can drag the alter back to remove it.
 
 If participants should name alters you can't list in advance, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms) or the [Name Generator (using quick add)](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-quick-add).
+
+Read the full [Name Generator for Roster Data documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-roster).
 
 ## When to use it
 

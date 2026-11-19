@@ -32,19 +32,15 @@
 
 # Name Generator (using forms)
 
-## What a name generator is
-
-<!-- scene: name-generator-intro -->
-
-Name generators are a fundamental part of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Each alter named on this stage is saved as a node, so later stages can add attributes to them or create edges between them.
-
-Read the full [Name Generator using Forms documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms).
+<!-- include: name-generator-intro -->
 
 ## This one uses a form
 
 <!-- scene: name-generator-form -->
 
 In the Name Generator (using forms), the add button opens a **form** that the participant fills in to create each node. The form can include one or more fields, each capturing an attribute of the node.
+
+Read the full [Name Generator using Forms documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms).
 
 ## When to use it
 
@@ -79,7 +75,7 @@ Read more about [forms](https://documentation.networkcanvas.com/design-protocols
 <!-- section: prompts -->
 <!-- scene: name-generator-prompts -->
 
-The prompt is critical for name generation, and determines the kind of network that will result from your interview. It is displayed at the top of the screen. Multiple prompts can be used, and the participant moves between them by using the Next and Back buttons.
+The prompt you choose is critical for name generation, and determines the kind of network that will result from your interview. It is displayed at the top of the screen. Multiple prompts can be used, and the participant moves between them by using the Next and Back buttons.
 
 Each prompt can also set **additional attributes** for every alter added in response to it. This feature allows you to track alters nominated in response to a specific prompt, such as setting `discuss_matters` to true.
 
