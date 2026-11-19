@@ -1,14 +1,16 @@
 import { z } from 'zod';
 
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { findDuplicateValue } from '../../../utils/validation-helpers.ts';
 import {
   EdgeStageSubjectSchema,
   imageOrCirclesBackgroundSchema,
   NodeStageSubjectSchema,
-  uniqueFormFields,
+  uniqueFormFieldVariables,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 import { ComponentTypes } from '../variables/types.ts';
 import {
   datePickerParametersSchema,
@@ -43,11 +45,7 @@ const ComposerComponentSchema = z.enum([
 // field's `prompt`: the codebook variable's own label is plain text that is
 // never translated, so it cannot stand in for a caption the participant reads.
 const composerFormFieldShape = {
-  // A stable identity for the field, as on a shared form field: Architect
-  // assigns a uuid when it creates one. Required, and unique within its form
-  // (`uniqueFormFields`). The schema 8 to 9 migration gives one to every
-  // field that has none.
-  id: z.string().min(1),
+  id: protocolObjectId('formField'),
   variable: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
@@ -139,91 +137,93 @@ export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
 // strips an empty fields array on save. The runtime renders "No attributes to
 // edit" for an empty/absent form.
 export const ComposerFormSchema = z.strictObject({
-  // `uniqueFormFields` is the SAME rule the shared form schemas apply
+  // `uniqueFormFieldVariables` is the SAME rule the shared form schemas apply
   // (see its definition in `common/forms.ts` for why one form may not write a
   // variable twice); a composer field is structurally a form field, so it uses
   // the shared refinement rather than a second copy that could drift.
   fields: z
     .array(ComposerFormFieldSchema)
-    .superRefine(uniqueFormFields)
+    .superRefine(uniqueFormFieldVariables)
     .optional(),
 });
 export type ComposerForm = z.infer<typeof ComposerFormSchema>;
 
-export const networkComposerStage = baseStageSchema.extend({
-  type: z.literal('NetworkComposer'),
-  subject: NodeStageSubjectSchema,
-  // The text variable populated by the inline quick-add name field when a node
-  // is added from the tool palette. The quick-add field now runs the variable's
-  // codebook validation (see interview's AddNodeInput), so it is a validated
-  // writer like any other form field.
-  quickAdd: entityAttributeReference({
-    subject: 'stageSubject',
-    usage: 'validatedAttribute',
-  }),
-  // The layout variable that stores each node's { x, y } position. The canvas
-  // merges positions into node attributes under this key, so any other type
-  // would have its collected value overwritten.
-  layoutVariable: entityAttributeReference({
-    subject: 'stageSubject',
-    requireType: ['layout'],
-    usage: 'unvalidatedAttribute',
-  }),
-  // Attribute form shown in the inspector when a node is selected.
-  nodeForm: ComposerFormSchema.optional(),
-  // The categorical variable whose values are drawn as convex hulls.
-  // Participants toggle a node's group membership (a value of this variable)
-  // via the Groups tool or by lasso-selecting nodes; membership also drives
-  // the automatic layout's group-cohesion force. Those interactions write
-  // directly to the node without applying the variable's validation rules.
-  convexHullVariable: entityAttributeReference({
-    subject: 'stageSubject',
-    requireType: ['categorical'],
-    usage: 'unvalidatedAttribute',
-  }).optional(),
-  background: imageOrCirclesBackgroundSchema,
-  behaviours: z
-    .strictObject({
-      // Whether automatic (force-directed) layout is ON when the stage first
-      // opens. A flat boolean, matching the shared canvas behaviours used by the
-      // Sociogram and Narrative. Unlike those, NetworkComposer treats this only
-      // as the DEFAULT: participants turn automatic layout on and off during the
-      // interview via a toggle, and that live choice is persisted in stage
-      // metadata (see NetworkComposerStageMetadataSchema).
-      automaticLayout: z.boolean().optional(),
-    })
-    .optional(),
-  // Each entry is a drawable edge type. `subject` carries the edge type so an
-  // edge form's fields resolve their variable references against that edge type
-  // (via collectEntityAttributeReferences' stageSubjectOf), not the node subject.
-  // Optional: a stage may define no edge types, and the editor's `prune` strips
-  // an empty edges array on save (so it arrives undefined, not []).
-  edges: z
-    .array(
-      z.strictObject({
-        id: z.string(),
-        subject: EdgeStageSubjectSchema,
-        // The words participants choose this edge type by in the toolbar,
-        // and the title of its editor: they never read the type's name.
-        label: localizedString(nonBlankText(), {
-          format: 'plain',
-          lines: 'single',
+export const networkComposerStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('NetworkComposer'),
+    subject: NodeStageSubjectSchema,
+    // The text variable populated by the inline quick-add name field when a node
+    // is added from the tool palette. The quick-add field now runs the variable's
+    // codebook validation (see interview's AddNodeInput), so it is a validated
+    // writer like any other form field.
+    quickAdd: entityAttributeReference({
+      subject: 'stageSubject',
+      usage: 'validatedAttribute',
+    }),
+    // The layout variable that stores each node's { x, y } position. The canvas
+    // merges positions into node attributes under this key, so any other type
+    // would have its collected value overwritten.
+    layoutVariable: entityAttributeReference({
+      subject: 'stageSubject',
+      requireType: ['layout'],
+      usage: 'unvalidatedAttribute',
+    }),
+    // Attribute form shown in the inspector when a node is selected.
+    nodeForm: ComposerFormSchema.optional(),
+    // The categorical variable whose values are drawn as convex hulls.
+    // Participants toggle a node's group membership (a value of this variable)
+    // via the Groups tool or by lasso-selecting nodes; membership also drives
+    // the automatic layout's group-cohesion force. Those interactions write
+    // directly to the node without applying the variable's validation rules.
+    convexHullVariable: entityAttributeReference({
+      subject: 'stageSubject',
+      requireType: ['categorical'],
+      usage: 'unvalidatedAttribute',
+    }).optional(),
+    background: imageOrCirclesBackgroundSchema,
+    behaviours: z
+      .strictObject({
+        // Whether automatic (force-directed) layout is ON when the stage first
+        // opens. A flat boolean, matching the shared canvas behaviours used by the
+        // Sociogram and Narrative. Unlike those, NetworkComposer treats this only
+        // as the DEFAULT: participants turn automatic layout on and off during the
+        // interview via a toggle, and that live choice is persisted in stage
+        // metadata (see NetworkComposerStageMetadataSchema).
+        automaticLayout: z.boolean().optional(),
+      })
+      .optional(),
+    // Each entry is a drawable edge type. `subject` carries the edge type so an
+    // edge form's fields resolve their variable references against that edge type
+    // (via collectEntityAttributeReferences' stageSubjectOf), not the node subject.
+    // Optional: a stage may define no edge types, and the editor's `prune` strips
+    // an empty edges array on save (so it arrives undefined, not []).
+    edges: z
+      .array(
+        z.strictObject({
+          id: protocolObjectId('composerEdge'),
+          subject: EdgeStageSubjectSchema,
+          // The words participants choose this edge type by in the toolbar,
+          // and the title of its editor: they never read the type's name.
+          label: localizedString(nonBlankText(), {
+            format: 'plain',
+            lines: 'single',
+          }),
+          form: ComposerFormSchema.optional(),
         }),
-        form: ComposerFormSchema.optional(),
-      }),
-    )
-    .superRefine((edges, ctx) => {
-      // Edge TYPE IDS, not names: compared exactly, never case-folded.
-      const duplicateType = findDuplicateValue(
-        edges.map((edge) => edge.subject.type),
-      );
-      if (duplicateType) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Network Composer edges contain duplicate type "${duplicateType}"`,
-          path: [],
-        });
-      }
-    })
-    .optional(),
-});
+      )
+      .superRefine((edges, ctx) => {
+        // Edge TYPE IDS, not names: compared exactly, never case-folded.
+        const duplicateType = findDuplicateValue(
+          edges.map((edge) => edge.subject.type),
+        );
+        if (duplicateType) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Network Composer edges contain duplicate type "${duplicateType}"`,
+            path: [],
+          });
+        }
+      })
+      .optional(),
+  }),
+);

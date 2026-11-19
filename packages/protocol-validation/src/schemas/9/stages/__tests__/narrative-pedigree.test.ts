@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
+import { testId } from '../../../../__tests__/testIds.ts';
 import { labelCollisionIssues } from '../../../../localization/labelCollisions.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import { narrativePedigreeWords } from '../../__tests__/canvas-stage-words.ts';
@@ -18,7 +19,7 @@ import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 // Minimal valid FamilyPedigree stage (source). Its person type is its stage
 // subject, which the Narrative Pedigree's diseases resolve against.
 const validFamilyPedigreeStage = {
-  id: 'fp1',
+  id: testId('fp1'),
   label: localized('FamilyPedigree'),
   type: 'FamilyPedigree' as const,
   wording: familyPedigreeWordingIn(),
@@ -40,13 +41,13 @@ const validFamilyPedigreeStage = {
 
 // Minimal valid NarrativePedigree stage (stage-level shape only)
 const validNarrativePedigreeStageShape = {
-  id: 'np1',
+  id: testId('np1'),
   label: localized('Narrative Pedigree'),
   type: 'NarrativePedigree' as const,
-  sourceStageId: 'fp1',
+  sourceStageId: testId('fp1'),
   diseases: [
     {
-      id: 'disease1',
+      id: testId('disease1'),
       label: localized('Breast Cancer'),
       color: 'node-color-seq-1',
       attribute: 'hasBreastCancer',
@@ -171,14 +172,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       ...validNarrativePedigreeStageShape,
       diseases: [
         {
-          id: 'dup',
+          id: testId('dup'),
           label: localized('A'),
           color: 'node-color-seq-1',
           attribute: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
-          id: 'dup',
+          id: testId('dup'),
           label: localized('B'),
           color: 'node-color-seq-5',
           attribute: 'v2',
@@ -188,9 +189,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     });
     expect(parseIssues(result)).toEqual([
       {
-        path: 'diseases',
+        path: 'diseases.0.id',
         code: 'custom',
-        message: 'Diseases contain duplicate ID "dup"',
+        message: `The id "${testId('dup')}" is also used at diseases.1.id. Every id in a protocol must be unique.`,
+      },
+      {
+        path: 'diseases.1.id',
+        code: 'custom',
+        message: `The id "${testId('dup')}" is also used at diseases.0.id. Every id in a protocol must be unique.`,
       },
     ]);
   });
@@ -200,14 +206,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       ...validNarrativePedigreeStageShape,
       diseases: [
         {
-          id: 'd1',
+          id: testId('d1'),
           label: localized('Condition X'),
           color: 'node-color-seq-1',
           attribute: 'shared',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
-          id: 'd2',
+          id: testId('d2'),
           label: localized('Condition Y'),
           color: 'node-color-seq-5',
           attribute: 'shared',
@@ -228,14 +234,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       ...validNarrativePedigreeStageShape,
       diseases: [
         {
-          id: 'd1',
+          id: testId('d1'),
           label: localized('Condition X'),
           color: 'node-color-seq-1',
           attribute: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
-          id: 'd2',
+          id: testId('d2'),
           label: localized('Condition Y'),
           color: 'node-color-seq-5',
           attribute: 'v2',
@@ -299,7 +305,7 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       ...validNarrativePedigreeStageShape,
       presets: [
         {
-          id: 'preset1',
+          id: testId('preset1'),
           label: localized('Breast Cancer Focus'),
           diseases: ['disease1'],
           focal: 'ego',
@@ -330,14 +336,14 @@ describe('NarrativePedigree protocol-level cross-references', () => {
           ...validNarrativePedigreeStageShape,
           diseases: [
             {
-              id: 'd1',
+              id: testId('d1'),
               label: labels[0],
               color: 'node-color-seq-1',
               attribute: 'hasBreastCancer',
               inheritancePattern: 'autosomalDominant',
             },
             {
-              id: 'd2',
+              id: testId('d2'),
               label: labels[1],
               color: 'node-color-seq-5',
               attribute: 'hasOvarianCancer',
@@ -456,7 +462,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
             validFamilyPedigreeStage,
             {
               ...validNarrativePedigreeStageShape,
-              sourceStageId: 'nonexistent',
+              sourceStageId: testId('nonexistent'),
             },
           ],
         }),
@@ -484,8 +490,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     expect(
       result.error?.issues.map(({ message, path }) => ({ message, path })),
     ).toContainEqual({
-      message:
-        'NarrativePedigree sourceStageId "fp1" must reference a FamilyPedigree stage that comes before it.',
+      message: `NarrativePedigree sourceStageId "${testId('fp1')}" must reference a FamilyPedigree stage that comes before it.`,
       path: ['stages', 0, 'sourceStageId'],
     });
   });
@@ -503,18 +508,27 @@ describe('NarrativePedigree protocol-level cross-references', () => {
 
   it('rejects when sourceStageId references a non-FamilyPedigree stage', () => {
     const informationStage = {
-      id: 'info1',
+      id: testId('info1'),
       label: localized('Information'),
       type: 'Information' as const,
       title: localized('Welcome'),
-      items: [{ id: 'i1', type: 'text' as const, content: localized('Hello') }],
+      items: [
+        {
+          id: testId('i1'),
+          type: 'text' as const,
+          content: localized('Hello'),
+        },
+      ],
     };
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(
         makeProtocol({
           stages: [
             informationStage,
-            { ...validNarrativePedigreeStageShape, sourceStageId: 'info1' },
+            {
+              ...validNarrativePedigreeStageShape,
+              sourceStageId: testId('info1'),
+            },
           ],
         }),
       ),
@@ -538,7 +552,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
               ...validNarrativePedigreeStageShape,
               diseases: [
                 {
-                  id: 'disease1',
+                  id: testId('disease1'),
                   label: localized('Breast Cancer'),
                   color: 'node-color-seq-1',
                   attribute: 'nonexistentVariable',
@@ -570,7 +584,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
               ...validNarrativePedigreeStageShape,
               diseases: [
                 {
-                  id: 'disease1',
+                  id: testId('disease1'),
                   label: localized('Breast Cancer'),
                   color: 'node-color-seq-1',
                   attribute: 'personLabel',

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { assetReference } from '../asset-reference.ts';
 import { ColorReferenceSchema } from '../color-reference.ts';
 import {
@@ -74,24 +74,13 @@ const geospatialWording = {
   }).optional(),
 };
 
-export const geospatialStage = baseStageSchema.extend({
-  type: z.literal('Geospatial'),
-  subject: NodeStageSubjectSchema,
-  filter: FilterSchema.optional(),
-  mapOptions: mapOptions,
-  ...geospatialWording,
-  prompts: z
-    .array(geospatialPromptSchema)
-    .min(1)
-    .superRefine((prompts, ctx) => {
-      // Check for duplicate prompt IDs
-      const duplicatePromptId = findDuplicateId(prompts);
-      if (duplicatePromptId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-          path: [],
-        });
-      }
-    }),
-});
+export const geospatialStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('Geospatial'),
+    subject: NodeStageSubjectSchema,
+    filter: FilterSchema.optional(),
+    mapOptions: mapOptions,
+    ...geospatialWording,
+    prompts: z.array(geospatialPromptSchema).min(1),
+  }),
+);

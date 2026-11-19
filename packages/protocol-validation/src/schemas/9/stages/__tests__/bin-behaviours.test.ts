@@ -5,6 +5,7 @@ import {
   stageWithSuppliedText,
   stageWithoutSuppliedText,
 } from '../../../../__tests__/suppliedWording.ts';
+import { testId } from '../../../../__tests__/testIds.ts';
 import { localized } from '../../../../utils/test-utils.ts';
 import { categoricalBinStage } from '../categorical-bin.ts';
 import { ordinalBinStage } from '../ordinal-bin.ts';
@@ -12,13 +13,13 @@ import { ordinalBinStage } from '../ordinal-bin.ts';
 const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
 
 const ordinalBin = {
-  id: 'ordinal',
+  id: testId('ordinal'),
   type: 'OrdinalBin' as const,
   label: localized('Ordinal'),
   subject: { entity: 'node' as const, type: 'person' },
   prompts: [
     {
-      id: 'p1',
+      id: testId('ordinal-p1'),
       text: localized('How close?'),
       variable: 'closeness',
       color: 'ord-color-seq-1',
@@ -27,11 +28,17 @@ const ordinalBin = {
 };
 
 const categoricalBin = {
-  id: 'categorical',
+  id: testId('categorical'),
   type: 'CategoricalBin' as const,
   label: localized('Categorical'),
   subject: { entity: 'node' as const, type: 'person' },
-  prompts: [{ id: 'p1', text: localized('Which group?'), variable: 'group' }],
+  prompts: [
+    {
+      id: testId('categorical-p1'),
+      text: localized('Which group?'),
+      variable: 'group',
+    },
+  ],
 };
 
 describe.each([

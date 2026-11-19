@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../../schema.ts';
 import { narrativeStage } from '../narrative.ts';
 
 const nameRule = {
   type: 'node' as const,
-  id: 'rule-name',
+  id: testId('rule-name'),
   options: {
     type: 'person',
     attribute: 'name',
@@ -18,14 +19,14 @@ const nameRule = {
 };
 
 const preset = (id: string, settings: Record<string, unknown> = {}) => ({
-  id,
+  id: testId(id),
   label: localized(id),
   layoutVariable: 'layoutPosition',
   ...settings,
 });
 
 const stageWith = (settings: Record<string, unknown>) => ({
-  id: 'narrative',
+  id: testId('narrative'),
   label: localized('Narrative'),
   type: 'Narrative' as const,
   subject: { entity: 'node' as const, type: 'person' },
@@ -45,7 +46,9 @@ const protocolWith = (settings: Record<string, unknown>) => {
 
 const narrativeIssues = (settings: Record<string, unknown>) => {
   const protocol = protocolWith(settings);
-  const at = protocol.stages.findIndex((stage) => stage.id === 'narrative');
+  const at = protocol.stages.findIndex(
+    (stage) => stage.id === testId('narrative'),
+  );
   return parseIssues(ProtocolSchemaV9.safeParse(protocol)).filter(({ path }) =>
     path.startsWith(`stages.${at}.`),
   );
@@ -60,7 +63,10 @@ describe('the filter of a Narrative preset', () => {
           preset('second', {
             filter: {
               join: 'OR',
-              rules: [nameRule, { ...nameRule, id: 'rule-other' }],
+              rules: [
+                { ...nameRule, id: testId('rule-second') },
+                { ...nameRule, id: testId('rule-other') },
+              ],
             },
           }),
           preset('third'),
@@ -108,7 +114,7 @@ describe('the filter of a Narrative preset', () => {
             rules: [
               {
                 type: 'ego',
-                id: 'rule-ego',
+                id: testId('rule-ego'),
                 options: { attribute: 'egoName', operator: 'EXISTS' },
               },
             ],
@@ -134,23 +140,35 @@ describe('the filter of a Narrative preset', () => {
       ],
     });
 
+    expect(
+      issues.map(({ path }) => path.replace(/^stages\.\d+\./, '')),
+    ).toEqual(['presets.0.filter.rules.0.id', 'presets.0.filter.rules.1.id']);
     expect(issues).toEqual([
       expect.objectContaining({
         code: 'custom',
-        message: 'Rules contain duplicate ID "rule-name"',
+        message: expect.stringContaining(
+          `The id "${testId('rule-name')}" is also used at`,
+        ),
       }),
+      expect.objectContaining({ code: 'custom' }),
     ]);
-    expect(issues[0]?.path.endsWith('.presets.0.filter.rules')).toBe(true);
   });
 
-  it('may repeat a rule id another preset uses', () => {
+  it('cannot repeat a rule id another preset uses', () => {
+    const issues = narrativeIssues({
+      presets: [
+        preset('first', { filter: { rules: [nameRule] } }),
+        preset('second', { filter: { rules: [nameRule] } }),
+      ],
+    });
+
     expect(
-      narrativeIssues({
-        presets: [
-          preset('first', { filter: { rules: [nameRule] } }),
-          preset('second', { filter: { rules: [nameRule] } }),
-        ],
-      }),
-    ).toEqual([]);
+      issues.map(({ path }) => path.replace(/^stages\.\d+\./, '')),
+    ).toEqual(['presets.0.filter.rules.0.id', 'presets.1.filter.rules.0.id']);
+    expect(
+      issues.every(({ message }) =>
+        message?.endsWith('Every id in a protocol must be unique.'),
+      ),
+    ).toBe(true);
   });
 });

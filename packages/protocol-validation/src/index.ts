@@ -1,16 +1,12 @@
 import { asEntityAttributeReference } from './schemas/9/entity-attribute-reference.ts';
 import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
-  type AssetReferenceHit,
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectEntityTypeReferencesFromSchema,
   collectStageReferences,
   declaredStageReferenceSites,
-  type EntityAttributeReferenceHit,
-  type EntityTypeReferenceHit,
-  type StageReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
 import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
@@ -37,6 +33,12 @@ import {
   type ProtocolFileErrorKind,
 } from './utils/protocolFileErrorKind.ts';
 import { toReportableProtocolError } from './utils/reportableProtocolError.ts';
+import type {
+  AssetReferenceHit,
+  EntityAttributeReferenceHit,
+  EntityTypeReferenceHit,
+  StageReferenceHit,
+} from './utils/schemaReferenceWalk.ts';
 import {
   findCollidingAttributeNames,
   getVariableNamesFromNetwork,
@@ -410,6 +412,29 @@ export {
   localizedTextShapeAt,
   type LocalizedStringHit,
 } from './utils/collectLocalizedStrings.ts';
+// The ids of the objects a researcher edits on their own (see
+// `schemas/9/protocol-object-id.ts`): their schema, how a new one is made, and
+// how a host finds, checks and renews the ids a protocol or a part of one holds.
+export {
+  createProtocolObjectId,
+  isProtocolObjectId,
+  type ProtocolObjectId,
+  ProtocolObjectIdSchema,
+  type ProtocolObjectKind,
+} from './schemas/9/protocol-object-id.ts';
+export {
+  DUPLICATE_OBJECT_ID,
+  type DuplicateProtocolObjectId,
+  type ProtocolObjectIdLocation,
+} from './utils/protocolObjectIds.ts';
+export {
+  collectProtocolObjectIds,
+  findDuplicateProtocolObjectIds,
+} from './utils/collectProtocolObjectIds.ts';
+export {
+  type FreshenedProtocolFragment,
+  freshenProtocolFragmentIds,
+} from './utils/freshenProtocolFragmentIds.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';
 export {
   findRosterCharacterProblems,

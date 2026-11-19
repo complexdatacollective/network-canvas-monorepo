@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../../__tests__/testIds.ts';
 import {
   filterRuleSchema,
   FilterSchema,
@@ -21,7 +22,7 @@ import {
  */
 
 const countRule = (value: unknown) => ({
-  id: 'rule-1',
+  id: testId('rule-1'),
   type: 'node' as const,
   options: {
     type: 'person',
@@ -69,7 +70,7 @@ describe('the operand a filter rule compares against', () => {
     // attribute may hold any quantity a study measures: an integer-only
     // operand would leave `closeness > 0.5` inexpressible.
     const result = filterRuleSchema.safeParse({
-      id: 'rule-1',
+      id: testId('rule-1'),
       type: 'node',
       options: {
         type: 'person',
@@ -88,7 +89,7 @@ describe('the operand a filter rule compares against', () => {
     // only what shape the value has. A list of option values parses whether or
     // not those options still exist.
     const result = filterRuleSchema.safeParse({
-      id: 'rule-1',
+      id: testId('rule-1'),
       type: 'node',
       options: {
         type: 'person',
@@ -122,7 +123,7 @@ describe('the operand a filter rule compares against', () => {
 
   it('asks nothing of a presence rule, which compares no operand', () => {
     const result = filterRuleSchema.safeParse({
-      id: 'rule-1',
+      id: testId('rule-1'),
       type: 'node',
       options: { type: 'person', operator: 'EXISTS' },
     });
@@ -133,7 +134,7 @@ describe('the operand a filter rule compares against', () => {
 
 describe('how the rules in a filter combine', () => {
   const presenceRule = (id: string) => ({
-    id,
+    id: testId(id),
     type: 'node' as const,
     options: { type: 'person', operator: 'EXISTS' as FilterOperator },
   });

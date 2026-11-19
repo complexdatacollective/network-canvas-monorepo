@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
-import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { assetReference } from '../asset-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 import { baseStageSchema } from './base.ts';
 
 const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
@@ -10,7 +11,7 @@ const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 // A text item's `description` is never shown to a participant, so it stays a
 // plain researcher note; an asset item's is the media's alt text.
 const textItemSchema = z.strictObject({
-  id: z.string(),
+  id: protocolObjectId('informationItem'),
   type: z.literal('text'),
   content: localizedString(
     nonBlankText(),
@@ -24,7 +25,7 @@ const textItemSchema = z.strictObject({
 
 // Size is an image/video sizing treatment, so it only applies to asset items.
 const assetItemSchema = z.strictObject({
-  id: z.string(),
+  id: protocolObjectId('informationItem'),
   type: z.literal('asset'),
   content: assetReference(),
   // An image's description stands in for the image, so it stays literal.
@@ -42,14 +43,16 @@ const ItemSchema = z.discriminatedUnion('type', [
 
 export type Item = z.infer<typeof ItemSchema>;
 
-export const informationStage = baseStageSchema.extend({
-  type: z.literal('Information'),
-  title: localizedString(
-    nonBlankText(),
-    { format: 'plain', lines: 'single' },
-    {
-      dynamicValues: 'stageText',
-    },
-  ),
-  items: z.array(ItemSchema).superRefine(duplicateIdRefinement('Items')),
-});
+export const informationStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('Information'),
+    title: localizedString(
+      nonBlankText(),
+      { format: 'plain', lines: 'single' },
+      {
+        dynamicValues: 'stageText',
+      },
+    ),
+    items: z.array(ItemSchema),
+  }),
+);

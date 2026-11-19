@@ -15,7 +15,10 @@ import {
   escapeMessageText,
   messageText,
 } from '../../localization/messageSyntax.ts';
-import { createMigration } from '../../migration/index.ts';
+import {
+  createMigration,
+  type ProtocolDocument,
+} from '../../migration/index.ts';
 import { recordOriginalPositions } from '../../migration/originalPositions.ts';
 import type { SessionDocument } from '../../migration/session.ts';
 import {
@@ -33,9 +36,15 @@ import {
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
+import {
+  assignProtocolObjectIds,
+  createMigrationIdMinter,
+  type MigrationIdChanges,
+  type MigrationIdMinter,
+  rewriteSessionObjectIds,
+} from './migration-object-ids.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
-import { freshStageId } from './stage-ids.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
 import { optionValueKey } from './variables/variable.ts';
 
@@ -484,70 +493,6 @@ const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
   shownText(label) ?? { [defaultLocale]: 'Introduction' };
 
 /**
- * Schema 9 gives every form field an `id`, a stable identity apart from its
- * position and its attribute, which schema 8 did not require. A field without
- * a usable one is given `field-` and its position in the form, or the next
- * free number if that is taken, so migrating one document twice gives one
- * result. A field that has an id keeps it; a blank, non-text or repeated one
- * is not usable, as ids must be unique within a form, and is replaced.
- */
-const giveFieldsIds = (fields: unknown) => {
-  if (!Array.isArray(fields)) return;
-  const taken = new Set<string>();
-  const needsId = new Set<Record<string, unknown>>();
-  for (const field of fields) {
-    if (!isRecord(field)) continue;
-    const { id } = field;
-    if (typeof id === 'string' && id !== '' && !taken.has(id)) {
-      taken.add(id);
-    } else {
-      needsId.add(field);
-    }
-  }
-  fields.forEach((field: unknown, index: number) => {
-    if (!isRecord(field) || !needsId.has(field)) return;
-    let count = index + 1;
-    while (taken.has(`field-${count}`)) count += 1;
-    const id = `field-${count}`;
-    field.id = id;
-    taken.add(id);
-  });
-};
-
-/**
- * Every form of every stage: the `form` of an Ego Form, Alter Form, Alter Edge
- * Form, Name Generator and the Family Pedigree conversion, and a Network
- * Composer's node form and each edge type's form.
- */
-const addFormFieldIds = (protocol: unknown) => {
-  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  for (const stage of protocol.stages) {
-    if (!isRecord(stage)) continue;
-    if (stage.type === 'NetworkComposer') {
-      if (isRecord(stage.nodeForm)) giveFieldsIds(stage.nodeForm.fields);
-      if (!Array.isArray(stage.edges)) continue;
-      for (const edge of stage.edges) {
-        if (isRecord(edge) && isRecord(edge.form)) {
-          giveFieldsIds(edge.form.fields);
-        }
-      }
-    } else if (isRecord(stage.form)) {
-      giveFieldsIds(stage.form.fields);
-    }
-  }
-};
-
-/** The ids the stages already use, which a stage the migration adds must not. */
-const takenStageIds = (stages: unknown): Set<string> =>
-  new Set(
-    Array.isArray(stages)
-      ? stages.flatMap((stage) =>
-          isRecord(stage) && typeof stage.id === 'string' ? [stage.id] : [],
-        )
-      : [],
-  );
-
-/**
  * Schema 9 gives a participant instructions between tasks with an
  * Information stage. The introduction panel that opened an Alter Form, Alter
  * Edge Form, Dyad Census or Tie-Strength Census becomes an Information stage
@@ -570,12 +515,12 @@ const takenStageIds = (stages: unknown): Set<string> =>
 const moveIntroductionPanelsToInformationStages = (
   protocol: unknown,
   { defaultLocale }: LocalizationDeclaration,
+  minter: MigrationIdMinter,
 ) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  const taken = takenStageIds(protocol.stages);
   const retargets = new Map<string, string>();
   const stages: unknown[] = [];
-  for (const stage of protocol.stages) {
+  for (const [index, stage] of protocol.stages.entries()) {
     if (!isRecord(stage) || !isRecord(stage.introductionPanel)) {
       stages.push(stage);
       continue;
@@ -591,22 +536,14 @@ const moveIntroductionPanelsToInformationStages = (
       stages.push(stage);
       continue;
     }
-    const id = freshStageId(
-      typeof stage.id === 'string' ? stage.id : 'stage',
-      '-introduction',
-      taken,
-    );
-    taken.add(id);
+    const id = minter.mint(`introductionBefore:${index}`);
     if (typeof stage.id === 'string') retargets.set(stage.id, id);
     stages.push({
       id,
       type: 'Information',
       label: structuredClone(title),
       title,
-      items:
-        text === undefined
-          ? []
-          : [{ id: 'introduction-text', type: 'text', content: text }],
+      items: text === undefined ? [] : [{ type: 'text', content: text }],
       ...(stage.skipLogic !== undefined && {
         skipLogic: structuredClone(stage.skipLogic),
       }),
@@ -1169,19 +1106,6 @@ const repairInformationTextItems = (protocol: unknown) => {
   }
 };
 
-// The id the appended finish stage takes, unless a schema 8 stage already
-// has it. Deterministic, so migrating one document twice gives one result.
-const FINISH_STAGE_ID = 'finish';
-
-const finishStageId = (stages: unknown): string =>
-  freshStageId(FINISH_STAGE_ID, '', takenStageIds(stages));
-
-/**
- * Schema 8 ended every interview with a built-in screen the runtime added.
- * Schema 9 makes that screen a stage, so every migrated protocol gains one at
- * the end, carrying the text that screen showed, recorded in the protocol's
- * default language.
- */
 /**
  * A session the framework left past the last stage, where the interview
  * engine's own finish screen used to be, resumes on the finish stage the
@@ -1211,15 +1135,21 @@ const endsAtFinishStage = (stages: unknown): boolean => {
 };
 
 /**
- * The finish stage the migration appends, with the supplied text in each of
- * the protocol's languages that has it: English for a schema 8 document, which
- * is recorded as English, and a schema 9 document's own languages otherwise.
+ * Schema 8 ended every interview with a built-in screen the runtime added.
+ * Schema 9 makes that screen a stage, so every migrated protocol gains one at
+ * the end, carrying the text that screen showed, with the supplied text in
+ * each of the protocol's languages that has it: English for a schema 8
+ * document, which is recorded as English, and a schema 9 document's own
+ * languages otherwise.
  */
 const finishStageFor = (
-  stages: unknown,
   localization: LocalizationDeclaration,
+  minter: MigrationIdMinter,
 ) =>
-  createDefaultFinishSessionStage({ id: finishStageId(stages), localization });
+  createDefaultFinishSessionStage({
+    id: minter.mint('finishStage'),
+    localization,
+  });
 
 type SiteChange =
   | { kind: 'set'; value: unknown }
@@ -1353,6 +1283,116 @@ const containerAt = (
   return node;
 };
 
+const migrateDocument = (input: ProtocolDocument<8>) => {
+  const { experiments, ...doc } = input;
+  const migrated = structuredClone(doc);
+  const minter = createMigrationIdMinter(input);
+  // Before any repair removes or reorders a list item, so a refusal names
+  // each item where the researcher will find it.
+  recordOriginalPositions(migrated);
+  const localization = localizationOf(migrated);
+  // Before any stage is added, and before anything reads a stage's name.
+  repairStageLabels(migrated);
+  if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
+  removeContradictoryPassphraseRules(migrated);
+  moveAnonymisationTitlesIntoText(migrated);
+  removeEncryptedAttributeComparisons(migrated);
+  // Before the pedigree conversion, which reads the options it keeps.
+  remapMergedOptionValues(migrated, mergedOptionValuesOf(migrated.codebook));
+  removeDuplicateOptionValues(migrated.codebook);
+  // Before the localization pass, so the attribute and stage the
+  // conversion adds are localized with the rest.
+  migrateFamilyPedigreeStages(migrated, minter);
+  migrateNarrativePedigreeStages(migrated);
+  addLegendLabels(migrated);
+  // After the filters are rewritten above, which read each stage's own.
+  moveNarrativeFiltersIntoPresets(migrated);
+  addComposerCaptions(migrated);
+  moveIntroductionPanelsToInformationStages(migrated, localization, minter);
+  repairInformationTitles(migrated);
+  repairInformationTextItems(migrated);
+  repairNarrativeLabels(migrated);
+  repairFormTitles(migrated);
+  // After the option values are normalized and the pedigree conversion has
+  // given its options their labels.
+  repairOptionLabels(migrated.codebook);
+  repairPanelTitles(migrated);
+  repairRosterPropertyLabels(migrated);
+  repairDiseaseLabels(migrated);
+  repairOtherBinText(migrated, localization);
+  repairTieStrengthDeclineLabels(migrated, localization);
+  joinSingleLineText(migrated);
+
+  // Every site is found before any is rewritten, so the walk reads the
+  // document as schema 8 left it.
+  for (const site of collectLocalizedStringSites(ProtocolSchemaV9, migrated)) {
+    const key = site.path.at(-1);
+    if (key === undefined) continue;
+    const change = localizeSite(site, localization.defaultLocale);
+    if (change.kind === 'keep') continue;
+    const container = containerAt(migrated, site.path.slice(0, -1));
+    if (change.kind === 'set') Reflect.set(container, key, change.value);
+    else Reflect.deleteProperty(container, key);
+  }
+
+  const assembled = {
+    ...migrated,
+    stages: endsAtFinishStage(migrated.stages)
+      ? migrated.stages
+      : [
+          ...(Array.isArray(migrated.stages) ? migrated.stages : []),
+          finishStageFor(localization, minter),
+        ],
+    ...(experiments !== undefined && {
+      experiments: withoutEncryptedVariables(experiments),
+    }),
+    schemaVersion: 9 as const,
+    localization,
+  };
+  // Last, so that every object the steps above add or move is given its id
+  // where it ends up, and every stage reference they wrote is rewritten.
+  const idChanges = assignProtocolObjectIds(assembled, minter);
+
+  // None of the wording Network Canvas supplies is written in: the
+  // interview shows it for a protocol that does not hold it. A document
+  // already in schema 9 form keeps the wording it holds for the text it
+  // shows. The words are the interview's, so a copy of them cannot be told
+  // from a rewording here; the tool that next stores the protocol removes
+  // it (`withoutSuppliedWording`).
+  return { document: withoutUnshownWording(assembled), idChanges };
+};
+
+// The id changes of one migration, for its session step. The framework hands
+// that step the frozen document the migration was given, so the changes are
+// worked out from it once and kept for as long as it is.
+const idChangesByInput = new WeakMap<object, MigrationIdChanges>();
+
+const idChangesFor = (before: ProtocolDocument<8>): MigrationIdChanges => {
+  const cached = idChangesByInput.get(before);
+  if (cached !== undefined) return cached;
+  const { idChanges } = migrateDocument(before);
+  idChangesByInput.set(before, idChanges);
+  return idChanges;
+};
+
+// The schema 8 document with its stages under the ids the migration gave
+// them, so the pedigree's session step can match its stages to the migrated
+// ones by id.
+const withNewStageIds = (
+  before: unknown,
+  stageRenames: ReadonlyMap<string, string>,
+): unknown => {
+  if (!isRecord(before) || !Array.isArray(before.stages)) return before;
+  return {
+    ...before,
+    stages: before.stages.map((stage: unknown) => {
+      if (!isRecord(stage) || typeof stage.id !== 'string') return stage;
+      const id = stageRenames.get(stage.id);
+      return id === undefined ? stage : { ...stage, id };
+    }),
+  };
+};
+
 const migrationV8toV9 = createMigration({
   from: 8,
   to: 9,
@@ -1386,82 +1426,8 @@ const migrationV8toV9 = createMigration({
 - A Narrative stage's filter now belongs to each of its presets, so each preset can show a different part of the network. A filter on an existing Narrative stage is copied to every preset of that stage, so the stage shows the same people as before.
 - A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
-  migrate: ({ experiments, ...doc }) => {
-    const migrated = structuredClone(doc);
-    // Before any repair removes or reorders a list item, so a refusal names
-    // each item where the researcher will find it.
-    recordOriginalPositions(migrated);
-    const localization = localizationOf(migrated);
-    // Before any stage is added, and before anything reads a stage's name.
-    repairStageLabels(migrated);
-    if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
-    removeContradictoryPassphraseRules(migrated);
-    moveAnonymisationTitlesIntoText(migrated);
-    removeEncryptedAttributeComparisons(migrated);
-    // Before the pedigree conversion, which reads the options it keeps.
-    remapMergedOptionValues(migrated, mergedOptionValuesOf(migrated.codebook));
-    removeDuplicateOptionValues(migrated.codebook);
-    // Before the localization pass, so the attribute and stage the
-    // conversion adds are localized with the rest.
-    migrateFamilyPedigreeStages(migrated);
-    migrateNarrativePedigreeStages(migrated);
-    // After the pedigree conversion, which builds its form from schema 8's.
-    addFormFieldIds(migrated);
-    addLegendLabels(migrated);
-    // After the filters are rewritten above, which read each stage's own.
-    moveNarrativeFiltersIntoPresets(migrated);
-    addComposerCaptions(migrated);
-    moveIntroductionPanelsToInformationStages(migrated, localization);
-    repairInformationTitles(migrated);
-    repairInformationTextItems(migrated);
-    repairNarrativeLabels(migrated);
-    repairFormTitles(migrated);
-    // After the option values are normalized and the pedigree conversion has
-    // given its options their labels.
-    repairOptionLabels(migrated.codebook);
-    repairPanelTitles(migrated);
-    repairRosterPropertyLabels(migrated);
-    repairDiseaseLabels(migrated);
-    repairOtherBinText(migrated, localization);
-    repairTieStrengthDeclineLabels(migrated, localization);
-    joinSingleLineText(migrated);
-
-    // Every site is found before any is rewritten, so the walk reads the
-    // document as schema 8 left it.
-    for (const site of collectLocalizedStringSites(
-      ProtocolSchemaV9,
-      migrated,
-    )) {
-      const key = site.path.at(-1);
-      if (key === undefined) continue;
-      const change = localizeSite(site, localization.defaultLocale);
-      if (change.kind === 'keep') continue;
-      const container = containerAt(migrated, site.path.slice(0, -1));
-      if (change.kind === 'set') Reflect.set(container, key, change.value);
-      else Reflect.deleteProperty(container, key);
-    }
-
-    // None of the wording Network Canvas supplies is written in: the
-    // interview shows it for a protocol that does not hold it. A document
-    // already in schema 9 form keeps the wording it holds for the text it
-    // shows. The words are the interview's, so a copy of them cannot be told
-    // from a rewording here; the tool that next stores the protocol removes
-    // it (`withoutSuppliedWording`).
-    return withoutUnshownWording({
-      ...migrated,
-      stages: endsAtFinishStage(migrated.stages)
-        ? migrated.stages
-        : [
-            ...(Array.isArray(migrated.stages) ? migrated.stages : []),
-            finishStageFor(migrated.stages, localization),
-          ],
-      ...(experiments !== undefined && {
-        experiments: withoutEncryptedVariables(experiments),
-      }),
-      schemaVersion: 9 as const,
-      localization,
-    });
-  },
+  migrate: (input) => migrateDocument(input).document,
+  stageIdChanges: (before) => idChangesFor(before).stageRenames,
   // A pedigree's introduction screen becomes a stage of its own, which moves
   // the pedigree and every stage after it one place on; the framework moves
   // each session's stage records and resume position with their stages
@@ -1474,11 +1440,17 @@ const migrationV8toV9 = createMigration({
   // used to add after the last stage. The framework keeps a session that was
   // on that screen past the end of the stages, so it resumes on the finish
   // stage instead.
+  //
+  // Stage and prompt ids the migration replaced are replaced in the nodes
+  // that recorded them (`rewriteSessionObjectIds`).
   migrateSession: (session, { before, after }) => {
+    const idChanges = idChangesFor(before);
+    rewriteSessionObjectIds(session, idChanges);
     remapMergedOptionAnswers(session.network, before);
     resumeAtAppendedFinishStage(session, after);
-    resumeUnstartedPedigreeAtIntroduction(session, after, before);
-    migrateFamilyPedigreeSessionRecords(session, after, before);
+    const renamedBefore = withNewStageIds(before, idChanges.stageRenames);
+    resumeUnstartedPedigreeAtIntroduction(session, after, renamedBefore);
+    migrateFamilyPedigreeSessionRecords(session, after, renamedBefore);
     return session;
   },
 });

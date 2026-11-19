@@ -3290,6 +3290,9 @@ importers:
       ohash:
         specifier: ^2.0.12
         version: 2.0.12
+      uuid:
+        specifier: 'catalog:'
+        version: 14.0.3
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -3309,6 +3312,9 @@ importers:
       dotenv:
         specifier: 'catalog:'
         version: 18.0.8
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
       gunzip-maybe:
         specifier: ^1.4.2
         version: 1.4.2
@@ -17588,10 +17594,6 @@ packages:
     resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
     hasBin: true
 
-  uuid@14.0.2:
-    resolution: {integrity: sha512-xZe/16rV4aa+HGSOCiY2YeLT1OybRLrrkL/Rqaq7p7GMVXjFh+6wN4oMYgjFmnSnhY8t6Xpdl2l9qmnHYuMHwQ==}
-    hasBin: true
-
   uuid@14.0.3:
     resolution: {integrity: sha512-Sc5u1VVln93y1Xnz4R+CunOZc7R9LUcTmhj7Rc7Eg3HVcf7rVn2FOoa812fe0W8p3jD7xeoGSYbfqCGGH2B6xw==}
     hasBin: true
@@ -20067,7 +20069,7 @@ snapshots:
       redux-logger: 3.0.6
       redux-thunk: 3.1.0(redux@5.0.1)
       tailwindcss: 4.3.3
-      uuid: 14.0.2
+      uuid: 14.0.3
       zustand: 5.0.16(@types/react@19.3.0)(immer@11.2.9)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
     transitivePeerDependencies:
       - '@date-fns/tz'
@@ -20142,7 +20144,7 @@ snapshots:
       '@codaco/shared-consts': 6.2.0
       '@faker-js/faker': 10.6.0
       es-toolkit: 1.52.0
-      uuid: 14.0.2
+      uuid: 14.0.3
     optionalDependencies:
       '@codaco/app-i18n': 0.3.0(@types/react@19.3.0)(esbuild@0.28.2)(react@19.3.1)(rolldown@1.2.15)(rollup@4.62.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))(webpack@5.105.2(@swc/core@1.16.13(@swc/helpers@0.5.23))(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.31)(uglify-js@3.19.3))
 
@@ -33362,8 +33364,6 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   uuid@14.0.1: {}
-
-  uuid@14.0.2: {}
 
   uuid@14.0.3: {}
 

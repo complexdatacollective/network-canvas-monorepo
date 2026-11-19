@@ -17,8 +17,7 @@ import {
   type InterfaceOwnedOption,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
-import { freshStageId } from './stage-ids.ts';
-import { FAMILY_PEDIGREE_BUILD_PROMPT_ID } from './stages/family-pedigree.ts';
+import type { MigrationIdMinter } from './migration-object-ids.ts';
 
 type Fields = Record<string, unknown>;
 
@@ -36,14 +35,6 @@ const withoutUndefined = (fields: Fields): Fields =>
   Object.fromEntries(
     Object.entries(fields).filter(([, value]) => value !== undefined),
   );
-
-/** `base` if it is free, otherwise `base` followed by the first free number. */
-const freshId = (base: string, taken: ReadonlySet<string>): string => {
-  if (!taken.has(base)) return base;
-  let suffix = 2;
-  while (taken.has(`${base}-${suffix}`)) suffix += 1;
-  return `${base}-${suffix}`;
-};
 
 const variablesOf = (
   codebook: unknown,
@@ -177,31 +168,18 @@ const convertBoundaries = (
   });
 };
 
-const NOMINATION_PROMPT_ID_BASE = 'nomination';
-
 /**
- * Each prompt keeps its id and text and names its attribute `attribute`. Schema
- * 9 reserves the id `pedigree` for the family-building step, so a prompt with
- * that id is given a fresh one. Schema 9 needs at least one prompt, so an empty
- * list is left out.
+ * Each prompt keeps its id and text and names its attribute `attribute`.
+ * Schema 9 needs at least one prompt, so an empty list is left out. An id
+ * that is not a UUID, such as `pedigree`, is replaced with the others.
  */
 const convertNominationPrompts = (prompts: unknown): unknown => {
   if (!Array.isArray(prompts)) return prompts;
   if (prompts.length === 0) return undefined;
-  const taken = new Set(
-    prompts.flatMap((prompt) =>
-      isRecord(prompt) && typeof prompt.id === 'string' ? [prompt.id] : [],
-    ),
-  );
   return prompts.map((prompt) => {
     if (!isRecord(prompt)) return prompt;
     const { variable, ...rest } = prompt;
-    if (rest.id !== FAMILY_PEDIGREE_BUILD_PROMPT_ID) {
-      return withoutUndefined({ ...rest, attribute: variable });
-    }
-    const id = freshId(NOMINATION_PROMPT_ID_BASE, taken);
-    taken.add(id);
-    return withoutUndefined({ ...rest, id, attribute: variable });
+    return withoutUndefined({ ...rest, attribute: variable });
   });
 };
 
@@ -268,7 +246,7 @@ const INTRODUCTION_TITLE = 'Introduction';
 const introductionStage = (
   pedigree: Fields,
   introScreen: unknown,
-  id: string,
+  mintId: () => string,
 ): Fields | undefined => {
   const items = asRecord(introScreen).items;
   if (!Array.isArray(items)) return undefined;
@@ -279,7 +257,7 @@ const introductionStage = (
       ? pedigree.label
       : DEFAULT_PEDIGREE_LABEL;
   return withoutUndefined({
-    id,
+    id: mintId(),
     type: 'Information',
     label: `${label} (introduction)`,
     title: INTRODUCTION_TITLE,
@@ -390,34 +368,25 @@ const retargetSkipDestination = (
  * of its own before the pedigree, so the skip lands on it, and the
  * participant still reads it before they start.
  */
-export const migrateFamilyPedigreeStages = (protocol: Fields) => {
+export const migrateFamilyPedigreeStages = (
+  protocol: Fields,
+  minter: MigrationIdMinter,
+) => {
   if (!Array.isArray(protocol.stages)) return;
   const { codebook } = protocol;
-  const stageIds = new Set(
-    protocol.stages.flatMap((stage) =>
-      isRecord(stage) && typeof stage.id === 'string' ? [stage.id] : [],
-    ),
-  );
   const relativesNotRecordedByType = new Map<string, string>();
   const retargets = new Map<string, string>();
 
   const stages: unknown[] = [];
-  for (const stage of protocol.stages) {
+  for (const [index, stage] of protocol.stages.entries()) {
     if (!isSchema8FamilyPedigree(stage)) {
       stages.push(stage);
       continue;
     }
-    const pedigreeId =
-      typeof stage.id === 'string' && stage.id !== ''
-        ? stage.id
-        : 'family-pedigree';
-    const introduction = introductionStage(
-      stage,
-      stage.introScreen,
-      freshStageId(pedigreeId, '-introduction', stageIds),
+    const introduction = introductionStage(stage, stage.introScreen, () =>
+      minter.mint(`familyPedigreeIntroductionBefore:${index}`),
     );
     if (introduction && typeof introduction.id === 'string') {
-      stageIds.add(introduction.id);
       if (typeof stage.id === 'string') {
         retargets.set(stage.id, introduction.id);
       }

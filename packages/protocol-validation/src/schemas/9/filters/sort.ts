@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 
 /**
  * The magic sort property meaning "the order the entities were nominated in"
@@ -10,6 +11,7 @@ import { entityAttributeReference } from '../entity-attribute-reference.ts';
 export const NOMINATION_ORDER_SORT_KEY = '*';
 
 export const SortRuleSchema = z.strictObject({
+  id: protocolObjectId('sortRule'),
   /**
    * A sort key. Tagged as an entity-attribute reference so that a variable used
    * ONLY as a sort key is still discoverable as "in use" — before this tag the
