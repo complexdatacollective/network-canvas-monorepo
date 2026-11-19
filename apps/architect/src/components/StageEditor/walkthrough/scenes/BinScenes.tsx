@@ -262,66 +262,6 @@ export const OrdinalBinIntroScene = defineScene(5.6, ({ t, id }) => {
   };
 });
 
-const ordHeader = (i: number): Point => [
-  ordX(i, 5) + ordWidth(5) / 2,
-  ORD.top + ORD.header / 2,
-];
-
-/**
- * Shows an ordinal bin where the participant taps a bin to place the selected
- * alter in it, and the next alter in the drawer is then selected.
- */
-export const OrdinalBinTapScene = defineScene(5.2, ({ t, id }) => {
-  const order = [NAMES.sam, NAMES.ana, NAMES.jo];
-  const moves: Move[] = [
-    { label: NAMES.sam, to: ordSlot(3, 0), at: 1.0 },
-    { label: NAMES.ana, to: ordSlot(1, 0), at: 2.4 },
-    { label: NAMES.jo, to: ordSlot(3, 1), at: 3.8 },
-  ];
-  const from = (i: number) => drawerSlot(i, order.length, DRAWER);
-  const selectedIndex = moves.findIndex((m) => t < m.at);
-  const pressedBin =
-    t >= 0.8 && t < 1.1
-      ? 3
-      : t >= 2.2 && t < 2.5
-        ? 1
-        : t >= 3.6 && t < 3.9
-          ? 3
-          : undefined;
-  return {
-    rail: { progress: 0.45 },
-    body: (
-      <>
-        <Prompt text={TEXT.ordinalPrompt} y={STAGE.y + 32} size={19} />
-        <OrdinalBins id={id} labels={TEXT.closeness} pressed={pressedBin} />
-        <Drawer style={DRAWER} />
-        {moves.map((m, i) => {
-          const { pos } = moved(t, m, from(i), 0.5);
-          return (
-            <BinNode
-              key={m.label}
-              at={pos}
-              label={m.label}
-              selected={i === selectedIndex}
-            />
-          );
-        })}
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: ordHeader(3), at: 0.9 },
-          { to: ordHeader(1), at: 2.3 },
-          { to: ordHeader(3), at: 3.7 },
-        ]}
-        leave={4.3}
-      />
-    ),
-  };
-});
-
 /** Require every node to be placed: Next refuses while one waits in the drawer. */
 function requireScene(kind: 'ordinal' | 'categorical') {
   return defineScene(5.6, ({ t, id }) => {
@@ -614,71 +554,6 @@ export const CategoricalBinIntroScene = defineScene(6.0, ({ t }) => {
         t={t}
         stops={[...dragStops(moves, from), { to: catCentre(1), at: 4.5 }]}
         leave={5.2}
-      />
-    ),
-  };
-});
-
-/**
- * Shows a categorical bin where the participant taps a circle to place the
- * selected alter in it, and the next alter in the drawer is then selected.
- */
-export const CategoricalBinTapScene = defineScene(5.2, ({ t }) => {
-  const moves: Move[] = [
-    { label: NAMES.sam, to: catCentre(0), at: 1.0, bin: 0 },
-    { label: NAMES.ana, to: catCentre(2), at: 2.4, bin: 2 },
-    { label: NAMES.jo, to: catCentre(0), at: 3.8, bin: 0 },
-  ];
-  const from = (i: number) => drawerSlot(i, moves.length, DRAWER);
-  const placed = moves.map((m, i) => moved(t, m, from(i), 0.5));
-  const selectedIndex = moves.findIndex((m) => t < m.at);
-  const members = TEXT.categories.map((_, ci) =>
-    moves
-      .filter((m, mi) => placed[mi]?.done && m.bin === ci)
-      .map((m) => m.label),
-  );
-  const tapped =
-    t >= 0.8 && t < 1.1
-      ? 0
-      : t >= 2.2 && t < 2.5
-        ? 2
-        : t >= 3.6 && t < 3.9
-          ? 0
-          : undefined;
-  return {
-    rail: { progress: 0.5 },
-    body: (
-      <>
-        <Prompt text={TEXT.categoricalPrompt} y={STAGE.y + 32} size={19} />
-        <CategoryCircles
-          labels={TEXT.categories}
-          members={members}
-          highlight={tapped}
-        />
-        <Drawer style={DRAWER} />
-        {moves.map((m, i) => {
-          const p = placed[i];
-          if (p === undefined || p.done) return null;
-          return (
-            <BinNode
-              key={m.label}
-              at={p.pos}
-              label={m.label}
-              selected={i === selectedIndex}
-            />
-          );
-        })}
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: catCentre(0), at: 0.9 },
-          { to: catCentre(2), at: 2.3 },
-          { to: catCentre(0), at: 3.7 },
-        ]}
-        leave={4.3}
       />
     ),
   };

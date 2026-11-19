@@ -75,7 +75,7 @@ With **Automatic layout** on, Network Canvas moves the nodes by simulating attra
 <!-- field: behaviours.freeDraw -->
 <!-- scene: narrative-draw -->
 
-With **Free-draw** on, the interviewer or participant can draw on the canvas with the pencil in the toolbar at the bottom left. Each line fades away after it is drawn, unless the snowflake button is on. The reset button clears every line. Drawings are a live aid to discussion and are never saved.
+With **Free-draw** on, the interviewer or participant can draw on the canvas with the pencil in the toolbar at the bottom left. Each line fades away after it is drawn, unless the freeze button is on. The reset button clears every line. Drawings are a live aid to discussion and are never saved.
 
 ## Allow moving nodes
 

@@ -36,13 +36,13 @@
 
 <!-- scene: one-to-many-intro -->
 
-The One to Many Dyad Census is a name interpreter that collects edges between alters already named. Unlike the [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census), it does not ask about one pair at a time. Instead, it shows the participant one alter, the **focal node**, above a list of the other alters. The participant taps every alter in the list that the question applies to, then moves on to the next focal node. If there are fewer than two alters to ask about, the stage is skipped.
+The One to Many Dyad Census is an edge generator that creates edges between alters already named. Unlike the [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census), it does not ask about one pair at a time. Instead, it shows the participant one alter, the **focal node**, above a list of the other alters. The participant taps every alter in the list that the focal node is connected to, then moves on to the next focal node.
 
 Read the full [One to Many Dyad Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/one-to-many-dyad-census).
 
 ## When to use it
 
-> Do: Use this interface to encourage participants to add edges that they might not have considered, especially when one alter has relationships with multiple others.
+This interface is the lowest burden method of collecting alter-alter edges, and should be used over other approaches most of the time.
 
 > Do: Use this interface in favor of the standard Dyad Census when you expect that one alter will have many relationships with others, as it simplifies the process for participants.
 
@@ -56,13 +56,13 @@ Read the full [One to Many Dyad Census documentation](https://documentation.netw
 
 <!-- section: prompts -->
 
-Each prompt asks about one kind of relationship. The participant goes through every focal node for the first prompt, then every focal node again for the next.
+Each prompt asks about one kind of relationship. The each prompt cycles through every focal node, before advancing to the next prompt.
 
-Each prompt's **Created edge type** is the edge a tap creates. If two alters already have an edge of that type in either direction, for example from a sociogram, the alter appears already selected, and tapping it removes the edge.
+The **Created edge type** controls what is created by nominating an alter.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
-## Choose what happens after a turn
+## Behaviour
 
 <!-- section: node-availability -->
 <!-- field: behaviours.removeAfterConsideration -->

@@ -66,17 +66,7 @@ Each prompt asks the participant a question and selects a categorical attribute 
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
-## Choose how alters are placed
-
-<!-- section: placing-nodes -->
-<!-- field: behaviours.interactionMode -->
-<!-- scene: categorical-bin-tap -->
-
-**Interaction mode** decides how the participant puts each alter into a circle. With **Drag and drop**, the participant drags each alter from the drawer at the bottom of the screen. With **Tap to place**, Network Canvas selects one alter in the drawer, the participant taps the circle that alter belongs in, and the next alter is selected.
-
-> Avoid: Don't use drag and drop if your research population may have issues with performing the interaction. For example those using a mouse who might find accurate movement while holding a button down difficult.
-
-> Do: Use drag and drop in situations where it feels natural and comfortable, such as when using a touch screen device for interviews.
+<!-- include: placing-nodes -->
 
 ## Require every alter to be placed
 

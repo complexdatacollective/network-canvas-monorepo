@@ -36,19 +36,17 @@
 
 <!-- scene: ordinal-bin-intro -->
 
-The Ordinal Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into a **bin**. The bins sit in a row and are ordered along a scale, such as from _Not close_ to _Extremely close_. After placing an alter, the participant can move it to another bin.
+The Ordinal Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into a **bin**, which represents one option value of an ordinal attribute.
 
 Read the full [Ordinal Bin documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin).
 
 ## When to use it
 
-Use this stage to rate alters on an ordered scale.
+Use this stage to collect ordinal data by visually classifying alters on an ordered scale.
 
 > Do: Use it to collect ordinal or interval scale data on alters. A Likert scale [input control](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls) on another interface can collect the same data, but dragging alters into bins is more tactile and engaging for participants.
 
 > Avoid: Scales of more than six bins. Larger scales make the bin labels hard to read and crowd the rest of the screen.
-
-> Avoid: Collecting nominal data that would suit the [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) better.
 
 <!-- include: node-type -->
 
@@ -58,17 +56,11 @@ Use this stage to rate alters on an ordered scale.
 
 <!-- section: prompts -->
 
-Each prompt asks one question and sorts the alters by one ordinal attribute. The participant sees one prompt at a time, in the order you set. An alter waits in the drawer until it has a value for the current prompt's attribute, so if a prompt reuses an earlier prompt's attribute, the alters placed on the earlier prompt start out in their bins. The attribute's values become the bins, in the attribute's own order.
+Each prompt asks the participant to sort alters by an ordinal attribute. The participant sees one prompt at a time, in the order you set. This stage can have multiple prompts, and pressing the Next or Back buttons switches between them.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
-## Choose how alters are placed
-
-<!-- section: placing-nodes -->
-<!-- field: behaviours.interactionMode -->
-<!-- scene: ordinal-bin-tap -->
-
-**Interaction mode** decides how the participant puts each alter into a bin. With **Drag and drop**, the participant drags each alter from the drawer at the bottom of the screen. With **Tap to place**, Network Canvas selects one alter in the drawer, the participant taps the bin that alter belongs in, and the next alter is selected.
+<!-- include: placing-nodes -->
 
 ## Require every alter to be placed
 

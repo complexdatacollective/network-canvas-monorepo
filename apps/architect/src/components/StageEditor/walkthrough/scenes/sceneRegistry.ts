@@ -63,10 +63,8 @@ export const SCENES: Readonly<
   'roster-sort': scene(rosterScenes, 'RosterSortScene'),
   'roster-search': scene(rosterScenes, 'RosterSearchScene'),
   'ordinal-bin-intro': scene(binScenes, 'OrdinalBinIntroScene'),
-  'ordinal-bin-tap': scene(binScenes, 'OrdinalBinTapScene'),
   'ordinal-bin-require': scene(binScenes, 'OrdinalBinRequireScene'),
   'categorical-bin-intro': scene(binScenes, 'CategoricalBinIntroScene'),
-  'categorical-bin-tap': scene(binScenes, 'CategoricalBinTapScene'),
   'categorical-bin-require': scene(binScenes, 'CategoricalBinRequireScene'),
   'stage-filter': scene(binScenes, 'StageFilterScene'),
   'alter-form-intro': scene(alterFormScenes, 'AlterFormIntroScene'),
@@ -136,10 +134,6 @@ export const SCENES: Readonly<
   'network-composer-groups': scene(
     networkComposerScenes,
     'NetworkComposerGroupsScene',
-  ),
-  'network-composer-lasso': scene(
-    networkComposerScenes,
-    'NetworkComposerLassoScene',
   ),
   'network-composer-inspector': scene(
     networkComposerScenes,

@@ -11,9 +11,9 @@
 
 <!-- scene: narrative-pedigree-intro -->
 
-The Narrative Pedigree shows the participant the family they drew on an earlier [Family Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/family-pedigree), laid out as a conventional pedigree. When the participant picks a condition from the menu in the toolbar, each relative is marked with their status for that condition. Each status is worked out from who was nominated as having the condition and how they are related. A key beside the pedigree explains the symbols. Selecting a person highlights the relatives the condition could have passed through.
+The Narrative Pedigree shows the participant the family they drew on an earlier [Family Pedigree](https://documentation.networkcanvas.com/design-protocols/interface-documentation/family-pedigree), laid out as a conventional pedigree. When the participant picks a condition from the menu in the toolbar, each relative is marked with their status for that condition. Each status is worked out from who was nominated as having the condition and how they are related. A key beside the pedigree explains the symbols. Selecting a person highlights the relatives the condition could have passed through. The current visual state can be exported as a picture during the interview.
 
-The stage turns the answers into a picture that a participant, researcher or clinician can talk through together.
+The stage turns information given by the participant into a customizable picture that a participant, researcher or clinician can talk through together.
 
 Read the full [Narrative Pedigree documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative-pedigree).
 
@@ -25,13 +25,15 @@ Use this stage to show a participant how a condition may run through their famil
 
 > Do: Use the Family Pedigree's completeness setting to require the relatives your conditions need. Missing parents and siblings leave statuses _Not known_ that a fuller family would establish.
 
-## Choose the family to show
+> Avoid: Using this interface without a professional genetic counsellor or trained interviewer present to help the participant interpret what they are seeing.
+
+## Choose the pedigree
 
 <!-- section: pedigree-source -->
 <!-- field: sourceStageId -->
 <!-- scene: narrative-pedigree-source -->
 
-Pick the **Source stage**, which is the Family Pedigree whose family this stage draws. Only Family Pedigree stages that come before this one are offered.
+Pick the **Source stage** that created the pedigree you want to use. Only Family Pedigree stages that come before this one are offered.
 
 Changing the source stage removes every condition you have added, because each condition reads that stage's nominations. Architect asks you to confirm first.
 
@@ -41,9 +43,9 @@ Changing the source stage removes every condition you have added, because each c
 <!-- field: diseases -->
 <!-- scene: narrative-pedigree-conditions -->
 
-The editor calls conditions diseases. Each condition you add appears in the menu on the participant's toolbar, drawn in its own color. Add at least one condition, because without any, the participant sees an unmarked family.
+Each condition you add appears in the menu on the participant's toolbar. Add at least one condition, because without any, the participant sees an unmarked family.
 
-Each condition reads a true or false attribute recorded by a nomination prompt on the source Family Pedigree, so add that prompt first. Its **Inheritance pattern** decides who else is marked. Statuses pass only through genetic links, and the sex-linked patterns use sex assigned at birth.
+Each condition reads the attribute recorded by a nomination prompt on the source Family Pedigree. Its **Inheritance pattern** determines who else is marked. Statuses pass only through genetic links, and the sex-linked patterns use sex assigned at birth.
 
 > Do: Name conditions in words participants recognize. The name is all the participant sees of the condition's definition.
 

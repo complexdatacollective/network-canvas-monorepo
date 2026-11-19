@@ -11,7 +11,6 @@ import {
 import type { ReactNode } from 'react';
 
 import { backOut, segment } from '@codaco/art/illustration/motion';
-import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { Hull } from './NarrativeScenes';
 import {
@@ -29,7 +28,6 @@ import {
   STAGE_CENTER_X,
   typed,
   type Point,
-  type Stop,
 } from './parts';
 import { CANVAS, CanvasNode, Circles, Edge } from './SociogramScenes';
 
@@ -842,125 +840,6 @@ export const NetworkComposerGroupsScene = defineScene(6.4, ({ t }) => {
           { to: at(NAMES.lin), at: 4.8, glide: 0.35 },
         ]}
         leave={5.3}
-      />
-    ),
-  };
-});
-
-/** The loop drawn around Sam, Ana and Jo, as evenly spaced points. */
-const LASSO: readonly Point[] = Array.from({ length: 25 }, (_, i) => {
-  const angle = Math.PI * 0.85 + (i / 24) * Math.PI * 2;
-  return [
-    CANVAS.x - 55 + Math.cos(angle) * 112,
-    CANVAS.y - 38 + Math.sin(angle) * 122,
-  ] as const;
-});
-const LASSO_START = 0.7;
-const LASSO_LENGTH = 1.5;
-
-const BAR = { width: 320, height: 56, y: STAGE.bottom - 72 } as const;
-const BAR_X = (STAGE.x + STAGE.right) / 2 - BAR.width / 2;
-const barButtonAt = (i: number): Point => [
-  BAR_X + 12 + i * 152 + 70,
-  BAR.y + BAR.height / 2,
-];
-
-/**
- * Shows a network composer where the interviewer draws a lasso around three
- * nodes to select them, a row of group buttons rises from the bottom of the
- * canvas, and one tap adds all three nodes to the Family group.
- */
-export const NetworkComposerLassoScene = defineScene(5.8, ({ t }) => {
-  const drawn = segment(t, LASSO_START, LASSO_LENGTH);
-  const fade = 1 - smooth(segment(t, 2.4, 0.4));
-  const selected = t >= 2.3;
-  const rise = backOut(segment(t, 2.4, 0.5));
-  const joined = t >= 3.4;
-  const lassoed: readonly string[] = [NAMES.sam, NAMES.ana, NAMES.jo];
-  const d = `M ${LASSO.map((p) => `${p[0]} ${p[1]}`).join(' L ')}`;
-  return {
-    rail: { progress: 0.6 },
-    body: (
-      <>
-        <Circles n={4} />
-        {joined ? (
-          <Hull points={lassoed.map((label) => at(label))} color={1} k={1} />
-        ) : null}
-        {PEOPLE.map((p) => (
-          <CanvasNode
-            key={p.label}
-            at={p.at}
-            label={p.label}
-            r={24}
-            ring={selected && lassoed.includes(p.label) ? 1 : 0}
-          />
-        ))}
-        <path
-          d={d}
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={1 - drawn}
-          className="fill-none stroke-white"
-          strokeWidth={3}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          opacity={drawn > 0 ? fade : 0}
-        />
-        <Palette active={['select']} />
-        {rise > 0 ? (
-          <g transform={`translate(0 ${(1 - rise) * 90})`}>
-            <rect
-              x={BAR_X}
-              y={BAR.y}
-              width={BAR.width}
-              height={BAR.height}
-              rx={14}
-              className="fill-white"
-            />
-            {TEXT.groups.map((label, i) => {
-              const [x, y] = barButtonAt(i);
-              const pressed = i === 0 && joined;
-              return (
-                <g key={label}>
-                  <rect
-                    x={x - 70}
-                    y={y - 18}
-                    width={140}
-                    height={36}
-                    rx={6}
-                    className={cx(GROUP_FILLS[i], pressed && 'stroke-white')}
-                    strokeWidth={pressed ? 4 : 0}
-                  />
-                  <text
-                    x={x}
-                    y={y + 5}
-                    textAnchor="middle"
-                    fontSize={14}
-                    fontWeight={pressed ? 900 : 700}
-                    className="fill-white"
-                  >
-                    {label}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-        ) : null}
-      </>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          ...LASSO.map((to, i): Stop => ({
-            to,
-            at: LASSO_START + (i / (LASSO.length - 1)) * LASSO_LENGTH,
-            glide: i === 0 ? 0.6 : LASSO_LENGTH / (LASSO.length - 1),
-            ring: false,
-          })),
-          { to: barButtonAt(0), at: 3.4 },
-        ]}
-        leave={3.9}
       />
     ),
   };
