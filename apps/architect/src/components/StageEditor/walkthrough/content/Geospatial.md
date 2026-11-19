@@ -48,15 +48,7 @@ Use this stage to record where alters are, such as the area each one lives or wo
 
 > Avoid: Using this stage if your study needs to run fully offline. Because it loads maps from Mapbox, it requires an internet connection during the interview.
 
-## Choose the node type
-
-<!-- section: node-type -->
-
-Choose the **node type** this stage asks about, for example _Person_. The participant is asked about each node of that type already in their network, one at a time, on every prompt.
-
-Changing the node type later clears this stage's other settings, including the map settings, because they depend on the node type. Only the stage's name, interviewer notes and built-in wording are kept. Architect asks you to confirm first.
-
-> Do: Consider switching on **Filter network** to narrow down nodes to only those that fall within the selectable map areas. An earlier stage, such as a [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) or [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), can capture the attribute to filter on, so participants are only asked about relevant nodes.
+<!-- include: node-type -->
 
 <!-- include: filter-network -->
 

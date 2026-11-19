@@ -36,7 +36,7 @@
 
 <!-- scene: one-to-many-intro -->
 
-The One to Many Dyad Census is a name interpreter that collects edges between alters already named. Unlike the [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census), it does not ask about one pair at a time. Instead, it shows the participant one alter, the **focal node**, above a list of the other alters. The participant taps every alter in the list that the question applies to, then moves on to the next focal node.
+The One to Many Dyad Census is a name interpreter that collects edges between alters already named. Unlike the [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census), it does not ask about one pair at a time. Instead, it shows the participant one alter, the **focal node**, above a list of the other alters. The participant taps every alter in the list that the question applies to, then moves on to the next focal node. If there are fewer than two alters to ask about, the stage is skipped.
 
 Read the full [One to Many Dyad Census documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/one-to-many-dyad-census).
 
@@ -48,13 +48,7 @@ Read the full [One to Many Dyad Census documentation](https://documentation.netw
 
 > Avoid: Using this interface with a large number of alters, which will still result in many screens. There is one screen per focal node, so the number of screens grows in line with the number of alters. If you have many alters, consider other methods to collect edges, such as the [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
-## Choose the node type
-
-<!-- section: node-type -->
-
-Choose the **node type** whose alters are asked about, such as _Person_. Each node of that type already in the participant's network takes a turn as the focal node. If there are fewer than two nodes of that type, the stage is skipped.
-
-Changing the node type later clears this stage's other settings, because they depend on the node type.
+<!-- include: node-type -->
 
 <!-- include: filter-network -->
 

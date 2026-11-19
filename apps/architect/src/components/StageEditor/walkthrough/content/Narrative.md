@@ -48,13 +48,7 @@ Use this stage to talk through the network with the participant after they have 
 
 This stage collects no data, so plan separately how you will capture the discussion, for example with screen and audio recording.
 
-## Choose the node type
-
-<!-- section: node-type -->
-
-Choose the **node type** this stage shows on the canvas, such as _Person_. Each preset has its own layout attribute, and a node of that type appears only when it has a position saved in the layout attribute of the preset on screen.
-
-Changing the node type later clears this stage's other settings, because they depend on the node type.
+<!-- include: node-type -->
 
 <!-- include: filter-network -->
 
@@ -64,7 +58,7 @@ Changing the node type later clears this stage's other settings, because they de
 
 A preset is one view of the network. The participant sees the first preset when the stage opens, and steps through the others in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset, and you can add presets once you have chosen a node type.
 
-Each preset draws nodes where its **Layout attribute** puts them, so reuse the layout attribute participants filled in on an earlier [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram). A preset can also group nodes by a categorical attribute, which can't be created in the preset, so define it first.
+Each preset draws nodes where its **Layout attribute** puts them, so reuse the layout attribute participants filled in on an earlier [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram). A node with no position saved in that attribute is not shown. A preset can also group nodes by a categorical attribute, which can't be created in the preset, so define it first.
 
 > Do: Give each preset a single focus that maps to one question, and label it accordingly, for example a _Support_ preset that highlights who provides support, or a _Groups_ preset that shows how the network divides into communities.
 

@@ -52,15 +52,7 @@ Use this stage in situations where you want to follow-up about named alters, and
 
 > Avoid: Too many fields or text-heavy questions. Consider more interactive interfaces, such as the [Categorical Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/categorical-bin) and [Ordinal Bin](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ordinal-bin), to ease participant burden.
 
-## Choose the node type
-
-<!-- section: node-type -->
-
-Choose the **node type** that this stage uses. The form is shown once for every node of this type already in the participant's network.
-
-If you create a new node type here, remember to also add a name generator interface using this type before this stage.
-
-Changing the node type later clears this stage's other configuration.
+<!-- include: node-type -->
 
 <!-- include: filter-network -->
 

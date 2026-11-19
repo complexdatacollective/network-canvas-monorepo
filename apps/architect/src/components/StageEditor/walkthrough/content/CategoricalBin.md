@@ -52,15 +52,9 @@ Use this stage to assign a categorical attribute to alters by sorting them.
 
 > Avoid: Dichotomous variables. A yes-or-no answer is better collected with a toggle [input control](https://documentation.networkcanvas.com/design-protocols/key-concepts/input-controls) on a [Name Generator](https://documentation.networkcanvas.com/design-protocols/interface-documentation/name-generator-using-forms) or [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), or by attribute toggling on a [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram).
 
-> Avoid: Several consecutive categorical bin stages. Consider grouping attributes onto a single [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form).
+> Avoid: Several consecutive categorical bin stages. Consider grouping attributes onto a single [Per Alter Form](https://documentation.networkcanvas.com/design-protocols/interface-documentation/per-alter-form), or using multiple prompts.
 
-## Choose the node type
-
-<!-- section: node-type -->
-
-Choose the **node type** that this stage will use. Every node of this type already in the participant's network will appear in the drawer to be sorted.
-
-Changing the node type later clears this stage's other settings, because they depend on the node type.
+<!-- include: node-type -->
 
 <!-- include: filter-network -->
 

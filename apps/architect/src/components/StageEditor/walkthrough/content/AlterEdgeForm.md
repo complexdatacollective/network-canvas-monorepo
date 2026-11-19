@@ -52,14 +52,7 @@ Use this stage to ask set questions about every edge of a given type.
 
 > Avoid: Using it in place of a [Dyad Census](https://documentation.networkcanvas.com/design-protocols/interface-documentation/dyad-census). It only asks about edges that already exist, not about every possible pair of alters.
 
-## Choose the edge type
-
-<!-- section: edge-type -->
-<!-- scene: edge-form-source -->
-
-Choose the **edge type** this stage uses. The form is shown once for every edge of that type already in the interview network. If there are no edges of that type, the stage is empty and will be automatically skipped.
-
-Changing the edge type later clears this stage's other configuration, because they depend on the edge type.
+<!-- include: edge-type -->
 
 <!-- include: filter-network -->
 
