@@ -5,11 +5,22 @@ import {
   withInterfaceText,
 } from '@codaco/interview/supplied-wording';
 import {
+  NOTHING_STAGED,
+  overlaySections,
+  type StagedCodebook,
+} from '@codaco/protocol-builder/state/stagedCodebook';
+import {
   type CurrentProtocol,
   type InterfaceTextUpdate,
   type Stage,
 } from '@codaco/protocol-validation';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+import {
+  isCodebookSectionId,
+  parseSectionId,
+} from '@codaco/studio-sync/taxonomy';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
+import { protocolSections } from '~/protocolBuilder/protocolSections';
 import prune from '~/utils/prune';
 
 /**
@@ -29,9 +40,11 @@ import prune from '~/utils/prune';
  * The result holds the interface text the saved protocol will
  * (`withInterfaceText`): the researcher's own wording for the entries it
  * shows. `interfaceText` is the shared wording the stage editor holds with the
- * stage for entries the open stage brings into use (`pendingSharedWording`),
- * which a save writes with the stage, so the preview shows the researcher's
- * wording for them rather than Network Canvas's.
+ * stage (`pendingSharedWording`), which a save writes with the stage, so the
+ * preview shows the wording the researcher has changed or brought into use
+ * rather than what the protocol held before. `codebook` is the codebook
+ * changes the editor holds with the stage (see `StagedCodebookStore`), laid
+ * over the protocol's codebook for the same reason.
  */
 export function buildProtocolWithStage(
   protocol: CurrentProtocol,
@@ -39,6 +52,7 @@ export function buildProtocolWithStage(
   stageId: string | null,
   insertAtIndex?: number,
   interfaceText: readonly InterfaceTextUpdate[] = [],
+  codebook: StagedCodebook = NOTHING_STAGED,
 ): CurrentProtocol {
   const prunedStage = prune(stage);
 
@@ -49,6 +63,7 @@ export function buildProtocolWithStage(
 
   return withInterfaceText({
     ...protocol,
+    codebook: codebookWithChanges(protocol, codebook),
     ...(interfaceText.length === 0
       ? {}
       : {
@@ -66,4 +81,37 @@ export function buildProtocolWithStage(
           ...protocol.stages.slice(insertAt),
         ],
   });
+}
+
+/**
+ * The protocol's codebook with the stage editor's codebook changes laid over
+ * it, section by section, as a save would leave it.
+ */
+function codebookWithChanges(
+  protocol: CurrentProtocol,
+  changes: StagedCodebook,
+): CurrentProtocol['codebook'] {
+  if (Object.keys(changes).length === 0) return protocol.codebook;
+  const sections = overlaySections(
+    changes,
+    Object.fromEntries(
+      [...protocolSections(protocol)].filter(([id]) => isCodebookSectionId(id)),
+    ),
+  );
+  const node: Record<string, SectionDoc> = {};
+  const edge: Record<string, SectionDoc> = {};
+  let ego: SectionDoc | undefined;
+  for (const [id, document] of Object.entries(sections)) {
+    const ref = parseSectionId(id);
+    if (ref.kind === 'codebookNode') node[ref.typeId] = document;
+    else if (ref.kind === 'codebookEdge') edge[ref.typeId] = document;
+    else if (ref.kind === 'codebookEgo') ego = document;
+  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the protocol's codebook with sections replaced by documents the editor built; every reader validates the protocol built from it (validateProtocol) before relying on it
+  return {
+    ...protocol.codebook,
+    node,
+    edge,
+    ego,
+  } as CurrentProtocol['codebook'];
 }

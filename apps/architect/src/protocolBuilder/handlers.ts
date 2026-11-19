@@ -56,6 +56,7 @@ import type { ResourceBridge } from './resourceBridge.ts';
 import {
   createSection,
   deleteStageSection,
+  stageCodebook,
   stageInterfaceText,
   submitSection,
 } from './sectionWrites.ts';
@@ -188,6 +189,12 @@ export const ArchitectHandlers = (
                 issues,
               });
             }
+            const codebook = yield* codebookOfStage(
+              revisions,
+              input.codebook,
+              parseSectionId(input.sectionId).kind === 'stage',
+              input.sectionId,
+            );
             // The settings are taken on the terms the manifest is: an editor
             // holding them would submit them whole next, without these words.
             const held = heldSections(
@@ -239,6 +246,7 @@ export const ArchitectHandlers = (
             };
             if (
               words === undefined &&
+              codebook === undefined &&
               contentHash(document) === before.revision.contentHash
             ) {
               complete(before.revision);
@@ -254,6 +262,7 @@ export const ArchitectHandlers = (
                   parseSectionId(input.sectionId),
                   document,
                   words?.interfaceText,
+                  codebook,
                 ),
               ),
             );
@@ -298,6 +307,12 @@ export const ArchitectHandlers = (
             if (blocked !== undefined) {
               return yield* new SectionsLocked(blocked);
             }
+            const codebook = yield* codebookOfStage(
+              revisions,
+              input.codebook,
+              input.kind === 'stage',
+              undefined,
+            );
             const promotion = input.promote;
             const held = heldSections(revisions, [
               ...(input.kind === 'stage' ? [STAGE_ORDER_SECTION] : []),
@@ -335,6 +350,7 @@ export const ArchitectHandlers = (
                   Redacted.value(input.document),
                   input.position,
                   words?.interfaceText,
+                  codebook,
                 ),
               ),
             );
@@ -600,6 +616,58 @@ const watchProtocol = (revisions: ProtocolRevisions, since?: string) =>
 
 function withCursor({ cursor, event }: LoggedEvent): ProtocolEvent {
   return event.type === 'presence' ? event : { ...event, cursor };
+}
+
+/**
+ * The codebook sections a stage's write carries, parsed, or the refusal. Every
+ * lock this host grants is the one tab's own, which is how a client keeps
+ * collaborators out between reading a section and writing it; another tab's
+ * hold refuses the write before this is reached. A section that exists is
+ * written only by the tab holding it, so one created or changed since the
+ * client read it is never overwritten unseen; one that does not exist is
+ * created.
+ */
+function codebookOfStage(
+  revisions: ProtocolRevisions,
+  sections: Parameters<typeof stageCodebook>[0] | undefined,
+  isStage: boolean,
+  target: ProtocolSectionId | undefined,
+) {
+  return Effect.gen(function* () {
+    if (sections === undefined) return undefined;
+    if (!isStage) {
+      return yield* new InvalidShape({
+        sectionId: target ?? SETTINGS_SECTION,
+        issues: [
+          {
+            path: ['codebook'],
+            message: 'only a stage is written with codebook sections',
+          },
+        ],
+      });
+    }
+    const parsed = stageCodebook(sections);
+    if (parsed.status === 'refused') {
+      return yield* new InvalidShape({
+        sectionId: parsed.sectionId,
+        issues: parsed.issues,
+      });
+    }
+    for (const { sectionId: id } of sections) {
+      if (revisions.read(id) === undefined || revisions.holderOf(id)) continue;
+      return yield* new InvalidShape({
+        sectionId: id,
+        issues: [
+          {
+            path: ['codebook'],
+            message:
+              'This codebook section changed since you read it, or was created by someone else. Review it and try again.',
+          },
+        ],
+      });
+    }
+    return parsed.codebook;
+  });
 }
 
 const OTHER_TAB_SESSION = 'protocol-held-in-another-tab';

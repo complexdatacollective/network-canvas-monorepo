@@ -42,8 +42,8 @@ export type OptionRow = { label: string; value: string };
  * (`sections/create-variable/useCreateAttributeForSlot.ts`):
  *
  * - A kind a name finishes — `text`, `boolean`, `layout`, `location`,
- *   `datetime`, `number` — is written straight to the codebook and bound, and
- *   no dialog opens at all.
+ *   `datetime`, `number` — is made and bound with no dialog at all, and kept
+ *   with the stage's draft until the stage is saved.
  * - A kind a name cannot finish — a list of values, a scale, or a value set
  *   the interface owns — escalates to the codebook's own editor, which opens
  *   ALREADY holding the name the row took (`useCreateVariableEditor`'s
@@ -170,11 +170,10 @@ async function takeCreateRow(
     await editor
       .getByRole('button', { name: 'Create attribute', exact: true })
       .click();
-    // The write takes the codebook section's own lock and the editor holds
-    // itself open until the answer lands, renaming its submit while the
-    // request is in flight — so the DIALOG leaving the DOM is the signal that
-    // the attribute exists, not the button. Detached rather than hidden: the
-    // next slot's dialog animates in over this one's exit.
+    // The editor holds itself open until its save has been checked and the
+    // attribute kept with the stage's draft — so the DIALOG leaving the DOM is
+    // the signal that the attribute exists, not the button. Detached rather
+    // than hidden: the next slot's dialog animates in over this one's exit.
     await editor.waitFor({ state: 'detached' });
   }
 

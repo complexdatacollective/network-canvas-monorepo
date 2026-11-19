@@ -7,7 +7,7 @@ import {
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { StageFormDraft } from '../stageDocument.ts';
+import { holdsStagedCodebook, type StageFormDraft } from '../stageDocument.ts';
 import {
   isAbsentValue,
   withoutAbsentValues,
@@ -268,11 +268,20 @@ export function mountedPathsOf(storeApi: StageFormStoreApi): ObjectPath[] {
  * deliberately thrown away.
  */
 export function dormantFieldsOf(storeApi: StageFormStoreApi): DormantField[] {
-  return [...storeApi.getState().dormantValues].map(([name, field]) => ({
-    name,
-    ...(field.path === undefined ? {} : { path: field.path }),
-    value: field.value,
-  }));
+  return [...storeApi.getState().dormantValues].flatMap(([name, field]) =>
+    // The codebook changes the form parks beside the stage are not part of
+    // the stage document, and replayed over it they would become a field of
+    // the stage (see `STAGED_CODEBOOK_PATH`).
+    holdsStagedCodebook(field.path?.[0] ?? name)
+      ? []
+      : [
+          {
+            name,
+            ...(field.path === undefined ? {} : { path: field.path }),
+            value: field.value,
+          },
+        ],
+  );
 }
 
 /**

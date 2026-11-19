@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Redacted } from 'effect';
 import {
   createContext,
@@ -15,9 +16,12 @@ import type {
   InterfaceTextUpdate,
   StageType,
 } from '@codaco/protocol-validation';
-import { contentHash } from '@codaco/studio-sync/apply';
-import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  isCodebookSectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
+import { codebookRefusalMessage } from './codebook/compoundFailureCopy.ts';
 import { blockedHolders } from './codebook/writes.ts';
 import { newStageFields } from './interfaces/templates.ts';
 import { useProtocolLocalization } from './localization/ProtocolLocalization.tsx';
@@ -40,6 +44,14 @@ import {
   type SubmitResult,
 } from './state/hooks.ts';
 import { useKeptRequestId } from './state/requestKey.ts';
+import { NOTHING_STAGED, type StagedCodebook } from './state/stagedCodebook.ts';
+import {
+  readSavedCodebook,
+  codebookPayload,
+  stageAskHash,
+  withStagedCodebook,
+  type CodebookSave,
+} from './state/stagedCodebookSave.ts';
 
 /**
  * Which stage an editor is open on: one the protocol already holds, or one it
@@ -90,11 +102,13 @@ export type StageEdit = Readonly<{
   holder: Presence | undefined;
   /**
    * Saves the stage, with the shared words it brings into use (see
-   * `pendingSharedWording`) written in the same change.
+   * `pendingSharedWording`) and the codebook changes made while it was open
+   * (see `StagedCodebookStore`) written in the same change.
    */
   save(
     fields: StageFormDraft,
     interfaceText?: readonly InterfaceTextUpdate[],
+    codebook?: StagedCodebook,
   ): Promise<StageSaveOutcome>;
 }>;
 
@@ -171,6 +185,7 @@ function EditingStage({
   children: ReactNode;
 }>) {
   const formId = useFormId(requestedFormId);
+  const { adapter, protocolId } = useProtocolBuilderContext();
   const section = useSectionMutation(sectionId);
   const staged = useStagedResources();
   const localization = useProtocolLocalization();
@@ -206,28 +221,43 @@ function EditingStage({
     async (
       fields: StageFormDraft,
       interfaceText?: readonly InterfaceTextUpdate[],
+      codebook?: StagedCodebook,
     ): Promise<StageSaveOutcome> => {
       if (identity === undefined) {
         return { status: 'refused', message: NOT_READY_MESSAGE };
       }
-      // Carried by the submit rather than committed before it: the section and
-      // the bytes it names are one revision, so a refused save leaves the
-      // files staged for the next attempt instead of committing them for a
-      // stage nobody saved.
-      const promotion = staged.promotion();
-      const result = await submit(
-        stageDocument(identity, fields),
-        promotion,
-        interfaceText,
+      const outcome = await withStagedCodebook(
+        adapter,
+        protocolId,
+        codebook ?? NOTHING_STAGED,
+        async (changes): Promise<StageSaveOutcome> => {
+          // Carried by the submit rather than committed before it: the
+          // section and the bytes it names are one revision, so a refused
+          // save leaves the files staged for the next attempt instead of
+          // committing them for a stage nobody saved.
+          const promotion = staged.promotion();
+          const result = await submit(
+            stageDocument(identity, fields),
+            promotion,
+            interfaceText,
+            changes,
+          );
+          if (result.status === 'written') {
+            staged.promoted();
+            onSaved?.(sectionId);
+            return { status: 'saved', sectionId };
+          }
+          return refusalFromHost(result);
+        },
       );
-      if (result.status === 'written') {
-        staged.promoted();
-        onSaved?.(sectionId);
-        return { status: 'saved', sectionId };
-      }
-      return refusalFromHost(result);
+      return 'refusal' in outcome
+        ? {
+            status: 'refused',
+            message: codebookRefusalMessage(outcome.refusal),
+          }
+        : outcome;
     },
-    [identity, onSaved, sectionId, staged, submit],
+    [adapter, identity, onSaved, protocolId, sectionId, staged, submit],
   );
 
   const edit = useMemo<StageEdit>(
@@ -270,6 +300,7 @@ function CreatingStage({
   const formId = useFormId(requestedFormId);
   const { adapter, protocolId } = useProtocolBuilderContext();
   const staged = useStagedResources();
+  const queryClient = useQueryClient();
   const addKey = useKeptRequestId();
   const { stageType, position } = target;
   const extraFields = target.fields;
@@ -293,10 +324,11 @@ function CreatingStage({
   );
   const creation = useMemo(() => ({ position }), [position]);
 
-  const save = useCallback(
+  const addStage = useCallback(
     async (
       fields: StageFormDraft,
-      interfaceText?: readonly InterfaceTextUpdate[],
+      interfaceText: readonly InterfaceTextUpdate[] | undefined,
+      codebook: CodebookSave,
     ): Promise<StageSaveOutcome> => {
       // Carried by the create for the reason a submit cannot cover: a stage
       // being added can hold a file the researcher imported while composing
@@ -313,16 +345,15 @@ function CreatingStage({
       // document, so an add the host REFUSED, which the researcher fixes and
       // asks for again, is a different intent and gets an id of its own.
       //
-      // The shared words the stage brings in are part of the ask, as they
-      // are written in the same revision.
+      // The shared words the stage brings in and the codebook changes made
+      // with it are part of the ask, as they are written in the same revision.
       const words =
         interfaceText === undefined || interfaceText.length === 0
           ? undefined
           : nonEmpty(interfaceText);
+      const changes = codebookPayload(codebook);
       const requestId = addKey.forAsk(
-        words === undefined
-          ? contentHash(document)
-          : contentHash({ document, interfaceText: words }),
+        stageAskHash(document, words, codebook?.staged),
       );
       const created = await attempt(adapter, 'Create', {
         protocolId,
@@ -332,6 +363,7 @@ function CreatingStage({
         position,
         ...(promotion === undefined ? {} : { promote: promotion }),
         ...(words === undefined ? {} : { interfaceText: words }),
+        ...(changes === undefined ? {} : { codebook: changes }),
       });
       if (created.answered) addKey.settled(requestId);
       if (!created.isSuccess) {
@@ -340,11 +372,43 @@ function CreatingStage({
           : { status: 'unanswered', message: ADD_FAILED_MESSAGE };
       }
       const { data } = created;
+      await readSavedCodebook(queryClient, adapter, protocolId, codebook);
       staged.promoted();
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };
     },
-    [addKey, adapter, identity, onSaved, position, protocolId, staged],
+    [
+      addKey,
+      adapter,
+      identity,
+      onSaved,
+      position,
+      protocolId,
+      queryClient,
+      staged,
+    ],
+  );
+
+  const save = useCallback(
+    async (
+      fields: StageFormDraft,
+      interfaceText?: readonly InterfaceTextUpdate[],
+      codebook?: StagedCodebook,
+    ): Promise<StageSaveOutcome> => {
+      const outcome = await withStagedCodebook(
+        adapter,
+        protocolId,
+        codebook ?? NOTHING_STAGED,
+        (changes) => addStage(fields, interfaceText, changes),
+      );
+      return 'refusal' in outcome
+        ? {
+            status: 'refused',
+            message: codebookRefusalMessage(outcome.refusal),
+          }
+        : outcome;
+    },
+    [addStage, adapter, protocolId],
   );
 
   const edit = useMemo<StageEdit>(
@@ -372,8 +436,11 @@ function CreatingStage({
  * draft: the editor may not write, or what it wrote is not a stage. A refused
  * promotion and a section somebody else is holding are not — the submit wrote
  * nothing at all, and saving again once they are finished is a thing that can
- * work — so the draft stays where the researcher left it. A submit nobody
- * answered leaves it too, to be saved again as it was.
+ * work — so the draft stays where the researcher left it. So does a codebook
+ * section the stage carried that the protocol could not hold: the stage's own
+ * changes laid over a collaborator's (two attributes of one name), which the
+ * researcher can put right in the draft. A submit nobody answered leaves it
+ * too, to be saved again as it was.
  */
 function refusalFromHost(
   result: Exclude<SubmitResult, Readonly<{ status: 'written' }>>,
@@ -389,7 +456,9 @@ function refusalFromHost(
     case 'notLockHolder':
       return { status: 'lost', message: LOCK_LOST_MESSAGE };
     case 'invalidShape':
-      return { status: 'lost', message: INVALID_SHAPE_MESSAGE };
+      return isCodebookSectionId(result.sectionId)
+        ? { status: 'refused', message: CODEBOOK_CLASH_MESSAGE }
+        : { status: 'lost', message: INVALID_SHAPE_MESSAGE };
     case 'unanswered':
       return { status: 'unanswered', message: SAVE_UNANSWERED_MESSAGE };
   }
@@ -416,7 +485,12 @@ function refusedAdd(refusal: Refusal<'Create'> | undefined): StageSaveOutcome {
         message: blockedMessage(blockedHolders(refusal.blocked)),
       };
     case 'InvalidShape':
-      return { status: 'refused', message: INVALID_SHAPE_MESSAGE };
+      return {
+        status: 'refused',
+        message: isCodebookSectionId(refusal.sectionId)
+          ? CODEBOOK_CLASH_MESSAGE
+          : INVALID_SHAPE_MESSAGE,
+      };
     case 'ProtocolNotFound':
     case 'SectionNotFound':
     case 'SectionExists':
@@ -470,6 +544,13 @@ const messages = defineMessages({
     description:
       'Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview.',
   },
+  codebookClash: {
+    id: 'protocolBuilder.stageEdit.codebookClash',
+    defaultMessage:
+      'A change you made to the codebook while editing this stage no longer fits the protocol, so nothing was saved. Somebody else may have changed the same type while you were working. Your changes are still here: check the types and attributes you changed, then save again.',
+    description:
+      'Shown above a stage editor’s fields when the save was refused because a codebook change made in this stage editor (a node, edge or ego type, or one of its attributes) clashes with the protocol as it now stands, for example two attributes of one type with the same name. Nothing was lost. A stage is one step of an interview; the codebook lists the types and attributes an interview collects.',
+  },
   promotionFailed: {
     id: 'protocolBuilder.stageEdit.promotionFailed',
     defaultMessage:
@@ -514,6 +595,8 @@ const messages = defineMessages({
 export const NOT_READY_MESSAGE = createMessageError(messages.notReady);
 const LOCK_LOST_MESSAGE = createMessageError(messages.lockLost);
 const INVALID_SHAPE_MESSAGE = createMessageError(messages.invalidShape);
+const CODEBOOK_CLASH_MESSAGE = createMessageError(messages.codebookClash);
+
 const ADD_FAILED_MESSAGE = createMessageError(messages.addFailed);
 const PROMOTION_FAILED_MESSAGE = createMessageError(messages.promotionFailed);
 // What the form says of a submit that threw, which is what this was before an

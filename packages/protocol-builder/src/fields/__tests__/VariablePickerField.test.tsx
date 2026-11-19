@@ -88,8 +88,8 @@ const STAMPED: CreateAs = {
  *
  * The picker is injected as `variablePickerComponent` and reaches the rows'
  * `onCreateOption` through `AssignAttributes`' `onCreateVariable`; the codebook
- * write commits immediately through the contract, under the codebook section's
- * own lock, served by the harness's in-memory host. Nothing here is a stand-in
+ * change is kept with the stage's draft and written with the stage, through
+ * the contract, to the harness's in-memory host. Nothing here is a stand-in
  * — what this supplies is what a host supplies: which type a created attribute
  * is, and where a refusal is shown.
  *
@@ -103,7 +103,8 @@ const STAMPED: CreateAs = {
  */
 function StampedAttributes({
   createAs = STAMPED,
-}: Readonly<{ createAs?: CreateAs }>) {
+  fieldName = 'additionalAttributes',
+}: Readonly<{ createAs?: CreateAs; fieldName?: string }>) {
   const { into, draft } = createAs;
   const protocolContext = useProtocolContext();
   const createVariable = useCreateCodebookVariable(into);
@@ -140,7 +141,7 @@ function StampedAttributes({
   return (
     <Section title="Additional attributes">
       <Field
-        name="additionalAttributes"
+        name={fieldName}
         label="Additional attributes"
         component={AssignAttributes}
         subject={SUBJECT}
@@ -243,6 +244,14 @@ function CollidingIds() {
   );
 }
 
+/**
+ * Where a stage that can be SAVED keeps the attributes it stamps. The rows'
+ * default field is not a field of any stage, which a save would refuse as a
+ * shape the protocol cannot hold — taking the stage's held codebook changes
+ * with it — so the tests that save mount the rows on a real one.
+ */
+const SAVEABLE_FIELD = 'prompts[0].additionalAttributes';
+
 const renderRows = (sections: ReactNode) =>
   renderStageEditor({ stageId: 'name-generator-1', sections });
 
@@ -289,8 +298,13 @@ const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
  * empty record: every claim below is that one name is or is not among them, and
  * an empty record satisfies "is not" without anything having been read.
  */
-const personVariables = (harness: ReturnType<typeof renderStageEditor>) => {
-  const variables = harness.hostCodebook().node?.person?.variables;
+const personVariables = (
+  harness: ReturnType<typeof renderStageEditor>,
+  codebook: 'host' | 'editor' = 'host',
+) => {
+  const variables = (
+    codebook === 'host' ? harness.hostCodebook() : harness.editorCodebook()
+  ).node?.person?.variables;
   if (variables === undefined) {
     throw new Error('the person type is gone, so it has no attributes to read');
   }
@@ -522,12 +536,15 @@ describe('inventing an attribute from the picker', () => {
    * search box is what makes looking for it and finding it does not exist one
    * act.
    *
-   * The codebook write goes through the harness's in-memory host under the
-   * codebook section's own lock, so this also proves the attribute actually
-   * lands in the protocol — not just that a callback was called.
+   * Inside a stage editor the new attribute is part of the stage's draft: the
+   * editor reads it at once, and the protocol holds it only once the stage is
+   * saved — so this proves it lands in the protocol then, not just that a
+   * callback was called.
    */
   it('creates the attribute the search box names, and selects it', async () => {
-    const harness = renderRows(<StampedAttributes />);
+    const harness = renderRows(
+      <StampedAttributes fieldName={SAVEABLE_FIELD} />,
+    );
     await addRow(harness);
     const dialog = await openAttributePicker(harness.user, picker());
 
@@ -548,6 +565,22 @@ describe('inventing an attribute from the picker', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(heldVariableName()).toBe('nominated_early');
     expect(trigger('Change attribute')).toBeInTheDocument();
+    expect(
+      Object.values(personVariables(harness, 'editor')).map(
+        (variable) => variable.name,
+      ),
+    ).toContain('nominated_early');
+    // Held with the stage, not written under it: the protocol learns of the
+    // attribute when the stage is saved.
+    expect(
+      Object.values(personVariables(harness)).map((variable) => variable.name),
+    ).not.toContain('nominated_early');
+
+    // The stamp is not finished until it says which value it stamps, and an
+    // unfinished stage is not saved.
+    await harness.user.click(screen.getByRole('radio', { name: 'True' }));
+    await harness.submit();
+
     expect(
       Object.values(personVariables(harness)).map((variable) => variable.name),
     ).toContain('nominated_early');
@@ -804,15 +837,17 @@ describe('inventing an attribute from the picker', () => {
   /**
    * The refusal the row cannot carry, and only the host can give.
    *
-   * The attribute is written to the codebook section under that section's own
-   * lock, so a collaborator editing the person type refuses this create
-   * outright — before the draft is ever judged, and for a reason no row can
-   * see.
+   * Nothing is locked while the attribute is only held in the stage draft, so
+   * a collaborator editing the person type cannot refuse the create itself:
+   * the window closes on the attribute as for anyone. The refusal comes when
+   * the stage is SAVED, which has to lock the person type to write the
+   * attribute — it names the holder, and the attribute stays held for a
+   * retry.
    */
-  it('says in the window when the host refuses the write outright', async () => {
+  it('keeps the attribute held, and refuses the stage save naming the holder', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
-      sections: <StampedAttributes />,
+      sections: <StampedAttributes fieldName={SAVEABLE_FIELD} />,
       heldSections: [{ sectionId: PERSON_SECTION, displayName: 'Robin' }],
     });
     await addRow(harness);
@@ -820,13 +855,26 @@ describe('inventing an attribute from the picker', () => {
 
     await search(harness, dialog, 'nominated_early');
     await harness.user.click(createRow(dialog, 'nominated_early'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(heldVariableName()).toBe('nominated_early');
+    await harness.user.click(screen.getByRole('radio', { name: 'True' }));
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Robin is currently editing a section needed for this change.',
-    );
+    expect(await harness.submit()).toBeNull();
+
+    expect(
+      await screen.findByText(
+        'Robin is currently editing a section needed for this change.',
+      ),
+    ).toBeInTheDocument();
     expect(
       Object.values(personVariables(harness)).map((variable) => variable.name),
     ).not.toContain('nominated_early');
+    // Still the stage's to retry once the holder has finished.
+    expect(
+      Object.values(personVariables(harness, 'editor')).map(
+        (variable) => variable.name,
+      ),
+    ).toContain('nominated_early');
   });
 
   /** The sentence is about the name that was refused, not about the next one. */
@@ -1421,15 +1469,15 @@ describe('the attribute picker, read in Spanish', () => {
 });
 
 /**
- * What the codebook write is: a section edit of its own, taken under that
- * section's lock, committed the moment the researcher asks for it.
+ * What the codebook write is, inside a stage editor: part of the stage's draft.
  *
- * An attribute in the codebook is valid on its own, while the stage pointing
- * at it may not be finished — so the two are not one edit, and abandoning the
- * stage cannot take the attribute with it.
+ * The attribute is held with the stage and written in the same revision when
+ * the stage is saved, under the person type's section lock taken only then. A
+ * stage pointing at an attribute nobody saved would be a dangling reference,
+ * so abandoning the stage takes the attribute with it.
  */
 describe('where an invented attribute is written', () => {
-  it('commits under the codebook section’s lock, and survives cancelling the stage', async () => {
+  it('holds it with the stage until the stage is saved, and drops it with a cancelled stage', async () => {
     const harness = renderRows(<StampedAttributes />);
     await addRow(harness);
     const dialog = await openAttributePicker(harness.user, picker());
@@ -1438,19 +1486,19 @@ describe('where an invented attribute is written', () => {
     await harness.user.click(createRow(dialog, 'nominated_early'));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    // In the PROTOCOL, not merely in the form: read back through the host.
-    const created = Object.entries(personVariables(harness)).find(
+    // In the stage's draft, filed under the person type's own section — not
+    // in the PROTOCOL, which only the stage's save writes to.
+    expect(Object.keys(harness.stagedCodebook())).toEqual([PERSON_SECTION]);
+    const created = Object.entries(personVariables(harness, 'editor')).find(
       ([, variable]) => variable.name === 'nominated_early',
     );
     expect(created?.[1]).toMatchObject({ name: 'nominated_early' });
-    // And it landed in the person type's own section, which is what having
-    // taken that section's lock to write it means.
     expect(
-      Object.keys(
-        harness.host.store.read(PERSON_SECTION).document.variables ?? {},
-      ),
-    ).toContain(created?.[0]);
+      Object.values(personVariables(harness)).map((variable) => variable.name),
+    ).not.toContain('nominated_early');
 
+    // An attribute in the codebook is only meaningful with the stage that
+    // wanted it, so abandoning the stage takes the attribute with it.
     await harness.cancel();
 
     expect(
@@ -1461,7 +1509,32 @@ describe('where an invented attribute is written', () => {
           ? Reflect.get(variable, 'name')
           : undefined,
       ),
-    ).toContain('nominated_early');
+    ).not.toContain('nominated_early');
+  });
+
+  it('writes it to the person type’s own section when the stage is saved', async () => {
+    const harness = renderRows(
+      <StampedAttributes fieldName={SAVEABLE_FIELD} />,
+    );
+    await addRow(harness);
+    const dialog = await openAttributePicker(harness.user, picker());
+
+    await search(harness, dialog, 'nominated_early');
+    await harness.user.click(createRow(dialog, 'nominated_early'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await harness.user.click(screen.getByRole('radio', { name: 'True' }));
+
+    await harness.submit();
+
+    const created = Object.entries(personVariables(harness)).find(
+      ([, variable]) => variable.name === 'nominated_early',
+    );
+    expect(created?.[1]).toMatchObject({ name: 'nominated_early' });
+    expect(
+      Object.keys(
+        harness.host.store.read(PERSON_SECTION).document.variables ?? {},
+      ),
+    ).toContain(created?.[0]);
   });
 });
 
@@ -1621,11 +1694,20 @@ describe('renaming the attribute a picker holds', () => {
     { value: 'age', label: 'age', type: 'number' as VariableType },
   ];
 
+  /**
+   * A field the stage form does not hold, unless asked to: a stage with a
+   * field no stage has cannot be saved, and the tests that save a rename
+   * mount the picker on the stage's own first form field instead.
+   */
+  const SAVEABLE_PICKER = 'form.fields[0].variable';
+
   const HoldingPicker = ({
     readOnly = false,
     options = PERSON_OPTIONS,
     initialValue = 'name',
+    fieldName = 'nodeConfig.egoAttribute',
   }: Readonly<{
+    fieldName?: string;
     readOnly?: boolean;
     options?: readonly {
       value: string;
@@ -1638,7 +1720,7 @@ describe('renaming the attribute a picker holds', () => {
   }>) => (
     <Section title="What this question records">
       <Field<typeof VariablePickerField>
-        name="nodeConfig.egoAttribute"
+        name={fieldName}
         component={VariablePickerField}
         label={DIRECT_PICKER}
         readOnly={readOnly}
@@ -1669,10 +1751,10 @@ describe('renaming the attribute a picker holds', () => {
     await harness.user.type(box, name);
   };
 
-  it('writes the new name to the codebook, and nothing else', async () => {
+  it('holds the new name with the stage, writes it on save, and changes nothing else', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
-      sections: <HoldingPicker />,
+      sections: <HoldingPicker fieldName={SAVEABLE_PICKER} />,
     });
     const stage = sectionId({ kind: 'stage', stageId: 'name-generator-1' });
     const before = harness.host.store.read(stage);
@@ -1683,14 +1765,24 @@ describe('renaming the attribute a picker holds', () => {
       screen.getByRole('button', { name: 'Save Changes' }),
     );
 
+    // Held with the stage: the editor reads the new name at once, and the
+    // protocol keeps the old one until the stage is saved.
     await waitFor(() =>
-      expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+      expect(harness.editorCodebook().node?.person?.variables?.name).toEqual(
         expect.objectContaining({ name: 'full_name', type: 'text' }),
       ),
     );
+    expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+      expect.objectContaining({ name: 'name' }),
+    );
+    await harness.submit();
+    expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+      expect.objectContaining({ name: 'full_name', type: 'text' }),
+    );
     // Nothing about the stage: every reference to an attribute is by record
-    // key, so a rename moves nothing else in the protocol.
-    expect(harness.host.store.read(stage)).toEqual(before);
+    // key, so a rename moves nothing else in the protocol. (The stage's
+    // revision moves, being saved; what it holds does not.)
+    expect(harness.host.store.read(stage).document).toEqual(before.document);
   });
 
   /**
@@ -1705,6 +1797,7 @@ describe('renaming the attribute a picker holds', () => {
         <HoldingPicker
           options={[{ value: 'ego_name', label: 'ego_name', type: 'text' }]}
           initialValue="ego_name"
+          fieldName={SAVEABLE_PICKER}
         />
       ),
     });
@@ -1716,9 +1809,13 @@ describe('renaming the attribute a picker holds', () => {
     );
 
     await waitFor(() =>
-      expect(harness.hostCodebook().ego?.variables?.ego_name).toEqual(
+      expect(harness.editorCodebook().ego?.variables?.ego_name).toEqual(
         expect.objectContaining({ name: 'participant_name' }),
       ),
+    );
+    await harness.submit();
+    expect(harness.hostCodebook().ego?.variables?.ego_name).toEqual(
+      expect.objectContaining({ name: 'participant_name' }),
     );
   });
 
@@ -1847,36 +1944,16 @@ describe('renaming the attribute a picker holds', () => {
   });
 
   /**
-   * The register a refusal is said in, in the words a screen reader hears.
-   *
-   * `Alert` puts a visually-hidden word before its own content — `Warning:`
-   * for a notice, `Error:` for a fault — which is what stands in for the
-   * colour a sighted reader sees. Read from there rather than from a class
-   * name, and rather than from the icon, whose `<title>` says "Warning" for
-   * both variants and so tells the two apart not at all.
-   *
-   * The alert itself is reached through its `role="presentation"`: the live
-   * region around it is what announces, and a second one inside would
-   * announce twice.
-   */
-  const registerOf = (text: HTMLElement): string => {
-    const alert = text.closest<HTMLElement>('[role="presentation"]');
-    if (alert === null) {
-      throw new Error('That sentence is not inside an alert at all.');
-    }
-    const spoken = alert.querySelector('.sr-only')?.textContent?.trim();
-    if (spoken === undefined) {
-      throw new Error('That alert says nothing about its own register.');
-    }
-    return spoken;
-  };
-
-  /**
    * A section somebody else is holding is not the researcher's mistake, so the
-   * refusal is a notice beside the field rather than an error on the name —
-   * and the pill goes on showing the name the codebook still holds.
+   * refusal is a notice rather than an error on the name.
+   *
+   * Nothing is locked while the rename is only held in the stage draft, so the
+   * name dialog closes on it as for anyone, and the pill goes on showing the
+   * new name. The refusal is the stage SAVE's, which has to lock the person
+   * type: it names who has it, the protocol keeps the old name, and the rename
+   * stays held for a retry once they are finished.
    */
-  it('says who is holding the codebook, and keeps the old name', async () => {
+  it('keeps the rename held, and refuses the stage save naming the holder', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       heldSections: [
@@ -1885,7 +1962,7 @@ describe('renaming the attribute a picker holds', () => {
           displayName: 'Priya Raman',
         },
       ],
-      sections: <HoldingPicker />,
+      sections: <HoldingPicker fieldName={SAVEABLE_PICKER} />,
     });
 
     const box = await openTheEditor(harness);
@@ -1893,47 +1970,53 @@ describe('renaming the attribute a picker holds', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Save Changes' }),
     );
+    await waitFor(() =>
+      expect(harness.editorCodebook().node?.person?.variables?.name).toEqual(
+        expect.objectContaining({ name: 'full_name' }),
+      ),
+    );
 
-    const heldNotice = await screen.findByText(
+    expect(await harness.submit()).toBeNull();
+
+    // On the stage form's own alert: the refusal belongs to the save, and the
+    // save is what the researcher is looking at.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       'Priya Raman is currently editing a section needed for this change.',
     );
-    // In the register of a notice rather than of an error, which is the whole
-    // point of telling the researcher WHO has it: the rename is fine and will
-    // work once they are finished. Read the way a screen reader reads it —
-    // the alert's own spoken prefix — rather than off a class name.
-    expect(registerOf(heldNotice)).toBe('Warning:');
     expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
       expect.objectContaining({ name: 'name' }),
     );
-    // And the researcher is still looking at what they typed, which is the
-    // thing there is to change.
-    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
-      'full_name',
+    // The rename is still the stage's, for the retry.
+    expect(harness.editorCodebook().node?.person?.variables?.name).toEqual(
+      expect.objectContaining({ name: 'full_name' }),
     );
   });
 
   /**
-   * A name the codebook refuses is the researcher's to fix, and is said so.
-   *
-   * The pill's own rule asks the codebook this client has, so a name taken
-   * while the editor was open passes it and is refused by the write instead.
-   * Reached here by writing the other researcher's attribute into the protocol
-   * behind this client's back — which is the race, made to happen on purpose.
+   * A collaborator takes the name while the rename is held, and this client
+   * never hears of it, so the rename's own check has nothing to refuse. The
+   * stage save is where the clash is found: the protocol cannot hold two
+   * attributes of one name, and the researcher can put that right in the
+   * draft — so the draft stays, the rename with it.
    */
-  it('says a name already taken is an error, in the researcher’s own register', async () => {
+  it('keeps the draft when a collaborator took the name before the stage was saved', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
-      sections: <HoldingPicker />,
+      sections: <HoldingPicker fieldName={SAVEABLE_PICKER} />,
     });
     await harness.opened();
 
     const box = await openTheEditor(harness);
     await typeName(harness, box, 'full_name');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save Changes' }),
+    );
+    await waitFor(() =>
+      expect(harness.editorCodebook().node?.person?.variables?.name).toEqual(
+        expect.objectContaining({ name: 'full_name' }),
+      ),
+    );
 
-    // The other researcher takes the name. Their revision never reaches this
-    // client, so the pill goes on offering the save — which is exactly the
-    // state a real race leaves behind, and the only one in which the write's
-    // own duplicate rule is the thing that answers.
     const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
     const held = harness.host.store.read(person).document;
     harness.host.store.disconnectWatchers();
@@ -1947,14 +2030,18 @@ describe('renaming the attribute a picker holds', () => {
       },
     });
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save Changes' }),
-    );
+    expect(await harness.submit()).toBeNull();
 
-    const refusal = await screen.findByText(
-      'An attribute with this name already exists here. Choose another name.',
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A change you made to the codebook while editing this stage no longer fits the protocol, so nothing was saved.',
     );
-    expect(registerOf(refusal)).toBe('Error:');
+    expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+      expect.objectContaining({ name: 'name' }),
+    );
+    // The rename is still the stage's, for the researcher to put right.
+    expect(harness.stagedCodebook()[person]?.edited.variables).toMatchObject({
+      name: { name: 'full_name' },
+    });
   });
 
   /**

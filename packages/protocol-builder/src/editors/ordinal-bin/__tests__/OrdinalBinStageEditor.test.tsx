@@ -97,8 +97,8 @@ describe('creating an ordinal bin stage', () => {
 
   /**
    * The scale lives in the codebook rather than in the stage, so inventing one
-   * from inside a prompt writes the codebook first and the prompt is then
-   * pointed at it.
+   * from inside a prompt makes it part of the stage's draft first, the prompt
+   * is pointed at it, and the one save writes both.
    *
    * Only the second half is asked here — that the pick reaches the STAGE save.
    * What the codebook is asked, and what it refuses, belongs to the codebook's
@@ -147,16 +147,6 @@ describe('creating an ordinal bin stage', () => {
       screen.getByRole('button', { name: 'Create attribute' }),
     );
 
-    // The attribute lands in the codebook under a record key the researcher
-    // never sees, so it is looked up by the name they typed.
-    const created = await waitFor(() => {
-      const variables = harness.hostCodebook().node?.person?.variables ?? {};
-      const entry = Object.entries(variables).find(
-        ([, variable]) => variable.name === 'closenessBand',
-      );
-      if (entry === undefined) throw new Error('the attribute was not created');
-      return entry[0];
-    });
     // The picker shows the researcher's NAME for it; that the prompt holds the
     // attribute just created — rather than another of that name — is what the
     // saved id below says.
@@ -171,7 +161,22 @@ describe('creating an ordinal bin stage', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
+    // The attribute is filed under a record key the researcher never sees, so
+    // it is looked up by the name they typed. Saving the prompt made it the
+    // stage's: the editor has it, the protocol does not until the stage is
+    // saved.
+    const created = Object.entries(
+      harness.editorCodebook().node?.person?.variables ?? {},
+    ).find(([, variable]) => variable.name === 'closenessBand')?.[0];
+    if (created === undefined) throw new Error('the attribute was not created');
+    expect(harness.hostCodebook().node?.person?.variables).not.toHaveProperty(
+      created,
+    );
+
     const request = await harness.submit();
+    expect(harness.hostCodebook().node?.person?.variables).toHaveProperty(
+      created,
+    );
     expect(prompts(request?.stageDocument ?? {})[0]?.variable).toBe(created);
   });
 });

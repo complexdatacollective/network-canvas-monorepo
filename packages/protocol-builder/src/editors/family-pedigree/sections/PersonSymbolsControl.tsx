@@ -11,7 +11,6 @@ import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 
-import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
 import {
   documentWithEntityProperties,
   MissingVariableError,
@@ -76,10 +75,10 @@ const choiceFor = (state: PersonSymbolState): SymbolChoice => {
  *
  * A person's symbol is the person type's codebook shape (`resolveNodeShape`
  * in the interview), not a stage setting, so choosing an answer is a CODEBOOK
- * write, taken under the person type's own lock and applied at once — like
- * the codebook editor's own shape changes, and like
- * `EncryptedAttributesSection`. Nothing here touches the stage's draft, so
- * the stage's save and cancel are unaffected by it.
+ * change — made while editing this stage, and so kept with the stage's draft,
+ * saved with it and undone by cancelling it, like every codebook change made
+ * inside a stage editor (see `StagedCodebookStore`, and
+ * `EncryptedAttributesSection`).
  *
  * - Sex assigned at birth, or gender identity, writes a mapping of every
  *   option of that attribute with a diamond default.
@@ -119,8 +118,6 @@ export default function PersonSymbolsControl({
    * from words nobody saved are out of date, not hand-made, once they do.
    */
   const [appliedGenderTerms, setAppliedGenderTerms] = useState<unknown>();
-  /** The answer being written, shown as chosen until the write settles. */
-  const [pending, setPending] = useState<SymbolChoice | undefined>();
   /**
    * Why the last write was refused. A held section is a notice, not a fault,
    * so it shows in the hint; anything else is the field's error.
@@ -214,55 +211,48 @@ export default function PersonSymbolsControl({
   ];
 
   const write = async (choice: SymbolChoice) => {
-    // The words the choice was made against, kept as they were: the draft can
-    // move while the write waits for the lock.
     const terms = genderTerms;
     setFailure(undefined);
-    setPending(choice);
-    try {
-      const outcome = await writeCodebookSection(
-        personSubject,
-        (authoritative) => {
-          // Built from the attribute as the codebook holds it when the lock is
-          // taken, so an option a collaborator added a moment ago is covered.
-          const current = shapeMappingVariables(authoritative.variables);
-          let mapping: ShapeMappingDraft | undefined;
-          if (choice !== 'codebook') {
-            const variableId =
-              choice === 'sexAssignedAtBirth' ? sexAttribute : genderAttribute;
-            const variable =
-              variableId === undefined ? undefined : current[variableId];
-            if (variableId === undefined || variable === undefined) {
-              throw new MissingVariableError(variableId ?? '');
-            }
-            mapping = pedigreeSymbolMapping(
-              variableId,
-              variable,
-              choice === 'sexAssignedAtBirth'
-                ? sexAssignedAtBirthSymbol
-                : (value) => genderIdentitySymbol(terms, value),
-            );
+    const outcome = await writeCodebookSection(
+      personSubject,
+      (authoritative) => {
+        // Built from the attribute as the editor reads it now, so an option
+        // added a moment ago — here or by a collaborator — is covered.
+        const current = shapeMappingVariables(authoritative.variables);
+        let mapping: ShapeMappingDraft | undefined;
+        if (choice !== 'codebook') {
+          const variableId =
+            choice === 'sexAssignedAtBirth' ? sexAttribute : genderAttribute;
+          const variable =
+            variableId === undefined ? undefined : current[variableId];
+          if (variableId === undefined || variable === undefined) {
+            throw new MissingVariableError(variableId ?? '');
           }
-          return documentWithEntityProperties({
-            subject: personSubject,
-            authoritativeDocument: authoritative,
-            draft: {
-              shape: shapeWithPedigreeSymbols(authoritative.shape, mapping),
-            },
-          });
-        },
-      );
-      if (outcome.status !== 'applied') {
-        setFailure({
-          message: outcome.message,
-          held: outcome.refusal.kind === 'held',
+          mapping = pedigreeSymbolMapping(
+            variableId,
+            variable,
+            choice === 'sexAssignedAtBirth'
+              ? sexAssignedAtBirthSymbol
+              : (value) => genderIdentitySymbol(terms, value),
+          );
+        }
+        return documentWithEntityProperties({
+          subject: personSubject,
+          authoritativeDocument: authoritative,
+          draft: {
+            shape: shapeWithPedigreeSymbols(authoritative.shape, mapping),
+          },
         });
-        return;
-      }
-      if (choice === 'genderIdentity') setAppliedGenderTerms(terms);
-    } finally {
-      setPending(undefined);
+      },
+    );
+    if (outcome.status !== 'applied') {
+      setFailure({
+        message: outcome.message,
+        held: outcome.refusal.kind === 'held',
+      });
+      return;
     }
+    if (choice === 'genderIdentity') setAppliedGenderTerms(terms);
   };
 
   const choose = async (choice: SymbolChoice) => {
@@ -287,8 +277,6 @@ export default function PersonSymbolsControl({
     await write(choice);
   };
 
-  const busy = pending !== undefined;
-
   const hint = (
     <>
       {state.kind === 'genderIdentityOutOfDate' && (
@@ -300,7 +288,6 @@ export default function PersonSymbolsControl({
               variant="link"
               color="dynamic"
               size="sm"
-              disabled={busy}
               onClick={() => void write('genderIdentity')}
             >
               {intl.formatMessage(messages.symbolsUpdateGenderIdentity)}
@@ -319,11 +306,6 @@ export default function PersonSymbolsControl({
           {formatMessageError(failure.message, intl) ?? failure.message}
         </output>
       )}
-      {busy && (
-        <output aria-live="polite" className="mt-1 block">
-          {intl.formatMessage(codebookEditingMessages.saving)}
-        </output>
-      )}
     </>
   );
 
@@ -334,8 +316,8 @@ export default function PersonSymbolsControl({
       hint={hint}
       component={RichSelectGroupField}
       options={options}
-      value={pending ?? detected}
-      disabled={readOnly || busy}
+      value={detected}
+      disabled={readOnly}
       errors={
         failure === undefined || failure.held ? undefined : [failure.message]
       }

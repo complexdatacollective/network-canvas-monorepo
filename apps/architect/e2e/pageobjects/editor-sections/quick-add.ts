@@ -22,8 +22,9 @@ import { chooseOrCreateAttribute } from './variables.js';
 //   "Validation" section over that attribute's own rules
 //   (`codebook/validation/CodebookVariableValidationSection.tsx`). It opens
 //   when the attribute already carries a rule, and switching it off clears
-//   them — silently, straight to the codebook, outside the stage draft. That
-//   is what `clearRequiredValidation` reaches.
+//   them. The change is part of the stage's draft, saved with the stage and
+//   dropped if it is discarded. That is what `clearRequiredValidation`
+//   reaches.
 export async function selectOrCreateQuickAddVariable(
   editor: StageEditor,
   variableName: string,

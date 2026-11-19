@@ -91,9 +91,9 @@ export type StageEditorFormContextValue = Readonly<{
   liveDraft(): StageFormDraft;
   /**
    * The words every stage of this kind shares that a save would write with
-   * the stage, as the form holds them right now: each entry the stage brings
-   * into use that the protocol does not hold yet, with the researcher's
-   * wording for it or Network Canvas's (see `pendingSharedWording`).
+   * the stage, as the form holds them right now: each entry the stage uses
+   * whose wording the researcher changed, and each it brings into use that
+   * the protocol does not show yet (see `pendingSharedWording`).
    *
    * Read rather than subscribed, like `liveDraft`, and for the same reader: a
    * host previewing the stage the researcher is looking at shows these words

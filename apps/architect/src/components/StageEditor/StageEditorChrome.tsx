@@ -11,7 +11,7 @@ import {
 } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import { suppliedInterfaceText } from '@codaco/interview/supplied-wording';
+import { standingSharedWord } from '@codaco/protocol-builder/form/sharedWordingDraft';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
 import { useProtocolLocalization } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import { useStandingStageNameProposal } from '@codaco/protocol-builder/naming/useStandingStageNameProposal';
@@ -24,6 +24,8 @@ import {
   stageFieldsOf,
 } from '@codaco/protocol-builder/stageDocument';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
+import { useProtocolContext } from '@codaco/protocol-builder/state/protocolContext';
+import { useStagedCodebookStore } from '@codaco/protocol-builder/state/stagedCodebook';
 import { type Stage, validateProtocol } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
@@ -236,7 +238,9 @@ function StageDraftPublisher() {
   const { liveDraft, pendingSharedWording, storeApi, identity } =
     useStageEditorForm();
   const { committedFields, access } = useStageEdit();
+  const stagedCodebook = useStagedCodebookStore();
   const localization = useProtocolLocalization();
+  const { interfaceText } = useProtocolContext();
   const { withoutProposal } = useStandingStageNameProposal();
   const editing = access === 'editing';
 
@@ -252,24 +256,31 @@ function StageDraftPublisher() {
         committedFields,
         // Compared without a name the editor proposed and nobody has touched:
         // that is not work the researcher would lose by leaving. The shared
-        // words held beside the stage are weighed on their own below.
+        // words saved with the stage are weighed on their own below.
         withoutProposal(stageFieldsOf(draft), committedFields),
         editing,
         {
           words,
-          // Network Canvas's wording for an entry the stage brings in is what
-          // the protocol would gain anyway; only the researcher's is theirs
-          // to lose.
+          // A shared word the save would write is the researcher's to lose
+          // where it differs from what the protocol shows for it: their
+          // change to a word it holds, or their own wording for one the
+          // stage is the first to use. Network Canvas's wording for such an
+          // entry is what the protocol would gain anyway.
           reworded:
             localization !== undefined &&
             words.some(
               ({ group, key, value }) =>
                 !isEqual(
                   value,
-                  suppliedInterfaceText(group, key, localization),
+                  standingSharedWord(
+                    { interfaceText, localization },
+                    group,
+                    key,
+                  ),
                 ),
             ),
         },
+        stagedCodebook?.read(),
       );
     };
     publish();
@@ -282,9 +293,11 @@ function StageDraftPublisher() {
     committedFields,
     editing,
     identity,
+    interfaceText,
     liveDraft,
     localization,
     pendingSharedWording,
+    stagedCodebook,
     storeApi,
     withoutProposal,
   ]);
@@ -313,7 +326,7 @@ function StageEditorActions({
   const [isStageValid, setIsStageValid] = useState(false);
 
   const stagePreviewProtocol = useCallback(() => {
-    const { stage, interfaceText } = readStageDraft();
+    const { stage, interfaceText, codebook } = readStageDraft();
     if (protocol === null || stage === undefined) return undefined;
     return buildProtocolWithStage(
       protocol,
@@ -321,6 +334,7 @@ function StageEditorActions({
       stageId,
       insertAtIndex,
       interfaceText,
+      codebook,
     );
   }, [insertAtIndex, protocol, stageId]);
 

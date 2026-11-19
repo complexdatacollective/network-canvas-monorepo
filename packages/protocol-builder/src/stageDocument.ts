@@ -25,23 +25,50 @@ export type StageIdentity = Readonly<{ id: string; type: StageType }>;
 export type StageFormDraft = Readonly<SectionDoc>;
 
 /**
- * Where the stage form holds the words every stage of its kind shares, for
- * the entries the open stage brings into use that the saved protocol does not
- * show yet.
+ * Where the stage form holds the words every stage of its kind shares, as
+ * the researcher has them for the entries the open stage uses.
  *
- * Such an entry cannot be written to the protocol while the stage is open: the
- * protocol does not show it until the stage is saved, and Architect drops the
- * wording for an entry a protocol does not show on its next change. So its
- * wording is held with the
- * stage's draft, as a field of the stage form, and written with the stage when
- * it is saved (see `pendingSharedWording`). A stage holds no key of this name,
- * so `stageDocument` leaves it out of the stage itself.
+ * A change to them made from a stage editor is part of the stage's draft:
+ * held here, written with the stage when it is saved, and thrown away with the
+ * draft (see `pendingSharedWording`). A stage holds no key of this name, so
+ * `stageDocument` leaves it out of the stage itself.
  */
 export const SHARED_WORDING_PATH = 'interfaceText';
 
-/** The stage's own fields: the draft without the shared words held with it. */
+/**
+ * Where the stage form holds the codebook changes made while the stage is
+ * open (see `StagedCodebookStore`).
+ *
+ * Held in the stage's own form so that they are part of its draft in every
+ * way a host can see: they make the form dirty, they are thrown away with it,
+ * and the form's save writes them with the stage. Parked rather than mounted —
+ * no control is registered here — and never part of the stage document: a
+ * stage holds no key of this name, `stageFieldsOf` leaves it out, and
+ * `dormantFieldsOf` does not replay it over the draft.
+ */
+export const STAGED_CODEBOOK_PATH = 'stagedCodebook';
+
+/**
+ * Whether a form field whose path starts with `root` holds the stage's
+ * codebook changes rather than any part of the stage. Every reading of the
+ * form's fields AS the stage — what a save replays, what a rewrite or a reset
+ * of the stage reaches — passes over it: those are about the stage document,
+ * and the codebook changes are kept, saved and discarded by their own store
+ * (see `StagedCodebookStore`).
+ */
+export const holdsStagedCodebook = (root: unknown): boolean =>
+  root === STAGED_CODEBOOK_PATH;
+
+/**
+ * The stage's own fields: the draft without the shared words or codebook
+ * changes held with it.
+ */
 export function stageFieldsOf(draft: StageFormDraft): StageFormDraft {
-  const { [SHARED_WORDING_PATH]: _shared, ...fields } = draft;
+  const {
+    [SHARED_WORDING_PATH]: _shared,
+    [STAGED_CODEBOOK_PATH]: _codebook,
+    ...fields
+  } = draft;
   return fields;
 }
 
@@ -102,8 +129,9 @@ export function stageDraftFromDocument(document: SectionDoc): Readonly<{
  * is now off (see `stageWithoutSuppliedText`). The rule is kept here, so
  * every save path and every reading of the draft as a stage agrees on it.
  *
- * The shared words the form holds beside the stage are not the stage's (see
- * `SHARED_WORDING_PATH`), so they are left out.
+ * The shared words and codebook changes the form holds beside the stage are
+ * not the stage's (see `SHARED_WORDING_PATH`, `STAGED_CODEBOOK_PATH`), so they
+ * are left out.
  */
 export function stageDocument(
   identity: StageIdentity,

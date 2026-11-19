@@ -7,6 +7,7 @@ import type {
   ProtocolEvent,
   Revision,
   SectionReference,
+  StageCodebookSection,
 } from '@codaco/protocol-builder-core/contract/schemas';
 import { type InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
@@ -101,6 +102,8 @@ export type RefactorOutcome =
 
 type SectionWrite = readonly [ProtocolSectionId, SectionDoc | undefined];
 
+const CODEBOOK_CHANGED_MESSAGE =
+  'This codebook section changed since you read it, or was created by someone else. Review it and try again.';
 const ASSETS = sectionId({ kind: 'assets' });
 const SETTINGS = sectionId({ kind: 'settings' });
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
@@ -240,6 +243,7 @@ export class InMemoryProtocolStore {
     principal: HostPrincipal,
     assetEntries?: Readonly<Record<string, unknown>>,
     interfaceText?: readonly InterfaceTextUpdate[],
+    codebook?: readonly StageCodebookSection[],
   ): SubmitOutcome {
     this.read(id);
     const owner = this.#locks.get(id);
@@ -269,10 +273,23 @@ export class InMemoryProtocolStore {
         return { status: 'invalidShape', sectionId: SETTINGS, issues: refused };
       }
     }
+    let codebookWrites: (readonly [ProtocolSectionId, SectionDoc])[] = [];
+    if (codebook !== undefined) {
+      const planned = this.#planCodebook(
+        codebook,
+        parseSectionId(id).kind === 'stage',
+        principal,
+      );
+      if (planned.status !== 'ok') return planned;
+      codebookWrites = planned.writes;
+    }
     const sequence = this.#advance();
     const revision = this.#write(id, document, sequence);
     if (assetEntries !== undefined) this.#mergeAssets(assetEntries, sequence);
     if (settings !== undefined) this.#write(SETTINGS, settings, sequence);
+    for (const [codebookId, codebookDocument] of codebookWrites) {
+      this.#write(codebookId, codebookDocument, sequence);
+    }
     return { status: 'written', revision };
   }
 
@@ -291,6 +308,8 @@ export class InMemoryProtocolStore {
     position: number | undefined,
     assetEntries?: Readonly<Record<string, unknown>>,
     interfaceText?: readonly InterfaceTextUpdate[],
+    codebook?: readonly StageCodebookSection[],
+    principal?: HostPrincipal,
   ): CreateOutcome {
     // The stage order is the created stage's pointer section, and this write
     // registers it there. An editor holding the order has a whole-section
@@ -332,6 +351,19 @@ export class InMemoryProtocolStore {
         return { status: 'invalidShape', sectionId: SETTINGS, issues: refused };
       }
     }
+    let codebookWrites: (readonly [ProtocolSectionId, SectionDoc])[] = [];
+    if (codebook !== undefined) {
+      const planned = this.#planCodebook(codebook, kind === 'stage', principal);
+      if (planned.status === 'blocked') return planned;
+      if (planned.status === 'invalidShape') {
+        return {
+          status: 'invalidShape',
+          sectionId: planned.sectionId ?? target,
+          issues: planned.issues,
+        };
+      }
+      codebookWrites = planned.writes;
+    }
     const sequence = this.#advance();
     const revision = this.#write(target, created, sequence);
     if (kind === 'stage' && id !== undefined) {
@@ -339,6 +371,9 @@ export class InMemoryProtocolStore {
     }
     if (assetEntries !== undefined) this.#mergeAssets(assetEntries, sequence);
     if (settings !== undefined) this.#write(SETTINGS, settings, sequence);
+    for (const [codebookId, codebookDocument] of codebookWrites) {
+      this.#write(codebookId, codebookDocument, sequence);
+    }
     return { status: 'created', sectionId: target, revision };
   }
 
@@ -582,6 +617,75 @@ export class InMemoryProtocolStore {
       throw new Error('a refactor must write at least one section');
     }
     return { status: 'applied', revision, changedSections };
+  }
+
+  /**
+   * The codebook sections a stage's write carries, shape-checked and free to
+   * write, or why not. Sections the protocol lacks are created by the write.
+   * The writer's own lock on a section is no obstacle, which is how a client
+   * keeps collaborators out between reading a section and writing it.
+   *
+   * A section that exists when the write is applied is written only by the
+   * editor holding its lock, so a section another editor created or changed
+   * since this writer read it is never overwritten unseen.
+   */
+  #planCodebook(
+    codebook: readonly StageCodebookSection[],
+    isStage: boolean,
+    principal: HostPrincipal | undefined,
+  ):
+    | Readonly<{
+        status: 'ok';
+        writes: (readonly [ProtocolSectionId, SectionDoc])[];
+      }>
+    | Readonly<{ status: 'blocked'; blocked: SectionHolder[] }>
+    | Readonly<{
+        status: 'invalidShape';
+        sectionId?: ProtocolSectionId;
+        issues: SectionIssue[];
+      }> {
+    if (!isStage) {
+      return {
+        status: 'invalidShape',
+        issues: [
+          {
+            path: ['codebook'],
+            message: 'only a stage is written with codebook sections',
+          },
+        ],
+      };
+    }
+    for (const entry of codebook) {
+      const issues = shapeIssues(
+        entry.sectionId,
+        Redacted.value(entry.document),
+      );
+      if (issues.length > 0) {
+        return { status: 'invalidShape', sectionId: entry.sectionId, issues };
+      }
+    }
+    const ids = codebook.map((entry) => entry.sectionId);
+    const blocked = this.#blockedBy(ids, new Set(ids), principal);
+    if (blocked.length > 0) return { status: 'blocked', blocked };
+    for (const id of ids) {
+      if (!this.#sections.has(id)) continue;
+      const owner = this.#locks.get(id);
+      if (owner !== undefined && owner.sessionId === principal?.sessionId) {
+        continue;
+      }
+      return {
+        status: 'invalidShape',
+        sectionId: id,
+        issues: [{ path: ['codebook'], message: CODEBOOK_CHANGED_MESSAGE }],
+      };
+    }
+    return {
+      status: 'ok',
+      writes: codebook.map((entry) => [
+        entry.sectionId,
+        Redacted.value(entry.document),
+      ]),
+    };
   }
 
   /**
