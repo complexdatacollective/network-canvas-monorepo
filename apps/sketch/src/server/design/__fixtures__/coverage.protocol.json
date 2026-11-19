@@ -451,7 +451,7 @@
   },
   "stages": [
     {
-      "id": "researcher_notes",
+      "id": "df8e9aba-e67f-53fa-b421-e9a758d11bd0",
       "type": "Information",
       "label": {
         "en": "Researcher notes (delete before fielding)"
@@ -461,7 +461,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "b2ca39e0-7aa6-58ef-a65a-b5ea53adaec3",
           "type": "text",
           "content": {
             "en": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** Students, classmates and the places they study.\n\n**Design rationale.** Exercises every branch of the compiler.\n\n**Placeholder roster.** Stage \"Classmates\" picks classmates from a generated list of 12 example rows (classmates_roster.csv). Replace it in Architect with your real list before fielding, keeping the column headers: name, year_of_study, major, commuter.\n\n**Map token.** The map stage uses the Network Canvas testing Mapbox token, which only works on networkcanvas.com sites and localhost. Replace the \"Mapbox token\" resource with your own token before fielding."
@@ -470,7 +470,7 @@
       ]
     },
     {
-      "id": "consent",
+      "id": "87a045da-9641-5946-a8f2-275d956422af",
       "type": "EgoForm",
       "label": {
         "en": "Consent"
@@ -486,7 +486,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_consent",
+            "id": "55495839-aa92-58cc-83e7-8b79017016d4",
             "variable": "ego_consent",
             "prompt": {
               "en": "Do you agree to take part in this study?"
@@ -496,7 +496,7 @@
       }
     },
     {
-      "id": "about",
+      "id": "44c307b5-5dbe-5f68-9b8a-97448f5da5a8",
       "type": "EgoForm",
       "label": {
         "en": "About"
@@ -512,14 +512,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_year",
+            "id": "67623001-2822-583a-9707-8a133967987a",
             "variable": "ego_year",
             "prompt": {
               "en": "Which year of study are you in?"
             }
           },
           {
-            "id": "field-ego_commutes",
+            "id": "acf41636-d774-5d7d-a73d-e953bf43aefe",
             "variable": "ego_commutes",
             "prompt": {
               "en": "Do you commute to campus?"
@@ -532,7 +532,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_1",
+              "id": "b7b6b01b-34d5-5d05-8403-7452e665e5ac",
               "type": "ego",
               "options": {
                 "attribute": "ego_consent",
@@ -544,12 +544,12 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "consent_declined"
+          "stageId": "360cbe92-4d2c-5fb4-88a6-275315a71b41"
         }
       }
     },
     {
-      "id": "classmates_intro",
+      "id": "07221e43-b3e7-52cc-9a2f-797f23bf6c59",
       "type": "Information",
       "label": {
         "en": "Classmates (introduction)"
@@ -559,7 +559,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "0d96e1bd-5a30-5b72-bdca-91289f4d3e30",
           "type": "text",
           "content": {
             "en": "On the next screen you will see a list of classmates. Find everyone the question describes, using the search if it helps, and drag each one into the panel of people you have added."
@@ -568,7 +568,7 @@
       ]
     },
     {
-      "id": "classmates",
+      "id": "09398f15-bab4-51cd-8baf-879326c93203",
       "type": "NameGeneratorRoster",
       "label": {
         "en": "Classmates"
@@ -579,12 +579,13 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "195a0ebb-901f-5308-bf87-54ffc7effbd8",
           "text": {
             "en": "Select the classmates you **study with**."
           },
           "additionalAttributes": [
             {
+              "id": "79b57006-aba5-5da7-9e06-32a50c5b7f39",
               "variable": "classmate_studies_together",
               "value": true
             }
@@ -598,18 +599,21 @@
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "907dd100-93e8-543d-afeb-b6ecb737e1fe",
             "label": {
               "en": "year of study"
             },
             "variable": "classmate_year_of_study"
           },
           {
+            "id": "b5730882-afe1-5fa7-98fc-6329adfe391a",
             "label": {
               "en": "major"
             },
             "variable": "classmate_major"
           },
           {
+            "id": "f273f908-0dea-52d7-ada1-41e33b33fed2",
             "label": {
               "en": "commuter"
             },
@@ -620,12 +624,14 @@
       "sortOptions": {
         "sortOrder": [
           {
+            "id": "9f7894fe-d0c4-5ac2-bb4c-cf1b7a131d67",
             "property": "classmate_name",
             "direction": "asc"
           }
         ],
         "sortableProperties": [
           {
+            "id": "9ebaf48b-7f20-5515-a02b-d8ceecf5c4c5",
             "label": {
               "en": "Name"
             },
@@ -639,7 +645,7 @@
       }
     },
     {
-      "id": "places_intro",
+      "id": "09073e59-eee9-5356-8789-9b174b33d912",
       "type": "Information",
       "label": {
         "en": "Places (introduction)"
@@ -649,7 +655,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "753b3752-8b62-5c00-9599-e45ee65603da",
           "type": "text",
           "content": {
             "en": "On the next screen you will be asked a question. For each place who comes to mind, tap the add button, answer a few short questions about them, and save. Move on when you have added everyone."
@@ -658,7 +664,7 @@
       ]
     },
     {
-      "id": "places",
+      "id": "f1730110-3bc9-54bd-9fb1-4e3e4ec891e1",
       "type": "NameGenerator",
       "label": {
         "en": "Places"
@@ -669,7 +675,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "a94f5f80-8bf7-5b47-aa12-2b1e44b1e508",
           "text": {
             "en": "Where do you **spend time on campus**?"
           }
@@ -684,14 +690,14 @@
         },
         "fields": [
           {
-            "id": "field-place_name",
+            "id": "35c6b26f-8738-5683-a666-1241de786ee7",
             "variable": "place_name",
             "prompt": {
               "en": "What is this place called?"
             }
           },
           {
-            "id": "field-place_hours",
+            "id": "a5a20063-1343-528e-abba-35066a80059f",
             "variable": "place_hours",
             "prompt": {
               "en": "How many hours a week do you spend there?"
@@ -701,7 +707,7 @@
       }
     },
     {
-      "id": "more_classmates_intro",
+      "id": "965bb78d-38fb-5046-b7ca-4ac5ad3ca80f",
       "type": "Information",
       "label": {
         "en": "More classmates (introduction)"
@@ -711,7 +717,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "aa24279f-9f1e-50ca-bbc7-fa26ee64a5b9",
           "type": "text",
           "content": {
             "en": "On the next screen you will be asked a question. Tap the add button, then type the name of each classmate who comes to mind and press Enter. Move on when you have added everyone."
@@ -720,7 +726,7 @@
       ]
     },
     {
-      "id": "more_classmates",
+      "id": "0c5968d8-77c8-5ea2-b7da-36b213dfafcc",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en": "More classmates"
@@ -731,7 +737,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "41a001f6-bd2d-5319-b7c6-2c83ba8b4e69",
           "text": {
             "en": "Who else in your class do you **talk to**?"
           }
@@ -740,7 +746,7 @@
       "quickAdd": "classmate_name",
       "panels": [
         {
-          "id": "existing",
+          "id": "93fddc8a-532c-5de2-be05-2a29a30544b7",
           "title": {
             "en": "Already mentioned"
           },
@@ -749,7 +755,7 @@
       ]
     },
     {
-      "id": "friend_strength_intro",
+      "id": "e58d9f39-2353-57f7-8815-03b509f0fb59",
       "type": "Information",
       "label": {
         "en": "Friend strength (introduction)"
@@ -759,7 +765,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "49fa3dec-b855-5d1b-807f-e60739dded60",
           "type": "text",
           "content": {
             "en": "On the next screen you will see pairs of the classmates you named. For each pair, choose the answer that describes them best."
@@ -768,7 +774,7 @@
       ]
     },
     {
-      "id": "friend_strength",
+      "id": "1fa7ab3d-c326-5c96-b8d4-195c288ed34d",
       "type": "TieStrengthCensus",
       "label": {
         "en": "Friend strength"
@@ -779,7 +785,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "b20776cf-3cba-5794-97e9-a6abaf1663bc",
           "text": {
             "en": "How close are these two?"
           },
@@ -792,7 +798,7 @@
       ]
     },
     {
-      "id": "study_ties_intro",
+      "id": "97e90752-8ff7-5cde-ae11-4aef4dbfeb25",
       "type": "Information",
       "label": {
         "en": "Study ties (introduction)"
@@ -802,7 +808,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "321e65d9-39fc-5d96-b154-7c0a458783d6",
           "type": "text",
           "content": {
             "en": "On the next screen you will see the classmates you named one at a time. For each one, tap everyone else the question describes, then move on."
@@ -811,7 +817,7 @@
       ]
     },
     {
-      "id": "study_ties",
+      "id": "2e1b65b2-58bf-5daa-baa7-4b8f7dc2d2bc",
       "type": "OneToManyDyadCensus",
       "label": {
         "en": "Study ties"
@@ -822,7 +828,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "396477c8-ff4f-54ef-a834-5eb9da6f831e",
           "text": {
             "en": "Tap everyone who **studies with** this person."
           },
@@ -834,7 +840,7 @@
       }
     },
     {
-      "id": "conflicts_intro",
+      "id": "101ed902-71a8-5f3b-8302-067bf5dcabc2",
       "type": "Information",
       "label": {
         "en": "Conflicts (introduction)"
@@ -844,7 +850,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_2",
+              "id": "9341ba31-acc2-5118-9b5b-264aa571900d",
               "type": "edge",
               "options": {
                 "type": "studies_with",
@@ -859,7 +865,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "1bc20df5-38ab-5c5e-96bc-345cabe29d0a",
           "type": "text",
           "content": {
             "en": "On the next screen you will see pairs of the classmates you named. Answer the question for each pair."
@@ -868,7 +874,7 @@
       ]
     },
     {
-      "id": "conflicts",
+      "id": "b05d4f4d-6160-5946-af43-57ea8b941d6c",
       "type": "DyadCensus",
       "label": {
         "en": "Conflicts"
@@ -878,7 +884,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_2",
+              "id": "65834ce8-274b-5a82-a1a8-c2e2315bc6df",
               "type": "edge",
               "options": {
                 "type": "studies_with",
@@ -894,7 +900,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "a24a2634-44a6-5d01-a732-af86dd48261a",
           "text": {
             "en": "Do these two **have conflict**?"
           },
@@ -904,7 +910,7 @@
       "filter": {
         "rules": [
           {
-            "id": "rule_3",
+            "id": "52c48f83-f7a7-599e-aad0-bba2f054e89a",
             "type": "node",
             "options": {
               "type": "classmate",
@@ -917,7 +923,7 @@
       }
     },
     {
-      "id": "friendship_details_intro",
+      "id": "f67e61e6-4569-5fcf-ae96-797752dc6fdd",
       "type": "Information",
       "label": {
         "en": "Friendship details (introduction)"
@@ -927,7 +933,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_4",
+              "id": "271a7f4b-3465-597d-bf81-a0f0b5d26820",
               "type": "edge",
               "options": {
                 "type": "friends",
@@ -942,7 +948,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "e74a7d06-18dd-5793-a8c7-6b0ab58d57e2",
           "type": "text",
           "content": {
             "en": "Next, you will answer a few questions about each \"friends\" relationship you described, one at a time."
@@ -951,7 +957,7 @@
       ]
     },
     {
-      "id": "friendship_details",
+      "id": "fd985db1-44f0-58a7-8e0b-65a7277292bc",
       "type": "AlterEdgeForm",
       "label": {
         "en": "Friendship details"
@@ -961,7 +967,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_4",
+              "id": "470fd0d0-a09e-5e6c-aa54-60b3bb1bb698",
               "type": "edge",
               "options": {
                 "type": "friends",
@@ -978,7 +984,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-friends_since",
+            "id": "4bd87f34-caa3-50a5-b29a-76deb5374a14",
             "variable": "friends_since",
             "prompt": {
               "en": "Since when have they been friends?"
@@ -988,7 +994,7 @@
       }
     },
     {
-      "id": "place_bins_intro",
+      "id": "b9bc8e96-6c33-5fb0-aa74-4d31e4812535",
       "type": "Information",
       "label": {
         "en": "Place bins (introduction)"
@@ -998,7 +1004,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_5",
+              "id": "7d061a66-2250-5003-a878-2a46190dcd09",
               "type": "node",
               "options": {
                 "type": "place",
@@ -1013,7 +1019,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "7c516ae0-9fbf-5062-8a13-54c121380d12",
           "type": "text",
           "content": {
             "en": "On the next screen you will see the places you named and a set of boxes. Drag each place into the box that describes them best."
@@ -1022,7 +1028,7 @@
       ]
     },
     {
-      "id": "place_bins",
+      "id": "36230dce-ef83-5698-86a6-396059e801fd",
       "type": "OrdinalBin",
       "label": {
         "en": "Place bins"
@@ -1032,7 +1038,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_5",
+              "id": "a7e5e37a-69ec-5c63-b83d-0e5018595fc2",
               "type": "node",
               "options": {
                 "type": "place",
@@ -1048,7 +1054,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "d2074008-24d1-52f3-a270-8d6396ca237b",
           "text": {
             "en": "How often?"
           },
@@ -1058,7 +1064,7 @@
       ]
     },
     {
-      "id": "place_bins_2",
+      "id": "78108639-5e36-53e0-bf84-f673a3345e57",
       "type": "CategoricalBin",
       "label": {
         "en": "Place bins (2)"
@@ -1068,7 +1074,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_6",
+              "id": "b0334d88-a6d4-539e-8e4d-23bc383d3a10",
               "type": "node",
               "options": {
                 "type": "place",
@@ -1084,7 +1090,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "08893046-33fe-5695-841a-f571ed330885",
           "text": {
             "en": "What do you do there?"
           },
@@ -1100,7 +1106,7 @@
       ]
     },
     {
-      "id": "advisors_intro",
+      "id": "cd5eec73-86f2-57ae-a83c-48de052771ac",
       "type": "Information",
       "label": {
         "en": "Advisors (introduction)"
@@ -1110,7 +1116,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "2699b699-f40a-5c63-b121-da8fdb5183a0",
           "type": "text",
           "content": {
             "en": "On the next screen you will see the classmates you named and a set of boxes. Drag each classmate into the box that describes them best."
@@ -1119,7 +1125,7 @@
       ]
     },
     {
-      "id": "advisors",
+      "id": "d0914755-4021-51fa-982a-fb3fd7778280",
       "type": "CategoricalBin",
       "label": {
         "en": "Advisors"
@@ -1130,7 +1136,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "84de619a-5ae5-5173-9d28-12c0f26a0c2c",
           "text": {
             "en": "Who advises each classmate?"
           },
@@ -1139,7 +1145,7 @@
       ]
     },
     {
-      "id": "home_countries_intro",
+      "id": "6985ebef-7e60-5c7d-af0b-a573eca1df9f",
       "type": "Information",
       "label": {
         "en": "Home countries (introduction)"
@@ -1149,7 +1155,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "91aca194-b296-5e62-9d2a-651e91fe77ed",
           "type": "text",
           "content": {
             "en": "On the next screen you will see a map. For each of the classmates you named, tap the place the question asks about."
@@ -1158,7 +1164,7 @@
       ]
     },
     {
-      "id": "home_countries",
+      "id": "6aef14df-c67b-51dc-872b-88565099a668",
       "type": "Geospatial",
       "label": {
         "en": "Home countries"
@@ -1180,7 +1186,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "86c8235e-76ec-54cf-93b2-397eaa202abf",
           "text": {
             "en": "Which **country** is each classmate from?"
           },
@@ -1189,7 +1195,7 @@
       ]
     },
     {
-      "id": "classmate_form_intro",
+      "id": "a58b332e-5327-598f-ac24-819289f30cc1",
       "type": "Information",
       "label": {
         "en": "Classmate form (introduction)"
@@ -1199,7 +1205,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "e3ee8ca2-b2e8-532e-930e-0dc7a8e9c8a8",
           "type": "text",
           "content": {
             "en": "Next, you will answer a few questions about each of the classmates you named, one at a time."
@@ -1208,7 +1214,7 @@
       ]
     },
     {
-      "id": "classmate_form",
+      "id": "51d6048b-53c3-5c1f-95e8-55b4c66c1435",
       "type": "AlterForm",
       "label": {
         "en": "Classmate form"
@@ -1220,14 +1226,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-classmate_commuter",
+            "id": "56fd8d2b-b26b-5c0e-9e23-dfc901c15a1e",
             "variable": "classmate_commuter",
             "prompt": {
               "en": "Commutes?"
             }
           },
           {
-            "id": "field-classmate_year_of_study",
+            "id": "ca70154b-da65-535e-96fa-281a351de92f",
             "variable": "classmate_year_of_study",
             "prompt": {
               "en": "Year of study"
@@ -1239,7 +1245,7 @@
         "join": "OR",
         "rules": [
           {
-            "id": "rule_7",
+            "id": "8a0ff191-99a8-564f-9d10-4ff733a84f13",
             "type": "node",
             "options": {
               "type": "classmate",
@@ -1249,7 +1255,7 @@
             }
           },
           {
-            "id": "rule_8",
+            "id": "1dcccf73-5f59-56d3-8463-488d04606f08",
             "type": "node",
             "options": {
               "type": "classmate",
@@ -1259,7 +1265,7 @@
             }
           },
           {
-            "id": "rule_9",
+            "id": "00197652-ddc6-5666-8c3d-e6c3196ff72e",
             "type": "node",
             "options": {
               "type": "classmate",
@@ -1272,7 +1278,7 @@
       }
     },
     {
-      "id": "place_map_intro",
+      "id": "caf817cf-03b1-5fde-b94b-f0e4ae6f8261",
       "type": "Information",
       "label": {
         "en": "Place map (introduction)"
@@ -1282,7 +1288,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_10",
+              "id": "4cc67573-69ba-5527-8dfd-6b17091bbf35",
               "type": "node",
               "options": {
                 "type": "place",
@@ -1297,7 +1303,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "0723a7c3-bb90-58f4-bfd9-62f32a5c6e07",
           "type": "text",
           "content": {
             "en": "On the next screen you will see the places you named on a map, with you at the centre.\n\nTap each place the question describes. Tap them again to undo."
@@ -1306,7 +1312,7 @@
       ]
     },
     {
-      "id": "place_map",
+      "id": "ede40ddc-1334-5bab-b2c7-5ec7d28cdd2d",
       "type": "Sociogram",
       "label": {
         "en": "Place map"
@@ -1316,7 +1322,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_10",
+              "id": "16dc2929-f6b8-57dc-b2c6-a4e8d461a304",
               "type": "node",
               "options": {
                 "type": "place",
@@ -1339,7 +1345,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "241f256d-f4bc-5688-b8fb-24162fac43c7",
           "text": {
             "en": "Tap your **favourite** places."
           },
@@ -1354,7 +1360,7 @@
       ]
     },
     {
-      "id": "place_story",
+      "id": "091efbba-bd22-5506-8739-6c6c70f28dac",
       "type": "Narrative",
       "label": {
         "en": "Place story"
@@ -1364,7 +1370,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_11",
+              "id": "04005438-6689-5e20-a279-452b227852cc",
               "type": "node",
               "options": {
                 "type": "place",
@@ -1380,7 +1386,7 @@
       },
       "presets": [
         {
-          "id": "view1",
+          "id": "2559584b-c8a4-5311-9856-7baf700f4822",
           "label": {
             "en": "What you do"
           },
@@ -1388,6 +1394,7 @@
           "groupVariable": "place_type",
           "highlight": [
             {
+              "id": "5554a839-c274-587c-b63a-181cab118803",
               "variable": "place_favourite",
               "label": {
                 "en": "favourite"
@@ -1407,7 +1414,7 @@
       }
     },
     {
-      "id": "class_map_intro",
+      "id": "f469c5cd-8116-561b-8d55-87371944a7cd",
       "type": "Information",
       "label": {
         "en": "Class map (introduction)"
@@ -1417,7 +1424,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "a0c2838f-235f-51e1-a759-defa212f3833",
           "type": "text",
           "content": {
             "en": "On the next screen you will see the classmates you named on a map, with you at the centre.\n\nDrag each of the classmates onto the circles. The closer to the centre you place someone, the closer they are to you."
@@ -1426,7 +1433,7 @@
       ]
     },
     {
-      "id": "class_map",
+      "id": "b9954243-5abe-5947-9e0f-554bb2b67f0e",
       "type": "Sociogram",
       "label": {
         "en": "Class map"
@@ -1444,7 +1451,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "b79070b5-05bb-59c3-b39c-9e20232f2884",
           "text": {
             "en": "Arrange your classmates."
           },
@@ -1459,7 +1466,7 @@
       "filter": {
         "rules": [
           {
-            "id": "rule_12",
+            "id": "0f301a45-0a5c-5114-a14d-b014ec95daa7",
             "type": "node",
             "options": {
               "type": "classmate",
@@ -1471,7 +1478,7 @@
       }
     },
     {
-      "id": "mentor_canvas_intro",
+      "id": "d7b2b579-953e-5467-aa3b-5584dabd653d",
       "type": "Information",
       "label": {
         "en": "Mentor canvas (introduction)"
@@ -1481,7 +1488,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "c38c53b6-15a6-5163-b177-62ae46195e5e",
           "type": "text",
           "content": {
             "en": "Next, you and the interviewer will draw your network together. Add mentors and move them around. You can answer a few questions about each mentor. You can put mentors into groups. You can draw lines between mentors who are connected."
@@ -1490,7 +1497,7 @@
       ]
     },
     {
-      "id": "mentor_canvas",
+      "id": "1a9ec78c-7f04-5e13-b89d-e7d7166d1e60",
       "type": "NetworkComposer",
       "label": {
         "en": "Mentor canvas"
@@ -1505,7 +1512,7 @@
       "nodeForm": {
         "fields": [
           {
-            "id": "field-mentor_role",
+            "id": "e86a948e-2860-5f9f-adc0-8ae0657c9abc",
             "variable": "mentor_role",
             "component": "Text",
             "label": {
@@ -1524,7 +1531,7 @@
       },
       "edges": [
         {
-          "id": "edge1",
+          "id": "a19f8138-c6ca-576d-940e-ea9d7056304e",
           "subject": {
             "entity": "edge",
             "type": "mentors_know"
@@ -1535,7 +1542,7 @@
           "form": {
             "fields": [
               {
-                "id": "field-mentors_know_met_through",
+                "id": "85548bfb-cff1-5e1d-89b3-9732430a85d5",
                 "variable": "mentors_know_met_through",
                 "component": "Text",
                 "label": {
@@ -1548,7 +1555,7 @@
       ]
     },
     {
-      "id": "reflection",
+      "id": "59d63f51-beeb-5767-95cb-56a1198453fc",
       "type": "EgoForm",
       "label": {
         "en": "Reflection"
@@ -1559,7 +1566,7 @@
           "join": "OR",
           "rules": [
             {
-              "id": "rule_13",
+              "id": "0b10f84c-36a5-5029-8a17-505d9dd51e4c",
               "type": "ego",
               "options": {
                 "attribute": "ego_commutes",
@@ -1568,7 +1575,7 @@
               }
             },
             {
-              "id": "rule_14",
+              "id": "ecff0b18-03a3-51e9-b0de-324de38081a5",
               "type": "ego",
               "options": {
                 "attribute": "ego_year",
@@ -1577,7 +1584,7 @@
               }
             },
             {
-              "id": "rule_15",
+              "id": "5661c0fa-0401-5810-9474-55dc8e4b0a74",
               "type": "node",
               "options": {
                 "type": "place",
@@ -1603,28 +1610,28 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_satisfaction",
+            "id": "b5308c11-a5e5-54a9-9ee5-36d998423fa2",
             "variable": "ego_satisfaction",
             "prompt": {
               "en": "How satisfied are you with university life?"
             }
           },
           {
-            "id": "field-ego_notes",
+            "id": "a7d4cd09-6bb7-539d-bc08-6d0ec6cfb2e1",
             "variable": "ego_notes",
             "prompt": {
               "en": "Anything else you would like to tell us?"
             }
           },
           {
-            "id": "field-ego_birth_date",
+            "id": "37bf46b0-1144-5bd4-9afb-5c80e20fb7c6",
             "variable": "ego_birth_date",
             "prompt": {
               "en": "What is your date of birth?"
             }
           },
           {
-            "id": "field-ego_year_started",
+            "id": "079932b3-4abd-5b6b-ba1a-8bffa7c1063f",
             "variable": "ego_year_started",
             "prompt": {
               "en": "In which year did you start university?"
@@ -1634,7 +1641,7 @@
       }
     },
     {
-      "id": "bye",
+      "id": "2c074e18-e578-500b-abff-d83b58a3280d",
       "type": "Information",
       "label": {
         "en": "Bye"
@@ -1644,7 +1651,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "295982f7-b8d1-54c5-8b58-527d28cf7bc3",
           "type": "text",
           "content": {
             "en": "Thanks!"
@@ -1653,7 +1660,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "af898428-02c5-5ce8-a117-44999877bc18",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
@@ -1668,7 +1675,7 @@
       "outcome": "completed"
     },
     {
-      "id": "consent_declined",
+      "id": "360cbe92-4d2c-5fb4-88a6-275315a71b41",
       "type": "FinishSession",
       "mode": "automatic",
       "label": {

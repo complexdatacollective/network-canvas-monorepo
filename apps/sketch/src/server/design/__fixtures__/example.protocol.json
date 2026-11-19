@@ -661,7 +661,7 @@
   },
   "stages": [
     {
-      "id": "researcher_notes",
+      "id": "df8e9aba-e67f-53fa-b421-e9a758d11bd0",
       "type": "Information",
       "label": {
         "en": "Researcher notes (delete before fielding)"
@@ -671,7 +671,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "b2ca39e0-7aa6-58ef-a65a-b5ea53adaec3",
           "type": "text",
           "content": {
             "en": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).\n\n**Design rationale.** One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects \"know each other\" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.\n\n**Validated instruments.** Check the wording and scoring of audit_frequency, audit_typical, audit_heavy, who5_cheerful, who5_calm, who5_active, who5_rested, who5_interest against the published instrument; Sketch reproduces them from memory."
@@ -680,7 +680,7 @@
       ]
     },
     {
-      "id": "welcome",
+      "id": "3df253b7-4ccd-5881-a528-d057f91fdd6b",
       "type": "Information",
       "label": {
         "en": "Welcome"
@@ -690,7 +690,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "1594c006-0991-5a89-bd9f-59fe23866d55",
           "type": "text",
           "content": {
             "en": "Thank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
@@ -699,7 +699,7 @@
       ]
     },
     {
-      "id": "consent",
+      "id": "87a045da-9641-5946-a8f2-275d956422af",
       "type": "EgoForm",
       "label": {
         "en": "Consent"
@@ -715,7 +715,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_consent",
+            "id": "55495839-aa92-58cc-83e7-8b79017016d4",
             "variable": "ego_consent",
             "prompt": {
               "en": "Do you agree to take part in this study?"
@@ -725,7 +725,7 @@
       }
     },
     {
-      "id": "about_you",
+      "id": "6f1c6e40-a50f-5528-8ccc-6d760a7eadd3",
       "type": "EgoForm",
       "label": {
         "en": "About you"
@@ -741,21 +741,21 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_age",
+            "id": "9ccc09b2-6691-5cdc-ae8d-3f650253bad1",
             "variable": "ego_age",
             "prompt": {
               "en": "What is your age in years?"
             }
           },
           {
-            "id": "field-ego_gender",
+            "id": "fd4113a4-a3b4-5fc8-bf7c-339e0d88d5f7",
             "variable": "ego_gender",
             "prompt": {
               "en": "How do you describe your gender?"
             }
           },
           {
-            "id": "field-ego_lives_in_halls",
+            "id": "609c7acf-4dc0-5e00-85d8-02b5c3489929",
             "variable": "ego_lives_in_halls",
             "prompt": {
               "en": "Do you live in university accommodation (halls)?"
@@ -768,7 +768,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_1",
+              "id": "66c86dd1-f3be-53c5-a80a-38c5fef5be3c",
               "type": "ego",
               "options": {
                 "attribute": "ego_consent",
@@ -780,12 +780,12 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "consent_declined"
+          "stageId": "360cbe92-4d2c-5fb4-88a6-275315a71b41"
         }
       }
     },
     {
-      "id": "name_friends_intro",
+      "id": "d814ad49-86c9-5940-9072-af6d34ef35ce",
       "type": "Information",
       "label": {
         "en": "Naming friends (introduction)"
@@ -795,7 +795,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "959a9e7a-bfad-5c6d-ab8b-de9db309ef70",
           "type": "text",
           "content": {
             "en": "On the next screen you will be asked a question. Tap the add button, then type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
@@ -804,7 +804,7 @@
       ]
     },
     {
-      "id": "name_friends",
+      "id": "a2b0fa2c-2e5d-51d4-8089-a59b365120dd",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en": "Naming friends"
@@ -815,30 +815,32 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "6f3d9c63-2ad1-5928-b66d-a3447a6659c2",
           "text": {
             "en": "Since **starting university this semester**, who have you **become friends with**?"
           },
           "additionalAttributes": [
             {
+              "id": "b63b7f62-54ea-5a0a-933a-85ca5ad335bd",
               "variable": "person_new_friend",
               "value": true
             }
           ]
         },
         {
-          "id": "p2",
+          "id": "1a27faf8-a48a-59dc-a779-404ca216fd2e",
           "text": {
             "en": "Who do you **spend most of your free time with** at university?"
           }
         },
         {
-          "id": "p3",
+          "id": "12dcdbb2-0c27-50d7-bd56-d1e175c8db9a",
           "text": {
             "en": "Who would you **turn to for support** if something was worrying you?"
           },
           "additionalAttributes": [
             {
+              "id": "de19397d-3f9b-5bdf-83b0-b3bc13f61005",
               "variable": "person_support",
               "value": true
             }
@@ -851,7 +853,7 @@
       "quickAdd": "person_name",
       "panels": [
         {
-          "id": "existing",
+          "id": "2abfb9cd-9433-5fff-818a-40e048a43bee",
           "title": {
             "en": "Already mentioned"
           },
@@ -860,7 +862,7 @@
       ]
     },
     {
-      "id": "friend_details_intro",
+      "id": "de0584c9-bf7a-5a0f-8059-70198bdcfb0c",
       "type": "Information",
       "label": {
         "en": "Friend details (introduction)"
@@ -870,7 +872,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_2",
+              "id": "4094268f-dea8-5e72-bd3f-12658b690a9f",
               "type": "node",
               "options": {
                 "type": "person",
@@ -885,7 +887,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "26c6b124-bc5c-5727-b5cb-3715af4aa908",
           "type": "text",
           "content": {
             "en": "Next, you will answer a few questions about each of the people you named, one at a time."
@@ -894,7 +896,7 @@
       ]
     },
     {
-      "id": "friend_details",
+      "id": "27e31375-16d1-5606-b1bd-95a080e8e2c2",
       "type": "AlterForm",
       "label": {
         "en": "Friend details"
@@ -904,7 +906,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_2",
+              "id": "b489510d-137e-503c-a26c-93abbbd2cd75",
               "type": "node",
               "options": {
                 "type": "person",
@@ -921,14 +923,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-person_is_first_year",
+            "id": "928bb7b3-eefa-56fd-8f3b-379a35d6371d",
             "variable": "person_is_first_year",
             "prompt": {
               "en": "Is this person also a first-year student?"
             }
           },
           {
-            "id": "field-person_first_met",
+            "id": "4cd97e47-84c8-54d7-be59-e2df327e3078",
             "variable": "person_first_met",
             "prompt": {
               "en": "When did you first meet this person?"
@@ -938,7 +940,7 @@
       }
     },
     {
-      "id": "friend_bins_intro",
+      "id": "3540040d-5127-56f1-9387-19908b08d908",
       "type": "Information",
       "label": {
         "en": "Closeness, meeting, drinking (introduction)"
@@ -948,7 +950,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_3",
+              "id": "5f87e2b3-0d3d-5a5c-9b47-36c97bb7cde9",
               "type": "node",
               "options": {
                 "type": "person",
@@ -963,7 +965,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "2072b5cf-c596-5d0d-ba9f-3fdcfac95e06",
           "type": "text",
           "content": {
             "en": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
@@ -972,7 +974,7 @@
       ]
     },
     {
-      "id": "friend_bins",
+      "id": "73f032c3-e63a-54c0-92f1-f3685df5f916",
       "type": "OrdinalBin",
       "label": {
         "en": "Closeness, meeting, drinking"
@@ -982,7 +984,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_3",
+              "id": "b4afe6a6-07c7-5f66-847f-3de9140d82da",
               "type": "node",
               "options": {
                 "type": "person",
@@ -998,7 +1000,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "d64866f9-4656-5c9f-90ff-e1733096785f",
           "text": {
             "en": "Drag each person into the box that best describes **how close you feel** to them."
           },
@@ -1008,7 +1010,7 @@
       ]
     },
     {
-      "id": "friend_bins_2",
+      "id": "d5a40bcd-86d0-52f7-9e84-a809b2e05d8c",
       "type": "CategoricalBin",
       "label": {
         "en": "Closeness, meeting, drinking (2)"
@@ -1018,7 +1020,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_4",
+              "id": "698a412f-d136-5908-b0fa-02226fc32fb7",
               "type": "node",
               "options": {
                 "type": "person",
@@ -1034,7 +1036,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "2b17e57c-3196-53e2-b203-ae5eb3c86038",
           "text": {
             "en": "How did you **first meet** each person?"
           },
@@ -1048,7 +1050,7 @@
           }
         },
         {
-          "id": "p2",
+          "id": "28a6dd96-f068-57ea-b98e-5027453fa0a0",
           "text": {
             "en": "As far as you know, does each person often **drink heavily** (five or more drinks on one occasion)?"
           },
@@ -1057,7 +1059,7 @@
       ]
     },
     {
-      "id": "friend_map_intro",
+      "id": "c02ed953-c484-58a7-8ddf-6a9048e3ce33",
       "type": "Information",
       "label": {
         "en": "Friendship map (introduction)"
@@ -1067,7 +1069,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_5",
+              "id": "37b3a078-eff5-598b-abf1-1f443c0b492a",
               "type": "node",
               "options": {
                 "type": "person",
@@ -1082,7 +1084,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "d04ab400-6fde-5048-b841-0973e9ef4bdf",
           "type": "text",
           "content": {
             "en": "On the next screen you will see the people you named on a map, with you at the centre.\n\nDrag each of the people onto the circles. The closer to the centre you place someone, the closer they are to you.\n\nTo connect two of the people, tap one and then the other. Do the same again to remove a connection.\n\nTap each person the question describes. Tap them again to undo."
@@ -1091,7 +1093,7 @@
       ]
     },
     {
-      "id": "friend_map",
+      "id": "818190cd-29bc-5841-a39a-a69eb3a2e8a2",
       "type": "Sociogram",
       "label": {
         "en": "Friendship map"
@@ -1101,7 +1103,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_5",
+              "id": "f8fa54b9-82b4-5004-918d-783ebe79ee80",
               "type": "node",
               "options": {
                 "type": "person",
@@ -1124,7 +1126,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "605ac758-f0a7-587c-917f-2321e18ee287",
           "text": {
             "en": "Place the people you are **closest to** nearest the centre."
           },
@@ -1133,7 +1135,7 @@
           }
         },
         {
-          "id": "p2",
+          "id": "40244c3a-8f1e-582f-91e9-3e93f802dcc1",
           "text": {
             "en": "Draw a line between any two people who **know each other**."
           },
@@ -1146,7 +1148,7 @@
           }
         },
         {
-          "id": "p3",
+          "id": "9de9546b-29a2-542f-ac5b-8c39a5b40b3b",
           "text": {
             "en": "Tap everyone you **usually drink alcohol with**."
           },
@@ -1164,7 +1166,7 @@
       ]
     },
     {
-      "id": "drinking_together_intro",
+      "id": "5f56e66d-1331-5041-a402-b94eab9c5f4f",
       "type": "Information",
       "label": {
         "en": "Drinking together (introduction)"
@@ -1175,7 +1177,7 @@
           "join": "AND",
           "rules": [
             {
-              "id": "rule_6",
+              "id": "5ef648da-a75d-50ed-a211-de8d0237fe8d",
               "type": "node",
               "options": {
                 "type": "person",
@@ -1185,7 +1187,7 @@
               }
             },
             {
-              "id": "rule_7",
+              "id": "6aa7c101-bf51-565a-8554-1a07e00e6122",
               "type": "node",
               "options": {
                 "type": "person",
@@ -1200,7 +1202,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "2bed1867-4904-5643-a2da-824940f16d32",
           "type": "text",
           "content": {
             "en": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
@@ -1209,7 +1211,7 @@
       ]
     },
     {
-      "id": "drinking_together",
+      "id": "e1d1f13f-2a5b-5bd3-ae23-c4f2e3df09dd",
       "type": "OrdinalBin",
       "label": {
         "en": "Drinking together"
@@ -1220,7 +1222,7 @@
           "join": "AND",
           "rules": [
             {
-              "id": "rule_6",
+              "id": "9cfb63a2-4753-56c9-80c7-420ac6265c7d",
               "type": "node",
               "options": {
                 "type": "person",
@@ -1230,7 +1232,7 @@
               }
             },
             {
-              "id": "rule_7",
+              "id": "e0e597c7-125b-561d-a077-ad162205bd55",
               "type": "node",
               "options": {
                 "type": "person",
@@ -1246,7 +1248,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "b63a83f9-f1bf-5c6e-8628-0e1f901919dc",
           "text": {
             "en": "How often do you **drink alcohol together** with each person?"
           },
@@ -1257,7 +1259,7 @@
       "filter": {
         "rules": [
           {
-            "id": "rule_8",
+            "id": "712e042b-b192-5cad-98e6-70609f1571ff",
             "type": "node",
             "options": {
               "type": "person",
@@ -1270,7 +1272,7 @@
       }
     },
     {
-      "id": "your_drinking",
+      "id": "c53799a4-317d-54a3-a34c-669c3338899d",
       "type": "EgoForm",
       "label": {
         "en": "Your drinking"
@@ -1286,7 +1288,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_audit_frequency",
+            "id": "8d330119-590d-5257-84b4-3ea68778d397",
             "variable": "ego_audit_frequency",
             "prompt": {
               "en": "How often do you have a drink containing alcohol?"
@@ -1296,7 +1298,7 @@
       }
     },
     {
-      "id": "drinking_amount",
+      "id": "5fcbce8f-e51a-55f4-a0ef-4c6ba7cf04d1",
       "type": "EgoForm",
       "label": {
         "en": "Drinking amount"
@@ -1306,7 +1308,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_9",
+              "id": "0cb88be3-b12b-5e34-b085-768451a91501",
               "type": "ego",
               "options": {
                 "attribute": "ego_audit_frequency",
@@ -1328,14 +1330,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_audit_typical",
+            "id": "e7b0f0bb-a81c-557b-aa5f-3d9b9e3b5675",
             "variable": "ego_audit_typical",
             "prompt": {
               "en": "How many drinks containing alcohol do you have on a typical day when you are drinking?"
             }
           },
           {
-            "id": "field-ego_audit_heavy",
+            "id": "f68e658b-39f3-5c1e-af6b-6809a72c7f07",
             "variable": "ego_audit_heavy",
             "prompt": {
               "en": "How often do you have six or more drinks on one occasion?"
@@ -1345,7 +1347,7 @@
       }
     },
     {
-      "id": "wellbeing",
+      "id": "cfe9f242-8930-5f03-bfca-9b0abaac7418",
       "type": "EgoForm",
       "label": {
         "en": "Wellbeing (WHO-5)"
@@ -1361,35 +1363,35 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_who5_cheerful",
+            "id": "bbccf91d-3cf6-5f4e-a5ab-2eac457c0b3c",
             "variable": "ego_who5_cheerful",
             "prompt": {
               "en": "Over the last two weeks: I have felt cheerful and in good spirits."
             }
           },
           {
-            "id": "field-ego_who5_calm",
+            "id": "fc6883e4-4ae6-5d91-8988-86bdc8b79346",
             "variable": "ego_who5_calm",
             "prompt": {
               "en": "Over the last two weeks: I have felt calm and relaxed."
             }
           },
           {
-            "id": "field-ego_who5_active",
+            "id": "5aa55a70-7e23-5bae-903f-65ce2471d011",
             "variable": "ego_who5_active",
             "prompt": {
               "en": "Over the last two weeks: I have felt active and vigorous."
             }
           },
           {
-            "id": "field-ego_who5_rested",
+            "id": "ec571f49-fe2c-5020-9810-3e0ccb91906f",
             "variable": "ego_who5_rested",
             "prompt": {
               "en": "Over the last two weeks: I woke up feeling fresh and rested."
             }
           },
           {
-            "id": "field-ego_who5_interest",
+            "id": "adfab90c-d65c-55dc-a040-db73c924e2d2",
             "variable": "ego_who5_interest",
             "prompt": {
               "en": "Over the last two weeks: My daily life has been filled with things that interest me."
@@ -1399,7 +1401,7 @@
       }
     },
     {
-      "id": "review",
+      "id": "2b9ead84-3808-50b6-a7f2-1e141889a0ad",
       "type": "Narrative",
       "label": {
         "en": "Talking about your map"
@@ -1409,7 +1411,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_10",
+              "id": "de0f8e1d-38cb-5363-aa35-200b9041b580",
               "type": "node",
               "options": {
                 "type": "person",
@@ -1425,7 +1427,7 @@
       },
       "presets": [
         {
-          "id": "view1",
+          "id": "b0a1238f-8488-5450-8ea7-394b95a1cc1f",
           "label": {
             "en": "Who drinks heavily"
           },
@@ -1434,6 +1436,7 @@
           "edges": {
             "display": [
               {
+                "id": "8165e4c4-3251-5842-8a9f-5f918ddabfaf",
                 "type": "knows",
                 "label": {
                   "en": "Know each other"
@@ -1443,7 +1446,7 @@
           }
         },
         {
-          "id": "view2",
+          "id": "17b588bc-e6a8-59b2-80d5-02c598a76b2f",
           "label": {
             "en": "Who you drink with"
           },
@@ -1451,6 +1454,7 @@
           "edges": {
             "display": [
               {
+                "id": "fdfc4432-b7ab-5f05-a84e-e3556ddb9c28",
                 "type": "knows",
                 "label": {
                   "en": "Know each other"
@@ -1460,6 +1464,7 @@
           },
           "highlight": [
             {
+              "id": "3eb1ddfa-d738-5965-834b-9ddcab4809c8",
               "variable": "person_drinks_with",
               "label": {
                 "en": "Drinks with participant"
@@ -1468,7 +1473,7 @@
           ]
         },
         {
-          "id": "view3",
+          "id": "fe9fa4fc-4a7d-5294-a42b-028cd70ea45e",
           "label": {
             "en": "How you met"
           },
@@ -1487,7 +1492,7 @@
       }
     },
     {
-      "id": "thanks",
+      "id": "6091974d-ebd0-5eae-98c2-845a4de4c349",
       "type": "Information",
       "label": {
         "en": "Thank you"
@@ -1497,7 +1502,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "7a7f9fd2-31c9-5e6a-9615-9e4035fe9413",
           "type": "text",
           "content": {
             "en": "Thank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
@@ -1506,7 +1511,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "af898428-02c5-5ce8-a117-44999877bc18",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
@@ -1521,7 +1526,7 @@
       "outcome": "completed"
     },
     {
-      "id": "consent_declined",
+      "id": "360cbe92-4d2c-5fb4-88a6-275315a71b41",
       "type": "FinishSession",
       "mode": "automatic",
       "label": {

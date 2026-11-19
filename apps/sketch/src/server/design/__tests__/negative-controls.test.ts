@@ -5,10 +5,12 @@ import { describe, expect, it } from 'vitest';
 // The golden tests only prove something if the validator is live: each of
 // these single edits to the valid example protocol must make it fail.
 import {
+  createProtocolObjectId,
   type VersionedProtocol,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
+import { sketchStageId } from '../objectIds.ts';
 import { readJsonFixture } from './helpers.ts';
 
 type Stage = {
@@ -53,9 +55,13 @@ const controls: [string, (p: Protocol) => void][] = [
   [
     'a two-rule filter without a join',
     (p) => {
-      const { filter } = stage(p, (s) => s.id === 'drinking_together');
+      const { filter } = stage(
+        p,
+        (s) => s.id === sketchStageId('drinking_together'),
+      );
       const first = filter?.rules[0];
-      if (filter && first) filter.rules.push({ ...first, id: 'r_x' });
+      if (filter && first)
+        filter.rules.push({ ...first, id: createProtocolObjectId() });
     },
   ],
 ];
