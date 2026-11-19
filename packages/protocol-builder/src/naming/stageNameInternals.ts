@@ -7,6 +7,7 @@ import {
   FinishModeSchema,
   type FinishOutcome,
   FinishOutcomeSchema,
+  isProtocolObjectId,
   type Item,
   type LocaleTag,
   type StageSubject,
@@ -338,7 +339,7 @@ function readItems(value: unknown): Item[] | undefined {
   const items: Item[] = [];
   for (const entry of value) {
     if (typeof entry !== 'object' || entry === null) continue;
-    if (!('id' in entry) || typeof entry.id !== 'string') continue;
+    if (!('id' in entry) || !isProtocolObjectId(entry.id)) continue;
     if (!('content' in entry) || !('type' in entry)) continue;
     // A text item is counted as well as an asset one: only assets qualify a
     // name, but a dropped text item would be indistinguishable from a

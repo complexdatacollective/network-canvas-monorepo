@@ -1,13 +1,18 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorRosterStageEditor } from '../NameGeneratorRosterStageEditor.ts';
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const ROSTER_INDEX = fixtureStageIds().indexOf('name-generator-roster-1');
+const ROSTER_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('name-generator-roster-1'),
+);
 
 const stageNameInput = (): HTMLElement =>
   screen.getByRole('textbox', { name: 'Stage name' });

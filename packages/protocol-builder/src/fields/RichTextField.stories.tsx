@@ -13,6 +13,7 @@ import { REQUIRED } from '../form/requiredField.ts';
 import { markdownTextShapeAt } from '../localization/textShape.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import { LocalizedRichTextField } from './LocalizedStringField.tsx';
 
 /** What an anonymisation stage tells the participant before asking for a passphrase. */
@@ -28,7 +29,10 @@ const EXPLANATION_SHAPE = markdownTextShapeAt(anonymisationStage, [
 ]);
 const CENSUS_SHAPE = markdownTextShapeAt(familyPedigreeStage, [CENSUS_FIELD]);
 
-const ANONYMISATION = sectionId({ kind: 'stage', stageId: 'anonymisation-1' });
+const ANONYMISATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('anonymisation-1'),
+});
 
 /**
  * A passage, which the stage declares several lines: headings, lists and
@@ -86,7 +90,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'anonymisation-1',
+    stageId: fixtureStageId('anonymisation-1'),
     sectionTitle: 'What the participant is told',
     children: explanation,
   },
@@ -180,7 +184,7 @@ export const APassage: Story = {
  */
 export const OneLineOnly: Story = {
   args: {
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     sectionTitle: 'What the participant is asked',
     children: censusPrompt,
   },

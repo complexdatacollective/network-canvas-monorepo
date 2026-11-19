@@ -10,6 +10,8 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { attempt } from '../../../state/attempt.ts';
+import { fixtureStageId } from '../../protocolFixture.ts';
+import { testObjectId } from '../../testObjectId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -26,7 +28,7 @@ const ANY_PERSON = {
   rules: [
     {
       type: 'node',
-      id: 'rule-1',
+      id: testObjectId('rule-1'),
       options: { type: 'person', operator: 'EXISTS' },
     },
   ],
@@ -34,14 +36,14 @@ const ANY_PERSON = {
 
 const informationWithSkipTo = (destination: SectionDoc): SectionDoc => ({
   ...(FIXTURE.stages as SectionDoc[]).filter(
-    (document) => document.id === 'information-1',
+    (document) => document.id === fixtureStageId('information-1'),
   )[0],
   skipLogic: { action: 'SHOW', filter: ANY_PERSON, destination },
 });
 
 const narrativePedigreeAbout = (sourceStageId: string): SectionDoc => ({
   ...(FIXTURE.stages as SectionDoc[]).filter(
-    (document) => document.id === 'narrative-pedigree-1',
+    (document) => document.id === fixtureStageId('narrative-pedigree-1'),
   )[0],
   sourceStageId,
 });
@@ -72,38 +74,44 @@ type ReferenceCase = Readonly<{
 const CASES: readonly ReferenceCase[] = [
   {
     site: 'skipLogic.destination.stageId',
-    target: 'sociogram-1',
+    target: fixtureStageId('sociogram-1'),
     referring: {
-      [stage('information-1')]: informationWithSkipTo({
+      [stage(fixtureStageId('information-1'))]: informationWithSkipTo({
         type: 'stage',
-        stageId: 'sociogram-1',
+        stageId: fixtureStageId('sociogram-1'),
       }),
     },
     dangling: {
-      [stage('information-1')]: informationWithSkipTo({ type: 'finish' }),
+      [stage(fixtureStageId('information-1'))]: informationWithSkipTo({
+        type: 'finish',
+      }),
     },
     remaining: [
       {
-        sectionId: stage('information-1'),
+        sectionId: stage(fixtureStageId('information-1')),
         path: ['skipLogic', 'destination', 'stageId'],
       },
     ],
   },
   {
     site: 'sourceStageId',
-    target: 'family-pedigree-1',
+    target: fixtureStageId('family-pedigree-1'),
     // The fixture already pairs these two, seeded here anyway so the case says
     // what it depends on rather than inheriting it.
     referring: {
-      [stage('narrative-pedigree-1')]:
-        narrativePedigreeAbout('family-pedigree-1'),
+      [stage(fixtureStageId('narrative-pedigree-1'))]: narrativePedigreeAbout(
+        fixtureStageId('family-pedigree-1'),
+      ),
     },
     dangling: {
-      [stage('narrative-pedigree-1')]:
+      [stage(fixtureStageId('narrative-pedigree-1'))]:
         narrativePedigreeAbout('family-pedigree-2'),
     },
     remaining: [
-      { sectionId: stage('narrative-pedigree-1'), path: ['sourceStageId'] },
+      {
+        sectionId: stage(fixtureStageId('narrative-pedigree-1')),
+        path: ['sourceStageId'],
+      },
     ],
   },
 ];

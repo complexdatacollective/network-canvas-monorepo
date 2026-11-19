@@ -8,6 +8,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { binBehavioursMessages } from '../sections/bin-behaviours/binBehavioursMessages.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import InteractionModeField from './InteractionModeField.tsx';
 
 /** Where both bin interfaces keep this decision. */
@@ -38,7 +39,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'ordinal-bin-1',
+    stageId: fixtureStageId('ordinal-bin-1'),
     sectionTitle: 'Placing nodes',
     children: <InteractionMode />,
   },
@@ -70,7 +71,7 @@ export const NothingStoredIsDragAndDrop: Story = {
 
 /** Choosing tap to place, on the other bin interface. */
 export const ChoosingTapToPlace: Story = {
-  args: { stageId: 'categorical-bin-1' },
+  args: { stageId: fixtureStageId('categorical-bin-1') },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -92,7 +93,10 @@ export const ChoosingTapToPlace: Story = {
 export const TapToPlaceStored: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'ordinal-bin-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('ordinal-bin-1'),
+      });
       const { document } = host.store.read(stage);
       host.store.applyAsCollaborator(stage, {
         ...document,

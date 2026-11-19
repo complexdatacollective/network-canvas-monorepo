@@ -9,6 +9,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import PassphraseRulesField, {
   passphraseRulesIssue,
 } from './PassphraseRulesField.tsx';
@@ -18,7 +19,7 @@ const VALIDATION_FIELD = 'validation';
 
 const ANONYMISATION_STAGE = sectionId({
   kind: 'stage',
-  stageId: 'anonymisation-1',
+  stageId: fixtureStageId('anonymisation-1'),
 });
 
 /**
@@ -68,7 +69,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'anonymisation-1',
+    stageId: fixtureStageId('anonymisation-1'),
     sectionTitle: 'Passphrase validation',
     children: <PassphraseRules />,
   },

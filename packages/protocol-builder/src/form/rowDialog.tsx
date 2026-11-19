@@ -22,6 +22,7 @@ import {
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 
 import { useReleaseRowBindings } from '../localization/useDynamicValueSite.ts';
 import { DEFAULT_ITEM_LABEL } from './arrayFields/arrayMessages.ts';
@@ -80,13 +81,14 @@ export const rowId = (row: RowValues): string | undefined =>
  * What a row being ADDED starts out holding.
  *
  * The id is the list's own business and is filled in whether the section's
- * template supplies one or not; everything else is what the section says a new
- * row of its list begins as.
+ * template supplies one or not, before the row reaches the dialog's form, so
+ * the draft is the object the protocol will hold from its first moment;
+ * everything else is what the section says a new row of its list begins as.
  */
 export const rowTemplate =
   (template?: () => Partial<RowValues>) => (): Partial<RowValues> => {
     const row = template?.() ?? {};
-    return { ...row, id: rowId(row) ?? crypto.randomUUID() };
+    return { ...row, id: rowId(row) ?? createProtocolObjectId() };
   };
 
 /** What the fields a section renders inside a row dialog are told. */
@@ -344,8 +346,6 @@ export function RowListItem({
 type RowEditorSession = Readonly<{
   key: number;
   row: RowValues;
-  /** The row as the list held it, before `expand`; absent for a new row. */
-  stored?: RowValues;
   editIndex?: number;
   isNewItem: boolean;
   open: boolean;
@@ -390,8 +390,9 @@ function useRowEditorSession(
   ) {
     setSeen({ item, index, isNewItem });
     const stored = item ? stripManagedProperties<RowValues>(item) : undefined;
-    const layoutId =
-      typeof item?._internalId === 'string' ? item._internalId : undefined;
+    // The row's own id is also the key its list item is laid out under
+    // (`getId={rowId}`), so the dialog morphs out of the row it was opened on.
+    const layoutId = stored === undefined ? undefined : rowId(stored);
     const row =
       stored === undefined ? undefined : expand ? expand(stored) : stored;
     setSession((previous) => {
@@ -402,7 +403,6 @@ function useRowEditorSession(
       return {
         key: (previous?.key ?? 0) + 1,
         row,
-        ...(isNewItem || stored === undefined ? {} : { stored }),
         ...(editIndex === undefined ? {} : { editIndex }),
         isNewItem,
         open: true,
@@ -531,7 +531,6 @@ export function RowDialog({
       <RowFields
         name={name}
         row={session.row}
-        {...(session.stored === undefined ? {} : { stored: session.stored })}
         {...(session.editIndex === undefined
           ? {}
           : { editIndex: session.editIndex })}
@@ -552,14 +551,12 @@ export function RowDialog({
 function RowFields({
   name,
   row,
-  stored,
   editIndex,
   formId,
   Editor,
 }: Readonly<{
   name: string;
   row: RowValues;
-  stored?: RowValues;
   editIndex?: number;
   formId: string;
   Editor: RowEditorComponent;
@@ -585,7 +582,6 @@ function RowFields({
     if (listPath === undefined) return null;
     return {
       listPath,
-      ...(stored === undefined ? {} : { opened: stored }),
       read: () =>
         documentFromSubmission({
           currentFields: row,
@@ -595,7 +591,7 @@ function RowFields({
           emptied: 'keep',
         }),
     };
-  }, [name, row, stored, storeApi]);
+  }, [name, row, storeApi]);
 
   return (
     <EditedRowContext value={editedRow}>

@@ -10,7 +10,10 @@ import ArrayField, {
   type ArrayFieldEditorProps,
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import type { Codebook } from '@codaco/protocol-validation';
+import {
+  type Codebook,
+  createProtocolObjectId,
+} from '@codaco/protocol-validation';
 
 import { shapeAssetIds } from '../codebook/customShapes.ts';
 import NodeShapeSvgs from '../codebook/NodeShapeSvgs.tsx';
@@ -339,7 +342,10 @@ export type RuleListProps = Readonly<{
   readOnly?: boolean;
 }>;
 
-const createEmptyRule = (): Partial<RuleDraft> => ({});
+/** A new rule carries its id from the moment it is added. */
+export const createEmptyRule = (): Partial<RuleDraft> => ({
+  id: createProtocolObjectId(),
+});
 
 /**
  * A rule's identity is its own id, so a row keeps its place through an add, a

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { CreateOptionOutcome } from '../../../fields/VariablePickerField.tsx';
@@ -23,6 +24,9 @@ import AssignAttributes, {
 type HarnessUser = ReturnType<typeof userEvent.setup>;
 
 const NO_DRAFT_VARIABLES: ReadonlySet<string> = new Set();
+
+/** A row just added: nothing chosen yet, and an id of its own. */
+const NEW_ROW = { id: expect.any(String) };
 
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 
@@ -209,8 +213,52 @@ describe('AssignAttributes', () => {
     await screen.findByText('Value to assign');
     expect(screen.queryByText(/is collected by a form elsewhere/)).toBeNull();
     await waitFor(() =>
-      expect(attributes()).toEqual([{ variable: 'highlighted' }]),
+      expect(attributes()).toEqual([
+        { id: expect.any(String), variable: 'highlighted' },
+      ]),
     );
+  });
+
+  it('keeps each row’s id through an add, an edit and a delete', async () => {
+    const STORED = '3f2a7c10-5e4b-4d8a-9b6c-1a2b3c4d5e6f';
+    const { user, attributes } = renderAttributeList(
+      [{ id: STORED, variable: 'highlighted', value: true }],
+      [{ id: STORED, variable: 'highlighted', value: true }],
+    );
+    const idsNow = (): unknown[] => {
+      const rows = attributes();
+      return Array.isArray(rows)
+        ? rows.map((row: unknown) =>
+            typeof row === 'object' && row !== null
+              ? Reflect.get(row, 'id')
+              : undefined,
+          )
+        : [];
+    };
+
+    await addRow(user);
+    await waitFor(() => expect(idsNow()).toHaveLength(2));
+    const [first, added] = idsNow();
+    expect(first).toBe(STORED);
+    expect(isProtocolObjectId(added)).toBe(true);
+    expect(added).not.toBe(STORED);
+
+    const pickers = await screen.findAllByRole('combobox', {
+      name: 'Create or select an attribute',
+    });
+    await user.selectOptions(pickers[0]!, 'flagged');
+    await waitFor(() =>
+      expect(attributes()).toEqual([
+        expect.objectContaining({ id: STORED, variable: 'flagged' }),
+        expect.objectContaining({ id: added }),
+      ]),
+    );
+
+    const [deleteFirst] = screen.getAllByRole('button', {
+      name: 'Delete attribute',
+    });
+    await user.click(deleteFirst!);
+    await waitFor(() => expect(idsNow()).toEqual([added]));
   });
 
   it('stops a second row claiming an attribute the first already stamps', async () => {
@@ -284,11 +332,11 @@ describe('a stage document holding something that is not a list', () => {
    * them.
    */
   const foreignValues = {
-    'a bare string': ['highlighted', [{}]],
-    'a single record': [{ variable: 'highlighted', value: true }, [{}]],
+    'a bare string': ['highlighted', [NEW_ROW]],
+    'a single record': [{ variable: 'highlighted', value: true }, [NEW_ROW]],
     'a list with a hole in it': [
       [null, { variable: 'highlighted', value: true }],
-      [{}],
+      [NEW_ROW],
     ],
   } as const satisfies Record<string, readonly [unknown, unknown[]]>;
 
@@ -337,13 +385,9 @@ describe('a stage document holding something that is not a list', () => {
 
 /**
  * Creating a codebook variable is a round trip through the host, and the list
- * carries on moving while it runs. These rows carry no id of their own, so
- * `ArrayField` identifies them by an internal id it infers from each row's
- * content whenever the value is replaced — which holds a row's update handle
- * on it however the list moves around it, and cannot hold it there when the
- * row's own content is what changed. The deletion path already answers this by
- * removing by the row's own identity rather than by a handle captured when
- * the dialog opened; the creation path is the same window.
+ * carries on moving while it runs. A row's update handle follows its id, so it
+ * holds however the list moves around it, and the creation still has to notice
+ * when the row's own content is what changed, or when the row has gone.
  */
 describe('a variable created while the list is moving', () => {
   const openList = (

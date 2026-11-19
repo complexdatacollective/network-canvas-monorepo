@@ -13,10 +13,12 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../testing/testObjectId.ts';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
 import EncryptedAttributesSection from '../sections/EncryptedAttributesSection.tsx';
 import {
@@ -90,7 +92,7 @@ const hostVariable = (
 
 const openEditor = (): StageEditorHarness =>
   renderStageEditor({
-    stageId: 'anonymisation-1',
+    stageId: fixtureStageId('anonymisation-1'),
     registry: anonymisationStageEditor,
   });
 
@@ -99,7 +101,7 @@ const openWithRules = (
 ): StageEditorHarness =>
   renderStageEditor({
     stage: {
-      id: 'anonymisation-rules',
+      id: testObjectId('anonymisation-rules'),
       type: 'Anonymisation',
       fields: {
         label: { 'en-US': 'Anonymisation' },
@@ -438,7 +440,7 @@ describe('how the passphrase rules are put on screen', () => {
   it('says what to do about a contradiction that arrived with the protocol', async () => {
     renderStageEditor({
       stage: {
-        id: 'anonymisation-contradictory',
+        id: testObjectId('anonymisation-contradictory'),
         type: 'Anonymisation',
         fields: {
           label: { 'en-US': 'Anonymisation' },
@@ -649,13 +651,13 @@ describe('the attributes a passphrase protects', () => {
   describe('an attribute a rule reads', () => {
     it('encrypts it when the rules only ask whether it is answered', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: withStageFields({
-          'name-generator-1': {
+          [fixtureStageId('name-generator-1')]: {
             skipLogic: {
               action: 'SHOW',
-              filter: { rules: [answeredRule('skip-a', 'name')] },
+              filter: { rules: [answeredRule(testObjectId('skip-a'), 'name')] },
             },
           },
         }),
@@ -672,23 +674,23 @@ describe('the attributes a passphrase protects', () => {
 
     it('counts only the rules that compare its answers', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: withStageFields({
-          'name-generator-1': {
+          [fixtureStageId('name-generator-1')]: {
             skipLogic: {
               action: 'SKIP',
               filter: {
                 join: 'OR',
                 rules: [
-                  answeredRule('skip-a', 'name'),
-                  personRule('skip-b', 'name'),
+                  answeredRule(testObjectId('skip-a'), 'name'),
+                  personRule(testObjectId('skip-b'), 'name'),
                 ],
               },
             },
           },
-          'sociogram-1': {
-            filter: { rules: [answeredRule('filter-a', 'name')] },
+          [fixtureStageId('sociogram-1')]: {
+            filter: { rules: [answeredRule(testObjectId('filter-a'), 'name')] },
           },
         }),
       });
@@ -706,17 +708,17 @@ describe('the attributes a passphrase protects', () => {
 
     it('refuses to encrypt it, naming the stages whose rules read it', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: withStageFields({
-          'name-generator-1': {
+          [fixtureStageId('name-generator-1')]: {
             skipLogic: {
               action: 'SKIP',
-              filter: { rules: [personRule('skip-a', 'name')] },
+              filter: { rules: [personRule(testObjectId('skip-a'), 'name')] },
             },
           },
-          'sociogram-1': {
-            filter: { rules: [personRule('filter-a', 'name')] },
+          [fixtureStageId('sociogram-1')]: {
+            filter: { rules: [personRule(testObjectId('filter-a'), 'name')] },
           },
         }),
       });
@@ -742,16 +744,18 @@ describe('the attributes a passphrase protects', () => {
      */
     it('counts the rules in a narrative preset’s own filter', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: withStageFields({
-          'narrative-1': {
+          [fixtureStageId('narrative-1')]: {
             presets: [
               {
-                id: 'narrative-preset-1',
+                id: testObjectId('narrative-preset-1'),
                 label: { 'en-US': 'Default layout' },
                 layoutVariable: 'layout',
-                filter: { rules: [personRule('preset-a', 'name')] },
+                filter: {
+                  rules: [personRule(testObjectId('preset-a'), 'name')],
+                },
               },
             ],
           },
@@ -776,23 +780,27 @@ describe('the attributes a passphrase protects', () => {
      */
     it('counts only the panels that read the interview’s own network', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: withStageFields({
-          'name-generator-1': {
+          [fixtureStageId('name-generator-1')]: {
             panels: [
               {
-                id: 'panel-network',
+                id: testObjectId('panel-network'),
                 title: { 'en-US': 'People already named' },
                 dataSource: 'existing',
-                filter: { rules: [personRule('panel-a', 'name')] },
+                filter: {
+                  rules: [personRule(testObjectId('panel-a'), 'name')],
+                },
               },
               {
-                id: 'panel-roster',
+                id: testObjectId('panel-roster'),
                 title: { 'en-US': 'Roster' },
                 dataSource: 'roster_data',
                 filter: {
-                  rules: [personRule('panel-b', 'relationship_to_ego')],
+                  rules: [
+                    personRule(testObjectId('panel-b'), 'relationship_to_ego'),
+                  ],
                 },
               },
             ],
@@ -827,14 +835,16 @@ describe('the attributes a passphrase protects', () => {
      */
     it('refuses to save this stage’s own draft rule once its attribute is encrypted', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: withStageFields({
-          'anonymisation-1': {
+          [fixtureStageId('anonymisation-1')]: {
             skipLogic: {
               action: 'SKIP',
               filter: {
-                rules: [personRule('skip-a', 'relationship_to_ego')],
+                rules: [
+                  personRule(testObjectId('skip-a'), 'relationship_to_ego'),
+                ],
               },
             },
           },
@@ -884,14 +894,14 @@ describe('the attributes a passphrase protects', () => {
     /** Unticking is the way out of a protocol that already holds both. */
     it('still lets it be unencrypted', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: withStageFields(
           {
-            'name-generator-1': {
+            [fixtureStageId('name-generator-1')]: {
               skipLogic: {
                 action: 'SKIP',
-                filter: { rules: [personRule('skip-a', 'name')] },
+                filter: { rules: [personRule(testObjectId('skip-a'), 'name')] },
               },
             },
           },
@@ -922,7 +932,7 @@ describe('the attributes a passphrase protects', () => {
    */
   it('refuses the stage save naming whoever holds the type, and keeps the tick', async () => {
     const harness = renderStageEditor({
-      stageId: 'anonymisation-1',
+      stageId: fixtureStageId('anonymisation-1'),
       registry: anonymisationStageEditor,
       heldSections: [
         {
@@ -957,7 +967,7 @@ describe('the attributes a passphrase protects', () => {
   describe('switching a whole type off', () => {
     const openProtecting = (): StageEditorHarness =>
       renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: alreadyProtecting('name'),
       });
@@ -1108,7 +1118,7 @@ describe('the attributes a passphrase protects', () => {
     it('does not sweep when the editor goes read-only mid-confirmation', async () => {
       const stopWriting = { now: () => undefined as void };
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         adapter: alreadyProtecting('name'),
         sections: (
           <UntilTheEditorIsReadOnly
@@ -1201,7 +1211,7 @@ describe('the attributes a passphrase protects', () => {
 
     it('closes the switch once a collaborator clears the last flag', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: alreadyProtecting('name'),
       });
@@ -1253,7 +1263,7 @@ describe('the attributes a passphrase protects', () => {
      */
     it('leaves the panel open when the researcher unticks the last attribute', async () => {
       const harness = renderStageEditor({
-        stageId: 'anonymisation-1',
+        stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
         adapter: alreadyProtecting('name'),
       });
@@ -1278,7 +1288,7 @@ describe('the attributes a passphrase protects', () => {
     // panel stands open and its checkboxes are on screen to be read — which
     // is the only state in which a spectator could try to change one.
     renderStageEditor({
-      stageId: 'anonymisation-1',
+      stageId: fixtureStageId('anonymisation-1'),
       registry: anonymisationStageEditor,
       readOnly: true,
       adapter: alreadyProtecting('name'),

@@ -11,7 +11,9 @@ import { EntitySubjectPickerField } from '../../fields/EntityTypePickerField.tsx
 import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../testing/testObjectId.ts';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
 const SEARCH: SectionCapability = {
@@ -41,7 +43,7 @@ function RosterSource() {
         component={RadioGroup}
         options={[
           { value: 'roster_data', label: 'Roster' },
-          { value: 'another_roster', label: 'Another roster' },
+          { value: testObjectId('another_roster'), label: 'Another roster' },
         ]}
       />
     </BuilderSection>
@@ -196,26 +198,26 @@ function CardDetails() {
 const ANOTHER_ROSTER = {
   another_roster: {
     type: 'network',
-    id: 'another_roster',
+    id: testObjectId('another_roster'),
     name: 'Another roster',
     source: 'another-roster.json',
   },
 };
 
 const openSection = () => ({
-  stageId: 'name-generator-roster-1',
+  stageId: fixtureStageId('name-generator-roster-1'),
   sections: <SearchOptions />,
   assets: ANOTHER_ROSTER,
 });
 
 const openListSection = () => ({
-  stageId: 'name-generator-roster-1',
+  stageId: fixtureStageId('name-generator-roster-1'),
   sections: <CardDetails />,
   assets: ANOTHER_ROSTER,
 });
 
 const openSectionAgainstASubject = () => ({
-  stageId: 'name-generator-roster-1',
+  stageId: fixtureStageId('name-generator-roster-1'),
   sections: <SearchOptionsAgainstASubject />,
 });
 
@@ -425,7 +427,13 @@ describe('a capability the researcher switches off', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument.cardOptions).toEqual({
-      additionalProperties: [{ variable: 'name', label: { 'en-US': 'Name' } }],
+      additionalProperties: [
+        {
+          id: expect.stringMatching(/^[0-9a-f-]{36}$/u),
+          variable: 'name',
+          label: { 'en-US': 'Name' },
+        },
+      ],
     });
   });
 });

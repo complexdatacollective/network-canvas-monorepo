@@ -4,8 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   fixtureStageIds,
   loadFixtureStage,
+  fixtureStageId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../testing/testObjectId.ts';
 import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
@@ -45,7 +47,9 @@ const openFixture = () => ({
 });
 
 /** Where a host would insert a new one: over the form the fixture holds. */
-const ALTER_FORM_INDEX = fixtureStageIds().indexOf('alter-form-1');
+const ALTER_FORM_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('alter-form-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'AlterForm' as const, position: ALTER_FORM_INDEX },
@@ -87,14 +91,14 @@ describe('the editor for a form about each person', () => {
   it('keeps a filter the stage already has', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'alter-form-filtered',
+        id: testObjectId('alter-form-filtered'),
         type: 'AlterForm',
         fields: {
           ...loadFixtureStage('alter-form-1').fields,
           filter: {
             rules: [
               {
-                id: 'rule-a',
+                id: testObjectId('rule-a'),
                 type: 'node',
                 options: { type: 'person', operator: 'EXISTS' },
               },

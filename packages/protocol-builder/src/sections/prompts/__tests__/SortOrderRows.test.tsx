@@ -17,9 +17,14 @@ import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
+  fixtureStageId,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type SavedStage,
 } from '../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../testing/testObjectId.ts';
 import PromptsSection from '../../PromptsSection.tsx';
 import SortOrderRows from '../SortOrderRows.tsx';
 
@@ -197,7 +202,28 @@ const sectionsFor = (
 
 const sections = sectionsFor(SortOrderPromptEditor);
 
-const RULE = { property: 'age', direction: 'desc' };
+/** The id the fixture's sociogram holds its first prompt under. */
+const FIXTURE_PROMPT_ID = (() => {
+  const { prompts } = loadFixtureStage('sociogram-1').fields;
+  const first: unknown = Array.isArray(prompts) ? prompts[0] : undefined;
+  const id: unknown =
+    typeof first === 'object' && first !== null
+      ? Reflect.get(first, 'id')
+      : undefined;
+  if (typeof id !== 'string') {
+    throw new Error('The fixture sociogram has no prompt id.');
+  }
+  return id;
+})();
+
+/** A sort rule a prompt already holds, under an id of its own. */
+const sortRule = (property: string, direction: 'asc' | 'desc') => ({
+  id: testObjectId(`sort-rule-${property}`),
+  property,
+  direction,
+});
+
+const RULE = sortRule('age', 'desc');
 
 /**
  * A sociogram whose first prompt already has a sort order.
@@ -215,7 +241,7 @@ const seededWith = (
   >[0]['PromptEditor'] = SortOrderPromptEditor,
 ) => ({
   stage: {
-    id: 'sociogram-1',
+    id: fixtureStageId('sociogram-1'),
     type: 'Sociogram' as const,
     fields: {
       label: en('Sociogram'),
@@ -224,7 +250,7 @@ const seededWith = (
       behaviours: { automaticLayout: true },
       prompts: [
         {
-          id: 'sociogram-prompt-1',
+          id: testObjectId('sociogram-prompt-1'),
           text: en('Place the people who know each other close together'),
           layout: { layoutVariable: 'layout' },
           sortOrder: rules,
@@ -254,7 +280,7 @@ const MISSING_ATTRIBUTE_MESSAGE =
   'This rule points at an attribute no longer in the codebook. Choose another or delete the rule.';
 
 const seededWithAnOrphanedRule = () =>
-  seededWith([{ property: ORPHANED_PROPERTY, direction: 'asc' }]);
+  seededWith([sortRule(ORPHANED_PROPERTY, 'asc')]);
 
 /**
  * The prompt a save actually committed.
@@ -329,7 +355,10 @@ describe('the sort order a prompt carries', () => {
   });
 
   it('saves a rule the researcher switched the group on to write', async () => {
-    const harness = renderStageEditor({ stageId: 'sociogram-1', sections });
+    const harness = renderStageEditor({
+      stageId: fixtureStageId('sociogram-1'),
+      sections,
+    });
 
     await harness.user.click(
       screen.getAllByRole('button', { name: 'Edit prompt' })[0]!,
@@ -357,11 +386,17 @@ describe('the sort order a prompt carries', () => {
     );
 
     const saved = savedPrompt(await harness.submit());
-    expect(saved.sortOrder).toEqual([{ property: 'name', direction: 'asc' }]);
+    expect(saved.sortOrder).toEqual([
+      {
+        id: expect.stringMatching(/^[0-9a-f-]{36}$/u),
+        property: 'name',
+        direction: 'asc',
+      },
+    ]);
     // The rule went into the prompt it was written in, and changed nothing
     // else the prompt was holding.
     expect(saved.edges).toEqual({ display: ['knows'], create: 'knows' });
-    expect(saved.id).toBe('sociogram-prompt-1');
+    expect(saved.id).toBe(FIXTURE_PROMPT_ID);
   });
 
   it('drops the key when the researcher switches the group off', async () => {
@@ -595,7 +630,9 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
     );
 
     const saved = savedPrompt(await harness.submit());
-    expect(saved.sortOrder).toEqual([{ property: 'name', direction: 'asc' }]);
+    expect(saved.sortOrder).toEqual([
+      { ...sortRule(ORPHANED_PROPERTY, 'asc'), property: 'name' },
+    ]);
   });
 });
 
@@ -610,10 +647,7 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
  */
 describe('a subject with nothing to sort by', () => {
   const seeded = () =>
-    seededWith(
-      [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
-      makeEditor([]),
-    );
+    seededWith([sortRule(ORPHANED_PROPERTY, 'asc')], makeEditor([]));
 
   it('still shows what the rule points at', async () => {
     const harness = renderStageEditor(seeded());
@@ -644,10 +678,7 @@ describe('a subject with nothing to sort by', () => {
    */
   it('judges nothing while the family does not know its properties yet', async () => {
     const harness = renderStageEditor(
-      seededWith(
-        [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
-        makeEditor(undefined),
-      ),
+      seededWith([sortRule(ORPHANED_PROPERTY, 'asc')], makeEditor(undefined)),
     );
 
     await openPrompt(harness);
@@ -675,10 +706,7 @@ describe('a subject with nothing to sort by', () => {
  */
 describe('a collaborator deletes the attribute while the dialog is open', () => {
   const seeded = () => {
-    const opened = seededWith(
-      [{ property: 'age', direction: 'desc' }],
-      CodebookPromptEditor,
-    );
+    const opened = seededWith([sortRule('age', 'desc')], CodebookPromptEditor);
     return {
       ...opened,
       sections: (
@@ -750,7 +778,7 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
     expect(savedPrompt(await harness.submit()).sortOrder).toEqual([
-      { property: 'age', direction: 'desc' },
+      sortRule('age', 'desc'),
     ]);
   });
 
@@ -767,10 +795,7 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
    */
   it('refuses the rule the researcher pointed at an attribute deleted after', async () => {
     const harness = renderStageEditor(
-      seededWith(
-        [{ property: 'name', direction: 'desc' }],
-        CodebookPromptEditor,
-      ),
+      seededWith([sortRule('name', 'desc')], CodebookPromptEditor),
     );
 
     await openPrompt(harness);
@@ -832,7 +857,7 @@ describe('a sort rule pointing at an attribute nothing can be ordered by', () =>
   const UNSORTABLE_ATTRIBUTE_MESSAGE =
     'This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.';
 
-  const seeded = () => seededWith([{ property: 'layout', direction: 'asc' }]);
+  const seeded = () => seededWith([sortRule('layout', 'asc')]);
 
   it('shows the rule, naming the attribute it cannot sort by', async () => {
     const harness = renderStageEditor(seeded());
@@ -878,7 +903,7 @@ describe('a sort rule pointing at an attribute nothing can be ordered by', () =>
     );
 
     expect(savedPrompt(await harness.submit()).sortOrder).toEqual([
-      { property: 'name', direction: 'asc' },
+      { ...sortRule('layout', 'asc'), property: 'name' },
     ]);
   });
 

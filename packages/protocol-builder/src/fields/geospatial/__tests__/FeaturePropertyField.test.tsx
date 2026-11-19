@@ -8,7 +8,10 @@ import {
   geospatialSections,
   mapOptionsOf,
 } from '../../../editors/geospatial/__tests__/geospatialFixtures.tsx';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 
 /**
@@ -106,13 +109,14 @@ const EXTRA_BYTES: Readonly<Record<string, string>> = {
  * differs from the protocol's own in exactly the way the test names.
  */
 const openWithMapOptions = (changes: Readonly<Record<string, unknown>>) => {
-  const { type, fields } = loadFixtureStage('geospatial-1');
+  const { id, type, fields } = loadFixtureStage('geospatial-1');
   const options =
     typeof fields.mapOptions === 'object' && fields.mapOptions !== null
       ? fields.mapOptions
       : {};
   return renderStageEditor({
     stage: {
+      id,
       type,
       fields: { ...fields, mapOptions: { ...options, ...changes } },
     },
@@ -135,7 +139,7 @@ const offered = (picker: HTMLElement): string[] =>
 describe('the property a map selection is recorded as', () => {
   it('offers the properties the chosen layer actually carries', async () => {
     renderStageEditor({
-      stageId: 'geospatial-1',
+      stageId: fixtureStageId('geospatial-1'),
       sections: geospatialSections,
       assets: EXTRA_LAYERS,
       assetBytes: EXTRA_BYTES,

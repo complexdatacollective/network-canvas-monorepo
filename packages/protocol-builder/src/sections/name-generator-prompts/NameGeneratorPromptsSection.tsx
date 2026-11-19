@@ -142,8 +142,10 @@ const asAttributes = (value: unknown): AttributeValue[] =>
         if (typeof row !== 'object' || row === null) return [];
         const variable: unknown = Reflect.get(row, 'variable');
         const answer: unknown = Reflect.get(row, 'value');
+        const id: unknown = Reflect.get(row, 'id');
         return [
           {
+            ...(typeof id === 'string' ? { id } : {}),
             ...(typeof variable === 'string' ? { variable } : {}),
             ...(typeof answer === 'boolean' ? { value: answer } : {}),
           },

@@ -6,6 +6,8 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { attempt } from '../../../state/attempt.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import { fixtureStageId } from '../../protocolFixture.ts';
+import { testObjectId } from '../../testObjectId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -15,7 +17,10 @@ import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 
 const ADA: HostPrincipal = {
   sessionId: 'session-1',
@@ -219,7 +224,9 @@ const REACHES: readonly Reach[] = [
         kind: 'stage',
         document: Redacted.make({
           ...template,
-          items: [{ id: 'item-1', type: 'asset', content: staged }],
+          items: [
+            { id: testObjectId('item-1'), type: 'asset', content: staged },
+          ],
         }),
         promote: { editId: caller.editId, resourceIds: [staged] },
       });

@@ -40,6 +40,7 @@ import {
   openAttributePicker,
   searchAttributes,
 } from '../../testing/attributePicker.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   default as VariablePickerField,
@@ -212,7 +213,11 @@ function UnsortedPicker() {
         options={[
           { value: 'name', label: 'name', type: 'text' },
           { value: 'flagged', label: 'flagged', type: 'boolean' },
-          { value: 'age', label: 'age', type: 'number' },
+          {
+            value: 'age',
+            label: 'age',
+            type: 'number',
+          },
         ]}
       />
     </Section>
@@ -253,7 +258,7 @@ function CollidingIds() {
 const SAVEABLE_FIELD = 'prompts[0].additionalAttributes';
 
 const renderRows = (sections: ReactNode) =>
-  renderStageEditor({ stageId: 'name-generator-1', sections });
+  renderStageEditor({ stageId: fixtureStageId('name-generator-1'), sections });
 
 const addRow = async (harness: ReturnType<typeof renderRows>) => {
   await harness.user.click(
@@ -357,7 +362,7 @@ describe('the attribute picker', () => {
    */
   it('lists every attribute by name, with the kind of answer it holds', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <UnsortedPicker />,
     });
     await harness.opened();
@@ -375,7 +380,9 @@ describe('the attribute picker', () => {
     expect(rows[1]).toHaveAccessibleName('flagged');
     expect(rows[2]).toHaveAccessibleName('name');
 
-    const age = within(dialog).getByRole('option', { name: 'age' });
+    const age = within(dialog).getByRole('option', {
+      name: 'age',
+    });
     expect(age).toHaveAttribute('data-attribute-type', 'number');
     // Announced as a description rather than as part of the name, so the row
     // is still found by the researcher's own word for it.
@@ -723,7 +730,7 @@ describe('inventing an attribute from the picker', () => {
    */
   it('counts a name held by an attribute this picker never offers', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: (
         <Section title="Only booleans">
           <Field<typeof VariablePickerField>
@@ -733,7 +740,13 @@ describe('inventing an attribute from the picker', () => {
             options={[]}
             nameScope={{
               entity: 'node',
-              variables: [{ id: 'age', name: 'age', type: 'number' }],
+              variables: [
+                {
+                  id: 'age',
+                  name: 'age',
+                  type: 'number',
+                },
+              ],
             }}
             onCreateOption={async () => ({ status: 'created' })}
           />
@@ -792,7 +805,7 @@ describe('inventing an attribute from the picker', () => {
    */
   it('offers an attribute whose id reads like the row it invents', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <CollidingIds />,
     });
     await harness.opened();
@@ -846,7 +859,7 @@ describe('inventing an attribute from the picker', () => {
    */
   it('keeps the attribute held, and refuses the stage save naming the holder', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <StampedAttributes fieldName={SAVEABLE_FIELD} />,
       heldSections: [{ sectionId: PERSON_SECTION, displayName: 'Robin' }],
     });
@@ -1274,7 +1287,7 @@ describe('the window when the field turns read-only under it', () => {
 describe('the attribute picker, read in Spanish', () => {
   const renderInSpanish = (createAs?: CreateAs) =>
     renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       locale: 'es',
       sections:
         createAs === undefined ? (
@@ -1612,7 +1625,7 @@ describe('the picker’s blur boundary', () => {
 
   it('does not raise the field’s required error while the window is open', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <RequiredPicker />,
     });
     await harness.opened();
@@ -1635,7 +1648,7 @@ describe('the picker’s blur boundary', () => {
    */
   it('marks the field blurred once the pick is made', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <RequiredPicker />,
     });
     await harness.opened();
@@ -1691,7 +1704,11 @@ describe('the picker’s blur boundary', () => {
 describe('renaming the attribute a picker holds', () => {
   const PERSON_OPTIONS = [
     { value: 'name', label: 'name', type: 'text' as VariableType },
-    { value: 'age', label: 'age', type: 'number' as VariableType },
+    {
+      value: 'age',
+      label: 'age',
+      type: 'number' as VariableType,
+    },
   ];
 
   /**
@@ -1753,10 +1770,13 @@ describe('renaming the attribute a picker holds', () => {
 
   it('holds the new name with the stage, writes it on save, and changes nothing else', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker fieldName={SAVEABLE_PICKER} />,
     });
-    const stage = sectionId({ kind: 'stage', stageId: 'name-generator-1' });
+    const stage = sectionId({
+      kind: 'stage',
+      stageId: fixtureStageId('name-generator-1'),
+    });
     const before = harness.host.store.read(stage);
 
     const box = await openTheEditor(harness);
@@ -1792,7 +1812,7 @@ describe('renaming the attribute a picker holds', () => {
    */
   it('writes a participant attribute to the participant’s own section', async () => {
     const harness = renderStageEditor({
-      stageId: 'ego-form-1',
+      stageId: fixtureStageId('ego-form-1'),
       sections: (
         <HoldingPicker
           options={[{ value: 'ego_name', label: 'ego_name', type: 'text' }]}
@@ -1826,7 +1846,7 @@ describe('renaming the attribute a picker holds', () => {
    */
   it('refuses a name the type already holds, however it is spelled', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker />,
     });
 
@@ -1855,7 +1875,7 @@ describe('renaming the attribute a picker holds', () => {
    */
   it('refuses a name held by an attribute the picker never offered', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker options={[PERSON_OPTIONS[0]!]} />,
     });
 
@@ -1875,7 +1895,7 @@ describe('renaming the attribute a picker holds', () => {
    */
   it('asks for a name before it judges the characters in one', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker />,
     });
 
@@ -1894,7 +1914,7 @@ describe('renaming the attribute a picker holds', () => {
 
   it('refuses a name that would write a column the export already writes', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker />,
     });
 
@@ -1916,7 +1936,7 @@ describe('renaming the attribute a picker holds', () => {
     'takes the name %j, which the codebook can store',
     async (name) => {
       const harness = renderStageEditor({
-        stageId: 'name-generator-1',
+        stageId: fixtureStageId('name-generator-1'),
         sections: <HoldingPicker />,
       });
 
@@ -1933,7 +1953,7 @@ describe('renaming the attribute a picker holds', () => {
 
   it('offers no rename at all while the field is read-only', async () => {
     renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker readOnly />,
     });
 
@@ -1955,7 +1975,7 @@ describe('renaming the attribute a picker holds', () => {
    */
   it('keeps the rename held, and refuses the stage save naming the holder', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       heldSections: [
         {
           sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
@@ -2001,7 +2021,7 @@ describe('renaming the attribute a picker holds', () => {
    */
   it('keeps the draft when a collaborator took the name before the stage was saved', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker fieldName={SAVEABLE_PICKER} />,
     });
     await harness.opened();
@@ -2056,7 +2076,7 @@ describe('renaming the attribute a picker holds', () => {
    */
   it('makes the held pill the only rename control on the screen', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker />,
     });
     // Waited for rather than read straight away: the stage opens disabled
@@ -2104,7 +2124,7 @@ describe('renaming the attribute a picker holds', () => {
    */
   it('offers no rename for an option no codebook section holds', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: (
         <>
           <HoldingPicker />
@@ -2144,7 +2164,13 @@ describe('renaming the attribute a picker holds', () => {
       <VariablePickerField
         name="variable"
         value="age"
-        options={[{ value: 'age', label: 'age', type: 'number' }]}
+        options={[
+          {
+            value: 'age',
+            label: 'age',
+            type: 'number',
+          },
+        ]}
       />,
     );
 
@@ -2156,7 +2182,7 @@ describe('renaming the attribute a picker holds', () => {
 
   it('leaves a reference the codebook has lost a statement', async () => {
     renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <HoldingPicker options={[]} initialValue="a_deleted_one" />,
     });
 
@@ -2170,7 +2196,7 @@ describe('renaming the attribute a picker holds', () => {
 
   it('leaves an attribute this caller has ruled out a statement', async () => {
     renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: (
         <HoldingPicker
           options={[

@@ -19,6 +19,7 @@ import {
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import {
   lockQueryKey,
   presenceQueryKey,
@@ -35,7 +36,10 @@ const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 const PLACE = sectionId({ kind: 'codebookNode', typeId: 'place' });
 
 const COLLABORATOR = {

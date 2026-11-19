@@ -15,6 +15,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { fixtureMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../testing/testObjectId.ts';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
 import MultiSelect, {
   makeMultiSelectValidation,
@@ -78,7 +79,11 @@ function renderList(
   }
 
   const harness = renderStageEditor({
-    stage: { type: 'Information', fields },
+    stage: {
+      id: testObjectId('array-editors-stage'),
+      type: 'Information',
+      fields,
+    },
     sections: <Section />,
   });
 
@@ -522,7 +527,9 @@ describe('MultiSelect', () => {
       await screen.findByRole('button', { name: 'Add new sort rule' }),
     );
 
-    await waitFor(() => expect(draft().sortOrder).toEqual([{}]));
+    await waitFor(() =>
+      expect(draft().sortOrder).toEqual([{ id: expect.any(String) }]),
+    );
   });
 });
 
@@ -577,13 +584,17 @@ describe('a row removal confirm the list stops accepting', () => {
  * researcher a list they could see perfectly well had changed underneath them.
  */
 describe('a list holding rows the researcher cannot tell apart', () => {
+  const first = testObjectId('sort-rule-first');
+  const second = testObjectId('sort-rule-second');
+  const third = testObjectId('sort-rule-third');
+
   it('moves the rule the researcher took hold of past the one between the copies', async () => {
     const { user, draft } = renderSortRules({
       ...SAVEABLE_STAGE,
       sortOrder: [
-        { property: 'name', direction: 'asc' },
-        { property: 'age', direction: 'desc' },
-        { property: 'name', direction: 'asc' },
+        { id: first, property: 'name', direction: 'asc' },
+        { id: second, property: 'age', direction: 'desc' },
+        { id: third, property: 'name', direction: 'asc' },
       ],
     });
 
@@ -605,10 +616,10 @@ describe('a list holding rows the researcher cannot tell apart', () => {
 
     await waitFor(() =>
       expect(draft().sortOrder).toEqual([
-        { property: 'name', direction: 'asc' },
-        { property: 'name', direction: 'asc' },
-        { property: 'age', direction: 'desc' },
-        {},
+        { id: first, property: 'name', direction: 'asc' },
+        { id: third, property: 'name', direction: 'asc' },
+        { id: second, property: 'age', direction: 'desc' },
+        { id: expect.any(String) },
       ]),
     );
     await waitFor(() =>
@@ -624,8 +635,8 @@ describe('a list holding rows the researcher cannot tell apart', () => {
     const { user, draft } = renderSortRules({
       ...SAVEABLE_STAGE,
       sortOrder: [
-        { property: 'name', direction: 'asc' },
-        { property: 'name', direction: 'asc' },
+        { id: first, property: 'name', direction: 'asc' },
+        { id: second, property: 'name', direction: 'asc' },
       ],
     });
 
@@ -646,9 +657,9 @@ describe('a list holding rows the researcher cannot tell apart', () => {
 
     await waitFor(() =>
       expect(draft().sortOrder).toEqual([
-        { property: 'name', direction: 'asc' },
-        {},
-        { property: 'name', direction: 'asc' },
+        { id: first, property: 'name', direction: 'asc' },
+        { id: expect.any(String) },
+        { id: second, property: 'name', direction: 'asc' },
       ]),
     );
     await waitFor(() =>

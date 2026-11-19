@@ -6,10 +6,12 @@ import {
   awaitOfferedAttributes,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../testing/testObjectId.ts';
 import { narrativePedigreeStageEditor } from '../NarrativePedigreeStageEditor.ts';
 import {
   addDisease,
@@ -34,7 +36,7 @@ const NOTHING_LEFT_TO_MAP = /There is no attribute for this disease to map/;
 
 const openFixture = (): StageEditorHarness =>
   renderStageEditor({
-    stageId: 'narrative-pedigree-1',
+    stageId: fixtureStageId('narrative-pedigree-1'),
     registry: narrativePedigreeStageEditor,
   });
 
@@ -118,7 +120,7 @@ const alsoRecording = (
     nominationPrompts: [
       ...prompts,
       ...[...Object.keys(added), ...alsoPrompted].map((variableId) => ({
-        id: `nomination-${variableId}`,
+        id: testObjectId(`nomination-${variableId}`),
         text: { 'en-US': 'Who?' },
         attribute: variableId,
       })),
@@ -221,8 +223,8 @@ describe('a source pedigree that stops being usable', () => {
     await screen.findByRole('combobox', { name: 'Source stage' });
 
     reorderStages(harness, (stages) => [
-      ...stages.filter((id) => id !== 'family-pedigree-1'),
-      'family-pedigree-1',
+      ...stages.filter((id) => id !== fixtureStageId('family-pedigree-1')),
+      fixtureStageId('family-pedigree-1'),
     ]);
 
     expect(
@@ -236,7 +238,7 @@ describe('a source pedigree that stops being usable', () => {
     await screen.findByRole('combobox', { name: 'Source stage' });
 
     reorderStages(harness, (stages) =>
-      stages.filter((id) => id !== 'family-pedigree-1'),
+      stages.filter((id) => id !== fixtureStageId('family-pedigree-1')),
     );
 
     expect(
@@ -255,8 +257,8 @@ describe('a source pedigree that stops being usable', () => {
     const order = stageOrder(harness);
 
     reorderStages(harness, (stages) => [
-      ...stages.filter((id) => id !== 'family-pedigree-1'),
-      'family-pedigree-1',
+      ...stages.filter((id) => id !== fixtureStageId('family-pedigree-1')),
+      fixtureStageId('family-pedigree-1'),
     ]);
     // Waited for, not assumed: the re-ordered section reaches this editor over
     // the protocol channel, so a submit asked before it arrived would be a
@@ -383,7 +385,7 @@ describe('the diseases a narrative pedigree defines', () => {
         diseases: [
           fixtureDisease(),
           {
-            id: 'disease-2',
+            id: testObjectId('disease-2'),
             label: { 'en-US': 'Condition X, again' },
             color: 'node-color-seq-2',
             attribute: 'hasConditionX',
@@ -409,7 +411,7 @@ describe('the diseases a narrative pedigree defines', () => {
         diseases: [
           fixtureDisease(),
           {
-            id: 'disease-2',
+            id: testObjectId('disease-2'),
             label: { 'en-US': 'Condition Z' },
             color: 'node-color-seq-2',
             attribute: 'hasConditionZ',
@@ -669,7 +671,10 @@ describe('changing which pedigree a stage reads', () => {
     const harness = openFixture();
     await screen.findByText('Condition X');
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
 
     // The fixture has one pedigree, so re-choosing it is the only change on
     // offer — and the question is asked whatever is currently chosen, because
@@ -683,7 +688,10 @@ describe('changing which pedigree a stage reads', () => {
     const harness = openFixture();
     await screen.findByText('Condition X');
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Cancel' }),
     );
@@ -712,7 +720,10 @@ describe('changing which pedigree a stage reads', () => {
     );
     expect(await screen.findByText('Condition X')).toBeInTheDocument();
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Change the pedigree' }),
     );
@@ -720,7 +731,7 @@ describe('changing which pedigree a stage reads', () => {
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
     );
-    expect(sourceSelect()).toHaveValue('family-pedigree-1');
+    expect(sourceSelect()).toHaveValue(fixtureStageId('family-pedigree-1'));
     // The stage is now one the save refuses, which is the point: the diseases
     // are gone rather than silently re-pointed at a family they never described.
     expect(await harness.submit()).toBeNull();
@@ -744,16 +755,21 @@ describe('changing which pedigree a stage reads', () => {
     );
     expect(await screen.findByText('Condition X')).toBeInTheDocument();
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
     await screen.findByRole('button', { name: 'Change the pedigree' });
     reorderStages(harness, (stages) => [
-      ...stages.filter((id) => id !== 'family-pedigree-1'),
-      'family-pedigree-1',
+      ...stages.filter((id) => id !== fixtureStageId('family-pedigree-1')),
+      fixtureStageId('family-pedigree-1'),
     ]);
     // The control has withdrawn it — read from the DOM, because the open
     // question makes the page behind it inert and so unreachable by role.
     await waitFor(() =>
-      expect(offeredSources()).not.toContain('family-pedigree-1'),
+      expect(offeredSources()).not.toContain(
+        fixtureStageId('family-pedigree-1'),
+      ),
     );
 
     await harness.user.click(
@@ -782,11 +798,14 @@ describe('changing which pedigree a stage reads', () => {
     );
     await screen.findByRole('combobox', { name: 'Source stage' });
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(sourceSelect()).toHaveValue('family-pedigree-1'),
+      expect(sourceSelect()).toHaveValue(fixtureStageId('family-pedigree-1')),
     );
   });
 });

@@ -6,7 +6,9 @@ import {
   chooseAttributeById,
   offeredAttributes,
 } from '../../../../testing/attributePicker.ts';
+import { loadFixtureStage } from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../../testing/testObjectId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import OrdinalBinPromptsSection from '../OrdinalBinPromptsSection.tsx';
 
@@ -28,6 +30,14 @@ const openSection = () => ({
   stageId: 'ordinal-bin-1' as const,
   sections: <OrdinalBinPromptsSection />,
 });
+
+/** The id the fixture gives its one prompt, read from the fixture itself. */
+const fixturePromptId = (): unknown => {
+  const [first] = [loadFixtureStage('ordinal-bin-1').fields.prompts].flat();
+  return typeof first === 'object' && first !== null && 'id' in first
+    ? first.id
+    : undefined;
+};
 
 const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
   Array.isArray(stage.prompts)
@@ -175,14 +185,14 @@ describe('the questions an ordinal bin asks', () => {
   it('refuses a prompt that arrived with no gradient, and says which one', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'ordinal-bin-legacy',
+        id: testObjectId('ordinal-bin-legacy'),
         type: 'OrdinalBin',
         fields: {
           label: { 'en-US': 'Ordinal Bin' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: 'ordinal-bin-legacy-prompt-1',
+              id: testObjectId('ordinal-bin-legacy-prompt-1'),
               text: {
                 'en-US': 'How often do you have contact with this person?',
               },
@@ -301,9 +311,9 @@ describe('the questions an ordinal bin asks', () => {
     const saved = prompts(request?.stageDocument ?? {})[0];
     expect(saved?.color).toBe('ord-color-seq-3');
     expect(saved?.binSortOrder).toEqual([
-      { property: 'age', direction: 'asc' },
+      { id: expect.any(String), property: 'age', direction: 'asc' },
     ]);
-    expect(saved?.id).toBe('ordinal-bin-prompt-1');
+    expect(saved?.id).toBe(fixturePromptId());
     // The rule went into the prompt, not beside it: a list inside a row dialog
     // has no document key of its own to insert against.
     expect(prompts(request?.stageDocument ?? {})).toHaveLength(1);
@@ -327,13 +337,14 @@ describe('an ordinal bin prompt whose scale is not an ordinal attribute', () => 
   it('refuses the save, and says so under the picker', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testObjectId('OrdinalBin-stage'),
         type: 'OrdinalBin',
         fields: {
           label: { 'en-US': 'Ordinal Bin' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: 'prompt-a',
+              id: testObjectId('prompt-a'),
               text: { 'en-US': 'How often?' },
               // Categorical: its values have no order for a scale to run
               // along, so this interface cannot draw them.

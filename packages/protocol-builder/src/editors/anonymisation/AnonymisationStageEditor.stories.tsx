@@ -4,15 +4,19 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { testObjectId } from '../../testing/testObjectId.ts';
 import { anonymisationStageEditor } from './AnonymisationStageEditor.ts';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Anonymisation',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'anonymisation-1',
+    stageId: fixtureStageId('anonymisation-1'),
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
@@ -114,7 +118,7 @@ export const AttributeARuleReads: Story = {
           filter: {
             rules: [
               {
-                id: 'rule-1',
+                id: testObjectId('rule-1'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -169,7 +173,7 @@ export const AttributeARuleAsksAbout: Story = {
           filter: {
             rules: [
               {
-                id: 'rule-1',
+                id: testObjectId('rule-1'),
                 type: 'node',
                 options: {
                   type: 'person',

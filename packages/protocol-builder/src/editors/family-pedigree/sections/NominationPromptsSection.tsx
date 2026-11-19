@@ -3,7 +3,6 @@ import { useCallback, useMemo } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { RichSelectOption } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import { FAMILY_PEDIGREE_BUILD_PROMPT_ID } from '@codaco/protocol-validation';
 
 import BinAttributeField, {
   type BinAttributeSlot,
@@ -65,25 +64,6 @@ const boundElsewhereFrom = (
   const own = ownAttribute === undefined ? -1 : bound.indexOf(ownAttribute);
   return own === -1 ? [...bound] : bound.toSpliced(own, 1);
 };
-
-/**
- * A fresh id for a nomination prompt.
- *
- * Never the id the interview gives the family-building step, which comes
- * before every nomination prompt: a prompt reusing it is refused by the
- * schema. A random id cannot be that word in practice, and this says so
- * instead of relying on it.
- */
-export function newNominationPromptId(): string {
-  let id: string = crypto.randomUUID();
-  while (id === FAMILY_PEDIGREE_BUILD_PROMPT_ID) id = crypto.randomUUID();
-  return id;
-}
-
-/** A new prompt starts with its id and nothing else. */
-const newNominationPrompt = (): Partial<RowValues> => ({
-  id: newNominationPromptId(),
-});
 
 /**
  * One nomination prompt: the question, the attribute that records who the
@@ -213,7 +193,6 @@ export default function NominationPromptsSection() {
       PromptEditor={NominationPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
-      itemTemplate={newNominationPrompt}
       name={NOMINATION_PROMPTS_PATH}
       optional
       title={messages.nominationTitle}

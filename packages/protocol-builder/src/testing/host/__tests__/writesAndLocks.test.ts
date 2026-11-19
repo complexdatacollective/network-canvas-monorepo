@@ -11,6 +11,8 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { fixtureStageId } from '../../protocolFixture.ts';
+import { testObjectId } from '../../testObjectId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -28,7 +30,10 @@ const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const SPARE = sectionId({ kind: 'codebookNode', typeId: 'spare' });
 const EGO = sectionId({ kind: 'codebookEgo' });
@@ -84,7 +89,7 @@ function fixtureHost(): InMemoryHost {
   let minted = 0;
   return createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
-    nextId: () => `minted-${++minted}`,
+    nextId: () => testObjectId(`minted-${++minted}`),
     principal: ADA,
   });
 }
@@ -250,7 +255,9 @@ const CALLS: readonly Call[] = [
         kind: 'stage',
         document: Redacted.make({
           ...template,
-          items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+          items: [
+            { id: testObjectId('item-1'), type: 'asset', content: resourceId },
+          ],
         }),
         promote: { editId: EDIT, resourceIds: [resourceId] },
       });

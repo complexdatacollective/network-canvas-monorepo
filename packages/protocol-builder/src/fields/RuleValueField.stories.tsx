@@ -10,6 +10,7 @@ import type { VariableType } from '@codaco/protocol-validation';
 
 import type { RuleChoiceOption } from '../rules/ruleCodebook.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
@@ -140,7 +141,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'information-1',
+    stageId: fixtureStageId('information-1'),
     // The heading the rule editor gives the section this control sits in.
     sectionTitle: 'Rule structure',
     children: <Operand attribute={AGE} />,

@@ -9,10 +9,14 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { FieldStoryHost } from '../../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { MAX_ZOOM, MIN_ZOOM, zoomIssue } from './mapView.ts';
 import MapZoomField from './MapZoomField.tsx';
 
-const GEOSPATIAL = sectionId({ kind: 'stage', stageId: 'geospatial-1' });
+const GEOSPATIAL = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('geospatial-1'),
+});
 
 /** The fixture's geospatial stage with its map settings changed. */
 const withMapOptions =
@@ -62,7 +66,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'geospatial-1',
+    stageId: fixtureStageId('geospatial-1'),
     sectionTitle: 'Starting map view',
     children: <StartingZoom />,
   },

@@ -9,12 +9,16 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import { IntegerFieldControl, wholeNumberRule } from './IntegerField.tsx';
 
 /** Where a name generator holds the most people one stage may name. */
 const MAX_FIELD = 'behaviours.maxNodes';
 
-const STAGE = sectionId({ kind: 'stage', stageId: 'name-generator-1' });
+const STAGE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('name-generator-1'),
+});
 
 const MAX_LABEL = 'Most people';
 
@@ -93,7 +97,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'name-generator-1',
+    stageId: fixtureStageId('name-generator-1'),
     sectionTitle: 'How many people this stage may name',
     children: peopleCount,
   },

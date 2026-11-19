@@ -482,7 +482,8 @@ describe('rules the codebook can no longer account for', () => {
 
 /**
  * A rule's id is the identity the LIST is keyed by, and the protocol schema
- * refuses a set holding the same one twice (`findDuplicateId`). Two rows
+ * refuses a protocol holding the same one twice
+ * (`findDuplicateProtocolObjectIds`). Two rows
  * sharing an id therefore have to be two rows: keying both by the duplicate
  * collapsed them into one, so deleting either deleted both and editing the
  * second edited and displayed the first.

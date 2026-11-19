@@ -17,6 +17,7 @@ import {
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
 import { enIntl } from '../../testing/i18n.ts';
+import { testObjectId } from '../../testing/testObjectId.ts';
 import {
   nameLocalizedText,
   stageWordingSettings,
@@ -40,7 +41,7 @@ const scaleVariable = (name: string, minLabel: string, maxLabel: string) => ({
 });
 
 const composerScaleField = (variable: string, label: string) => ({
-  id: 'field-L33',
+  id: testObjectId(`composer-scale-field-${variable}`),
   variable,
   component: 'VisualAnalogScale',
   label: en(label),
@@ -76,11 +77,11 @@ const validationMessage = (rule: string): string => {
     : `The ${rule} message.`;
 };
 
-const panel = {
-  id: 'panel-1',
+const panel = (name: string) => ({
+  id: testObjectId(`panel-${name}`),
   title: en('People named'),
   dataSource: 'existing',
-};
+});
 
 /**
  * Every localized field the all-interfaces fixture leaves empty, filled, so
@@ -157,7 +158,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   [
     [...fixtureStage('Information'), 'items', 1],
     {
-      id: 'information-picture',
+      id: testObjectId('information-picture'),
       type: 'asset',
       content: 'picture',
       description: en('A picture'),
@@ -167,8 +168,8 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     [...fixtureStage('NameGenerator'), 'form', 'fields', 0, 'hint'],
     en('A first name is enough.'),
   ],
-  [[...fixtureStage('NameGenerator'), 'panels'], [panel]],
-  [[...fixtureStage('NameGeneratorQuickAdd'), 'panels'], [panel]],
+  [[...fixtureStage('NameGenerator'), 'panels'], [panel('name-generator')]],
+  [[...fixtureStage('NameGeneratorQuickAdd'), 'panels'], [panel('quick-add')]],
   // The messages a name generator shows around its limits and its panels,
   // and a map's search messages, which the fixture leaves unset.
   ...(['NameGenerator', 'NameGeneratorQuickAdd'] as const).flatMap(
@@ -226,7 +227,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     {
       fields: [
         {
-          id: 'field-1',
+          id: testObjectId('field-1'),
           variable: 'fm_occupation',
           prompt: en('What do they do?'),
           hint: en('Their main work.'),
@@ -316,7 +317,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     [...fixtureStage('NetworkComposer'), 'edges'],
     [
       {
-        id: 'composer-knows',
+        id: testObjectId('composer-knows'),
         subject: { entity: 'edge', type: 'knows' },
         label: en('Knows'),
         form: { fields: [composerScaleField('bond', 'How strong is it?')] },

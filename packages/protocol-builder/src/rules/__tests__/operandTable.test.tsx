@@ -7,6 +7,7 @@ import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
+  createProtocolObjectId,
   type FilterOperator,
   filterRuleSchema,
   filterValueSchema,
@@ -113,12 +114,18 @@ const settingsSection = sectionId({ kind: 'settings' });
 const stageOrderSection = sectionId({ kind: 'stageOrder' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
+const STAGE_ID = createProtocolObjectId();
+
 const stageFields: SectionDoc = {
   label: { en: 'Details' },
   subject: { entity: 'node', type: 'person' },
   form: {
     fields: [
-      { id: 'field-1', variable: 'age', prompt: { en: 'How old are they?' } },
+      {
+        id: createProtocolObjectId(),
+        variable: 'age',
+        prompt: { en: 'How old are they?' },
+      },
     ],
   },
 };
@@ -129,8 +136,8 @@ const baseSections: Record<string, SectionDoc> = {
     schemaVersion: 9,
     localization: { defaultLocale: 'en', locales: ['en'] },
   },
-  [stageOrderSection]: { stages: ['stage-1'] },
-  [STAGE_SECTION]: { id: 'stage-1', type: 'AlterForm', ...stageFields },
+  [stageOrderSection]: { stages: [STAGE_ID] },
+  [STAGE_SECTION]: { id: STAGE_ID, type: 'AlterForm', ...stageFields },
   [personSection]: personDefinition,
 };
 
@@ -289,12 +296,15 @@ const protocolWith = (rule: RuleDraft): unknown =>
     codebook,
     stages: [
       {
-        id: 'stage-1',
+        id: STAGE_ID,
         type: 'AlterForm',
         ...stageFields,
         filter: { rules: [rule] },
       },
-      createDefaultFinishSessionStage({ id: 'finish', localization }),
+      createDefaultFinishSessionStage({
+        id: createProtocolObjectId(),
+        localization,
+      }),
     ],
   });
 
@@ -479,7 +489,7 @@ describe('an operand the rule already holds', () => {
  */
 describe('an ordinal rule already comparing against a set of options', () => {
   const storedSet: RuleDraft = {
-    id: 'rule-a',
+    id: createProtocolObjectId(),
     type: 'node',
     options: {
       type: 'person',

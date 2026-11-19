@@ -16,11 +16,15 @@ import {
   mapsBuilt,
   resetMapboxMock,
 } from '../../../testing/mapboxMock.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../testing/testObjectId.ts';
 import {
   awaitLayerRead,
   enterCoordinate,
@@ -59,10 +63,16 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 }));
 
 const openEditor = () =>
-  renderStageEditor({ stageId: 'geospatial-1', sections: geospatialSections });
+  renderStageEditor({
+    stageId: fixtureStageId('geospatial-1'),
+    sections: geospatialSections,
+  });
 
 /** The stage this stage's own subject also appears on, as a form. */
-const ALTER_FORM = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
+const ALTER_FORM = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('alter-form-1'),
+});
 
 /** The node type both of them are about. */
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
@@ -109,20 +119,21 @@ const addLocationAttribute = (
  * seeded rather than performed.
  */
 const openTwoPromptsOnOneAttribute = () => {
-  const { type, fields } = loadFixtureStage('geospatial-1');
+  const { id, type, fields } = loadFixtureStage('geospatial-1');
   return renderStageEditor({
     stage: {
+      id,
       type,
       fields: {
         ...fields,
         prompts: [
           {
-            id: 'geospatial-prompt-1',
+            id: testObjectId('geospatial-prompt-1'),
             text: { 'en-US': 'Where do you live?' },
             variable: 'location',
           },
           {
-            id: 'geospatial-prompt-2',
+            id: testObjectId('geospatial-prompt-2'),
             text: { 'en-US': 'Where do you work?' },
             variable: 'location',
           },
@@ -285,13 +296,14 @@ describe('the map a geospatial stage shows', () => {
   });
 
   it('opens with searching switched on when the stage already allows it', () => {
-    const { type, fields } = loadFixtureStage('geospatial-1');
+    const { id, type, fields } = loadFixtureStage('geospatial-1');
     const seededOptions =
       typeof fields.mapOptions === 'object' && fields.mapOptions !== null
         ? fields.mapOptions
         : {};
     renderStageEditor({
       stage: {
+        id,
         type,
         fields: {
           ...fields,
@@ -601,7 +613,7 @@ describe('the places a geospatial stage asks about', () => {
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
           {
-            id: 'field-added-1',
+            id: testObjectId('field-added-1'),
             variable: 'workplace',
             prompt: { 'en-US': 'Where do they work?' },
           },
@@ -664,7 +676,7 @@ describe('the places a geospatial stage asks about', () => {
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
           {
-            id: 'field-added-1',
+            id: testObjectId('field-added-1'),
             variable: 'workplace',
             prompt: { 'en-US': 'Where do they work?' },
           },
@@ -722,12 +734,12 @@ describe('the places a geospatial stage asks about', () => {
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
           {
-            id: 'field-added-1',
+            id: testObjectId('field-added-1'),
             variable: 'workplace',
             prompt: { 'en-US': 'Where do they work?' },
           },
           {
-            id: 'field-added-2',
+            id: testObjectId('field-added-2'),
             variable: 'location',
             prompt: { 'en-US': 'Where do they live?' },
           },
@@ -831,13 +843,20 @@ describe('a prompt written in more than one language', () => {
   };
 
   const openTranslated = (text: LocalizedString) => {
-    const { type, fields } = loadFixtureStage('geospatial-1');
+    const { id, type, fields } = loadFixtureStage('geospatial-1');
     return renderStageEditor({
       stage: {
+        id,
         type,
         fields: {
           ...fields,
-          prompts: [{ id: 'geospatial-prompt-1', text, variable: 'location' }],
+          prompts: [
+            {
+              id: testObjectId('geospatial-prompt-1'),
+              text,
+              variable: 'location',
+            },
+          ],
         },
       },
       sections: geospatialSections,
@@ -880,7 +899,7 @@ describe('a prompt written in more than one language', () => {
     const request = await harness.submit();
     expect(request?.stageDocument.prompts).toEqual([
       {
-        id: 'geospatial-prompt-1',
+        id: testObjectId('geospatial-prompt-1'),
         text: { 'en-US': 'Where do you live?', 'es': '¿Dónde trabajas?' },
         variable: 'location',
       },

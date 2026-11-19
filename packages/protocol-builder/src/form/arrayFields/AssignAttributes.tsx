@@ -1,4 +1,4 @@
-import { type ComponentType, useCallback, useMemo } from 'react';
+import { type ComponentType, useMemo } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -6,6 +6,7 @@ import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
 import Attribute, {
@@ -162,6 +163,13 @@ export const makeAssignAttributesValidation = (
 });
 
 const EMPTY_ATTRIBUTES: AttributeValue[] = [];
+
+const attributeRowId = (row: AttributeValue): string | undefined => row.id;
+
+/** A new row carries its id from the moment it is added. */
+export const newAttributeRow = (): AttributeValue => ({
+  id: createProtocolObjectId(),
+});
 const NO_COMMITTED_VARIABLES: ReadonlySet<string> = new Set();
 
 export type AssignAttributesProps = Omit<
@@ -170,6 +178,7 @@ export type AssignAttributesProps = Omit<
   | 'confirmDelete'
   | 'editorComponent'
   | 'emptyStateMessage'
+  | 'getId'
   | 'immediateAdd'
   | 'itemClasses'
   | 'itemComponent'
@@ -277,11 +286,6 @@ export default function AssignAttributes({
     ],
   );
 
-  const itemTemplate = useCallback(
-    () => ({}) satisfies Partial<AttributeValue>,
-    [],
-  );
-
   return (
     <AssignAttributesContext value={context}>
       <ArrayField<AttributeValue>
@@ -291,7 +295,8 @@ export default function AssignAttributes({
         value={value}
         onChange={onChange}
         itemComponent={Attribute}
-        itemTemplate={itemTemplate}
+        itemTemplate={newAttributeRow}
+        getId={attributeRowId}
         // The row renders its own Surface, so ArrayField's wrapper stays bare
         // rather than nesting two levels of padded, shadowed surface.
         itemClasses="p-0! shadow-none bg-transparent"

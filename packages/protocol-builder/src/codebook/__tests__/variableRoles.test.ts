@@ -7,6 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { protocolContextFromSections } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
+import { testObjectId } from '../../testing/testObjectId.ts';
 import {
   buildEntityTypeUsageIndex,
   buildExclusiveVariableSlotMap,
@@ -29,11 +30,11 @@ import {
   variableRoleKey,
 } from '../variableRoles.ts';
 
-const FORM_STAGE_ID = 'form-stage';
-const BIN_STAGE_ID = 'bin-stage';
+const FORM_STAGE_ID = testObjectId('form-stage');
+const BIN_STAGE_ID = testObjectId('bin-stage');
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 const FAMILY_SUBJECT = { entity: 'node', type: 'family-member' } as const;
-const FAMILY_STAGE_ID = 'family-stage';
+const FAMILY_STAGE_ID = testObjectId('family-stage');
 const EGO_SLOT = 'familyPedigree.nodeConfiguration.egoAttribute';
 
 const settings = {
@@ -66,7 +67,11 @@ const sections = (): Record<string, SectionDoc> => ({
     subject: SUBJECT,
     form: {
       fields: [
-        { id: 'field-1', variable: 'category', prompt: { en: 'Category?' } },
+        {
+          id: testObjectId('field-1'),
+          variable: 'category',
+          prompt: { en: 'Category?' },
+        },
       ],
     },
   },
@@ -76,7 +81,11 @@ const sections = (): Record<string, SectionDoc> => ({
     label: { en: 'Bin' },
     subject: SUBJECT,
     prompts: [
-      { id: 'prompt-1', text: { en: 'Sort people.' }, variable: 'category' },
+      {
+        id: testObjectId('prompt-1'),
+        text: { en: 'Sort people.' },
+        variable: 'category',
+      },
     ],
   },
   // Put the bin first to prove exclusion follows the stage id through the
@@ -415,15 +424,18 @@ describe('variable role helpers', () => {
 
       // The codebook's own editor, and any other stage.
       expect(ask()).toEqual(['Family Pedigree']);
-      expect(ask({ stageId: 'another', draftBindings: new Set() })).toEqual([
-        'Family Pedigree',
-      ]);
+      expect(
+        ask({ stageId: testObjectId('another'), draftBindings: new Set() }),
+      ).toEqual(['Family Pedigree']);
       // The stage that binds it, and a stage whose unsaved draft does.
       expect(
         ask({ stageId: FAMILY_STAGE_ID, draftBindings: new Set() }),
       ).toBeUndefined();
       expect(
-        ask({ stageId: 'new-stage', draftBindings: new Set([GENDER_KEY]) }),
+        ask({
+          stageId: testObjectId('new-stage'),
+          draftBindings: new Set([GENDER_KEY]),
+        }),
       ).toBeUndefined();
       // Another attribute of the same type is not managed.
       expect(

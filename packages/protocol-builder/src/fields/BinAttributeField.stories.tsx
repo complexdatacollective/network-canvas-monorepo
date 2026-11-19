@@ -8,6 +8,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import BinAttributeField, {
   type BinAttributeSlot,
 } from './BinAttributeField.tsx';
@@ -99,7 +100,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'ordinal-bin-1',
+    stageId: fixtureStageId('ordinal-bin-1'),
     // What the host stands in for is the row dialog that edits one question.
     sectionTitle: 'The scale',
     children: <TheScale committed="contactFreq" />,
@@ -241,7 +242,7 @@ export const MoreBinsThanFit: Story = {
  */
 export const TheOtherBin: Story = {
   args: {
-    stageId: 'categorical-bin-1',
+    stageId: fixtureStageId('categorical-bin-1'),
     sectionTitle: 'The bins',
     children: <TheBins committed="contactType" />,
   },

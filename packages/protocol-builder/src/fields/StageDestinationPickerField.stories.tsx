@@ -6,6 +6,8 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
+import { testObjectId } from '../testing/testObjectId.ts';
 import StageDestinationPickerField from './StageDestinationPickerField.tsx';
 
 /** Where the stage order lives, which is what this picker draws its list from. */
@@ -24,7 +26,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'information-1',
+    stageId: fixtureStageId('information-1'),
     sectionTitle: 'When this stage is skipped',
     children: (
       <Field<typeof StageDestinationPickerField>
@@ -55,9 +57,14 @@ export const ChoosingAStage: Story = {
     const picker = await canvas.findByRole('combobox', {
       name: 'Where the interview continues',
     });
-    await userEvent.selectOptions(picker, 'route:stage:sociogram-1');
+    await userEvent.selectOptions(
+      picker,
+      `route:stage:${fixtureStageId('sociogram-1')}`,
+    );
 
-    await expect(picker).toHaveValue('route:stage:sociogram-1');
+    await expect(picker).toHaveValue(
+      `route:stage:${fixtureStageId('sociogram-1')}`,
+    );
   },
 };
 
@@ -69,7 +76,10 @@ export const ChoosingAStage: Story = {
 export const ADestinationThatIsGone: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'information-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('information-1'),
+      });
       const { document } = host.store.read(stage);
       const skipLogic =
         typeof document.skipLogic === 'object' && document.skipLogic !== null
@@ -77,7 +87,10 @@ export const ADestinationThatIsGone: Story = {
           : {};
       host.store.applyAsCollaborator(stage, {
         ...document,
-        skipLogic: { ...skipLogic, destination: { stageId: 'no-such-stage' } },
+        skipLogic: {
+          ...skipLogic,
+          destination: { stageId: testObjectId('no-such-stage') },
+        },
       });
     },
   },
@@ -101,7 +114,10 @@ export const AShortInterview: Story = {
   args: {
     seedEdit: (host) => {
       host.store.applyAsCollaborator(STAGE_ORDER, {
-        stages: ['information-1', 'sociogram-1'],
+        stages: [
+          fixtureStageId('information-1'),
+          fixtureStageId('sociogram-1'),
+        ],
       });
     },
   },

@@ -13,6 +13,7 @@ import {
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import { variableNameScope } from './variableNameRules.ts';
 import VariablePickerField from './VariablePickerField.tsx';
 
@@ -125,7 +126,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     sectionTitle: 'What this question records',
     children: <AttributePicker />,
   },
@@ -145,7 +146,10 @@ export const Chosen: Story = {};
 export const NothingChosen: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('family-pedigree-1'),
+      });
       const { document: stageDocument } = host.store.read(stage);
       const nodeConfiguration =
         typeof stageDocument.nodeConfiguration === 'object' &&
@@ -195,7 +199,10 @@ export const HeldBySomebodyElse: Story = {
 export const Unanswered: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('family-pedigree-1'),
+      });
       const { document: stageDocument } = host.store.read(stage);
       const nodeConfiguration =
         typeof stageDocument.nodeConfiguration === 'object' &&
@@ -320,7 +327,10 @@ export const ANameThatCannotBeUsed: Story = {
 export const AChoiceThatIsRuledOut: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('family-pedigree-1'),
+      });
       const { document: stageDocument } = host.store.read(stage);
       const nodeConfiguration =
         typeof stageDocument.nodeConfiguration === 'object' &&
@@ -353,7 +363,10 @@ export const AChoiceThatIsRuledOut: Story = {
 export const AChoiceNothingOffers: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('family-pedigree-1'),
+      });
       const { document: stageDocument } = host.store.read(stage);
       const nodeConfiguration =
         typeof stageDocument.nodeConfiguration === 'object' &&

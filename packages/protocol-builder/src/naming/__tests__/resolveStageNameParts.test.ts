@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
+
 import {
   resolveStageQualifier,
   resolveStageSubjectName,
@@ -109,7 +111,9 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'Information',
-          items: [{ id: 'i1', type: 'asset', content: 'a1' }],
+          items: [
+            { id: createProtocolObjectId(), type: 'asset', content: 'a1' },
+          ],
         },
         r,
         english,
@@ -122,8 +126,8 @@ describe('resolveStageQualifier', () => {
         {
           type: 'Information',
           items: [
-            { id: 'i1', type: 'asset', content: 'a1' },
-            { id: 'i2', type: 'asset', content: 'a2' },
+            { id: createProtocolObjectId(), type: 'asset', content: 'a1' },
+            { id: createProtocolObjectId(), type: 'asset', content: 'a2' },
           ],
         },
         r,
@@ -135,8 +139,8 @@ describe('resolveStageQualifier', () => {
         {
           type: 'Information',
           items: [
-            { id: 'i2', type: 'asset', content: 'a2' },
-            { id: 'i1', type: 'asset', content: 'a1' },
+            { id: createProtocolObjectId(), type: 'asset', content: 'a2' },
+            { id: createProtocolObjectId(), type: 'asset', content: 'a1' },
           ],
         },
         r,
@@ -147,7 +151,13 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'Information',
-          items: [{ id: 'i1', type: 'text', content: { en: 'hello' } }],
+          items: [
+            {
+              id: createProtocolObjectId(),
+              type: 'text',
+              content: { en: 'hello' },
+            },
+          ],
         },
         r,
         english,
@@ -194,9 +204,9 @@ describe('a qualifier follows the language it is in', () => {
       {
         type: 'Information',
         items: [
-          { id: 'i1', type: 'asset', content: 'a1' },
-          { id: 'i2', type: 'asset', content: 'a2' },
-          { id: 'i3', type: 'asset', content: 'a3' },
+          { id: createProtocolObjectId(), type: 'asset', content: 'a1' },
+          { id: createProtocolObjectId(), type: 'asset', content: 'a2' },
+          { id: createProtocolObjectId(), type: 'asset', content: 'a3' },
         ],
       },
       { resolveAssetType: (id: string) => types[id] ?? null },

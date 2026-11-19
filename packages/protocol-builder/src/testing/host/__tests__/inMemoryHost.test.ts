@@ -11,6 +11,8 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { attempt } from '../../../state/attempt.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import type { ResourcePromotion } from '../../../state/hooks.ts';
+import { fixtureStageId } from '../../protocolFixture.ts';
+import { testObjectId } from '../../testObjectId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -28,17 +30,23 @@ const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const ALTER_FORM = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
+const ALTER_FORM = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('alter-form-1'),
+});
 const QUICK_ADD = sectionId({
   kind: 'stage',
-  stageId: 'name-generator-quick-add-1',
+  stageId: fixtureStageId('name-generator-quick-add-1'),
 });
 const NAME_GENERATOR = sectionId({
   kind: 'stage',
-  stageId: 'name-generator-1',
+  stageId: fixtureStageId('name-generator-1'),
 });
 
 const EGO = sectionId({ kind: 'codebookEgo' });
@@ -53,7 +61,7 @@ function host(): InMemoryHost {
   let minted = 0;
   return createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
-    nextId: () => `minted-${++minted}`,
+    nextId: () => testObjectId(`minted-${++minted}`),
   });
 }
 
@@ -251,7 +259,7 @@ function informationNaming(
   const { id: _id, ...template } = subject.store.read(INFORMATION).document;
   return {
     ...template,
-    items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+    items: [{ id: testObjectId('item-1'), type: 'asset', content: resourceId }],
   };
 }
 
@@ -367,7 +375,10 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: Redacted.make({ id: 'information-1', type: 'NotAnInterface' }),
+      document: Redacted.make({
+        id: fixtureStageId('information-1'),
+        type: 'NotAnInterface',
+      }),
       revision: subject.store.read(INFORMATION).revision,
     });
 
@@ -391,15 +402,17 @@ describe('the in-memory host', () => {
 
     const stageIdOfCreated = sectionId({
       kind: 'stage',
-      stageId: 'minted-1',
+      stageId: testObjectId('minted-1'),
     });
     expect(created.sectionId).toBe(stageIdOfCreated);
     expect(subject.store.has(stageIdOfCreated)).toBe(true);
-    expect(subject.store.read(stageIdOfCreated).document.id).toBe('minted-1');
+    expect(subject.store.read(stageIdOfCreated).document.id).toBe(
+      testObjectId('minted-1'),
+    );
 
     const after = stageOrder(subject);
     expect(after).toHaveLength(before.length + 1);
-    expect(after[1]).toBe('minted-1');
+    expect(after[1]).toBe(testObjectId('minted-1'));
     // Both writes carry the protocol revision the create advanced to, which is
     // what "atomic" means for a watcher reading the stream in order.
     expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
@@ -473,7 +486,9 @@ describe('the in-memory host', () => {
       assetsBefore,
     );
     expect(
-      subject.store.has(sectionId({ kind: 'stage', stageId: 'minted-1' })),
+      subject.store.has(
+        sectionId({ kind: 'stage', stageId: testObjectId('minted-1') }),
+      ),
     ).toBe(false);
   });
 
@@ -669,7 +684,11 @@ describe('the in-memory host', () => {
     const items = Redacted.value(read.document).items;
     if (!Array.isArray(items)) throw new Error('the fixture has no items');
 
-    items.push({ id: 'smuggled', type: 'text', content: 'not submitted' });
+    items.push({
+      id: testObjectId('smuggled'),
+      type: 'text',
+      content: 'not submitted',
+    });
 
     const again = subject.store.read(INFORMATION).document.items;
     expect(Array.isArray(again) && again).toHaveLength(items.length - 1);
@@ -951,7 +970,7 @@ describe('the in-memory host', () => {
 
     expect(subject.store.has(INFORMATION)).toBe(false);
     expect(stageOrder(subject)).toHaveLength(before.length - 1);
-    expect(stageOrder(subject)).not.toContain('information-1');
+    expect(stageOrder(subject)).not.toContain(fixtureStageId('information-1'));
     expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER]);
     expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
       deleted.revision.sequence,
@@ -979,7 +998,7 @@ describe('the in-memory host', () => {
       blocked: [{ sectionId: INFORMATION, holder: { displayName: 'Grace' } }],
     });
     expect(subject.store.has(INFORMATION)).toBe(true);
-    expect(stageOrder(subject)).toContain('information-1');
+    expect(stageOrder(subject)).toContain(fixtureStageId('information-1'));
   });
 
   it('refuses to delete a stage while the stage order is held', async () => {

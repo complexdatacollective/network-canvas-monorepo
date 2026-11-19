@@ -10,7 +10,10 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -257,7 +260,7 @@ const CHOICE_VARIABLE = 'contactType';
 
 /** A form collecting one attribute whose answers are a list. */
 const FORM_COLLECTING_A_CHOICE = {
-  id: 'alter-form-1',
+  id: fixtureStageId('alter-form-1'),
   type: 'AlterForm',
   fields: {
     ...loadFixtureStage('alter-form-1').fields,

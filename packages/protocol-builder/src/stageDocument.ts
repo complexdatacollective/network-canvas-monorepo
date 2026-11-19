@@ -1,10 +1,9 @@
-import { v4 as uuid } from 'uuid';
-
 import {
   stageWithoutSuppliedText,
   stageWithSuppliedText,
 } from '@codaco/interview/supplied-wording';
 import {
+  createProtocolObjectId,
   isExclusiveVariantContainer,
   type LocalizationDeclaration,
   type StageType,
@@ -95,7 +94,7 @@ class StageIdentityCommandError extends Error {
 
 export function createStageIdentity(
   type: StageType,
-  createId: () => string = () => uuid({}),
+  createId: () => string = createProtocolObjectId,
 ): StageIdentity {
   const id = createId();
   if (id === '') throw new Error('stage identity must be non-empty');

@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -23,7 +26,9 @@ const mountFixture = () =>
   });
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const DYAD_CENSUS_INDEX = fixtureStageIds().indexOf('dyad-census-1');
+const DYAD_CENSUS_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('dyad-census-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'DyadCensus' as const, position: DYAD_CENSUS_INDEX },

@@ -59,6 +59,7 @@ export type VariableOption = {
 };
 
 export type AttributeValue = {
+  id?: string;
   variable?: string;
   value?: boolean;
 };
@@ -403,17 +404,11 @@ export default function Attribute({
     ? async (variableName: string): Promise<CreateOptionOutcome> => {
         // The row this creation was started FROM, as it stands right now.
         // Creating a codebook variable is a round trip through the host, and
-        // the list can move while it runs. These rows carry no id of their own,
-        // so `onUpdate` is bound to an internal id `ArrayField` infers from the
-        // row's content when the value is replaced: a row that has itself been
-        // edited meanwhile — or one of two rows nothing can tell apart — leaves
-        // this handle naming a row the researcher never looked at, and the new
-        // variable is stamped onto that one's attribute.
-        //
-        // Content is the only identity such a row has, and it is enough for
-        // the same reason it is enough anywhere a dialog outlives the row it
-        // was opened on: two rows the researcher cannot tell apart are two rows
-        // this control described identically.
+        // the list can move while it runs. `onUpdate` follows the row's id, so
+        // it still names this row however the list moves around it, but a row
+        // whose attribute was changed meanwhile is no longer the row the
+        // creation was started from, and the new variable is not stamped onto
+        // an attribute the researcher has since replaced.
         const createdFrom = stripManagedProperties(latestRow());
         const outcome = await onCreateVariable(variableName);
         // The one answer that is a refusal: nothing was written, so the name

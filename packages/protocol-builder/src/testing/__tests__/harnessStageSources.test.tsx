@@ -2,10 +2,12 @@ import { assertType, describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { fixtureStageId } from '../protocolFixture.ts';
 import {
   renderStageEditor,
   type RenderStageEditorOptions,
 } from '../renderStageEditor.tsx';
+import { testObjectId } from '../testObjectId.ts';
 
 /**
  * Options as they reach the harness from somewhere the compiler cannot check:
@@ -18,7 +20,7 @@ const asOptions = (
 ): RenderStageEditorOptions => options as unknown as RenderStageEditorOptions;
 
 const BUILT_STAGE = {
-  id: 'built-stage',
+  id: testObjectId('built-stage'),
   type: 'Information',
   fields: { label: { 'en-US': 'Built beside the fixture' } },
 } as const;
@@ -120,7 +122,7 @@ describe('the stage a harness call opens', () => {
       sections: <></>,
     });
 
-    expect(harness.seeded.id).toBe('ego-form-1');
+    expect(harness.seeded.id).toBe(fixtureStageId('ego-form-1'));
     expect(harness.seeded.type).toBe('EgoForm');
   });
 
@@ -130,7 +132,7 @@ describe('the stage a harness call opens', () => {
       sections: <></>,
     });
 
-    expect(harness.seeded.id).toBe('built-stage');
+    expect(harness.seeded.id).toBe(testObjectId('built-stage'));
     expect(harness.seeded.fields.label).toEqual({
       'en-US': 'Built beside the fixture',
     });

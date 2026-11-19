@@ -4,6 +4,7 @@ import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
 import { stageSchema } from '@codaco/protocol-validation';
 
 import { STAGE_TYPES } from '../../stage-types.ts';
+import { testObjectId } from '../../testing/testObjectId.ts';
 import { getInterfaceTemplate, newStageFields } from '../templates.ts';
 
 /**
@@ -173,7 +174,7 @@ const ENGLISH = { defaultLocale: 'en', locales: ['en'] };
 const newStage = (type: (typeof STAGE_TYPES)[number]) => ({
   ...newStageFields(type, ENGLISH),
   type,
-  id: 'stage-1',
+  id: testObjectId('stage-1'),
   label: { en: 'A new stage' },
 });
 

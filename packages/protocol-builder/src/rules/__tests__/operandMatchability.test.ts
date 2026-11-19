@@ -29,6 +29,7 @@ import {
   VariableTypesKeys,
 } from '@codaco/protocol-validation';
 
+import { testObjectId } from '../../testing/testObjectId.ts';
 import { operandRequirement, operatorsForSubject } from '../operators.ts';
 import { describeRule } from '../ruleDescription.ts';
 
@@ -115,7 +116,7 @@ const canMatch = (
 
 const ruleFor = (operator: string, value: unknown) => ({
   type: 'node' as const,
-  id: 'r1',
+  id: testObjectId('r1'),
   options: { type: 'person', attribute: 'v', operator, value },
 });
 

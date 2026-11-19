@@ -5,7 +5,10 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import {
@@ -15,7 +18,9 @@ import {
 import { nameGeneratorQuickAddStageEditor } from '../NameGeneratorQuickAddStageEditor.ts';
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const QUICK_ADD_INDEX = fixtureStageIds().indexOf('name-generator-quick-add-1');
+const QUICK_ADD_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('name-generator-quick-add-1'),
+);
 
 const stageNameInput = (): HTMLElement =>
   screen.getByRole('textbox', { name: 'Stage name' });

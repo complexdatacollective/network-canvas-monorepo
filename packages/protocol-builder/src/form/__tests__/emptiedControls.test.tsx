@@ -7,6 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../testing/testObjectId.ts';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
 /**
@@ -25,11 +26,18 @@ describe('a control the researcher emptied', () => {
   it('leaves nothing in the stage', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testObjectId('emptied-controls-stage'),
         type: 'Information',
         fields: {
           label: en('Information'),
           title: en('Welcome'),
-          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
+          items: [
+            {
+              id: testObjectId('info-item-1'),
+              type: 'text',
+              content: en('Hello.'),
+            },
+          ],
           interviewScript: 'Read this aloud',
         },
       },
@@ -72,6 +80,7 @@ describe('a control the researcher emptied', () => {
     ] as const;
     const harness = renderStageEditor({
       stage: {
+        id: testObjectId('emptied-controls-stage'),
         type: 'NarrativePedigree',
         fields: {
           conditionText: {
@@ -119,11 +128,18 @@ describe('a control the researcher emptied', () => {
   it('is refused rather than dropped when the field is required', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testObjectId('emptied-controls-stage'),
         type: 'Information',
         fields: {
           label: en('Information'),
           title: en('Welcome'),
-          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
+          items: [
+            {
+              id: testObjectId('info-item-1'),
+              type: 'text',
+              content: en('Hello.'),
+            },
+          ],
         },
       },
       sections: (
@@ -161,11 +177,18 @@ describe('a control the researcher emptied', () => {
   it('is reported missing by the schema when nothing on screen requires it', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testObjectId('emptied-controls-stage'),
         type: 'Information',
         fields: {
           label: en('Information'),
           title: en('Welcome'),
-          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
+          items: [
+            {
+              id: testObjectId('info-item-1'),
+              type: 'text',
+              content: en('Hello.'),
+            },
+          ],
         },
       },
       sections: (

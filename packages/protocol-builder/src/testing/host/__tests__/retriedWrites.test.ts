@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { fixtureStageId } from '../../protocolFixture.ts';
+import { testObjectId } from '../../testObjectId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -13,7 +15,10 @@ import { keyedProcedures } from './contractProcedures.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 
 const EDIT = 'edit-1';
 /** The id the retried call repeats: one intent, asked twice. */
@@ -56,7 +61,7 @@ function fixtureHost(): InMemoryHost {
   let minted = 0;
   return createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
-    nextId: () => `minted-${++minted}`,
+    nextId: () => testObjectId(`minted-${++minted}`),
   });
 }
 
@@ -137,7 +142,9 @@ const WRITES: readonly KeyedWrite[] = [
         kind: 'stage',
         document: Redacted.make({
           ...stageTemplate(host),
-          items: [{ id: 'item-1', type: 'asset', content: staged }],
+          items: [
+            { id: testObjectId('item-1'), type: 'asset', content: staged },
+          ],
         }),
         promote: { editId: EDIT, resourceIds: [staged] },
       }),

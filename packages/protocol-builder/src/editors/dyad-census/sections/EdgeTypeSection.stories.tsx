@@ -6,10 +6,14 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../../../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import EdgeTypeSection, { CREATE_EDGE_FIELD } from './EdgeTypeSection.tsx';
 
 /** The stage whose every question records a connection between a pair. */
-const DYAD_CENSUS = sectionId({ kind: 'stage', stageId: 'dyad-census-1' });
+const DYAD_CENSUS = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('dyad-census-1'),
+});
 
 /** The connection type the fixture's prompt was saved pointing at. */
 const KNOWS = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
@@ -61,7 +65,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'dyad-census-1',
+    stageId: fixtureStageId('dyad-census-1'),
     // What the host stands in for is the row dialog that edits one question,
     // which is where this control is met.
     sectionTitle: 'One question this stage asks',

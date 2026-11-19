@@ -258,7 +258,8 @@ export type DescribeRuleInput = Readonly<{
    * `duplicateRuleIds`.
    *
    * The other thing only the SET can answer. The protocol schema refuses a
-   * filter whose rules repeat an id (`findDuplicateId`), and no rule can tell
+   * protocol whose objects repeat an id (`findDuplicateProtocolObjectIds`),
+   * and no rule can tell
    * on its own that its id is a repeat. A caller that says nothing — a host
    * printing one rule out of a validated protocol, or the dialog judging the
    * draft it is about to save — reports no duplicate, which is right: a
@@ -1122,7 +1123,8 @@ export function describeRule({
       message: say(problemMessages.missingId),
     });
   } else if (duplicateIds?.has(rule.id) === true) {
-    // The same id, twice in one set. `findDuplicateId` refuses the protocol
+    // The same id, twice in one set. `findDuplicateProtocolObjectIds` refuses
+    // the protocol
     // for it, and the rule ITSELF looks perfect — so this is the one problem
     // that cannot be found without the rules beside it, and the one the
     // researcher has no other way of seeing. Reported on BOTH rows, because

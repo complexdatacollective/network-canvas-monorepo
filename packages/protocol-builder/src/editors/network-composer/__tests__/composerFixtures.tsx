@@ -5,7 +5,9 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { sharedWording } from '../../../sections/supplied-wording/sharedWording.tsx';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../testing/testObjectId.ts';
 import { mountedAs } from '../../__tests__/formEditorHarness.tsx';
 import { networkComposerStageEditor } from '../NetworkComposerStageEditor.ts';
 import { composerConnections } from '../sections/composerConnections.tsx';
@@ -41,16 +43,19 @@ const KNOWS_SECTION = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
 
 const COMPOSER_SECTION = sectionId({
   kind: 'stage',
-  stageId: 'network-composer-1',
+  stageId: fixtureStageId('network-composer-1'),
 });
 
 const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
 
-const SOCIOGRAM_SECTION = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
+const SOCIOGRAM_SECTION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('sociogram-1'),
+});
 
 const ALTER_FORM_SECTION = sectionId({
   kind: 'stage',
-  stageId: 'alter-form-1',
+  stageId: fixtureStageId('alter-form-1'),
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -79,6 +84,7 @@ export const edgeFormFieldsOf = (
 /** A composer holding whatever a case needs, over the fixture's own codebook. */
 export const composerHolding = (fields: SectionDoc) => ({
   stage: {
+    id: testObjectId('composer-under-test'),
     type: 'NetworkComposer' as const,
     fields: {
       label: { 'en-US': 'Network Composer' },
@@ -242,7 +248,10 @@ export const highlightInASociogram = (
   }
   const marked = variableIds.map((variableId, index) => ({
     ...held,
-    id: index === 0 ? held.id : `${String(held.id)}-marking-${String(index)}`,
+    id:
+      index === 0
+        ? held.id
+        : testObjectId(`sociogram-marking-${String(index)}`),
     highlight: { allowHighlighting: true, variable: variableId },
   }));
   const updated: SectionDoc = {
@@ -280,7 +289,7 @@ export const collectInAnAlterForm = (
       fields: [
         ...fields,
         ...variableIds.map((variable) => ({
-          id: `field-added-${variable}`,
+          id: testObjectId(`field-added-${variable}`),
           variable,
           prompt: {
             'en-US': escapeMessageText(`What is this person's ${variable}?`),
@@ -335,7 +344,7 @@ export const composerInAnotherStage = (
     throw new Error('the fixture protocol has no composer to copy');
   }
   const stages = Array.isArray(order.stages) ? order.stages : [];
-  const id = 'network-composer-2';
+  const id = testObjectId('network-composer-2');
   const second: SectionDoc = {
     ...composer,
     id,

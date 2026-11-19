@@ -16,7 +16,11 @@ const ATTRIBUTES: readonly VariablePickerOption[] = [
   { value: 'name', label: 'name', type: 'text' },
   { value: 'age', label: 'age', type: 'number' },
   { value: 'contactFreq', label: 'contactFreq', type: 'ordinal' },
-  { value: 'contactType', label: 'contactType', type: 'categorical' },
+  {
+    value: 'contactType',
+    label: 'contactType',
+    type: 'categorical',
+  },
   { value: 'flagged', label: 'flagged', type: 'boolean' },
   { value: 'closeness', label: 'closeness', type: 'scalar' },
   { value: 'metOn', label: 'metOn', type: 'datetime' },
@@ -235,7 +239,11 @@ export const ANameThatCannotBeUsed: Story = {
       entity: 'node',
       variables: [
         { id: 'age', name: 'age', type: 'number' },
-        { id: 'nominated_early', name: 'nominated_early', type: 'boolean' },
+        {
+          id: 'nominated_early',
+          name: 'nominated_early',
+          type: 'boolean',
+        },
         {
           id: 'contactType',
           name: 'contactType',

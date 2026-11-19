@@ -10,12 +10,17 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../testing/testObjectId.ts';
 
 const en = (text: string) => ({ 'en-US': text });
 
 const renderField = (fields: SectionDoc, children: ReactNode) =>
   renderStageEditor({
-    stage: { type: 'Information', fields },
+    stage: {
+      id: testObjectId('field-seeding-stage'),
+      type: 'Information',
+      fields,
+    },
     sections: <BuilderSection title="Introduction">{children}</BuilderSection>,
   });
 
@@ -185,7 +190,9 @@ const SetItems = (({
   <button
     type="button"
     onClick={() =>
-      onChange?.([{ id: 'item-1', type: 'text', content: en('Rewritten') }])
+      onChange?.([
+        { id: testObjectId('item-1'), type: 'text', content: en('Rewritten') },
+      ])
     }
   >
     Rewrite the items
@@ -195,7 +202,13 @@ const SetItems = (({
 const SEEDED_ITEMS: SectionDoc = {
   label: en('Welcome'),
   title: en('Welcome to the study'),
-  items: [{ id: 'item-1', type: 'text', content: en('As it was seeded') }],
+  items: [
+    {
+      id: testObjectId('item-1'),
+      type: 'text',
+      content: en('As it was seeded'),
+    },
+  ],
 };
 
 /**
@@ -226,7 +239,11 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
 
   it('shows the edit rather than the value it replaced', async () => {
     const harness = renderStageEditor({
-      stage: { type: 'Information', fields: SEEDED_ITEMS },
+      stage: {
+        id: testObjectId('field-seeding-stage'),
+        type: 'Information',
+        fields: SEEDED_ITEMS,
+      },
       sections: overlappingItems,
     });
 
@@ -244,7 +261,11 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
 
   it('does not write the replaced draft back over it on save', async () => {
     const harness = renderStageEditor({
-      stage: { type: 'Information', fields: SEEDED_ITEMS },
+      stage: {
+        id: testObjectId('field-seeding-stage'),
+        type: 'Information',
+        fields: SEEDED_ITEMS,
+      },
       sections: overlappingItems,
     });
 
@@ -259,7 +280,7 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
     const request = await harness.submit();
 
     expect(request?.stageDocument.items).toEqual([
-      { id: 'item-1', type: 'text', content: en('Rewritten') },
+      { id: testObjectId('item-1'), type: 'text', content: en('Rewritten') },
     ]);
   });
 });

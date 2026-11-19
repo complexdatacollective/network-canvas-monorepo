@@ -21,12 +21,17 @@ import type {
   StageEditorProps,
 } from '../../stage-editor-contract.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
-import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
+import {
+  fixtureStageIds,
+  loadFixtureStage,
+  fixtureStageId,
+} from '../protocolFixture.ts';
 import {
   renderStageEditor,
   type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../renderStageEditor.tsx';
+import { testObjectId } from '../testObjectId.ts';
 
 const commonSections = (
   <>
@@ -169,7 +174,7 @@ describe('the stage-editor test harness', () => {
     expect(() => loadFixtureStage('not-a-stage')).toThrow(
       /has no stage "not-a-stage"/,
     );
-    expect(fixtureStageIds()).toContain('information-1');
+    expect(fixtureStageIds()).toContain(fixtureStageId('information-1'));
   });
 
   it('lists the mounted sections, in order, with their states', async () => {
@@ -662,7 +667,9 @@ const fixtureStageLabels = (): string[] =>
   );
 
 /** Where `information-1` sits in that interview. */
-const INFORMATION_INDEX = fixtureStageIds().indexOf('information-1');
+const INFORMATION_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('information-1'),
+);
 
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
@@ -749,7 +756,7 @@ describe('a stage being created', () => {
             filter: {
               rules: [
                 {
-                  id: 'rule-a',
+                  id: testObjectId('rule-a'),
                   type: 'ego',
                   options: { attribute: 'ego_name', operator: 'EXISTS' },
                 },
@@ -804,7 +811,7 @@ describe('a stage the interview already contains', () => {
   it('leaves an empty name empty', async () => {
     renderStageEditor({
       stage: {
-        id: 'information-1',
+        id: fixtureStageId('information-1'),
         type: 'Information',
         fields: { label: {}, title: { 'en-US': 'A page' }, items: [] },
       },

@@ -9,6 +9,7 @@ import {
   awaitOfferedAttributes,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorQuickAddStageEditor } from '../NameGeneratorQuickAddStageEditor.ts';
@@ -104,7 +105,7 @@ const quickAddPicker = async (): Promise<HTMLElement> => {
 const quickAddHolding = (fields: SectionDoc) => ({
   registry: nameGeneratorQuickAddStageEditor,
   stage: {
-    id: 'name-generator-quick-add-1',
+    id: fixtureStageId('name-generator-quick-add-1'),
     type: 'NameGeneratorQuickAdd' as const,
     fields: {
       label: { 'en-US': 'Name Generator Quick Add' },

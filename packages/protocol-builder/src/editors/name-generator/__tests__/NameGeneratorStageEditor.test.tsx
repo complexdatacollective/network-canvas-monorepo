@@ -10,7 +10,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { attributeField } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorStageEditor } from '../NameGeneratorStageEditor.ts';
@@ -58,7 +61,9 @@ const mountFixture = () =>
   });
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf('name-generator-1');
+const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('name-generator-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'NameGenerator' as const, position: NAME_GENERATOR_INDEX },

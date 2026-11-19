@@ -17,8 +17,12 @@ import {
   chooseAttributeById,
   offeredAttributes,
 } from '../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../testing/testObjectId.ts';
 import { EntitySubjectPickerField } from '../EntityTypePickerField.tsx';
 import StageDestinationPickerField from '../StageDestinationPickerField.tsx';
 import VariablePickerField from '../VariablePickerField.tsx';
@@ -96,7 +100,7 @@ const skippingTo = (destination?: Record<string, unknown>) => ({
       filter: {
         rules: [
           {
-            id: 'rule-a',
+            id: testObjectId('rule-a'),
             type: 'node',
             options: { type: 'person', operator: 'EXISTS' },
           },
@@ -110,7 +114,7 @@ const skippingTo = (destination?: Record<string, unknown>) => ({
 describe('the entity type picker', () => {
   it('offers a type a collaborator added while the editor was open', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: subjectPicker,
     });
     await harness.opened();
@@ -135,7 +139,7 @@ describe('the entity type picker', () => {
 
   it('saves the type the researcher picked, as the subject the schema stores', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: subjectPicker,
     });
 
@@ -152,7 +156,7 @@ describe('the entity type picker', () => {
 
   it('reports a type the codebook no longer holds rather than dropping it', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: subjectPicker,
     });
     await harness.opened();
@@ -170,7 +174,7 @@ describe('the entity type picker', () => {
 describe('the attribute picker', () => {
   it('offers an attribute a collaborator added while the editor was open', async () => {
     const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       sections: <AttributePicker />,
     });
     await harness.opened();
@@ -203,7 +207,7 @@ describe('the attribute picker', () => {
 
   it('saves the attribute the researcher picked', async () => {
     const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       sections: <AttributePicker />,
     });
 
@@ -229,7 +233,7 @@ describe('the attribute picker', () => {
     // picker offers the attributes of a PERSON — so what it holds is exactly
     // the case a deleted attribute produces: a stored id nothing describes.
     renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       sections: <AttributePicker />,
     });
 
@@ -263,7 +267,11 @@ describe('the stage destination picker', () => {
     ).toBeInTheDocument();
 
     harness.host.store.applyAsCollaborator(STAGE_ORDER, {
-      stages: ['anonymisation-1', 'ego-form-1', 'information-1'],
+      stages: [
+        fixtureStageId('anonymisation-1'),
+        fixtureStageId('ego-form-1'),
+        fixtureStageId('information-1'),
+      ],
     });
 
     await waitFor(() =>
@@ -285,19 +293,22 @@ describe('the stage destination picker', () => {
       await screen.findByRole('combobox', {
         name: 'Where the interview continues',
       }),
-      'route:stage:sociogram-1',
+      `route:stage:${fixtureStageId('sociogram-1')}`,
     );
     const saved = await harness.submit();
 
     expect(
       (saved?.stageDocument.skipLogic as Record<string, unknown> | undefined)
         ?.destination,
-    ).toEqual({ type: 'stage', stageId: 'sociogram-1' });
+    ).toEqual({ type: 'stage', stageId: fixtureStageId('sociogram-1') });
   });
 
   it('reports a destination whose stage is gone rather than correcting it', async () => {
     const harness = renderStageEditor({
-      stage: skippingTo({ type: 'stage', stageId: 'no-such-stage' }),
+      stage: skippingTo({
+        type: 'stage',
+        stageId: testObjectId('no-such-stage'),
+      }),
       sections: destinationPicker,
     });
 
@@ -311,6 +322,6 @@ describe('the stage destination picker', () => {
     expect(
       (saved?.stageDocument.skipLogic as Record<string, unknown> | undefined)
         ?.destination,
-    ).toEqual({ type: 'stage', stageId: 'no-such-stage' });
+    ).toEqual({ type: 'stage', stageId: testObjectId('no-such-stage') });
   });
 });

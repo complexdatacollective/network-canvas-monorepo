@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../testing/testObjectId.ts';
 import { mountedAs } from '../../__tests__/formEditorHarness.tsx';
 import { finishSessionStageEditor } from '../FinishSessionStageEditor.ts';
 
@@ -35,6 +36,7 @@ const FIXTURE_LANGUAGE = 'en-US';
 
 const openStage = (fields: SectionDoc = {}) => ({
   stage: {
+    id: testObjectId('finish-session-stage'),
     type: 'FinishSession' as const,
     fields: {
       mode: 'confirmation',

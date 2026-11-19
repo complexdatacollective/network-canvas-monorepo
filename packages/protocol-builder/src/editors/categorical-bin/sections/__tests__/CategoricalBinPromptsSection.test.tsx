@@ -12,6 +12,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../../../testing/testObjectId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import CategoricalBinPromptsSection from '../CategoricalBinPromptsSection.tsx';
 
@@ -40,7 +41,11 @@ const openSection = () => ({
 
 /** The same section over a stage built for the case, rather than the fixture's. */
 const openStage = (fields: Record<string, unknown>) => ({
-  stage: { type: 'CategoricalBin' as const, fields },
+  stage: {
+    id: testObjectId('CategoricalBin-stage'),
+    type: 'CategoricalBin' as const,
+    fields,
+  },
   sections: <CategoricalBinPromptsSection />,
 });
 
@@ -93,7 +98,10 @@ describe('the questions a categorical bin asks', () => {
         label: { 'en-US': 'Categorical Bin' },
         subject: { entity: 'edge', type: 'knows' },
         prompts: [
-          { id: 'prompt-a', text: { 'en-US': 'What kind of contact?' } },
+          {
+            id: testObjectId('prompt-a'),
+            text: { 'en-US': 'What kind of contact?' },
+          },
         ],
       }),
     );
@@ -242,7 +250,7 @@ describe('the questions a categorical bin asks', () => {
   it('opens a prompt’s follow-up bin switched on, holding what it was saved with', async () => {
     const harness = renderStageEditor(
       binningPeople({
-        id: 'prompt-a',
+        id: testObjectId('prompt-a'),
         text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
@@ -289,7 +297,7 @@ describe('the questions a categorical bin asks', () => {
   it('drops the follow-up bin’s three fields together when it is switched off', async () => {
     const harness = renderStageEditor(
       binningPeople({
-        id: 'prompt-a',
+        id: testObjectId('prompt-a'),
         text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
@@ -318,7 +326,7 @@ describe('the questions a categorical bin asks', () => {
 
     const request = await harness.submit();
     expect(prompts(request?.stageDocument ?? {}).at(0)).toEqual({
-      id: 'prompt-a',
+      id: testObjectId('prompt-a'),
       text: { 'en-US': 'What kind of contact?' },
       variable: 'contactType',
     });
@@ -358,7 +366,7 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
   it('rules the follow-up’s answer rather than the bins’ own', async () => {
     const harness = renderStageEditor(
       binningPeople({
-        id: 'prompt-a',
+        id: testObjectId('prompt-a'),
         text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
@@ -393,7 +401,7 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
   it('offers no values control for an attribute that has no values', async () => {
     const harness = renderStageEditor(
       binningPeople({
-        id: 'prompt-a',
+        id: testObjectId('prompt-a'),
         text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
@@ -424,7 +432,7 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
   it('offers no rules on the attribute the bins are, only on the typed answer', async () => {
     const harness = renderStageEditor(
       binningPeople({
-        id: 'prompt-a',
+        id: testObjectId('prompt-a'),
         text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
@@ -467,7 +475,7 @@ describe('a categorical bin prompt whose attributes are not the kind it needs', 
   it('refuses a prompt binned by an attribute with no named values', async () => {
     const harness = renderStageEditor(
       binningPeople({
-        id: 'prompt-a',
+        id: testObjectId('prompt-a'),
         text: { 'en-US': 'What kind of contact?' },
         // Ordinal: its values run in an order this interface does not draw.
         variable: 'contactFreq',
@@ -497,7 +505,7 @@ describe('a categorical bin prompt whose attributes are not the kind it needs', 
   it('refuses a follow-up bin the participant could not type into, once the bins are sound', async () => {
     const harness = renderStageEditor(
       binningPeople({
-        id: 'prompt-a',
+        id: testObjectId('prompt-a'),
         text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         // A number, which the follow-up input cannot collect free text into.
@@ -537,7 +545,7 @@ describe('a categorical bin with more bins than fit on one screen', () => {
         subject: { entity: 'node', type: 'person' },
         prompts: [
           {
-            id: 'prompt-a',
+            id: testObjectId('prompt-a'),
             text: { 'en-US': 'What kind of contact?' },
             variable: 'contactType',
             ...(followUpBin
@@ -658,7 +666,7 @@ describe('a prompt whose attribute’s values an interface owns', () => {
         subject: { entity: 'node', type: 'family_member' },
         prompts: [
           {
-            id: 'prompt-a',
+            id: testObjectId('prompt-a'),
             text: { 'en-US': 'Which of these are they?' },
             variable: 'sexAssignedAtBirth',
           },
@@ -705,7 +713,7 @@ describe('a prompt whose attribute’s options a stage manages', () => {
         subject: { entity: 'node', type: 'family_member' },
         prompts: [
           {
-            id: 'prompt-a',
+            id: testObjectId('prompt-a'),
             text: 'Which of these are they?',
             variable: 'genderIdentity',
           },
@@ -751,7 +759,7 @@ describe('a prompt whose attribute’s options a stage manages', () => {
 describe('the rules the follow-up attribute’s answers have to satisfy', () => {
   const followUpRow = () =>
     binningPeople({
-      id: 'prompt-a',
+      id: testObjectId('prompt-a'),
       text: { 'en-US': 'What kind of contact?' },
       variable: 'contactType',
       otherVariable: 'relationship_to_ego',

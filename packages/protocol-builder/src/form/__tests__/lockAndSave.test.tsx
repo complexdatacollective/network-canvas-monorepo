@@ -31,11 +31,13 @@ import {
   fixtureProtocolSections,
   fixtureStageIds,
   loadFixtureStage,
+  fixtureStageId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testObjectId } from '../../testing/testObjectId.ts';
 import StageEditorShell from '../StageEditorShell.tsx';
 
-const STAGE_ID = 'information-1';
+const STAGE_ID = fixtureStageId('information-1');
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
 
 const en = (text: string) => ({ 'en-US': text });
@@ -517,7 +519,10 @@ describe('a stage the protocol will not open', () => {
         <ResourceClientProvider>
           <StageEditSession
             target={{
-              sectionId: sectionId({ kind: 'stage', stageId: 'deleted-stage' }),
+              sectionId: sectionId({
+                kind: 'stage',
+                stageId: testObjectId('deleted-stage'),
+              }),
             }}
           >
             <StageEditorShell>{nameSection}</StageEditorShell>
