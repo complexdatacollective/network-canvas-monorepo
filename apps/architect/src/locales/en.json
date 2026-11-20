@@ -2489,7 +2489,7 @@
   },
   "architect.protocolReview.popover.commentChange": {
     "defaultMessage": "Change your feedback",
-    "description": "Button in the footer of the review panel, beside Dismiss review, shown in place of \"Leave feedback on this review\" once the researcher has sent feedback. It opens what they wrote again for changing."
+    "description": "Button under the list of problems, shown in place of \"Leave feedback on this review\" once the researcher has sent feedback. It opens what they wrote again for changing."
   },
   "architect.protocolReview.popover.commentHint": {
     "defaultMessage": "Tell the Network Canvas team what you thought of this review. Leave out names and anything else that could identify a person.",
@@ -2497,7 +2497,7 @@
   },
   "architect.protocolReview.popover.commentOpen": {
     "defaultMessage": "Leave feedback on this review",
-    "description": "Button in the footer of the review panel, beside Dismiss review. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box."
+    "description": "Button under the list of problems. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box."
   },
   "architect.protocolReview.popover.commentRefused": {
     "defaultMessage": "Your feedback could not be saved, because this protocol is open for editing in another tab. Leave feedback on the review in that tab.",

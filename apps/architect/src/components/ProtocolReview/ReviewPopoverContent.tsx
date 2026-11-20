@@ -326,13 +326,13 @@ const messages = defineMessages({
     id: 'architect.protocolReview.popover.commentOpen',
     defaultMessage: 'Leave feedback on this review',
     description:
-      'Button in the footer of the review panel, beside Dismiss review. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box.',
+      'Button under the list of problems. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box.',
   },
   commentChange: {
     id: 'architect.protocolReview.popover.commentChange',
     defaultMessage: 'Change your feedback',
     description:
-      'Button in the footer of the review panel, beside Dismiss review, shown in place of "Leave feedback on this review" once the researcher has sent feedback. It opens what they wrote again for changing.',
+      'Button under the list of problems, shown in place of "Leave feedback on this review" once the researcher has sent feedback. It opens what they wrote again for changing.',
   },
   commentHint: {
     id: 'architect.protocolReview.popover.commentHint',
@@ -898,7 +898,7 @@ const ReviewPopoverContent = ({
         </div>
       )}
       {body}
-      {summary && !running && (commentDraft !== null || commentRefused) && (
+      {summary && !running && (
         <div className="border-outline flex flex-col gap-3 border-t px-6 py-4">
           {commentRefused && (
             <Alert variant="warning" density="compact" className="my-0">
@@ -907,7 +907,28 @@ const ReviewPopoverContent = ({
               </AlertDescription>
             </Alert>
           )}
-          {commentDraft !== null && (
+          {commentDraft === null ? (
+            <div>
+              <Button
+                ref={(button: HTMLButtonElement | null) => {
+                  if (button === null || !focusCommentButton.current) return;
+                  focusCommentButton.current = false;
+                  button.focus();
+                }}
+                size="sm"
+                variant="text"
+                className="-ms-3"
+                icon={<MessageSquare aria-hidden />}
+                onClick={() => setCommentDraft(sentComment)}
+              >
+                {intl.formatMessage(
+                  sentComment === ''
+                    ? messages.commentOpen
+                    : messages.commentChange,
+                )}
+              </Button>
+            </div>
+          ) : (
             <>
               <span id={commentLabelId} className="text-sm font-bold">
                 {intl.formatMessage(messages.commentOpen)}
@@ -953,29 +974,9 @@ const ReviewPopoverContent = ({
           </>
         ) : summary ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button onClick={() => void dismiss()}>
-                {intl.formatMessage(messages.dismissReview)}
-              </Button>
-              {commentDraft === null && (
-                <Button
-                  ref={(button: HTMLButtonElement | null) => {
-                    if (button === null || !focusCommentButton.current) return;
-                    focusCommentButton.current = false;
-                    button.focus();
-                  }}
-                  variant="text"
-                  icon={<MessageSquare aria-hidden />}
-                  onClick={() => setCommentDraft(sentComment)}
-                >
-                  {intl.formatMessage(
-                    sentComment === ''
-                      ? messages.commentOpen
-                      : messages.commentChange,
-                  )}
-                </Button>
-              )}
-            </div>
+            <Button onClick={() => void dismiss()}>
+              {intl.formatMessage(messages.dismissReview)}
+            </Button>
             {counts.undecided > 0 && firstUndecided && (
               <Button
                 color="primary"
