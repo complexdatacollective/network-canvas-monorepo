@@ -74,6 +74,10 @@ const addJsExtensionsToDeclarationSpecifiers = (
     );
 
 export default defineConfig({
+  // No `browser` condition: the bundle also runs in the CLI and in workers,
+  // and a dependency's browser build may reach for `document` (the Markdown
+  // parser's character-reference decoder does).
+  resolve: { conditions: ['module', 'development|production'] },
   build: {
     // The optional UI subpaths externalize app-i18n; the root has no such imports.
     rollupOptions: { external: [/^@codaco\/app-i18n(?:\/|$)/] },
