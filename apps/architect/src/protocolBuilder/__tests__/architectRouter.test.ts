@@ -10,6 +10,7 @@ import {
   Layer,
   ManagedRuntime,
   Option,
+  Predicate,
   Redacted,
   Schema,
   Stream,
@@ -350,6 +351,53 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
     });
     expect(after.revision).toEqual(before.revision);
+  });
+
+  it('names the row inside a refused new stage that the issue is about', async () => {
+    const { client } = openProtocol();
+    const template = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('Sociogram'),
+      }),
+    });
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
+    const prompts: unknown = withoutId.prompts;
+    if (!Array.isArray(prompts) || !Predicate.isObject(prompts[0])) {
+      throw new Error('the fixture sociogram has no prompt');
+    }
+    const sortRule = createProtocolObjectId();
+
+    const { error } = await safe(
+      client.call('Create', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        kind: 'stage',
+        document: Redacted.make({
+          ...withoutId,
+          prompts: [
+            {
+              ...prompts[0],
+              sortOrder: [
+                { id: sortRule, property: '*', direction: 'sideways' },
+              ],
+            },
+            ...prompts.slice(1),
+          ],
+        }),
+      }),
+    );
+
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error).toMatchObject({
+      issues: [
+        expect.objectContaining({
+          path: ['prompts', 0, 'sortOrder', 0, 'direction'],
+          objectId: sortRule,
+        }),
+      ],
+    });
   });
 
   it('registers a created stage in the stage index at the same revision', async () => {

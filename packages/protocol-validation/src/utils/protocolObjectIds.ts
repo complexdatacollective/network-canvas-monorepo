@@ -44,6 +44,40 @@ export const collectProtocolObjectIdsFromSchema = (
     id === undefined ? [] : [{ id, path, kind: objectKind }],
   );
 
+const pathKey = (path: readonly (string | number)[]): string =>
+  JSON.stringify(path);
+
+/**
+ * For each path into `value`, the id of the nearest object `schema` marks
+ * that contains it, so a host can attach a problem to the object it belongs
+ * to rather than to a position that an edit can change. `value` need not be
+ * valid.
+ */
+export const enclosingProtocolObjectIdsIn = (
+  schema: z.ZodType,
+  value: unknown,
+  paths: readonly (readonly (string | number)[])[],
+): (string | undefined)[] => {
+  // Keyed by the path of the object itself, so each lookup costs one probe per
+  // prefix of the path instead of a scan of every object. The first object at
+  // a path wins, as in document order.
+  const idByObjectPath = new Map<string, string>();
+  for (const { id, path } of collectProtocolObjectIdsFromSchema(
+    schema,
+    value,
+  )) {
+    const key = pathKey(path.slice(0, -1));
+    if (!idByObjectPath.has(key)) idByObjectPath.set(key, id);
+  }
+  return paths.map((path) => {
+    for (let length = path.length; length >= 0; length -= 1) {
+      const id = idByObjectPath.get(pathKey(path.slice(0, length)));
+      if (id !== undefined) return id;
+    }
+    return undefined;
+  });
+};
+
 export const groupDuplicateProtocolObjectIds = (
   locations: readonly ProtocolObjectIdLocation[],
 ): DuplicateProtocolObjectId[] => {

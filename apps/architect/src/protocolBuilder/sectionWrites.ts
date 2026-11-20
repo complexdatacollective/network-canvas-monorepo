@@ -1,5 +1,6 @@
 import { Redacted } from 'effect';
 import { v4 as uuid } from 'uuid';
+import type { z } from 'zod';
 
 import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import type { StageCodebookSection } from '@codaco/protocol-builder-core/contract/schemas';
@@ -23,6 +24,7 @@ import {
 import {
   SettingsSectionSchema,
   StageOrderSectionSchema,
+  toSectionIssues,
   type SectionIssue,
 } from '@codaco/studio-sync/section-validation';
 import {
@@ -75,23 +77,14 @@ export type CreatableSectionKind =
   | 'codebookEdge'
   | 'codebookEgo';
 
-type ParseFailure = Readonly<{
-  issues: ReadonlyArray<
-    Readonly<{ path: readonly PropertyKey[]; message: string }>
-  >;
-}>;
-
 function refuseParse(
-  error: ParseFailure,
+  schema: z.ZodType,
+  document: unknown,
+  error: z.ZodError,
 ): SectionWrite & { status: 'refused' } {
   return {
     status: 'refused',
-    issues: error.issues.map((issue) => ({
-      path: issue.path.map((part) =>
-        typeof part === 'symbol' ? String(part) : part,
-      ),
-      message: issue.message,
-    })),
+    issues: toSectionIssues(schema, document, error.issues),
   };
 }
 
@@ -161,14 +154,14 @@ export function stageInterfaceText(
 ):
   | Readonly<{ status: 'written'; interfaceText: StageInterfaceText }>
   | Readonly<{ status: 'refused'; issues: SectionIssue[] }> {
-  const parsed = SettingsSectionSchema.shape.interfaceText.safeParse(
-    interfaceTextWithUpdates(
-      getProtocol(store.getState())?.interfaceText,
-      updates,
-    ),
+  const schema = SettingsSectionSchema.shape.interfaceText;
+  const words = interfaceTextWithUpdates(
+    getProtocol(store.getState())?.interfaceText,
+    updates,
   );
+  const parsed = schema.safeParse(words);
   if (!parsed.success) {
-    const refused = refuseParse(parsed.error);
+    const refused = refuseParse(schema, words, parsed.error);
     return {
       status: 'refused',
       issues: refused.issues.map((issue) => ({
@@ -199,7 +192,10 @@ export function stageCodebook(sections: readonly StageCodebookSection[]):
     if (ref.kind === 'codebookNode') {
       const parsed = NodeDefinitionSchema.safeParse(document);
       if (!parsed.success) {
-        return { ...refuseParse(parsed.error), sectionId: id };
+        return {
+          ...refuseParse(NodeDefinitionSchema, document, parsed.error),
+          sectionId: id,
+        };
       }
       codebook.push({
         entity: 'node',
@@ -209,7 +205,10 @@ export function stageCodebook(sections: readonly StageCodebookSection[]):
     } else if (ref.kind === 'codebookEdge') {
       const parsed = EdgeDefinitionSchema.safeParse(document);
       if (!parsed.success) {
-        return { ...refuseParse(parsed.error), sectionId: id };
+        return {
+          ...refuseParse(EdgeDefinitionSchema, document, parsed.error),
+          sectionId: id,
+        };
       }
       codebook.push({
         entity: 'edge',
@@ -219,7 +218,10 @@ export function stageCodebook(sections: readonly StageCodebookSection[]):
     } else if (ref.kind === 'codebookEgo') {
       const parsed = EgoDefinitionSchema.safeParse(document);
       if (!parsed.success) {
-        return { ...refuseParse(parsed.error), sectionId: id };
+        return {
+          ...refuseParse(EgoDefinitionSchema, document, parsed.error),
+          sectionId: id,
+        };
       }
       codebook.push({ entity: 'ego', definition: parsed.data });
     } else {
@@ -240,7 +242,7 @@ function submitStage(
   codebook: readonly CommittedCodebookSection[] | undefined,
 ): SectionWrite {
   const parsed = stageSchema.safeParse(document);
-  if (!parsed.success) return refuseParse(parsed.error);
+  if (!parsed.success) return refuseParse(stageSchema, document, parsed.error);
   // A protocol always ends at its finish stages, which sit together at the
   // end, so a stage is never rewritten into one or out of one: either would
   // leave a stage no participant could reach, or none to end at. The reducer
@@ -274,7 +276,8 @@ function submitSettings(
   document: SectionDoc,
 ): SectionWrite {
   const parsed = SettingsSectionSchema.safeParse(document);
-  if (!parsed.success) return refuseParse(parsed.error);
+  if (!parsed.success)
+    return refuseParse(SettingsSectionSchema, document, parsed.error);
   // The optional ones are named even when the document omits them: the
   // section is written whole, so a key the researcher cleared has to reach the
   // merging reducer as `undefined` rather than simply be absent.
@@ -296,7 +299,8 @@ function submitStageOrder(
   document: SectionDoc,
 ): SectionWrite {
   const parsed = StageOrderSectionSchema.safeParse(document);
-  if (!parsed.success) return refuseParse(parsed.error);
+  if (!parsed.success)
+    return refuseParse(StageOrderSectionSchema, document, parsed.error);
   const current = (getProtocol(store.getState())?.stages ?? []).map(
     (stage) => stage.id,
   );
@@ -365,17 +369,20 @@ export function submitSection(
       return submitStage(store, ref.stageId, document, interfaceText, codebook);
     case 'codebookNode': {
       const parsed = NodeDefinitionSchema.safeParse(document);
-      if (!parsed.success) return refuseParse(parsed.error);
+      if (!parsed.success)
+        return refuseParse(NodeDefinitionSchema, document, parsed.error);
       return writeEntityDefinition(store, 'node', ref.typeId, parsed.data);
     }
     case 'codebookEdge': {
       const parsed = EdgeDefinitionSchema.safeParse(document);
-      if (!parsed.success) return refuseParse(parsed.error);
+      if (!parsed.success)
+        return refuseParse(EdgeDefinitionSchema, document, parsed.error);
       return writeEntityDefinition(store, 'edge', ref.typeId, parsed.data);
     }
     case 'codebookEgo': {
       const parsed = EgoDefinitionSchema.safeParse(document);
-      if (!parsed.success) return refuseParse(parsed.error);
+      if (!parsed.success)
+        return refuseParse(EgoDefinitionSchema, document, parsed.error);
       return writeEntityDefinition(store, 'ego', EGO_TYPE, parsed.data);
     }
     case 'settings':
@@ -459,9 +466,13 @@ export async function createSection(
   if (kind === 'stage') {
     const stageId = createProtocolObjectId();
     const target = sectionId({ kind, stageId });
-    const parsed = stageSchema.safeParse({ ...document, id: stageId });
+    const stage = { ...document, id: stageId };
+    const parsed = stageSchema.safeParse(stage);
     if (!parsed.success)
-      return { ...refuseParse(parsed.error), sectionId: target };
+      return {
+        ...refuseParse(stageSchema, stage, parsed.error),
+        sectionId: target,
+      };
     store.dispatch(
       commitStage({
         stageId: null,
@@ -484,7 +495,10 @@ export async function createSection(
     }
     const parsed = EgoDefinitionSchema.safeParse(document);
     if (!parsed.success)
-      return { ...refuseParse(parsed.error), sectionId: target };
+      return {
+        ...refuseParse(EgoDefinitionSchema, document, parsed.error),
+        sectionId: target,
+      };
     await writeEntityDefinition(store, 'ego', EGO_TYPE, parsed.data);
     return { status: 'created', sectionId: target };
   }
@@ -495,7 +509,10 @@ export async function createSection(
   if (kind === 'codebookNode') {
     const parsed = NodeDefinitionSchema.safeParse(document);
     if (!parsed.success)
-      return { ...refuseParse(parsed.error), sectionId: target };
+      return {
+        ...refuseParse(NodeDefinitionSchema, document, parsed.error),
+        sectionId: target,
+      };
     const created = await store
       .dispatch(createTypeAsync({ entity: 'node', configuration: parsed.data }))
       .unwrap();
@@ -507,7 +524,10 @@ export async function createSection(
 
   const parsed = EdgeDefinitionSchema.safeParse(document);
   if (!parsed.success)
-    return { ...refuseParse(parsed.error), sectionId: target };
+    return {
+      ...refuseParse(EdgeDefinitionSchema, document, parsed.error),
+      sectionId: target,
+    };
   const created = await store.dispatch(createEdgeAsync(parsed.data)).unwrap();
   return {
     status: 'created',

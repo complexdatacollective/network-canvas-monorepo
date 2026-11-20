@@ -1,4 +1,4 @@
-import { Exit, Redacted, Schema } from 'effect';
+import { Exit, Predicate, Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
@@ -47,6 +47,11 @@ const QUICK_ADD = sectionId({
 const NAME_GENERATOR = sectionId({
   kind: 'stage',
   stageId: fixtureStageId('name-generator-1'),
+});
+
+const SOCIOGRAM = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('sociogram-1'),
 });
 
 const EGO = sectionId({ kind: 'codebookEgo' });
@@ -384,6 +389,49 @@ describe('the in-memory host', () => {
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('InvalidShape');
+  });
+
+  it('names the row inside the stage that a refused submit is about', async () => {
+    const subject = host();
+    await subject.adapter.rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: SOCIOGRAM,
+    });
+    const held = subject.store.read(SOCIOGRAM);
+    const prompts: unknown = held.document.prompts;
+    if (!Array.isArray(prompts) || !Predicate.isObject(prompts[0])) {
+      throw new Error('the fixture sociogram has no prompt');
+    }
+    const sortRule = testObjectId('refused-sort-rule');
+    const document = {
+      ...held.document,
+      prompts: [
+        {
+          ...prompts[0],
+          sortOrder: [{ id: sortRule, property: '*', direction: 'sideways' }],
+        },
+        ...prompts.slice(1),
+      ],
+    };
+
+    const { refusal } = await attempt(subject.adapter, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: SOCIOGRAM,
+      document: Redacted.make(document),
+      revision: held.revision,
+    });
+
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(revealed(refusalData(refusal))).toEqual({
+      sectionId: SOCIOGRAM,
+      issues: [
+        expect.objectContaining({
+          path: ['prompts', 0, 'sortOrder', 0, 'direction'],
+          objectId: sortRule,
+        }),
+      ],
+    });
   });
 
   it('registers a created stage in the stage order in the same revision', async () => {

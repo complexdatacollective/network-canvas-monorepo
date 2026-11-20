@@ -10,6 +10,9 @@ import {
   ExperimentsSchema,
   NodeDefinitionSchema,
   assetSchema,
+  enclosingProtocolObjectIdsIn,
+  isProtocolObjectId,
+  type ProtocolObjectId,
   stageSchema,
 } from '@codaco/protocol-validation';
 
@@ -41,6 +44,12 @@ const AssetsSectionSchema = z.record(z.string(), assetSchema);
 export type SectionIssue = {
   path: (string | number)[];
   message: string;
+  /**
+   * The id of the nearest object inside the section that holds the failing
+   * value and has an id of its own (see `protocolObjectId`), so a host can
+   * point at that object.
+   */
+  objectId?: ProtocolObjectId;
 };
 
 export type SectionValidationResult =
@@ -83,20 +92,39 @@ function schemaFor(id: string): z.ZodType {
   }
 }
 
+/**
+ * A section schema's refusal of `doc` as section issues, each with the id of
+ * the marked object it falls inside where that id is a usable one.
+ */
+export function toSectionIssues(
+  schema: z.ZodType,
+  doc: unknown,
+  issues: readonly z.core.$ZodIssue[],
+): SectionIssue[] {
+  const paths = issues.map((issue) =>
+    issue.path.map((part) => (typeof part === 'symbol' ? String(part) : part)),
+  );
+  const objectIds = enclosingProtocolObjectIdsIn(schema, doc, paths);
+  return issues.map((issue, index) => {
+    const objectId = objectIds[index];
+    return {
+      path: paths[index] ?? [],
+      message: issue.message,
+      ...(isProtocolObjectId(objectId) ? { objectId } : {}),
+    };
+  });
+}
+
 export function validateSection(
   id: string,
   doc: SectionDoc,
 ): SectionValidationResult {
-  const result = schemaFor(id).safeParse(doc);
+  const schema = schemaFor(id);
+  const result = schema.safeParse(doc);
   if (result.success) return { success: true };
   return {
     success: false,
-    issues: result.error.issues.map((issue) => ({
-      path: issue.path.map((part) =>
-        typeof part === 'symbol' ? String(part) : part,
-      ),
-      message: issue.message,
-    })),
+    issues: toSectionIssues(schema, doc, result.error.issues),
   };
 }
 

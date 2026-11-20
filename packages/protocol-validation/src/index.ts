@@ -425,6 +425,7 @@ export {
 export {
   DUPLICATE_OBJECT_ID,
   type DuplicateProtocolObjectId,
+  enclosingProtocolObjectIdsIn,
   type ProtocolObjectIdLocation,
 } from './utils/protocolObjectIds.ts';
 export {

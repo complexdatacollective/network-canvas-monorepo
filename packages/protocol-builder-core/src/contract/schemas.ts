@@ -1,6 +1,9 @@
 import { Schema } from 'effect';
 
-import { isSafeAssetSource } from '@codaco/protocol-validation';
+import {
+  isProtocolObjectId,
+  isSafeAssetSource,
+} from '@codaco/protocol-validation';
 import {
   isCodebookSectionId,
   parseSectionId,
@@ -77,9 +80,18 @@ const DocumentPathSchema = Schema.Array(
   Schema.Union([Schema.String, Schema.Finite]),
 );
 
+/** The id of an object inside a protocol (see `ProtocolObjectIdSchema`). */
+const ProtocolObjectIdSchema = Schema.String.pipe(
+  Schema.refine(isProtocolObjectId, {
+    message: 'not a protocol object id',
+  }),
+);
+
 export const SectionIssueSchema = Schema.Struct({
   path: DocumentPathSchema,
   message: Schema.String,
+  /** The object inside the section the issue is about, where it has an id. */
+  objectId: Schema.optionalKey(ProtocolObjectIdSchema),
 });
 
 /** One place a section names something: a reference, at its path. */
