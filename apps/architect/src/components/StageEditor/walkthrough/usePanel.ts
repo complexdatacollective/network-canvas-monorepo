@@ -143,10 +143,12 @@ export function usePanel(target: HTMLElement | null, reducedMotion: boolean) {
   const ringHeight = useMotionValue(0);
   const ringOpacity = useMotionValue(0);
 
-  // Read by callbacks that outlive a render.
+  // Read by callbacks that outlive a render. Set in the commit that shows the
+  // step, so a move that ends at once (reduced motion) finds that step's
+  // target, not the last one's.
   const reduced = useRef(reducedMotion);
   const targetNow = useRef(target);
-  useEffect(() => {
+  useLayoutEffect(() => {
     reduced.current = reducedMotion;
     targetNow.current = target;
   }, [reducedMotion, target]);
