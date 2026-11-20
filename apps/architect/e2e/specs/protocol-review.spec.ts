@@ -715,11 +715,9 @@ test.describe('asking for a review', () => {
     ).toBeVisible();
     await expect(
       view.getByRole('group', {
-        name: 'Was it useful to be told about this problem?',
+        name: 'Was this useful?',
       }),
-    ).toHaveAccessibleDescription(
-      'Your answer is sent to the Network Canvas team.',
-    );
+    ).toBeVisible();
   });
 
   test('a shared review asks for a rating on each problem and takes written feedback', async ({
@@ -733,7 +731,7 @@ test.describe('asking for a review', () => {
     const title = 'Nothing answers the research question';
     const view = await openProblem(page, popover, title);
     const rating = view.getByRole('group', {
-      name: 'Was it useful to be told about this problem?',
+      name: 'Was this useful?',
     });
     await rating.getByRole('button', { name: 'Not useful' }).click();
     await expect(

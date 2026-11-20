@@ -2727,17 +2727,13 @@
     "defaultMessage": "Problem {position, number} of {total, number}",
     "description": "Shows which problem found by the automated protocol review is open, when going through them one at a time."
   },
-  "architect.protocolReview.problem.ratingHint": {
-    "defaultMessage": "Your answer is sent to the Network Canvas team.",
-    "description": "Note under the question asking whether a problem found by the automated protocol review was useful. The answer goes to the Network Canvas team whether or not the review was shared with them, without the text of the problem. \"Network Canvas\" is a product name and is not translated."
-  },
   "architect.protocolReview.problem.ratingNotUseful": {
     "defaultMessage": "Not useful",
-    "description": "Button that rates a problem found by the automated protocol review as not useful. Pressing it again takes the rating back."
+    "description": "Name and tooltip of the thumbs-down icon button that rates a problem found by the automated protocol review as not useful. Pressing it again takes the rating back."
   },
   "architect.protocolReview.problem.ratingQuestion": {
-    "defaultMessage": "Was it useful to be told about this problem?",
-    "description": "Question under a problem found by the automated protocol review. Two buttons, Useful and Not useful, answer it."
+    "defaultMessage": "Was this useful?",
+    "description": "Question under a problem found by the automated protocol review, asking whether being told about the problem was useful. Two icon buttons, a thumbs up named Useful and a thumbs down named Not useful, answer it."
   },
   "architect.protocolReview.problem.ratingReason": {
     "defaultMessage": "Why not? (optional)",
@@ -2745,7 +2741,7 @@
   },
   "architect.protocolReview.problem.ratingUseful": {
     "defaultMessage": "Useful",
-    "description": "Button that rates a problem found by the automated protocol review as useful. Pressing it again takes the rating back."
+    "description": "Name and tooltip of the thumbs-up icon button that rates a problem found by the automated protocol review as useful. Pressing it again takes the rating back."
   },
   "architect.protocolReview.problem.reasonFixWouldNotWork": {
     "defaultMessage": "The suggested fix would not work",

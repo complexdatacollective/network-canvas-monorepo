@@ -103,16 +103,14 @@ afterEach(() => {
 });
 
 describe('a review that was not shared', () => {
-  it('asks for a rating, says where it goes, and sends it without the review id', async () => {
+  it('asks for a rating and sends it without the review id', async () => {
     await reviewed(store, false);
     renderToolbar(store);
     const problem = await openProblem('The prompt is vague');
     const rating = problem.getByRole('group', {
-      name: 'Was it useful to be told about this problem?',
+      name: 'Was this useful?',
     });
-    expect(rating).toHaveAccessibleDescription(
-      'Your answer is sent to the Network Canvas team.',
-    );
+    expect(rating).toBeVisible();
     await userEvent.click(
       within(rating).getByRole('button', { name: 'Useful' }),
     );
@@ -156,7 +154,7 @@ describe('a review that was shared', () => {
     const problem = await openProblem('The prompt is vague');
     const rating = within(
       problem.getByRole('group', {
-        name: 'Was it useful to be told about this problem?',
+        name: 'Was this useful?',
       }),
     );
     const useful = rating.getByRole('button', { name: 'Useful' });

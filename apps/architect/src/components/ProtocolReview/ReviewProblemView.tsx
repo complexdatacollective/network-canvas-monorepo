@@ -17,6 +17,11 @@ import Pips from '@codaco/fresco-ui/Pips';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
@@ -208,27 +213,21 @@ const messages = defineMessages({
   },
   ratingQuestion: {
     id: 'architect.protocolReview.problem.ratingQuestion',
-    defaultMessage: 'Was it useful to be told about this problem?',
+    defaultMessage: 'Was this useful?',
     description:
-      'Question under a problem found by the automated protocol review. Two buttons, Useful and Not useful, answer it.',
-  },
-  ratingHint: {
-    id: 'architect.protocolReview.problem.ratingHint',
-    defaultMessage: 'Your answer is sent to the Network Canvas team.',
-    description:
-      'Note under the question asking whether a problem found by the automated protocol review was useful. The answer goes to the Network Canvas team whether or not the review was shared with them, without the text of the problem. "Network Canvas" is a product name and is not translated.',
+      'Question under a problem found by the automated protocol review, asking whether being told about the problem was useful. Two icon buttons, a thumbs up named Useful and a thumbs down named Not useful, answer it.',
   },
   ratingUseful: {
     id: 'architect.protocolReview.problem.ratingUseful',
     defaultMessage: 'Useful',
     description:
-      'Button that rates a problem found by the automated protocol review as useful. Pressing it again takes the rating back.',
+      'Name and tooltip of the thumbs-up icon button that rates a problem found by the automated protocol review as useful. Pressing it again takes the rating back.',
   },
   ratingNotUseful: {
     id: 'architect.protocolReview.problem.ratingNotUseful',
     defaultMessage: 'Not useful',
     description:
-      'Button that rates a problem found by the automated protocol review as not useful. Pressing it again takes the rating back.',
+      'Name and tooltip of the thumbs-down icon button that rates a problem found by the automated protocol review as not useful. Pressing it again takes the rating back.',
   },
   ratingReason: {
     id: 'architect.protocolReview.problem.ratingReason',
@@ -479,7 +478,6 @@ const ReviewProblemView = ({
   const checkingId = useId();
   const summaryId = useId();
   const ratingId = useId();
-  const ratingHintId = useId();
   const reasonId = useId();
 
   const [busy, setBusy] = useState(false);
@@ -814,37 +812,51 @@ const ReviewProblemView = ({
               ))}
             </section>
             <section className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span id={ratingId} className="me-auto text-sm font-bold">
+              <div
+                role="group"
+                aria-labelledby={ratingId}
+                className="flex flex-wrap items-center gap-2"
+              >
+                <span id={ratingId} className="me-1">
                   {intl.formatMessage(messages.ratingQuestion)}
                 </span>
-                <div
-                  role="group"
-                  aria-labelledby={ratingId}
-                  aria-describedby={ratingHintId}
-                  className="flex flex-wrap items-center gap-2"
-                >
-                  <Button
-                    size="sm"
-                    aria-pressed={current.rating === 'useful'}
-                    icon={<ThumbsUp aria-hidden />}
-                    onClick={() => void rate('useful')}
-                  >
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        size="sm"
+                        variant="glass"
+                        aria-label={intl.formatMessage(messages.ratingUseful)}
+                        aria-pressed={current.rating === 'useful'}
+                        icon={<ThumbsUp aria-hidden />}
+                        onClick={() => void rate('useful')}
+                      />
+                    }
+                  />
+                  <TooltipContent side="bottom">
                     {intl.formatMessage(messages.ratingUseful)}
-                  </Button>
-                  <Button
-                    size="sm"
-                    aria-pressed={current.rating === 'not_useful'}
-                    icon={<ThumbsDown aria-hidden />}
-                    onClick={() => void rate('not_useful')}
-                  >
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        size="sm"
+                        variant="glass"
+                        aria-label={intl.formatMessage(
+                          messages.ratingNotUseful,
+                        )}
+                        aria-pressed={current.rating === 'not_useful'}
+                        icon={<ThumbsDown aria-hidden />}
+                        onClick={() => void rate('not_useful')}
+                      />
+                    }
+                  />
+                  <TooltipContent side="bottom">
                     {intl.formatMessage(messages.ratingNotUseful)}
-                  </Button>
-                </div>
+                  </TooltipContent>
+                </Tooltip>
               </div>
-              <Paragraph id={ratingHintId} intent="smallText" margin="none">
-                {intl.formatMessage(messages.ratingHint)}
-              </Paragraph>
               {current.rating === 'not_useful' && (
                 <div className="flex flex-col gap-2">
                   <span id={reasonId} className="text-sm font-bold">
