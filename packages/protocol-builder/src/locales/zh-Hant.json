@@ -2006,6 +2006,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property}（此屬性無法用於排序）",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "此規則指向無法用於排序的屬性。請選擇其他屬性，或刪除此規則。",
   "protocolBuilder.stageEdit.addFailed": "無法新增此階段。請稍候再試一次。",
+  "protocolBuilder.stageEdit.addInvalidShape": "無法新增此階段，因為其中部分內容無效。您的變更仍保留在此。請修正問題，然後再試一次新增此階段。",
   "protocolBuilder.stageEdit.blockedBy": "{holder} 正在編輯此次儲存所需的協定其他部分，因此未儲存任何內容，但您的變更仍保留在此。請稍後再儲存一次。",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} 正在編輯此次儲存所需的協定其他部分，因此未儲存任何內容，但您的變更仍保留在此。請稍後再儲存一次。",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "有人正在編輯此次儲存所需的協定其他部分，因此未儲存任何內容，但您的變更仍保留在此。請稍後再儲存一次。",

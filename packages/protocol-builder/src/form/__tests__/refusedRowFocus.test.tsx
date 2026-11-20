@@ -24,7 +24,7 @@ const FIELDS = {
 };
 
 const REFUSED =
-  'This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.';
+  'This stage could not be added because part of it is not valid. Your changes are still here. Correct the problem, then try adding the stage again.';
 
 /** Adding the fixture's quick-add stage, refused with these issues. */
 const renderRefusedAdd = (

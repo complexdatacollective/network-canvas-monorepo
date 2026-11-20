@@ -2006,6 +2006,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property} — لا يمكن الفرز بحسب هذه السمة",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "تشير هذه القاعدة إلى سمة لا يمكن الفرز بحسبها. اختر سمة أخرى أو احذف القاعدة.",
   "protocolBuilder.stageEdit.addFailed": "تعذّرت إضافة هذه المرحلة. انتظر قليلًا ثم أعد المحاولة.",
+  "protocolBuilder.stageEdit.addInvalidShape": "تعذّرت إضافة هذه المرحلة لأن جزءًا منها غير صالح. ما زالت تغييراتك هنا. صحّح المشكلة، ثم حاول إضافة المرحلة مرة أخرى.",
   "protocolBuilder.stageEdit.blockedBy": "المستخدم {holder} يعدّل جزءًا آخر من البروتوكول يحتاج إليه هذا الحفظ، لذا لم يُحفظ شيء وما زالت تغييراتك هنا. أعد محاولة الحفظ بعد قليل.",
   "protocolBuilder.stageEdit.blockedBySeveral": "يعدّل كل من {holders} أجزاء أخرى من البروتوكول يحتاج إليها هذا الحفظ، لذا لم يُحفظ شيء وما زالت تغييراتك هنا. أعد محاولة الحفظ بعد قليل.",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "هناك من يعدّل جزءًا آخر من البروتوكول يحتاج إليه هذا الحفظ، لذا لم يُحفظ شيء وما زالت تغييراتك هنا. أعد محاولة الحفظ بعد قليل.",

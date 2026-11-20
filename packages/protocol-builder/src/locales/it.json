@@ -2006,6 +2006,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property}: questo attributo non può essere usato per ordinare",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "Questa regola indica un attributo che non può essere usato per ordinare. Scegline un altro oppure elimina la regola.",
   "protocolBuilder.stageEdit.addFailed": "Non è stato possibile aggiungere questa fase. Attendi un momento e riprova.",
+  "protocolBuilder.stageEdit.addInvalidShape": "Non è stato possibile aggiungere questa fase perché una sua parte non è valida. Le tue modifiche sono ancora qui. Correggi il problema, poi riprova ad aggiungere la fase.",
   "protocolBuilder.stageEdit.blockedBy": "{holder} sta modificando un’altra parte del protocollo necessaria per questo salvataggio, quindi non è stato salvato nulla e le tue modifiche sono ancora qui. Riprova a salvare tra un momento.",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} stanno modificando altre parti del protocollo necessarie per questo salvataggio, quindi non è stato salvato nulla e le tue modifiche sono ancora qui. Riprova a salvare tra un momento.",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "Un’altra parte del protocollo necessaria per questo salvataggio è in fase di modifica, quindi non è stato salvato nulla e le tue modifiche sono ancora qui. Riprova a salvare tra un momento.",

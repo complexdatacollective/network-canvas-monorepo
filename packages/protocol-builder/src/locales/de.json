@@ -2006,6 +2006,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property} – nach diesem Attribut kann nicht sortiert werden",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "Diese Regel verweist auf ein Attribut, nach dem nicht sortiert werden kann. Wählen Sie ein anderes oder löschen Sie die Regel.",
   "protocolBuilder.stageEdit.addFailed": "Dieser Abschnitt konnte nicht hinzugefügt werden. Warten Sie einen Moment und versuchen Sie es erneut.",
+  "protocolBuilder.stageEdit.addInvalidShape": "Dieser Abschnitt konnte nicht hinzugefügt werden, weil ein Teil davon ungültig ist. Ihre Änderungen sind noch vorhanden. Beheben Sie das Problem und versuchen Sie dann erneut, den Abschnitt hinzuzufügen.",
   "protocolBuilder.stageEdit.blockedBy": "{holder} bearbeitet einen anderen Teil des Protokolls, den dieser Speichervorgang benötigt. Daher wurde nichts gespeichert, und Ihre Änderungen sind noch vorhanden. Versuchen Sie in einem Moment erneut zu speichern.",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} bearbeiten andere Teile des Protokolls, die dieser Speichervorgang benötigt. Daher wurde nichts gespeichert, und Ihre Änderungen sind noch vorhanden. Versuchen Sie in einem Moment erneut zu speichern.",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "Ein anderer Teil des Protokolls, den dieser Speichervorgang benötigt, wird gerade bearbeitet. Daher wurde nichts gespeichert, und Ihre Änderungen sind noch vorhanden. Versuchen Sie in einem Moment erneut zu speichern.",

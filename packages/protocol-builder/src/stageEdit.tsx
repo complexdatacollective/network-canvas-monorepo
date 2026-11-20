@@ -510,7 +510,7 @@ function refusedAdd(refusal: Refusal<'Create'> | undefined): StageSaveOutcome {
       )?.objectId;
       return {
         status: 'refused',
-        message: INVALID_SHAPE_MESSAGE,
+        message: ADD_INVALID_SHAPE_MESSAGE,
         ...(objectId === undefined ? {} : { objectId }),
       };
     }
@@ -565,7 +565,14 @@ const messages = defineMessages({
     defaultMessage:
       'This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.',
     description:
-      'Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview.',
+      'Shown above a stage editor’s fields when the host refused to save changes to an existing stage because the stage was the wrong shape. The editor then reloads the stage as the protocol holds it, so the researcher’s unsaved work is gone. A stage is one step of an interview.',
+  },
+  addInvalidShape: {
+    id: 'protocolBuilder.stageEdit.addInvalidShape',
+    defaultMessage:
+      'This stage could not be added because part of it is not valid. Your changes are still here. Correct the problem, then try adding the stage again.',
+    description:
+      'Shown above the editor of a new stage when the host refused to add it because part of the stage was the wrong shape. Nothing was added, and the researcher’s unsaved work is still on screen. Where the host named the list item at fault, focus moves to it. A stage is one step of an interview.',
   },
   codebookClash: {
     id: 'protocolBuilder.stageEdit.codebookClash',
@@ -618,6 +625,7 @@ const messages = defineMessages({
 export const NOT_READY_MESSAGE = createMessageError(messages.notReady);
 const LOCK_LOST_MESSAGE = createMessageError(messages.lockLost);
 const INVALID_SHAPE_MESSAGE = createMessageError(messages.invalidShape);
+const ADD_INVALID_SHAPE_MESSAGE = createMessageError(messages.addInvalidShape);
 const CODEBOOK_CLASH_MESSAGE = createMessageError(messages.codebookClash);
 
 const ADD_FAILED_MESSAGE = createMessageError(messages.addFailed);
