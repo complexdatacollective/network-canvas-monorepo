@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { assetBlocksInMarkdown } from '@codaco/protocol-validation';
+
 import {
   type RichTextContent,
   markdownToRichTextContent,
@@ -384,6 +386,43 @@ describe('a line break beside a block', () => {
   it('inside a paragraph is kept', () => {
     expect(settles('One  \nTwo\n\n![A](asset:a1)')).toBe(
       'One  \nTwo\n\n![A](asset:a1)',
+    );
+  });
+});
+
+// The editor and the interview must agree on what is a block: text the
+// interview draws a file for, and the editor opens as words, loses the file
+// when it is saved. Markdown allows an address to be written between angle
+// brackets, which nothing here writes and a protocol made by hand may hold.
+describe('a block whose address is written between angle brackets', () => {
+  const written = [
+    '![A map](<asset:a1>)',
+    '![A map](<asset:a1?size=small&align=end>)',
+    '![A map](<asset:a1> "A title")',
+    'Before\n\n![A map](<asset:a1>)\n\nAfter > before',
+    '1. Item\n\n   ![A map](<asset:a1>)',
+    '![A map](<asset:a b>)',
+    '![A > B](<asset:a1>)',
+  ];
+
+  it.each(written)('reads %j as the block the interview shows', (markdown) => {
+    const shown = assetBlocksInMarkdown(markdown);
+    // The interview shows one file here, with nothing wrong with it.
+    expect(shown).toHaveLength(1);
+    expect(shown[0]?.problems).toEqual([]);
+
+    // The editor reads that file as a block, and saves text the interview
+    // still shows it for, with the same settings.
+    const saved = roundTrip(markdown);
+    expect(assetBlocksInMarkdown(saved)).toEqual(shown);
+    // In the one spelling a block has, so saving again changes nothing.
+    expect(saved).not.toContain('<');
+    expect(roundTrip(saved)).toBe(saved);
+  });
+
+  it('still shows a ">" typed in the text as itself, and not as the start of a quote', () => {
+    expect(roundTrip('> Not a quote\n\n![A map](<asset:a1>)')).toBe(
+      '&gt; Not a quote\n\n![A map](asset:a1)',
     );
   });
 });

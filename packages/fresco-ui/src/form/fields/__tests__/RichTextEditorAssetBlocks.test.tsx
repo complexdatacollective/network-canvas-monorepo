@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { JSONContent } from '@tiptap/react';
 import { type ComponentProps, useState } from 'react';
@@ -337,6 +343,31 @@ describe('the text style of a line', () => {
       expect(field.lastDocument()).toEqual(doc(paragraph('!Hello')));
     });
   });
+
+  // A field that cannot be edited changes nothing: whatever its toolbar had
+  // open when it became so closes, as its link and insert menus do.
+  it.each([{ disabled: true }, { readOnly: true }])(
+    'closes its list, and changes nothing, once the field cannot be edited (%j)',
+    async (unavailable) => {
+      const field = renderField({ value: doc(paragraph('Hello')) });
+      await field.editor();
+      await field.user.click(textStyle());
+      const heading1 = await screen.findByRole('menuitemradio', {
+        name: 'Heading 1',
+      });
+      field.change(unavailable);
+      // A choice made as the field changes is not taken either.
+      fireEvent.click(heading1);
+
+      await waitFor(() => {
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+      });
+      // Whatever the field has said of its text since, it is the same text.
+      expect(field.lastDocument() ?? doc(paragraph('Hello'))).toEqual(
+        doc(paragraph('Hello')),
+      );
+    },
+  );
 
   it('leaves focus on its control when its list is closed with nothing chosen', async () => {
     const field = renderField({ value: doc(paragraph('Hello')) });

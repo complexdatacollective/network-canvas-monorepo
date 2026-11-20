@@ -45,12 +45,31 @@ const cloneEmptyDocument = (): RichTextContent => ({
   content: [{ type: 'paragraph' }],
 });
 
+// An image whose address is written between angle brackets, as markdown
+// allows (`![alt](<asset:id>)`): up to and with the bracket that closes it.
+const IMAGE_WITH_BRACKETED_ADDRESS =
+  /!\[(?:[^[\]\\]|\\.)*\]\([ \t]*<(?:[^<>\n\\]|\\.)*>/;
+
+const BRACKETED_ADDRESS_OR_ANGLE_BRACKET = new RegExp(
+  `(${IMAGE_WITH_BRACKETED_ADDRESS.source})|>`,
+  'g',
+);
+
 /**
  * Matches the legacy Slate editor: literal ">" characters should remain text
  * instead of turning existing protocol content into block quotes on first edit.
+ *
+ * The one that closes an image's address is not text. Escaped, the image
+ * would be read as the words it is written in, where the interview draws the
+ * file it names: a block opened here and saved would lose its file.
  */
 const escapeAngleBracket = (value = ''): string =>
-  value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
+  value
+    .replace(
+      BRACKETED_ADDRESS_OR_ANGLE_BRACKET,
+      (bracket: string, image: string | undefined) => image ?? '&gt;',
+    )
+    .replace(/<br&gt;/g, '<br>');
 
 const escapeLinkDestination = (value: string): string =>
   value

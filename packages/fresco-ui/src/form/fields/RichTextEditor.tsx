@@ -1620,6 +1620,7 @@ export default function RichTextEditorField({
   const [isActive, setIsActive] = useState(false);
   // Whether the list of text styles is closing because one was chosen.
   const textStylePicked = useRef(false);
+  const [isTextStyleOpen, setIsTextStyleOpen] = useState(false);
   const inactiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -2471,7 +2472,14 @@ export default function RichTextEditorField({
     })),
   ];
   const textStyle = getActiveHeadingValue()[0] ?? 'paragraph';
+  // Nothing in a field that cannot be edited changes its text, and neither
+  // does the style of a line inside a version, which is a line of words.
+  const textStyleUnavailable = isDisabled || !blocksEditable;
   const setTextStyle = (style: string) => {
+    // The editor is asked as well as this render: a list that is closing is
+    // still drawn for a moment as it was when it was open, and a choice made
+    // in that moment would arrive with what was true then.
+    if (textStyleUnavailable || !editor.isEditable) return;
     const level = headingLevels.find((each) => `h${each}` === style);
     // The caret goes back to the text, and the list closes without taking
     // it for its button.
@@ -2481,13 +2489,20 @@ export default function RichTextEditorField({
   };
   const textStyleItems = showHeadings
     ? [
-        <DropdownMenu key="textStyle">
+        <DropdownMenu
+          key="textStyle"
+          // Closed with the field, like the other things its toolbar opens:
+          // a list left open over a field that can no longer be edited would
+          // go on offering to change it.
+          open={isTextStyleOpen && !textStyleUnavailable}
+          onOpenChange={setIsTextStyleOpen}
+        >
           <DropdownMenuTrigger
-            disabled={isDisabled || !blocksEditable}
+            disabled={textStyleUnavailable}
             render={
               <ToolbarButton
                 className={toolbarSelectStyles}
-                disabled={isDisabled || !blocksEditable}
+                disabled={textStyleUnavailable}
               />
             }
           >

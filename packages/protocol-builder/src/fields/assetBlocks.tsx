@@ -562,10 +562,13 @@ function ResizeCorner({
         className={cx(
           'pointer-events-auto absolute -bottom-3 size-6 touch-none',
           'before:bg-primary before:border-surface-1 before:absolute before:inset-1 before:rounded-full before:border-2',
-          onLeft
-            ? '-inset-s-3 cursor-nesw-resize'
-            : '-inset-e-3 cursor-nwse-resize',
+          onLeft ? 'cursor-nesw-resize' : 'cursor-nwse-resize',
         )}
+        // Where the picture is drawn is measured from the left of its box,
+        // whichever way the text runs, so its corner is placed from the left
+        // or the right too: a side named for where a line starts would be the
+        // other one in right-to-left text.
+        style={onLeft ? { left: -12 } : { right: -12 }}
         // A press here is not one on the block, which would start moving it.
         onMouseDown={(event) => event.preventDefault()}
         onDragStart={(event) => event.preventDefault()}
@@ -592,10 +595,9 @@ function ResizeCorner({
       />
       {dragging && (
         <span
-          className={cx(
-            'bg-primary text-primary-contrast absolute -bottom-9 rounded-sm px-2 py-0.5 text-xs font-bold whitespace-nowrap',
-            onLeft ? 'inset-s-0' : 'inset-e-0',
-          )}
+          className="bg-primary text-primary-contrast absolute -bottom-9 rounded-sm px-2 py-0.5 text-xs font-bold whitespace-nowrap"
+          // On the corner's side, by the same measure.
+          style={onLeft ? { left: 0 } : { right: 0 }}
         >
           {intl.formatMessage(SIZE_LABELS[size])}
         </span>
