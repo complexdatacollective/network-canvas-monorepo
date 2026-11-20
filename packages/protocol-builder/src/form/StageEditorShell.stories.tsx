@@ -98,6 +98,7 @@ function StageEditorHost({
                   actions={renderSubmitButton}
                 >
                   <BuilderSection
+                    sectionKey="page-content"
                     title="Page content"
                     description="What this screen shows the participant."
                   >

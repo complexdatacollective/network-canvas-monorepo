@@ -37,6 +37,7 @@ export default function PersonFormFieldsSection() {
       reservedVariables={personAttributeVariables}
       reservedVariableRefusal={messages.personFormReservedRefusal}
       title={messages.personFormTitle}
+      sectionKey="person-form-fields"
       description={messages.personFormDescription}
       fieldLabel={messages.personFormFieldLabel}
       addLabel={messages.personFormAddLabel}

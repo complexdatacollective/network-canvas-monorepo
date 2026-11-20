@@ -236,6 +236,7 @@ export default function SortOptionsSection() {
 
   return (
     <BuilderSection
+      sectionKey="roster-sorting"
       title={intl.formatMessage(sortOptionsMessages.title)}
       description={shell.description}
       disabled={shell.disabled}

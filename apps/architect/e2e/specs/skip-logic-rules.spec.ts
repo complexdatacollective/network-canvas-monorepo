@@ -149,7 +149,7 @@ test('network-filter rules use the same editable-list workflow', async ({
     ],
   });
 
-  const section = editor.section('Stage filter');
+  const section = editor.section('Filter network');
   const rules = editor.field('filter');
 
   await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(1);

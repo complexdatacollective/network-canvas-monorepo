@@ -1,0 +1,5 @@
+---
+'@codaco/architect': minor
+---
+
+Stage editors for the name generators, Sociogram, Ordinal Bin, Categorical Bin, Per Alter Form, Ego Form, Per Alter Edge Form, Dyad Census, One to Many Dyad Census, Tie-Strength Census, Narrative, Geospatial, Information, Language Chooser, Anonymisation, Finish Screen, Network Composer, Family Pedigree and Narrative Pedigree have a new **Walk me through this** button in the toolbar. It opens a floating guide that explains what the stage collects and when to use it, then walks through each setting with short animations that show what participants will see. The panel moves beside the setting each step describes. You can also drag it anywhere, or minimize it to the toolbar while you work.

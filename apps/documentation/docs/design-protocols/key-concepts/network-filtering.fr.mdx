@@ -1,7 +1,7 @@
 ---
 title: Filtrage du réseau
 navOrder: 11
-translatedFrom: 6277deec812b8c3470158f0dcf6753267b967bbd
+translatedFrom: 4ca4dfdfdf36ebfa7dfe480ea752244219e98696
 ---
 
 <Definition>
@@ -23,7 +23,7 @@ Le filtrage du réseau n’est pas la même chose que la [logique de saut](/fr/d
 
 ## Configurer le filtrage du réseau dans une étape {#configuring-network-filtering-on-a-stage}
 
-Pour configurer le filtrage du réseau dans une étape, ouvrez l’étape depuis la chronologie du protocole et activez l’interrupteur **Filtrage du réseau**. Vous pouvez alors créer une ou plusieurs **règles** (de type alter ou lien) et définir l’**opérateur de jonction**, en indiquant si **toutes les règles** ou **au moins une règle** doivent être satisfaites.
+Pour configurer le filtrage du réseau dans une étape, ouvrez l’étape depuis la chronologie du protocole et activez **Filtrer le réseau**. Vous pouvez alors créer une ou plusieurs **règles** (de type alter ou lien) et définir l’**opérateur de jonction**, en indiquant si **toutes les règles** ou **au moins une règle** doivent être satisfaites.
 
 ![](/assets/img/key-concepts/network-filtering/filtering-panel.png)
 
@@ -56,7 +56,7 @@ phénoménologique.
 
 ### L’opérateur de jonction {#the-join-operator}
 
-Les règles sont enchaînées (ou « jointes ») selon une logique `AND` ou `OR`, que vous définissez dans la section de configuration du filtre de réseau avec les options **Toutes les règles doivent être satisfaites** et **Au moins une règle doit être satisfaite**, respectivement. Ces méthodes se comportent comme on peut s’y attendre. Dans le contexte d’une opération de filtrage :
+Les règles sont enchaînées (ou « jointes ») selon une logique `AND` ou `OR`, que vous définissez dans la section **Filtrer le réseau**, sous **Correspondance des règles**, avec les options **Toutes les règles doivent être satisfaites** et **Au moins une règle doit être satisfaite**, respectivement. Ces méthodes se comportent comme on peut s’y attendre. Dans le contexte d’une opération de filtrage :
 
 - `OR` signifie que si un nœud ou un lien satisfait les critères de _l’une quelconque_ des règles, il sera inclus dans le réseau obtenu.
 - `AND` signifie que les nœuds et les liens du réseau obtenu doivent satisfaire les critères de _toutes_ les règles.

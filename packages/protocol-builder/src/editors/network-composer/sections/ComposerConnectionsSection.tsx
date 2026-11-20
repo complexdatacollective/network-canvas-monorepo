@@ -200,6 +200,7 @@ export default function ComposerConnectionsSection() {
 
   return (
     <BuilderSection
+      sectionKey="composer-connections"
       title={intl.formatMessage(messages.connectionsTitle)}
       description={intl.formatMessage(messages.connectionsDescription)}
     >
@@ -359,6 +360,7 @@ function ConnectionForms({
 
   return (
     <BuilderSection
+      sectionKey="composer-connection-forms"
       title={intl.formatMessage(messages.connectionFormsTitle)}
       description={intl.formatMessage(messages.connectionFormsDescription)}
     >

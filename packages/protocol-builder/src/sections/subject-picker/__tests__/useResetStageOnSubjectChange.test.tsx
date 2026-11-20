@@ -30,7 +30,11 @@ const en = (text: string) => ({ 'en-US': text });
  */
 function RemoveAfterConsiderationSection() {
   return (
-    <BuilderSection title="Behaviours" description="How this task behaves.">
+    <BuilderSection
+      sectionKey="placing-nodes"
+      title="Behaviours"
+      description="How this task behaves."
+    >
       <Field<typeof ToggleField>
         name="behaviours.removeAfterConsideration"
         component={ToggleField}
@@ -260,7 +264,11 @@ describe('resetting a key the form is holding parked', () => {
   function ParkableFilterSection() {
     const [mounted, setMounted] = useState(true);
     return (
-      <BuilderSection title="Who this asks about" description="A filter.">
+      <BuilderSection
+        sectionKey="filter-network"
+        title="Who this asks about"
+        description="A filter."
+      >
         <button type="button" onClick={() => setMounted((on) => !on)}>
           Toggle the field
         </button>

@@ -35,7 +35,7 @@ describe('a refusal reported while the stage can be written', () => {
     const harness = renderStageEditor({
       stage: { type: 'Information', fields },
       sections: (
-        <BuilderSection title="Page content">
+        <BuilderSection sectionKey="page-content" title="Page content">
           <Probe />
           <Field
             name="title"

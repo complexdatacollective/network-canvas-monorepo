@@ -24,6 +24,7 @@ export default function BinBehavioursSection() {
 
   return (
     <BuilderSection
+      sectionKey="placing-nodes"
       title={intl.formatMessage(binBehavioursMessages.title)}
       description={intl.formatMessage(binBehavioursMessages.description)}
     >

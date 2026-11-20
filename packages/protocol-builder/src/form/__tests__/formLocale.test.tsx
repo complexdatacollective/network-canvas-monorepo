@@ -45,7 +45,7 @@ const optionsFields: SectionDoc = {
 };
 
 const optionsSection = (
-  <BuilderSection title="Opciones de respuesta">
+  <BuilderSection sectionKey="form-fields" title="Opciones de respuesta">
     <Field
       name="options"
       label="Opciones de respuesta"

@@ -35,6 +35,7 @@ export default function ModeSection() {
 
   return (
     <BuilderSection
+      sectionKey="finish-mode"
       title={intl.formatMessage(finishSessionMessages.modeTitle)}
       description={intl.formatMessage(finishSessionMessages.modeDescription)}
     >

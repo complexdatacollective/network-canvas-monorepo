@@ -138,6 +138,7 @@ export default function MapSourceSection() {
   return (
     <>
       <BuilderSection
+        sectionKey="map-access"
         title={intl.formatMessage(geospatialMessages.accessTitle)}
         description={intl.formatMessage(geospatialMessages.accessDescription)}
       >
@@ -155,6 +156,7 @@ export default function MapSourceSection() {
       </BuilderSection>
 
       <BuilderSection
+        sectionKey="map-layers"
         title={intl.formatMessage(geospatialMessages.layerTitle)}
         description={intl.formatMessage(geospatialMessages.layerDescription)}
       >

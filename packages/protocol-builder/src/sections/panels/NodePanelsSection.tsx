@@ -505,6 +505,7 @@ export default function NodePanelsSection() {
 
   return (
     <BuilderSection
+      sectionKey="side-panels"
       title={intl.formatMessage(nodePanelsMessages.title)}
       description={intl.formatMessage(
         waiting
