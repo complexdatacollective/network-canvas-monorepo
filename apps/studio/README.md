@@ -479,7 +479,7 @@ DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `38fcdcc1d8b5ccf8af3f1e6fc2d1cad49dcd2d96f336327b68c41a8e70f2ba4e`.
+Schema fingerprint: `b032a2bb93d514cdfb462d8ace23b075eea979e6ed246c3e5521e6014c95296d`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -625,8 +625,8 @@ one, which have no order). Labels, prompts and other participant-facing text
 are translations keyed by declared language, stored inside the section that owns
 them, so a structural diff names a stage by its label in the default language,
 or in another declared language that has one when the default has none. A
-protocol created in Studio declares English (`en`), as one migrated from schema
-8 does, because nothing asks the researcher for a language yet.
+protocol created in Studio declares English (`en`), because nothing asks the
+researcher for a language yet.
 
 #### Schema versions
 
@@ -643,10 +643,6 @@ it does not migrate interview data.
 - Data written under an unreleased schema version is development data. A change
   to an unreleased schema needs no handling for documents or deployments that
   already exist; recreate the data.
-
-`api/src/protocol/migrate.ts` and `api/src/protocol/upgrade-pinned.ts` predate
-this rule and still carry stored versions and in-flight sessions across a schema
-change. They are not a pattern to extend, and they are due to be removed.
 
 ### Tenancy
 
