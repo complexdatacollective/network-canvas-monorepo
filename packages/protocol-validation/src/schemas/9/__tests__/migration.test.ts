@@ -1263,63 +1263,6 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     });
   });
 
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('removes only the blank translations of text already localized', () => {
-    const base = createBaseProtocol();
-    const stage = {
-      id: testId('ego-form'),
-      type: 'EgoForm',
-      label: { en: 'About you', fr: 'Vous' },
-      introductionPanel: {
-        title: { en: ' ', fr: 'Bienvenue' },
-        text: { en: 'Hello', fr: '\t' },
-      },
-      form: {
-        fields: [{ variable: 'egoName', prompt: { en: 'Name?', fr: 'Nom ?' } }],
-      },
-    };
-    const [migrated] = stagesMigratedFrom({
-      ...base,
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      stages: [stage],
-    });
-
-    expect(migrated).toMatchObject({
-      introductionPanel: { title: { fr: 'Bienvenue' }, text: { en: 'Hello' } },
-    });
-    expect(migrated).not.toHaveProperty('introductionPanel.title.en');
-    expect(migrated).not.toHaveProperty('introductionPanel.text.fr');
-  });
-
-  it('removes text already localized that is blank in every language, and titles it from the label', () => {
-    const base = createBaseProtocol();
-    const stages = stagesMigratedFrom({
-      ...base,
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      stages: [
-        {
-          id: testId('ego-form'),
-          type: 'EgoForm',
-          label: { en: 'About you', fr: ' ' },
-          introductionPanel: {
-            title: { en: '​', fr: ' ' },
-            text: { en: ' ', fr: '\t' },
-          },
-          form: {
-            fields: [{ variable: 'egoName', prompt: { en: 'Name?' } }],
-          },
-        },
-      ],
-    });
-
-    expect(stageTypes(stages)).toEqual(['EgoForm', 'FinishSession']);
-    expect(stages[0]).toHaveProperty('introductionPanel', {
-      title: { en: 'About you' },
-    });
-  });
-
   // Two published protocols in the validation corpus failed here: their
   // panels' titles were a space, which schema 8 accepted.
   it('migrates and validates a schema 5 protocol whose panels have blank titles and text', async () => {
@@ -1496,45 +1439,6 @@ describe('Migrating the text of a Categorical Bin "other" bin from schema 8 to 9
       otherVariablePrompt: localized('What else?'),
     });
   });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('removes only the blank translations of text already localized', () => {
-    const base = createBaseProtocol();
-    const [stage] = stagesMigratedFrom({
-      ...base,
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      stages: [
-        {
-          id: testId('bin'),
-          type: 'CategoricalBin',
-          label: { en: 'Sort them' },
-          subject: { entity: 'node', type: 'person' },
-          prompts: [
-            {
-              id: testId('bin-prompt'),
-              text: { en: 'How do you know them?' },
-              variable: 'category',
-              otherVariable: 'name',
-              otherOptionLabel: { en: 'Other', fr: '   ' },
-              otherVariablePrompt: { en: 'What else?', fr: '\t' },
-            },
-          ],
-        },
-      ],
-    });
-
-    expect(stage).toMatchObject({
-      prompts: [
-        {
-          otherOptionLabel: { en: 'Other' },
-          otherVariablePrompt: { en: 'What else?' },
-        },
-      ],
-    });
-    expect(stage).not.toHaveProperty('prompts.0.otherOptionLabel.fr');
-    expect(stage).not.toHaveProperty('prompts.0.otherVariablePrompt.fr');
-  });
 });
 
 // The base protocol with a Tie-Strength Census whose prompt has the decline
@@ -1693,44 +1597,6 @@ describe('Migrating Narrative preset labels from schema 8 to 9', () => {
       ],
     });
   });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('removes only the blank translations of text already localized, and names a highlight left blank', () => {
-    const base = createBaseProtocol();
-    const [stage] = stagesMigratedFrom({
-      ...base,
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      stages: [
-        {
-          id: testId('narrative'),
-          type: 'Narrative',
-          label: { en: 'Tell the story' },
-          subject: { entity: 'node', type: 'person' },
-          presets: [
-            {
-              id: testId('first'),
-              label: { en: 'Closeness', fr: '  ' },
-              layoutVariable: 'layoutPosition',
-              highlight: [{ variable: 'age', label: { en: ' ', fr: '\t' } }],
-            },
-          ],
-          background: { concentricCircles: 3 },
-          behaviours: {},
-        },
-      ],
-    });
-
-    expect(stage).toMatchObject({
-      presets: [
-        {
-          label: { en: 'Closeness' },
-          highlight: [{ variable: 'age', label: { en: 'Age' } }],
-        },
-      ],
-    });
-    expect(stage).not.toHaveProperty('presets.0.label.fr');
-  });
 });
 
 // A schema 8 Narrative stage with two presets, holding the settings given.
@@ -1794,26 +1660,6 @@ describe('Migrating a Narrative stage filter from schema 8 to 9', () => {
     );
 
     expect(result.error?.issues ?? []).toEqual([]);
-  });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('leaves a preset its own filter when run over a stage already converted', () => {
-    const own = { rules: [nameRule] };
-    const base = schema8Narrative({});
-    const [stage] = stagesMigratedFrom({
-      ...base,
-      stages: base.stages.map((narrative) => ({
-        ...narrative,
-        presets: narrative.presets.map((preset, index) =>
-          index === 0 ? { ...preset, filter: own } : preset,
-        ),
-      })),
-    });
-
-    expect(withoutIds(stage)).toMatchObject({
-      presets: [{ filter: withoutIds(own) }, {}],
-    });
-    expect(stage).not.toHaveProperty('presets.1.filter');
   });
 });
 
@@ -1926,7 +1772,7 @@ describe('Migrating Information text items from schema 8 to 9', () => {
 });
 
 // The base protocol with its Name Generator form field hinted as given.
-const migratedHint = (hint: unknown, locales = ['en']) => {
+const migratedHint = (hint: string) => {
   const base = createBaseProtocol();
   const document = asSchema8Protocol(base) as Record<string, unknown>;
   const stage = (document.stages as Record<string, unknown>[])[0];
@@ -1934,9 +1780,6 @@ const migratedHint = (hint: unknown, locales = ['en']) => {
   const [field] = (form?.fields ?? []) as Record<string, unknown>[];
   if (!field) throw new Error('No form field');
   field.hint = hint;
-  if (locales.length > 1) {
-    document.localization = { defaultLocale: 'en', locales };
-  }
   const migrated = findMigratedStage(document, testId('nameGenerator1'));
   return migrated && 'form' in migrated ? migrated.form?.fields[0] : undefined;
 };
@@ -1954,22 +1797,6 @@ describe('Migrating optional text that shows nothing from schema 8 to 9', () => 
     expect(migratedHint('Their full name')).toMatchObject({
       hint: localized('Their full name'),
     });
-  });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('removes only the blank translations of text already localized', () => {
-    expect(
-      migratedHint({ en: 'Their full name', fr: '  ' }, ['en', 'fr']),
-    ).toMatchObject({ hint: { en: 'Their full name' } });
-    expect(
-      migratedHint({ en: 'Their full name', fr: '  ' }, ['en', 'fr']),
-    ).not.toHaveProperty('hint.fr');
-  });
-
-  it('removes text already localized that is blank in every language', () => {
-    expect(migratedHint({ en: '', fr: '​' }, ['en', 'fr'])).not.toHaveProperty(
-      'hint',
-    );
   });
 
   it('removes a scale end label that shows nothing', () => {

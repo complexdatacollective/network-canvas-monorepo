@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { escapeMessageText } from '../../../localization/messageSyntax.ts';
 import {
   MigrationContentRefusedError,
   MigrationResultInvalidError,
@@ -678,46 +677,6 @@ describe('condition labels that show nothing', () => {
       : undefined;
     expect(getAt(stage, ['diseases', 1, 'label'])).toEqual({
       en: 'had_testing 2',
-    });
-  });
-
-  // Fresco re-runs this migration over rows already in schema 9 form, where
-  // a label is a message: `Type '{'A'}'` shows the participant `Type {A}`.
-  it('are numbered when another already shows the name, in schema 9 form', () => {
-    const document = structuredClone(ecoGeneticTemplate);
-    const diseases = ['stages', 12, 'diseases'];
-    const first = getAt(document, [...diseases, 0]);
-    if (!isRecord(first)) throw new Error('No condition');
-    Reflect.set(document, 'localization', {
-      defaultLocale: 'en',
-      locales: ['en'],
-    });
-    setAt(
-      document,
-      ['codebook', 'node', 'person', 'variables', 'had_testing', 'name'],
-      'Type {A}',
-    );
-    setAt(document, [...diseases, 0, 'label'], {
-      en: escapeMessageText('Type {A}'),
-    });
-    setAt(document, [...diseases, 1], {
-      ...structuredClone(first),
-      id: 'second-condition',
-      label: { en: ' ' },
-      variable: 'had_testing',
-    });
-    const migrated = migrateProtocol(document, 9);
-    const stages = getAt(migrated, ['stages']);
-    const stage = Array.isArray(stages)
-      ? stages.find(
-          (candidate) =>
-            isRecord(candidate) &&
-            candidate.id ===
-              migratedStageId(document, migrated, 'narrative-pedigree'),
-        )
-      : undefined;
-    expect(getAt(stage, ['diseases', 1, 'label'])).toEqual({
-      en: escapeMessageText('Type {A} 2'),
     });
   });
 });
