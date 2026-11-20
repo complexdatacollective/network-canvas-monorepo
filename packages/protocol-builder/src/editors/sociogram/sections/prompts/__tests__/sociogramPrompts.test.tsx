@@ -11,7 +11,7 @@ import {
 import { enIntl, readMessage } from '../../../../../testing/i18n.ts';
 import { loadFixtureStage } from '../../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../../../testing/testObjectId.ts';
+import { testId } from '../../../../../testing/testId.ts';
 import { sociogramPromptMessages } from '../sociogramPromptMessages.ts';
 import {
   collectInAForm,
@@ -148,7 +148,7 @@ describe('the tasks a sociogram sets', () => {
   /** A prompt that says nothing about tapping opens with the section off. */
   it('opens a prompt that taps do nothing on with the section off, and saves it unchanged', async () => {
     const SILENT_PROMPT = {
-      id: testObjectId('sociogram-prompt-1'),
+      id: testId('sociogram-prompt-1'),
       text: { 'en-US': 'Place the people who know each other close together' },
       layout: { layoutVariable: 'layout' },
     };
@@ -178,7 +178,7 @@ describe('the tasks a sociogram sets', () => {
     // holds is this edit alone.
     const harness = renderStageEditor(
       sociogramHolding({
-        id: testObjectId('sociogram-prompt-1'),
+        id: testId('sociogram-prompt-1'),
         text: {
           'en-US': 'Place the people who know each other close together',
         },
@@ -203,7 +203,7 @@ describe('the tasks a sociogram sets', () => {
     // Absent, not `{ allowHighlighting: false }`: a prompt that never answered
     // the question still has not. The prompt itself is asserted first, so a
     // stage that did not save at all says so rather than throwing.
-    expect(saved).toMatchObject({ id: testObjectId('sociogram-prompt-1') });
+    expect(saved).toMatchObject({ id: testId('sociogram-prompt-1') });
     expect(saved).not.toHaveProperty('highlight');
   });
 
@@ -336,7 +336,7 @@ describe('a connection type this protocol does not define', () => {
   const LOST_EDGE = 'former_edge';
 
   const DISPLAYING_A_LOST_TYPE = {
-    id: testObjectId('sociogram-prompt-1'),
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     edges: { display: ['knows', LOST_EDGE] },
@@ -458,7 +458,7 @@ describe('a connection type this protocol does not define', () => {
  */
 describe('a prompt that only highlights its nodes', () => {
   const DISPLAY_ONLY_PROMPT = {
-    id: testObjectId('sociogram-prompt-1'),
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     highlight: { variable: 'highlighted', allowHighlighting: false },
@@ -541,7 +541,7 @@ describe('a prompt that only highlights its nodes', () => {
  */
 describe('a prompt that draws a connection it does not show', () => {
   const COLLECTS_WITHOUT_SHOWING = {
-    id: testObjectId('sociogram-prompt-1'),
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     edges: { create: 'knows', display: [] },
@@ -629,7 +629,7 @@ describe('what tapping a node does, against what the prompt already said', () =>
   const promptSaying = (
     highlight?: Record<string, unknown>,
   ): Record<string, unknown> => ({
-    id: testObjectId('sociogram-prompt-1'),
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     ...(highlight === undefined ? {} : { highlight }),
@@ -824,7 +824,7 @@ describe('a prompt opened and cancelled untouched', () => {
   const promptSaying = (
     tap: Record<string, unknown>,
   ): Record<string, unknown> => ({
-    id: testObjectId('sociogram-prompt-1'),
+    id: testId('sociogram-prompt-1'),
     text: 'Place the people who know each other close together',
     layout: { layoutVariable: 'layout' },
     ...tap,
@@ -1004,7 +1004,7 @@ describe('a connections list with nothing in it', () => {
   it('says why, rather than rendering an empty fieldset', async () => {
     const harness = renderStageEditor(
       sociogramHolding({
-        id: testObjectId('sociogram-prompt-1'),
+        id: testId('sociogram-prompt-1'),
         text: {
           'en-US': 'Place the people who know each other close together',
         },
@@ -1041,11 +1041,11 @@ describe('a connections list with nothing in it', () => {
 
 describe('the order a sociogram hands unplaced nodes over in', () => {
   const SORTED_PROMPT = {
-    id: testObjectId('sociogram-prompt-1'),
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     sortOrder: [
-      { id: testObjectId('sort-name'), property: 'name', direction: 'asc' },
+      { id: testId('sort-name'), property: 'name', direction: 'asc' },
     ],
   };
 
@@ -1121,7 +1121,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('judges no sort rule while the stage has not been told what it collects', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('Sociogram-stage'),
+        id: testId('Sociogram-stage'),
         type: 'Sociogram' as const,
         fields: {
           label: { 'en-US': 'Sociogram' },
@@ -1131,7 +1131,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
               ...SORTED_PROMPT,
               sortOrder: [
                 {
-                  id: testObjectId('sort-nickname'),
+                  id: testId('sort-nickname'),
                   property: 'nickname',
                   direction: 'asc',
                 },

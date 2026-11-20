@@ -7,7 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import { fixtureStageId } from '../testing/protocolFixture.ts';
-import { testObjectId } from '../testing/testObjectId.ts';
+import { testId } from '../testing/testId.ts';
 import StageDestinationPickerField from './StageDestinationPickerField.tsx';
 
 /** Where the stage order lives, which is what this picker draws its list from. */
@@ -89,7 +89,7 @@ export const ADestinationThatIsGone: Story = {
         ...document,
         skipLogic: {
           ...skipLogic,
-          destination: { stageId: testObjectId('no-such-stage') },
+          destination: { stageId: testId('no-such-stage') },
         },
       });
     },

@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { nodeLayout } from '../nodeLayout.tsx';
 
 const NodeLayout = nodeLayout();
@@ -49,7 +49,7 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
   it('keeps a behaviour it does not offer', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('hand-authored-sociogram'),
+        id: testId('hand-authored-sociogram'),
         type: 'Sociogram' as const,
         fields: {
           label: en('Sociogram'),
@@ -58,7 +58,7 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
           behaviours: { automaticLayout: true, freeDraw: true },
           prompts: [
             {
-              id: testObjectId('sociogram-prompt-1'),
+              id: testId('sociogram-prompt-1'),
               text: en('Place the people you know'),
               layout: { layoutVariable: 'layout' },
             },

@@ -18,7 +18,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
 import EncryptedAttributesSection from '../sections/EncryptedAttributesSection.tsx';
 import {
@@ -101,7 +101,7 @@ const openWithRules = (
 ): StageEditorHarness =>
   renderStageEditor({
     stage: {
-      id: testObjectId('anonymisation-rules'),
+      id: testId('anonymisation-rules'),
       type: 'Anonymisation',
       fields: {
         label: { 'en-US': 'Anonymisation' },
@@ -440,7 +440,7 @@ describe('how the passphrase rules are put on screen', () => {
   it('says what to do about a contradiction that arrived with the protocol', async () => {
     renderStageEditor({
       stage: {
-        id: testObjectId('anonymisation-contradictory'),
+        id: testId('anonymisation-contradictory'),
         type: 'Anonymisation',
         fields: {
           label: { 'en-US': 'Anonymisation' },
@@ -657,7 +657,7 @@ describe('the attributes a passphrase protects', () => {
           [fixtureStageId('name-generator-1')]: {
             skipLogic: {
               action: 'SHOW',
-              filter: { rules: [answeredRule(testObjectId('skip-a'), 'name')] },
+              filter: { rules: [answeredRule(testId('skip-a'), 'name')] },
             },
           },
         }),
@@ -683,14 +683,14 @@ describe('the attributes a passphrase protects', () => {
               filter: {
                 join: 'OR',
                 rules: [
-                  answeredRule(testObjectId('skip-a'), 'name'),
-                  personRule(testObjectId('skip-b'), 'name'),
+                  answeredRule(testId('skip-a'), 'name'),
+                  personRule(testId('skip-b'), 'name'),
                 ],
               },
             },
           },
           [fixtureStageId('sociogram-1')]: {
-            filter: { rules: [answeredRule(testObjectId('filter-a'), 'name')] },
+            filter: { rules: [answeredRule(testId('filter-a'), 'name')] },
           },
         }),
       });
@@ -714,11 +714,11 @@ describe('the attributes a passphrase protects', () => {
           [fixtureStageId('name-generator-1')]: {
             skipLogic: {
               action: 'SKIP',
-              filter: { rules: [personRule(testObjectId('skip-a'), 'name')] },
+              filter: { rules: [personRule(testId('skip-a'), 'name')] },
             },
           },
           [fixtureStageId('sociogram-1')]: {
-            filter: { rules: [personRule(testObjectId('filter-a'), 'name')] },
+            filter: { rules: [personRule(testId('filter-a'), 'name')] },
           },
         }),
       });
@@ -750,11 +750,11 @@ describe('the attributes a passphrase protects', () => {
           [fixtureStageId('narrative-1')]: {
             presets: [
               {
-                id: testObjectId('narrative-preset-1'),
+                id: testId('narrative-preset-1'),
                 label: { 'en-US': 'Default layout' },
                 layoutVariable: 'layout',
                 filter: {
-                  rules: [personRule(testObjectId('preset-a'), 'name')],
+                  rules: [personRule(testId('preset-a'), 'name')],
                 },
               },
             ],
@@ -786,21 +786,19 @@ describe('the attributes a passphrase protects', () => {
           [fixtureStageId('name-generator-1')]: {
             panels: [
               {
-                id: testObjectId('panel-network'),
+                id: testId('panel-network'),
                 title: { 'en-US': 'People already named' },
                 dataSource: 'existing',
                 filter: {
-                  rules: [personRule(testObjectId('panel-a'), 'name')],
+                  rules: [personRule(testId('panel-a'), 'name')],
                 },
               },
               {
-                id: testObjectId('panel-roster'),
+                id: testId('panel-roster'),
                 title: { 'en-US': 'Roster' },
                 dataSource: 'roster_data',
                 filter: {
-                  rules: [
-                    personRule(testObjectId('panel-b'), 'relationship_to_ego'),
-                  ],
+                  rules: [personRule(testId('panel-b'), 'relationship_to_ego')],
                 },
               },
             ],
@@ -842,9 +840,7 @@ describe('the attributes a passphrase protects', () => {
             skipLogic: {
               action: 'SKIP',
               filter: {
-                rules: [
-                  personRule(testObjectId('skip-a'), 'relationship_to_ego'),
-                ],
+                rules: [personRule(testId('skip-a'), 'relationship_to_ego')],
               },
             },
           },
@@ -901,7 +897,7 @@ describe('the attributes a passphrase protects', () => {
             [fixtureStageId('name-generator-1')]: {
               skipLogic: {
                 action: 'SKIP',
-                filter: { rules: [personRule(testObjectId('skip-a'), 'name')] },
+                filter: { rules: [personRule(testId('skip-a'), 'name')] },
               },
             },
           },

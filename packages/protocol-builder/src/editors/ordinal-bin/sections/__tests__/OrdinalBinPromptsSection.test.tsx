@@ -8,7 +8,7 @@ import {
 } from '../../../../testing/attributePicker.ts';
 import { loadFixtureStage } from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../../testing/testObjectId.ts';
+import { testId } from '../../../../testing/testId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import OrdinalBinPromptsSection from '../OrdinalBinPromptsSection.tsx';
 
@@ -185,14 +185,14 @@ describe('the questions an ordinal bin asks', () => {
   it('refuses a prompt that arrived with no gradient, and says which one', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('ordinal-bin-legacy'),
+        id: testId('ordinal-bin-legacy'),
         type: 'OrdinalBin',
         fields: {
           label: { 'en-US': 'Ordinal Bin' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: testObjectId('ordinal-bin-legacy-prompt-1'),
+              id: testId('ordinal-bin-legacy-prompt-1'),
               text: {
                 'en-US': 'How often do you have contact with this person?',
               },
@@ -337,14 +337,14 @@ describe('an ordinal bin prompt whose scale is not an ordinal attribute', () => 
   it('refuses the save, and says so under the picker', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('OrdinalBin-stage'),
+        id: testId('OrdinalBin-stage'),
         type: 'OrdinalBin',
         fields: {
           label: { 'en-US': 'Ordinal Bin' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: testObjectId('prompt-a'),
+              id: testId('prompt-a'),
               text: { 'en-US': 'How often?' },
               // Categorical: its values have no order for a scale to run
               // along, so this interface cannot draw them.

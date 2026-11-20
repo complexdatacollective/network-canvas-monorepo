@@ -7,7 +7,7 @@ import {
   fixtureStageId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
@@ -91,14 +91,14 @@ describe('the editor for a form about each person', () => {
   it('keeps a filter the stage already has', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('alter-form-filtered'),
+        id: testId('alter-form-filtered'),
         type: 'AlterForm',
         fields: {
           ...loadFixtureStage('alter-form-1').fields,
           filter: {
             rules: [
               {
-                id: testObjectId('rule-a'),
+                id: testId('rule-a'),
                 type: 'node',
                 options: { type: 'person', operator: 'EXISTS' },
               },

@@ -8,7 +8,7 @@ import {
   fixtureStageId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 
 const openCensus = () => {
   const { id, type, fields } = loadFixtureStage('dyad-census-1');
@@ -20,7 +20,7 @@ const openCensus = () => {
         ...fields,
         prompts: [
           {
-            id: testObjectId('dyad-census-prompt-1'),
+            id: testId('dyad-census-prompt-1'),
             text: { 'en-US': 'Who do you know?' },
             createEdge: 'knows',
           },
@@ -105,12 +105,12 @@ describe('a deleted row', () => {
           dynamicValues: { today: { path: 'now' } },
           prompts: [
             {
-              id: testObjectId('dated'),
+              id: testId('dated'),
               text: { 'en-US': 'Who did you see on {today}?' },
               createEdge: 'knows',
             },
             {
-              id: testObjectId('plain'),
+              id: testId('plain'),
               text: { 'en-US': 'Who do you know?' },
               createEdge: 'knows',
             },
@@ -132,7 +132,7 @@ describe('a deleted row', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument.prompts).toEqual([
-      expect.objectContaining({ id: testObjectId('plain') }),
+      expect.objectContaining({ id: testId('plain') }),
     ]);
     expect(saved?.stageDocument).not.toHaveProperty('dynamicValues');
   });
@@ -291,7 +291,7 @@ describe("a census prompt's preview", () => {
           dynamicValues: { today: { path: 'now' } },
           prompts: [
             {
-              id: testObjectId('dated'),
+              id: testId('dated'),
               text: { 'en-US': 'Who did you see on {today}?' },
               createEdge: 'knows',
             },
@@ -387,7 +387,7 @@ describe('a value inserted in default-language text that is translated', () => {
           ...fields,
           prompts: [
             {
-              id: testObjectId('dyad-census-prompt-1'),
+              id: testId('dyad-census-prompt-1'),
               text: {
                 'en-US': 'Who do you know?',
                 'fr': 'Qui connaissez-vous ?',
@@ -422,7 +422,7 @@ describe('a value inserted in default-language text that is translated', () => {
 describe('rules edited in a row dialog', () => {
   const RULES = [
     {
-      id: testObjectId('ties'),
+      id: testId('ties'),
       type: 'edge',
       options: { count: 'GREATER_THAN', value: 0 },
     },
@@ -442,7 +442,7 @@ describe('rules edited in a row dialog', () => {
           conditions: { linked: { about: 'dyadSource', rules: RULES } },
           prompts: [
             {
-              id: testObjectId('dyad-census-prompt-1'),
+              id: testId('dyad-census-prompt-1'),
               text: {
                 'en-US': 'Do they{linked, select, yes { still} other {}} talk?',
               },

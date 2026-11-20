@@ -12,7 +12,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { fixtureStageId } from '../../protocolFixture.ts';
-import { testObjectId } from '../../testObjectId.ts';
+import { testId } from '../../testId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -89,7 +89,7 @@ function fixtureHost(): InMemoryHost {
   let minted = 0;
   return createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
-    nextId: () => testObjectId(`minted-${++minted}`),
+    nextId: () => testId(`minted-${++minted}`),
     principal: ADA,
   });
 }
@@ -255,9 +255,7 @@ const CALLS: readonly Call[] = [
         kind: 'stage',
         document: Redacted.make({
           ...template,
-          items: [
-            { id: testObjectId('item-1'), type: 'asset', content: resourceId },
-          ],
+          items: [{ id: testId('item-1'), type: 'asset', content: resourceId }],
         }),
         promote: { editId: EDIT, resourceIds: [resourceId] },
       });

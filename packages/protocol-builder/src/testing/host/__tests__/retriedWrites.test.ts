@@ -5,7 +5,7 @@ import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { fixtureStageId } from '../../protocolFixture.ts';
-import { testObjectId } from '../../testObjectId.ts';
+import { testId } from '../../testId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -61,7 +61,7 @@ function fixtureHost(): InMemoryHost {
   let minted = 0;
   return createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
-    nextId: () => testObjectId(`minted-${++minted}`),
+    nextId: () => testId(`minted-${++minted}`),
   });
 }
 
@@ -142,9 +142,7 @@ const WRITES: readonly KeyedWrite[] = [
         kind: 'stage',
         document: Redacted.make({
           ...stageTemplate(host),
-          items: [
-            { id: testObjectId('item-1'), type: 'asset', content: staged },
-          ],
+          items: [{ id: testId('item-1'), type: 'asset', content: staged }],
         }),
         promote: { editId: EDIT, resourceIds: [staged] },
       }),

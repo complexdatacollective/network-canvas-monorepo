@@ -1,9 +1,6 @@
-import { v5 } from 'uuid';
-
 import {
+  deterministicProtocolObjectId,
   isProtocolObjectId,
-  type ProtocolObjectId,
-  ProtocolObjectIdSchema,
 } from '../schemas/9/protocol-object-id.ts';
 import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 import {
@@ -13,15 +10,10 @@ import {
 } from '../utils/protocolObjectIdRewrite.ts';
 import { findMarkedObjects } from '../utils/protocolObjectIds.ts';
 
-const TEST_ID_NAMESPACE = '93e5e893-6af4-49dd-a348-e0a45978c112';
-
-/**
- * A protocol object id for a test, the same every time for the same label, so
- * that a fixture can name an object by a readable label and a test can refer
- * to it again by that label.
- */
-export const testId = (label: string): ProtocolObjectId =>
-  ProtocolObjectIdSchema.parse(v5(label, TEST_ID_NAMESPACE));
+/** A protocol object id a test can name: the same UUID for the same label. */
+export const testId = deterministicProtocolObjectId(
+  '93e5e893-6af4-49dd-a348-e0a45978c112',
+);
 
 const asTestId = (id: string): string =>
   isProtocolObjectId(id) ? id : testId(id);

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
 import {
   alreadyProtecting,
@@ -161,11 +161,11 @@ describe('the anonymisation sections, read in Spanish', () => {
         [fixtureStageId('name-generator-1')]: {
           skipLogic: {
             action: 'SKIP',
-            filter: { rules: [personRule(testObjectId('skip-a'), 'name')] },
+            filter: { rules: [personRule(testId('skip-a'), 'name')] },
           },
         },
         [fixtureStageId('sociogram-1')]: {
-          filter: { rules: [personRule(testObjectId('filter-a'), 'name')] },
+          filter: { rules: [personRule(testId('filter-a'), 'name')] },
         },
       }),
     });

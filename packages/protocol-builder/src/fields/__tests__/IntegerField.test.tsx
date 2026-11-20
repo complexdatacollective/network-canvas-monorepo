@@ -6,7 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import AlterLimitsSection from '../../sections/alter-limits/AlterLimitsSection.tsx';
 import { nameGeneratorWording } from '../../sections/name-generator-wording/nameGeneratorWording.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
 const en = (text: string) => ({ 'en-US': text });
@@ -20,7 +20,7 @@ const Wording = nameGeneratorWording('NameGenerator');
 
 const unlimitedStage = {
   stage: {
-    id: testObjectId('integer-field-stage'),
+    id: testId('integer-field-stage'),
     type: 'NameGenerator' as const,
     fields: {
       label: en('Name Generator'),
@@ -29,13 +29,13 @@ const unlimitedStage = {
         title: en('Add a person'),
         fields: [
           {
-            id: testObjectId('field-1'),
+            id: testId('field-1'),
             variable: 'name',
             prompt: en('Name?'),
           },
         ],
       },
-      prompts: [{ id: testObjectId('prompt-a'), text: en('Who do you know?') }],
+      prompts: [{ id: testId('prompt-a'), text: en('Who do you know?') }],
     },
   },
   // The messages section is what seeds a maximum's notice once the researcher
@@ -130,7 +130,7 @@ describe('a control that counts people', () => {
   it('does not delete a saved maximum that has been part-typed over', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('integer-field-stage'),
+        id: testId('integer-field-stage'),
         type: 'NameGenerator' as const,
         fields: {
           ...unlimitedStage.stage.fields,

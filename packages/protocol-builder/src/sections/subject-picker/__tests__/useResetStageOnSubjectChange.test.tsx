@@ -13,7 +13,7 @@ import type { RowPreviewProps } from '../../../form/rowDialog.tsx';
 import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import BuilderSection from '../../BuilderSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
@@ -114,7 +114,7 @@ const censusHoldingNonDefault = {
     behaviours: { removeAfterConsideration: false },
     prompts: [
       {
-        id: testObjectId('one-to-many-dyad-census-prompt-1'),
+        id: testId('one-to-many-dyad-census-prompt-1'),
         text: en('Tap on all the people who this person knows'),
         createEdge: 'knows',
       },
@@ -162,7 +162,7 @@ describe('resetting a stage whose interface has nested defaults', () => {
 const A_PERSON_FILTER: SectionDoc = {
   rules: [
     {
-      id: testObjectId('rule-1'),
+      id: testId('rule-1'),
       type: 'node',
       options: { type: 'person', operator: 'EXISTS' },
     },
@@ -178,7 +178,7 @@ const censusWithAFilter = {
     filter: A_PERSON_FILTER,
     prompts: [
       {
-        id: testObjectId('dyad-census-prompt-1'),
+        id: testId('dyad-census-prompt-1'),
         text: en('Do these two people know each other?'),
         createEdge: 'knows',
       },

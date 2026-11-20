@@ -7,7 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { attempt } from '../../../state/attempt.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import { fixtureStageId } from '../../protocolFixture.ts';
-import { testObjectId } from '../../testObjectId.ts';
+import { testId } from '../../testId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -224,9 +224,7 @@ const REACHES: readonly Reach[] = [
         kind: 'stage',
         document: Redacted.make({
           ...template,
-          items: [
-            { id: testObjectId('item-1'), type: 'asset', content: staged },
-          ],
+          items: [{ id: testId('item-1'), type: 'asset', content: staged }],
         }),
         promote: { editId: caller.editId, resourceIds: [staged] },
       });

@@ -5,7 +5,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { suppliedWordingFor } from '../../../testing/suppliedWording.ts';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { mountedAs } from '../../__tests__/formEditorHarness.tsx';
 import { narrativeStageEditor } from '../NarrativeStageEditor.ts';
 import { canvasPermissions } from '../sections/permissions/canvasPermissions.tsx';
@@ -58,7 +58,7 @@ export const narrativeHolding = (preset: Record<string, unknown>) => {
   };
   return {
     stage: {
-      id: testObjectId('narrative-stage'),
+      id: testId('narrative-stage'),
       type: 'Narrative' as const,
       fields: {
         ...fields,

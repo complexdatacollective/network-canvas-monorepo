@@ -24,7 +24,7 @@ import {
   renderStageEditor,
   type SavedStage,
 } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import PromptsSection from '../../PromptsSection.tsx';
 import SortOrderRows from '../SortOrderRows.tsx';
 
@@ -218,7 +218,7 @@ const FIXTURE_PROMPT_ID = (() => {
 
 /** A sort rule a prompt already holds, under an id of its own. */
 const sortRule = (property: string, direction: 'asc' | 'desc') => ({
-  id: testObjectId(`sort-rule-${property}`),
+  id: testId(`sort-rule-${property}`),
   property,
   direction,
 });
@@ -250,7 +250,7 @@ const seededWith = (
       behaviours: { automaticLayout: true },
       prompts: [
         {
-          id: testObjectId('sociogram-prompt-1'),
+          id: testId('sociogram-prompt-1'),
           text: en('Place the people who know each other close together'),
           layout: { layoutVariable: 'layout' },
           sortOrder: rules,

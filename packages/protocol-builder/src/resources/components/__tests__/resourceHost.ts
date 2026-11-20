@@ -13,10 +13,10 @@ import {
   type HandlerOverrides,
   type InMemoryHost,
 } from '../../../testing/host/createInMemoryHost.ts';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import type { ResourceKind } from '../../types.ts';
 
-const STAGE_ID = testObjectId('resource-host-stage');
+const STAGE_ID = testId('resource-host-stage');
 export const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
 const ASSETS_SECTION = sectionId({ kind: 'assets' });
 

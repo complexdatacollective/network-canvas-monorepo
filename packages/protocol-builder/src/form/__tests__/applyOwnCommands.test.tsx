@@ -10,7 +10,7 @@ import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import {
   type OwnCommandsResult,
   useStageEditorForm,
@@ -78,7 +78,7 @@ function renderEditor(readOnly = false) {
 
   const harness = renderStageEditor({
     stage: {
-      id: testObjectId('apply-own-commands-stage'),
+      id: testId('apply-own-commands-stage'),
       type: 'Information',
       fields: initialFields,
     },
@@ -166,7 +166,7 @@ describe('the form’s own structural writes', () => {
       {
         op: 'set',
         key: 'items',
-        value: [{ id: testObjectId('a'), type: 'text', content: en('Who?') }],
+        value: [{ id: testId('a'), type: 'text', content: en('Who?') }],
       },
     ]);
 
@@ -179,7 +179,7 @@ describe('the form’s own structural writes', () => {
     const written = await harness.submit();
     expect(written?.stageDocument).toMatchObject({
       title: en('Half-written heading'),
-      items: [{ id: testObjectId('a'), type: 'text', content: en('Who?') }],
+      items: [{ id: testId('a'), type: 'text', content: en('Who?') }],
     });
   });
 
@@ -196,7 +196,7 @@ describe('the form’s own structural writes', () => {
       {
         op: 'set',
         key: 'items',
-        value: [{ id: testObjectId('a'), type: 'text', content: en('Who?') }],
+        value: [{ id: testId('a'), type: 'text', content: en('Who?') }],
       },
     ]);
 
@@ -218,7 +218,7 @@ describe('the form’s own structural writes', () => {
       {
         op: 'set',
         key: 'items',
-        value: [{ id: testObjectId('a'), type: 'text', content: en('Who?') }],
+        value: [{ id: testId('a'), type: 'text', content: en('Who?') }],
       },
     ]);
 
@@ -228,7 +228,7 @@ describe('the form’s own structural writes', () => {
     // stage was saved and reopened.
     await waitFor(() =>
       expect(probedItems()).toEqual([
-        { id: testObjectId('a'), type: 'text', content: en('Who?') },
+        { id: testId('a'), type: 'text', content: en('Who?') },
       ]),
     );
   });

@@ -35,7 +35,7 @@ import {
   fixtureStageId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import StageEditorShell from '../StageEditorShell.tsx';
 
 const STAGE_ID = fixtureStageId('information-1');
@@ -522,7 +522,7 @@ describe('a stage the protocol will not open', () => {
             target={{
               sectionId: sectionId({
                 kind: 'stage',
-                stageId: testObjectId('deleted-stage'),
+                stageId: testId('deleted-stage'),
               }),
             }}
           >

@@ -6,7 +6,7 @@ import {
   loadFixtureStage,
 } from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../../testing/testObjectId.ts';
+import { testId } from '../../../../testing/testId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import DyadCensusPromptsSection from '../DyadCensusPromptsSection.tsx';
 
@@ -100,19 +100,19 @@ describe('the questions a dyad census asks about a pair', () => {
   it('removes only the prompt the researcher chose', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('DyadCensus-stage'),
+        id: testId('DyadCensus-stage'),
         type: 'DyadCensus',
         fields: {
           label: { 'en-US': 'Dyad Census' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: testObjectId('prompt-a'),
+              id: testId('prompt-a'),
               text: { 'en-US': 'Know each other?' },
               createEdge: 'knows',
             },
             {
-              id: testObjectId('prompt-b'),
+              id: testId('prompt-b'),
               text: { 'en-US': 'Worked together?' },
               createEdge: 'family_edge',
             },
@@ -136,7 +136,7 @@ describe('the questions a dyad census asks about a pair', () => {
     const request = await harness.submit();
     const remaining = prompts(request?.stageDocument ?? {});
     expect(remaining).toHaveLength(1);
-    expect(remaining[0]?.id).toBe(testObjectId('prompt-b'));
+    expect(remaining[0]?.id).toBe(testId('prompt-b'));
     expect(remaining[0]?.createEdge).toBe('family_edge');
   });
 });

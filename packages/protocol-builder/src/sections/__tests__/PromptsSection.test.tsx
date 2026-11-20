@@ -6,7 +6,7 @@ import {
   loadFixtureStage,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import PromptsSection from '../PromptsSection.tsx';
 import {
   dropUnusedAssignments,
@@ -153,7 +153,7 @@ describe('the prompt list a stage owns', () => {
   it('moves a prompt without changing which prompt it is', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('moving-prompts-stage'),
+        id: testId('moving-prompts-stage'),
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
@@ -162,15 +162,15 @@ describe('the prompt list a stage owns', () => {
             title: en('Add a person'),
             fields: [
               {
-                id: testObjectId('field-1'),
+                id: testId('field-1'),
                 variable: 'name',
                 prompt: en('Name?'),
               },
             ],
           },
           prompts: [
-            { id: testObjectId('prompt-a'), text: en('First question') },
-            { id: testObjectId('prompt-b'), text: en('Second question') },
+            { id: testId('prompt-a'), text: en('First question') },
+            { id: testId('prompt-b'), text: en('Second question') },
           ],
         },
       },
@@ -184,8 +184,8 @@ describe('the prompt list a stage owns', () => {
 
     const request = await harness.submit();
     expect(promptIds(request?.stageDocument ?? {})).toEqual([
-      testObjectId('prompt-b'),
-      testObjectId('prompt-a'),
+      testId('prompt-b'),
+      testId('prompt-a'),
     ]);
   });
 
@@ -339,7 +339,7 @@ describe('the prompt list a stage owns', () => {
           label: en('About you'),
           prompts: [
             {
-              id: testObjectId('ego-prompt-1'),
+              id: testId('ego-prompt-1'),
               text: en('Tell us about yourself.'),
             },
           ],
@@ -473,7 +473,7 @@ describe('a stage whose subject names no type yet', () => {
           label: en('About you'),
           prompts: [
             {
-              id: testObjectId('ego-prompt-1'),
+              id: testId('ego-prompt-1'),
               text: en('Tell us about yourself.'),
             },
           ],
@@ -644,7 +644,7 @@ describe('what a family says about its own prompt', () => {
   it('lets a family collapse the row the shared rule would leave alone', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('name-generator-assigning'),
+        id: testId('name-generator-assigning'),
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
@@ -653,7 +653,7 @@ describe('what a family says about its own prompt', () => {
             title: en('Add a person'),
             fields: [
               {
-                id: testObjectId('field-1'),
+                id: testId('field-1'),
                 variable: 'name',
                 prompt: en('Name?'),
               },
@@ -661,7 +661,7 @@ describe('what a family says about its own prompt', () => {
           },
           prompts: [
             {
-              id: testObjectId('prompt-a'),
+              id: testId('prompt-a'),
               text: en(SEEDED_QUESTION),
               additionalAttributes: [],
             },
@@ -692,7 +692,7 @@ describe('what a family says about its own prompt', () => {
     const request = await harness.submit();
     expect(request?.stageDocument.prompts).toEqual([
       {
-        id: testObjectId('prompt-a'),
+        id: testId('prompt-a'),
         text: en(`${SEEDED_QUESTION} Anyone else?`),
       },
     ]);

@@ -8,7 +8,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { newEntityDraft } from '../../../codebook/components/CodebookEntityEditorDialog.tsx';
 import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import {
   TestPromptEditor,
   TestPromptPreview,
@@ -839,7 +839,7 @@ describe('choosing a type for a stage that has never had one', () => {
       filter: {
         rules: [
           {
-            id: testObjectId('rule-a'),
+            id: testId('rule-a'),
             type: 'node',
             options: { type: 'person', operator: 'EXISTS' },
           },

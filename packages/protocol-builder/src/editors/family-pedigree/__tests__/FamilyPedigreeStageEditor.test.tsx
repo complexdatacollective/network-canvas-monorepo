@@ -27,7 +27,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
 import {
@@ -184,7 +184,7 @@ describe('the family pedigree stage editor', () => {
         form: {
           fields: [
             {
-              id: testObjectId('field-1'),
+              id: testId('field-1'),
               variable: 'fm_occupation',
               prompt: { 'en-US': 'What do they do?' },
             },
@@ -845,7 +845,7 @@ describe('the gender identity options, which this stage manages', () => {
   it('refuses another stage that holds it, naming the stage that manages it', async () => {
     const seeded = familyPedigreeStageWith({ label: 'Family again' });
     const harness = renderStageEditor({
-      stage: { ...seeded, id: testObjectId('family-pedigree-2') },
+      stage: { ...seeded, id: testId('family-pedigree-2') },
       editor: familyPedigreeEditor,
     });
     await harness.opened();
@@ -1847,7 +1847,7 @@ describe('the nomination prompts', () => {
     });
 
   const savedPrompt = {
-    id: testObjectId('nomination-1'),
+    id: testId('nomination-1'),
     text: { 'en-US': 'Who in your family has had heart disease?' },
     attribute: HEART_DISEASE,
     onlyForSexAssignedAtBirth: 'female',
@@ -2082,7 +2082,7 @@ describe('the nomination prompts', () => {
         form: {
           fields: [
             {
-              id: testObjectId('field-1'),
+              id: testId('field-1'),
               variable: 'has_pets',
               prompt: { 'en-US': 'Any pets?' },
             },

@@ -6,7 +6,7 @@ import {
   loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import {
   mediaItemSlots,
   TestItemEditor,
@@ -142,19 +142,19 @@ describe('a page of content rather than a task', () => {
 describe('a page whose blocks can be prose or a resource', () => {
   const mediaPage = () => ({
     stage: {
-      id: testObjectId('information-media'),
+      id: testId('information-media'),
       type: 'Information' as const,
       fields: {
         label: en('Information'),
         title: en('Welcome'),
         items: [
           {
-            id: testObjectId('block-text'),
+            id: testId('block-text'),
             type: 'text',
             content: en('Read this.'),
           },
           {
-            id: testObjectId('block-asset'),
+            id: testId('block-asset'),
             type: 'asset',
             content: 'geo_data',
           },
@@ -205,12 +205,12 @@ describe('a page whose blocks can be prose or a resource', () => {
     const items = request?.stageDocument.items;
     expect(Array.isArray(items) ? items : []).toEqual([
       {
-        id: testObjectId('block-text'),
+        id: testId('block-text'),
         type: 'text',
         content: en('Read this.'),
       },
       {
-        id: testObjectId('block-asset'),
+        id: testId('block-asset'),
         type: 'asset',
         content: 'roster_data',
       },
@@ -229,14 +229,14 @@ describe('a block field the researcher left empty', () => {
   it('is left out of the block entirely, collapse or no collapse', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('information-empty'),
+        id: testId('information-empty'),
         type: 'Information',
         fields: {
           label: en('Information'),
           title: en('Welcome'),
           items: [
             {
-              id: testObjectId('block-text'),
+              id: testId('block-text'),
               type: 'text',
               content: en('Read this.'),
             },
@@ -271,7 +271,7 @@ describe('a block field the researcher left empty', () => {
     const items = request?.stageDocument.items;
     expect(Array.isArray(items) ? items : []).toEqual([
       {
-        id: testObjectId('block-text'),
+        id: testId('block-text'),
         type: 'text',
         content: en('Read this.'),
       },
@@ -290,14 +290,14 @@ describe('a block whose active slot the researcher emptied', () => {
   it('loses the content it held, rather than keeping the old one', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('information-emptied'),
+        id: testId('information-emptied'),
         type: 'Information',
         fields: {
           label: en('Information'),
           title: en('Welcome'),
           items: [
             {
-              id: testObjectId('block-text'),
+              id: testId('block-text'),
               type: 'text',
               content: en('Read this.'),
             },
@@ -378,14 +378,14 @@ describe('the expand and collapse halves of a block', () => {
   it('saves a row the protocol schema accepts', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('information-live'),
+        id: testId('information-live'),
         type: 'Information',
         fields: {
           label: en('Information'),
           title: en('Welcome'),
           items: [
             {
-              id: testObjectId('block-text'),
+              id: testId('block-text'),
               type: 'text',
               content: en('Read this.'),
             },
@@ -417,7 +417,7 @@ describe('the expand and collapse halves of a block', () => {
     // key the protocol schema has never heard of.
     expect(written?.stageDocument.items).toEqual([
       {
-        id: testObjectId('block-text'),
+        id: testId('block-text'),
         type: 'text',
         content: en('Read this instead.'),
       },

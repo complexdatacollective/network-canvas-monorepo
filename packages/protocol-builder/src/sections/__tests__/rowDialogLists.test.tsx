@@ -19,7 +19,7 @@ import {
   type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
 import NodePanelsSection from '../panels/NodePanelsSection.tsx';
@@ -148,7 +148,7 @@ const nameGeneratorWith = (
   sections: ReactNode,
 ): RenderStageEditorOptions => ({
   stage: {
-    id: testObjectId('name-generator-with-rows'),
+    id: testId('name-generator-with-rows'),
     type: 'NameGenerator',
     fields: {
       label: en('Name Generator'),
@@ -157,15 +157,13 @@ const nameGeneratorWith = (
         title: en('Add a person'),
         fields: [
           {
-            id: testObjectId('field-1'),
+            id: testId('field-1'),
             variable: 'name',
             prompt: en("What is this person's name?"),
           },
         ],
       },
-      prompts: [
-        { id: testObjectId('prompt-seed'), text: en('Who do you know?') },
-      ],
+      prompts: [{ id: testId('prompt-seed'), text: en('Who do you know?') }],
       ...fields,
     },
   },
@@ -201,7 +199,7 @@ const lists: readonly ListCase[] = [
     write: typeInto('Block text'),
     open: (rows) => ({
       stage: {
-        id: testObjectId('information-with-blocks'),
+        id: testId('information-with-blocks'),
         type: 'Information',
         fields: {
           label: en('Information'),
@@ -249,7 +247,7 @@ const lists: readonly ListCase[] = [
     },
     open: (rows) => ({
       stage: {
-        id: testObjectId('alter-form-with-fields'),
+        id: testId('alter-form-with-fields'),
         type: 'AlterForm',
         fields: {
           label: en('Alter form'),
@@ -264,8 +262,8 @@ const lists: readonly ListCase[] = [
 
 /** The two rows every case below opens on. */
 const seeded = (listCase: ListCase) => [
-  listCase.row(testObjectId('row-one'), 'Alpha', 0),
-  listCase.row(testObjectId('row-two'), 'Bravo', 1),
+  listCase.row(testId('row-one'), 'Alpha', 0),
+  listCase.row(testId('row-two'), 'Bravo', 1),
 ];
 
 const openDialog = async (
@@ -351,8 +349,8 @@ describe.each(lists)('$list', (listCase) => {
     const rows = listCase.read(saved?.stageDocument ?? {});
     expect(rows.map(listCase.label)).toEqual(['Bravo', 'Alpha']);
     expect(rows.map((row) => row.id)).toEqual([
-      testObjectId('row-two'),
-      testObjectId('row-one'),
+      testId('row-two'),
+      testId('row-one'),
     ]);
   });
 
@@ -392,7 +390,7 @@ describe.each(lists)('$list', (listCase) => {
     // One row rather than two: a side-panel list is at its cap with two, and
     // a list with no Add button has nothing to drive.
     const harness = renderStageEditor(
-      listCase.open([listCase.row(testObjectId('row-one'), 'Alpha', 0)]),
+      listCase.open([listCase.row(testId('row-one'), 'Alpha', 0)]),
     );
 
     const dialog = await openDialog(harness, addLabel);
@@ -412,7 +410,7 @@ describe.each(lists)('$list', (listCase) => {
 
   it('keeps every row the same object through add, edit, reorder and delete', async () => {
     const harness = renderStageEditor(
-      listCase.open([listCase.row(testObjectId('row-one'), 'Alpha', 0)]),
+      listCase.open([listCase.row(testId('row-one'), 'Alpha', 0)]),
     );
 
     const added = await openDialog(harness, addLabel);
@@ -442,10 +440,7 @@ describe.each(lists)('$list', (listCase) => {
       (await harness.submit())?.stageDocument ?? {},
     );
     expect(afterMove.map(listCase.label)).toEqual(['Delta', 'Alpha']);
-    expect(afterMove.map((row) => row.id)).toEqual([
-      newId,
-      testObjectId('row-one'),
-    ]);
+    expect(afterMove.map((row) => row.id)).toEqual([newId, testId('row-one')]);
 
     const removes = await screen.findAllByRole('button', {
       name: `Delete ${noun}`,
@@ -484,8 +479,8 @@ describe.each(lists)('$list', (listCase) => {
     const rows = listCase.read((await harness.submit())?.stageDocument ?? {});
     expect(rows.map(listCase.label)).toEqual(['Alpha', 'Bravo']);
     expect(rows.map((row) => row.id)).toEqual([
-      testObjectId('row-one'),
-      testObjectId('row-two'),
+      testId('row-one'),
+      testId('row-two'),
     ]);
   });
 });

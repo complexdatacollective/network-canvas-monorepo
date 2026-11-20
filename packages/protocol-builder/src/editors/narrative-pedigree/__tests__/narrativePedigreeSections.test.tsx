@@ -11,7 +11,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { narrativePedigreeStageEditor } from '../NarrativePedigreeStageEditor.ts';
 import {
   addDisease,
@@ -120,7 +120,7 @@ const alsoRecording = (
     nominationPrompts: [
       ...prompts,
       ...[...Object.keys(added), ...alsoPrompted].map((variableId) => ({
-        id: testObjectId(`nomination-${variableId}`),
+        id: testId(`nomination-${variableId}`),
         text: { 'en-US': 'Who?' },
         attribute: variableId,
       })),
@@ -385,7 +385,7 @@ describe('the diseases a narrative pedigree defines', () => {
         diseases: [
           fixtureDisease(),
           {
-            id: testObjectId('disease-2'),
+            id: testId('disease-2'),
             label: { 'en-US': 'Condition X, again' },
             color: 'node-color-seq-2',
             attribute: 'hasConditionX',
@@ -411,7 +411,7 @@ describe('the diseases a narrative pedigree defines', () => {
         diseases: [
           fixtureDisease(),
           {
-            id: testObjectId('disease-2'),
+            id: testId('disease-2'),
             label: { 'en-US': 'Condition Z' },
             color: 'node-color-seq-2',
             attribute: 'hasConditionZ',

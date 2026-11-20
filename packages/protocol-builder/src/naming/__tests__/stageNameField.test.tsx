@@ -8,7 +8,7 @@ import {
 } from '../../form/stageEditorContext.ts';
 import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import { useStageName } from '../useStageName.ts';
 
 const NAME = { name: 'Stage name' } as const;
@@ -89,7 +89,7 @@ describe('a second reader of the name', () => {
   it('comes and goes without taking the registered field with it', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('information-unnamed'),
+        id: testId('information-unnamed'),
         type: 'Information',
         fields: {
           label: { [FIXTURE_LANGUAGE]: 'Named' },

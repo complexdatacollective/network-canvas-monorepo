@@ -7,7 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { protocolContextFromSections } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import {
   buildEntityTypeUsageIndex,
   buildExclusiveVariableSlotMap,
@@ -30,11 +30,11 @@ import {
   variableRoleKey,
 } from '../variableRoles.ts';
 
-const FORM_STAGE_ID = testObjectId('form-stage');
-const BIN_STAGE_ID = testObjectId('bin-stage');
+const FORM_STAGE_ID = testId('form-stage');
+const BIN_STAGE_ID = testId('bin-stage');
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 const FAMILY_SUBJECT = { entity: 'node', type: 'family-member' } as const;
-const FAMILY_STAGE_ID = testObjectId('family-stage');
+const FAMILY_STAGE_ID = testId('family-stage');
 const EGO_SLOT = 'familyPedigree.nodeConfiguration.egoAttribute';
 
 const settings = {
@@ -68,7 +68,7 @@ const sections = (): Record<string, SectionDoc> => ({
     form: {
       fields: [
         {
-          id: testObjectId('field-1'),
+          id: testId('field-1'),
           variable: 'category',
           prompt: { en: 'Category?' },
         },
@@ -82,7 +82,7 @@ const sections = (): Record<string, SectionDoc> => ({
     subject: SUBJECT,
     prompts: [
       {
-        id: testObjectId('prompt-1'),
+        id: testId('prompt-1'),
         text: { en: 'Sort people.' },
         variable: 'category',
       },
@@ -425,7 +425,7 @@ describe('variable role helpers', () => {
       // The codebook's own editor, and any other stage.
       expect(ask()).toEqual(['Family Pedigree']);
       expect(
-        ask({ stageId: testObjectId('another'), draftBindings: new Set() }),
+        ask({ stageId: testId('another'), draftBindings: new Set() }),
       ).toEqual(['Family Pedigree']);
       // The stage that binds it, and a stage whose unsaved draft does.
       expect(
@@ -433,7 +433,7 @@ describe('variable role helpers', () => {
       ).toBeUndefined();
       expect(
         ask({
-          stageId: testObjectId('new-stage'),
+          stageId: testId('new-stage'),
           draftBindings: new Set([GENDER_KEY]),
         }),
       ).toBeUndefined();

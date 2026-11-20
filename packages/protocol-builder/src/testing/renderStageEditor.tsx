@@ -81,7 +81,7 @@ import {
   loadFixtureStage,
 } from './protocolFixture.ts';
 import { HARNESS_PRINCIPAL, SeedProtocolCache } from './seedProtocolCache.tsx';
-import { testObjectId } from './testObjectId.ts';
+import { testId } from './testId.ts';
 
 /**
  * The layers a host actually mounts, in the order Architect merges them.
@@ -1175,7 +1175,7 @@ function NamedEditorUnderTest<T extends StageType>({
  * refused a call that gave two, so at most one of these branches can be taken.
  * See `StageEditorSeeding`.
  */
-const STAGE_UNDER_TEST = testObjectId('stage-under-test');
+const STAGE_UNDER_TEST = testId('stage-under-test');
 
 function seedFrom<T extends StageType>(
   options: RenderStageEditorOptions<T>,

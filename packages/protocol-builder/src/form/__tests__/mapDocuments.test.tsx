@@ -11,7 +11,7 @@ import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import type { StageFormDraft } from '../../stageDocument.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import {
   type StageEditorFormContextValue,
   useStageEditorForm,
@@ -66,7 +66,7 @@ function renderEditor(readOnly = false) {
 
   const harness = renderStageEditor({
     stage: {
-      id: testObjectId('map-documents-stage'),
+      id: testId('map-documents-stage'),
       type: 'Information',
       fields: initialFields,
     },
@@ -155,7 +155,7 @@ describe('a host change carried into the open stage', () => {
           key: 'items',
           value: [
             {
-              id: testObjectId('a'),
+              id: testId('a'),
               type: 'text',
               content: { en: 'Who?', es: '¿Quién?' },
             },
@@ -168,7 +168,7 @@ describe('a host change carried into the open stage', () => {
 
     const written = await harness.submit();
     expect(written?.stageDocument.items).toEqual([
-      { id: testObjectId('a'), type: 'text', content: { en: 'Who?' } },
+      { id: testId('a'), type: 'text', content: { en: 'Who?' } },
     ]);
     expect(written?.stageDocument.title).toEqual({
       en: 'Welcome to the study',

@@ -24,7 +24,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import {
   awaitLayerRead,
   enterCoordinate,
@@ -128,12 +128,12 @@ const openTwoPromptsOnOneAttribute = () => {
         ...fields,
         prompts: [
           {
-            id: testObjectId('geospatial-prompt-1'),
+            id: testId('geospatial-prompt-1'),
             text: { 'en-US': 'Where do you live?' },
             variable: 'location',
           },
           {
-            id: testObjectId('geospatial-prompt-2'),
+            id: testId('geospatial-prompt-2'),
             text: { 'en-US': 'Where do you work?' },
             variable: 'location',
           },
@@ -613,7 +613,7 @@ describe('the places a geospatial stage asks about', () => {
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
           {
-            id: testObjectId('field-added-1'),
+            id: testId('field-added-1'),
             variable: 'workplace',
             prompt: { 'en-US': 'Where do they work?' },
           },
@@ -676,7 +676,7 @@ describe('the places a geospatial stage asks about', () => {
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
           {
-            id: testObjectId('field-added-1'),
+            id: testId('field-added-1'),
             variable: 'workplace',
             prompt: { 'en-US': 'Where do they work?' },
           },
@@ -734,12 +734,12 @@ describe('the places a geospatial stage asks about', () => {
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
           {
-            id: testObjectId('field-added-1'),
+            id: testId('field-added-1'),
             variable: 'workplace',
             prompt: { 'en-US': 'Where do they work?' },
           },
           {
-            id: testObjectId('field-added-2'),
+            id: testId('field-added-2'),
             variable: 'location',
             prompt: { 'en-US': 'Where do they live?' },
           },
@@ -852,7 +852,7 @@ describe('a prompt written in more than one language', () => {
           ...fields,
           prompts: [
             {
-              id: testObjectId('geospatial-prompt-1'),
+              id: testId('geospatial-prompt-1'),
               text,
               variable: 'location',
             },
@@ -899,7 +899,7 @@ describe('a prompt written in more than one language', () => {
     const request = await harness.submit();
     expect(request?.stageDocument.prompts).toEqual([
       {
-        id: testObjectId('geospatial-prompt-1'),
+        id: testId('geospatial-prompt-1'),
         text: { 'en-US': 'Where do you live?', 'es': '¿Dónde trabajas?' },
         variable: 'location',
       },

@@ -11,7 +11,7 @@ import {
   type ProtocolBuilderProtocolContext,
   protocolContextFromSections,
 } from '../../protocol-context.ts';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import { proposeStageLabel } from '../proposeStageLabel.ts';
 
 const informationStage = (
@@ -81,7 +81,7 @@ describe('proposeStageLabel', () => {
   it('names a stage after its interface when nothing else is decided', () => {
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-1'), type: 'NameGenerator' },
+        { id: testId('stage-1'), type: 'NameGenerator' },
         contextWith(),
       ),
     ).toBe('Form Name Generator');
@@ -91,7 +91,7 @@ describe('proposeStageLabel', () => {
     expect(
       proposeStageLabel(
         {
-          id: testObjectId('stage-1'),
+          id: testId('stage-1'),
           type: 'NameGenerator',
           subject: { entity: 'node', type: 'person' },
         },
@@ -104,7 +104,7 @@ describe('proposeStageLabel', () => {
     expect(
       proposeStageLabel(
         {
-          id: testObjectId('stage-1'),
+          id: testId('stage-1'),
           type: 'NameGenerator',
           panels: [{ dataSource: 'existing' }, { dataSource: 'roster-asset' }],
         },
@@ -117,7 +117,7 @@ describe('proposeStageLabel', () => {
     expect(
       proposeStageLabel(
         {
-          id: testObjectId('stage-1'),
+          id: testId('stage-1'),
           type: 'FinishSession',
           mode: 'confirmation',
           outcome: 'completed',
@@ -128,7 +128,7 @@ describe('proposeStageLabel', () => {
     expect(
       proposeStageLabel(
         {
-          id: testObjectId('stage-1'),
+          id: testId('stage-1'),
           type: 'FinishSession',
           mode: 'automatic',
           outcome: 'ineligible',
@@ -142,7 +142,7 @@ describe('proposeStageLabel', () => {
     expect(
       proposeStageLabel(
         {
-          id: testObjectId('stage-1'),
+          id: testId('stage-1'),
           type: 'Information',
           items: [
             {
@@ -183,10 +183,10 @@ describe('proposeStageLabel', () => {
   it('avoids a name another stage in the interview already has', () => {
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-new'), type: 'Information' },
+        { id: testId('stage-new'), type: 'Information' },
         contextWith(
           ordered(
-            informationStage(testObjectId('stage-other'), {
+            informationStage(testId('stage-other'), {
               en: 'Information',
             }),
           ),
@@ -202,10 +202,10 @@ describe('proposeStageLabel', () => {
   it('compares names in the default language only', () => {
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-new'), type: 'Information' },
+        { id: testId('stage-new'), type: 'Information' },
         contextWith(
           ordered(
-            informationStage(testObjectId('stage-translated'), {
+            informationStage(testId('stage-translated'), {
               en: 'About the study',
               es: 'Information',
             }),
@@ -215,10 +215,10 @@ describe('proposeStageLabel', () => {
     ).toBe('Information');
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-new'), type: 'Information' },
+        { id: testId('stage-new'), type: 'Information' },
         contextWith(
           ordered(
-            informationStage(testObjectId('stage-other'), {
+            informationStage(testId('stage-other'), {
               en: 'Information',
               es: 'Información',
             }),
@@ -236,13 +236,13 @@ describe('proposeStageLabel', () => {
   it('does not collide a stage with the name it already holds', () => {
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-edited'), type: 'Information' },
+        { id: testId('stage-edited'), type: 'Information' },
         contextWith(
           ordered(
-            informationStage(testObjectId('stage-other'), {
+            informationStage(testId('stage-other'), {
               en: 'Something else',
             }),
-            informationStage(testObjectId('stage-edited'), {
+            informationStage(testId('stage-edited'), {
               en: 'Information',
             }),
           ),
@@ -262,7 +262,7 @@ describe('the language a proposal is in', () => {
     expect(
       proposeStageLabel(
         {
-          id: testObjectId('stage-1'),
+          id: testId('stage-1'),
           type: 'NameGenerator',
           subject: { entity: 'node', type: 'person' },
         },
@@ -271,7 +271,7 @@ describe('the language a proposal is in', () => {
     ).toBe('Generador de nombres (con formularios): Person');
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-1'), type: 'Sociogram' },
+        { id: testId('stage-1'), type: 'Sociogram' },
         contextWith({}, inLanguage('zh-Hant', ['zh-Hant', 'en'])),
       ),
     ).toBe('社會關係圖');
@@ -281,14 +281,14 @@ describe('the language a proposal is in', () => {
     for (const defaultLocale of ['es-ES', 'zh-TW', 'pt', 'en-US']) {
       expect(
         proposeStageLabel(
-          { id: testObjectId('stage-1'), type: 'Sociogram' },
+          { id: testId('stage-1'), type: 'Sociogram' },
           contextWith({}, inLanguage(defaultLocale)),
         ),
       ).toBeTypeOf('string');
     }
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-1'), type: 'Sociogram' },
+        { id: testId('stage-1'), type: 'Sociogram' },
         contextWith({}, inLanguage('pt')),
       ),
     ).toBe('Sociograma');
@@ -300,7 +300,7 @@ describe('the language a proposal is in', () => {
     for (const defaultLocale of ['sw', 'es-MX', 'en-GB', 'fa', 'hu']) {
       expect(
         proposeStageLabel(
-          { id: testObjectId('stage-1'), type: 'Sociogram' },
+          { id: testId('stage-1'), type: 'Sociogram' },
           // The protocol also has English; only the DEFAULT language counts.
           contextWith({}, inLanguage(defaultLocale, [defaultLocale, 'en'])),
         ),
@@ -314,10 +314,7 @@ describe('the language a proposal is in', () => {
     });
     expect(context.localization).toBeUndefined();
     expect(
-      proposeStageLabel(
-        { id: testObjectId('stage-1'), type: 'EgoForm' },
-        context,
-      ),
+      proposeStageLabel({ id: testId('stage-1'), type: 'EgoForm' }, context),
     ).toBe('Ego Form');
   });
 
@@ -325,7 +322,7 @@ describe('the language a proposal is in', () => {
     expect(
       proposeStageLabel(
         {
-          id: testObjectId('stage-1'),
+          id: testId('stage-1'),
           type: 'FinishSession',
           mode: 'automatic',
           outcome: 'terminated',
@@ -340,19 +337,19 @@ describe('the language a proposal is in', () => {
   it('avoids a name already taken in the default language, not in another', () => {
     const context = (label: Readonly<Record<string, string>>) =>
       contextWith(
-        ordered(informationStage(testObjectId('stage-other'), label)),
+        ordered(informationStage(testId('stage-other'), label)),
         inLanguage('es', ['es', 'en']),
       );
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-new'), type: 'Information' },
+        { id: testId('stage-new'), type: 'Information' },
         context({ es: 'información' }),
       ),
     ).toBe('Información #2');
     // The English text of another stage does not occupy the Spanish name.
     expect(
       proposeStageLabel(
-        { id: testObjectId('stage-new'), type: 'Information' },
+        { id: testId('stage-new'), type: 'Information' },
         context({ es: 'Otra cosa', en: 'Información' }),
       ),
     ).toBe('Información');
@@ -374,7 +371,7 @@ describe('the language a proposal is in', () => {
     });
     const label = proposeStageLabel(
       {
-        id: testObjectId('stage-1'),
+        id: testId('stage-1'),
         type: 'NameGenerator',
         subject: { entity: 'node', type: 'person' },
       },

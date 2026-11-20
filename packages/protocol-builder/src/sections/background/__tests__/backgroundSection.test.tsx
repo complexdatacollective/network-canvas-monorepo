@@ -6,7 +6,7 @@ import {
   fixtureStageId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import SubjectSection from '../../subject-picker/SubjectSection.tsx';
 import { background } from '../background.tsx';
 import {
@@ -39,7 +39,7 @@ const openCirclesWithoutSkew = () => {
   const { type, fields } = loadFixtureStage('sociogram-1');
   return {
     stage: {
-      id: testObjectId('sociogram-1-unsaid-skew'),
+      id: testId('sociogram-1-unsaid-skew'),
       type,
       fields: { ...fields, background: { concentricCircles: 3 } },
     },

@@ -34,7 +34,7 @@ import {
   fixtureStageId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { exactlyText } from '../../../testing/text.ts';
 import type { SectionCapability } from '../../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
@@ -219,7 +219,7 @@ const fieldsOf = (
  * one.
  */
 const COLLECTS_A_POSITION = {
-  id: testObjectId('collects-a-position'),
+  id: testId('collects-a-position'),
   type: 'AlterForm',
   fields: {
     ...loadFixtureStage('alter-form-1').fields,
@@ -227,7 +227,7 @@ const COLLECTS_A_POSITION = {
     form: {
       fields: [
         {
-          id: testObjectId('field-1'),
+          id: testId('field-1'),
           variable: 'layout',
           prompt: en('Where do they sit?'),
         },
@@ -361,7 +361,7 @@ describe('the fields a form collects', () => {
           form: {
             fields: [
               {
-                id: testObjectId('field-1'),
+                id: testId('field-1'),
                 variable: 'relationship_to_ego',
                 prompt: { en: '   ' },
               },
@@ -472,7 +472,7 @@ describe('the fields a form collects', () => {
   it('refuses to save a form that collects one attribute twice', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('repeats-an-attribute'),
+        id: testId('repeats-an-attribute'),
         type: 'AlterForm',
         fields: {
           label: en('Alter form'),
@@ -480,12 +480,12 @@ describe('the fields a form collects', () => {
           form: {
             fields: [
               {
-                id: testObjectId('field-1'),
+                id: testId('field-1'),
                 variable: 'relationship_to_ego',
                 prompt: en('How do you know them?'),
               },
               {
-                id: testObjectId('field-2'),
+                id: testId('field-2'),
                 variable: 'relationship_to_ego',
                 prompt: en('And how else?'),
               },
@@ -878,7 +878,7 @@ describe('the fields a form collects', () => {
     );
     expect(fieldsOf(await harness.submit())).toEqual([
       {
-        id: testObjectId('field-1'),
+        id: testId('field-1'),
         variable: 'relationship_to_ego',
         prompt: en('Where do they sit?'),
       },
@@ -1114,7 +1114,7 @@ describe('a codebook change a field needs, refused', () => {
  * protocol.
  */
 const STAMPING_NAME_GENERATOR = {
-  id: testObjectId('stamps-an-attribute-it-also-asks-about'),
+  id: testId('stamps-an-attribute-it-also-asks-about'),
   type: 'NameGenerator' as const,
   fields: {
     label: en('Name generator'),
@@ -1123,7 +1123,7 @@ const STAMPING_NAME_GENERATOR = {
       title: en('Add a person'),
       fields: [
         {
-          id: testObjectId('field-1'),
+          id: testId('field-1'),
           variable: 'name',
           prompt: en("What is this person's name?"),
         },
@@ -1131,11 +1131,11 @@ const STAMPING_NAME_GENERATOR = {
     },
     prompts: [
       {
-        id: testObjectId('name-generator-prompt-1'),
+        id: testId('name-generator-prompt-1'),
         text: en('Who are the people you know?'),
         additionalAttributes: [
           {
-            id: testObjectId('stamps-flagged'),
+            id: testId('stamps-flagged'),
             variable: 'flagged',
             value: true,
           },
@@ -1218,13 +1218,13 @@ describe('an attribute the open stage itself writes unvalidated', () => {
 
 /** The same name generator, with nothing stamped on the nodes it adds yet. */
 const UNSTAMPED_NAME_GENERATOR = {
-  id: testObjectId('binds-a-slot-while-the-form-is-open'),
+  id: testId('binds-a-slot-while-the-form-is-open'),
   type: 'NameGenerator' as const,
   fields: {
     ...STAMPING_NAME_GENERATOR.fields,
     prompts: [
       {
-        id: testObjectId('name-generator-prompt-1'),
+        id: testId('name-generator-prompt-1'),
         text: en('Who are the people you know?'),
       },
     ],
@@ -3277,7 +3277,7 @@ describe('a form whose list holds something that is not a field', () => {
       form: {
         fields: [
           {
-            id: testObjectId('field-1'),
+            id: testId('field-1'),
             variable: 'relationship_to_ego',
             prompt: en('How do you know them?'),
           },
@@ -3367,14 +3367,14 @@ describe('a stored field the schema refuses for its own shape', () => {
 
   /** A field of the fixture's own form, plus a key no form field has. */
   const CARRIES_AN_UNKNOWN_KEY = {
-    id: testObjectId('field-2'),
+    id: testId('field-2'),
     variable: 'flagged',
     prompt: en('Does this person have this attribute?'),
     notAThing: 'left behind by a half-applied migration',
   };
 
   const RELATIONSHIP = {
-    id: testObjectId('field-1'),
+    id: testId('field-1'),
     variable: 'relationship_to_ego',
     prompt: en('What is this person’s relationship to you?'),
   };

@@ -7,7 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { sharedWording } from '../../../sections/supplied-wording/sharedWording.tsx';
 import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { mountedAs } from '../../__tests__/formEditorHarness.tsx';
 import { networkComposerStageEditor } from '../NetworkComposerStageEditor.ts';
 import { composerConnections } from '../sections/composerConnections.tsx';
@@ -84,7 +84,7 @@ export const edgeFormFieldsOf = (
 /** A composer holding whatever a case needs, over the fixture's own codebook. */
 export const composerHolding = (fields: SectionDoc) => ({
   stage: {
-    id: testObjectId('composer-under-test'),
+    id: testId('composer-under-test'),
     type: 'NetworkComposer' as const,
     fields: {
       label: { 'en-US': 'Network Composer' },
@@ -248,10 +248,7 @@ export const highlightInASociogram = (
   }
   const marked = variableIds.map((variableId, index) => ({
     ...held,
-    id:
-      index === 0
-        ? held.id
-        : testObjectId(`sociogram-marking-${String(index)}`),
+    id: index === 0 ? held.id : testId(`sociogram-marking-${String(index)}`),
     highlight: { allowHighlighting: true, variable: variableId },
   }));
   const updated: SectionDoc = {
@@ -289,7 +286,7 @@ export const collectInAnAlterForm = (
       fields: [
         ...fields,
         ...variableIds.map((variable) => ({
-          id: testObjectId(`field-added-${variable}`),
+          id: testId(`field-added-${variable}`),
           variable,
           prompt: {
             'en-US': escapeMessageText(`What is this person's ${variable}?`),
@@ -344,7 +341,7 @@ export const composerInAnotherStage = (
     throw new Error('the fixture protocol has no composer to copy');
   }
   const stages = Array.isArray(order.stages) ? order.stages : [];
-  const id = testObjectId('network-composer-2');
+  const id = testId('network-composer-2');
   const second: SectionDoc = {
     ...composer,
     id,

@@ -7,7 +7,7 @@ import { egoFormStageEditor } from '../../editors/ego-form/EgoFormStageEditor.ts
 import StageEditor from '../../StageEditor.tsx';
 import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 
 /**
  * The two panes, as a browser lays them out.
@@ -170,7 +170,7 @@ export const SwitchingLanguage: Story = {
           title: { 'en-US': 'About you' },
           fields: [
             {
-              id: testObjectId('field-1'),
+              id: testId('field-1'),
               variable: 'ego_name',
               prompt: {
                 'en-US': 'What is your name?',

@@ -9,7 +9,7 @@ import {
   fixtureStageId,
 } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import { anonymisationStageEditor } from './AnonymisationStageEditor.ts';
 
 const meta = {
@@ -118,7 +118,7 @@ export const AttributeARuleReads: Story = {
           filter: {
             rules: [
               {
-                id: testObjectId('rule-1'),
+                id: testId('rule-1'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -173,7 +173,7 @@ export const AttributeARuleAsksAbout: Story = {
           filter: {
             rules: [
               {
-                id: testObjectId('rule-1'),
+                id: testId('rule-1'),
                 type: 'node',
                 options: {
                   type: 'person',

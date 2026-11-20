@@ -38,7 +38,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 
 /**
  * The shared words a stage uses, edited in its stage editor. A change to one
@@ -601,7 +601,7 @@ const collaboratorSaves = (
 ) => {
   const other = sectionId({
     kind: 'stage',
-    stageId: testObjectId('geospatial-2'),
+    stageId: testId('geospatial-2'),
   });
   const order = sectionId({ kind: 'stageOrder' });
   const sections = harness.protocolSections();
@@ -611,13 +611,13 @@ const collaboratorSaves = (
     const options = map.mapOptions as Readonly<Record<string, unknown>>;
     harness.host.store.applyAsCollaborator(other, {
       ...map,
-      id: testObjectId('geospatial-2'),
+      id: testId('geospatial-2'),
       mapOptions: { ...options, allowSearch: true },
     });
     harness.host.store.applyAsCollaborator(order, {
       stages: [
         ...(Array.isArray(stages) ? stages : []),
-        testObjectId('geospatial-2'),
+        testId('geospatial-2'),
       ],
     });
   }

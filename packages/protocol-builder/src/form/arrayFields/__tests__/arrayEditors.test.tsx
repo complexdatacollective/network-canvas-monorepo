@@ -16,7 +16,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { fixtureMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
 import { rowsOf } from '../../rowDialog.tsx';
 import MultiSelect, {
@@ -82,7 +82,7 @@ function renderList(
 
   const harness = renderStageEditor({
     stage: {
-      id: testObjectId('array-editors-stage'),
+      id: testId('array-editors-stage'),
       type: 'Information',
       fields,
     },
@@ -587,9 +587,9 @@ describe('a row removal confirm the list stops accepting', () => {
  * researcher a list they could see perfectly well had changed underneath them.
  */
 describe('a list holding rows the researcher cannot tell apart', () => {
-  const first = testObjectId('sort-rule-first');
-  const second = testObjectId('sort-rule-second');
-  const third = testObjectId('sort-rule-third');
+  const first = testId('sort-rule-first');
+  const second = testId('sort-rule-second');
+  const third = testId('sort-rule-third');
 
   it('moves the rule the researcher took hold of past the one between the copies', async () => {
     const { user, draft } = renderSortRules({

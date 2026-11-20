@@ -8,7 +8,7 @@ import { nodeLayout } from '../../../../../sections/canvas-behaviours/nodeLayout
 import { attributeField } from '../../../../../testing/attributePicker.ts';
 import { fixtureStageId } from '../../../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../../../testing/testObjectId.ts';
+import { testId } from '../../../../../testing/testId.ts';
 import { sociogramPrompts } from '../sociogramPrompts.tsx';
 
 const Prompts = sociogramPrompts();
@@ -38,7 +38,7 @@ export const promptsOf = (
 /** A sociogram holding exactly one prompt, so a save can be read whole. */
 export const sociogramHolding = (prompt: Record<string, unknown>) => ({
   stage: {
-    id: testObjectId('sociogram-stage'),
+    id: testId('sociogram-stage'),
     type: 'Sociogram' as const,
     fields: {
       label: { 'en-US': 'Sociogram' },
@@ -113,7 +113,7 @@ export const collectInAForm = (
       fields: [
         ...fields,
         {
-          id: testObjectId('field-added'),
+          id: testId('field-added'),
           variable: variableId,
           prompt: { 'en-US': 'Is this so?' },
         },

@@ -15,7 +15,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import { categoricalBinStageEditor } from '../categorical-bin/CategoricalBinStageEditor.ts';
 import { dyadCensusStageEditor } from '../dyad-census/DyadCensusStageEditor.ts';
 import { nameGeneratorQuickAddStageEditor } from '../name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
@@ -45,13 +45,13 @@ import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrength
 const SUBJECT = { entity: 'node', type: 'person' };
 const BUCKET_SORT_ORDER = [
   {
-    id: testObjectId('bucket-sort-rule-1'),
+    id: testId('bucket-sort-rule-1'),
     property: 'name',
     direction: 'asc',
   },
 ];
 const BIN_SORT_ORDER = [
-  { id: testObjectId('bin-sort-rule-1'), property: '*', direction: 'desc' },
+  { id: testId('bin-sort-rule-1'), property: '*', direction: 'desc' },
 ];
 
 const FILTER = {
@@ -59,7 +59,7 @@ const FILTER = {
   rules: [
     {
       type: 'node',
-      id: testObjectId('filter-rule-1'),
+      id: testId('filter-rule-1'),
       options: {
         type: 'person',
         attribute: 'age',
@@ -77,7 +77,7 @@ const SKIP_LOGIC = {
     rules: [
       {
         type: 'node',
-        id: testObjectId('skip-rule-1'),
+        id: testId('skip-rule-1'),
         options: { type: 'person', operator: 'NOT_EXISTS' },
       },
     ],
@@ -170,13 +170,13 @@ const sortRuleControls = (group: string): readonly Control[] => [
 ];
 
 const DYAD_PROMPT = {
-  id: testObjectId('p1'),
+  id: testId('p1'),
   text: { 'en-US': 'Do they know each other?' },
   createEdge: 'knows',
 };
 
 const TIE_STRENGTH_PROMPT = {
-  id: testObjectId('p1'),
+  id: testId('p1'),
   text: { 'en-US': 'How close?' },
   createEdge: 'knows',
   edgeVariable: 'closeness',
@@ -184,7 +184,7 @@ const TIE_STRENGTH_PROMPT = {
 };
 
 const ONE_TO_MANY_PROMPT = {
-  id: testObjectId('p1'),
+  id: testId('p1'),
   text: { 'en-US': 'Who does this person know?' },
   createEdge: 'knows',
   bucketSortOrder: BUCKET_SORT_ORDER,
@@ -192,7 +192,7 @@ const ONE_TO_MANY_PROMPT = {
 };
 
 const ORDINAL_BIN_PROMPT = {
-  id: testObjectId('p1'),
+  id: testId('p1'),
   text: { 'en-US': 'How often?' },
   variable: 'contactFreq',
   color: 'ord-color-seq-1',
@@ -221,7 +221,7 @@ const WITHOUT_FILTER: SectionDoc = {
  * one is not a row the section can render.
  */
 const PANEL = {
-  id: testObjectId('panel-1'),
+  id: testId('panel-1'),
   title: { 'en-US': 'People you already named' },
   dataSource: 'existing',
 };
@@ -232,11 +232,11 @@ const PANEL = {
  * about the same prompt and the same controls.
  */
 const NAME_GENERATOR_PROMPT = {
-  id: testObjectId('p1'),
+  id: testId('p1'),
   text: { 'en-US': 'Who are the people you know?' },
   additionalAttributes: [
     {
-      id: testObjectId('additional-attribute-1'),
+      id: testId('additional-attribute-1'),
       variable: 'highlighted',
       value: true,
     },
@@ -262,7 +262,7 @@ const REWRITE_A_STAMP: Rewrite = {
   key: 'additionalAttributes',
   value: [
     {
-      id: testObjectId('additional-attribute-1'),
+      id: testId('additional-attribute-1'),
       variable: 'highlighted',
       value: false,
     },
@@ -278,7 +278,7 @@ const REWRITE_A_STAMP: Rewrite = {
  * three of the fields describing it or none of them.
  */
 const CATEGORICAL_BIN_PROMPT = {
-  id: testObjectId('p1'),
+  id: testId('p1'),
   text: { 'en-US': 'What kind of contact?' },
   variable: 'contactType',
   otherVariable: 'relationship_to_ego',
@@ -427,7 +427,7 @@ const CASES: readonly EditorCase[] = [
       key: 'bucketSortOrder',
       value: [
         {
-          id: testObjectId('bucket-sort-rule-1'),
+          id: testId('bucket-sort-rule-1'),
           property: 'name',
           direction: 'desc',
         },
@@ -661,7 +661,7 @@ const CASES: readonly EditorCase[] = [
       cardOptions: {
         additionalProperties: [
           {
-            id: testObjectId('card-property-1'),
+            id: testId('card-property-1'),
             label: { 'en-US': 'Age' },
             variable: 'age',
           },
@@ -670,14 +670,14 @@ const CASES: readonly EditorCase[] = [
       sortOptions: {
         sortOrder: [
           {
-            id: testObjectId('roster-sort-rule-1'),
+            id: testId('roster-sort-rule-1'),
             property: 'age',
             direction: 'desc',
           },
         ],
         sortableProperties: [
           {
-            id: testObjectId('sortable-property-1'),
+            id: testId('sortable-property-1'),
             label: { 'en-US': 'Age' },
             variable: 'age',
           },
@@ -811,7 +811,7 @@ describe('a prompt that uses every optional key its interface allows', () => {
     }) => {
       const harness = renderStageEditor({
         stage: {
-          id: testObjectId('stage-under-test'),
+          id: testId('stage-under-test'),
           type: interfaceName,
           fields: wholeStage,
         },

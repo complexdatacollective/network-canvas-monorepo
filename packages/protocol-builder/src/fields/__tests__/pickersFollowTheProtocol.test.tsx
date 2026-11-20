@@ -22,7 +22,7 @@ import {
   fixtureStageId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import { EntitySubjectPickerField } from '../EntityTypePickerField.tsx';
 import StageDestinationPickerField from '../StageDestinationPickerField.tsx';
 import VariablePickerField from '../VariablePickerField.tsx';
@@ -100,7 +100,7 @@ const skippingTo = (destination?: Record<string, unknown>) => ({
       filter: {
         rules: [
           {
-            id: testObjectId('rule-a'),
+            id: testId('rule-a'),
             type: 'node',
             options: { type: 'person', operator: 'EXISTS' },
           },
@@ -307,7 +307,7 @@ describe('the stage destination picker', () => {
     const harness = renderStageEditor({
       stage: skippingTo({
         type: 'stage',
-        stageId: testObjectId('no-such-stage'),
+        stageId: testId('no-such-stage'),
       }),
       sections: destinationPicker,
     });
@@ -322,6 +322,6 @@ describe('the stage destination picker', () => {
     expect(
       (saved?.stageDocument.skipLogic as Record<string, unknown> | undefined)
         ?.destination,
-    ).toEqual({ type: 'stage', stageId: testObjectId('no-such-stage') });
+    ).toEqual({ type: 'stage', stageId: testId('no-such-stage') });
   });
 });

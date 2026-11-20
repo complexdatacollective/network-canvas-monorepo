@@ -6,7 +6,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { fixtureStageId } from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../../testing/testObjectId.ts';
+import { testId } from '../../../../testing/testId.ts';
 import CardDisplaySection from '../CardDisplaySection.tsx';
 import ExternalDataSourceSection from '../ExternalDataSourceSection.tsx';
 import SearchOptionsSection from '../SearchOptionsSection.tsx';
@@ -17,7 +17,7 @@ import SortOptionsSection from '../SortOptionsSection.tsx';
  * own roster stage is the fully configured case; the rest are built here.
  */
 const rosterWith = (fields: SectionDoc) => ({
-  id: testObjectId('roster-under-test'),
+  id: testId('roster-under-test'),
   type: 'NameGeneratorRoster' as const,
   fields: {
     label: { 'en-US': 'Name Generator Roster' },
@@ -28,7 +28,7 @@ const rosterWith = (fields: SectionDoc) => ({
     },
     prompts: [
       {
-        id: testObjectId('prompt-1'),
+        id: testId('prompt-1'),
         text: { 'en-US': 'Select people from the roster' },
       },
     ],
@@ -97,7 +97,7 @@ const reopenSaved = (
   const { id: _id, type: _type, ...fields } = saved;
   return renderStageEditor({
     stage: {
-      id: testObjectId('roster-under-test'),
+      id: testId('roster-under-test'),
       type: 'NameGeneratorRoster',
       fields,
     },
@@ -118,7 +118,7 @@ const rosterNamingALostColumn = () =>
     cardOptions: {
       additionalProperties: [
         {
-          id: testObjectId('card-nickname'),
+          id: testId('card-nickname'),
           variable: 'nickname',
           label: { 'en-US': 'Nickname' },
         },
@@ -127,14 +127,14 @@ const rosterNamingALostColumn = () =>
     sortOptions: {
       sortOrder: [
         {
-          id: testObjectId('sort-nickname'),
+          id: testId('sort-nickname'),
           property: 'nickname',
           direction: 'asc',
         },
       ],
       sortableProperties: [
         {
-          id: testObjectId('sortable-nickname'),
+          id: testId('sortable-nickname'),
           variable: 'nickname',
           label: { 'en-US': 'Nickname' },
         },
@@ -248,7 +248,7 @@ describe("a roster stage's data file", () => {
         cardOptions: {
           additionalProperties: [
             {
-              id: testObjectId('card-age'),
+              id: testId('card-age'),
               variable: 'age',
               label: { 'en-US': 'Age' },
             },
@@ -256,11 +256,11 @@ describe("a roster stage's data file", () => {
         },
         sortOptions: {
           sortOrder: [
-            { id: testObjectId('sort-age'), property: 'age', direction: 'asc' },
+            { id: testId('sort-age'), property: 'age', direction: 'asc' },
           ],
           sortableProperties: [
             {
-              id: testObjectId('sortable-age'),
+              id: testId('sortable-age'),
               variable: 'age',
               label: { 'en-US': 'Age' },
             },
@@ -307,7 +307,7 @@ describe("a roster stage's data file", () => {
     expect(request?.stageDocument.cardOptions).toEqual({
       additionalProperties: [
         {
-          id: testObjectId('card-age'),
+          id: testId('card-age'),
           variable: 'age',
           label: { 'en-US': 'Age' },
         },
@@ -359,7 +359,7 @@ describe("what a roster's cards show", () => {
         cardOptions: {
           additionalProperties: [
             {
-              id: testObjectId('card-age'),
+              id: testId('card-age'),
               label: { 'en-US': 'Age' },
               variable: 'age',
             },
@@ -383,9 +383,7 @@ describe("what a roster's cards show", () => {
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: {
-          additionalProperties: [
-            { id: testObjectId('card-age'), variable: 'age' },
-          ],
+          additionalProperties: [{ id: testId('card-age'), variable: 'age' }],
         },
       }),
       sections: <CardDisplaySection />,
@@ -482,7 +480,7 @@ describe("what a roster's cards show", () => {
     expect(request?.stageDocument.cardOptions).toEqual({
       additionalProperties: [
         {
-          id: testObjectId('card-nickname'),
+          id: testId('card-nickname'),
           variable: 'age',
           label: { 'en-US': 'Age' },
         },
@@ -506,7 +504,7 @@ describe("what a roster's cards show", () => {
         cardOptions: {
           additionalProperties: [
             {
-              id: testObjectId('card-age'),
+              id: testId('card-age'),
               variable: 'age',
               label: { 'en-US': 'Age' },
             },
@@ -550,7 +548,7 @@ describe('how a roster is ordered', () => {
         sortOptions: {
           sortOrder: [
             {
-              id: testObjectId('sort-age'),
+              id: testId('sort-age'),
               property: 'age',
               direction: 'desc',
             },
@@ -577,7 +575,7 @@ describe('how a roster is ordered', () => {
         dataSource: 'roster_data',
         sortOptions: {
           sortOrder: [
-            { id: testObjectId('sort-age'), property: 'age', direction: '' },
+            { id: testId('sort-age'), property: 'age', direction: '' },
           ],
         },
       }),
@@ -619,11 +617,11 @@ describe('how a roster is ordered', () => {
         dataSource: 'roster_data',
         sortOptions: {
           sortOrder: [
-            { id: testObjectId('sort-age'), property: 'age', direction: 'asc' },
+            { id: testId('sort-age'), property: 'age', direction: 'asc' },
           ],
           sortableProperties: [
             {
-              id: testObjectId('sortable-age'),
+              id: testId('sortable-age'),
               variable: 'age',
               label: { 'en-US': 'Age' },
             },
@@ -640,7 +638,7 @@ describe('how a roster is ordered', () => {
     expect(request?.stageDocument.sortOptions).toEqual({
       sortableProperties: [
         {
-          id: testObjectId('sortable-age'),
+          id: testId('sortable-age'),
           variable: 'age',
           label: { 'en-US': 'Age' },
         },
@@ -665,11 +663,11 @@ describe('how a roster is ordered', () => {
         dataSource: 'roster_data',
         sortOptions: {
           sortOrder: [
-            { id: testObjectId('sort-age'), property: 'age', direction: 'asc' },
+            { id: testId('sort-age'), property: 'age', direction: 'asc' },
           ],
           sortableProperties: [
             {
-              id: testObjectId('sortable-age'),
+              id: testId('sortable-age'),
               variable: 'age',
               label: { 'en-US': 'Age' },
             },

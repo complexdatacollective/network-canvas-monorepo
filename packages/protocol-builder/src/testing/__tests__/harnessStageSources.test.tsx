@@ -7,7 +7,7 @@ import {
   renderStageEditor,
   type RenderStageEditorOptions,
 } from '../renderStageEditor.tsx';
-import { testObjectId } from '../testObjectId.ts';
+import { testId } from '../testId.ts';
 
 /**
  * Options as they reach the harness from somewhere the compiler cannot check:
@@ -20,7 +20,7 @@ const asOptions = (
 ): RenderStageEditorOptions => options as unknown as RenderStageEditorOptions;
 
 const BUILT_STAGE = {
-  id: testObjectId('built-stage'),
+  id: testId('built-stage'),
   type: 'Information',
   fields: { label: { 'en-US': 'Built beside the fixture' } },
 } as const;
@@ -132,7 +132,7 @@ describe('the stage a harness call opens', () => {
       sections: <></>,
     });
 
-    expect(harness.seeded.id).toBe(testObjectId('built-stage'));
+    expect(harness.seeded.id).toBe(testId('built-stage'));
     expect(harness.seeded.fields.label).toEqual({
       'en-US': 'Built beside the fixture',
     });

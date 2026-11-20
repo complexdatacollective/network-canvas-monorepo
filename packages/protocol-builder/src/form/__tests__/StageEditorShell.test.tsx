@@ -12,7 +12,7 @@ import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import { REQUIRED } from '../requiredField.ts';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
@@ -92,7 +92,7 @@ function renderEditor(
 ) {
   return renderStageEditor({
     stage: {
-      id: testObjectId('stage-editor-shell-stage'),
+      id: testId('stage-editor-shell-stage'),
       type: 'Information',
       fields: options.fields ?? initialFields,
     },

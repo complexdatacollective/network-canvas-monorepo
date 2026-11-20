@@ -5,7 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 
 /**
  * A stage the protocol refuses at a key this mount has no control for: the
@@ -13,7 +13,7 @@ import { testObjectId } from '../../testing/testObjectId.ts';
  * here edits it.
  */
 const untitledStage = {
-  id: testObjectId('information-unowned'),
+  id: testId('information-unowned'),
   type: 'Information',
   fields: { label: { 'en-US': 'Named' }, items: [] },
 } as const;

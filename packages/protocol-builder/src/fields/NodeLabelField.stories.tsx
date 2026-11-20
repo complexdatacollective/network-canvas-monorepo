@@ -8,7 +8,7 @@ import { CodebookSchema } from '@codaco/protocol-validation';
 import { ProtocolLocalizationProvider } from '../localization/ProtocolLocalization.tsx';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import { fixtureStageId } from '../testing/protocolFixture.ts';
-import { testObjectId } from '../testing/testObjectId.ts';
+import { testId } from '../testing/testId.ts';
 import NodeLabelField, { type NodeLabelDraft } from './NodeLabelField.tsx';
 
 const LABEL = 'Label';
@@ -55,7 +55,7 @@ const SWITCH_ON_KIND: NodeLabelDraft = {
       about: 'node',
       rules: [
         {
-          id: testObjectId('has-near'),
+          id: testId('has-near'),
           type: 'edge',
           options: { type: 'near', operator: 'EXISTS' },
         },

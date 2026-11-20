@@ -16,7 +16,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import BuilderSection from '../../BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../interviewer-guidance/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../SkipLogicSection.tsx';
@@ -122,7 +122,7 @@ const configuredFields = (
 ): SectionDoc => ({
   skipLogic: {
     action: 'SKIP',
-    filter: { rules: [nodeRule(testObjectId('rule-a'))] },
+    filter: { rules: [nodeRule(testId('rule-a'))] },
     ...(destination === undefined ? {} : { destination }),
   },
 });
@@ -315,10 +315,7 @@ describe('the rules inside skip logic', () => {
       action: 'SHOW',
       filter: {
         join: 'AND',
-        rules: [
-          nodeRule(testObjectId('rule-a')),
-          nodeRule(testObjectId('rule-b')),
-        ],
+        rules: [nodeRule(testId('rule-a')), nodeRule(testId('rule-b'))],
       },
     },
   };
@@ -339,7 +336,7 @@ describe('the rules inside skip logic', () => {
 
     const written = await harness.submit();
     expect(written).not.toBeNull();
-    expect(ruleIds(written?.stageDocument)).toEqual([testObjectId('rule-b')]);
+    expect(ruleIds(written?.stageDocument)).toEqual([testId('rule-b')]);
   });
 
   it('moves a rule without changing which rule it is', async () => {
@@ -356,8 +353,8 @@ describe('the rules inside skip logic', () => {
     const written = await harness.submit();
     expect(written).not.toBeNull();
     expect(ruleIds(written?.stageDocument)).toEqual([
-      testObjectId('rule-b'),
-      testObjectId('rule-a'),
+      testId('rule-b'),
+      testId('rule-a'),
     ]);
   });
 });
@@ -375,7 +372,7 @@ describe('a rule set the researcher cannot save', () => {
       filter: {
         rules: [
           {
-            id: testObjectId('rule-a'),
+            id: testId('rule-a'),
             type: 'node',
             options: {
               type: 'person',
@@ -397,10 +394,7 @@ describe('a rule set the researcher cannot save', () => {
         skipLogic: {
           action: 'SHOW',
           filter: {
-            rules: [
-              nodeRule(testObjectId('rule-a')),
-              nodeRule(testObjectId('rule-b')),
-            ],
+            rules: [nodeRule(testId('rule-a')), nodeRule(testId('rule-b'))],
           },
         },
       }),
@@ -481,7 +475,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: testObjectId('rule-a'),
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -534,7 +528,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: testObjectId('rule-a'),
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -669,7 +663,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: testObjectId('rule-a'),
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -733,7 +727,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: testObjectId('rule-a'),
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -788,12 +782,12 @@ describe('a rule set the researcher cannot save', () => {
             join: 'AND',
             rules: [
               {
-                id: testObjectId('rule-a'),
+                id: testId('rule-a'),
                 type: 'node',
                 options: { type: 'person', operator: 'EXISTS' },
               },
               {
-                id: testObjectId('rule-a'),
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -847,7 +841,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: testObjectId('rule-a'),
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -982,7 +976,7 @@ describe('choosing where the interview continues', () => {
       stage: lateStageHolding(
         configuredFields({
           type: 'stage',
-          stageId: testObjectId('deleted-stage'),
+          stageId: testId('deleted-stage'),
         }),
       ),
       sections: skipLogicOnly,
@@ -1006,7 +1000,7 @@ describe('choosing where the interview continues', () => {
     expect(written?.stageDocument.skipLogic).toEqual(
       configuredFields({
         type: 'stage',
-        stageId: testObjectId('deleted-stage'),
+        stageId: testId('deleted-stage'),
       }).skipLogic,
     );
   });
@@ -1057,7 +1051,7 @@ describe('choosing where the interview continues', () => {
   it('reports a destination carrying a key the schema refuses', async () => {
     renderStageEditor({
       stage: lateStageHolding(
-        configuredFields({ type: 'finish', stageId: testObjectId('stale') }),
+        configuredFields({ type: 'finish', stageId: testId('stale') }),
       ),
       sections: skipLogicOnly,
     });
@@ -1079,7 +1073,7 @@ describe('choosing where the interview continues', () => {
   it('refuses to save a destination carrying a key the schema refuses', async () => {
     const harness = renderStageEditor({
       stage: lateStageHolding(
-        configuredFields({ type: 'finish', stageId: testObjectId('stale') }),
+        configuredFields({ type: 'finish', stageId: testId('stale') }),
       ),
       sections: skipLogicOnly,
     });
@@ -1131,7 +1125,7 @@ describe('choosing where the interview continues', () => {
       stage: lateStageHolding(
         configuredFields({
           type: 'stage',
-          stageId: testObjectId('deleted-stage'),
+          stageId: testId('deleted-stage'),
         }),
       ),
       sections: skipLogicOnly,

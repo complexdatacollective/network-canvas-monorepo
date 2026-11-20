@@ -11,7 +11,7 @@ import {
 
 import { attempt } from '../../../state/attempt.ts';
 import { fixtureStageId } from '../../protocolFixture.ts';
-import { testObjectId } from '../../testObjectId.ts';
+import { testId } from '../../testId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -28,7 +28,7 @@ const ANY_PERSON = {
   rules: [
     {
       type: 'node',
-      id: testObjectId('rule-1'),
+      id: testId('rule-1'),
       options: { type: 'person', operator: 'EXISTS' },
     },
   ],

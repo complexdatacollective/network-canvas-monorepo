@@ -27,7 +27,7 @@ import {
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
 import { fixtureStageId } from '../../testing/protocolFixture.ts';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import {
   useProtocolBuilderContext,
   type ProtocolBuilderAdapter,
@@ -463,7 +463,7 @@ describe('the protocol state layer', () => {
     const host = newHost();
     const missing = sectionId({
       kind: 'stage',
-      stageId: testObjectId('never-existed'),
+      stageId: testId('never-existed'),
     });
 
     render(

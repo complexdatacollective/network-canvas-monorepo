@@ -6,7 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { protocolContextFromSections } from '../../../protocol-context.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { contentBlocks } from '../contentBlocks.tsx';
 import { contentBlockSlots } from '../contentBlockTypes.ts';
 
@@ -59,19 +59,19 @@ const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
 
 const mediaPage = () => ({
   stage: {
-    id: testObjectId('information-media'),
+    id: testId('information-media'),
     type: 'Information' as const,
     fields: {
       label: en('Information'),
       title: en('Welcome'),
       items: [
         {
-          id: testObjectId('block-text'),
+          id: testId('block-text'),
           type: 'text',
           content: en('Read this.'),
         },
         {
-          id: testObjectId('block-image'),
+          id: testId('block-image'),
           type: 'asset',
           content: 'welcome_image',
         },
@@ -135,12 +135,12 @@ describe('a page whose blocks are text and media', () => {
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
       {
-        id: testObjectId('block-text'),
+        id: testId('block-text'),
         type: 'text',
         content: en('Read this.'),
       },
       {
-        id: testObjectId('block-image'),
+        id: testId('block-image'),
         type: 'asset',
         content: 'welcome_image',
         size: 'MEDIUM',
@@ -188,12 +188,12 @@ describe('a page whose blocks are text and media', () => {
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
       {
-        id: testObjectId('block-text'),
+        id: testId('block-text'),
         type: 'text',
         content: en('Read this instead.'),
       },
       {
-        id: testObjectId('block-image'),
+        id: testId('block-image'),
         type: 'asset',
         content: 'welcome_image',
       },
@@ -203,14 +203,14 @@ describe('a page whose blocks are text and media', () => {
   it('writes a block the researcher adds from nothing', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('information-added'),
+        id: testId('information-added'),
         type: 'Information',
         fields: {
           label: en('Information'),
           title: en('Welcome'),
           items: [
             {
-              id: testObjectId('block-text'),
+              id: testId('block-text'),
               type: 'text',
               content: en('Read this.'),
             },
@@ -236,7 +236,7 @@ describe('a page whose blocks are text and media', () => {
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
       {
-        id: testObjectId('block-text'),
+        id: testId('block-text'),
         type: 'text',
         content: en('Read this.'),
       },
@@ -261,19 +261,19 @@ describe('a page whose blocks are text and media', () => {
 describe('describing a media block for a participant who cannot see it', () => {
   const describedPage = (description?: string) => ({
     stage: {
-      id: testObjectId('information-described'),
+      id: testId('information-described'),
       type: 'Information' as const,
       fields: {
         label: en('Information'),
         title: en('Welcome'),
         items: [
           {
-            id: testObjectId('block-text'),
+            id: testId('block-text'),
             type: 'text',
             content: en('Read this.'),
           },
           {
-            id: testObjectId('block-image'),
+            id: testId('block-image'),
             type: 'asset',
             content: 'welcome_image',
             ...(description === undefined
@@ -330,12 +330,12 @@ describe('describing a media block for a participant who cannot see it', () => {
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
       {
-        id: testObjectId('block-text'),
+        id: testId('block-text'),
         type: 'text',
         content: en('Read this.'),
       },
       {
-        id: testObjectId('block-image'),
+        id: testId('block-image'),
         type: 'asset',
         content: 'welcome_image',
         description: en('A researcher waving at the camera.'),
@@ -367,12 +367,12 @@ describe('describing a media block for a participant who cannot see it', () => {
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
       {
-        id: testObjectId('block-text'),
+        id: testId('block-text'),
         type: 'text',
         content: en('Read this.'),
       },
       {
-        id: testObjectId('block-image'),
+        id: testId('block-image'),
         type: 'asset',
         content: 'welcome_image',
       },
@@ -484,14 +484,14 @@ describe('a block naming a resource no page can present', () => {
   /** `geo_data` is a map layer the shared fixture protocol really holds. */
   const unpresentablePage = (size?: string) => ({
     stage: {
-      id: testObjectId('information-unpresentable'),
+      id: testId('information-unpresentable'),
       type: 'Information' as const,
       fields: {
         label: en('Information'),
         title: en('Welcome'),
         items: [
           {
-            id: testObjectId('block-layer'),
+            id: testId('block-layer'),
             type: 'asset',
             content: 'geo_data',
             ...(size === undefined ? {} : { size }),
@@ -541,7 +541,7 @@ describe('a block naming a resource no page can present', () => {
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
       {
-        id: testObjectId('block-layer'),
+        id: testId('block-layer'),
         type: 'asset',
         content: 'geo_data',
         size: 'MEDIUM',
@@ -570,7 +570,7 @@ describe('a block written in more than one language', () => {
 
   it('opens and saves every translation of a text block', () => {
     const saved = {
-      id: testObjectId('block-text'),
+      id: testId('block-text'),
       type: 'text',
       content: { en: 'Read this.', es: 'Lee esto.', fr: 'Lisez ceci.' },
     };
@@ -582,7 +582,7 @@ describe('a block written in more than one language', () => {
 
   it('saves the translations the text slot holds, not the ones it opened on', () => {
     const opened = contentBlockSlots.expand(context, {
-      id: testObjectId('block-text'),
+      id: testId('block-text'),
       type: 'text',
       content: { en: 'Read this.', es: 'Lee esto.' },
     });
@@ -596,7 +596,7 @@ describe('a block written in more than one language', () => {
         'Information',
       ),
     ).toEqual({
-      id: testObjectId('block-text'),
+      id: testId('block-text'),
       type: 'text',
       content: { en: 'Read this instead.', es: 'Lee esto.' },
     });
@@ -604,7 +604,7 @@ describe('a block written in more than one language', () => {
 
   it('opens and saves every translation of a media block’s description', () => {
     const saved = {
-      id: testObjectId('block-image'),
+      id: testId('block-image'),
       type: 'asset',
       content: 'welcome_image',
       description: { en: 'Two people talking.', es: 'Dos personas hablando.' },

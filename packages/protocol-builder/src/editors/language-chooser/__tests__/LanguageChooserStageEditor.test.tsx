@@ -10,7 +10,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import {
   mountedAs,
   stageNameInput,
@@ -55,7 +55,7 @@ const ENGLISH_AND_FRENCH: ProtocolLocalization = {
 
 const openStage = (fields: SectionDoc = {}) => ({
   stage: {
-    id: testObjectId('language-chooser-stage'),
+    id: testId('language-chooser-stage'),
     type: 'LanguageChooser' as const,
     fields: {
       label: { [FIXTURE_LANGUAGE]: 'Language' },

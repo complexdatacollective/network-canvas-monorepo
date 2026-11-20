@@ -10,11 +10,11 @@ import {
   variablesForSubject,
 } from '../protocol-context.ts';
 import { readMessage } from '../testing/i18n.ts';
-import { testObjectId } from '../testing/testObjectId.ts';
+import { testId } from '../testing/testId.ts';
 
-const FIRST_STAGE = testObjectId('stage-first');
-const SECOND_STAGE = testObjectId('stage-second');
-const MISSING_STAGE = testObjectId('missing-stage');
+const FIRST_STAGE = testId('stage-first');
+const SECOND_STAGE = testId('stage-second');
+const MISSING_STAGE = testId('missing-stage');
 
 const text = (value: string) => ({ 'en-US': value });
 
@@ -229,23 +229,23 @@ describe('protocolContextFromSections', () => {
         title: text('Add'),
         fields: [
           {
-            id: testObjectId('field-1'),
+            id: testId('field-1'),
             variable: 'name',
             prompt: text('Name'),
           },
         ],
       },
-      prompts: [{ id: testObjectId('p1'), text: text('Who?') }],
+      prompts: [{ id: testId('p1'), text: text('Who?') }],
       // The only thing this stage gets wrong is the rule.
       panels: [
         {
-          id: testObjectId('panel-1'),
+          id: testId('panel-1'),
           title: text('From a file'),
           dataSource: 'roster-asset',
           filter: {
             rules: [
               {
-                id: testObjectId('r1'),
+                id: testId('r1'),
                 type: 'edge',
                 options: { type: 'knows', operator: 'EXISTS' },
               },

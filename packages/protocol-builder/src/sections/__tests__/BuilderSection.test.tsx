@@ -13,7 +13,7 @@ import { useStageValue } from '../../form/stageFormHooks.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
 const SEARCH: SectionCapability = {
@@ -43,7 +43,7 @@ function RosterSource() {
         component={RadioGroup}
         options={[
           { value: 'roster_data', label: 'Roster' },
-          { value: testObjectId('another_roster'), label: 'Another roster' },
+          { value: testId('another_roster'), label: 'Another roster' },
         ]}
       />
     </BuilderSection>
@@ -198,7 +198,7 @@ function CardDetails() {
 const ANOTHER_ROSTER = {
   another_roster: {
     type: 'network',
-    id: testObjectId('another_roster'),
+    id: testId('another_roster'),
     name: 'Another roster',
     source: 'another-roster.json',
   },

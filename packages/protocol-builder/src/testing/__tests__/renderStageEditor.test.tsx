@@ -31,7 +31,7 @@ import {
   type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../renderStageEditor.tsx';
-import { testObjectId } from '../testObjectId.ts';
+import { testId } from '../testId.ts';
 
 const commonSections = (
   <>
@@ -756,7 +756,7 @@ describe('a stage being created', () => {
             filter: {
               rules: [
                 {
-                  id: testObjectId('rule-a'),
+                  id: testId('rule-a'),
                   type: 'ego',
                   options: { attribute: 'ego_name', operator: 'EXISTS' },
                 },

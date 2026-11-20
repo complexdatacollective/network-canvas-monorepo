@@ -14,7 +14,7 @@ import {
 import { loadFixtureStage } from '../../../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../../../testing/testObjectId.ts';
+import { testId } from '../../../../../testing/testId.ts';
 import {
   addPreset,
   narrativeHolding,
@@ -299,7 +299,7 @@ describe('an attribute another interface owns', () => {
   /** A narrative stage over the type the fixture's pedigree builds. */
   const narrativeOverFamilyMembers = () => ({
     stage: {
-      id: testObjectId('Narrative-stage'),
+      id: testId('Narrative-stage'),
       type: 'Narrative' as const,
       fields: {
         label: { 'en-US': 'Family narrative' },
@@ -414,18 +414,18 @@ describe('a preset naming what the codebook no longer has', () => {
   const openLostPreset = async () => {
     const harness = renderStageEditor(
       narrativeHolding({
-        id: testObjectId('narrative-preset-1'),
+        id: testId('narrative-preset-1'),
         label: { 'en-US': 'Default layout' },
         layoutVariable: 'layout',
         edges: {
           display: [
             {
-              id: testObjectId('edge-knows'),
+              id: testId('edge-knows'),
               type: 'knows',
               label: { 'en-US': 'knows' },
             },
             {
-              id: testObjectId('edge-lost'),
+              id: testId('edge-lost'),
               type: LOST_EDGE,
               label: { 'en-US': 'Formerly drawn' },
             },
@@ -433,12 +433,12 @@ describe('a preset naming what the codebook no longer has', () => {
         },
         highlight: [
           {
-            id: testObjectId('highlight-flagged'),
+            id: testId('highlight-flagged'),
             variable: 'flagged',
             label: { 'en-US': 'Flagged' },
           },
           {
-            id: testObjectId('highlight-lost'),
+            id: testId('highlight-lost'),
             variable: LOST_HIGHLIGHT,
             label: { 'en-US': 'Formerly flagged' },
           },
@@ -480,13 +480,13 @@ describe('a preset naming what the codebook no longer has', () => {
 
     const saved = await harness.submit();
     expect(presetsOf(saved?.stageDocument ?? {})[0]).toEqual({
-      id: testObjectId('narrative-preset-1'),
+      id: testId('narrative-preset-1'),
       label: { 'en-US': 'Default layout' },
       layoutVariable: 'layout',
       edges: {
         display: [
           {
-            id: testObjectId('edge-knows'),
+            id: testId('edge-knows'),
             type: 'knows',
             label: { 'en-US': 'knows' },
           },
@@ -494,7 +494,7 @@ describe('a preset naming what the codebook no longer has', () => {
       },
       highlight: [
         {
-          id: testObjectId('highlight-flagged'),
+          id: testId('highlight-flagged'),
           variable: 'flagged',
           label: { 'en-US': 'Flagged' },
         },
@@ -579,7 +579,7 @@ const presetFilter = {
   join: 'AND',
   rules: [
     {
-      id: testObjectId('rule-1'),
+      id: testId('rule-1'),
       type: 'edge',
       options: { type: 'knows', operator: 'EXISTS' },
     },
@@ -587,7 +587,7 @@ const presetFilter = {
 };
 
 const presetHolding = (settings: Record<string, unknown> = {}) => ({
-  id: testObjectId('narrative-preset-1'),
+  id: testId('narrative-preset-1'),
   label: { 'en-US': 'Default layout' },
   layoutVariable: 'layout',
   ...settings,

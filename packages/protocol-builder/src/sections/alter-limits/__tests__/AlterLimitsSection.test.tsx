@@ -5,7 +5,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import { nameGeneratorWording } from '../../name-generator-wording/nameGeneratorWording.tsx';
 import AlterLimitsSection from '../AlterLimitsSection.tsx';
 
@@ -30,7 +30,7 @@ const en = (text: string) => ({ 'en-US': text });
 
 const unlimitedStage = {
   stage: {
-    id: testObjectId('unlimited-stage'),
+    id: testId('unlimited-stage'),
     type: 'NameGenerator' as const,
     fields: {
       label: en('Name Generator'),
@@ -39,13 +39,13 @@ const unlimitedStage = {
         title: en('Add a person'),
         fields: [
           {
-            id: testObjectId('field-1'),
+            id: testId('field-1'),
             variable: 'name',
             prompt: en('Name?'),
           },
         ],
       },
-      prompts: [{ id: testObjectId('prompt-a'), text: en('Who do you know?') }],
+      prompts: [{ id: testId('prompt-a'), text: en('Who do you know?') }],
     },
   },
   sections: limits,
@@ -341,13 +341,13 @@ describe('the nomination limits a name generator may set', () => {
   it('warns that the limits cover a stage asking several questions', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: testObjectId('several-prompts-stage'),
+        id: testId('several-prompts-stage'),
         type: 'NameGenerator' as const,
         fields: {
           ...unlimitedStage.stage.fields,
           prompts: [
-            { id: testObjectId('prompt-a'), text: en('Who do you know?') },
-            { id: testObjectId('prompt-b'), text: en('Who do you talk to?') },
+            { id: testId('prompt-a'), text: en('Who do you know?') },
+            { id: testId('prompt-b'), text: en('Who do you talk to?') },
           ],
         },
       },

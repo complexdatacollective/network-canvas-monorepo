@@ -5,7 +5,7 @@ import { dyadCensusStageEditor } from '../../editors/dyad-census/DyadCensusStage
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 
 const ENGLISH_AND_SPANISH: ProtocolLocalization = {
   defaultLocale: 'en-US',
@@ -22,13 +22,13 @@ const openTranslated = () => {
   const { type, fields } = loadFixtureStage('dyad-census-1');
   return renderStageEditor({
     stage: {
-      id: testObjectId('prompt-text-stage'),
+      id: testId('prompt-text-stage'),
       type,
       fields: {
         ...fields,
         prompts: [
           {
-            id: testObjectId('dyad-census-prompt-1'),
+            id: testId('dyad-census-prompt-1'),
             text: { 'en-US': 'Who do you know?', 'es': '¿A quién conoces?' },
             createEdge: 'knows',
           },
@@ -69,7 +69,7 @@ describe('PromptTextField', () => {
     const request = await harness.submit();
     expect(request?.stageDocument.prompts).toEqual([
       {
-        id: testObjectId('dyad-census-prompt-1'),
+        id: testId('dyad-census-prompt-1'),
         text: { 'en-US': 'Who do you know?', 'es': '¿A quién conoces bien?' },
         createEdge: 'knows',
       },

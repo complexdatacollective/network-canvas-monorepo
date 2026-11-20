@@ -12,7 +12,7 @@ import { attempt } from '../../../state/attempt.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import type { ResourcePromotion } from '../../../state/hooks.ts';
 import { fixtureStageId } from '../../protocolFixture.ts';
-import { testObjectId } from '../../testObjectId.ts';
+import { testId } from '../../testId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -66,7 +66,7 @@ function host(): InMemoryHost {
   let minted = 0;
   return createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
-    nextId: () => testObjectId(`minted-${++minted}`),
+    nextId: () => testId(`minted-${++minted}`),
   });
 }
 
@@ -264,7 +264,7 @@ function informationNaming(
   const { id: _id, ...template } = subject.store.read(INFORMATION).document;
   return {
     ...template,
-    items: [{ id: testObjectId('item-1'), type: 'asset', content: resourceId }],
+    items: [{ id: testId('item-1'), type: 'asset', content: resourceId }],
   };
 }
 
@@ -402,7 +402,7 @@ describe('the in-memory host', () => {
     if (!Array.isArray(prompts) || !Predicate.isObject(prompts[0])) {
       throw new Error('the fixture sociogram has no prompt');
     }
-    const sortRule = testObjectId('refused-sort-rule');
+    const sortRule = testId('refused-sort-rule');
     const document = {
       ...held.document,
       prompts: [
@@ -450,17 +450,17 @@ describe('the in-memory host', () => {
 
     const stageIdOfCreated = sectionId({
       kind: 'stage',
-      stageId: testObjectId('minted-1'),
+      stageId: testId('minted-1'),
     });
     expect(created.sectionId).toBe(stageIdOfCreated);
     expect(subject.store.has(stageIdOfCreated)).toBe(true);
     expect(subject.store.read(stageIdOfCreated).document.id).toBe(
-      testObjectId('minted-1'),
+      testId('minted-1'),
     );
 
     const after = stageOrder(subject);
     expect(after).toHaveLength(before.length + 1);
-    expect(after[1]).toBe(testObjectId('minted-1'));
+    expect(after[1]).toBe(testId('minted-1'));
     // Both writes carry the protocol revision the create advanced to, which is
     // what "atomic" means for a watcher reading the stream in order.
     expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
@@ -535,7 +535,7 @@ describe('the in-memory host', () => {
     );
     expect(
       subject.store.has(
-        sectionId({ kind: 'stage', stageId: testObjectId('minted-1') }),
+        sectionId({ kind: 'stage', stageId: testId('minted-1') }),
       ),
     ).toBe(false);
   });
@@ -733,7 +733,7 @@ describe('the in-memory host', () => {
     if (!Array.isArray(items)) throw new Error('the fixture has no items');
 
     items.push({
-      id: testObjectId('smuggled'),
+      id: testId('smuggled'),
       type: 'text',
       content: 'not submitted',
     });

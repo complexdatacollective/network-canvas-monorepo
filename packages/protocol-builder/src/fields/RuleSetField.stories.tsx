@@ -11,7 +11,7 @@ import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import { fixtureStageId } from '../testing/protocolFixture.ts';
-import { testObjectId } from '../testing/testObjectId.ts';
+import { testId } from '../testing/testId.ts';
 import { FilterRuleSetField, QueryRuleSetField } from './RuleSetField.tsx';
 
 /** Where the schema keeps a stage's skip-logic rules, and its own filter. */
@@ -81,7 +81,7 @@ const holdingSkipLogic =
 
 /** Everyone over 65 the participant knows: two rules, so they must combine. */
 const OLDER_THAN_65: RuleDraft = {
-  id: testObjectId('rule-older'),
+  id: testId('rule-older'),
   type: 'node',
   options: {
     type: 'person',
@@ -92,7 +92,7 @@ const OLDER_THAN_65: RuleDraft = {
 };
 
 const KNOWS_SOMEBODY: RuleDraft = {
-  id: testObjectId('rule-knows'),
+  id: testId('rule-knows'),
   type: 'edge',
   options: { type: 'knows', operator: 'EXISTS' },
 };
@@ -115,14 +115,14 @@ const encryptingNames = (host: InMemoryHost) => {
 
 /** Anyone the participant has not named. */
 const NAME_UNANSWERED: RuleDraft = {
-  id: testObjectId('rule-unnamed'),
+  id: testId('rule-unnamed'),
   type: 'node',
   options: { type: 'person', attribute: 'name', operator: 'NOT_EXISTS' },
 };
 
 /** Anyone named Ada, which an encrypted name cannot be checked for. */
 const NAMED_ADA: RuleDraft = {
-  id: testObjectId('rule-ada'),
+  id: testId('rule-ada'),
   type: 'node',
   options: {
     type: 'person',

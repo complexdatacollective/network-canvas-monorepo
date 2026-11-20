@@ -17,7 +17,7 @@ import {
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
 import { enIntl } from '../../testing/i18n.ts';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import {
   nameLocalizedText,
   stageWordingSettings,
@@ -41,7 +41,7 @@ const scaleVariable = (name: string, minLabel: string, maxLabel: string) => ({
 });
 
 const composerScaleField = (variable: string, label: string) => ({
-  id: testObjectId(`composer-scale-field-${variable}`),
+  id: testId(`composer-scale-field-${variable}`),
   variable,
   component: 'VisualAnalogScale',
   label: en(label),
@@ -78,7 +78,7 @@ const validationMessage = (rule: string): string => {
 };
 
 const panel = (name: string) => ({
-  id: testObjectId(`panel-${name}`),
+  id: testId(`panel-${name}`),
   title: en('People named'),
   dataSource: 'existing',
 });
@@ -158,7 +158,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   [
     [...fixtureStage('Information'), 'items', 1],
     {
-      id: testObjectId('information-picture'),
+      id: testId('information-picture'),
       type: 'asset',
       content: 'picture',
       description: en('A picture'),
@@ -227,7 +227,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     {
       fields: [
         {
-          id: testObjectId('field-1'),
+          id: testId('field-1'),
           variable: 'fm_occupation',
           prompt: en('What do they do?'),
           hint: en('Their main work.'),
@@ -317,7 +317,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     [...fixtureStage('NetworkComposer'), 'edges'],
     [
       {
-        id: testObjectId('composer-knows'),
+        id: testId('composer-knows'),
         subject: { entity: 'edge', type: 'knows' },
         label: en('Knows'),
         form: { fields: [composerScaleField('bond', 'How strong is it?')] },

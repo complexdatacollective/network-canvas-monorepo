@@ -29,7 +29,7 @@ import {
   HARNESS_PRINCIPAL,
   SeedProtocolCache,
 } from '../../testing/seedProtocolCache.tsx';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import type { StageLabelPanel } from '../proposeStageLabel.ts';
 import { type StageName, useStageName } from '../useStageName.ts';
 import { useStageNameField } from '../useStageNameField.ts';
@@ -67,10 +67,10 @@ type SectionMap = Record<string, SectionDoc>;
 const protocolSections = (extra: SectionMap = {}): SectionMap => ({
   [sectionId({ kind: 'settings' })]: { localization: ENGLISH },
   [sectionId({ kind: 'stageOrder' })]: {
-    stages: [testObjectId('stage-other')],
+    stages: [testId('stage-other')],
   },
-  [sectionId({ kind: 'stage', stageId: testObjectId('stage-other') })]:
-    informationStage(testObjectId('stage-other'), 'An existing stage'),
+  [sectionId({ kind: 'stage', stageId: testId('stage-other') })]:
+    informationStage(testId('stage-other'), 'An existing stage'),
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: personNode('Person'),
   [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
     name: 'Friendship',
@@ -329,10 +329,10 @@ describe('useStageName', () => {
       type: 'Information',
       fields: {
         items: [
-          { id: testObjectId('item-1'), type: 'asset', content: 'asset-video' },
-          { id: testObjectId('item-2'), type: 'asset', content: 'asset-image' },
+          { id: testId('item-1'), type: 'asset', content: 'asset-video' },
+          { id: testId('item-2'), type: 'asset', content: 'asset-image' },
           {
-            id: testObjectId('item-3'),
+            id: testId('item-3'),
             type: 'text',
             content: { en: 'Some prose' },
           },
@@ -563,8 +563,8 @@ describe('a name written in more than one language', () => {
     const { input } = renderEditor({
       type: 'Information',
       sections: bilingual({
-        [sectionId({ kind: 'stage', stageId: testObjectId('stage-other') })]: {
-          ...informationStage(testObjectId('stage-other'), 'About the study'),
+        [sectionId({ kind: 'stage', stageId: testId('stage-other') })]: {
+          ...informationStage(testId('stage-other'), 'About the study'),
           label: { en: 'About the study', es: 'Information' },
         },
       }),

@@ -8,7 +8,7 @@ import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
 import { readMessage } from '../../testing/i18n.ts';
 import { fixtureStageId } from '../../testing/protocolFixture.ts';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import { schemaProblemSentence } from '../schemaProblems.ts';
 
 /**
@@ -158,7 +158,7 @@ describe('a cross-reference rule reported where nothing is', () => {
         rules: [
           // No `attribute`, which is the fault the rule reports.
           {
-            id: testObjectId('probe-rule-1'),
+            id: testId('probe-rule-1'),
             type: 'ego',
             options: { operator: 'EXISTS' },
           },

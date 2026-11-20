@@ -7,7 +7,7 @@ import {
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testObjectId } from '../../../testing/testObjectId.ts';
+import { testId } from '../../../testing/testId.ts';
 import {
   expectOpenedAsANewStage,
   NEW_STAGE_POSITION,
@@ -21,7 +21,7 @@ const openFixture = () =>
 const openNewStage = () =>
   renderStageEditor({
     stage: {
-      id: testObjectId('narrative-new'),
+      id: testId('narrative-new'),
       type: 'Narrative',
       fields: getInterfaceTemplate('Narrative'),
     },
@@ -183,7 +183,7 @@ describe('the narrative stage editor', () => {
           behaviours: { automaticLayout: true },
           presets: [
             {
-              id: testObjectId('preset-1'),
+              id: testId('preset-1'),
               label: { 'en-US': 'Default' },
               layoutVariable: 'layout',
             },

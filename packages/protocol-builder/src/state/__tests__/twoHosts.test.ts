@@ -19,7 +19,7 @@ import {
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
 import { createWebSocketHost } from '../../testing/host/websocketHost.ts';
 import { fixtureStageId } from '../../testing/protocolFixture.ts';
-import { testObjectId } from '../../testing/testObjectId.ts';
+import { testId } from '../../testing/testId.ts';
 import { attempt } from '../attempt.ts';
 import { streamProtocolEvents } from '../channel.ts';
 import type { ProtocolBuilderAdapter } from '../context.ts';
@@ -404,9 +404,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
         type: 'Information',
         label: { 'en-US': 'Information' },
         title: { 'en-US': 'Welcome' },
-        items: [
-          { id: testObjectId('item-1'), type: 'asset', content: resourceId },
-        ],
+        items: [{ id: testId('item-1'), type: 'asset', content: resourceId }],
       }),
       promote: { editId: EDIT, resourceIds: [resourceId] },
     });
