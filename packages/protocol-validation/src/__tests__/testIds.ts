@@ -7,14 +7,11 @@ import {
 } from '../schemas/9/protocol-object-id.ts';
 import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 import {
+  rewriteStageReferences,
   setObjectIdAt,
   unshareObjects,
 } from '../utils/protocolObjectIdRewrite.ts';
 import { findMarkedObjects } from '../utils/protocolObjectIds.ts';
-import {
-  isStageHit,
-  walkSchemaReferences,
-} from '../utils/schemaReferenceWalk.ts';
 
 const TEST_ID_NAMESPACE = '93e5e893-6af4-49dd-a348-e0a45978c112';
 
@@ -76,26 +73,7 @@ export const withTestIds = <T>(protocol: T): T => {
         : testId(`${stageIds.get(container) ?? container}/${id}`),
     );
   }
-  for (const { path, stageId } of walkSchemaReferences(
-    ProtocolStructureSchema,
-    copy,
-  ).filter(isStageHit)) {
-    let container: unknown = copy;
-    for (const segment of path.slice(0, -1)) {
-      container =
-        typeof container === 'object' && container !== null
-          ? Reflect.get(container, segment)
-          : undefined;
-    }
-    const key = path.at(-1);
-    if (
-      typeof container === 'object' &&
-      container !== null &&
-      key !== undefined
-    ) {
-      Reflect.set(container, key, asTestId(stageId));
-    }
-  }
+  rewriteStageReferences(ProtocolStructureSchema, copy, asTestId);
   return copy;
 };
 

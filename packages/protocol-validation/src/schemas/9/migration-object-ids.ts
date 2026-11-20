@@ -26,5 +26,7 @@ export const assignProtocolObjectIds = (document: Record<string, unknown>) => {
       stageRenames.set(id, newId);
     }
   }
-  rewriteStageReferences(ProtocolStructureSchema, document, stageRenames);
+  rewriteStageReferences(ProtocolStructureSchema, document, (id) =>
+    stageRenames.get(id),
+  );
 };

@@ -66,6 +66,6 @@ export const freshenProtocolFragmentIds = <T>(
     if (id !== undefined && firstStageOccurrence) stageRenames.set(id, fresh);
   }
 
-  rewriteStageReferences(schema, copy, stageRenames);
+  rewriteStageReferences(schema, copy, (id) => stageRenames.get(id));
   return { fragment: copy, idMap };
 };

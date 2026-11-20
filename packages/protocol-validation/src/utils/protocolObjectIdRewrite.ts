@@ -98,17 +98,16 @@ const setValueAt = (
 /**
  * Points every stage reference in `root` (every site tagged
  * `stageReference`: skip destinations, a Narrative Pedigree's
- * `sourceStageId`) that names a renamed stage at the stage's new id. `root`
- * must be a copy the caller owns.
+ * `sourceStageId`) at the id `rename` gives the stage it names, leaving it
+ * as it is where `rename` gives none. `root` must be a copy the caller owns.
  */
 export const rewriteStageReferences = (
   schema: z.ZodType,
   root: unknown,
-  stageRenames: ReadonlyMap<string, string>,
+  rename: (stageId: string) => string | undefined,
 ): void => {
-  if (stageRenames.size === 0) return;
   for (const hit of walkSchemaReferences(schema, root).filter(isStageHit)) {
-    const renamed = stageRenames.get(hit.stageId);
+    const renamed = rename(hit.stageId);
     if (renamed !== undefined) setValueAt(root, hit.path, renamed);
   }
 };
