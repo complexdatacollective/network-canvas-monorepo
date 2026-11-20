@@ -74,6 +74,9 @@ const messages = defineMessages({
   },
 });
 
+/** The walkthrough's name, also the name of its group in the toolbar. */
+export const walkthroughLabel = messages.walkthrough;
+
 const MARKDOWN_TAGS = [...ALLOWED_MARKDOWN_SECTION_TAGS, 'img', 'code'];
 
 const SPRING = { type: 'spring', duration: 0.4, bounce: 0 } as const;
@@ -89,10 +92,12 @@ const NO_MOTION = { duration: 0 } as const;
 
 /**
  * The room the panel keeps to: below the navigation bar (and any notice
- * above the editor) and above the editor's toolbar.
+ * above the editor) and above the editor's toolbar. A viewport too short to
+ * leave a usable panel between the two (a small window, or a page zoomed to
+ * 400%) gives the panel the whole viewport instead, over both bars.
  */
-const ROOM_TOP =
-  'calc(100dvh - var(--architect-route-height, 100dvh) + var(--architect-nav-height) + 0.75rem)';
+const ROOM =
+  'top-[calc(100dvh-var(--architect-route-height,100dvh)+var(--architect-nav-height)+0.75rem)] bottom-24 [@media(max-height:30rem)]:top-3 [@media(max-height:30rem)]:bottom-3';
 
 /** A guide to the stage being edited, in a panel floating over the editor. */
 export default function StageWalkthrough() {
@@ -251,8 +256,8 @@ function WalkthroughCard({
           <div
             ref={bounds}
             aria-hidden
-            className="fixed inset-x-3 bottom-24"
-            style={{ pointerEvents: 'none', top: ROOM_TOP }}
+            className={cx('fixed inset-x-3', ROOM)}
+            style={{ pointerEvents: 'none' }}
           />
           <motion.div
             ref={card}
