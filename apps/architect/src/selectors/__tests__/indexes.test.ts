@@ -536,8 +536,9 @@ describe('indexes selectors', () => {
           id: 's1',
           type: 'Information',
           label: 'Info',
-          title: 'Welcome',
-          items: [{ id: 'i1', type: 'asset', content: 'asset-under-test' }],
+          content: {
+            en: '# Welcome\n\n![A map](asset:asset-under-test)',
+          },
         },
       ],
     ])('counts %s as used', (_label: string, stage: object) => {
@@ -586,18 +587,19 @@ describe('indexes selectors', () => {
     });
 
     // #1393's acceptance criterion "Resource usage remains correct through
-    // Save/Cancel/Undo" needed no code change: an item that becomes text stops
-    // referencing its asset, so the asset is honestly reported as unused
+    // Save/Cancel/Undo" needed no code change: a file that stops being shown
+    // stops being referenced, so the asset is honestly reported as unused
     // rather than deleted or still counted. Pinned here so the filed
-    // description cannot silently become true — an `assetReference` tag moved
-    // onto the shared item base (where it would cover the text branch too)
-    // would leave a researcher believing an orphaned resource is still in use.
-    it('stops counting the asset once an Information item becomes text', () => {
+    // description cannot silently become true: an asset's id written in the
+    // text of an Information stage without being shown as a block (a code
+    // span, or a link) would leave a researcher believing an orphaned
+    // resource is still in use.
+    it('does not count an asset an Information text only names', () => {
       const assetId = 'converted-asset-id';
       const state = getMockState({
         activeProtocol: {
           present: {
-            schemaVersion: 8,
+            schemaVersion: 9,
             name: 'test',
             codebook: { node: {} },
             stages: [
@@ -605,8 +607,7 @@ describe('indexes selectors', () => {
                 id: 's1',
                 type: 'Information',
                 label: 'Info',
-                title: 'Welcome',
-                items: [{ id: 'i1', type: 'text', content: assetId }],
+                content: { en: `Not shown: \`![x](asset:${assetId})\`` },
               },
             ],
           },

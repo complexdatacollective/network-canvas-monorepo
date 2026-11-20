@@ -84,6 +84,26 @@ export async function typeInlineRun(page: Page, text: string): Promise<void> {
 }
 
 /**
+ * Types a heading, then a paragraph, into a rich-text box as a researcher
+ * does: `# ` opens a heading through the editor's own input rule, and the
+ * words go in as insertions so that nothing in them is read as markdown
+ * shorthand (an underscore stays an underscore).
+ */
+export async function writeHeadingAndText(
+  box: Locator,
+  heading: string,
+  text: string,
+): Promise<void> {
+  const { keyboard } = box.page();
+  await expect(box).toBeEditable();
+  await box.click();
+  await keyboard.type('# ');
+  await keyboard.insertText(heading);
+  await keyboard.press('Enter');
+  await keyboard.insertText(text);
+}
+
+/**
  * Writes one line of markdown into a rich-text box, whatever it held before.
  *
  * A markdown box is a Tiptap contenteditable, not an input, and two things

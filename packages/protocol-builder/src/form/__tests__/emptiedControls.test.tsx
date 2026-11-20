@@ -28,8 +28,7 @@ describe('a control the researcher emptied', () => {
         type: 'Information',
         fields: {
           label: en('Information'),
-          title: en('Welcome'),
-          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
+          content: en('Welcome'),
           interviewScript: 'Read this aloud',
         },
       },
@@ -125,15 +124,14 @@ describe('a control the researcher emptied', () => {
         type: 'Information',
         fields: {
           label: en('Information'),
-          title: en('Welcome'),
-          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
+          content: en('Welcome'),
         },
       },
       sections: (
         <>
           <BuilderSection sectionKey="page-content" title="Page content">
             <Field
-              name="title"
+              name="content"
               label="Page heading"
               component={LocalizedInputField}
               required
@@ -167,15 +165,14 @@ describe('a control the researcher emptied', () => {
         type: 'Information',
         fields: {
           label: en('Information'),
-          title: en('Welcome'),
-          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
+          content: en('Welcome'),
         },
       },
       sections: (
         <>
           <BuilderSection sectionKey="page-content" title="Page content">
             <Field
-              name="title"
+              name="content"
               label="Page heading"
               component={LocalizedInputField}
             />

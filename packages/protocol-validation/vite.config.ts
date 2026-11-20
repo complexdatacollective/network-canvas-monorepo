@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 
 import { existsSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,7 +74,27 @@ const addJsExtensionsToDeclarationSpecifiers = (
         `${prefix}${appendJsExtension(filePath, specifier)}${suffix}`,
     );
 
+// The markdown parser reads character references (`&amp;`) through
+// `decode-named-character-reference`, whose `browser` entry asks the DOM to
+// decode them and creates an element as it loads. Vite builds a library for
+// the browser, so that entry was what the bundle inlined, and the bundle then
+// threw `document is not defined` wherever there is no DOM: the validation
+// CLI, a server, a worker. Its default entry is a table lookup that runs
+// anywhere, so the bundle is built from that one. Resolved through the parser,
+// since it is the parser's dependency and not this package's.
+const fromParser = createRequire(
+  createRequire(import.meta.url).resolve('mdast-util-from-markdown'),
+);
+const decodeNamedCharacterReference = fromParser.resolve(
+  'decode-named-character-reference',
+);
+
 export default defineConfig({
+  resolve: {
+    alias: {
+      'decode-named-character-reference': decodeNamedCharacterReference,
+    },
+  },
   build: {
     // The optional UI subpaths externalize app-i18n; the root has no such imports.
     rollupOptions: { external: [/^@codaco\/app-i18n(?:\/|$)/] },
@@ -95,6 +116,10 @@ export default defineConfig({
         'messages': resolve(__dirname, 'src/messages.ts'),
         'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
         'schema-version': resolve(__dirname, 'src/schemaVersion.ts'),
+        'testing/information-pages': resolve(
+          __dirname,
+          'src/testing/informationPages.ts',
+        ),
       },
       name: 'ProtocolValidation',
       // the proper extensions will be added

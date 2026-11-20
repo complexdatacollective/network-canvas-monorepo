@@ -314,6 +314,36 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
     });
     expect(await wavePin(study.waveId)).toBe(migrated.id);
 
+    // A schema-8 screen's title and text items arrive as the one text schema 9
+    // keeps: the title as a heading, each text item a paragraph after it.
+    const migratedScreens = await store.rows<{ doc: Record<string, unknown> }>(
+      `SELECT s.doc FROM version_sections vs
+         JOIN sections s ON s.team_id = vs.team_id AND s.hash = vs.section_hash
+       WHERE vs.version_id = $1 AND vs.section_id = ANY($2)
+       ORDER BY vs.section_id`,
+      [
+        migrated.id,
+        [
+          sectionId({ kind: 'stage', stageId: 'intro' }),
+          sectionId({ kind: 'stage', stageId: 'outro' }),
+        ],
+      ],
+    );
+    expect(migratedScreens.map(({ doc }) => doc)).toEqual([
+      expect.objectContaining({
+        id: 'intro',
+        content: { en: '# Welcome\n\nHello' },
+      }),
+      expect.objectContaining({
+        id: 'outro',
+        content: { en: '# Thanks\n\nBye' },
+      }),
+    ]);
+    for (const { doc } of migratedScreens) {
+      expect(doc).not.toHaveProperty('title');
+      expect(doc).not.toHaveProperty('items');
+    }
+
     // Resumes on the finish stage the migration appended where the engine's
     // own finish screen was, and a tab still open on the old protocol is
     // taken over rather than syncing into the migrated one.

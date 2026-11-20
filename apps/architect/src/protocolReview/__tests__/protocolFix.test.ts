@@ -115,7 +115,7 @@ describe('a fix that replaces more than one text', () => {
       op('set', '/stages/welcome', {
         ...stage,
         label: { en: 'Start' },
-        title: { en: 'Hi' },
+        content: { en: '# Hi' },
       }),
     ]);
     const applied = applyOperations(protocol, normalized);
@@ -123,7 +123,7 @@ describe('a fix that replaces more than one text', () => {
       applied.ok && (applied.result as CurrentProtocol).stages[0],
     ).toMatchObject({
       label: { en: 'Start', fr: 'Bienvenue' },
-      title: { en: 'Hi', fr: 'Bonjour' },
+      content: { en: '# Hi', fr: '# Bonjour\n\nSalut' },
     });
   });
 
@@ -319,14 +319,14 @@ describe('a fix that replaces more than one text', () => {
 
 describe('a fix that changes another language', () => {
   it.each([
-    ['sets a translation', op('set', '/stages/welcome/title/fr', 'Salut')],
-    ['removes a translation', op('remove', '/stages/welcome/title/fr')],
+    ['sets a translation', op('set', '/stages/welcome/content/fr', '# Salut')],
+    ['removes a translation', op('remove', '/stages/welcome/content/fr')],
     [
       'adds something translated',
       op('insert', '/stages/-', {
         id: 'support',
         type: 'Information',
-        title: { en: 'Support', fr: 'Aide' },
+        content: { en: '# Support', fr: '# Aide' },
       }),
     ],
   ])('is not offered when it %s', (_, operation) => {
@@ -350,7 +350,7 @@ describe('a fix that changes another language', () => {
       op('insert', '/stages/names', {
         ...welcome,
         label: { en: 'Welcome' },
-        title: { en: 'Hi there' },
+        content: { en: '# Hi there' },
       }),
     ]);
     expect(targets).not.toBeNull();
@@ -360,7 +360,7 @@ describe('a fix that changes another language', () => {
     ).toMatchObject({
       id: 'welcome',
       label: { fr: 'Bienvenue' },
-      title: { en: 'Hi there', fr: 'Bonjour' },
+      content: { en: '# Hi there', fr: '# Bonjour\n\nSalut' },
     });
   });
 
@@ -559,14 +559,14 @@ describe('editProtocol', () => {
   it('returns the edited protocol when the result is valid', async () => {
     const protocol = makeProtocol();
     const edit = await editProtocol(protocol, [
-      op('set', '/stages/welcome/title/en', 'Welcome to the study'),
+      op('set', '/stages/welcome/label/en', 'Welcome to the study'),
     ]);
     expect(edit.ok).toBe(true);
     if (!edit.ok) return;
     expect(edit.protocol.stages[0]).toMatchObject({
-      title: { en: 'Welcome to the study', fr: 'Bonjour' },
+      label: { en: 'Welcome to the study', fr: 'Bienvenue' },
     });
-    expect(protocol.stages[0]).toMatchObject({ title: { en: 'Hello' } });
+    expect(protocol.stages[0]).toMatchObject({ label: { en: 'Welcome' } });
   });
 
   it('refuses edits that leave the protocol invalid', async () => {
@@ -714,7 +714,7 @@ describe('describeFixTextEdits', () => {
   it('shows message syntax as the plain text a participant reads', () => {
     const protocol = makeProtocol();
     const [edit] = describeFixTextEdits(protocol, [
-      op('set', '/stages/welcome/title/en', "It''s '{'here'}'"),
+      op('set', '/stages/welcome/label/en', "It''s '{'here'}'"),
     ]);
     expect(edit?.after).toBe("It's {here}");
   });
@@ -723,13 +723,13 @@ describe('describeFixTextEdits', () => {
     const protocol = makeProtocol();
     const edits = describeFixTextEdits(protocol, [
       op('set', '/stages/names/prompts/p1/text', { en: '**Name** people' }),
-      op('set', '/stages/welcome/title/en', 'Hi there'),
-      op('set', '/stages/welcome/items/intro/content/en', '*Hi*'),
+      op('set', '/stages/welcome/label/en', 'Hi there'),
+      op('set', '/stages/welcome/content/en', '*Hi*'),
     ]);
     expect(edits.map(({ path, markdown }) => [path, markdown])).toEqual([
       ['/stages/names/prompts/p1/text/en', true],
-      ['/stages/welcome/title/en', false],
-      ['/stages/welcome/items/intro/content/en', true],
+      ['/stages/welcome/label/en', false],
+      ['/stages/welcome/content/en', true],
     ]);
   });
 });
@@ -782,7 +782,7 @@ describe('resolveFixPlace', () => {
   it('sends a fix that edits several stages to the Stages screen', () => {
     expect(
       placeOf(
-        op('set', '/stages/welcome/title/en', 'Hi'),
+        op('set', '/stages/welcome/label/en', 'Hi'),
         op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
       ),
     ).toMatchObject({ kind: 'stages' });

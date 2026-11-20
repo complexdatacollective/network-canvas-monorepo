@@ -218,20 +218,6 @@
         "es": "El nombre de ego contiene"
       },
       "type": "Information",
-      "title": {
-        "en": "Ego name contains Josh",
-        "es": "El nombre de ego contiene Josh"
-      },
-      "items": [
-        {
-          "id": "08964cf2-4c7b-4ecd-a6ef-9d68c2b13bf4",
-          "content": {
-            "en": "Hello fellow Josh!\n",
-            "es": "¡Hola, colega Josh!\n"
-          },
-          "type": "text"
-        }
-      ],
       "skipLogic": {
         "action": "SHOW",
         "filter": {
@@ -248,7 +234,11 @@
           ]
         }
       },
-      "id": "4f2b11a0-3046-11ed-a33e-959cc32d37ee"
+      "id": "4f2b11a0-3046-11ed-a33e-959cc32d37ee",
+      "content": {
+        "en": "# Ego name contains Josh\n\nHello fellow Josh!\n",
+        "es": "# El nombre de ego contiene Josh\n\n¡Hola, colega Josh!\n"
+      }
     },
     {
       "id": "namegen1",
@@ -493,20 +483,10 @@
         "en": "Introduction to the Dyad Census",
         "es": "Introducción al censo de díadas"
       },
-      "title": {
-        "en": "Introduction to the Dyad Census",
-        "es": "Introducción al censo de díadas"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en": "This section will go through all possible node pairs and ask you how they are connected.",
-            "es": "Esta sección recorrerá todos los pares de nodos posibles y te preguntará cómo están conectados."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Introduction to the Dyad Census\n\nThis section will go through all possible node pairs and ask you how they are connected.",
+        "es": "# Introducción al censo de díadas\n\nEsta sección recorrerá todos los pares de nodos posibles y te preguntará cómo están conectados."
+      }
     },
     {
       "id": "dyadcensus",
@@ -545,20 +525,10 @@
         "en": "Introduction to the Tie-Strength Census",
         "es": "Introducción al censo de intensidad de vínculos"
       },
-      "title": {
-        "en": "Introduction to the Tie-Strength Census",
-        "es": "Introducción al censo de intensidad de vínculos"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en": "This interface both creates an edge and assigns an ordinal value to it.",
-            "es": "Esta interfaz crea un vínculo y además le asigna un valor ordinal."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Introduction to the Tie-Strength Census\n\nThis interface both creates an edge and assigns an ordinal value to it.",
+        "es": "# Introducción al censo de intensidad de vínculos\n\nEsta interfaz crea un vínculo y además le asigna un valor ordinal."
+      }
     },
     {
       "id": "tie-strength-census",
@@ -1228,20 +1198,6 @@
         "en": "Introduction to the alter form",
         "es": "Introducción al formulario de alter"
       },
-      "title": {
-        "en": "Introduction to the alter form",
-        "es": "Introducción al formulario de alter"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en": "This is some **markdown** that \n* explains this interface and \n* is *marked down*. \n\nBelow this might be as much additional text as the researcher desires. The container that this content is in should dynamically expand to accommodate that.",
-            "es": "Esto es un poco de **markdown** que \n* explica esta interfaz y \n* está *en markdown*. \n\nDebajo puede haber tanto texto adicional como quiera el investigador. El contenedor de este contenido debería ampliarse de forma dinámica para acomodarlo."
-          }
-        }
-      ],
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -1259,6 +1215,10 @@
             }
           ]
         }
+      },
+      "content": {
+        "en": "# Introduction to the alter form\n\nThis is some **markdown** that \n* explains this interface and \n* is *marked down*. \n\nBelow this might be as much additional text as the researcher desires. The container that this content is in should dynamically expand to accommodate that.",
+        "es": "# Introducción al formulario de alter\n\nEsto es un poco de **markdown** que \n* explica esta interfaz y \n* está *en markdown*. \n\nDebajo puede haber tanto texto adicional como quiera el investigador. El contenedor de este contenido debería ampliarse de forma dinámica para acomodarlo."
       }
     },
     {
@@ -1326,20 +1286,10 @@
         "en": "Introduction to the alter edge form",
         "es": "Introducción al formulario de vínculos de alter"
       },
-      "title": {
-        "en": "Introduction to the alter edge form",
-        "es": "Introducción al formulario de vínculos de alter"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en": "This per alter edge form shows friend edges, but filters\n\n\n- Any edges where either node also also has a professional edge\n- Any nodes where contact frequency is over two years ago, or last two years\n\n",
-            "es": "Este formulario de vínculos por alter muestra los vínculos de amistad, pero filtra\n\n\n- Los vínculos en los que cualquiera de los nodos también tiene un vínculo profesional\n- Los nodos cuya frecuencia de contacto es de hace más de dos años, o de los últimos dos años\n\n"
-          }
-        }
-      ]
+      "content": {
+        "en": "# Introduction to the alter edge form\n\nThis per alter edge form shows friend edges, but filters\n\n\n- Any edges where either node also also has a professional edge\n- Any nodes where contact frequency is over two years ago, or last two years\n\n",
+        "es": "# Introducción al formulario de vínculos de alter\n\nEste formulario de vínculos por alter muestra los vínculos de amistad, pero filtra\n\n\n- Los vínculos en los que cualquiera de los nodos también tiene un vínculo profesional\n- Los nodos cuya frecuencia de contacto es de hace más de dos años, o de los últimos dos años\n\n"
+      }
     },
     {
       "id": "alter-edge-form-1",
@@ -1411,20 +1361,10 @@
         "en": "An alternative alter edge interface",
         "es": "Una interfaz alternativa de vínculos de alter"
       },
-      "title": {
-        "en": "An alternative alter edge interface",
-        "es": "Una interfaz alternativa de vínculos de alter"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en": "This interface acts on professional edges.",
-            "es": "Esta interfaz actúa sobre los vínculos profesionales."
-          }
-        }
-      ]
+      "content": {
+        "en": "# An alternative alter edge interface\n\nThis interface acts on professional edges.",
+        "es": "# Una interfaz alternativa de vínculos de alter\n\nEsta interfaz actúa sobre los vínculos profesionales."
+      }
     },
     {
       "id": "alter-edge-form-2",
@@ -1551,30 +1491,10 @@
         "es": "Prueba de audio"
       },
       "type": "Information",
-      "title": {
-        "en": "Title for the screen",
-        "es": "Título de la pantalla"
-      },
-      "items": [
-        {
-          "id": "a",
-          "type": "asset",
-          "content": "click_the_thing",
-          "size": "SMALL"
-        },
-        {
-          "id": "b",
-          "type": "asset",
-          "content": "rubberduck",
-          "size": "SMALL"
-        },
-        {
-          "id": "c",
-          "type": "asset",
-          "content": "rubberduck",
-          "size": "MEDIUM"
-        }
-      ]
+      "content": {
+        "en": "# Title for the screen\n\n![](asset:click_the_thing?align=start&loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)",
+        "es": "# Título de la pantalla\n\n![](asset:click_the_thing?align=start&loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)"
+      }
     },
     {
       "id": "info-sound",
@@ -1583,26 +1503,10 @@
         "es": "Información con sonido"
       },
       "type": "Information",
-      "title": {
-        "en": "This interface has a video with sound.",
-        "es": "Esta interfaz tiene un vídeo con sonido."
-      },
-      "items": [
-        {
-          "id": "65192318-0ef0-454d-91b7-bbaf51380069",
-          "type": "text",
-          "content": {
-            "en": "The video below has sound. Some arbitrary text content that can _contain_ **formatting**.",
-            "es": "El vídeo de abajo tiene sonido. Un texto cualquiera que puede _contener_ **formato**."
-          }
-        },
-        {
-          "id": "27eee84a-52c0-440d-951c-5ac35bc75168",
-          "type": "asset",
-          "content": "withSound",
-          "size": "MEDIUM"
-        }
-      ]
+      "content": {
+        "en": "# This interface has a video with sound.\n\nThe video below has sound. Some arbitrary text content that can _contain_ **formatting**.\n\n![](asset:withSound?size=medium)",
+        "es": "# Esta interfaz tiene un vídeo con sonido.\n\nEl vídeo de abajo tiene sonido. Un texto cualquiera que puede _contener_ **formato**.\n\n![](asset:withSound?size=medium)"
+      }
     },
     {
       "id": "markdown",
@@ -1611,20 +1515,10 @@
         "es": "Markdown"
       },
       "type": "Information",
-      "title": {
-        "en": "Testing markdown",
-        "es": "Prueba de markdown"
-      },
-      "items": [
-        {
-          "id": "d3e52e4b-0d22-42e3-a82f-7a150daf7b6b",
-          "type": "text",
-          "content": {
-            "en": "# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n:blush: :heartpulse: :wave:",
-            "es": "# Encabezado h1 8-)\n## Encabezado h2\n### Encabezado h3\n#### Encabezado h4\n##### Encabezado h5\n###### Encabezado h6\n\n## Énfasis\n\n**Este texto está en negrita**\n\n__Este texto está en negrita__\n\n*Este texto está en cursiva* \n\n_Este texto está en cursiva_ \n# Emoji \n:blush: :heartpulse: :wave:"
-          }
-        }
-      ]
+      "content": {
+        "en": "# Testing markdown\n\n# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n:blush: :heartpulse: :wave:",
+        "es": "# Prueba de markdown\n\n# Encabezado h1 8-)\n## Encabezado h2\n### Encabezado h3\n#### Encabezado h4\n##### Encabezado h5\n###### Encabezado h6\n\n## Énfasis\n\n**Este texto está en negrita**\n\n__Este texto está en negrita__\n\n*Este texto está en cursiva* \n\n_Este texto está en cursiva_ \n# Emoji \n:blush: :heartpulse: :wave:"
+      }
     },
     {
       "id": "skippable screen",
@@ -1633,20 +1527,6 @@
         "es": "Omitir o mostrar"
       },
       "type": "Information",
-      "title": {
-        "en": "To skip or not to skip...",
-        "es": "Omitir o no omitir..."
-      },
-      "items": [
-        {
-          "id": "ffaf2249-00e7-4fdb-99fc-5757a24f5605",
-          "type": "text",
-          "content": {
-            "en": "...that is the question.",
-            "es": "...esa es la cuestión."
-          }
-        }
-      ],
       "skipLogic": {
         "action": "SHOW",
         "filter": {
@@ -1663,6 +1543,10 @@
             }
           ]
         }
+      },
+      "content": {
+        "en": "# To skip or not to skip...\n\n...that is the question.",
+        "es": "# Omitir o no omitir...\n\n...esa es la cuestión."
       }
     },
     {

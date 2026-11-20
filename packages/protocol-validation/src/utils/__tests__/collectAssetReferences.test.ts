@@ -62,15 +62,9 @@ const protocol = {
     {
       id: 'info',
       type: 'Information',
-      title: localized('About this study'),
-      items: [
-        {
-          id: 'i1',
-          type: 'text',
-          content: localized('Some words about the study.'),
-        },
-        { id: 'i2', type: 'asset', content: 'information-asset' },
-      ],
+      content: localized(
+        '# About this study\n\nSome words about the study.\n\n![](asset:information-asset)',
+      ),
     },
   ],
 };
@@ -106,7 +100,7 @@ describe('collectAssetReferences', () => {
       'background-asset': 'stages.2.background.image',
       'token-asset': 'stages.3.mapOptions.tokenAssetId',
       'map-data-asset': 'stages.3.mapOptions.dataSourceAssetId',
-      'information-asset': 'stages.4.items.1.content',
+      'information-asset': 'stages.4.content.en',
     });
   });
 
@@ -120,13 +114,93 @@ describe('collectAssetReferences', () => {
   });
 
   /**
-   * The whole point of deriving this from the schema: an Information item's
-   * `content` is an asset id on the `asset` branch and plain prose on the
-   * `text` branch, and only the tagged branch may be collected. A path list
-   * that named `items[].content` could not tell them apart.
+   * An Information page's `content` is prose with files shown as blocks
+   * among it, and only the blocks name assets: the words around them are
+   * not ids.
    */
-  it('reads an item body as an asset only on the asset branch', () => {
+  it('reads a page as naming only the assets its blocks name', () => {
     expect(assetIdsIn(protocol)).not.toContain('Some words about the study.');
+    expect(assetIdsIn(protocol)).not.toContain('# About this study');
+  });
+
+  describe('files shown as blocks in text', () => {
+    const page = (content: unknown) => ({
+      schemaVersion: 9,
+      stages: [{ id: 'info', type: 'Information', content }],
+    });
+    const found = (content: unknown) =>
+      collectAssetReferences(page(content)).map((hit) => [
+        hit.assetId,
+        hit.path.join('.'),
+      ]);
+
+    it('collects the blocks of every language, each at its translation', () => {
+      expect(
+        found({
+          en: '![A](asset:one)\n\n![B](asset:two)',
+          fr: '![C](asset:three)',
+        }),
+      ).toEqual([
+        ['one', 'stages.0.content.en'],
+        ['two', 'stages.0.content.en'],
+        ['three', 'stages.0.content.fr'],
+      ]);
+    });
+
+    it('collects an asset named twice once for each time it is named', () => {
+      expect(
+        found({
+          en: '![A](asset:one)\n\n![B](asset:one?size=small)',
+          fr: '![C](asset:one)',
+        }),
+      ).toEqual([
+        ['one', 'stages.0.content.en'],
+        ['one', 'stages.0.content.en'],
+        ['one', 'stages.0.content.fr'],
+      ]);
+    });
+
+    it('collects a block in any version a select chooses between', () => {
+      expect(
+        found({
+          en: '{kind, select, a {![A](asset:one)} other {![B](asset:two)}}',
+        }),
+      ).toEqual([
+        ['one', 'stages.0.content.en'],
+        ['two', 'stages.0.content.en'],
+      ]);
+    });
+
+    it('does not collect an image that does not name a file of the protocol', () => {
+      expect(found({ en: '![A](https://example.com/a.png)' })).toEqual([]);
+    });
+
+    it('does not collect a block that names no asset', () => {
+      expect(found({ en: '![A](asset:)' })).toEqual([]);
+    });
+
+    it('does not throw on a draft whose translation is not text', () => {
+      expect(found({ en: 42, fr: null, de: '![A](asset:one)' })).toEqual([
+        ['one', 'stages.0.content.de'],
+      ]);
+      expect(found('![A](asset:one)')).toEqual([]);
+      expect(found(undefined)).toEqual([]);
+    });
+
+    it('does not collect an image in text not declared to hold blocks', () => {
+      expect(
+        collectAssetReferences({
+          schemaVersion: 9,
+          stages: [
+            {
+              id: 'finish',
+              type: 'FinishSession',
+              content: { en: '![A](asset:one)' },
+            },
+          ],
+        }),
+      ).toEqual([]);
+    });
   });
 
   it("finds the images a node type's custom shapes draw with", () => {
@@ -169,8 +243,7 @@ describe('collectAssetReferences', () => {
           {
             id: 'empty-asset',
             type: 'Information',
-            title: localized('Invalid asset item'),
-            items: [{ id: 'item-1', type: 'asset', content: '' }],
+            content: localized('![Invalid asset item](asset:)'),
           },
         ],
       }),

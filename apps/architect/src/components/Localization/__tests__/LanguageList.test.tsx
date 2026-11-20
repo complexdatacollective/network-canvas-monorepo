@@ -24,8 +24,7 @@ const trilingual: CurrentProtocol = {
       id: 'welcome',
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
-      title: { fr: 'Bonjour' },
-      items: [],
+      content: { fr: '# Bonjour' },
     },
   ],
 };

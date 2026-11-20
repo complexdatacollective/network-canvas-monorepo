@@ -250,7 +250,7 @@ const CALLS: readonly Call[] = [
         kind: 'stage',
         document: Redacted.make({
           ...template,
-          items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+          content: { 'en-US': `![](asset:${resourceId})` },
         }),
         promote: { editId: EDIT, resourceIds: [resourceId] },
       });

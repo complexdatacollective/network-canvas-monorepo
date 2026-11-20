@@ -15,6 +15,7 @@ import {
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
 import type { BadgeColor } from '@codaco/fresco-ui/Badge';
+import { type AssetBlockKind, isAssetBlockKind } from '@codaco/shared-consts';
 
 import { byteLengthMessage } from '../resourceMessages.ts';
 import type { ResourceContentKind, ResourceKind } from '../types.ts';
@@ -35,8 +36,11 @@ export type ResourcePickerKind = ResourceKind | 'file' | 'nodeShape';
 const NODE_SHAPE_EXTENSIONS: readonly string[] = Object.freeze(['.svg']);
 const NODE_SHAPE_KINDS: readonly ResourceKind[] = Object.freeze(['image']);
 
-/** Kinds whose content an editor can render as media. */
-export type PreviewableResourceKind = 'audio' | 'image' | 'video';
+/**
+ * Kinds whose content an editor can render as media: the kinds a page can
+ * show as a block in its text.
+ */
+export type PreviewableResourceKind = AssetBlockKind;
 
 /**
  * The extensions each content kind accepts, matching what Architect imports
@@ -79,16 +83,10 @@ const CONTENT_KINDS: readonly ResourceContentKind[] = Object.freeze([
   'geojson',
 ]);
 
-const PREVIEWABLE_KINDS: ReadonlySet<string> = new Set([
-  'audio',
-  'image',
-  'video',
-]);
-
 export function isPreviewableKind(
   kind: ResourceKind,
 ): kind is PreviewableResourceKind {
-  return PREVIEWABLE_KINDS.has(kind);
+  return isAssetBlockKind(kind);
 }
 
 /** The manifest kinds a picker of this kind may show. */

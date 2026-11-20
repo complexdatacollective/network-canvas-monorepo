@@ -250,8 +250,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         document: Redacted.make({
           type: 'Information',
           label: inEnglish('Created by the host'),
-          title: inEnglish('Created by the host'),
-          items: [],
+          content: inEnglish('# Created by the host'),
         }),
         position: 1,
       }),
@@ -302,8 +301,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         document: Redacted.make({
           type: 'Information',
           label: inEnglish('Created past the end'),
-          title: inEnglish('Created past the end'),
-          items: [],
+          content: inEnglish('# Created past the end'),
         }),
         position: orderBefore.length + 5,
       }),
@@ -478,8 +476,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         id: document.id,
         type: 'Information',
         label: inEnglish('No longer the end'),
-        title: inEnglish('No longer the end'),
-        items: [],
+        content: inEnglish('# No longer the end'),
       }),
     },
     {
@@ -885,8 +882,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             document: Redacted.make({
               type: 'Information',
               label: inEnglish('Never registered'),
-              title: inEnglish('Never registered'),
-              items: [],
+              content: inEnglish('# Never registered'),
             }),
           }),
         ),
@@ -929,8 +925,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     const document = Redacted.make({
       type: 'Information',
       label: inEnglish('Made once'),
-      title: inEnglish('Made once'),
-      items: [],
+      content: inEnglish('# Made once'),
     });
     const promote = {
       editId: EDIT,
@@ -1004,8 +999,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       document: Redacted.make({
         type: 'Information',
         label: inEnglish('Made without a promotion'),
-        title: inEnglish('Made without a promotion'),
-        items: [],
+        content: inEnglish('# Made without a promotion'),
       }),
     };
     const created = await call(ADA, host.rpc('Create', creating));
@@ -1448,8 +1442,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       document: Redacted.make({
         type: 'Information',
         label: inEnglish(label),
-        title: inEnglish(label),
-        items: [],
+        content: inEnglish(`# ${label}`),
       }),
     });
     try {
@@ -1564,8 +1557,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           document: Redacted.make({
             type: 'Information',
             label: inEnglish('Created with its words'),
-            title: inEnglish('Created with its words'),
-            items: [],
+            content: inEnglish('# Created with its words'),
           }),
           interfaceText: [
             { group: 'geospatial', key: 'mapUnavailable', value: reworded },
@@ -1761,8 +1753,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           document: Redacted.make({
             type: 'Information',
             label: inEnglish('Created with a type'),
-            title: inEnglish('Created with a type'),
-            items: [],
+            content: inEnglish('# Created with a type'),
           }),
           codebook: [
             { sectionId: INVENTED, document: Redacted.make(invented) },
@@ -1966,8 +1957,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           document: Redacted.make({
             type: 'Information',
             label: inEnglish('Created beside the contested type'),
-            title: inEnglish('Created beside the contested type'),
-            items: [],
+            content: inEnglish('# Created beside the contested type'),
           }),
           codebook: [
             {
@@ -2028,8 +2018,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             document: Redacted.make({
               type: 'Information',
               label: inEnglish('Refused create'),
-              title: inEnglish('Refused create'),
-              items: [],
+              content: inEnglish('# Refused create'),
             }),
             codebook: [
               {

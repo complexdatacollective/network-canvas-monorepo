@@ -239,29 +239,15 @@ const REQUIRED_TEXT_SITES: readonly {
     path: ['title'],
   },
   {
-    name: 'an Information text item',
+    name: 'an Information page',
     schema: informationStage,
     valid: (content) => ({
       id: 'info',
       type: 'Information',
       label: localized('Welcome'),
-      title: localized('Welcome'),
-      items: [{ id: 'item', type: 'text', content }],
+      content,
     }),
-    path: ['items', 0, 'content'],
-  },
-  // Optional, but text that is given must say something in every language.
-  {
-    name: 'an Information media description',
-    schema: informationStage,
-    valid: (description) => ({
-      id: 'info',
-      type: 'Information',
-      label: localized('Welcome'),
-      title: localized('Welcome'),
-      items: [{ id: 'item', type: 'asset', content: 'image', description }],
-    }),
-    path: ['items', 0, 'description'],
+    path: ['content'],
   },
 ];
 

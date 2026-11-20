@@ -133,6 +133,7 @@ export default defineConfig({
             '@codaco/fresco-ui > @tiptap/extension-placeholder',
             '@codaco/fresco-ui > @tiptap/pm/model',
             '@codaco/fresco-ui > @tiptap/pm/state',
+            '@codaco/fresco-ui > @tiptap/pm/view',
             '@codaco/fresco-ui > @tiptap/react',
             '@codaco/fresco-ui > @tiptap/starter-kit',
             '@codaco/fresco-ui > chromatic/isChromatic',
@@ -158,6 +159,12 @@ export default defineConfig({
             // `readRosterCsv` loads it with a dynamic import, which the
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
+            // The markdown parser that finds the files an Information page
+            // shows as blocks (`assetBlocksInMarkdown`).
+            '@codaco/protocol-validation > mdast-util-from-markdown',
+            '@codaco/protocol-validation > mdast-util-gfm',
+            '@codaco/protocol-validation > mdast-util-to-markdown',
+            '@codaco/protocol-validation > micromark-extension-gfm',
             '@codaco/interview > @use-gesture/react',
             '@codaco/interview > concaveman',
             '@codaco/interview > html-to-image',

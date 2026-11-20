@@ -24,13 +24,14 @@ const SITE: Pick<DynamicMessageSite, 'context' | 'bindings'> = {
   bindings: {},
 };
 
-const renderSummary = (message: string, markdown: boolean) =>
+const renderSummary = (message: string, markdown: boolean, multiline = false) =>
   render(
     <ProtocolLocalizationProvider localization={ENGLISH}>
       <div data-testid="summary">
         <DynamicMessageSummary
           message={message}
           markdown={markdown}
+          multiline={multiline}
           locale={LOCALE}
           site={SITE}
         />
@@ -88,9 +89,10 @@ describe('DynamicMessageSummary', () => {
     expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
   });
 
-  it('keeps the headings, paragraphs and rules of text over several lines', () => {
+  it('keeps the headings, paragraphs and rules of text in a field of several lines', () => {
     const { getByTestId } = renderSummary(
       '## Welcome {name}\n\nFirst paragraph.\n\n---\n\nSecond paragraph.',
+      true,
       true,
     );
     const summary = getByTestId('summary');
@@ -100,7 +102,7 @@ describe('DynamicMessageSummary', () => {
     expect(summary.querySelector('hr')).toBeInTheDocument();
   });
 
-  it('draws text on one line as a label, without a paragraph', () => {
+  it('draws text in a field on one line as a label, without a paragraph', () => {
     const { getByTestId } = renderSummary('Tell us about **{name}**', true);
     const summary = getByTestId('summary');
 
@@ -110,6 +112,14 @@ describe('DynamicMessageSummary', () => {
     ).toBeInTheDocument();
   });
 
+  // What the text is drawn as is the field's to say, not the words it holds
+  // today.
+  it('draws text on one line in a field of several lines as that field draws it', () => {
+    const { getByTestId } = renderSummary('Welcome {name}', true, true);
+
+    expect(getByTestId('summary').querySelector('p')).toBeInTheDocument();
+  });
+
   it('draws text over several lines by the rules its host passes', () => {
     const { getByTestId } = render(
       <ProtocolLocalizationProvider localization={ENGLISH}>
@@ -117,6 +127,7 @@ describe('DynamicMessageSummary', () => {
           <DynamicMessageSummary
             message={'# Title {name}\n\nBody'}
             markdown
+            multiline
             locale={LOCALE}
             site={SITE}
             blockMarkdown={{
@@ -153,6 +164,7 @@ describe('DynamicMessageSummary pills', () => {
           <DynamicMessageSummary
             message="{team} {today}"
             markdown={false}
+            multiline={false}
             locale={LOCALE}
             site={{
               context: {

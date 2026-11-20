@@ -155,6 +155,12 @@ export default defineConfig({
             '@codaco/interview > react-redux',
             '@codaco/interview > redux-logger',
             '@codaco/protocol-validation > csvtojson',
+            // The markdown parser that finds the files an Information page
+            // shows as blocks (`assetBlocksInMarkdown`).
+            '@codaco/protocol-validation > mdast-util-from-markdown',
+            '@codaco/protocol-validation > mdast-util-gfm',
+            '@codaco/protocol-validation > mdast-util-to-markdown',
+            '@codaco/protocol-validation > micromark-extension-gfm',
             'chromatic/isChromatic',
             'jszip',
             // Reached through @codaco/interview: OnlineStatusProvider imports

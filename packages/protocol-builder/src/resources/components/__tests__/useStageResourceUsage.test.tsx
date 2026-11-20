@@ -30,30 +30,43 @@ const STILL_IN_USE =
 /** The id the in-memory host gives the first file staged in an edit. */
 const STAGED_ID = 'staged-resource-1';
 
+const ROSTER = JSON.stringify({
+  nodes: [{ attributes: { name: 'Ada' } }, { attributes: { name: 'Grace' } }],
+  edges: [],
+});
+
 const COMMITTED_IMAGE: CommittedResource = {
-  kind: 'image',
-  id: 'image-1',
-  name: 'Neighbourhood photo',
-  source: 'neighbourhood.png',
-  bytes: 'png-bytes',
+  kind: 'network',
+  id: 'network-1',
+  name: 'Community roster',
+  source: 'roster.json',
+  bytes: ROSTER,
 };
 
-const ASSET_ITEMS: SectionDoc = {
-  title: { 'en-US': 'Welcome' },
-  items: [
-    { id: 'item-1', type: 'asset', content: '' },
-    { id: 'item-2', type: 'asset', content: '' },
-  ],
-};
+/** A file as a researcher would import one. */
+const rosterFile = () =>
+  new File([ROSTER], 'people.json', { type: 'application/json' });
 
-/** Both items already naming one committed image, as a saved stage would. */
-const SHARED_ITEMS: SectionDoc = {
-  title: { 'en-US': 'Welcome' },
-  items: [
-    { id: 'item-1', type: 'asset', content: COMMITTED_IMAGE.id },
-    { id: 'item-2', type: 'asset', content: COMMITTED_IMAGE.id },
+/**
+ * Two side panels of a name generator, which each name a data file:
+ * the one stage that holds a list of resource references of one kind.
+ */
+const panelsNaming = (first: string, second: string): SectionDoc => ({
+  label: { 'en-US': 'People' },
+  subject: { entity: 'node', type: 'person' },
+  panels: [
+    { id: 'panel-1', title: { 'en-US': 'One' }, dataSource: first },
+    { id: 'panel-2', title: { 'en-US': 'Two' }, dataSource: second },
   ],
-};
+});
+
+const ASSET_ITEMS: SectionDoc = panelsNaming('', '');
+
+/** Both panels already naming one committed file, as a saved stage would. */
+const SHARED_ITEMS: SectionDoc = panelsNaming(
+  COMMITTED_IMAGE.id,
+  COMMITTED_IMAGE.id,
+);
 
 /**
  * The identity fields an item carries alongside its picker, so the draft the
@@ -65,16 +78,16 @@ function itemIdentityFields(index: number) {
     <>
       <Field
         component={InputField}
-        name={`items[${index}].id`}
+        name={`panels[${index}].id`}
         nameMode="path"
         label={`Item ${index + 1} id`}
         labelHidden
       />
       <Field
         component={InputField}
-        name={`items[${index}].type`}
+        name={`panels[${index}].title`}
         nameMode="path"
-        label={`Item ${index + 1} type`}
+        label={`Item ${index + 1} title`}
         labelHidden
       />
     </>
@@ -85,10 +98,10 @@ function itemPicker(index: number, label: string) {
   return (
     <Field
       component={AssetPickerField}
-      name={`items[${index}].content`}
+      name={`panels[${index}].dataSource`}
       nameMode="path"
       label={label}
-      kind="image"
+      kind="network"
     />
   );
 }
@@ -164,6 +177,7 @@ describe('counting the resource references a stage holds', () => {
     user: ReturnType<typeof userEvent.setup>,
   ) {
     const { formValues, staged } = renderResourceEditor({
+      stageType: 'NameGenerator',
       fields: ASSET_ITEMS,
       children: <CollapsibleItems />,
     });
@@ -172,19 +186,19 @@ describe('counting the resource references a stage holds', () => {
     const second = screen.getByRole('group', { name: 'Second image' });
 
     await user.click(
-      within(first).getByRole('button', { name: 'Select an image' }),
+      within(first).getByRole('button', { name: 'Select a data file' }),
     );
     await user.upload(
       await screen.findByLabelText('Choose a file from your computer'),
-      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+      rosterFile(),
     );
     await within(first).findByRole('button', { name: 'Discard this resource' });
 
     await user.click(
-      within(second).getByRole('button', { name: 'Select an image' }),
+      within(second).getByRole('button', { name: 'Select a data file' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'skyline.png' }),
+      await screen.findByRole('button', { name: 'people.json' }),
     );
     await act(flushPendingWork);
 
@@ -195,6 +209,7 @@ describe('counting the resource references a stage holds', () => {
     const user = userEvent.setup();
     renderResourceEditor({
       resources: [COMMITTED_IMAGE],
+      stageType: 'NameGenerator',
       fields: SHARED_ITEMS,
       children: <CollapsibleItems counting={COMMITTED_IMAGE.id} />,
     });
@@ -239,17 +254,18 @@ describe('counting the resource references a stage holds', () => {
   it('discards one the collapsed section does not name', async () => {
     const user = userEvent.setup();
     const { staged } = renderResourceEditor({
+      stageType: 'NameGenerator',
       fields: ASSET_ITEMS,
       children: <CollapsibleItems />,
     });
 
     const first = await screen.findByRole('group', { name: 'First image' });
     await user.click(
-      within(first).getByRole('button', { name: 'Select an image' }),
+      within(first).getByRole('button', { name: 'Select a data file' }),
     );
     await user.upload(
       await screen.findByLabelText('Choose a file from your computer'),
-      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+      rosterFile(),
     );
     await within(first).findByRole('button', { name: 'Discard this resource' });
 
@@ -273,16 +289,10 @@ function BlockEditor() {
   return (
     <>
       <Field
-        name="type"
-        label="Block type"
-        component={InputField}
-        initialValue="asset"
-      />
-      <Field
-        name="content"
+        name="dataSource"
         label="Block image"
         component={AssetPickerField}
-        kind="image"
+        kind="network"
       />
     </>
   );
@@ -290,7 +300,9 @@ function BlockEditor() {
 
 function BlockPreview({ item }: RowPreviewProps) {
   return (
-    <span>{typeof item.content === 'string' ? item.content : 'No image'}</span>
+    <span>
+      {typeof item.dataSource === 'string' ? item.dataSource : 'No file'}
+    </span>
   );
 }
 
@@ -300,14 +312,14 @@ const BLOCKS: RowListConfig = {
   addTitle: { id: 'test.addBlock', defaultMessage: 'Add a block' },
   editTitle: { id: 'test.editBlock', defaultMessage: 'Edit a block' },
   formId: 'block-editor',
-  name: 'items',
+  name: 'panels',
 };
 
 function BlockList() {
   return (
     <RowList config={BLOCKS}>
       <Field<typeof ArrayField<RowValues>>
-        name="items"
+        name="panels"
         label="Blocks"
         component={ArrayField}
         getId={rowId}
@@ -332,7 +344,8 @@ describe('counting the row a dialog is still editing', () => {
   it('refuses a discard the sibling row would be left dangling by', async () => {
     const user = userEvent.setup();
     const { staged } = renderResourceEditor({
-      fields: { title: { 'en-US': 'Welcome' }, items: [] },
+      stageType: 'NameGenerator',
+      fields: { ...panelsNaming('', ''), panels: [] },
       children: <BlockList />,
     });
 
@@ -342,10 +355,10 @@ describe('counting the row a dialog is still editing', () => {
       await screen.findByRole('button', { name: 'Add a block' }),
     );
     const first = within(await screen.findByRole('dialog'));
-    await user.click(first.getByRole('button', { name: 'Select an image' }));
+    await user.click(first.getByRole('button', { name: 'Select a data file' }));
     await user.upload(
       await screen.findByLabelText('Choose a file from your computer'),
-      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+      rosterFile(),
     );
     await first.findByRole('button', { name: 'Discard this resource' });
     await user.click(first.getByRole('button', { name: 'Add' }));
@@ -357,9 +370,11 @@ describe('counting the row a dialog is still editing', () => {
     // open: nothing it holds has reached the stage.
     await user.click(screen.getByRole('button', { name: 'Add a block' }));
     const second = within(await screen.findByRole('dialog'));
-    await user.click(second.getByRole('button', { name: 'Select an image' }));
     await user.click(
-      await screen.findByRole('button', { name: 'skyline.png' }),
+      second.getByRole('button', { name: 'Select a data file' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'people.json' }),
     );
     await act(flushPendingWork);
 

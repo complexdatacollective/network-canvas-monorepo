@@ -148,6 +148,8 @@
   "frescoUi.richTextEditor.linkUrlLabel": "链接 URL",
   "frescoUi.richTextEditor.linkUrlPlaceholder": "https://example.com",
   "frescoUi.richTextEditor.removeLinkShort": "移除",
+  "frescoUi.richTextEditor.textStyleHeading": "标题 {level}",
+  "frescoUi.richTextEditor.textStyleParagraph": "段落",
   "frescoUi.selectAllHeader.deselectAll": "取消全选",
   "frescoUi.selectAllHeader.selectAll": "全选（{count, number}）",
   "frescoUi.selectAllHeader.selectPage": "选择本页（{count, number}）",

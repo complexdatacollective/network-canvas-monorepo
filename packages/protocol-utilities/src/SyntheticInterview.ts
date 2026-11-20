@@ -13,6 +13,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   escapeMarkdownText,
   escapeMessageText,
+  informationPageContent,
   type FinishMode,
   type FinishOutcome,
   type Experiments,
@@ -98,6 +99,7 @@ import type {
   AddStageInput,
   AddTieStrengthCensusPromptInput,
   AddVariableInput,
+  AssetBlockInput,
   CategoricalBinPromptEntry,
   DyadCensusPromptEntry,
   EdgeEntry,
@@ -106,7 +108,6 @@ import type {
   FormFieldInput,
   GeospatialPromptEntry,
   GetSessionInput,
-  ItemInput,
   LocalizationInput,
   NameGeneratorPromptEntry,
   NetworkComposerEdgeEntry,
@@ -1068,17 +1069,21 @@ export class SyntheticInterview {
     return this.createStageHandle(type, entry);
   }
 
+  /**
+   * A page of text. Its heading is `title` and its words are `text`, both
+   * written into the one markdown text a page holds; `blocks` follow, each an
+   * image, audio recording or video among the paragraphs.
+   */
   addInformationStage(opts?: {
     title?: TextInput;
     text?: TextInput;
+    blocks?: AssetBlockInput[];
     label?: TextInput;
     interviewScript?: string;
     skipLogic?: SkipLogicInput;
-    items?: ItemInput[];
   }): InformationHandle {
     const stageId = this.nextId('stage');
     const title = opts?.title ?? 'Information';
-    const text = opts?.text ?? '';
 
     const entry: StageEntry = {
       id: stageId,
@@ -1086,12 +1091,7 @@ export class SyntheticInterview {
       label: opts?.label ?? title,
       interviewScript: opts?.interviewScript,
       skipLogic: opts?.skipLogic,
-      title,
-      items:
-        opts?.items ??
-        (text
-          ? [{ id: this.nextId('item'), type: 'text', content: text }]
-          : []),
+      information: { title, text: opts?.text, blocks: opts?.blocks ?? [] },
       prompts: [],
       presets: [],
       panels: [],
@@ -2759,13 +2759,36 @@ export class SyntheticInterview {
     return built;
   }
 
-  private buildItem(item: ItemInput): Record<string, unknown> {
-    if (item.type === 'text') {
-      return { ...item, content: this.localized(item.content) };
-    }
-    return item.description === undefined
-      ? item
-      : { ...item, description: this.localized(item.description) };
+  /**
+   * An Information page, its parts joined into one text exactly as the 8 to
+   * 9 migration joins a page's title and items (see
+   * `informationPageContent`): the title is the page's heading, the text
+   * follows, then each block. Text written as a string is the default
+   * language's (the title and a description plain text, the text markdown);
+   * text written per language is a message. Unlike a migrated item, a block
+   * is written with the settings given, and names its file whether or not
+   * the protocol holds it.
+   */
+  private informationContent(
+    { title, text, blocks }: NonNullable<StageEntry['information']>,
+    label: TextInput,
+  ): LocalizedString | undefined {
+    const content = informationPageContent(
+      [
+        { kind: 'heading', text: title },
+        ...(text === undefined ? [] : [{ kind: 'text' as const, text }]),
+        ...blocks.map(({ description, ...block }) => ({
+          kind: 'file' as const,
+          block,
+          description,
+        })),
+      ],
+      {
+        defaultLocale: this.localization.defaultLocale,
+        fallbackHeading: label,
+      },
+    );
+    return content === undefined ? undefined : this.localized(content);
   }
 
   private buildComposerField(
@@ -2985,6 +3008,11 @@ export class SyntheticInterview {
       config.content = this.localized(stage.content);
     }
 
+    if (stage.information) {
+      const content = this.informationContent(stage.information, stage.label);
+      if (content !== undefined) config.content = content;
+    }
+
     if (stage.mode !== undefined) {
       config.mode = stage.mode;
     }
@@ -2995,14 +3023,6 @@ export class SyntheticInterview {
 
     if (stage.outcome !== undefined) {
       config.outcome = stage.outcome;
-    }
-
-    if (stage.title !== undefined) {
-      config.title = this.localized(stage.title);
-    }
-
-    if (stage.items) {
-      config.items = stage.items.map((item) => this.buildItem(item));
     }
 
     // NameGeneratorQuickAdd

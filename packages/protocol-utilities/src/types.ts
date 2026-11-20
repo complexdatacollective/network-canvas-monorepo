@@ -1,4 +1,6 @@
 import type {
+  AssetBlockAlignment,
+  AssetBlockSize,
   ColorReference,
   ComponentType,
   ConditionRole,
@@ -8,7 +10,6 @@ import type {
   FilterOperator,
   FinishMode,
   FinishOutcome,
-  Item,
   LocaleTag,
   LocalizedString,
   NodeColorReference,
@@ -305,24 +306,20 @@ type PanelEntry = {
   filter?: FilterInput;
 };
 
-type TextItemInput = {
-  id: string;
-  type: 'text';
-  content: TextInput;
-  // A researcher note, never shown to participants, so it is not localized.
-  description?: string;
-};
-
-type AssetItemInput = {
-  id: string;
-  type: 'asset';
-  content: string;
+/**
+ * A file shown among an Information page's text: an image, an audio recording
+ * or a video, named by its id in the protocol's assets. The settings are those
+ * of `AssetBlock` in `@codaco/protocol-validation`.
+ */
+export type AssetBlockInput = {
+  assetId: string;
+  /** What the file shows or says; the image's alt text and the player's name. */
   description?: TextInput;
+  size?: AssetBlockSize;
+  align?: AssetBlockAlignment;
+  autoplay?: boolean;
+  loop?: boolean;
 };
-
-export type ItemInput =
-  | TextItemInput
-  | (AssetItemInput & { size?: Extract<Item, { type: 'asset' }>['size'] });
 
 export type StageEntry = {
   id: string;
@@ -360,8 +357,6 @@ export type StageEntry = {
     title: TextInput;
     text?: TextInput;
   };
-  title?: TextInput;
-  items?: ItemInput[];
   initialEdges: [number, number][];
   // NameGeneratorQuickAdd
   quickAdd?: string;
@@ -409,7 +404,15 @@ export type StageEntry = {
   convexHullVariable?: string;
   // FinishSession
   mode?: FinishMode;
+  // FinishSession's closing text
   content?: TextInput;
+  /** Information's parts, written as one markdown text when the protocol is
+   * built, in the languages it has then. */
+  information?: {
+    title: TextInput;
+    text?: TextInput;
+    blocks: readonly AssetBlockInput[];
+  };
   finishedContent?: TextInput;
   outcome?: FinishOutcome;
 };

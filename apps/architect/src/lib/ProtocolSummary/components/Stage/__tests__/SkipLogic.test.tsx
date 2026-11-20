@@ -20,15 +20,13 @@ const protocol = {
       id: 'source',
       type: 'Information',
       label: { en: 'Source', fr: 'Source' },
-      title: { en: 'Source', fr: 'Source' },
-      items: [],
+      content: { en: '# Source', fr: '# Source' },
     },
     {
       id: 'debrief',
       type: 'Information',
       label: { en: 'Debrief', fr: 'Bilan' },
-      title: { en: 'Debrief', fr: 'Bilan' },
-      items: [],
+      content: { en: '# Debrief', fr: '# Bilan' },
     },
   ],
 } satisfies CurrentProtocol;

@@ -24,8 +24,7 @@ const stage = (id: string) => ({
   id,
   type: 'Information' as const,
   label: { en: `Label ${id}` },
-  title: { en: `Title ${id}` },
-  items: [],
+  content: { en: `# Title ${id}` },
 });
 
 const protocolWithStages = (count: number): CurrentProtocol => ({
@@ -45,8 +44,7 @@ const protocolWithGaps = (count: number): CurrentProtocol => ({
     id: `stage-${index}`,
     type: 'Information' as const,
     label: { en: `Label ${index}`, fr: `Etiquette ${index}` },
-    title: { en: `Title ${index}` },
-    items: [],
+    content: { en: `# Title ${index}` },
   })),
 });
 
@@ -91,8 +89,7 @@ describe('LocalizationAlert', () => {
             id: 'welcome',
             type: 'Information',
             label: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
-            title: { en: 'Hello', de: 'Hallo' },
-            items: [],
+            content: { en: '# Hello', de: '# Hallo' },
           },
         ],
       }),

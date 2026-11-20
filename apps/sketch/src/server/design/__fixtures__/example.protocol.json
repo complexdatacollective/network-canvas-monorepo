@@ -666,18 +666,9 @@
       "label": {
         "en": "Researcher notes (delete before fielding)"
       },
-      "title": {
-        "en": "Notes for the research team"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).\n\n**Design rationale.** One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects \"know each other\" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.\n\n**Validated instruments.** Check the wording and scoring of audit_frequency, audit_typical, audit_heavy, who5_cheerful, who5_calm, who5_active, who5_rested, who5_interest against the published instrument; Sketch reproduces them from memory."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Notes for the research team\n\n**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).\n\n**Design rationale.** One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects \"know each other\" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.\n\n**Validated instruments.** Check the wording and scoring of audit_frequency, audit_typical, audit_heavy, who5_cheerful, who5_calm, who5_active, who5_rested, who5_interest against the published instrument; Sketch reproduces them from memory."
+      }
     },
     {
       "id": "welcome",
@@ -685,18 +676,9 @@
       "label": {
         "en": "Welcome"
       },
-      "title": {
-        "en": "Welcome to the study"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "Thank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Welcome to the study\n\nThank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
+      }
     },
     {
       "id": "consent",
@@ -790,18 +772,9 @@
       "label": {
         "en": "Naming friends (introduction)"
       },
-      "title": {
-        "en": "Naming people"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will be asked a question. Tap the add button, then type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Naming people\n\nOn the next screen you will be asked a question. Tap the add button, then type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
+      }
     },
     {
       "id": "name_friends",
@@ -880,18 +853,9 @@
           ]
         }
       },
-      "title": {
-        "en": "About the people you named"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "Next, you will answer a few questions about each of the people you named, one at a time."
-          }
-        }
-      ]
+      "content": {
+        "en": "# About the people you named\n\nNext, you will answer a few questions about each of the people you named, one at a time."
+      }
     },
     {
       "id": "friend_details",
@@ -958,18 +922,9 @@
           ]
         }
       },
-      "title": {
-        "en": "Sorting the people you named"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Sorting the people you named\n\nOn the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
+      }
     },
     {
       "id": "friend_bins",
@@ -1077,18 +1032,9 @@
           ]
         }
       },
-      "title": {
-        "en": "Your network map"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the people you named on a map, with you at the centre.\n\nDrag each of the people onto the circles. The closer to the centre you place someone, the closer they are to you.\n\nTo connect two of the people, tap one and then the other. Do the same again to remove a connection.\n\nTap each person the question describes. Tap them again to undo."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Your network map\n\nOn the next screen you will see the people you named on a map, with you at the centre.\n\nDrag each of the people onto the circles. The closer to the centre you place someone, the closer they are to you.\n\nTo connect two of the people, tap one and then the other. Do the same again to remove a connection.\n\nTap each person the question describes. Tap them again to undo."
+      }
     },
     {
       "id": "friend_map",
@@ -1195,18 +1141,9 @@
           ]
         }
       },
-      "title": {
-        "en": "Sorting the people you named"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Sorting the people you named\n\nOn the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
+      }
     },
     {
       "id": "drinking_together",
@@ -1492,18 +1429,9 @@
       "label": {
         "en": "Thank you"
       },
-      "title": {
-        "en": "Thank you"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en": "Thank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Thank you\n\nThank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
+      }
     },
     {
       "id": "finish",

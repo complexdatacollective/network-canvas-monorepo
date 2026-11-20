@@ -49,19 +49,19 @@ Read the full [Information documentation](https://documentation.networkcanvas.co
 ## Write the page heading
 
 <!-- section: page-content -->
-<!-- field: title -->
+<!-- field: content -->
 
-The **Page heading** is required, and is shown large and centered at the top of the page.
+The page has no separate heading field. To give it a heading, place the cursor in the first line of the **Rich Text** editor and choose **Heading 1** from the text styles in its toolbar. A heading that opens the page is shown large and centered at the top of the page.
 
 ## Build the page
 
 <!-- section: page-content -->
-<!-- field: items -->
+<!-- field: content -->
 <!-- scene: information-blocks -->
 
-Each item is one block of the page: text, an image, a video or audio. Items appear from top to bottom in the order listed here, and you can drag them to reorder them. A page needs at least one item, and you can add as many as you need. Participants scroll if the page is longer than the screen.
+The whole page is one text, written in the **Rich Text** editor. To add an image, a video or audio, place the cursor where it should go and choose **Insert image**, **Insert video** or **Insert audio** in the toolbar; each is added as a block that you can drag to another place in the text. Everything appears from top to bottom in the order it has in the text. The page cannot be empty, and you can add as much as you need. Participants scroll if the page is longer than the screen.
 
-Audio and video start playing as soon as the page opens, and video starts muted and loops. Give each image, video and audio item a **Description**, which a screen reader reads in place of it.
+Select a block to open its settings. Audio and video start playing as soon as the page opens and repeat when they end, unless you turn off **Start playing automatically** or **Repeat when it ends**. A video that starts automatically is muted. Give each image, video and audio block a **Description**, which a screen reader reads in place of it.
 
 > Do: Consider using piped text to customize what is shown to the participant to communicate more effectively.
 

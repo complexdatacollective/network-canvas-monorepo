@@ -76,6 +76,16 @@ const MARKED_IN_ATTRIBUTE = new RegExp(
   `${BOUNDARY_IN_ATTRIBUTE}(?:${MARKER}|%EE%80%80)\\d+(?:${MARKER}|%EE%80%80)${BOUNDARY_IN_ATTRIBUTE}|${MARKER}`,
   'gi',
 );
+
+/**
+ * Text with each marked value taken out, with its index and the comments set
+ * around it: for text a renderer reads out of the markdown itself rather than
+ * out of the rendered elements, such as an image's description. A value is
+ * never part of an attribute.
+ */
+export const withoutMarkedValues = (text: string): string =>
+  text.replace(MARKED_IN_ATTRIBUTE, '');
+
 /** Set on the element that stands for a value, to its index. */
 const VALUE_INDEX_PROPERTY = 'dataDynamicValueIndex';
 

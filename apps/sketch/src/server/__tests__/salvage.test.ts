@@ -84,10 +84,10 @@ describe('salvage', () => {
       );
       const stages = outcome.result?.protocol.stages as {
         id: string;
-        items?: { content: { en: string } }[];
+        content?: { en: string };
       }[];
       expect(stages.some((s) => s.id === 'wellbeing')).toBe(false);
-      expect(stages[0]?.items?.[0]?.content.en).toContain(message);
+      expect(stages[0]?.content?.en).toContain(message);
     },
   );
 });

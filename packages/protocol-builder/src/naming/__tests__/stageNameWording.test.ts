@@ -113,6 +113,24 @@ describe('the wording a proposed stage name is made from', () => {
     }
   });
 
+  // Where a language's text about a page's files names one differently from
+  // the resource browser, a stage is named with the page's word.
+  const PAGE_TERMS: Readonly<
+    Record<
+      string,
+      Partial<
+        Record<'image' | 'video' | 'audio', { term: string; usedIn: string }>
+      >
+    >
+  > = {
+    'zh-Hans': {
+      image: {
+        term: '图像',
+        usedIn: 'protocolBuilder.contentBlock.imageDescriptionHint',
+      },
+    },
+  };
+
   it('uses the terms the interface uses for panels, media and how an interview ends', () => {
     const lower = (text: string) => text.toLocaleLowerCase();
     for (const locale of SUPPLIED_LANGUAGES) {
@@ -128,16 +146,25 @@ describe('the wording a proposed stage name is made from', () => {
         lower(catalogText(locale, 'protocolBuilder.nodePanels.fieldLabel')),
       );
       for (const [kind, id] of [
-        ['image', 'kindImage'],
-        ['video', 'kindVideo'],
-        ['audio', 'kindAudio'],
+        ['image', 'imageLabel'],
+        ['video', 'videoLabel'],
+        ['audio', 'audioLabel'],
       ] as const) {
+        const named = ask(wording.media, 'media', kind);
+        const pageTerm = PAGE_TERMS[locale]?.[kind];
+        if (pageTerm === undefined) {
+          expect(named, `${locale} ${kind}`).toContain(
+            lower(catalogText(locale, `protocolBuilder.resourceKinds.${id}`)),
+          );
+          continue;
+        }
+        // The term is the one the page's own text uses for the file, so the
+        // exception is checked against that text rather than taken on trust.
         expect(
-          ask(wording.media, 'media', kind),
+          lower(catalogText(locale, pageTerm.usedIn)),
           `${locale} ${kind}`,
-        ).toContain(
-          lower(catalogText(locale, `protocolBuilder.contentBlock.${id}`)),
-        );
+        ).toContain(pageTerm.term);
+        expect(named, `${locale} ${kind}`).toContain(pageTerm.term);
       }
       for (const [kind, id] of [
         ['completed', 'outcomeCompleted'],

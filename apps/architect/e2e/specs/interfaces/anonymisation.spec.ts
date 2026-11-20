@@ -32,7 +32,7 @@ test('creates a valid Anonymisation stage from scratch', async ({
   // released Architect kept as a separate title. `RichTextField` passes its
   // `label` down to the Tiptap editor's accessible name, so the name is the
   // field's own wording rather than its path. The heading is made the way a
-  // researcher makes one, with the toolbar's "Heading 1" before typing.
+  // researcher makes one, with the toolbar's "Text style" menu (Heading 1) before typing.
   const explanationField = editor.field('explanationText');
   const explanation = explanationField.getByRole('textbox', {
     name: 'Explanation',
@@ -40,7 +40,12 @@ test('creates a valid Anonymisation stage from scratch', async ({
   });
   await expect(explanation).toBeEditable();
   await explanation.click();
-  await explanationField.getByRole('button', { name: 'Heading 1' }).click();
+  await explanationField
+    .getByRole('button', { name: /^Text style:\s*Paragraph$/ })
+    .click();
+  await architectPage.getByRole('menuitemradio', { name: 'Heading 1' }).click();
+  await expect(architectPage.getByRole('menu')).toBeHidden();
+  await expect(explanation).toBeFocused();
   await architectPage.keyboard.type('Protecting Your Privacy');
   await architectPage.keyboard.press('Enter');
   await architectPage.keyboard.type(

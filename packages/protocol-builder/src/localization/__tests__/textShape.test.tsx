@@ -32,27 +32,44 @@ describe('textFieldPropsFor', () => {
     expect(textFieldPropsFor({ format: 'plain', lines: 'single' })).toEqual({
       markdown: false,
       singleLine: true,
+      assetBlocks: false,
     });
     expect(textFieldPropsFor({ format: 'markdown', lines: 'single' })).toEqual({
       markdown: true,
       singleLine: true,
+      assetBlocks: false,
     });
     expect(
       textFieldPropsFor({ format: 'markdown', lines: 'multiple' }),
-    ).toEqual({ markdown: true, singleLine: false });
+    ).toEqual({ markdown: true, singleLine: false, assetBlocks: false });
+  });
+
+  it('carries the blocks a field declares it can hold, and only then', () => {
+    expect(
+      textFieldPropsFor({
+        format: 'markdown',
+        lines: 'multiple',
+        assetBlocks: true,
+      }),
+    ).toEqual({ markdown: true, singleLine: false, assetBlocks: true });
+    expect(
+      textFieldPropsFor({ format: 'markdown', lines: 'multiple' }),
+    ).toHaveProperty('assetBlocks', false);
   });
 });
 
 describe('markdownTextShapeAt', () => {
   it('reads a markdown field’s declaration', () => {
-    expect(
-      markdownTextShapeAt(informationStage, ['items', 0, 'content']),
-    ).toEqual({ format: 'markdown', lines: 'multiple' });
+    expect(markdownTextShapeAt(informationStage, ['content'])).toEqual({
+      format: 'markdown',
+      lines: 'multiple',
+      assetBlocks: true,
+    });
   });
 
   it('refuses a plain field, which is edited as plain text', () => {
-    expect(() => markdownTextShapeAt(informationStage, ['title'])).toThrow(
-      'The localized text at title is plain, not markdown.',
+    expect(() => markdownTextShapeAt(informationStage, ['label'])).toThrow(
+      'The localized text at label is plain, not markdown.',
     );
   });
 });
@@ -139,9 +156,9 @@ describe('LocalizedRichTextField', () => {
   };
 
   it('offers blocks for a field declared several lines', async () => {
-    renderWithShape(
-      markdownTextShapeAt(informationStage, ['items', 0, 'content']),
-    );
+    // Without files as blocks, which need the stage edit's resources: the
+    // page's own declaration is exercised through its editor.
+    renderWithShape({ format: 'markdown', lines: 'multiple' });
     expect(await toolbarButton('Bullet list')).not.toBeNull();
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveAttribute(
       'aria-multiline',

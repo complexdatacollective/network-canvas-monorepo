@@ -1,6 +1,4 @@
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import type {
@@ -10,12 +8,8 @@ import type {
   RowSaveOutcome,
   RowValues,
 } from '../../form/rowDialog.tsx';
-import {
-  asLocalizedString,
-  resolveTranslation,
-} from '../../localization/localizedText.ts';
+import { resolveTranslation } from '../../localization/localizedText.ts';
 import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
-import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 
 /**
  * A stand-in for one family's prompt fields.
@@ -76,42 +70,6 @@ export function TestPromptPreview({ item }: RowPreviewProps) {
 }
 
 /**
- * The same stand-in, for a page's content blocks.
- *
- * The block's own `type` is a field like any other, because what a block CAN
- * be is the interface's business rather than the section's: a real Information
- * editor offers text and media here, and a media block needs a resource
- * picker.
- */
-export function TestItemEditor() {
-  return (
-    <>
-      {/* The one field that states its own starting value: a block the
-          researcher has just added has no type yet, and every block this
-          stand-in edits is prose. */}
-      <Field
-        name="type"
-        label="Block type"
-        component={InputField}
-        initialValue="text"
-      />
-      <Field
-        name="content"
-        label="Block text"
-        component={LocalizedInputField}
-        required="Enter the text this block shows."
-      />
-    </>
-  );
-}
-
-export function TestItemPreview({ item }: RowPreviewProps) {
-  const localize = useLocalizedText();
-  const content = localize(item.content).text;
-  return <span>{content === '' ? 'Empty block' : content}</span>;
-}
-
-/**
  * A family's row editor with a defect in it.
  *
  * The shared list field mounts fields this package did not write, so one of
@@ -123,124 +81,8 @@ export function ExplodingRowEditor(): never {
   throw new Error('The row editor could not be rendered.');
 }
 
-/**
- * The editor slot each block type keeps its draft in.
- *
- * A stand-in for the per-type slots Architect's content grid uses, and for the
- * same reason: a saved block has ONE `content` key whose meaning depends on
- * its `type` — prose for text, a resource id otherwise. Edited through a
- * single control, changing the type has to destroy the value, and until it
- * does the incoming type's control is showing the outgoing type's value: a
- * resource id sitting in a rich text editor, one save away from becoming what
- * a participant reads.
- */
-const CONTENT_SLOTS = Object.freeze({
-  text: 'contentText',
-  asset: 'contentAsset',
-});
-
 const isRow = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * A page block that can be prose or a resource, with a slot for each.
- *
- * Only the chosen type's control is mounted; the other's draft is parked in
- * the dialog store, so switching back and forth loses nothing and no value
- * ever reaches a control that cannot mean it.
- */
-export function TestMediaItemEditor({ item }: RowEditorProps) {
-  // The row's own type until the control has registered, and the control's
-  // afterwards: a field's value reaches the store in an effect, so reading
-  // only the store would draw the wrong slot for one render.
-  const registered = useFormStore((state) => state.fields.get('type')?.value);
-  const type = registered ?? item.type;
-
-  return (
-    <>
-      <Field name="type" label="Block type" component={InputField} />
-      {/* Optional in the schema, so its absence has to be spelled by the key
-          not being there rather than by an empty string. */}
-      <Field
-        name="description"
-        label="Block description"
-        component={LocalizedInputField}
-      />
-      {type === 'asset' ? (
-        <Field
-          name={CONTENT_SLOTS.asset}
-          label="Resource"
-          component={InputField}
-        />
-      ) : (
-        <Field
-          name={CONTENT_SLOTS.text}
-          label="Block text"
-          component={LocalizedInputField}
-        />
-      )}
-    </>
-  );
-}
-
-export function TestMediaItemPreview({ item }: RowPreviewProps) {
-  const localize = useLocalizedText();
-  const content =
-    item.type === 'text'
-      ? localize(item.content).text
-      : typeof item.content === 'string'
-        ? item.content
-        : '';
-  return <span>{content === '' ? 'Empty block' : content}</span>;
-}
-
-/** Expands a saved block's one `content` key into the slot its type names. */
-const expandMediaItem = (
-  _context: ProtocolBuilderProtocolContext,
-  item: RowValues,
-): RowValues => {
-  const slot = item.type === 'text' ? CONTENT_SLOTS.text : CONTENT_SLOTS.asset;
-  return { ...item, [slot]: item.content };
-};
-
-/**
- * Collapses the chosen slot back into `content`, and drops every slot key.
- *
- * By the slot list rather than by the active type, so a draft the researcher
- * typed and then switched away from cannot ride along: both saved block
- * schemas are strict objects, and a surviving slot key does not merely take up
- * space — it makes the protocol invalid.
- */
-function collapseMediaItem(value: unknown): unknown {
-  if (!isRow(value)) return value;
-
-  const collapsed: Record<string, unknown> = { ...value };
-  const chosen =
-    value.type === 'text' ? CONTENT_SLOTS.text : CONTENT_SLOTS.asset;
-  for (const slot of Object.values(CONTENT_SLOTS)) delete collapsed[slot];
-
-  const draft = value[chosen];
-  const content =
-    value.type === 'text'
-      ? asLocalizedString(draft)
-      : typeof draft === 'string'
-        ? draft
-        : undefined;
-  if (content === undefined) delete collapsed.content;
-  else collapsed.content = content;
-  return collapsed;
-}
-
-/**
- * The pair a family hands `PageContentSection`, as one value.
- *
- * The section takes them together on purpose — see `PageContentSectionProps` —
- * so the fixture that stands in for a family declares them the same way.
- */
-export const mediaItemSlots = Object.freeze({
-  expand: expandMediaItem,
-  collapse: collapseMediaItem,
-});
 
 /** The question the shared fixture protocol's name generator already asks. */
 export const SEEDED_QUESTION = 'Who are the people you know?';

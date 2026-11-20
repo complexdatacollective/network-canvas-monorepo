@@ -29,9 +29,8 @@ const protocol = {
       id: 'welcome',
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
-      title: { en: WELCOME },
+      content: { en: WELCOME },
       dynamicValues: { name: { path: 'ego.firstName' } },
-      items: [],
     },
   ],
 } as unknown as CurrentProtocol;
@@ -55,10 +54,10 @@ const renderTable = (initial: CurrentProtocol = protocol) => {
 
 const title = (store: ReturnType<typeof renderTable>['store']): unknown => {
   const stage = getProtocol(store.getState())?.stages[0];
-  return stage && 'title' in stage ? stage.title : undefined;
+  return stage && 'content' in stage ? stage.content : undefined;
 };
 
-const cellName = (language: string) => new RegExp(`Page heading ${language}$`);
+const cellName = (language: string) => new RegExp(`Content ${language}$`);
 
 const titleCell = (language: string) =>
   screen.getByRole('button', { name: cellName(language) });
@@ -117,7 +116,7 @@ describe('TranslationTable: text that shows values', () => {
     const [stage] = protocol.stages;
     const { store, user } = renderTable({
       ...protocol,
-      stages: [{ ...stage, title: { en: 'Welcome back', fr: 'Bon retour' } }],
+      stages: [{ ...stage, content: { en: 'Welcome back', fr: 'Bon retour' } }],
     } as CurrentProtocol);
 
     await user.click(titleCell('English'));
@@ -173,7 +172,7 @@ describe('TranslationTable: text that shows values', () => {
       stages: [
         {
           ...stage,
-          title: { en: '{mood, select, happy {Glad} other {Hello}}' },
+          content: { en: '{mood, select, happy {Glad} other {Hello}}' },
           dynamicValues: {
             mood: { path: 'ego.mood', cases: { happy: 'happy' } },
           },
