@@ -58,6 +58,9 @@ const protocolVersions = pgTable(
     // No FK: draft rows are discardable.
     sourceDraftId: uuid('source_draft_id'),
     sourceManifestHash: text('source_manifest_hash').notNull(),
+    // Unused since Studio stopped migrating protocols; to be dropped in its
+    // own change. Nothing reads or writes it.
+    migratedFromVersionId: uuid('migrated_from_version_id'),
     publishedAt: timestamp('published_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -69,6 +72,10 @@ const protocolVersions = pgTable(
     foreignKey({
       columns: [table.protocolId, table.teamId],
       foreignColumns: [protocols.id, protocols.teamId],
+    }),
+    foreignKey({
+      columns: [table.migratedFromVersionId, table.teamId],
+      foreignColumns: [table.id, table.teamId],
     }),
     teamIsolationPolicy(),
   ],
