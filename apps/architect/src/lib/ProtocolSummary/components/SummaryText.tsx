@@ -11,6 +11,7 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   type MarkdownBlockImages,
+  RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   type BlockMarkdown,
@@ -33,7 +34,6 @@ import {
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
-import Markdown from '~/components/Markdown';
 
 import SummaryContext from './SummaryContext';
 
@@ -207,8 +207,19 @@ const TranslationText = ({
     );
   }
   const literal = messageText(text);
+  // The words go to the renderer as they are stored, as the interview gives
+  // them to it and as text with values reaches it above: the stored markdown
+  // is already escaped by whatever wrote it, so rewriting it here could only
+  // make the summary read differently from the participant's screen (a file
+  // whose address is written between angle brackets read as its source).
   return format === 'markdown' ? (
-    <Markdown label={literal} blockImages={blockImages} />
+    <RenderMarkdown
+      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      blockImages={blockImages}
+      render={<span />}
+    >
+      {literal}
+    </RenderMarkdown>
   ) : (
     literal
   );

@@ -37,6 +37,7 @@ type MarkdownNode = {
   url?: string;
   title?: string | null;
   alt?: string | null;
+  identifier?: string;
 };
 
 const EMPTY_DOCUMENT: RichTextContent = {
@@ -49,31 +50,55 @@ const cloneEmptyDocument = (): RichTextContent => ({
   content: [{ type: 'paragraph' }],
 });
 
-// An image whose address is written between angle brackets, as markdown
-// allows (`![alt](<asset:id>)`): up to and with the bracket that closes it.
-const IMAGE_WITH_BRACKETED_ADDRESS =
-  /!\[(?:[^[\]\\]|\\.)*\]\([ \t]*<(?:[^<>\n\\]|\\.)*>/;
-
-const BRACKETED_ADDRESS_OR_ANGLE_BRACKET = new RegExp(
-  `(${IMAGE_WITH_BRACKETED_ADDRESS.source})|>`,
-  'g',
-);
-
 /**
- * Matches the legacy Slate editor: literal ">" characters should remain text
- * instead of turning existing protocol content into block quotes on first edit.
+ * The legacy editor stored what was typed as it was typed: a line opening
+ * with `>` was a comparison ("> 5 years"), and `<...>` a placeholder ("<IRB
+ * OR ETHICS BOARD HERE>"), never a quotation or HTML. The editor still reads
+ * them as those characters, so saving writes them escaped and the
+ * participant is shown them as they were written.
  *
- * The one that closes an image's address is not text. Escaped, the image
- * would be read as the words it is written in, where the interview draws the
- * file it names: a block opened here and saved would lose its file.
+ * That is done by the parser, with the constructs that would read them
+ * otherwise switched off, rather than by rewriting the text before it is
+ * read: the parser alone knows where a `>` or `<` is markdown's own syntax
+ * (an autolink, a bracketed address, a code span), and those are left to it.
  */
-const escapeAngleBracket = (value = ''): string =>
+const TYPED_CHARACTERS = {
+  disable: { null: ['blockQuote', 'htmlFlow', 'htmlText'] },
+};
+
+const parseMarkdown = (value: string): MarkdownNode => {
+  const processor = unified().use(markdown);
+  processor.data('micromarkExtensions', [TYPED_CHARACTERS]);
+  return processor.parse(value);
+};
+
+// The one tag the legacy editor wrote for a line break, which the interview
+// also reads as one. Read as typed characters, so found in the words.
+const BREAK_TAG = /<br\s*\/?>/gi;
+
+const textWithBreaks = (value: string): RichTextContent[] =>
   value
-    .replace(
-      BRACKETED_ADDRESS_OR_ANGLE_BRACKET,
-      (bracket: string, image: string | undefined) => image ?? '&gt;',
-    )
-    .replace(/<br&gt;/g, '<br>');
+    .split(BREAK_TAG)
+    .flatMap((words, index) => [
+      ...(index === 0 ? [] : [{ type: 'hardBreak' }]),
+      ...(words === '' ? [] : [{ type: 'text', text: words }]),
+    ]);
+
+/** Where each link label a text defines leads (`[label]: address`). */
+type Definitions = ReadonlyMap<string, LinkTargetNode>;
+type LinkTargetNode = Readonly<{ url?: string; title?: string | null }>;
+
+const definitionsIn = (
+  node: MarkdownNode,
+  found = new Map<string, LinkTargetNode>(),
+): Definitions => {
+  if (node.type === 'definition' && node.identifier !== undefined) {
+    // The first definition of a label is the one markdown uses.
+    if (!found.has(node.identifier)) found.set(node.identifier, node);
+  }
+  for (const child of node.children ?? []) definitionsIn(child, found);
+  return found;
+};
 
 const escapeLinkDestination = (value: string): string =>
   value
@@ -92,6 +117,7 @@ const SCHEME_DELIMITER_PATTERN = /[/?#]/;
 
 type InlineParseOptions = {
   links?: boolean;
+  definitions?: Definitions;
 };
 
 type SerializeInlineOptions = {
@@ -178,7 +204,7 @@ const inlineFromMarkdown = (
 ): RichTextContent[] => {
   switch (node.type) {
     case 'text':
-      return node.value ? [{ type: 'text', text: node.value }] : [];
+      return node.value ? textWithBreaks(node.value) : [];
 
     case 'strong':
       return addMark(childrenAsInline(node, options), { type: 'bold' });
@@ -186,8 +212,15 @@ const inlineFromMarkdown = (
     case 'emphasis':
       return addMark(childrenAsInline(node, options), { type: 'italic' });
 
-    case 'link': {
-      const href = sanitizeLinkDestination(node.url);
+    case 'link':
+    case 'linkReference': {
+      const target =
+        node.type === 'link'
+          ? node
+          : node.identifier === undefined
+            ? undefined
+            : options.definitions?.get(node.identifier);
+      const href = sanitizeLinkDestination(target?.url);
       const content = childrenAsInline(node, options);
 
       if (!href || options.links === false) {
@@ -198,7 +231,7 @@ const inlineFromMarkdown = (
         type: 'link',
         attrs: {
           href,
-          title: node.title ?? null,
+          title: target?.title ?? null,
         },
       });
     }
@@ -206,13 +239,10 @@ const inlineFromMarkdown = (
     case 'break':
       return [{ type: 'hardBreak' }];
 
+    // Code is shown as its characters; the editor has no code of its own.
     case 'inlineCode':
+    case 'code':
       return node.value ? [{ type: 'text', text: node.value }] : [];
-
-    case 'html':
-      return node.value?.toLowerCase() === '<br>'
-        ? [{ type: 'hardBreak' }]
-        : [];
 
     case 'image':
       return node.alt ? [{ type: 'text', text: node.alt }] : [];
@@ -237,6 +267,7 @@ const ASSET_BLOCK = 'assetBlock' satisfies RichTextAssetBlockContent['type'];
 type BlockParseOptions = {
   /** Whether a markdown image naming a file of the protocol is a block. */
   assetBlocks?: boolean;
+  definitions?: Definitions;
 };
 
 /**
@@ -305,7 +336,10 @@ const withoutEdgeSpace = (run: RichTextContent[]): RichTextContent[] => {
  * editor, a file is always alone in its paragraph; written by hand it may
  * sit in a sentence, which is split around it, as the interview shows it.
  */
-const paragraphWithAssetBlocks = (node: MarkdownNode): RichTextContent[] => {
+const paragraphWithAssetBlocks = (
+  node: MarkdownNode,
+  options: InlineParseOptions,
+): RichTextContent[] => {
   const blocks: RichTextContent[] = [];
   let run: RichTextContent[] = [];
   const endRun = () => {
@@ -316,7 +350,7 @@ const paragraphWithAssetBlocks = (node: MarkdownNode): RichTextContent[] => {
   for (const child of node.children ?? []) {
     const block = assetBlockFromImage(child);
     if (block === undefined) {
-      run.push(...inlineFromMarkdown(child));
+      run.push(...inlineFromMarkdown(child, options));
       continue;
     }
     endRun();
@@ -330,11 +364,12 @@ const blockFromMarkdown = (
   node: MarkdownNode,
   options: BlockParseOptions = {},
 ): RichTextContent[] => {
+  const inline = { definitions: options.definitions };
   switch (node.type) {
     case 'paragraph':
       return options.assetBlocks === true
-        ? paragraphWithAssetBlocks(node)
-        : [paragraphFromInline(childrenAsInline(node))];
+        ? paragraphWithAssetBlocks(node, inline)
+        : [paragraphFromInline(childrenAsInline(node, inline))];
 
     case 'heading': {
       const level = Math.min(Math.max(node.depth ?? 1, 1), 4);
@@ -342,7 +377,7 @@ const blockFromMarkdown = (
         {
           type: 'heading',
           attrs: { level },
-          content: childrenAsInline(node),
+          content: childrenAsInline(node, inline),
         },
       ];
     }
@@ -362,17 +397,14 @@ const blockFromMarkdown = (
     case 'thematicBreak':
       return [{ type: 'horizontalRule' }];
 
-    case 'html':
-      if (node.value?.toLowerCase() === '<hr>') {
-        return [{ type: 'horizontalRule' }];
-      }
-      if (node.value?.toLowerCase() === '<br>') {
-        return [paragraphFromInline([{ type: 'hardBreak' }])];
-      }
-      return [];
+    // Code is shown as its characters, in a paragraph of its own.
+    case 'code': {
+      const content = inlineFromMarkdown(node, inline);
+      return content.length > 0 ? [paragraphFromInline(content)] : [];
+    }
 
     default: {
-      const content = childrenAsInline(node);
+      const content = childrenAsInline(node, inline);
       return content.length > 0 ? [paragraphFromInline(content)] : [];
     }
   }
@@ -399,13 +431,13 @@ const blockChildrenFromMarkdown = (
 
 const inlineDocumentFromMarkdown = (
   root: MarkdownNode,
-  links: boolean,
+  options: InlineParseOptions,
 ): RichTextContent => {
   const inlineContent = (root.children ?? []).flatMap((node, index) => {
     const content =
       node.type === 'paragraph' || node.type === 'heading'
-        ? childrenAsInline(node, { links })
-        : inlineFromMarkdown(node, { links });
+        ? childrenAsInline(node, options)
+        : inlineFromMarkdown(node, options);
 
     if (index === 0 || content.length === 0) {
       return content;
@@ -445,16 +477,15 @@ export const markdownToRichTextContent = (
     return cloneEmptyDocument();
   }
 
-  const root: MarkdownNode = unified()
-    .use(markdown)
-    .parse(escapeAngleBracket(value));
+  const root = parseMarkdown(value);
+  const definitions = definitionsIn(root);
 
   if (inline) {
-    return inlineDocumentFromMarkdown(root, links);
+    return inlineDocumentFromMarkdown(root, { links, definitions });
   }
 
   const content = (root.children ?? []).flatMap((node) =>
-    blockFromMarkdown(node, { assetBlocks }),
+    blockFromMarkdown(node, { assetBlocks, definitions }),
   );
 
   if (content.length === 0) {

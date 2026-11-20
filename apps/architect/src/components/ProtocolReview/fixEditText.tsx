@@ -2,11 +2,14 @@ import type { ReactNode } from 'react';
 
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import { getValidationLabel } from '@codaco/protocol-builder/codebook/variableValidation';
 import { nameLocalizedText } from '@codaco/protocol-builder/localization/localizedTextNames';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
-import Markdown from '~/components/Markdown';
 import { useAppSelector } from '~/ducks/hooks';
 import type { FixTextEdit } from '~/protocolReview/describeFix';
 import { getProtocol } from '~/selectors/protocol';
@@ -83,7 +86,13 @@ export const FixText = ({
   markdown: boolean;
 }) =>
   markdown ? (
-    <Markdown label={text} className="wrap-break-word" />
+    // As the interview reads it: the stored markdown, unchanged.
+    <RenderMarkdown
+      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      render={<span className="wrap-break-word" />}
+    >
+      {text}
+    </RenderMarkdown>
   ) : (
     <span className="wrap-break-word whitespace-pre-wrap">{text}</span>
   );

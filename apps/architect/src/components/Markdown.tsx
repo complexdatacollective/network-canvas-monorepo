@@ -2,7 +2,6 @@ import { memo } from 'react';
 
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
-  type MarkdownBlockImages,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 
@@ -20,19 +19,11 @@ type MarkdownProps = {
   label: string;
   className?: string;
   allowedElements?: readonly string[];
-  /** How a file the text holds as a block is drawn; without it, it is not. */
-  blockImages?: MarkdownBlockImages;
 };
 
-const Markdown = ({
-  label,
-  className,
-  allowedElements,
-  blockImages,
-}: MarkdownProps) => (
+const Markdown = ({ label, className, allowedElements }: MarkdownProps) => (
   <RenderMarkdown
     allowedElements={allowedElements ?? ALLOWED_MARKDOWN_SECTION_TAGS}
-    blockImages={blockImages}
     render={<span className={className} />}
   >
     {escapeAngleBracket(label)}
@@ -44,6 +35,5 @@ export default memo(
   (prevProps, nextProps) =>
     prevProps.label === nextProps.label &&
     prevProps.className === nextProps.className &&
-    prevProps.allowedElements === nextProps.allowedElements &&
-    prevProps.blockImages === nextProps.blockImages,
+    prevProps.allowedElements === nextProps.allowedElements,
 );

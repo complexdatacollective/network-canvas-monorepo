@@ -3,10 +3,17 @@ import { render as renderBare, screen, within } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import type {
-  CurrentProtocol,
-  LocaleTag,
-  LocalizedString,
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
+import { assetBlockDescription } from '@codaco/protocol-builder/fields/assetBlocks/assetBlockDescription';
+import {
+  type CurrentProtocol,
+  isAssetBlockUrl,
+  type LocaleTag,
+  type LocalizedString,
+  readAssetBlockUrl,
 } from '@codaco/protocol-validation';
 import { testProtocol } from '~/__tests__/helpers';
 
@@ -333,5 +340,131 @@ describe('a file printed inside text of another language', () => {
       lang: 'en',
       dir: 'ltr',
     });
+  });
+});
+
+/**
+ * The page as the interview reads it: the Information interface hands the
+ * stored text, unchanged, to the shared renderer with the section elements
+ * and every file the text names drawn as a block (`Information.tsx`,
+ * `LocalizedMarkdown`). Each block is drawn here as a mark of which file it
+ * names and with what description, so only the reading is compared.
+ */
+const interviewReading = (text: string) => {
+  const { container, unmount } = renderBare(
+    <RenderMarkdown
+      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      blockImages={{
+        matches: isAssetBlockUrl,
+        Block: ({ url, alt }) => (
+          <figure
+            data-probe-block={readAssetBlockUrl(url)?.block.assetId ?? ''}
+            data-probe-description={assetBlockDescription(alt)}
+          />
+        ),
+      }}
+    >
+      {text}
+    </RenderMarkdown>,
+  );
+  const files = Array.from(
+    container.querySelectorAll('[data-probe-block]'),
+    (block) => ({
+      file: block.getAttribute('data-probe-block'),
+      description: block.getAttribute('data-probe-description'),
+    }),
+  );
+  const words = container.cloneNode(true) as HTMLElement;
+  for (const block of words.querySelectorAll('[data-probe-block]')) {
+    block.replaceWith(' ');
+  }
+  unmount();
+  return {
+    files,
+    words: (words.textContent ?? '').replace(/\s+/g, ' ').trim(),
+  };
+};
+
+/** The page as the summary prints it: the same two things. */
+const summaryReading = (text: string) => {
+  const { unmount } = renderStage('Information', { en: text });
+  const page = screen.getByRole('heading', { name: 'Page Content' })
+    .nextElementSibling as HTMLElement;
+  const files = Array.from(
+    page.querySelectorAll('[data-asset-block]'),
+    (block) => ({
+      file:
+        within(block as HTMLElement)
+          .getByRole('link')
+          .getAttribute('href')
+          ?.replace(/^.*#asset-/, '') ?? null,
+      description:
+        rowsOf(block).find(([label]) => label === 'Description')?.[1] ?? '',
+    }),
+  );
+  const words = page.cloneNode(true) as HTMLElement;
+  for (const block of words.querySelectorAll('[data-asset-block]')) {
+    block.replaceWith(' ');
+  }
+  unmount();
+  return {
+    files,
+    words: (words.textContent ?? '').replace(/\s+/g, ' ').trim(),
+  };
+};
+
+describe('a page printed as the interview reads it', () => {
+  it.each([
+    ['a bare address', '![Map](asset:map)'],
+    ['a bracketed address', '![Map](<asset:map>)'],
+    ['a bare address with settings', '![Map](asset:map?size=small&align=end)'],
+    [
+      'a bracketed address with settings',
+      '![Map](<asset:map?size=small&align=end>)',
+    ],
+    ['a bare address with a title', '![Map](asset:map "The area")'],
+    ['a bracketed address with a title', '![Map](<asset:map> "The area")'],
+    [
+      'a description holding brackets, an ampersand and backslashes',
+      '![a < b > c & d \\] e \\\\ f](asset:map)',
+    ],
+    [
+      'a bracketed address after such a description',
+      '![a < b > c & d \\] e \\\\ f](<asset:map>)',
+    ],
+    ['a block in a list item', '- ![Map](<asset:map>)\n- ![Song](asset:song)'],
+    ['a block in a quotation', '> ![Map](<asset:map>)'],
+    [
+      'two blocks on consecutive lines',
+      '![Map](<asset:map>)\n![Song](asset:song)',
+    ],
+    ['a block named by reference', '![Map][ref]\n\n[ref]: asset:map'],
+    [
+      'a block named by a bracketed reference',
+      '![Map][ref]\n\n[ref]: <asset:map>',
+    ],
+    [
+      'angle brackets in the words beside a block',
+      'a < b ![Map](<asset:map>) c > d',
+    ],
+    ['a line opening with an angle bracket', '> 5 years\n\n![Map](asset:map)'],
+  ])('with %s', (_case, text) => {
+    expect(summaryReading(text)).toEqual(interviewReading(text));
+  });
+
+  it('draws a bracketed address as a file, never as the text it is written in', () => {
+    renderStage('Information', { en: '# Map\n\n![The area](<asset:map>)' });
+
+    expect(rowsOf(only('image'))).toEqual([
+      ['Type', 'Image'],
+      ['Name', 'map.png'],
+      ['Description', 'The area'],
+    ]);
+    expect(
+      within(only('image') as HTMLElement).getByRole('link', {
+        name: 'map.png',
+      }),
+    ).toHaveAttribute('href', expect.stringContaining('#asset-map'));
+    expect(screen.queryByText(/asset:map/)).toBeNull();
   });
 });
