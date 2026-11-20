@@ -80,8 +80,11 @@ const DocumentPathSchema = Schema.Array(
   Schema.Union([Schema.String, Schema.Finite]),
 );
 
-/** The id of an object inside a protocol (see `ProtocolObjectIdSchema`). */
-const ProtocolObjectIdSchema = Schema.String.pipe(
+/**
+ * The id of an object inside a protocol, as `@codaco/protocol-validation`'s
+ * `ProtocolObjectIdSchema` defines it.
+ */
+const ProtocolObjectIdString = Schema.String.pipe(
   Schema.refine(isProtocolObjectId, {
     message: 'not a protocol object id',
   }),
@@ -91,7 +94,7 @@ export const SectionIssueSchema = Schema.Struct({
   path: DocumentPathSchema,
   message: Schema.String,
   /** The object inside the section the issue is about, where it has an id. */
-  objectId: Schema.optionalKey(ProtocolObjectIdSchema),
+  objectId: Schema.optionalKey(ProtocolObjectIdString),
 });
 
 /** One place a section names something: a reference, at its path. */
