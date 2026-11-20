@@ -45,9 +45,15 @@ export const freshenProtocolFragmentIds = <T>(
   unshareObjects(copy);
 
   const seen = new Set<string>();
+  const seenOnStages = new Set<string>();
   for (const { id, path, objectKind } of findMarkedObjects(schema, copy)) {
     const firstOccurrence = id !== undefined && !seen.has(id);
+    // A stage reference only ever names a stage, so an earlier prompt or rule
+    // holding the same id must not stop the stage's rename being recorded.
+    const firstStageOccurrence =
+      objectKind === 'stage' && id !== undefined && !seenOnStages.has(id);
     if (id !== undefined) seen.add(id);
+    if (objectKind === 'stage' && id !== undefined) seenOnStages.add(id);
     if (id !== undefined && isProtocolObjectId(id) && !taken.has(id)) {
       taken.add(id);
       continue;
@@ -56,10 +62,8 @@ export const freshenProtocolFragmentIds = <T>(
     const fresh = createProtocolObjectId();
     taken.add(fresh);
     setObjectIdAt(copy, path.slice(0, -1), fresh);
-    if (id !== undefined && firstOccurrence) {
-      idMap.set(id, fresh);
-      if (objectKind === 'stage') stageRenames.set(id, fresh);
-    }
+    if (id !== undefined && firstOccurrence) idMap.set(id, fresh);
+    if (id !== undefined && firstStageOccurrence) stageRenames.set(id, fresh);
   }
 
   rewriteStageReferences(schema, copy, stageRenames);

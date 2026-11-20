@@ -445,6 +445,33 @@ describe('freshenProtocolFragmentIds', () => {
     expect(getAt(fragment, [1, 'id'])).toBe(idMap.get(sociogram?.id ?? ''));
   });
 
+  it('follows a renamed stage whose id an earlier prompt also holds', () => {
+    const [nameGenerator, sociogram] = createBaseProtocol().stages;
+    const [prompt] = nameGenerator?.prompts ?? [];
+    const { fragment } = freshenProtocolFragmentIds(
+      [
+        {
+          ...nameGenerator,
+          prompts: [{ ...prompt, id: 'shared' }],
+          skipLogic: {
+            action: 'SKIP' as const,
+            filter: { rules: [] },
+            destination: { type: 'stage' as const, stageId: 'shared' },
+          },
+        },
+        { ...sociogram, id: 'shared' },
+      ],
+      [],
+    );
+
+    const stageId = getAt(fragment, [1, 'id']);
+    expect(isProtocolObjectId(stageId)).toBe(true);
+    expect(stageId).not.toBe(getAt(fragment, [0, 'prompts', 0, 'id']));
+    expect(getAt(fragment, [0, 'skipLogic', 'destination', 'stageId'])).toBe(
+      stageId,
+    );
+  });
+
   it('never changes the fragment it is given', () => {
     const [stage] = createBaseProtocol().stages;
     const copy = structuredClone(stage);
