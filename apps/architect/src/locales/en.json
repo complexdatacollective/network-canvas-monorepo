@@ -2355,6 +2355,30 @@
     "defaultMessage": "Cancel review",
     "description": "Button that stops the review in progress. Nothing is saved and it does not count towards the hourly limit."
   },
+  "architect.protocolReview.popover.commentCancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button that closes the box for written feedback about the review without sending what was typed."
+  },
+  "architect.protocolReview.popover.commentChange": {
+    "defaultMessage": "Change your feedback",
+    "description": "Button under the list of problems, shown in place of \"Leave feedback on this review\" once the researcher has sent feedback. It opens what they wrote again for changing."
+  },
+  "architect.protocolReview.popover.commentHint": {
+    "defaultMessage": "Tell the Network Canvas team what you thought of this review. Leave out names and anything else that could identify a person.",
+    "description": "Explanation above the box for written feedback about the review. \"Network Canvas\" is a product name and is not translated."
+  },
+  "architect.protocolReview.popover.commentOpen": {
+    "defaultMessage": "Leave feedback on this review",
+    "description": "Button under the list of problems. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box."
+  },
+  "architect.protocolReview.popover.commentRefused": {
+    "defaultMessage": "Your feedback could not be saved, because this protocol is open for editing in another tab. Leave feedback on the review in that tab.",
+    "description": "Notice when written feedback about the review was refused because another browser tab holds this protocol for editing."
+  },
+  "architect.protocolReview.popover.commentSend": {
+    "defaultMessage": "Send feedback",
+    "description": "Button that sends what the researcher wrote about the review to the Network Canvas team."
+  },
   "architect.protocolReview.popover.dismissRefused": {
     "defaultMessage": "The review could not be dismissed, because this protocol is open for editing in another tab. Dismiss it in that tab.",
     "description": "Notice when Dismiss review was refused because another browser tab holds this protocol for editing."
@@ -2574,6 +2598,34 @@
   "architect.protocolReview.problem.problemOf": {
     "defaultMessage": "Problem {position, number} of {total, number}",
     "description": "Shows which problem found by the automated protocol review is open, when going through them one at a time."
+  },
+  "architect.protocolReview.problem.ratingNotUseful": {
+    "defaultMessage": "Not useful",
+    "description": "Name and tooltip of the thumbs-down icon button that rates a problem found by the automated protocol review as not useful. Pressing it again takes the rating back."
+  },
+  "architect.protocolReview.problem.ratingQuestion": {
+    "defaultMessage": "Was this useful?",
+    "description": "Question under a problem found by the automated protocol review, asking whether being told about the problem was useful. Two icon buttons, a thumbs up named Useful and a thumbs down named Not useful, answer it."
+  },
+  "architect.protocolReview.problem.ratingReason": {
+    "defaultMessage": "Why not? (optional)",
+    "description": "Label of the choices shown after the researcher rates a problem as not useful, asking why it was not useful. Answering is optional."
+  },
+  "architect.protocolReview.problem.ratingUseful": {
+    "defaultMessage": "Useful",
+    "description": "Name and tooltip of the thumbs-up icon button that rates a problem found by the automated protocol review as useful. Pressing it again takes the rating back."
+  },
+  "architect.protocolReview.problem.reasonFixWouldNotWork": {
+    "defaultMessage": "The suggested fix would not work",
+    "description": "A reason a problem found by the automated protocol review was not useful: the problem may be real, but the fix suggested for it would not solve it."
+  },
+  "architect.protocolReview.problem.reasonNotRelevant": {
+    "defaultMessage": "It does not matter for my study",
+    "description": "A reason a problem found by the automated protocol review was not useful: it may be true, but it is not relevant to this study."
+  },
+  "architect.protocolReview.problem.reasonWrong": {
+    "defaultMessage": "It is wrong about my protocol",
+    "description": "A reason a problem found by the automated protocol review was not useful: what it says about the protocol is not true."
   },
   "architect.protocolReview.problem.suggestedFix": {
     "defaultMessage": "Suggested fix",

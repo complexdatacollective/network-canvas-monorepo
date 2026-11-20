@@ -13,6 +13,11 @@ import type {
   TargetSnapshot,
   WrittenSnapshot,
 } from './fixEngine';
+import type {
+  FeedbackRating,
+  FeedbackReason,
+  ReviewFeedback,
+} from './reviewFeedback';
 
 /**
  * Each protocol's automated review and the researcher's choices about it,
@@ -64,6 +69,23 @@ export type StoredFinding = {
    * wrote again (the app's Redo).
    */
   takenOut?: boolean;
+  /**
+   * Whether the researcher changed the fix's text or numbers before it was
+   * applied. Meaningful while the fix is applied.
+   */
+  edited?: boolean;
+  /**
+   * Whether the researcher found the problem useful, and why not when they
+   * said; absent or null until they rate it. Asked only about a review that
+   * was shared.
+   */
+  rating?: FindingRating | null;
+};
+
+export type FindingRating = {
+  rating: FeedbackRating;
+  /** Only with `not_useful`. */
+  reason: FeedbackReason | null;
 };
 
 export type StoredReview = {
@@ -79,6 +101,21 @@ export type StoredReview = {
   provider?: ReviewProvider;
   stageIds?: string[];
   findings: StoredFinding[];
+  /**
+   * Whether the review was sent with sharing on, so the service holds a copy
+   * of it. The protocol's `shareReviews` is the choice for the next review;
+   * this is what was done with this one. Only a shared review's feedback
+   * carries its id, and only a shared review's unrated problems are reported.
+   * Absent from reviews saved before it existed, which read as not shared.
+   */
+  shared?: boolean;
+  /** What the researcher wrote about the review as a whole, as they sent it. */
+  comment?: string;
+  /**
+   * The feedback last sent to PostHog. Absent until some has been sent. Each
+   * problem, and the comment, is sent again whenever it differs from this.
+   */
+  feedbackSent?: ReviewFeedback;
 };
 
 export type StoredReviewRecord = {

@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
@@ -11,11 +11,17 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import Pips from '@codaco/fresco-ui/Pips';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
@@ -25,10 +31,16 @@ import {
   type DecisionRefusal,
   decideFinding,
   getProtocolReviewFindings,
+  rateFinding,
   type ReviewFindingView,
   undoFix,
 } from '~/ducks/modules/protocolReview';
 import type { FixTextEdit } from '~/protocolReview/describeFix';
+import {
+  FEEDBACK_REASONS,
+  type FeedbackRating,
+  type FeedbackReason,
+} from '~/protocolReview/reviewFeedback';
 import type { FindingDecision } from '~/protocolReview/reviewStore';
 
 import {
@@ -199,7 +211,55 @@ const messages = defineMessages({
     description:
       'Button that moves on from a problem already fixed to the next problem still to decide.',
   },
+  ratingQuestion: {
+    id: 'architect.protocolReview.problem.ratingQuestion',
+    defaultMessage: 'Was this useful?',
+    description:
+      'Question under a problem found by the automated protocol review, asking whether being told about the problem was useful. Two icon buttons, a thumbs up named Useful and a thumbs down named Not useful, answer it.',
+  },
+  ratingUseful: {
+    id: 'architect.protocolReview.problem.ratingUseful',
+    defaultMessage: 'Useful',
+    description:
+      'Name and tooltip of the thumbs-up icon button that rates a problem found by the automated protocol review as useful. Pressing it again takes the rating back.',
+  },
+  ratingNotUseful: {
+    id: 'architect.protocolReview.problem.ratingNotUseful',
+    defaultMessage: 'Not useful',
+    description:
+      'Name and tooltip of the thumbs-down icon button that rates a problem found by the automated protocol review as not useful. Pressing it again takes the rating back.',
+  },
+  ratingReason: {
+    id: 'architect.protocolReview.problem.ratingReason',
+    defaultMessage: 'Why not? (optional)',
+    description:
+      'Label of the choices shown after the researcher rates a problem as not useful, asking why it was not useful. Answering is optional.',
+  },
+  reasonWrong: {
+    id: 'architect.protocolReview.problem.reasonWrong',
+    defaultMessage: 'It is wrong about my protocol',
+    description:
+      'A reason a problem found by the automated protocol review was not useful: what it says about the protocol is not true.',
+  },
+  reasonNotRelevant: {
+    id: 'architect.protocolReview.problem.reasonNotRelevant',
+    defaultMessage: 'It does not matter for my study',
+    description:
+      'A reason a problem found by the automated protocol review was not useful: it may be true, but it is not relevant to this study.',
+  },
+  reasonFixWouldNotWork: {
+    id: 'architect.protocolReview.problem.reasonFixWouldNotWork',
+    defaultMessage: 'The suggested fix would not work',
+    description:
+      'A reason a problem found by the automated protocol review was not useful: the problem may be real, but the fix suggested for it would not solve it.',
+  },
 });
+
+const reasonMessages: Record<FeedbackReason, MessageDescriptor> = {
+  wrong: messages.reasonWrong,
+  not_relevant: messages.reasonNotRelevant,
+  fix_would_not_work: messages.reasonFixWouldNotWork,
+};
 
 /** The next problem still to decide after `fromIndex`, wrapping round. */
 const nextUndecided = (
@@ -417,6 +477,8 @@ const ReviewProblemView = ({
   );
   const checkingId = useId();
   const summaryId = useId();
+  const ratingId = useId();
+  const reasonId = useId();
 
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
@@ -507,6 +569,33 @@ const ReviewProblemView = ({
       return;
     }
     announce(`Fix undone: ${current.title}`);
+  };
+
+  /** Rates the problem; the rating it already has is taken back. */
+  const rate = async (
+    rating: FeedbackRating,
+    reason: FeedbackReason | null = null,
+  ) => {
+    const withdrawn = reason === null && current.rating === rating;
+    setRefusal(null);
+    const result = await dispatch(
+      rateFinding(current.id, withdrawn ? null : rating, reason),
+    );
+    if (!result.ok) {
+      setRefusal({
+        findingId: current.id,
+        reason: result.reason,
+        edited: false,
+      });
+      return;
+    }
+    announce(
+      withdrawn
+        ? 'Rating removed.'
+        : rating === 'useful'
+          ? 'Rated useful.'
+          : 'Rated not useful.',
+    );
   };
 
   const shownRefusal =
@@ -721,6 +810,73 @@ const ReviewProblemView = ({
                   )}
                 </div>
               ))}
+            </section>
+            <section className="flex flex-col gap-3">
+              <div
+                role="group"
+                aria-labelledby={ratingId}
+                className="flex flex-wrap items-center gap-2"
+              >
+                <span id={ratingId} className="me-1">
+                  {intl.formatMessage(messages.ratingQuestion)}
+                </span>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        size="sm"
+                        aria-label={intl.formatMessage(messages.ratingUseful)}
+                        aria-pressed={current.rating === 'useful'}
+                        icon={<ThumbsUp aria-hidden />}
+                        onClick={() => void rate('useful')}
+                      />
+                    }
+                  />
+                  <TooltipContent side="bottom">
+                    {intl.formatMessage(messages.ratingUseful)}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        size="sm"
+                        aria-label={intl.formatMessage(
+                          messages.ratingNotUseful,
+                        )}
+                        aria-pressed={current.rating === 'not_useful'}
+                        icon={<ThumbsDown aria-hidden />}
+                        onClick={() => void rate('not_useful')}
+                      />
+                    }
+                  />
+                  <TooltipContent side="bottom">
+                    {intl.formatMessage(messages.ratingNotUseful)}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              {current.rating === 'not_useful' && (
+                <div className="flex flex-col gap-2">
+                  <span id={reasonId}>
+                    {intl.formatMessage(messages.ratingReason)}
+                  </span>
+                  <RadioGroupField
+                    size="sm"
+                    aria-labelledby={reasonId}
+                    options={FEEDBACK_REASONS.map((reason) => ({
+                      value: reason,
+                      label: intl.formatMessage(reasonMessages[reason]),
+                    }))}
+                    value={current.ratingReason ?? ''}
+                    onChange={(value) => {
+                      const reason = FEEDBACK_REASONS.find(
+                        (candidate) => candidate === value,
+                      );
+                      if (reason) void rate('not_useful', reason);
+                    }}
+                  />
+                </div>
+              )}
             </section>
             {availability === 'checking' && (
               <span id={checkingId} className="sr-only" lang="en">

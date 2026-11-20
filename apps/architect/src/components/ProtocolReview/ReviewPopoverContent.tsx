@@ -1,4 +1,10 @@
-import { ArrowRight, CircleCheck, PenLine, X } from 'lucide-react';
+import {
+  ArrowRight,
+  CircleCheck,
+  MessageSquare,
+  PenLine,
+  X,
+} from 'lucide-react';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import {
@@ -10,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Badge, type BadgeTone } from '@codaco/fresco-ui/Badge';
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
@@ -24,10 +31,12 @@ import {
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   cancelReview,
+  commentOnReview,
   decideFinding,
   dismissReview,
   dismissReviewFailure,
   type FindingDisplayStatus,
+  getProtocolReviewComment,
   getProtocolReviewCounts,
   getProtocolReviewFindings,
   getProtocolReviewPhase,
@@ -39,6 +48,7 @@ import {
   type ReviewRun,
   undoFix,
 } from '~/ducks/modules/protocolReview';
+import { FEEDBACK_COMMENT_MAX_LENGTH } from '~/protocolReview/reviewFeedback';
 import { isFixedAt, type ReviewPlace } from '~/protocolReview/reviewPlace';
 import { getProtocol } from '~/selectors/protocol';
 
@@ -312,6 +322,44 @@ const messages = defineMessages({
       'The review service only accepts protocols up to a fixed size, and this one is larger. Nothing in your protocol was changed, and this attempt did not count towards your limit.',
     description: 'Text of the too-large notice.',
   },
+  commentOpen: {
+    id: 'architect.protocolReview.popover.commentOpen',
+    defaultMessage: 'Leave feedback on this review',
+    description:
+      'Button under the list of problems. It opens a box for writing feedback about the review as a whole, in the researcher’s own words. It is also the label of that box.',
+  },
+  commentChange: {
+    id: 'architect.protocolReview.popover.commentChange',
+    defaultMessage: 'Change your feedback',
+    description:
+      'Button under the list of problems, shown in place of "Leave feedback on this review" once the researcher has sent feedback. It opens what they wrote again for changing.',
+  },
+  commentHint: {
+    id: 'architect.protocolReview.popover.commentHint',
+    defaultMessage:
+      'Tell the Network Canvas team what you thought of this review. Leave out names and anything else that could identify a person.',
+    description:
+      'Explanation above the box for written feedback about the review. "Network Canvas" is a product name and is not translated.',
+  },
+  commentSend: {
+    id: 'architect.protocolReview.popover.commentSend',
+    defaultMessage: 'Send feedback',
+    description:
+      'Button that sends what the researcher wrote about the review to the Network Canvas team.',
+  },
+  commentCancel: {
+    id: 'architect.protocolReview.popover.commentCancel',
+    defaultMessage: 'Cancel',
+    description:
+      'Button that closes the box for written feedback about the review without sending what was typed.',
+  },
+  commentRefused: {
+    id: 'architect.protocolReview.popover.commentRefused',
+    defaultMessage:
+      'Your feedback could not be saved, because this protocol is open for editing in another tab. Leave feedback on the review in that tab.',
+    description:
+      'Notice when written feedback about the review was refused because another browser tab holds this protocol for editing.',
+  },
   dismissNotice: {
     id: 'architect.protocolReview.notice.dismiss',
     defaultMessage: 'Dismiss',
@@ -461,6 +509,30 @@ const ReviewPopoverContent = ({
   // The problem last shown, whose row takes focus when the list comes back.
   const returnTo = useRef<string | null>(null);
   const [dismissRefused, setDismissRefused] = useState(false);
+  const sentComment = useAppSelector(getProtocolReviewComment);
+  // What is being typed, while the comment box is open.
+  const [commentDraft, setCommentDraft] = useState<string | null>(null);
+  const [commentRefused, setCommentRefused] = useState(false);
+  // Whether the button that opens the comment box takes focus as it
+  // returns: the box it replaces has gone, and focus with it.
+  const focusCommentButton = useRef(false);
+  const commentLabelId = useId();
+  const commentHintId = useId();
+
+  const closeComment = () => {
+    focusCommentButton.current = true;
+    setCommentDraft(null);
+  };
+  const sendComment = async () => {
+    if (commentDraft === null) return;
+    const recorded = await dispatch(commentOnReview(commentDraft));
+    setCommentRefused(!recorded);
+    if (!recorded) return;
+    announce(
+      commentDraft.trim() === '' ? 'Feedback removed.' : 'Feedback sent.',
+    );
+    closeComment();
+  };
 
   const openFinding = (findingId: string) => {
     setSwitched(true);
@@ -826,6 +898,70 @@ const ReviewPopoverContent = ({
         </div>
       )}
       {body}
+      {summary && !running && (
+        <div className="border-outline flex flex-col gap-3 border-t px-6 py-4">
+          {commentRefused && (
+            <Alert variant="warning" density="compact" className="my-0">
+              <AlertDescription className="text-sm">
+                {intl.formatMessage(messages.commentRefused)}
+              </AlertDescription>
+            </Alert>
+          )}
+          {commentDraft === null ? (
+            <div>
+              <Button
+                ref={(button: HTMLButtonElement | null) => {
+                  if (button === null || !focusCommentButton.current) return;
+                  focusCommentButton.current = false;
+                  button.focus();
+                }}
+                size="sm"
+                variant="text"
+                className="-ms-3"
+                icon={<MessageSquare aria-hidden />}
+                onClick={() => setCommentDraft(sentComment)}
+              >
+                {intl.formatMessage(
+                  sentComment === ''
+                    ? messages.commentOpen
+                    : messages.commentChange,
+                )}
+              </Button>
+            </div>
+          ) : (
+            <>
+              <span id={commentLabelId} className="text-sm font-bold">
+                {intl.formatMessage(messages.commentOpen)}
+              </span>
+              <Paragraph id={commentHintId} intent="smallText" margin="none">
+                {intl.formatMessage(messages.commentHint)}
+              </Paragraph>
+              <TextAreaField
+                autoFocus
+                aria-labelledby={commentLabelId}
+                aria-describedby={commentHintId}
+                maxLength={FEEDBACK_COMMENT_MAX_LENGTH}
+                className="[&>textarea]:field-sizing-content [&>textarea]:max-h-48 [&>textarea]:min-h-20"
+                value={commentDraft}
+                onChange={(next) => setCommentDraft(next ?? '')}
+              />
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button size="sm" variant="text" onClick={closeComment}>
+                  {intl.formatMessage(messages.commentCancel)}
+                </Button>
+                <GuardedButton
+                  size="sm"
+                  color="primary"
+                  unavailable={commentDraft.trim() === sentComment}
+                  onClick={() => void sendComment()}
+                >
+                  {intl.formatMessage(messages.commentSend)}
+                </GuardedButton>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       <div className="border-outline flex flex-col gap-3 border-t px-6 py-4">
         {running ? (
           <>

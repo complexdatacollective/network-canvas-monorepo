@@ -701,6 +701,67 @@ test.describe('asking for a review', () => {
       countName(FINDINGS.length),
     );
     expect(service.bodies.map((body) => body.share)).toEqual([false, false]);
+
+    // A review that was not shared still asks for a rating and takes
+    // written feedback.
+    const popover = popoverOf(page);
+    await expect(
+      popover.getByRole('button', { name: 'Leave feedback on this review' }),
+    ).toBeVisible();
+    const title = 'Nothing answers the research question';
+    const view = await openProblem(page, popover, title);
+    await expect(
+      view.getByRole('button', { name: 'Dismiss', exact: true }),
+    ).toBeVisible();
+    await expect(
+      view.getByRole('group', {
+        name: 'Was this useful?',
+      }),
+    ).toBeVisible();
+  });
+
+  test('a shared review asks for a rating on each problem and takes written feedback', async ({
+    architectPage: page,
+    context,
+    seed,
+  }) => {
+    const { service, popover } = await reviewedProtocol(page, seed, context);
+    expect(onlyBody(service).share).toBe(true);
+
+    const title = 'Nothing answers the research question';
+    const view = await openProblem(page, popover, title);
+    const rating = view.getByRole('group', {
+      name: 'Was this useful?',
+    });
+    await rating.getByRole('button', { name: 'Not useful' }).click();
+    await expect(
+      rating.getByRole('button', { name: 'Not useful' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await view
+      .getByRole('radiogroup', { name: 'Why not? (optional)' })
+      .getByRole('radio', { name: 'It is wrong about my protocol' })
+      .click();
+    await view.getByRole('button', { name: 'Dismiss', exact: true }).click();
+    await expect(problemView(page, title)).toHaveCount(0);
+
+    // The panel moved on to the next problem; the comment is on the list.
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Back', exact: true })
+      .click();
+    const list = popoverOf(page);
+    await list
+      .getByRole('button', { name: 'Leave feedback on this review' })
+      .click();
+    const box = list.getByRole('textbox', {
+      name: 'Leave feedback on this review',
+    });
+    await expect(box).toBeFocused();
+    await box.fill('The last problem misread my research question.');
+    await list.getByRole('button', { name: 'Send feedback' }).click();
+    await expect(
+      list.getByRole('button', { name: 'Change your feedback' }),
+    ).toBeFocused();
   });
 });
 
