@@ -825,7 +825,6 @@ const ReviewProblemView = ({
                     render={
                       <IconButton
                         size="sm"
-                        variant="glass"
                         aria-label={intl.formatMessage(messages.ratingUseful)}
                         aria-pressed={current.rating === 'useful'}
                         icon={<ThumbsUp aria-hidden />}
@@ -842,7 +841,6 @@ const ReviewProblemView = ({
                     render={
                       <IconButton
                         size="sm"
-                        variant="glass"
                         aria-label={intl.formatMessage(
                           messages.ratingNotUseful,
                         )}
