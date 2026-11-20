@@ -9,6 +9,7 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -17,6 +18,7 @@ import { fixtureMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testObjectId } from '../../../testing/testObjectId.ts';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
+import { rowsOf } from '../../rowDialog.tsx';
 import MultiSelect, {
   makeMultiSelectValidation,
   type PropertyField,
@@ -530,6 +532,7 @@ describe('MultiSelect', () => {
     await waitFor(() =>
       expect(draft().sortOrder).toEqual([{ id: expect.any(String) }]),
     );
+    expect(isProtocolObjectId(rowsOf(draft().sortOrder)[0]?.id)).toBe(true);
   });
 });
 

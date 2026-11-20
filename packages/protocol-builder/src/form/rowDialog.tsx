@@ -74,7 +74,7 @@ export const rowsOf = (value: unknown): RowValues[] =>
  * moved. `ArrayField` keys its rows on it, so `editingId` survives a reorder
  * and an edit lands on the row it was made from.
  */
-export const rowId = (row: RowValues): string | undefined =>
+export const rowId = (row: Readonly<{ id?: unknown }>): string | undefined =>
   typeof row.id === 'string' && row.id.length > 0 ? row.id : undefined;
 
 /**
@@ -86,8 +86,9 @@ export const rowId = (row: RowValues): string | undefined =>
  * everything else is what the section says a new row of its list begins as.
  */
 export const rowTemplate =
-  (template?: () => Partial<RowValues>) => (): Partial<RowValues> => {
-    const row = template?.() ?? {};
+  <T extends RowValues = RowValues>(template?: () => Partial<T>) =>
+  (): Partial<T> => {
+    const row: Partial<T> = template?.() ?? {};
     return { ...row, id: rowId(row) ?? createProtocolObjectId() };
   };
 

@@ -14,10 +14,10 @@ import ArrayField, {
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { createProtocolObjectId } from '@codaco/protocol-validation';
 
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { asLocalizedString } from '../../localization/localizedText.ts';
+import { rowId, rowTemplate } from '../rowDialog.tsx';
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
 import { cellIssues, requiredCell } from './cellRules.ts';
 import { useEditedCells } from './useEditedCells.ts';
@@ -371,10 +371,7 @@ const EMPTY_ITEMS: ItemValue[] = [];
  * rules, a roster's card and sortable properties), so a row is keyed by its
  * id and a new row has one before it reaches the list.
  */
-const rowIdOf = (item: ItemValue): string | undefined =>
-  typeof item.id === 'string' ? item.id : undefined;
-
-export const newRow = (): ItemValue => ({ id: createProtocolObjectId() });
+const newRow = rowTemplate<ItemValue>();
 
 export type MultiSelectProps = Omit<
   ArrayFieldProps<ItemValue>,
@@ -450,7 +447,7 @@ export default function MultiSelect({
           onChange={onChange}
           itemComponent={MultiSelectRow}
           itemTemplate={newRow}
-          getId={rowIdOf}
+          getId={rowId}
           itemClasses="p-0! shadow-none"
           addButtonLabel={addButtonLabel}
           emptyStateMessage={

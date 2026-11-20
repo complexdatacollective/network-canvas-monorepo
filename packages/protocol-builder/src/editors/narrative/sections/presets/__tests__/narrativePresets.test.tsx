@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -140,10 +141,11 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     const rows = presetsOf(saved?.stageDocument ?? {});
     expect(rows).toHaveLength(2);
     expect(rows[1]).toEqual({
-      id: expect.any(String) as unknown as string,
+      id: rows[1]?.id,
       label: { 'en-US': 'All' },
       layoutVariable: 'layout',
     });
+    expect(isProtocolObjectId(rows[1]?.id)).toBe(true);
     expect(rows[1]?.id).not.toBe(fixturePresetIds().id);
   });
 
@@ -222,11 +224,13 @@ describe('the label of a highlighted attribute', () => {
     );
 
     const saved = await harness.submit();
-    expect(presetsOf(saved?.stageDocument ?? {})[1]).toMatchObject({
+    const added = presetsOf(saved?.stageDocument ?? {})[1];
+    expect(added).toMatchObject({
       highlight: [
         { variable: 'highlighted', label: { 'en-US': 'Close ties' } },
       ],
     });
+    expect(isProtocolObjectId(idOf(firstOf(added?.highlight)))).toBe(true);
   });
 
   it('refuses a highlighted attribute with no label', async () => {

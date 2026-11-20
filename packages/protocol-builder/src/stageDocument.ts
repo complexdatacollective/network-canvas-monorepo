@@ -92,13 +92,8 @@ class StageIdentityCommandError extends Error {
   }
 }
 
-export function createStageIdentity(
-  type: StageType,
-  createId: () => string = createProtocolObjectId,
-): StageIdentity {
-  const id = createId();
-  if (id === '') throw new Error('stage identity must be non-empty');
-  return Object.freeze({ id, type });
+export function createStageIdentity(type: StageType): StageIdentity {
+  return Object.freeze({ id: createProtocolObjectId(), type });
 }
 
 export function stageDraftFromDocument(document: SectionDoc): Readonly<{

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -267,7 +268,7 @@ describe('the rule set field', () => {
       type: 'node',
       options: { type: 'person', operator: 'EXISTS' },
     });
-    expect(saved?.rules?.[0]?.id).toEqual(expect.any(String));
+    expect(isProtocolObjectId(saved?.rules?.[0]?.id)).toBe(true);
     expect(screen.getByText('Person')).toBeInTheDocument();
     expect(screen.getByText('exists')).toBeInTheDocument();
   });

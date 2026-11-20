@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { translationText } from '../../localization/localizedText.ts';
@@ -568,7 +569,7 @@ describe('a stage the protocol does not hold yet', () => {
     expect(written).not.toBeNull();
     const order = orderOf(harness.protocolSections());
     const created = written?.stageDocument.id;
-    expect(typeof created).toBe('string');
+    expect(isProtocolObjectId(created)).toBe(true);
     expect(order[1]).toBe(created);
     expect(order.length).toBe(before.length + 1);
   });

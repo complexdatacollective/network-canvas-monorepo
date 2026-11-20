@@ -6,9 +6,9 @@ import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { createProtocolObjectId } from '@codaco/protocol-validation';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
+import { rowId, rowTemplate } from '../rowDialog.tsx';
 import Attribute, {
   assignAttributeCrossClassIssue,
   AssignAttributesContext,
@@ -164,12 +164,7 @@ export const makeAssignAttributesValidation = (
 
 const EMPTY_ATTRIBUTES: AttributeValue[] = [];
 
-const attributeRowId = (row: AttributeValue): string | undefined => row.id;
-
-/** A new row carries its id from the moment it is added. */
-export const newAttributeRow = (): AttributeValue => ({
-  id: createProtocolObjectId(),
-});
+const newAttributeRow = rowTemplate<AttributeValue>();
 const NO_COMMITTED_VARIABLES: ReadonlySet<string> = new Set();
 
 export type AssignAttributesProps = Omit<
@@ -296,7 +291,7 @@ export default function AssignAttributes({
         onChange={onChange}
         itemComponent={Attribute}
         itemTemplate={newAttributeRow}
-        getId={attributeRowId}
+        getId={rowId}
         // The row renders its own Surface, so ArrayField's wrapper stays bare
         // rather than nesting two levels of padded, shadowed surface.
         itemClasses="p-0! shadow-none bg-transparent"
