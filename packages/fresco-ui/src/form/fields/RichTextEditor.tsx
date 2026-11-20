@@ -233,6 +233,17 @@ const h2Classes = headingVariants({ level: 'h2' });
 const h3Classes = headingVariants({ level: 'h3' });
 const h4Classes = headingVariants({ level: 'h4' });
 
+// Each style as the list of text styles shows it: its name set the way a line
+// of that style is set in the text, so the list shows how large each one is.
+// Without the space a paragraph or heading keeps around it among others.
+const TEXT_STYLE_SAMPLES: Readonly<Record<string, string>> = {
+  paragraph: paragraphVariants({ margin: 'none' }),
+  h1: headingVariants({ level: 'h1', margin: 'none' }),
+  h2: headingVariants({ level: 'h2', margin: 'none' }),
+  h3: headingVariants({ level: 'h3', margin: 'none' }),
+  h4: headingVariants({ level: 'h4', margin: 'none' }),
+};
+
 /**
  * A document that is one paragraph and cannot become two.
  *
@@ -2538,7 +2549,9 @@ export default function RichTextEditorField({
                   // the list has nothing more to offer once it is made.
                   closeOnClick
                 >
-                  {style.label}
+                  <span className={TEXT_STYLE_SAMPLES[style.value]}>
+                    {style.label}
+                  </span>
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>

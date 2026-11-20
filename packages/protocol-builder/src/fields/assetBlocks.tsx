@@ -3,6 +3,7 @@ import {
   AlignLeft,
   AlignRight,
   Image as ImageIcon,
+  Trash2,
   TriangleAlert,
   Video,
   Volume2,
@@ -24,7 +25,8 @@ import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { Button } from '@codaco/fresco-ui/Button';
-import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
   assetBlockControlsAt,
@@ -34,10 +36,14 @@ import {
   type RichTextAssetBlocks,
   type RichTextAssetBlockViewProps,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import { surfaceSpacingVariants } from '@codaco/fresco-ui/layout/Surface';
 import { Popover, PopoverContent } from '@codaco/fresco-ui/Popover';
 import type { MarkdownBlockImages } from '@codaco/fresco-ui/RenderMarkdown';
-import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import SegmentedSwitcher, {
+  type SegmentedOption,
+} from '@codaco/fresco-ui/SegmentedSwitcher';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   isAssetBlockKind,
@@ -49,12 +55,12 @@ import { useResourceClient } from '../resources/client.tsx';
 import ResourceBrowserDialog from '../resources/components/ResourceBrowserDialog.tsx';
 import {
   acceptsResourceKind,
-  RESOURCE_PICKER_COPY,
   unsupportedResourceKindMessage,
 } from '../resources/components/resourceKinds.ts';
 import ResourcePreview from '../resources/components/ResourcePreview.tsx';
 import type { ResourceDescriptor } from '../resources/types.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import AssetPickerField from './AssetPickerField.tsx';
 
 // The ids these messages had as the settings of an item in a page's list of
 // blocks, before a page became one text: the words are the same, so their
@@ -76,23 +82,67 @@ const messages = defineMessages({
   imageDescriptionHint: {
     id: 'protocolBuilder.contentBlock.imageDescriptionHint',
     defaultMessage:
-      'What this image shows, read aloud to a participant who cannot see it. Leave it empty if the image is decorative.',
+      'This is read aloud to participants who use screen reader technology. Leave it blank if the image is decorative.',
     description:
       'Guidance under the description control of an image placed in the text of a page. Decorative means the picture adds nothing a participant would miss.',
   },
   audioDescriptionHint: {
     id: 'protocolBuilder.contentBlock.audioDescriptionHint',
     defaultMessage:
-      'What this recording is, read aloud in place of the file’s name to a participant using a screen reader.',
+      'This is read aloud, in place of the file’s name, to participants who use screen reader technology.',
     description:
       'Guidance under the description control of an audio recording placed in the text of a page.',
   },
   videoDescriptionHint: {
     id: 'protocolBuilder.contentBlock.videoDescriptionHint',
     defaultMessage:
-      'What this video shows, read aloud in place of the file’s name to a participant using a screen reader.',
+      'This is read aloud, in place of the file’s name, to participants who use screen reader technology.',
     description:
       'Guidance under the description control of a video placed in the text of a page.',
+  },
+  sizeLabel: {
+    id: 'protocolBuilder.assetBlock.sizeLabel',
+    defaultMessage: 'Display size',
+    description:
+      'Label of the control, in the settings of an image or video placed in the text of a page, that chooses how tall it is drawn: Full size, Small, Medium or Large.',
+  },
+  sizeHint: {
+    id: 'protocolBuilder.assetBlock.sizeHint',
+    defaultMessage:
+      'How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.',
+    description:
+      'Guidance under the Display size control of an image or video placed in the text of a page. "This" is the image or video. The handle is a small round dot at a bottom corner of the selected image or video.',
+  },
+  alignLabel: {
+    id: 'protocolBuilder.assetBlock.alignLabel',
+    defaultMessage: 'Alignment',
+    description:
+      'Label of the control, in the settings of an image, audio recording or video placed in the text of a page, that chooses where it sits across the page: where a line of text starts, in the middle, or where a line ends.',
+  },
+  imageFileLabel: {
+    id: 'protocolBuilder.assetBlock.imageFileLabel',
+    defaultMessage: 'Image',
+    description:
+      'Label of the control, in the settings of an image placed in the text of a page, that shows which image file it is and lets another be chosen in its place.',
+  },
+  audioFileLabel: {
+    id: 'protocolBuilder.assetBlock.audioFileLabel',
+    defaultMessage: 'Audio',
+    description:
+      'Label of the control, in the settings of an audio recording placed in the text of a page, that shows which audio file it is and lets another be chosen in its place.',
+  },
+  videoFileLabel: {
+    id: 'protocolBuilder.assetBlock.videoFileLabel',
+    defaultMessage: 'Video',
+    description:
+      'Label of the control, in the settings of a video placed in the text of a page, that shows which video file it is and lets another be chosen in its place.',
+  },
+  fileHint: {
+    id: 'protocolBuilder.assetBlock.fileHint',
+    defaultMessage:
+      'The file shown here. Choose another to replace it, and its settings are kept.',
+    description:
+      'Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. "Here" is this place in the text.',
   },
   sizeFull: {
     id: 'protocolBuilder.contentBlock.sizeFull',
@@ -132,9 +182,9 @@ const messages = defineMessages({
   },
   remove: {
     id: 'protocolBuilder.assetBlock.remove',
-    defaultMessage: 'Remove from the text',
+    defaultMessage: 'Delete',
     description:
-      'Button in the settings of an image, audio recording or video placed in the text of a page. It takes the file out of the text; the file itself stays in the protocol.',
+      'Button in the settings of an image, audio recording or video placed in the text of a page. It takes the image, recording or video out of the text; the file itself stays in the protocol.',
   },
 });
 
@@ -142,6 +192,12 @@ const DESCRIPTION_HINTS = {
   image: messages.imageDescriptionHint,
   audio: messages.audioDescriptionHint,
   video: messages.videoDescriptionHint,
+} as const;
+
+const FILE_LABELS = {
+  image: messages.imageFileLabel,
+  audio: messages.audioFileLabel,
+  video: messages.videoFileLabel,
 } as const;
 
 /** A file a block names, as the page it is edited on knows it. */
@@ -158,6 +214,11 @@ type AssetBlockViewSource = Readonly<{
   Preview: ComponentType<
     KnownAsset & Readonly<{ assetId: string; className?: string }>
   >;
+  /**
+   * Where a block's settings offer to replace its file. Without one, a block
+   * keeps the file it has, and is deleted to be rid of it.
+   */
+  FileField?: AssetBlockFileField;
 }>;
 
 // The heights the interview holds an image or video to at each size (see
@@ -224,6 +285,58 @@ const SIZE_LABELS = {
   large: messages.sizeLarge,
 } as const;
 
+/**
+ * A row of choices as a field's control: named by the field's label and
+ * described by its hint, which the field hands it.
+ */
+function SegmentedField({
+  id,
+  value,
+  onChange,
+  options,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+}: CreateFormFieldProps<
+  string,
+  'div',
+  { options: SegmentedOption<string>[] }
+>) {
+  return (
+    <SegmentedSwitcher<string>
+      id={id}
+      size="sm"
+      value={value ?? ''}
+      onValueChange={(next) => onChange?.(next)}
+      options={options}
+      aria-describedby={ariaDescribedBy}
+      {...(ariaLabelledBy === undefined
+        ? { 'aria-label': ariaLabel ?? '' }
+        : { 'aria-labelledby': ariaLabelledBy })}
+    />
+  );
+}
+
+/**
+ * A control that shows which file a block is and lets another be chosen in
+ * its place: a field's control, given the kind of file the block is. It
+ * answers with the id of the file chosen, or with nothing when the file is
+ * to go.
+ */
+type AssetBlockFileField = ComponentType<
+  CreateFormFieldProps<
+    string,
+    'div',
+    {
+      kind: RichTextAssetBlockKind;
+      onBrowserOpenChange?: (open: boolean) => void;
+    }
+  >
+>;
+
+const isAlign = (value: string): value is Align =>
+  value === 'start' || value === 'center' || value === 'end';
+
 function AssetBlockSettings({
   asset,
   attributes,
@@ -231,136 +344,170 @@ function AssetBlockSettings({
   update,
   remove,
   returnToText,
-  pick,
+  FileField,
+  onBrowserOpenChange,
 }: Pick<
   RichTextAssetBlockViewProps,
-  'attributes' | 'update' | 'remove' | 'returnToText' | 'pick'
+  'attributes' | 'update' | 'remove' | 'returnToText'
 > & {
   asset: KnownAsset | undefined;
+  /** Told when the file field's resource browser opens and closes. */
+  onBrowserOpenChange: (open: boolean) => void;
   /** The direction the text runs in where the block sits. */
   direction: 'ltr' | 'rtl';
+  FileField: AssetBlockFileField | undefined;
 }) {
   const intl = useAppIntl();
-  const descriptionId = useId();
-  const hintId = useId();
   const kind = asset?.kind;
   const [StartIcon, EndIcon] =
     direction === 'rtl' ? [AlignRight, AlignLeft] : [AlignLeft, AlignRight];
 
+  // Each field is wrapped, so that each is the last in its parent: a field
+  // otherwise keeps a wide space under itself. These keep the closer one
+  // between them instead, so that the whole of them fits beside the block in
+  // an ordinary window.
   return (
-    <div className="flex w-[27rem] max-w-full flex-col gap-3">
+    <div className="flex w-[42rem] max-w-full flex-col gap-4">
       {kind !== undefined && (
-        <div className="flex flex-col gap-1">
-          <label htmlFor={descriptionId} className="text-sm font-bold">
-            {intl.formatMessage(messages.descriptionLabel)}
-          </label>
-          <InputField
-            id={descriptionId}
-            name={descriptionId}
+        <div>
+          <UnconnectedField
+            name="description"
+            component={InputField}
+            label={intl.formatMessage(messages.descriptionLabel)}
+            hint={intl.formatMessage(DESCRIPTION_HINTS[kind])}
             size="sm"
-            aria-describedby={hintId}
             value={attributes.description}
             onChange={(description) =>
               update({ description: description ?? '' })
             }
           />
-          <Paragraph id={hintId} intent="smallText" margin="none">
-            {intl.formatMessage(DESCRIPTION_HINTS[kind])}
-          </Paragraph>
         </div>
       )}
-      {kind !== undefined && (
-        <div className="flex flex-wrap items-center gap-2">
-          {kind !== 'audio' && (
-            <SegmentedSwitcher<SizeChoice>
-              size="sm"
-              aria-label="Display size"
-              value={attributes.size ?? 'full'}
-              onValueChange={(choice) => {
-                if (!isSizeChoice(choice)) return;
-                update({ size: choice === 'full' ? null : choice });
-              }}
-              options={SIZE_CHOICES.map((value) => ({
-                value,
-                label: intl.formatMessage(SIZE_LABELS[value]),
-              }))}
-            />
-          )}
-          {canBePlaced(kind, attributes.size) && (
-            <SegmentedSwitcher<Align>
-              size="sm"
-              aria-label="Alignment"
-              value={attributes.align}
-              onValueChange={(align) => update({ align })}
-              options={[
-                {
-                  value: 'start',
-                  icon: StartIcon,
-                  label: (
-                    <span className="sr-only" lang="en">
-                      {'Align to the start'}
-                    </span>
-                  ),
-                },
-                {
-                  value: 'center',
-                  icon: AlignCenter,
-                  label: (
-                    <span className="sr-only" lang="en">
-                      {'Align to the center'}
-                    </span>
-                  ),
-                },
-                {
-                  value: 'end',
-                  icon: EndIcon,
-                  label: (
-                    <span className="sr-only" lang="en">
-                      {'Align to the end'}
-                    </span>
-                  ),
-                },
-              ]}
-            />
-          )}
-        </div>
-      )}
+      {kind !== undefined &&
+        (kind !== 'audio' || canBePlaced(kind, attributes.size)) && (
+          // How large and where, side by side, their controls on one line;
+          // one under the other where a language's words leave no room.
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+            {kind !== 'audio' && (
+              <div className="flex-1">
+                <UnconnectedField
+                  name="size"
+                  component={SegmentedField}
+                  label={intl.formatMessage(messages.sizeLabel)}
+                  hint={intl.formatMessage(messages.sizeHint)}
+                  value={attributes.size ?? 'full'}
+                  onChange={(choice) => {
+                    if (choice === undefined || !isSizeChoice(choice)) return;
+                    update({ size: choice === 'full' ? null : choice });
+                  }}
+                  options={SIZE_CHOICES.map((value) => ({
+                    value,
+                    label: intl.formatMessage(SIZE_LABELS[value]),
+                  }))}
+                />
+              </div>
+            )}
+            {canBePlaced(kind, attributes.size) && (
+              <div className="flex-none">
+                <UnconnectedField
+                  name="align"
+                  component={SegmentedField}
+                  label={intl.formatMessage(messages.alignLabel)}
+                  value={attributes.align}
+                  onChange={(align) => {
+                    if (align !== undefined && isAlign(align))
+                      update({ align });
+                  }}
+                  options={[
+                    {
+                      value: 'start',
+                      icon: StartIcon,
+                      label: (
+                        <span className="sr-only" lang="en">
+                          {'Align to the start'}
+                        </span>
+                      ),
+                    },
+                    {
+                      value: 'center',
+                      icon: AlignCenter,
+                      label: (
+                        <span className="sr-only" lang="en">
+                          {'Align to the center'}
+                        </span>
+                      ),
+                    },
+                    {
+                      value: 'end',
+                      icon: EndIcon,
+                      label: (
+                        <span className="sr-only" lang="en">
+                          {'Align to the end'}
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            )}
+          </div>
+        )}
       {(kind === 'audio' || kind === 'video') && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
+        <div className="grid grid-cols-2 gap-x-6">
+          <div>
+            <UnconnectedField
+              name="autoplay"
+              component={ToggleField}
+              label={intl.formatMessage(messages.autoplay)}
               value={attributes.autoplay}
               onChange={(autoplay) => update({ autoplay: autoplay === true })}
             />
-            {intl.formatMessage(messages.autoplay)}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
+          </div>
+          <div>
+            <UnconnectedField
+              name="loop"
+              component={ToggleField}
+              label={intl.formatMessage(messages.loop)}
               value={attributes.loop}
               onChange={(loop) => update({ loop: loop === true })}
             />
-            {intl.formatMessage(messages.loop)}
-          </label>
+          </div>
         </div>
       )}
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {pick !== undefined && kind !== undefined && (
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => {
-              void (async () => {
-                const assetId = await pick(kind);
-                if (assetId !== undefined) update({ assetId });
-                // The browser took focus, and these controls went with it.
+      {/* The file, and Delete on the line of its button: the last line of
+          them, which takes the block away, file and all. */}
+      <div className="flex flex-wrap items-end justify-end gap-x-3 gap-y-4">
+        {kind !== undefined && FileField !== undefined && (
+          <div className="min-w-0 flex-1 basis-80">
+            <UnconnectedField
+              name="file"
+              component={FileField}
+              label={intl.formatMessage(FILE_LABELS[kind])}
+              hint={intl.formatMessage(messages.fileHint)}
+              kind={kind}
+              onBrowserOpenChange={onBrowserOpenChange}
+              value={attributes.assetId}
+              onChange={(assetId) => {
+                // A block is its file: one whose file is taken away goes too.
+                if (assetId === undefined || assetId === '') {
+                  remove();
+                  return;
+                }
+                if (assetId !== attributes.assetId) update({ assetId });
+                // The browser took focus, and these controls went with it: the
+                // block is drawn again for its new file.
                 returnToText();
-              })();
-            }}
-          >
-            {intl.formatMessage(RESOURCE_PICKER_COPY[kind].changeAction)}
-          </Button>
+              }}
+            />
+          </div>
         )}
-        <Button type="button" size="sm" color="destructive" onClick={remove}>
+        <Button
+          type="button"
+          size="sm"
+          color="destructive"
+          icon={<Trash2 aria-hidden />}
+          onClick={remove}
+        >
           {intl.formatMessage(messages.remove)}
         </Button>
       </div>
@@ -502,13 +649,40 @@ export const sizeNearest = (
 };
 
 /**
- * The corner of a picture, dragged to change the size the picture is drawn
- * at. The size follows the pointer from one of the sizes on offer to the
- * next, and is the block's once the corner is let go.
+ * How tall a picture is wanted, once its corner has been dragged by `across`
+ * and `down` from where it was `tall`. A picture keeps its shape, so a move
+ * either way says the same thing: the one that says the most is taken, which
+ * lets the corner be pulled along either side of the picture as well as from
+ * corner to corner.
+ */
+export const heightDraggedTo = (
+  tall: number,
+  moved: Readonly<{ across: number; down: number }>,
+  ratio: number,
+): number => {
+  const fromWidth = moved.across / ratio;
+  return (
+    tall + (Math.abs(fromWidth) > Math.abs(moved.down) ? fromWidth : moved.down)
+  );
+};
+
+/**
+ * The corner of a block's box, dragged to change the size its picture is
+ * drawn at. The size goes from one of the sizes on offer to the next as the
+ * pointer moves, and is the block's once the corner is let go.
+ *
+ * At a bottom corner of the box, where it is whatever size the picture has
+ * within it, and on the side the picture grows towards: a picture held against
+ * the right of its box grows to the left.
  *
  * For a pointer only, and hidden from a screen reader: the same sizes are
  * offered, to the keyboard too, among the block's settings.
  */
+// Where the corner's middle goes, out from the box: on the line the editor
+// outlines a selected block with, which is drawn 4px outside it and 2px wide
+// (`outline-offset-4 outline-2` on the block), less half the 24px corner.
+const CORNER_OFFSET = -(4 + 2 / 2 + 24 / 2);
+
 function ResizeCorner({
   boxRef,
   drawn,
@@ -524,30 +698,32 @@ function ResizeCorner({
 }) {
   const intl = useAppIntl();
   const probeRef = useRef<HTMLSpanElement>(null);
-  const [dragging, setDragging] = useState(false);
-  // The corner that moves as the picture grows: a picture against the right
-  // edge of its box grows to the left.
+  // Where the pointer took hold, and how tall the picture was then.
+  const [held, setHeld] = useState<
+    Readonly<{ x: number; y: number; tall: number }> | undefined
+  >(undefined);
   const onLeft = drawn.across === 1;
 
   const sizeAt = (clientX: number, clientY: number): SizeChoice => {
     const box = boxRef.current;
     const probe = probeRef.current;
-    if (box === null || probe === null) return size;
-    const outer = box.getBoundingClientRect();
-    const full = outer.width / drawn.ratio;
+    if (box === null || probe === null || held === undefined) return size;
+    const full = box.getBoundingClientRect().width / drawn.ratio;
     // What each size holds a picture to, read from the classes that hold it.
     const heights = SIZES.map((choice): [Size, number] => {
       probe.className = cx('invisible absolute size-0', SIZE_CLASSES[choice]);
-      const held = Number.parseFloat(getComputedStyle(probe).maxHeight);
-      return [choice, Number.isFinite(held) ? Math.min(held, full) : full];
+      const limit = Number.parseFloat(getComputedStyle(probe).maxHeight);
+      return [choice, Number.isFinite(limit) ? Math.min(limit, full) : full];
     });
-    // As tall as the pointer is below the picture's top, and as wide as it is
-    // from the side of the picture that stays where it is.
-    const across = Math.abs(
-      clientX - (outer.left + outer.width * drawn.across),
+    const wanted = heightDraggedTo(
+      held.tall,
+      {
+        // Away from the side the picture is held against is larger.
+        across: (clientX - held.x) * (onLeft ? -1 : 1),
+        down: clientY - held.y,
+      },
+      drawn.ratio,
     );
-    const wide = drawn.across === 0.5 ? across * 2 : across;
-    const wanted = (clientY - (outer.top + drawn.top) + wide / drawn.ratio) / 2;
     return sizeNearest(wanted, [...heights, ['full', full]]);
   };
 
@@ -560,15 +736,19 @@ function ResizeCorner({
         data-asset-block-resize=""
         // 24px to take hold of, around the 16px that is drawn.
         className={cx(
-          'pointer-events-auto absolute -bottom-3 size-6 touch-none',
+          'pointer-events-auto absolute size-6 touch-none',
           'before:bg-primary before:border-surface-1 before:absolute before:inset-1 before:rounded-full before:border-2',
           onLeft ? 'cursor-nesw-resize' : 'cursor-nwse-resize',
         )}
         // Where the picture is drawn is measured from the left of its box,
-        // whichever way the text runs, so its corner is placed from the left
+        // whichever way the text runs, so the corner is placed from the left
         // or the right too: a side named for where a line starts would be the
         // other one in right-to-left text.
-        style={onLeft ? { left: -12 } : { right: -12 }}
+        style={
+          onLeft
+            ? { left: CORNER_OFFSET, bottom: CORNER_OFFSET }
+            : { right: CORNER_OFFSET, bottom: CORNER_OFFSET }
+        }
         // A press here is not one on the block, which would start moving it.
         onMouseDown={(event) => event.preventDefault()}
         onDragStart={(event) => event.preventDefault()}
@@ -576,28 +756,30 @@ function ResizeCorner({
           if (event.button !== 0) return;
           event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
-          setDragging(true);
+          setHeld({ x: event.clientX, y: event.clientY, tall: drawn.height });
           onDrag(size);
         }}
         onPointerMove={(event) => {
-          if (dragging) onDrag(sizeAt(event.clientX, event.clientY));
+          if (held !== undefined) onDrag(sizeAt(event.clientX, event.clientY));
         }}
         onPointerUp={(event) => {
-          if (!dragging) return;
-          setDragging(false);
+          if (held === undefined) return;
+          setHeld(undefined);
           onDrop(sizeAt(event.clientX, event.clientY));
         }}
         onLostPointerCapture={() => {
-          if (!dragging) return;
-          setDragging(false);
+          if (held === undefined) return;
+          setHeld(undefined);
           onDrag(undefined);
         }}
       />
-      {dragging && (
+      {held !== undefined && (
         <span
-          className="bg-primary text-primary-contrast absolute -bottom-9 rounded-sm px-2 py-0.5 text-xs font-bold whitespace-nowrap"
-          // On the corner's side, by the same measure.
-          style={onLeft ? { left: 0 } : { right: 0 }}
+          className="bg-primary text-primary-contrast elevation-low absolute bottom-3 rounded-sm px-2 py-0.5 text-xs font-bold whitespace-nowrap"
+          // Inside the box, by the corner, where it covers the picture or
+          // the empty side of its box and never the text after it. On the
+          // corner's side, by the same measure.
+          style={onLeft ? { left: 12 } : { right: 12 }}
         >
           {intl.formatMessage(SIZE_LABELS[size])}
         </span>
@@ -606,17 +788,144 @@ function ResizeCorner({
   );
 }
 
-const SETTINGS_COLLISIONS = {
-  side: 'flip',
-  align: 'shift',
-  fallbackAxisSide: 'none',
-} as const;
-
 // The settings stay open for as long as the block is selected, so they keep
-// clear of the top and bottom of the window: that is where a page keeps the
-// bars a researcher still needs while they are open (its title, and the one
-// that saves the stage), and a popup at the window's edge would cover them.
-const SETTINGS_CLEARANCE = { top: 96, bottom: 96 } as const;
+// clear of the top and bottom of the page the block scrolls in: that is where
+// a page keeps the bars a researcher still needs while they are open (its
+// title, and the one that saves the stage), and a popup at the edge would
+// cover them. Architect's are 88 pixels down from the top of its page and 82
+// up from the bottom; each is kept clear by 8 more.
+const SETTINGS_CLEARANCE = { top: 96, bottom: 90 } as const;
+
+// How far the settings stand from the file: the popover's own distance.
+const SETTINGS_OFFSET = 10;
+
+/**
+ * What the page a block is in scrolls inside: the nearest box around it that
+ * scrolls, or nothing where the window itself does. Below whatever an app
+ * shows above its pages, such as a banner, so the settings keep inside it.
+ */
+const scrollerOf = (element: Element): Element | undefined => {
+  for (
+    let at = element.parentElement;
+    at !== null && at !== element.ownerDocument.body;
+    at = at.parentElement
+  ) {
+    if (/auto|scroll/.test(getComputedStyle(at).overflowY)) return at;
+  }
+  return undefined;
+};
+
+/** The part of the window `scroller` shows, or the whole window. */
+const roomIn = (scroller: Element | undefined) => {
+  const box = scroller?.getBoundingClientRect();
+  return {
+    top: Math.max(box?.top ?? 0, 0),
+    bottom: Math.min(box?.bottom ?? window.innerHeight, window.innerHeight),
+  };
+};
+
+/**
+ * Which side of the file its settings stand on, and whether they may cover
+ * part of it to be seen whole.
+ */
+type SettingsPlacement = Readonly<{
+  side: 'top' | 'bottom';
+  overlaps: boolean;
+}>;
+
+/**
+ * Under the file where the whole of its settings fits there, over it where
+ * they fit there instead. Where they fit on neither side, on the side with
+ * more room, moved over the file as far as they must be to be seen whole:
+ * covering some of the file the researcher has just selected is better than
+ * settings that have to be scrolled to be read. Never beside it, where they
+ * would cover whatever the page has there.
+ *
+ * `room` is the part of the window the page is seen in, `tall` how tall the
+ * whole of the settings is.
+ */
+export const settingsPlacement = (
+  file: Readonly<{ top: number; bottom: number }>,
+  tall: number,
+  room: Readonly<{ top: number; bottom: number }>,
+): SettingsPlacement => {
+  const below =
+    room.bottom - SETTINGS_CLEARANCE.bottom - file.bottom - SETTINGS_OFFSET;
+  const above = file.top - room.top - SETTINGS_CLEARANCE.top - SETTINGS_OFFSET;
+  if (below >= tall) return { side: 'bottom', overlaps: false };
+  if (above >= tall) return { side: 'top', overlaps: false };
+  return { side: below >= above ? 'bottom' : 'top', overlaps: true };
+};
+
+const samePlacement = (one: SettingsPlacement, other: SettingsPlacement) =>
+  one.side === other.side && one.overlaps === other.overlaps;
+
+/**
+ * Where a block's settings stand (`settingsPlacement`), kept up while they
+ * are open as the page scrolls, the window changes size and the settings
+ * change height. `panel` is what scrolls inside them, whose full height is
+ * theirs; `scroller` what the page scrolls in.
+ */
+function useSettingsPlacement(
+  open: boolean,
+  anchorRef: RefObject<HTMLElement | null>,
+  panel: HTMLElement | null,
+  scroller: Element | undefined,
+): SettingsPlacement {
+  const [placement, setPlacement] = useState<SettingsPlacement>({
+    side: 'bottom',
+    overlaps: false,
+  });
+  useLayoutEffect(() => {
+    if (!open || panel === null) return undefined;
+    let frame: number | undefined;
+    const measure = () => {
+      frame = undefined;
+      const anchor = anchorRef.current;
+      if (anchor === null) return;
+      // What the settings hold, and the border of the popup around them.
+      const border = 2;
+      const next = settingsPlacement(
+        anchor.getBoundingClientRect(),
+        panel.scrollHeight + border,
+        roomIn(scroller),
+      );
+      setPlacement((current) =>
+        samePlacement(current, next) ? current : next,
+      );
+    };
+    const schedule = () => {
+      frame ??= requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener('scroll', schedule, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener('resize', schedule);
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(schedule);
+    for (const child of panel.children) observer?.observe(child);
+    if (anchorRef.current !== null) observer?.observe(anchorRef.current);
+    if (scroller !== undefined) observer?.observe(scroller);
+    return () => {
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule, { capture: true });
+      window.removeEventListener('resize', schedule);
+      observer?.disconnect();
+    };
+  }, [open, anchorRef, panel, scroller]);
+  return placement;
+}
+
+// On the side chosen for them, moved along the line of the page to stay in
+// the window; and, where they must cover the file, moved over it.
+const SETTINGS_COLLISIONS = {
+  beside: { side: 'none', align: 'shift', fallbackAxisSide: 'none' },
+  over: { side: 'shift', align: 'shift', fallbackAxisSide: 'none' },
+} as const;
 
 const SETTINGS_NAMES = {
   image: 'Image settings',
@@ -639,6 +948,7 @@ const SETTINGS_NAMES = {
 export const createAssetBlockView = ({
   useAsset,
   Preview,
+  FileField,
 }: AssetBlockViewSource): ComponentType<RichTextAssetBlockViewProps> =>
   function AssetBlockView({
     attributes,
@@ -648,7 +958,6 @@ export const createAssetBlockView = ({
     update,
     remove,
     returnToText,
-    pick,
   }) {
     const intl = useAppIntl();
     const asset = useAsset(attributes.assetId);
@@ -665,6 +974,11 @@ export const createAssetBlockView = ({
     const [direction, setDirection] = useState(appDirection);
     // The size the corner is being dragged to, while it is being dragged.
     const [dragged, setDragged] = useState<SizeChoice | undefined>(undefined);
+    // Whether the file field's resource browser is open. The settings stand
+    // on a layer above every dialog, so they are hidden while it is, or they
+    // would cover the files to choose from. Hidden, not closed: the browser
+    // belongs to the field inside them, and goes when they are taken away.
+    const [browsing, setBrowsing] = useState(false);
     const size =
       dragged === undefined
         ? attributes.size
@@ -673,12 +987,28 @@ export const createAssetBlockView = ({
           : dragged;
     const working = selected && editable;
     const showsSettings = working && active && dragged === undefined;
-    // Read as the settings are about to show, where it may since have changed.
+    // What the page scrolls in, which the settings keep inside.
+    const [scroller, setScroller] = useState<Element | undefined>(undefined);
+    // Both read as the settings are about to show, where they may since have
+    // changed.
     useLayoutEffect(() => {
       if (showsSettings && boxRef.current !== null) {
         setDirection(directionAt(boxRef.current));
+        setScroller(scrollerOf(boxRef.current));
       }
     }, [showsSettings]);
+    // What the settings stand beside: the file where it is drawn, or the
+    // block's box until it is.
+    const anchorRef = drawn === undefined ? boxRef : fileRef;
+    // What scrolls inside the settings, should the window be too short for
+    // them: its full height is theirs.
+    const [panel, setPanel] = useState<HTMLElement | null>(null);
+    const placement = useSettingsPlacement(
+      showsSettings && !browsing,
+      anchorRef,
+      panel,
+      scroller,
+    );
 
     return (
       <>
@@ -717,8 +1047,8 @@ export const createAssetBlockView = ({
             />
           )}
           {drawn !== undefined && (
-            // Where the file is drawn, for what belongs to the file rather
-            // than to the box: its corner, and its settings.
+            // Where the file is drawn, which is what its settings stand
+            // beside: a small picture in a wide box has them under itself.
             <div
               ref={fileRef}
               className="pointer-events-none absolute"
@@ -728,21 +1058,20 @@ export const createAssetBlockView = ({
                 width: drawn.width,
                 height: drawn.height,
               }}
-            >
-              {working && hasRatio(drawn) && (
-                <ResizeCorner
-                  boxRef={boxRef}
-                  drawn={drawn}
-                  size={size ?? 'full'}
-                  onDrag={setDragged}
-                  onDrop={(dropped) => {
-                    setDragged(undefined);
-                    const next = dropped === 'full' ? null : dropped;
-                    if (next !== attributes.size) update({ size: next });
-                  }}
-                />
-              )}
-            </div>
+            />
+          )}
+          {drawn !== undefined && working && hasRatio(drawn) && (
+            <ResizeCorner
+              boxRef={boxRef}
+              drawn={drawn}
+              size={size ?? 'full'}
+              onDrag={setDragged}
+              onDrop={(dropped) => {
+                setDragged(undefined);
+                const next = dropped === 'full' ? null : dropped;
+                if (next !== attributes.size) update({ size: next });
+              }}
+            />
           )}
         </div>
         <Popover
@@ -755,32 +1084,62 @@ export const createAssetBlockView = ({
         >
           <PopoverContent
             id={settingsId}
-            anchor={drawn === undefined ? boxRef : fileRef}
-            side="bottom"
-            // Under the file, or over it: never beside it, where it would
-            // cover whatever the page has there.
-            collisionAvoidance={SETTINGS_COLLISIONS}
+            anchor={anchorRef}
+            side={placement.side}
+            sideOffset={SETTINGS_OFFSET}
+            collisionAvoidance={
+              placement.overlaps
+                ? SETTINGS_COLLISIONS.over
+                : SETTINGS_COLLISIONS.beside
+            }
             collisionPadding={SETTINGS_CLEARANCE}
+            {...(scroller === undefined ? {} : { collisionBoundary: scroller })}
             aria-labelledby={settingsNameId}
             // The caret stays on the block until Enter takes it in here, and
             // is the text's again when these go.
             initialFocus={false}
             finalFocus={false}
+            // No taller than the room left clear of the window's edges, and
+            // scrolled within, so that every setting can be reached in a
+            // short window.
+            spacing="none"
+            className={cx(
+              'max-h-(--available-height) flex-col',
+              browsing ? 'hidden' : 'flex',
+            )}
+            // Over the file, an arrow would point at what they cover.
+            showArrow={!browsing && !placement.overlaps}
           >
             <span id={settingsNameId} className="sr-only" lang="en">
               {asset === undefined
                 ? 'Block settings'
                 : SETTINGS_NAMES[asset.kind]}
             </span>
-            <AssetBlockSettings
-              asset={asset}
-              attributes={attributes}
-              direction={direction}
-              update={update}
-              remove={remove}
-              returnToText={returnToText}
-              pick={pick}
-            />
+            <ScrollArea
+              ref={setPanel}
+              className="min-h-0"
+              // Not a stop of its own: every setting in it can be reached, and
+              // is scrolled to as it is. A region that scrolled would otherwise
+              // be the first control Enter on the block goes to.
+              tabIndex={-1}
+              // A control scrolled to as it takes focus comes clear of the
+              // edge it was hidden behind, and of the fade drawn there.
+              viewportClassName={cx(
+                surfaceSpacingVariants({ spacing: 'sm' }),
+                'scroll-py-6',
+              )}
+            >
+              <AssetBlockSettings
+                asset={asset}
+                attributes={attributes}
+                direction={direction}
+                update={update}
+                remove={remove}
+                returnToText={returnToText}
+                FileField={FileField}
+                onBrowserOpenChange={setBrowsing}
+              />
+            </ScrollArea>
           </PopoverContent>
         </Popover>
       </>
@@ -853,8 +1212,19 @@ const useStageAsset = (assetId: string): KnownAsset | undefined => {
   return { kind: asset.type, name: asset.name };
 };
 
+/**
+ * The resource picker, as the settings of a block in a stage editor offer it:
+ * without its own discard, since the settings delete the block, and on one
+ * line, without a second drawing of the file, which the block draws just
+ * above.
+ */
+const StageAssetBlockFileField: AssetBlockFileField = (props) => (
+  <AssetPickerField {...props} discardable={false} compact />
+);
+
 /** A block in a stage editor, drawn from the resources of the open edit. */
 const StageAssetBlockView = createAssetBlockView({
+  FileField: StageAssetBlockFileField,
   useAsset: useStageAsset,
   Preview: ({ assetId, kind, name, className }) => (
     <ResourcePreview

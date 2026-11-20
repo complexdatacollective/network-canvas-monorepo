@@ -35,7 +35,9 @@ type StagePreset =
   /** A roster name generator, whose data source is a network resource. */
   | 'roster'
   /** A sociogram whose background is a picture drawn behind the nodes. */
-  | 'canvas-background';
+  | 'canvas-background'
+  /** The welcome image, on one line, as dense settings show a file. */
+  | 'compact';
 
 type StageScenario = Readonly<{ stage: StoryStage; children: ReactNode }>;
 
@@ -155,6 +157,28 @@ const STAGE_SCENARIOS: Readonly<
         label="Background image"
         kind="image"
         canvasBackgroundPreview
+      />
+    ),
+  }),
+  'compact': (holding) => ({
+    stage: {
+      stageId: 'sociogram-1',
+      type: 'Sociogram',
+      fields: {
+        label: 'Sociogram',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'prompt-1', text: 'Place the people you know' }],
+        background: { image: holding ?? '' },
+      },
+    },
+    children: (
+      <Field
+        component={AssetPickerField}
+        name="background.image"
+        nameMode="path"
+        label="Welcome image"
+        kind="image"
+        compact
       />
     ),
   }),
@@ -307,6 +331,29 @@ export const Chosen: Story = {
     );
     await expect(buttonPaint(browse).background).not.toBe(TRANSPARENT);
     await expect(browse.querySelector('svg')).not.toBeNull();
+  },
+};
+
+/**
+ * On one line, for a field among dense settings beside the resource itself
+ * (an image placed in a text): the resource's name, marked with its kind, and
+ * a quieter button to change it. No picture and no card.
+ */
+export const Compact: Story = {
+  args: { stage: 'compact', holding: IMAGE_RESOURCE.id },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const field = within(
+      await canvas.findByRole('group', { name: 'Welcome image' }),
+    );
+    await expect(await field.findByText(IMAGE_RESOURCE.name)).toBeVisible();
+    await expect(field.queryByRole('img')).toBeNull();
+    await userEvent.click(
+      field.getByRole('button', { name: 'Change the image' }),
+    );
+    await expect(
+      await screen.findByRole('dialog', { name: 'Choose an image' }),
+    ).toBeVisible();
   },
 };
 

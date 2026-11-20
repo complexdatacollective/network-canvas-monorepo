@@ -1406,3 +1406,144 @@ export const WithAssetBlocks: Story = {
     );
   },
 };
+
+/**
+ * The list of text styles, open: each style's name is set the way a line of
+ * that style is, so the list shows how large each is before it is chosen.
+ * The control that opens it keeps to the toolbar's size.
+ */
+export const TextStyleMenu: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<JSONContent | undefined>({
+      type: 'doc',
+      content: [1, 2, 3, 4].map((level) => ({
+        type: 'heading',
+        attrs: { level },
+        content: [{ type: 'text', text: `Heading ${level}` }],
+      })),
+    });
+    return (
+      <div className="w-[48rem]">
+        <RichTextEditorField
+          {...args}
+          aria-label="Page content"
+          changeMode="input"
+          value={value}
+          onChange={setValue}
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    await userEvent.click(within(editor).getByText('Heading 2'));
+    const trigger = await canvas.findByRole('button', {
+      name: 'Text style: Heading 2',
+    });
+    const triggerHeight = trigger.getBoundingClientRect().height;
+
+    await userEvent.click(trigger);
+    await body.findByRole('menu');
+    const font = (element: Element) => {
+      const style = getComputedStyle(element);
+      return `${style.fontFamily} ${style.fontWeight} ${style.fontSize}`;
+    };
+    // The name is the item's last child, after the tick every item has.
+    const nameIn = (name: string) => {
+      const label = body.getByRole('menuitemradio', { name }).lastElementChild;
+      if (label === null) throw new Error(`No name in the ${name} item`);
+      return label;
+    };
+    // Each heading's name in the list is set as that heading is in the text.
+    for (const level of [1, 2, 3, 4]) {
+      const line = editor.querySelector(`h${level}`);
+      if (line === null) throw new Error(`No heading ${level} in the text`);
+      await expect(font(nameIn(`Heading ${level}`))).toBe(font(line));
+      // And the item is tall enough to hold it.
+      const item = body.getByRole('menuitemradio', {
+        name: `Heading ${level}`,
+      });
+      await expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
+    }
+    // Largest first, down to the paragraph.
+    const sizes = [
+      'Heading 1',
+      'Heading 2',
+      'Heading 3',
+      'Heading 4',
+      'Paragraph',
+    ].map((name) => Number.parseFloat(getComputedStyle(nameIn(name)).fontSize));
+    await expect(sizes.toSorted((a, b) => b - a)).toEqual(sizes);
+    await expect(new Set(sizes).size).toBe(sizes.length);
+    // The control keeps the toolbar's size whatever the line's style is.
+    await expect(trigger.getBoundingClientRect().height).toBe(triggerHeight);
+  },
+};
+
+/**
+ * Text selected across a block: the block is covered in the colour of the
+ * selected text around it, as it is copied, cut or typed over with it. A
+ * block selected by itself is outlined instead (`WithAssetBlocks`).
+ */
+export const SelectionAcrossAnAssetBlock: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<JSONContent | undefined>({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Before the picture' }],
+        },
+        { type: 'assetBlock', attrs: { assetId: 'image-1' } },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'After the picture' }],
+        },
+      ],
+    });
+    return (
+      <div className="w-[48rem]">
+        <RichTextEditorField
+          {...args}
+          aria-label="Page content"
+          changeMode="input"
+          assetBlocks={storyAssetBlocks}
+          value={value}
+          onChange={setValue}
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    const summary = await canvas.findByTestId('asset-block-summary');
+    const block = summary.closest('[data-asset-block]');
+    if (block === null) throw new Error('No block around the view');
+
+    // A caret is no selection.
+    await userEvent.click(within(editor).getByText('After the picture'));
+    await expect(block).not.toHaveAttribute('data-in-selected-text');
+
+    // Everything, with the platform's select-all: the block goes with the
+    // text, and is covered as the text is.
+    await userEvent.keyboard(withMod('a'));
+    await waitFor(() => expect(block).toHaveAttribute('data-in-selected-text'));
+    // Part of the selection, not the selection itself: no outline.
+    await expect(block).not.toHaveAttribute('data-selected');
+    await expect(getComputedStyle(block, '::after').content).not.toBe('none');
+
+    // Collapsed again, to the end of the text, it is not.
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() =>
+      expect(block).not.toHaveAttribute('data-in-selected-text'),
+    );
+    await expect(getComputedStyle(block, '::after').content).toBe('none');
+
+    // And left selected, to be seen.
+    await userEvent.keyboard(withMod('a'));
+    await waitFor(() => expect(block).toHaveAttribute('data-in-selected-text'));
+  },
+};

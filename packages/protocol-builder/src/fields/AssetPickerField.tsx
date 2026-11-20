@@ -27,6 +27,7 @@ import ResourceCard from '../resources/components/ResourceCard.tsx';
 import ResourceFailureNotice from '../resources/components/ResourceFailureNotice.tsx';
 import {
   acceptsResourceKind,
+  RESOURCE_KIND_ICONS,
   RESOURCE_PICKER_COPY,
   unsupportedResourceKindMessage,
   type ResourcePickerKind,
@@ -158,6 +159,27 @@ export type AssetPickerFieldProps = CreateFormFieldProps<
      * a white card tells them nothing about how much of it the canvas keeps.
      */
     canvasBackgroundPreview?: boolean;
+    /**
+     * Offers to discard a file imported since the stage was opened. Off where
+     * the field sits beside its own way of taking the file away, such as the
+     * settings of an image placed in a text, which delete the image: two
+     * destructive buttons side by side would leave the researcher to work out
+     * which one keeps the file.
+     */
+    discardable?: boolean;
+    /**
+     * One line: the resource's name, marked with its kind, and a button to
+     * change it, in place of a card with a picture over its details and a
+     * large button under it. For a field among dense settings beside the
+     * resource itself, such as those of an image placed in a text, where the
+     * picture is drawn just above and the card would only make them longer.
+     */
+    compact?: boolean;
+    /**
+     * Told when the resource browser opens and closes. For a field drawn in
+     * a popup, which would otherwise stand over the browser it opened.
+     */
+    onBrowserOpenChange?: (open: boolean) => void;
   }
 >;
 
@@ -181,6 +203,9 @@ export default function AssetPickerField({
   kind,
   canUseExisting = false,
   canvasBackgroundPreview = false,
+  discardable = true,
+  compact = false,
+  onBrowserOpenChange,
   disabled = false,
   readOnly = false,
   className,
@@ -194,7 +219,11 @@ export default function AssetPickerField({
   const intl = useAppIntl();
   const action = useResourceAttempt();
   const referenceCount = useStageResourceUsage();
-  const [browserOpen, setBrowserOpen] = useState(false);
+  const [browserOpen, setBrowserOpenState] = useState(false);
+  const setBrowserOpen = (open: boolean) => {
+    setBrowserOpenState(open);
+    onBrowserOpenChange?.(open);
+  };
   /**
    * What was announced last. English in every language, because it is read
    * only by a screen reader.
@@ -226,6 +255,8 @@ export default function AssetPickerField({
   const { inspection, busy, failure, retry } =
     useResourceInspection(selectedId);
   const descriptor: ResourceDescriptor | undefined = inspection?.descriptor;
+  const KindIcon =
+    descriptor === undefined ? undefined : RESOURCE_KIND_ICONS[descriptor.kind];
   const locked = disabled || readOnly;
   /**
    * Whether another resource may be chosen right now.
@@ -392,17 +423,75 @@ export default function AssetPickerField({
       {showPicker && (
         <div
           className={cx(
-            pickerChromeVariants({
-              state: getInputState({
-                disabled,
-                readOnly,
-                'aria-invalid': ariaInvalid,
-              }),
-            }),
-            'mt-3 flex w-full min-w-0 flex-col items-start overflow-visible whitespace-normal',
+            compact
+              ? 'flex w-full min-w-0 flex-col gap-2'
+              : [
+                  pickerChromeVariants({
+                    state: getInputState({
+                      disabled,
+                      readOnly,
+                      'aria-invalid': ariaInvalid,
+                    }),
+                  }),
+                  'mt-3 flex w-full min-w-0 flex-col items-start overflow-visible whitespace-normal',
+                ],
           )}
         >
-          {selectedId === undefined && (
+          {compact && (
+            <div className="flex w-full min-w-0 items-center gap-3">
+              {descriptor === undefined ? (
+                <Paragraph
+                  margin="none"
+                  emphasis="muted"
+                  className="min-w-0 flex-1"
+                >
+                  {selectedId === undefined
+                    ? intl.formatMessage(messages.noSelection)
+                    : null}
+                </Paragraph>
+              ) : (
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  {KindIcon !== undefined && (
+                    <KindIcon aria-hidden className="size-4 flex-none" />
+                  )}
+                  {/* A name the researcher or their files gave: read in its
+                      own direction, on the interface's side. */}
+                  <span
+                    dir="auto"
+                    className="text-match-parent min-w-0 truncate font-semibold"
+                  >
+                    {Redacted.value(descriptor.name)}
+                  </span>
+                </span>
+              )}
+              {discardable && descriptor?.status === 'staged' && (
+                <Button
+                  type="button"
+                  size="sm"
+                  color="destructive"
+                  disabled={locked || action.busy}
+                  onClick={handleDiscard}
+                >
+                  {intl.formatMessage(messages.discard)}
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                className="flex-none"
+                disabled={!canBrowse}
+                onClick={() => setBrowserOpen(true)}
+              >
+                {intl.formatMessage(
+                  selectedId === undefined
+                    ? copy.selectAction
+                    : copy.changeAction,
+                )}
+              </Button>
+            </div>
+          )}
+
+          {!compact && selectedId === undefined && (
             <Paragraph margin="none" emphasis="muted">
               {intl.formatMessage(messages.noSelection)}
             </Paragraph>
@@ -439,7 +528,7 @@ export default function AssetPickerField({
               </div>
             )}
 
-          {inspection !== undefined && descriptor !== undefined && (
+          {!compact && inspection !== undefined && descriptor !== undefined && (
             /*
               Nothing on the card manages the resource: saving a copy and
               deleting one are the resource library's own actions. The
@@ -450,7 +539,7 @@ export default function AssetPickerField({
             <ResourceCard
               inspection={inspection}
               previewShape={canvasBackgroundPreview ? 'canvas' : 'thumbnail'}
-              {...(descriptor.status === 'staged'
+              {...(discardable && descriptor.status === 'staged'
                 ? {
                     actions: (
                       <Button
@@ -501,18 +590,22 @@ export default function AssetPickerField({
             />
           )}
 
-          <Button
-            type="button"
-            color="primary"
-            className="self-start"
-            icon={<Plus aria-hidden="true" />}
-            disabled={!canBrowse}
-            onClick={() => setBrowserOpen(true)}
-          >
-            {intl.formatMessage(
-              selectedId === undefined ? copy.selectAction : copy.changeAction,
-            )}
-          </Button>
+          {!compact && (
+            <Button
+              type="button"
+              color="primary"
+              className="self-start"
+              icon={<Plus aria-hidden="true" />}
+              disabled={!canBrowse}
+              onClick={() => setBrowserOpen(true)}
+            >
+              {intl.formatMessage(
+                selectedId === undefined
+                  ? copy.selectAction
+                  : copy.changeAction,
+              )}
+            </Button>
+          )}
         </div>
       )}
 

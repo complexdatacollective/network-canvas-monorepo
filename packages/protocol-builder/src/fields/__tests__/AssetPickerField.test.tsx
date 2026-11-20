@@ -266,6 +266,40 @@ describe('AssetPickerField', () => {
     expect(preview.tagName).toBe('AUDIO');
   });
 
+  it('shows a compact field as one line: the name, and a button to change it', async () => {
+    const user = userEvent.setup();
+    const { fieldValue } = renderResourceEditor({
+      resources: [imageSeed, secondImageSeed],
+      fields: withBackgroundImage('image-1'),
+      children: (
+        <Field
+          component={AssetPickerField}
+          name="backgroundImage"
+          label="Background image"
+          kind="image"
+          compact
+        />
+      ),
+    });
+
+    const group = await screen.findByRole('group', {
+      name: 'Background image',
+    });
+    expect(await within(group).findByText('Neighbourhood photo')).toBeVisible();
+    // No picture, no card: the name is all that is drawn of the resource.
+    expect(within(group).queryByRole('img')).toBeNull();
+    expect(within(group).queryByRole('article')).toBeNull();
+    // The button is the same one, and changes the resource the same way.
+    await user.click(
+      within(group).getByRole('button', { name: 'Change the image' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Community centre' }),
+    );
+    await waitFor(() => expect(fieldValue('backgroundImage')).toBe('image-2'));
+    expect(await within(group).findByText('Community centre')).toBeVisible();
+  });
+
   it('offers every stored resource to an untyped file field', async () => {
     const user = userEvent.setup();
     const { fieldValue } = renderResourceEditor({

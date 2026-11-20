@@ -257,6 +257,15 @@ type PopoverContentProps = Omit<
     typeof BasePopover.Positioner
   >['collisionPadding'];
   /**
+   * The box the popup keeps inside, with `collisionPadding` measured from its
+   * edges. The window unless given: a popup over a page that scrolls inside
+   * an app's own frame keeps inside that frame, below whatever the app shows
+   * above it.
+   */
+  collisionBoundary?: ComponentProps<
+    typeof BasePopover.Positioner
+  >['collisionBoundary'];
+  /**
    * Padding around the content. The default suits prose and forms; a popup
    * that holds a list of options takes `xs`, as menus and comboboxes do.
    */
@@ -274,6 +283,7 @@ function PopoverContent({
   anchor,
   collisionAvoidance,
   collisionPadding,
+  collisionBoundary,
   spacing = 'md',
   ...props
 }: PopoverContentProps) {
@@ -297,6 +307,7 @@ function PopoverContent({
             {...(anchor ? { anchor } : {})}
             {...(collisionAvoidance ? { collisionAvoidance } : {})}
             {...(collisionPadding === undefined ? {} : { collisionPadding })}
+            {...(collisionBoundary === undefined ? {} : { collisionBoundary })}
           >
             <BasePopover.Popup
               render={

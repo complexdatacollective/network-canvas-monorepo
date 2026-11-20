@@ -7,6 +7,7 @@ import {
   PluginKey,
   TextSelection,
 } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
@@ -185,9 +186,16 @@ const isAssetBlock = (node: unknown): boolean =>
   'name' in node.type &&
   node.type.name === ASSET_BLOCK_NODE;
 
+// Marks a block that a selection of text runs across (see the plugin below).
+const IN_SELECTED_TEXT = { inSelectedText: true } as const;
+
+const isInSelectedText = (decorations: readonly { spec: unknown }[]) =>
+  decorations.some((decoration) => decoration.spec === IN_SELECTED_TEXT);
+
 function AssetBlockView({
   node,
   selected,
+  decorations,
   editor,
   getPos,
   updateAttributes,
@@ -197,6 +205,10 @@ function AssetBlockView({
   const editable = useContext(AssetBlocksEditableContext);
   const active = useContext(AssetBlocksActiveContext);
   const attributes = attributesOf(node.attrs);
+  // Only while the field has focus: a selection the field has lost is not
+  // what the keys act on, and the page may by then have selected something
+  // else, which the editor does not hear of.
+  const inSelectedText = active && isInSelectedText(decorations);
 
   return (
     <NodeViewWrapper
@@ -204,9 +216,17 @@ function AssetBlockView({
       contentEditable={false}
       data-asset-block=""
       data-selected={selected || undefined}
+      data-in-selected-text={inSelectedText || undefined}
       className={cx(
-        'my-4 rounded-sm outline-offset-4',
+        // Nothing in a block is text to select. A browser that reads words
+        // out of a picture (Safari does) would otherwise let them be
+        // selected in it, as if the page held them.
+        'relative my-4 rounded-sm outline-offset-4 select-none',
         selected && 'outline-primary outline-2',
+        // Part of a selection of text, it is covered in the colour selected
+        // text is: the browser draws that over words, and not over a block.
+        inSelectedText &&
+          'after:pointer-events-none after:absolute after:inset-0 after:rounded-sm after:bg-[Highlight] after:opacity-40',
       )}
     >
       {blocks === null ? null : (
@@ -349,6 +369,33 @@ export const AssetBlockNode = TiptapNode.create({
       new Plugin({
         key: new PluginKey('assetBlockTyping'),
         props: {
+          // A selection of text that runs across a block takes the block
+          // with it (copied, cut, typed over), so the block is marked as
+          // the text is. A block selected by itself is outlined instead.
+          decorations: ({ doc, selection }) => {
+            if (selection.empty || selection instanceof NodeSelection) {
+              return null;
+            }
+            const marked: Decoration[] = [];
+            doc.nodesBetween(selection.from, selection.to, (node, position) => {
+              if (!isAssetBlock(node)) return true;
+              if (
+                position >= selection.from &&
+                position + node.nodeSize <= selection.to
+              ) {
+                marked.push(
+                  Decoration.node(
+                    position,
+                    position + node.nodeSize,
+                    {},
+                    IN_SELECTED_TEXT,
+                  ),
+                );
+              }
+              return false;
+            });
+            return DecorationSet.create(doc, marked);
+          },
           // Text typed over a selection replaces it, and a selected block is
           // a selection: a field that opens with its caret at the end of
           // text ending in a block would lose the block to the first key
@@ -380,6 +427,24 @@ export const AssetBlockNode = TiptapNode.create({
     return ReactNodeViewRenderer(AssetBlockView, {
       stopEvent: ({ event }) => isInControls(event),
       ignoreMutation: () => true,
+      // Left to itself, a view whose node is unchanged is not drawn again
+      // when only its decorations change, and a selection moving across a
+      // block changes nothing else about it.
+      update: ({
+        oldNode,
+        newNode,
+        oldDecorations,
+        newDecorations,
+        updateProps,
+      }) => {
+        if (
+          newNode !== oldNode ||
+          isInSelectedText(newDecorations) !== isInSelectedText(oldDecorations)
+        ) {
+          updateProps();
+        }
+        return true;
+      },
     });
   },
 });

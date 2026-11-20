@@ -1,14 +1,20 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type {
   RichTextAssetBlockKind,
   RichTextAssetBlockViewProps,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 
-import { createAssetBlockView, sizeNearest } from '../assetBlocks.tsx';
+import {
+  createAssetBlockView,
+  heightDraggedTo,
+  settingsPlacement,
+  sizeNearest,
+} from '../assetBlocks.tsx';
 
 const UNUSABLE =
   'This block’s resource is not in this protocol, or is not something a page can show.';
@@ -27,11 +33,51 @@ const attributes = (
   ...changes,
 });
 
+const IMAGE_DESCRIPTION_HINT =
+  'This is read aloud to participants who use screen reader technology. Leave it blank if the image is decorative.';
+const SIZE_HINT =
+  'How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.';
+const FILE_HINT =
+  'The file shown here. Choose another to replace it, and its settings are kept.';
+
+/**
+ * A stand-in for the resource picker: a field's control that says which file
+ * it holds, and answers with another, or with none.
+ */
+const FileField = ({
+  id,
+  kind,
+  value,
+  onChange,
+  'aria-labelledby': labelledBy,
+  'aria-describedby': describedBy,
+}: CreateFormFieldProps<string, 'div', { kind: RichTextAssetBlockKind }>) => (
+  <div
+    role="group"
+    id={id}
+    aria-labelledby={labelledBy}
+    aria-describedby={describedBy}
+    data-kind={kind}
+    data-value={value}
+  >
+    <button type="button" onClick={() => onChange?.('a2')}>
+      Choose another
+    </button>
+    <button type="button" onClick={() => onChange?.(value)}>
+      Choose the same
+    </button>
+    <button type="button" onClick={() => onChange?.(undefined)}>
+      Let it go
+    </button>
+  </div>
+);
+
 const setup = ({
   kind = 'image',
   known,
   pick,
   textDirection,
+  withFileField = false,
   ...props
 }: {
   kind?: RichTextAssetBlockKind;
@@ -40,6 +86,8 @@ const setup = ({
   /** `null`: the protocol holds no such file. */
   known?: Known | null;
   pick?: RichTextAssetBlockViewProps['pick'];
+  /** Whether the page offers a way to replace a block's file. */
+  withFileField?: boolean;
 } & Partial<RichTextAssetBlockViewProps> = {}) => {
   const found: Known =
     known === undefined
@@ -55,6 +103,7 @@ const setup = ({
         className={className}
       />
     ),
+    ...(withFileField && { FileField }),
   });
   const update = vi.fn<RichTextAssetBlockViewProps['update']>();
   const remove = vi.fn<RichTextAssetBlockViewProps['remove']>();
@@ -85,6 +134,8 @@ const setup = ({
 
 const sizeButton = (name: string) => screen.getByRole('button', { name });
 const description = () => screen.queryByRole('textbox');
+const deleteButton = () => screen.queryByRole('button', { name: 'Delete' });
+const fileField = (name: string) => screen.queryByRole('group', { name });
 
 describe('the settings of a block', () => {
   it.each([
@@ -94,9 +145,7 @@ describe('the settings of a block', () => {
   ])('are not shown when the block is %s', (_kind, props) => {
     setup(props);
     expect(description()).toBeNull();
-    expect(
-      screen.queryByRole('button', { name: 'Remove from the text' }),
-    ).toBeNull();
+    expect(deleteButton()).toBeNull();
     // The file itself is still drawn.
     expect(screen.getByTestId('preview')).toBeInTheDocument();
   });
@@ -104,9 +153,7 @@ describe('the settings of a block', () => {
   it('are shown when the block is selected and can be edited', () => {
     setup();
     expect(description()).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Remove from the text' }),
-    ).toBeInTheDocument();
+    expect(deleteButton()).toBeInTheDocument();
   });
 
   it.each([
@@ -146,7 +193,28 @@ describe('the settings of a block', () => {
       setup({ kind: 'image' });
       expect(description()).toHaveAccessibleName('Description');
       expect(sizeButton('Full size')).toBeInTheDocument();
-      expect(screen.queryByRole('checkbox')).toBeNull();
+      expect(screen.queryByRole('switch')).toBeNull();
+    });
+
+    it('labels each setting, and says what the description and size are for', () => {
+      setup({ kind: 'image', attributes: attributes({ size: 'small' }) });
+      // Shown, as a form's fields are, and not only read out (the popup
+      // fades in, which jsdom never finishes: the story looks at it drawn).
+      const shown = (text: string) =>
+        expect(screen.getByText(text)).not.toHaveClass('sr-only');
+      shown('Description');
+      shown(IMAGE_DESCRIPTION_HINT);
+      shown('Display size');
+      shown(SIZE_HINT);
+      shown('Alignment');
+      expect(description()).toHaveAccessibleDescription(IMAGE_DESCRIPTION_HINT);
+      const size = screen.getByRole('group', { name: 'Display size' });
+      expect(size).toHaveAccessibleDescription(SIZE_HINT);
+      expect(size).toContainElement(sizeButton('Small'));
+      const align = screen.getByRole('group', { name: 'Alignment' });
+      expect(align).toContainElement(
+        screen.getByRole('button', { name: 'Align to the end' }),
+      );
     });
 
     it('offers alignment only once a size is set', () => {
@@ -169,10 +237,10 @@ describe('the settings of a block', () => {
       setup({ kind: 'video' });
       expect(sizeButton('Full size')).toBeInTheDocument();
       expect(
-        screen.getByRole('checkbox', { name: 'Start playing automatically' }),
+        screen.getByRole('switch', { name: 'Start playing automatically' }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('checkbox', { name: 'Repeat when it ends' }),
+        screen.getByRole('switch', { name: 'Repeat when it ends' }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: 'Align to the end' }),
@@ -187,9 +255,10 @@ describe('the settings of a block', () => {
         screen.getByRole('button', { name: 'Align to the end' }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('checkbox', { name: 'Start playing automatically' }),
+        screen.getByRole('switch', { name: 'Start playing automatically' }),
       ).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Full size' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Display size' })).toBeNull();
     });
   });
 
@@ -227,11 +296,11 @@ describe('the settings of a block', () => {
     it('updates autoplay and loop', async () => {
       const { user, update } = setup({ kind: 'video' });
       await user.click(
-        screen.getByRole('checkbox', { name: 'Start playing automatically' }),
+        screen.getByRole('switch', { name: 'Start playing automatically' }),
       );
       expect(update).toHaveBeenLastCalledWith({ autoplay: false });
       await user.click(
-        screen.getByRole('checkbox', { name: 'Repeat when it ends' }),
+        screen.getByRole('switch', { name: 'Repeat when it ends' }),
       );
       expect(update).toHaveBeenLastCalledWith({ loop: false });
     });
@@ -242,66 +311,69 @@ describe('the settings of a block', () => {
         attributes: attributes({ autoplay: false, loop: true }),
       });
       expect(
-        screen.getByRole('checkbox', { name: 'Start playing automatically' }),
+        screen.getByRole('switch', { name: 'Start playing automatically' }),
       ).not.toBeChecked();
       expect(
-        screen.getByRole('checkbox', { name: 'Repeat when it ends' }),
+        screen.getByRole('switch', { name: 'Repeat when it ends' }),
       ).toBeChecked();
     });
 
     it('removes the block', async () => {
       const { user, remove, update } = setup();
-      await user.click(
-        screen.getByRole('button', { name: 'Remove from the text' }),
-      );
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
       expect(remove).toHaveBeenCalledTimes(1);
       expect(update).not.toHaveBeenCalled();
     });
 
-    it('changes the file to the one chosen, of the same kind', async () => {
-      const pick = vi.fn(() => Promise.resolve('a2'));
-      const { user, update } = setup({ kind: 'video', pick });
-      await user.click(
-        screen.getByRole('button', { name: 'Change the video' }),
-      );
-      expect(pick).toHaveBeenCalledExactlyOnceWith('video');
-      await waitFor(() => {
-        expect(update).toHaveBeenCalledWith({ assetId: 'a2' });
-      });
+    it('offers the file as a field of its own, named for its kind', () => {
+      setup({ kind: 'video', withFileField: true });
+      const field = fileField('Video');
+      expect(field).toHaveAccessibleDescription(FILE_HINT);
+      expect(field).toHaveAttribute('data-kind', 'video');
+      expect(field).toHaveAttribute('data-value', 'a1');
+      expect(
+        screen.getByRole('dialog', { name: 'Video settings' }),
+      ).toContainElement(field);
     });
 
-    it('goes back to the block once the choosing is over, whatever was chosen', async () => {
-      for (const chosen of ['a2', undefined]) {
-        const pick = vi.fn(() => Promise.resolve(chosen));
-        const { user, returnToText } = setup({ pick });
-        await user.click(
-          screen.getByRole('button', { name: 'Change the image' }),
-        );
-        await waitFor(() => {
-          expect(returnToText).toHaveBeenCalledTimes(1);
-        });
-        cleanup();
-      }
+    it('replaces the file with the one chosen, and goes back to the block', async () => {
+      const { user, update, remove, returnToText } = setup({
+        withFileField: true,
+      });
+      await user.click(screen.getByRole('button', { name: 'Choose another' }));
+      // Only the file: the block's other settings are its own.
+      expect(update).toHaveBeenCalledExactlyOnceWith({ assetId: 'a2' });
+      expect(returnToText).toHaveBeenCalledTimes(1);
+      expect(remove).not.toHaveBeenCalled();
     });
 
-    it('leaves the file alone when none is chosen', async () => {
-      const pick = vi.fn(() => Promise.resolve(undefined));
-      const { user, update } = setup({ pick });
-      await user.click(
-        screen.getByRole('button', { name: 'Change the image' }),
-      );
-      await waitFor(() => {
-        expect(pick).toHaveBeenCalled();
-      });
-      await act(() => Promise.resolve());
+    it('changes nothing when the same file is chosen again', async () => {
+      const { user, update, returnToText } = setup({ withFileField: true });
+      await user.click(screen.getByRole('button', { name: 'Choose the same' }));
+      expect(update).not.toHaveBeenCalled();
+      expect(returnToText).toHaveBeenCalledTimes(1);
+    });
+
+    it('deletes the block when its file is let go', async () => {
+      const { user, update, remove } = setup({ withFileField: true });
+      await user.click(screen.getByRole('button', { name: 'Let it go' }));
+      expect(remove).toHaveBeenCalledTimes(1);
       expect(update).not.toHaveBeenCalled();
     });
 
-    it('offers no change without a way to choose', () => {
-      setup();
+    it('offers no way to replace the file where the page has none', () => {
+      // A way to choose a file for a new block is not one to replace a file.
+      setup({ pick: vi.fn(() => Promise.resolve('a2')) });
+      expect(fileField('Image')).toBeNull();
       expect(
         screen.queryByRole('button', { name: 'Change the image' }),
       ).toBeNull();
+      expect(deleteButton()).toBeInTheDocument();
+    });
+
+    it('offers no file field for a file it cannot show', () => {
+      setup({ known: null, withFileField: true });
+      expect(screen.queryByRole('group')).toBeNull();
     });
 
     it('returns to the text on Escape from a control', async () => {
@@ -351,9 +423,7 @@ describe('the drawing of a block', () => {
   it('offers only removal for a file it cannot show', () => {
     setup({ known: null });
     expect(description()).toBeNull();
-    expect(
-      screen.getByRole('button', { name: 'Remove from the text' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button')).toHaveAccessibleName('Delete');
   });
 });
 
@@ -420,5 +490,81 @@ describe('the size a picture is dragged to', () => {
     ] as const;
     expect(sizeNearest(300, small)).toBe('full');
     expect(sizeNearest(200, small)).toBe('small');
+  });
+});
+
+describe('the height a picture’s corner is dragged to', () => {
+  // A picture twice as wide as it is tall, 100 pixels tall when taken hold of.
+  const RATIO = 2;
+
+  it('is the height it was until the corner moves', () => {
+    expect(heightDraggedTo(100, { across: 0, down: 0 }, RATIO)).toBe(100);
+  });
+
+  it('follows the corner down, or up', () => {
+    expect(heightDraggedTo(100, { across: 0, down: 40 }, RATIO)).toBe(140);
+    expect(heightDraggedTo(100, { across: 0, down: -40 }, RATIO)).toBe(60);
+  });
+
+  it('follows the corner across as the picture’s shape has it', () => {
+    // 80 pixels wider is 40 pixels taller, at twice as wide as tall.
+    expect(heightDraggedTo(100, { across: 80, down: 0 }, RATIO)).toBe(140);
+    expect(heightDraggedTo(100, { across: -80, down: 0 }, RATIO)).toBe(60);
+  });
+
+  it('takes the move that says the most', () => {
+    // Down by 10 says 110; across by 80 says 140.
+    expect(heightDraggedTo(100, { across: 80, down: 10 }, RATIO)).toBe(140);
+    // Across by 10 says 105; down by 50 says 150.
+    expect(heightDraggedTo(100, { across: 10, down: 50 }, RATIO)).toBe(150);
+    // Shrinking counts as much as growing: up by 30 says 70.
+    expect(heightDraggedTo(100, { across: 20, down: -30 }, RATIO)).toBe(70);
+  });
+});
+
+describe('where a block’s settings stand', () => {
+  // A page seen in the whole of a window 1000 pixels tall keeps 96 clear at
+  // the top and 90 at the bottom, and the settings stand 10 from the file.
+  const WINDOW = { top: 0, bottom: 1000 };
+
+  it('stand under the file where they fit there', () => {
+    expect(settingsPlacement({ top: 110, bottom: 302 }, 450, WINDOW)).toEqual({
+      side: 'bottom',
+      overlaps: false,
+    });
+  });
+
+  it('stand over the file where they fit only there', () => {
+    expect(settingsPlacement({ top: 700, bottom: 892 }, 450, WINDOW)).toEqual({
+      side: 'top',
+      overlaps: false,
+    });
+  });
+
+  it('cover the file from the side with more room where they fit on neither', () => {
+    // 304 under the file, 298 over it.
+    expect(settingsPlacement({ top: 404, bottom: 596 }, 450, WINDOW)).toEqual({
+      side: 'bottom',
+      overlaps: true,
+    });
+    // 244 under it, 358 over it.
+    expect(settingsPlacement({ top: 464, bottom: 656 }, 450, WINDOW)).toEqual({
+      side: 'top',
+      overlaps: true,
+    });
+  });
+
+  it('measure the room from where the page is seen, below a banner over it', () => {
+    // Over the file there would be 594 in the whole window, and is 524 in a
+    // page seen from 70 pixels down.
+    expect(
+      settingsPlacement({ top: 700, bottom: 892 }, 550, WINDOW).overlaps,
+    ).toBe(false);
+    expect(
+      settingsPlacement({ top: 700, bottom: 892 }, 550, {
+        top: 70,
+        bottom: 1000,
+      }).overlaps,
+    ).toBe(true);
   });
 });

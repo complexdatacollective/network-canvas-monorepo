@@ -11,6 +11,8 @@ import { type ComponentProps, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { describe, expect, it, vi } from 'vitest';
 
+import { headingVariants } from '../../../typography/Heading';
+import { paragraphVariants } from '../../../typography/Paragraph';
 import {
   assetBlockControlsAt,
   assetBlockControlsProps,
@@ -306,6 +308,28 @@ describe('the text style of a line', () => {
     expect(
       styles.filter((style) => style.getAttribute('aria-checked') === 'true'),
     ).toEqual([screen.getByRole('menuitemradio', { name: 'Heading 2' })]);
+  });
+
+  it('sets each style’s name in that style, as a line of it is set without its spacing', async () => {
+    const field = renderField({ value: doc(paragraph('Hello')) });
+    await field.editor();
+
+    await field.user.click(textStyle());
+    await screen.findAllByRole('menuitemradio');
+    // The name is the item's last child: the tick before it is the same in
+    // every item.
+    const nameOf = (name: string) =>
+      screen.getByRole('menuitemradio', { name }).lastElementChild;
+    expect(nameOf('Paragraph')).toHaveClass(
+      paragraphVariants({ margin: 'none' }),
+      { exact: true },
+    );
+    for (const level of [1, 2, 3, 4] as const) {
+      expect(nameOf(`Heading ${level}`)).toHaveClass(
+        headingVariants({ level: `h${level}`, margin: 'none' }),
+        { exact: true },
+      );
+    }
   });
 
   it('changes the line to the style chosen, and puts the caret back in it', async () => {
@@ -777,6 +801,74 @@ describe('typing where a block is', () => {
       type: 'assetBlock',
       attrs: { assetId: 'a1' },
     });
+  });
+});
+
+describe('a block in a selection of text', () => {
+  // The element the field draws around the consumer's view.
+  const blockElement = () =>
+    screen.getByTestId('view').closest('[data-asset-block]');
+
+  it('is marked as selected text when a selection runs across it', async () => {
+    const field = renderField({
+      value: doc(
+        paragraph('Before'),
+        block({ assetId: 'a1' }),
+        paragraph('After'),
+      ),
+    });
+    const editor = await field.editor();
+    await field.user.click(within(editor).getByText('After'));
+    expect(blockElement()).not.toHaveAttribute('data-in-selected-text');
+
+    await field.user.keyboard('{Control>}a{/Control}');
+    await waitFor(() => {
+      expect(blockElement()).toHaveAttribute('data-in-selected-text');
+    });
+    // The block is part of a selection, not the selection itself.
+    expect(screen.getByTestId('view')).toHaveAttribute(
+      'data-selected',
+      'false',
+    );
+  });
+
+  it('is not marked once focus leaves the field', async () => {
+    const field = renderField({
+      value: doc(
+        paragraph('Before'),
+        block({ assetId: 'a1' }),
+        paragraph('After'),
+      ),
+    });
+    const editor = await field.editor();
+    render(<button type="button">Elsewhere</button>);
+    await field.user.click(within(editor).getByText('After'));
+    await field.user.keyboard('{Control>}a{/Control}');
+    await waitFor(() => {
+      expect(blockElement()).toHaveAttribute('data-in-selected-text');
+    });
+
+    await field.user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await waitFor(() => {
+      expect(blockElement()).not.toHaveAttribute('data-in-selected-text');
+    });
+  });
+
+  it('is outlined, not marked, when it is the selection by itself', async () => {
+    // Nothing but a block, so the field can only open with it selected.
+    const field = renderField({
+      autoFocus: true,
+      value: doc(block({ assetId: 'a1' })),
+    });
+    await field.editor();
+    await waitFor(() => {
+      expect(screen.getByTestId('view')).toHaveAttribute(
+        'data-selected',
+        'true',
+      );
+    });
+    expect(blockElement()).toHaveAttribute('data-selected');
+    expect(blockElement()).not.toHaveAttribute('data-in-selected-text');
   });
 });
 

@@ -191,17 +191,45 @@
     "defaultMessage": "Required",
     "description": "Shown under one cell of a row in an editable list when the researcher has left it empty. Terse because it sits inside a row of a table-like list rather than under a full-width field."
   },
+  "protocolBuilder.assetBlock.alignLabel": {
+    "defaultMessage": "Alignment",
+    "description": "Label of the control, in the settings of an image, audio recording or video placed in the text of a page, that chooses where it sits across the page: where a line of text starts, in the middle, or where a line ends."
+  },
+  "protocolBuilder.assetBlock.audioFileLabel": {
+    "defaultMessage": "Audio",
+    "description": "Label of the control, in the settings of an audio recording placed in the text of a page, that shows which audio file it is and lets another be chosen in its place."
+  },
   "protocolBuilder.assetBlock.autoplay": {
     "defaultMessage": "Start playing automatically",
     "description": "Label of a checkbox in the settings of an audio recording or video placed in the text of a page participants read. When ticked, the recording starts by itself as the participant reaches the page; when clear, the participant starts it."
+  },
+  "protocolBuilder.assetBlock.fileHint": {
+    "defaultMessage": "The file shown here. Choose another to replace it, and its settings are kept.",
+    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text."
+  },
+  "protocolBuilder.assetBlock.imageFileLabel": {
+    "defaultMessage": "Image",
+    "description": "Label of the control, in the settings of an image placed in the text of a page, that shows which image file it is and lets another be chosen in its place."
   },
   "protocolBuilder.assetBlock.loop": {
     "defaultMessage": "Repeat when it ends",
     "description": "Label of a checkbox in the settings of an audio recording or video placed in the text of a page participants read. When ticked, the recording starts again from the beginning each time it finishes."
   },
   "protocolBuilder.assetBlock.remove": {
-    "defaultMessage": "Remove from the text",
-    "description": "Button in the settings of an image, audio recording or video placed in the text of a page. It takes the file out of the text; the file itself stays in the protocol."
+    "defaultMessage": "Delete",
+    "description": "Button in the settings of an image, audio recording or video placed in the text of a page. It takes the image, recording or video out of the text; the file itself stays in the protocol."
+  },
+  "protocolBuilder.assetBlock.sizeHint": {
+    "defaultMessage": "How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.",
+    "description": "Guidance under the Display size control of an image or video placed in the text of a page. \"This\" is the image or video. The handle is a small round dot at a bottom corner of the selected image or video."
+  },
+  "protocolBuilder.assetBlock.sizeLabel": {
+    "defaultMessage": "Display size",
+    "description": "Label of the control, in the settings of an image or video placed in the text of a page, that chooses how tall it is drawn: Full size, Small, Medium or Large."
+  },
+  "protocolBuilder.assetBlock.videoFileLabel": {
+    "defaultMessage": "Video",
+    "description": "Label of the control, in the settings of a video placed in the text of a page, that shows which video file it is and lets another be chosen in its place."
   },
   "protocolBuilder.assignAttributes.addButton": {
     "defaultMessage": "Add new attribute to assign",
@@ -1352,7 +1380,7 @@
     "description": "Button that saves the rules of an “If” in a piece of text and closes the dialog."
   },
   "protocolBuilder.contentBlock.audioDescriptionHint": {
-    "defaultMessage": "What this recording is, read aloud in place of the file’s name to a participant using a screen reader.",
+    "defaultMessage": "This is read aloud, in place of the file’s name, to participants who use screen reader technology.",
     "description": "Guidance under the description control of an audio recording placed in the text of a page."
   },
   "protocolBuilder.contentBlock.descriptionLabel": {
@@ -1360,7 +1388,7 @@
     "description": "Label of the control, in the settings of an image, audio recording or video placed in the text of a page, holding the words that stand in for the file for a participant who cannot see or hear it."
   },
   "protocolBuilder.contentBlock.imageDescriptionHint": {
-    "defaultMessage": "What this image shows, read aloud to a participant who cannot see it. Leave it empty if the image is decorative.",
+    "defaultMessage": "This is read aloud to participants who use screen reader technology. Leave it blank if the image is decorative.",
     "description": "Guidance under the description control of an image placed in the text of a page. Decorative means the picture adds nothing a participant would miss."
   },
   "protocolBuilder.contentBlock.previewUnusable": {
@@ -1384,7 +1412,7 @@
     "description": "Choice offered for how tall a picture or video on a page is drawn."
   },
   "protocolBuilder.contentBlock.videoDescriptionHint": {
-    "defaultMessage": "What this video shows, read aloud in place of the file’s name to a participant using a screen reader.",
+    "defaultMessage": "This is read aloud, in place of the file’s name, to participants who use screen reader technology.",
     "description": "Guidance under the description control of a video placed in the text of a page."
   },
   "protocolBuilder.customShapes.addShape": {

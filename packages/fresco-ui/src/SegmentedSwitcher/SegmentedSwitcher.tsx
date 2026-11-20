@@ -29,9 +29,15 @@ export type SegmentedSwitcherProps<T extends string> = {
    * with a thicker border.
    */
   'variant'?: 'outline' | 'glass';
-  'aria-label': string;
   'className'?: string;
-};
+  /** For a switcher that is a field's control, which the field names. */
+  'id'?: string;
+  'aria-describedby'?: string;
+} & (
+  | { 'aria-label': string; 'aria-labelledby'?: undefined }
+  // Named by an element on the page, such as its field's label.
+  | { 'aria-label'?: undefined; 'aria-labelledby': string }
+);
 
 // The outer track height is pinned to the matching Button height at each size
 // token (sm h-10=40, md h-12=48, lg h-16=64, xl h-20=80) via `trackHeightClass`
@@ -87,6 +93,9 @@ export default function SegmentedSwitcher<T extends string>({
   size = 'md',
   variant = 'outline',
   'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  id,
   className,
 }: SegmentedSwitcherProps<T>) {
   const layoutId = useId();
@@ -106,7 +115,10 @@ export default function SegmentedSwitcher<T extends string>({
       )}
     >
       <ToggleGroup
+        id={id}
         aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
         value={[value]}
         multiple={false}
         onValueChange={(next) => {
