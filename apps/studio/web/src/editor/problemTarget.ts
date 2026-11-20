@@ -37,8 +37,8 @@ export type ProblemTarget =
  * A path that names no screen of this protocol, or none at all, is about the
  * interview as a whole and is the outline's to answer for.
  *
- * `objectId` is the object the problem is about (see `objectId` on
- * `validateProtocol`'s issues), kept for a problem on a screen so that the row
+ * `objectId` is the object the problem is about (see
+ * `withEnclosingObjectIds`), kept for a problem on a screen so that the row
  * drawing that object can be found wherever the list has put it.
  */
 export function locateProblem(

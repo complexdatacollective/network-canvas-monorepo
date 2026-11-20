@@ -414,10 +414,10 @@ export {
   type ProtocolObjectKind,
 } from './schemas/9/protocol-object-id.ts';
 export {
+  collectProtocolObjectIdsFromSchema,
   DUPLICATE_OBJECT_ID,
-  type DuplicateProtocolObjectId,
-  enclosingProtocolObjectIdsIn,
-  type ProtocolObjectIdLocation,
+  enclosingProtocolObjects,
+  withEnclosingObjectIds,
 } from './utils/protocolObjectIds.ts';
 export {
   collectProtocolObjectIds,

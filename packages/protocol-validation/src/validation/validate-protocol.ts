@@ -6,11 +6,13 @@ import { labelCollisionIssues } from '../localization/labelCollisions.ts';
 import { findBuiltInWordingProblems } from '../schemas/9/built-in-wording.ts';
 import { findMissingFallbackLanguage } from '../schemas/9/fallback-language.ts';
 import { findFinishStageTextProblems } from '../schemas/9/finish-stage-text.ts';
+import type { ProtocolObjectId } from '../schemas/9/protocol-object-id.ts';
+import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 import {
   type VersionedProtocol,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
-import { enclosingProtocolObjectIds } from '../utils/collectProtocolObjectIds.ts';
+import { withEnclosingObjectIds } from '../utils/protocolObjectIds.ts';
 import { findPrototypeCodebookKeys } from './prototypeCodebookKeys.ts';
 
 export type ProtocolValidationIssue = {
@@ -32,7 +34,7 @@ export type ProtocolValidationIssue = {
    * attach the issue to that object, which an edit does not move the way it
    * moves a path.
    */
-  objectId?: string;
+  objectId?: ProtocolObjectId;
 };
 
 /** Zod's issues as validation issues, each with the `params` it carries. */
@@ -58,21 +60,13 @@ const isSchema9Document = (value: unknown): boolean =>
   'schemaVersion' in value &&
   value.schemaVersion === 9;
 
-/** The issues, each with the id of the marked object it falls inside. */
 const withObjectIds = (
   protocol: unknown,
   issues: ProtocolValidationIssue[],
-): ProtocolValidationIssue[] => {
-  if (!isSchema9Document(protocol)) return issues;
-  const objectIds = enclosingProtocolObjectIds(
-    protocol,
-    issues.map((issue) => issue.path),
-  );
-  return issues.map((issue, index) => {
-    const objectId = objectIds[index];
-    return objectId === undefined ? issue : { ...issue, objectId };
-  });
-};
+): ProtocolValidationIssue[] =>
+  isSchema9Document(protocol)
+    ? withEnclosingObjectIds(ProtocolStructureSchema, protocol, issues)
+    : issues;
 
 /** Single-string rendering of validation issues for dialogs, CLI output, and logs. */
 export const formatProtocolValidationIssues = (

@@ -53,8 +53,9 @@ import {
 } from '@codaco/protocol-builder/state/protocolContext';
 import {
   CurrentProtocolSchema,
-  enclosingProtocolObjectIdsIn,
   findTimelineStructureProblems,
+  type ProtocolObjectId,
+  withEnclosingObjectIds,
 } from '@codaco/protocol-validation';
 import {
   StageId,
@@ -161,7 +162,7 @@ type DraftValidationIssue =
       /** The draft holds nothing at this path, so the fault is that it is missing. */
       absent: boolean;
       /** The nearest object holding the path that has an id of its own. */
-      objectId?: string;
+      objectId?: ProtocolObjectId;
     }>
   /** The sections could not be put together into one document to check. */
   | Readonly<{ kind: 'unassembled'; path: readonly [] }>;
@@ -1488,20 +1489,15 @@ function useDraftValidation(reading: ProtocolReading): DraftValidation {
           settle({ status: 'valid', issues: [] });
           return;
         }
-        const issues = result.error.issues.map((issue) =>
-          toDraftValidationIssue(issue, protocol),
-        );
-        const objectIds = enclosingProtocolObjectIdsIn(
-          CurrentProtocolSchema,
-          protocol,
-          issues.map((issue) => issue.path),
-        );
         settle({
           status: 'invalid',
-          issues: issues.map((issue, index) => {
-            const objectId = objectIds[index];
-            return objectId === undefined ? issue : { ...issue, objectId };
-          }),
+          issues: withEnclosingObjectIds(
+            CurrentProtocolSchema,
+            protocol,
+            result.error.issues.map((issue) =>
+              toDraftValidationIssue(issue, protocol),
+            ),
+          ),
         });
       } catch {
         // Why the sections do not fit together is about the document's

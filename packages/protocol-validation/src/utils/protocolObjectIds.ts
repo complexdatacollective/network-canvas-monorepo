@@ -1,6 +1,10 @@
 import type { z } from 'zod';
 
-import type { ProtocolObjectKind } from '../schemas/9/protocol-object-id.ts';
+import {
+  isProtocolObjectId,
+  type ProtocolObjectId,
+  type ProtocolObjectKind,
+} from '../schemas/9/protocol-object-id.ts';
 import {
   isObjectIdHit,
   type ProtocolObjectIdHit,
@@ -36,6 +40,12 @@ export const findMarkedObjects = (
     .filter(isObjectIdHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
+/**
+ * The id of every object `schema` marks, found in `value` (a protocol, a
+ * stage or any part of one), with the path of its `id` field, in document
+ * order. `value` need not be valid; an object without a string id is left
+ * out.
+ */
 export const collectProtocolObjectIdsFromSchema = (
   schema: z.ZodType,
   value: unknown,
@@ -47,34 +57,66 @@ export const collectProtocolObjectIdsFromSchema = (
 const pathKey = (path: readonly (string | number)[]): string =>
   JSON.stringify(path);
 
+type EnclosingProtocolObject = {
+  id: string;
+  /** The path of the object itself, not of its `id` field. */
+  path: (string | number)[];
+};
+
 /**
- * For each path into `value`, the id of the nearest object `schema` marks
- * that contains it, so a host can attach a problem to the object it belongs
- * to rather than to a position that an edit can change. `value` need not be
- * valid.
+ * For each path into `value`, the nearest object `schema` marks that contains
+ * it, so a host can attach a problem to the object it belongs to rather than
+ * to a position that an edit can change. `value` need not be valid.
  */
-export const enclosingProtocolObjectIdsIn = (
+export const enclosingProtocolObjects = (
   schema: z.ZodType,
   value: unknown,
   paths: readonly (readonly (string | number)[])[],
-): (string | undefined)[] => {
+): (EnclosingProtocolObject | undefined)[] => {
   // Keyed by the path of the object itself, so each lookup costs one probe per
   // prefix of the path instead of a scan of every object. The first object at
   // a path wins, as in document order.
-  const idByObjectPath = new Map<string, string>();
+  const byObjectPath = new Map<string, EnclosingProtocolObject>();
   for (const { id, path } of collectProtocolObjectIdsFromSchema(
     schema,
     value,
   )) {
-    const key = pathKey(path.slice(0, -1));
-    if (!idByObjectPath.has(key)) idByObjectPath.set(key, id);
+    const objectPath = path.slice(0, -1);
+    const key = pathKey(objectPath);
+    if (!byObjectPath.has(key)) byObjectPath.set(key, { id, path: objectPath });
   }
   return paths.map((path) => {
     for (let length = path.length; length >= 0; length -= 1) {
-      const id = idByObjectPath.get(pathKey(path.slice(0, length)));
-      if (id !== undefined) return id;
+      const object = byObjectPath.get(pathKey(path.slice(0, length)));
+      if (object !== undefined) return object;
     }
     return undefined;
+  });
+};
+
+/**
+ * The issues, each given the id of the nearest object holding its path (see
+ * `enclosingProtocolObjects`) as `objectId`, where that id is a protocol
+ * object id.
+ */
+export const withEnclosingObjectIds = <
+  Issue extends Readonly<{
+    path: readonly (string | number)[];
+    objectId?: ProtocolObjectId;
+  }>,
+>(
+  schema: z.ZodType,
+  value: unknown,
+  issues: readonly Issue[],
+): Issue[] => {
+  const objects = enclosingProtocolObjects(
+    schema,
+    value,
+    issues.map((issue) => issue.path),
+  );
+  return issues.map((issue, index) => {
+    const id = objects[index]?.id;
+    return isProtocolObjectId(id) ? { ...issue, objectId: id } : issue;
   });
 };
 

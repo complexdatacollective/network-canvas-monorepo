@@ -34,7 +34,8 @@ import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   collectLocalizedStringsFromSchema,
-  collectProtocolObjectIds,
+  collectProtocolObjectIdsFromSchema,
+  enclosingProtocolObjects,
   findDynamicValueProblems,
   type InterfaceTextUpdate,
   type LocalizationDeclaration,
@@ -390,8 +391,14 @@ function StageEditorFormBody({
   // of the stage stays with that object when the list holding it is reordered
   // before the next save.
   useEffect(() => {
+    // The stage's own id, at `['id']`, names nothing inside the stage.
     outline.setObjectLocator((id) =>
-      objectPathsIn(stageDocument(identity, liveDraft())).get(id),
+      collectProtocolObjectIdsFromSchema(
+        stageSchema,
+        stageDocument(identity, liveDraft()),
+      )
+        .find((object) => object.id === id && object.path.length > 1)
+        ?.path.slice(0, -1),
     );
     return () => outline.setObjectLocator(undefined);
   }, [identity, liveDraft, outline]);
@@ -918,7 +925,6 @@ function stageProblems(
   const result = stageSchema.safeParse(document);
   const sections: SectionValidationIssue[] = [];
   const whole: string[] = [];
-  const objects = objectPathsIn(document);
 
   // What the protocol's own check asks of the values a stage's text shows,
   // and which the stage's schema cannot: that each is bound and can be shown
@@ -945,11 +951,12 @@ function stageProblems(
       code: 'custom',
       message: problem.message,
       absent: false,
-      ...enclosingObject(objects, path),
     });
   }
 
-  if (result.success) return { sections, whole };
+  if (result.success) {
+    return { sections: withEnclosingObjects(document, sections), whole };
+  }
   for (const issue of result.error.issues) {
     const path = issue.path.map((part) =>
       typeof part === 'symbol' ? String(part) : part,
@@ -968,44 +975,31 @@ function stageProblems(
       code: issue.code,
       message: issue.message,
       absent: isUnanswered(getValue(fields, path)),
-      ...enclosingObject(objects, path),
     });
   }
-  return { sections, whole };
+  return { sections: withEnclosingObjects(document, sections), whole };
 }
 
 /**
- * Where each protocol object inside the stage is, by its id, as a path into
- * the stage document. The stage itself is left out: every problem is inside
- * it, so it says nothing about where one belongs.
+ * Each issue with the innermost protocol object inside the stage that holds
+ * it. The stage itself is left out: every problem is inside it, so it says
+ * nothing about where one belongs.
  */
-function objectPathsIn(
+function withEnclosingObjects(
   document: SectionDoc,
-): Map<string, readonly (string | number)[]> {
-  const paths = new Map<string, readonly (string | number)[]>();
-  for (const { id, path } of collectProtocolObjectIds({ stages: [document] })) {
-    const objectPath = path.slice(2, -1);
-    if (objectPath.length > 0) paths.set(id, objectPath);
-  }
-  return paths;
-}
-
-/** The innermost object in `objects` whose path `path` runs through. */
-function enclosingObject(
-  objects: ReadonlyMap<string, readonly (string | number)[]>,
-  path: readonly (string | number)[],
-): Pick<SectionValidationIssue, 'object'> {
-  let object: SectionValidationIssue['object'];
-  for (const [id, objectPath] of objects) {
-    if (
-      objectPath.length <= path.length &&
-      objectPath.every((segment, index) => segment === path[index]) &&
-      (object === undefined || objectPath.length > object.path.length)
-    ) {
-      object = { id, path: objectPath };
-    }
-  }
-  return object === undefined ? {} : { object };
+  issues: readonly SectionValidationIssue[],
+): SectionValidationIssue[] {
+  const objects = enclosingProtocolObjects(
+    stageSchema,
+    document,
+    issues.map((issue) => issue.path),
+  );
+  return issues.map((issue, index) => {
+    const object = objects[index];
+    return object === undefined || object.path.length === 0
+      ? issue
+      : { ...issue, object };
+  });
 }
 
 /**

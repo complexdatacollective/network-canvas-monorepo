@@ -2,7 +2,6 @@ import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 import {
   collectProtocolObjectIdsFromSchema,
   type DuplicateProtocolObjectId,
-  enclosingProtocolObjectIdsIn,
   groupDuplicateProtocolObjectIds,
   type ProtocolObjectIdLocation,
 } from './protocolObjectIds.ts';
@@ -22,13 +21,3 @@ export const findDuplicateProtocolObjectIds = (
   protocol: unknown,
 ): DuplicateProtocolObjectId[] =>
   groupDuplicateProtocolObjectIds(collectProtocolObjectIds(protocol));
-
-/**
- * For each path, the id of the nearest marked object in the protocol that
- * contains it (see `enclosingProtocolObjectIdsIn`).
- */
-export const enclosingProtocolObjectIds = (
-  protocol: unknown,
-  paths: readonly (readonly (string | number)[])[],
-): (string | undefined)[] =>
-  enclosingProtocolObjectIdsIn(ProtocolStructureSchema, protocol, paths);

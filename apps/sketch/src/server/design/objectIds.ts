@@ -1,7 +1,8 @@
 import {
-  collectProtocolObjectIds,
+  collectProtocolObjectIdsFromSchema,
   deterministicProtocolObjectId,
   type ProtocolObjectId,
+  stageSchema,
 } from '@codaco/protocol-validation';
 
 // The namespace of every id Sketch gives a protocol object. It must never
@@ -35,21 +36,24 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 export const assignNestedObjectIds = (
   stages: readonly Record<string, unknown>[],
 ): void => {
-  for (const { path, kind } of collectProtocolObjectIds({ stages })) {
-    if (kind === 'stage') continue;
-    const [, stageIndex, ...inside] = path;
-    const stage = typeof stageIndex === 'number' ? stages[stageIndex] : null;
-    const key = path.at(-1);
-    let holder: unknown = { stages };
-    for (const segment of path.slice(0, -1)) {
-      holder = isObject(holder) ? Reflect.get(holder, segment) : undefined;
-    }
-    if (stage && isObject(holder) && key !== undefined) {
-      Reflect.set(
-        holder,
-        key,
-        sketchObjectId(`${String(stage.id)}${JSON.stringify(inside)}`),
-      );
+  for (const stage of stages) {
+    for (const { path, kind } of collectProtocolObjectIdsFromSchema(
+      stageSchema,
+      stage,
+    )) {
+      if (kind === 'stage') continue;
+      const key = path.at(-1);
+      let holder: unknown = stage;
+      for (const segment of path.slice(0, -1)) {
+        holder = isObject(holder) ? Reflect.get(holder, segment) : undefined;
+      }
+      if (isObject(holder) && key !== undefined) {
+        Reflect.set(
+          holder,
+          key,
+          sketchObjectId(`${String(stage.id)}${JSON.stringify(path)}`),
+        );
+      }
     }
   }
 };

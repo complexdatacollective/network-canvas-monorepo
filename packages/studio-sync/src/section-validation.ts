@@ -10,10 +10,9 @@ import {
   ExperimentsSchema,
   NodeDefinitionSchema,
   assetSchema,
-  enclosingProtocolObjectIdsIn,
-  isProtocolObjectId,
   type ProtocolObjectId,
   stageSchema,
+  withEnclosingObjectIds,
 } from '@codaco/protocol-validation';
 
 import type { SectionDoc } from './apply.ts';
@@ -94,25 +93,23 @@ function schemaFor(id: string): z.ZodType {
 
 /**
  * A section schema's refusal of `doc` as section issues, each with the id of
- * the marked object it falls inside where that id is a usable one.
+ * the marked object it falls inside (see `withEnclosingObjectIds`).
  */
 export function toSectionIssues(
   schema: z.ZodType,
   doc: unknown,
   issues: readonly z.core.$ZodIssue[],
 ): SectionIssue[] {
-  const paths = issues.map((issue) =>
-    issue.path.map((part) => (typeof part === 'symbol' ? String(part) : part)),
-  );
-  const objectIds = enclosingProtocolObjectIdsIn(schema, doc, paths);
-  return issues.map((issue, index) => {
-    const objectId = objectIds[index];
-    return {
-      path: paths[index] ?? [],
+  return withEnclosingObjectIds(
+    schema,
+    doc,
+    issues.map((issue): SectionIssue => ({
+      path: issue.path.map((part) =>
+        typeof part === 'symbol' ? String(part) : part,
+      ),
       message: issue.message,
-      ...(isProtocolObjectId(objectId) ? { objectId } : {}),
-    };
-  });
+    })),
+  );
 }
 
 export function validateSection(
