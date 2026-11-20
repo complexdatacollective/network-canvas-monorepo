@@ -4,12 +4,14 @@ import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
-  createProtocolObjectId,
   ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 
 const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
   'd79c37ba-397e-4855-8435-f3226c3a2b50',
+);
+const WELCOME_TEXT_ITEM_ID = ProtocolObjectIdSchema.parse(
+  '6f0c2a43-8a5e-4f2b-9c1d-3e4f5a6b7c8d',
 );
 export const NAMES_STAGE_ID = ProtocolObjectIdSchema.parse(
   '4dc69897-321e-4d88-881f-8460d3e9c98d',
@@ -70,7 +72,7 @@ export const reviewProtocol = (): CurrentProtocol =>
         title: { en: 'Hello', fr: 'Bonjour' },
         items: [
           {
-            id: createProtocolObjectId(),
+            id: WELCOME_TEXT_ITEM_ID,
             type: 'text',
             content: { en: 'Hi', fr: 'Salut' },
           },
