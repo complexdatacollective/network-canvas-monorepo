@@ -741,7 +741,9 @@ const ReviewPopoverContent = ({
         <div className="px-6 pb-4">
           <Paragraph intent="smallText" margin="none">
             {intl.formatMessage(messages.defaultLanguageOnly, {
-              language: languageName(protocol.localization.defaultLocale),
+              language: languageName(
+                summary.defaultLocale ?? protocol.localization.defaultLocale,
+              ),
               page: languagesLink(onClose),
             })}
           </Paragraph>

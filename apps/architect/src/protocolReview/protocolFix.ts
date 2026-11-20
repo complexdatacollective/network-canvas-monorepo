@@ -84,18 +84,58 @@ const parseJson = (value: string | null): unknown => {
 const PLACEHOLDER =
   /\[(?=[^[\]\n]*\p{L})(?:[^[\]\n\p{Ll}]{2,}|\p{Lo})\](?!\()/u;
 
-const holdsPlaceholder = (value: unknown): boolean => {
-  if (typeof value === 'string') return PLACEHOLDER.test(value);
-  if (Array.isArray(value)) return value.some(holdsPlaceholder);
-  return isJsonObject(value) && Object.values(value).some(holdsPlaceholder);
+/**
+ * Whether `written` holds a placeholder that `current`, what it replaces,
+ * does not hold in the same place. Members of arrays are paired as
+ * `replacedMembers` pairs them, so a translation kept as it was
+ * (`keepTranslations`) is not one the fix writes.
+ */
+const holdsNewPlaceholder = (written: unknown, current: unknown): boolean => {
+  if (typeof written === 'string') {
+    return written !== current && PLACEHOLDER.test(written);
+  }
+  if (Array.isArray(written)) {
+    const replaced = Array.isArray(current)
+      ? replacedMembers(written, current)
+      : [];
+    return written.some((member: unknown, index) =>
+      holdsNewPlaceholder(member, replaced[index]),
+    );
+  }
+  return (
+    isJsonObject(written) &&
+    Object.entries(written).some(([key, value]) =>
+      holdsNewPlaceholder(
+        value,
+        isJsonObject(current) && Object.hasOwn(current, key)
+          ? current[key]
+          : undefined,
+      ),
+    )
+  );
 };
 
 /**
  * Whether `operation` writes a placeholder: a text the researcher has still to
- * supply, which a participant must never be shown.
+ * supply, which a participant must never be shown. Given the protocol it
+ * applies to, a placeholder a `set` leaves where the protocol already holds
+ * it (a translation kept as it was) is not one it writes.
  */
-export const writesPlaceholder = (operation: StoredOperation): boolean =>
-  operation.op !== 'remove' && holdsPlaceholder(parseJson(operation.value));
+export const writesPlaceholder = (
+  operation: StoredOperation,
+  protocol?: unknown,
+): boolean => {
+  if (operation.op === 'remove') return false;
+  const segments =
+    operation.op === 'set' && protocol !== undefined
+      ? parsePath(operation.path)
+      : null;
+  const target = segments === null ? null : readPath(protocol, segments);
+  return holdsNewPlaceholder(
+    parseJson(operation.value),
+    target?.found ? target.value : undefined,
+  );
+};
 
 /**
  * The top-level parts of a protocol a fix may edit: the interview and its
@@ -140,15 +180,21 @@ const isScalar = (value: unknown): boolean =>
   typeof value === 'boolean';
 
 /**
- * What a member without an id refers to: everything it holds besides its
- * label that is text, a number, or true or false. An answer option's
+ * What a member holds that describes it rather than names what it refers to:
+ * its label, and whether a Yes/No answer is the negative one.
+ */
+const NOT_REFERENCES = new Set(['label', 'negative']);
+
+/**
+ * What a member without an id refers to: everything else it holds that is
+ * text, a number, or true or false (`NOT_REFERENCES`). An answer option's
  * `value`, the edge `type` a narrative preset displays, the `variable` it
  * highlights or a roster sorts by.
  */
 const referenceOf: MemberKey = (member) => {
   if (!isJsonObject(member) || idOf(member) !== null) return null;
   const held = Object.entries(member)
-    .filter(([key, value]) => key !== 'label' && isScalar(value))
+    .filter(([key, value]) => !NOT_REFERENCES.has(key) && isScalar(value))
     .toSorted(([a], [b]) => a.localeCompare(b));
   return held.length === 0 ? null : JSON.stringify(held);
 };

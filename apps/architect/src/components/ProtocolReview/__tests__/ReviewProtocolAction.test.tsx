@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { timelineActions } from '~/ducks/middleware/timeline';
 import {
+  setProtocolDefaultLocale,
   setProtocolTranslation,
   setActiveProtocol,
 } from '~/ducks/modules/activeProtocol';
@@ -1310,6 +1311,18 @@ describe('one problem at a time, in the panel', () => {
       'Fixes change the English text only. After a fix, check your other translations on the Languages page.',
     );
     expect(within(note).getByRole('link', { name: 'Languages' })).toBeVisible();
+  });
+
+  it('names the language fixes change as it was when the protocol was reviewed', async () => {
+    await reviewed(store);
+    act(() => {
+      store.dispatch(setProtocolDefaultLocale({ locale: 'fr' }));
+    });
+    renderToolbar(store);
+    const panel = await openPanel();
+    expect(
+      within(panel).getByText(/Fixes change the English text only/),
+    ).toBeVisible();
   });
 
   it('previews a fix that replaces a whole localized text, translation by translation', async () => {

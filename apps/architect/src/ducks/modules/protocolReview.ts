@@ -346,7 +346,11 @@ export const getIsProtocolReviewRecordRead = (state: RootState): boolean =>
 
 const selectRecord = (state: RootState) => selectReview(state).record;
 
-/** The stored review of the active protocol: when, and in which language. */
+/**
+ * The stored review of the active protocol: when, in which language, and
+ * which language its fixes write (null for a review saved before that was
+ * kept).
+ */
 export const getProtocolReviewSummary = createSelector(
   [selectRecord],
   (record) =>
@@ -355,6 +359,7 @@ export const getProtocolReviewSummary = createSelector(
           reviewId: record.review.reviewId,
           createdAt: record.review.createdAt,
           locale: record.review.locale,
+          defaultLocale: record.review.defaultLocale ?? null,
         }
       : null,
 );
@@ -1024,6 +1029,7 @@ export const startReview =
         reviewId: result.reviewId,
         createdAt: Date.now(),
         locale,
+        defaultLocale: reviewed.localization.defaultLocale,
         provider,
         stageIds: reviewed.stages.map((stage) => stage.id),
         findings,

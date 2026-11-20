@@ -161,6 +161,24 @@ describe('a fix that replaces more than one text', () => {
     });
   });
 
+  it('keeps a Yes/No answer’s translations when a fix rewords it and marks it negative', () => {
+    const protocol = withOptions([
+      { label: { en: 'Yes', fr: 'Oui' }, value: true },
+      { label: { en: 'No', fr: 'Non' }, value: false },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Yes, sometimes' }, value: true },
+        { label: { en: 'No, never' }, value: false, negative: true },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Yes, sometimes', fr: 'Oui' }, value: true },
+        { label: { en: 'No, never', fr: 'Non' }, value: false, negative: true },
+      ],
+    });
+  });
+
   it('keeps each translation with its label when a fix swaps the values', () => {
     const protocol = withOptions([
       { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
@@ -403,6 +421,41 @@ describe('a fix that writes a placeholder', () => {
         op('set', '/stages/names/prompts/p1/text', { en: 'Name people' }),
       ]),
     ).toBe(true);
+  });
+});
+
+describe('a fix that keeps a translation holding bracketed text', () => {
+  const withFrenchPrompt = (fr: string) => {
+    const protocol = makeProtocol();
+    const stage = protocol.stages[1];
+    const prompt = stage && 'prompts' in stage ? stage.prompts[0] : undefined;
+    if (prompt) Object.assign(prompt, { text: { en: 'Name people', fr } });
+    return protocol;
+  };
+
+  it('is offered and made, since the fix does not write that text', () => {
+    const protocol = withFrenchPrompt('Appuyez sur [OK]');
+    const operations = normalizeOperations(protocol, [
+      op('set', '/stages/names/prompts/p1', {
+        id: 'p1',
+        text: { en: 'In the past 6 months, who?' },
+      }),
+    ]);
+    expect(JSON.stringify(operations)).toContain('[OK]');
+    expect(placeholdersReplaceable(protocol, operations)).toBe(true);
+    expect(applyFixEdits(protocol, operations, {})).not.toBeNull();
+  });
+
+  it('is still refused when the fix writes a new placeholder beside it', () => {
+    const protocol = withFrenchPrompt('Appuyez sur [OK]');
+    const operations = normalizeOperations(protocol, [
+      op('set', '/stages/names/prompts/p1', {
+        id: 'p1',
+        text: { en: 'Call [PHONE NUMBER]' },
+      }),
+    ]);
+    expect(placeholdersReplaceable(protocol, operations)).toBe(false);
+    expect(applyFixEdits(protocol, operations, {})).toBeNull();
   });
 });
 
