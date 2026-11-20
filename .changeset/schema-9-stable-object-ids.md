@@ -32,7 +32,9 @@ For developers:
   references inside the fragment and returning the old-to-new id map.
 - A repeated id is reported once at each place it is used, as a `custom` issue
   with `params.rule === 'duplicateObjectId'`. Each issue from `validateProtocol`
-  has an optional `objectId`, the id of the nearest object it is about.
+  has an optional `objectId`, the id of the nearest object it is about, and
+  `enclosingProtocolObjectIdsIn` finds that id for paths into any part of a
+  protocol, such as a single stage.
 - `findDuplicateId`, `duplicateIdRefinement`, `uniqueFormFieldIds`,
   `uniqueFormFields` and `MAX_STAGE_ID_LENGTH` are removed, and
   `createDefaultFinishSessionStage` requires a `ProtocolObjectId`.
