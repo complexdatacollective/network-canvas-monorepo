@@ -21,7 +21,6 @@ import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-c
 import { useIssuesToolbarControl } from '~/components/Issues';
 import { useReviewProtocolToolbarAction } from '~/components/ProtocolReview/ReviewProtocolAction';
 import { useStageDraft } from '~/components/StageEditor/stageDraftBeacon';
-import { walkthroughLabel } from '~/components/StageEditor/walkthrough/StageWalkthrough';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { getProtocolName } from '~/selectors/protocol';
 
@@ -220,10 +219,7 @@ export const StageEditorToolbar = ({
         </ToolbarGroup>,
         walkthrough ? <ToolbarSeparator key="walkthrough-separator" /> : null,
         walkthrough ? (
-          <ToolbarGroup
-            key="walkthrough"
-            aria-label={intl.formatMessage(walkthroughLabel)}
-          >
+          <ToolbarGroup key="walkthrough" aria-label={'Walkthrough'}>
             {walkthrough}
           </ToolbarGroup>
         ) : null,

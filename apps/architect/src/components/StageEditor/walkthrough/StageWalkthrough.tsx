@@ -74,9 +74,6 @@ const messages = defineMessages({
   },
 });
 
-/** The walkthrough's name, also the name of its group in the toolbar. */
-export const walkthroughLabel = messages.walkthrough;
-
 const MARKDOWN_TAGS = [...ALLOWED_MARKDOWN_SECTION_TAGS, 'img', 'code'];
 
 const SPRING = { type: 'spring', duration: 0.4, bounce: 0 } as const;
